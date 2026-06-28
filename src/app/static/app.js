@@ -239,6 +239,8 @@ const tagCheckAvailability = document.getElementById("tag-check-availability");
 const tagClueCharacter = document.getElementById("tag-clue-character");
 const tagClueConsequence = document.getElementById("tag-clue-consequence");
 const tagLookForClue = document.getElementById("tag-look-for-clue");
+const tagRefreshServices = document.getElementById("tag-refresh-services");
+const tagSettlementServices = document.getElementById("tag-settlement-services");
 const tagSettlementResult = document.getElementById("tag-settlement-result");
 const tagSettlementLog = document.getElementById("tag-settlement-log");
 const abyssCampaignStatus = document.getElementById("abyss-campaign-status");
@@ -8360,6 +8362,8 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   clueCharacter: "Character making the TAG Streetwise Look for Clues attempt.",
   clueConsequence: "If a natural 1 happens and the character has no Clues, choose whether to lose gold or Life.",
   lookForClue: "Spend d6 gp in bribes, then roll a TAG Streetwise Save vs L6 to gain a Clue.",
+  services: "Refresh the first six TAG treasure/service rows for the current settlement size.",
+  hiddenTroveRisk: "Roll 3d6 for a hidden treasure trove between-adventure risk; on 3-5 the cache is stolen.",
 };
 
 const AI_ADVENTURE_TOOLTIPS = {
@@ -10147,6 +10151,8 @@ function applyTagSettlementTooltips() {
   setTooltip(tagClueCharacter, TAG_SETTLEMENT_TOOLTIPS.clueCharacter);
   setTooltip(tagClueConsequence, TAG_SETTLEMENT_TOOLTIPS.clueConsequence);
   setButtonTooltip(tagLookForClue, TAG_SETTLEMENT_TOOLTIPS.lookForClue);
+  setButtonTooltip(tagRefreshServices, TAG_SETTLEMENT_TOOLTIPS.services);
+  setTooltip(tagSettlementServices, TAG_SETTLEMENT_TOOLTIPS.services);
 }
 
 function applyAiAdventureTooltips() {
@@ -11101,6 +11107,7 @@ function renderTagCampaignSettlementPanel(campaign = state.campaign) {
     tagSettlementResult.textContent = parts.join(" ");
   }
   renderTagSettlementLog(campaign);
+  refreshTagSettlementServices({ silent: true }).catch(() => {});
 }
 
 function renderTagClueCharacterOptions() {
@@ -11141,6 +11148,34 @@ function renderTagSettlementLog(campaign) {
   }
 }
 
+function renderTagSettlementServices(services = []) {
+  if (!tagSettlementServices) return;
+  tagSettlementServices.replaceChildren();
+  for (const service of services) {
+    const row = node("div", "tag-settlement-service");
+    const title = node("div", "campaign-status-title", service.name || "TAG service");
+    const status = node("span", `tag-service-status ${service.status || ""}`, service.status_text || "");
+    const body = node("div", "campaign-status-line", `${service.cost || ""} · ${service.summary || ""}`);
+    const automation = node("div", "campaign-status-line muted", service.automation || "");
+    setTooltip(
+      row,
+      `${service.name || "TAG service"} (TAG p.${service.source_page || "?"}). ${service.status_text || ""} ${service.summary || ""}`
+    );
+    row.appendChild(title);
+    row.appendChild(status);
+    row.appendChild(body);
+    row.appendChild(automation);
+    if (service.key === "hidden_treasure_trove") {
+      const risk = node("button", "secondary", "Roll cache risk");
+      risk.type = "button";
+      setButtonTooltip(risk, TAG_SETTLEMENT_TOOLTIPS.hiddenTroveRisk);
+      risk.addEventListener("click", () => rollHiddenTroveRisk().catch(handleError));
+      row.appendChild(risk);
+    }
+    tagSettlementServices.appendChild(row);
+  }
+}
+
 function formatSigned(value) {
   const number = Number(value) || 0;
   return number > 0 ? `+${number}` : String(number);
@@ -11178,6 +11213,20 @@ async function travelTagSettlement() {
   state.campaign = result.campaign;
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG settlement travel resolved.");
+}
+
+async function refreshTagSettlementServices({ silent = false } = {}) {
+  const result = await api("/api/campaign/tag/services");
+  if (result.campaign) state.campaign = result.campaign;
+  renderTagSettlementServices(result.services || []);
+  if (!silent) setStatus("TAG settlement services refreshed.");
+}
+
+async function rollHiddenTroveRisk() {
+  const result = await api("/api/campaign/tag/hidden-trove-risk", { method: "POST" });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG hidden treasure trove risk rolled.");
 }
 
 async function checkTagAvailability() {
@@ -26838,6 +26887,9 @@ tagTravelMode?.addEventListener("change", () => {
 });
 tagTravelSettlement?.addEventListener("click", () => {
   travelTagSettlement().catch(handleError);
+});
+tagRefreshServices?.addEventListener("click", () => {
+  refreshTagSettlementServices().catch(handleError);
 });
 tagCheckAvailability?.addEventListener("click", () => {
   checkTagAvailability().catch(handleError);

@@ -22,6 +22,62 @@ if TYPE_CHECKING:
 
 DEFAULT_CAMPAIGN_ID = "default"
 TAG_LOG_LIMIT = 20
+TAG_SETTLEMENT_SERVICES = [
+    {
+        "key": "bank_account",
+        "name": "Bank account",
+        "source_page": 9,
+        "min_size": -3,
+        "cost": "10% one-time deposit fee, rounded up",
+        "summary": "Coins, gems, jewelry and magic treasure may be banked under one character's name.",
+        "automation": "Use existing home/camp bank controls; TAG fee/robbery roll still needs per-account automation.",
+    },
+    {
+        "key": "bank_inheritance",
+        "name": "Bank inheritance setup",
+        "source_page": 9,
+        "min_size": -3,
+        "cost": "20% inheritance tax, rounded up, when transferred",
+        "summary": "Sane characters may set heirs for bank savings if the account owner dies.",
+        "automation": "Reference only; per-account inheritance transfer is not automated yet.",
+    },
+    {
+        "key": "magic_locker",
+        "name": "Magic locker",
+        "source_page": 10,
+        "min_size": 0,
+        "cost": "50 gp per locker",
+        "summary": "Store one item or up to 5000 gp; summon during an adventure on 3d6, mishap on 6 or less.",
+        "automation": "Availability shown here; locker inventory/summon workflow is not automated yet.",
+    },
+    {
+        "key": "platinum_exchange",
+        "name": "Platinum exchange",
+        "source_page": 10,
+        "min_size": 3,
+        "cost": "1 PP = 20 gp",
+        "summary": "Size +3 settlements sell platinum; size +2 accepts it; smaller settlements accept only for church donations.",
+        "automation": "Reference only; PP currency is not tracked separately yet.",
+    },
+    {
+        "key": "hidden_treasure_trove",
+        "name": "Hidden treasure trove",
+        "source_page": 11,
+        "min_size": -3,
+        "cost": "No bank fee; risk roll between adventures",
+        "summary": "Cache treasure outside a bank; roll 3d6 between adventures, stolen on 3-5.",
+        "automation": "Risk roll is automated; cache contents are tracked manually for now.",
+    },
+    {
+        "key": "resurrection_blessing_tags",
+        "name": "Resurrection and Blessing tags",
+        "source_page": 11,
+        "min_size": -3,
+        "cost": "500 gp resurrection tag; 80 gp Blessing tag",
+        "summary": "Prepaid temple tags tied to the wearer; not subject to availability rolls.",
+        "automation": "Reference only; tag inventory redemption is not automated yet.",
+    },
+]
 
 FIGHTING_CLASS_IDS = {
     "barbarian",
@@ -67,6 +123,59 @@ def trim_tag_logs(campaign: CampaignState) -> CampaignState:
 def roll_3d6() -> tuple[int, list[int]]:
     rolls = [roll_d6(), roll_d6(), roll_d6()]
     return sum(rolls), rolls
+
+
+def settlement_service_rows(campaign: CampaignState) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    size = campaign.settlement_size
+    for service in TAG_SETTLEMENT_SERVICES:
+        key = str(service["key"])
+        status = "available" if size >= int(service["min_size"]) else "unavailable"
+        if key == "platinum_exchange" and size == 2:
+            status = "accepted_only"
+        if key == "platinum_exchange" and size < 2:
+            status = "church_only"
+        rows.append(
+            {
+                **service,
+                "status": status,
+                "status_text": tag_service_status_text(key, status, size),
+            }
+        )
+    return rows
+
+
+def tag_service_status_text(key: str, status: str, size: int) -> str:
+    if key == "platinum_exchange":
+        if status == "available":
+            return f"Available in this size {size:+d} settlement: gold may be converted to PP."
+        if status == "accepted_only":
+            return "Limited: PP is accepted here, but cannot be bought."
+        return "Limited: PP accepted only for church donations such as resurrection or Blessing."
+    if status == "available":
+        return f"Available in this size {size:+d} settlement."
+    return f"Unavailable: requires settlement size {next(s['min_size'] for s in TAG_SETTLEMENT_SERVICES if s['key'] == key):+d} or larger."
+
+
+def roll_hidden_treasure_trove_risk(campaign: CampaignState) -> TagDowntimeLogEntry:
+    total, rolls = roll_3d6()
+    if total <= 5:
+        result = (
+            f"Hidden treasure trove risk roll {total} ({'+'.join(str(roll) for roll in rolls)}): "
+            "the cache is discovered and stolen. Spend 4 Clues and pass Interrogation vs L6 to recover it."
+        )
+    else:
+        result = f"Hidden treasure trove risk roll {total} ({'+'.join(str(roll) for roll in rolls)}): the cache remains safe."
+    entry = TagDowntimeLogEntry(
+        action="hidden_treasure_trove_risk",
+        roll=total,
+        total=total,
+        result_text=result,
+        created_at=now_utc(),
+    )
+    campaign.tag_downtime_log.append(entry)
+    trim_tag_logs(campaign)
+    return entry
 
 
 def update_settlement(

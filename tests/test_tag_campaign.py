@@ -6,7 +6,9 @@ from app.engine.tag_campaign import (
     check_item_availability,
     default_campaign,
     look_for_clues,
+    roll_hidden_treasure_trove_risk,
     settlement_size_from_roll,
+    settlement_service_rows,
     travel_to_new_settlement,
 )
 from app.schemas import Character
@@ -115,3 +117,38 @@ def test_tag_hex_travel_logs_road_tithe_and_encounter_checks(monkeypatch) -> Non
     assert entry.road_tithe_paid_gp == 3
     assert entry.encounter_checks == 3
     assert campaign.days_passed == 8
+
+
+def test_tag_first_six_service_rows_gate_by_settlement_size() -> None:
+    campaign = default_campaign()
+    campaign.settlement_size = -1
+    rows = {row["key"]: row for row in settlement_service_rows(campaign)}
+
+    assert list(rows) == [
+        "bank_account",
+        "bank_inheritance",
+        "magic_locker",
+        "platinum_exchange",
+        "hidden_treasure_trove",
+        "resurrection_blessing_tags",
+    ]
+    assert rows["bank_account"]["status"] == "available"
+    assert rows["magic_locker"]["status"] == "unavailable"
+    assert rows["platinum_exchange"]["status"] == "church_only"
+
+    campaign.settlement_size = 3
+    rows = {row["key"]: row for row in settlement_service_rows(campaign)}
+    assert rows["magic_locker"]["status"] == "available"
+    assert rows["platinum_exchange"]["status"] == "available"
+
+
+def test_tag_hidden_treasure_trove_risk_roll(monkeypatch) -> None:
+    campaign = default_campaign()
+    rolls = iter([1, 2, 2])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+
+    entry = roll_hidden_treasure_trove_risk(campaign)
+
+    assert entry.action == "hidden_treasure_trove_risk"
+    assert entry.total == 5
+    assert "discovered and stolen" in entry.result_text

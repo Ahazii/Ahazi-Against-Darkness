@@ -153,6 +153,44 @@ h2 {
   overflow: auto;
 }
 
+.tag-settlement-services-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tag-settlement-services {
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.tag-settlement-service {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  background: #11120f;
+}
+
+.tag-service-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tag-service-status.available {
+  color: #bfe7b5;
+}
+
+.tag-service-status.unavailable,
+.tag-service-status.church_only,
+.tag-service-status.accepted_only {
+  color: #e8c982;
+}
+
 .heading-title,
 .label-with-help {
   display: inline-flex;

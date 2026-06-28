@@ -27,6 +27,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 - **FD/TAG rules pass (2026-06-28):** Teleport Enemy now persists returning foes, ticks them back room-by-room unless blocked, and rolls occupied-room reactions when a returning foe crosses living occupants; Mass Blessing targets living party members and hirelings with explicit condition-removal choices and Life-cost accounting; TAG settlement Apothecary brewing has its own UI/action separate from camp outside the dungeon.
 - **TAG settlement phase 1 (2026-06-28):** Persistent TAG settlement name/size/notes are on the Adventure panel; settlement-size random roll, special item availability checks (d6 + settlement size, fail-by-1 surcharge), and Streetwise Look for Clues are wired with rule math, logs, and hover hints.
 - **TAG travel phase (2026-06-28):** Moving to a different settlement now updates the current TAG home settlement, rolls random settlement size, advances campaign days, and logs either simple 3d6-3 travel or optional hex-map direction/distance/road/tithe/encounter-check math.
+- **TAG services phase 1 (2026-06-28):** The Adventure-panel TAG settlement UI now lists the first six treasure/service options from TAG pp.9-11: bank accounts, bank inheritance, magic lockers, platinum exchange, hidden treasure troves, and resurrection/blessing tags. Rows show settlement-size availability, costs, implementation status, hover hints, and hidden-trove risk rolls.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
 - Expert-skill learning keeps class-ineligible options visible but disabled with
@@ -59,7 +60,7 @@ Recent deeper-rule work:
 Defer to later releases:
 
 - Abyss optional extended-campaign chaining playtest sign-off;
-- TAG broader settlement service catalog, banks/magic lockers, treasure storage, and full downtime event/service automation;
+- TAG full purchase/storage automation for banks, magic lockers, platinum currency, resurrection/blessing tags, plus broader service catalog and downtime event automation;
 - large `app.js` / `random_dungeon.py` decomposition.
 
 ### Home screen layout (June 2026)

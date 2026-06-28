@@ -123,11 +123,15 @@ def test_tag_settlement_controls_and_tooltips_are_present() -> None:
     assert 'id="tag-travel-settlement"' in INDEX_HTML
     assert 'id="tag-travel-mode"' in INDEX_HTML
     assert 'id="tag-pay-road-tithe"' in INDEX_HTML
+    assert 'id="tag-refresh-services"' in INDEX_HTML
+    assert 'id="tag-settlement-services"' in INDEX_HTML
     assert "TAG_SETTLEMENT_TOOLTIPS" in APP_JS
     assert "Roll d6 + settlement size" in APP_JS
     assert "Streetwise Save vs L6" in APP_JS
     assert "3d6-3 days" in APP_JS
     assert "1 gp per 3 hexes" in APP_JS
+    assert "Roll cache risk" in APP_JS
+    assert "/api/campaign/tag/services" in APP_JS
 
 
 def test_render_map_bounds_use_map_render_pad() -> None:

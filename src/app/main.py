@@ -472,6 +472,24 @@ async def campaign_tag_availability(payload: dict[str, Any]) -> dict[str, Any]:
     return {"campaign": campaign, "check": check}
 
 
+@app.get("/api/campaign/tag/services")
+async def campaign_tag_services() -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, settlement_service_rows
+
+    campaign = load_campaign(store)
+    return {"campaign": campaign, "services": settlement_service_rows(campaign)}
+
+
+@app.post("/api/campaign/tag/hidden-trove-risk")
+async def campaign_tag_hidden_trove_risk() -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, roll_hidden_treasure_trove_risk, save_campaign
+
+    campaign = load_campaign(store)
+    entry = roll_hidden_treasure_trove_risk(campaign)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
 @app.post("/api/campaign/tag/travel-settlement")
 async def campaign_tag_travel_settlement(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, save_campaign, travel_to_new_settlement

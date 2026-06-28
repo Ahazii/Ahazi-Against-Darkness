@@ -31,7 +31,7 @@ whole-book completion.
 | Expanded Edition | advanced | Procedural dungeon loop, classes, combat, equipment, dungeon/cavern/fungal tables, bestiary, reactions, Secrets, quests, Fiendish Foes, EE map catalog | Remaining manual sign-off, selected UI/fidelity edges, roleplaying/adventure-authoring scope decisions |
 | Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals; **Abyss profile** with 2d6 room-content routing, exact Abyss traps/features/events phase, claimable/choice Abyss treasure, Useful Stuff/magical defense item rows, Abyss wandering spawns, Abyss minion reaction/Trial routing, tactical targeting for minion leaders, multiple bosses, and hordes, core Abyss item use-actions/passive item math, Abyss affliction lifecycles for Dark Plague/lycanthropy/vampire-drain resurrection blocking, persistent playable campaign plots, vampire sire hunt/re-encounter, and large-room dragon-lair routing | Manual playtest sign-off for rare optional extended-campaign chaining and broader frontend decomposition |
 | Forsaken Depths | advanced partial | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, **6 Heroic spells (catalog + cast)** including Fire of Truth chaos-hit bonus, Teleport Enemy return tracking with occupied-room reaction rolls, and Mass Blessing party/hireling condition choices; Legendary spell cast path, **72 validated tiles**, FD dungeon/river runtime, quests, citadels, TCOTFD branch | Remaining FD content families and manual sign-off |
-| Adventurers' Guild | partial campaign | Persistent roster, multiple parties, banking, **campaign state** (`days_passed`, TAG banking toggle, `/api/campaign`), home settlement identity/size/notes, special-item availability, Streetwise Look for Clues, and travel to new settlements with simple or hex-route logging | Troupe rules, full downtime/service catalog, rumors, treasure maps, Guild jobs |
+| Adventurers' Guild | partial campaign | Persistent roster, multiple parties, banking, **campaign state** (`days_passed`, TAG banking toggle, `/api/campaign`), home settlement identity/size/notes, special-item availability, Streetwise Look for Clues, travel to new settlements with simple or hex-route logging, and first six treasure/service rows from TAG pp.9-11 | Troupe rules, full purchase/storage automation, remaining downtime/service catalog, rumors, treasure maps, Guild jobs |
 | Netherworld | missing/foundation only | Generic Madness/combat/economy primitives can be reused | Classes, expert skills, soul economy, food, planar gates, hex exploration, terrain, reactions, objectives, bestiary, spells, merchants and treasure |
 
 ## Expanded Edition
@@ -88,6 +88,7 @@ Implemented first slice:
 - moving to a different settlement by simple 3d6-3 travel days or optional hex-map route logging;
 - special-item availability with settlement-size modifier and fail-by-1 surcharge;
 - Streetwise Look for Clues with character choice, bribe cost, class modifier and natural-1 consequence;
+- first six TAG treasure/service rows (bank accounts, inheritance, magic lockers, platinum exchange, hidden treasure troves, resurrection/blessing tags), with hidden-trove risk roll;
 - TAG settlement Apothecary hook when TCOTFD is also in use.
 
 Next slices:
