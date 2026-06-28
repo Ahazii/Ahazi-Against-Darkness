@@ -1138,7 +1138,7 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     assert "const memberAway = isDetachedElsewhere(session, member);" in member_body
     assert "if (memberAway)" in member_body
     assert "appendDetachedNavigationPrompt(body, session, elsewhere, member);" in member_body
-    assert "continue;" in member_body
+    assert "return;" in member_body
     prompt = _function_body("appendDetachedNavigationPrompt", APP_JS)
     assert "Scout is ahead:" in prompt
     assert "Navigate back" in prompt
