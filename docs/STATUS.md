@@ -36,6 +36,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 - **TAG home help pass (2026-06-28):** The home Adventure panel TAG settlement tools are split into collapsible Settlement, Troupe, Travel, Availability, Streetwise, Storage, Buyer, Magic Lockers, Maps/Adventure Leads, and Services/Log sections. Each section has a compact `?` help button with hover text and a modal summary explaining what the controls do and how to check the result against TAG.
 - **TAG adventure content phase (2026-06-28):** TAG generated adventures now use structured profiles for all 12 Rumor Scenes, six Thematic Dungeons, and six Guild Job minor quests. Installed modules carry source pages, scene/thematic notes, reward notes, and encounter-proxy metadata in `source.parameters.tag_reference`, with profile-specific room text and finale spawns where an existing foe profile is available. TAG service rows also document Adventurers Guild jobs, Trinkets, and Guild spells with hoverable service UI.
 - **TAG special foe phase (2026-06-28):** TAG generated adventures now have a separate TAG monster supplement and can spawn named TAG foes without altering the locked EE monster tables: White Gargoyles, Mutant Fish, Silent Scream Priestess/Cultists, Hill Giant, Minotaur Lord, Bandit Chieftain/TAG Bandits, Gorungar and archers, Griffin, Red Portrait Horror, Monoceros, and related maze minotaurs. Mixed finale encounters are now written into the generated adventure manifests.
+- **TAG action automation phase (2026-06-28):** The TAG settlement panel now has a TAG Actions section with hover-hinted controls for generated-adventure branch resolution, Clue spends, variable counts, capture-alive outcomes, reward claims, trinket use, Guild spell use, inheritance notes, bank/hidden-storage robbery risk and recovery, moneylender enforcement, and guild upkeep. Safe state changes such as Clue spend, gp reward, potion healing, scroll/trinket consumption, status markers, and coffer upkeep are applied and logged.
 - **FD playtest stabilization (2026-06-28):** Forsaken Depths random delves continue to start from the FD tile catalog per FD p.27; start tiles that lack a printed outside exit now receive one open Dungeon Exit and existing saves are repaired on load. The Passage event logs Citadel entry, room count, and the Tier-in-6 trap chance, and FD trap resolution logs the named FD trap row before saves.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
@@ -69,7 +70,7 @@ Recent deeper-rule work:
 Defer to later releases:
 
 - Abyss optional extended-campaign chaining playtest sign-off;
-- TAG remaining full adventure content expansion for fully automated branch choices in the more bespoke Rumor Scene/Thematic/Guild Job results, exact trinket-use buttons, Guild spell casting effects, and richer per-character bank inheritance/robbery recovery;
+- TAG remaining full adventure content expansion for deeper per-scene branch-specific reward automation, full Guild spell combat/exploration math, and richer per-character bank account ledgers;
 - large `app.js` / `random_dungeon.py` decomposition.
 
 ### Home screen layout (June 2026)

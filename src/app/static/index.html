@@ -564,6 +564,83 @@
               </details>
               <details class="tag-help-section" open>
                 <summary>
+                  <span>TAG Actions</span>
+                  <button type="button" class="tag-help-button" data-tag-help="actions" aria-label="TAG actions help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label for="tag-action-character">
+                      <span>Character</span>
+                      <select id="tag-action-character"></select>
+                    </label>
+                    <label for="tag-branch-action">
+                      <span>Branch</span>
+                      <select id="tag-branch-action">
+                        <option value="social_choice" title="Record a printed social or choice branch result.">Social/choice</option>
+                        <option value="spend_clues" title="Spend Clues for a printed TAG branch or reveal.">Spend Clues</option>
+                        <option value="roll_variable_count" title="Roll d6 for a variable TAG count; Clue/reward field is used as a modifier.">Variable count</option>
+                        <option value="capture_alive" title="Record a capture-alive result and award its information Clue where applicable.">Capture alive</option>
+                        <option value="claim_reward" title="Claim a printed gp reward to the selected character or TAG storage.">Claim reward</option>
+                      </select>
+                    </label>
+                    <label for="tag-branch-reference">
+                      <span>Reference</span>
+                      <input id="tag-branch-reference" type="text" maxlength="120" placeholder="Scene/page/result note" />
+                    </label>
+                    <label for="tag-branch-number">
+                      <span>Clues/gp</span>
+                      <input id="tag-branch-number" type="number" min="0" step="1" inputmode="numeric" value="0" />
+                    </label>
+                    <button id="tag-resolve-branch" type="button" class="secondary">Resolve branch</button>
+                    <label for="tag-trinket">
+                      <span>Trinket</span>
+                      <select id="tag-trinket">
+                        <option value="power_cookie">Power Cookie</option>
+                        <option value="enchanted_sling_bullet">Enchanted Sling Bullet</option>
+                        <option value="mist_sphere">Mist Sphere</option>
+                        <option value="darkness_sphere">Darkness Sphere</option>
+                        <option value="candy_of_hyperactivity">Candy of Hyperactivity</option>
+                        <option value="enchanted_bauble">Enchanted Bauble</option>
+                        <option value="potion_of_healing">Potion of Healing</option>
+                      </select>
+                    </label>
+                    <button id="tag-use-trinket" type="button" class="secondary">Use trinket</button>
+                    <label for="tag-guild-spell">
+                      <span>Guild spell</span>
+                      <select id="tag-guild-spell">
+                        <option value="speedy_recovery">Speedy Recovery</option>
+                        <option value="temporary_weapon_enchantment">Temporary Weapon Enchantment</option>
+                        <option value="troupe_switch">Troupe Switch</option>
+                        <option value="look_tough">Look Tough</option>
+                        <option value="silence_of_the_mouse">Silence of the Mouse</option>
+                        <option value="wizards_luck">Wizard's Luck</option>
+                      </select>
+                    </label>
+                    <button id="tag-cast-guild-spell" type="button" class="secondary">Cast spell</button>
+                    <label for="tag-finance-action">
+                      <span>Finance</span>
+                      <select id="tag-finance-action">
+                        <option value="inheritance">Inheritance note</option>
+                        <option value="robbery_risk">Robbery risk</option>
+                        <option value="robbery_recovery">Robbery recovery</option>
+                        <option value="loan_enforcement">Loan enforcement</option>
+                        <option value="guild_upkeep">Guild upkeep</option>
+                      </select>
+                    </label>
+                    <label for="tag-finance-amount">
+                      <span>Amount gp</span>
+                      <input id="tag-finance-amount" type="number" min="0" step="1" inputmode="numeric" value="0" />
+                    </label>
+                    <label for="tag-finance-note">
+                      <span>Note</span>
+                      <input id="tag-finance-note" type="text" maxlength="120" />
+                    </label>
+                    <button id="tag-run-finance" type="button" class="secondary">Run finance</button>
+                  </div>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
                   <span>Services and Log</span>
                   <button type="button" class="tag-help-button" data-tag-help="services" aria-label="Services and log help">?</button>
                 </summary>

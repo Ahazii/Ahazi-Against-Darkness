@@ -729,6 +729,83 @@ async def campaign_tag_follow_treasure_map(payload: dict[str, Any]) -> dict[str,
     return {"campaign": campaign, "entry": entry}
 
 
+def _optional_campaign_character(payload: dict[str, Any]) -> Character | None:
+    character_id = str(payload.get("character_id") or "").strip()
+    if not character_id:
+        return None
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    return character
+
+
+@app.post("/api/campaign/tag/branch-action")
+async def campaign_tag_branch_action(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, resolve_tag_branch_action, save_campaign
+
+    campaign = load_campaign(store)
+    character = _optional_campaign_character(payload)
+    entry = resolve_tag_branch_action(
+        campaign,
+        character,
+        branch_action=str(payload.get("branch_action") or "social_choice"),
+        reference=str(payload.get("reference") or ""),
+        clue_cost=int(payload.get("clue_cost") or 0),
+        reward_gp=int(payload.get("reward_gp") or 0),
+    )
+    if character is not None:
+        store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/use-trinket")
+async def campaign_tag_use_trinket(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, save_campaign, use_tag_trinket
+
+    character = _optional_campaign_character(payload)
+    if character is None:
+        raise HTTPException(status_code=400, detail="Character is required.")
+    campaign = load_campaign(store)
+    entry = use_tag_trinket(campaign, character, trinket_key=str(payload.get("trinket_key") or ""))
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/guild-spell")
+async def campaign_tag_guild_spell(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import cast_tag_guild_spell, load_campaign, save_campaign
+
+    character = _optional_campaign_character(payload)
+    if character is None:
+        raise HTTPException(status_code=400, detail="Character is required.")
+    campaign = load_campaign(store)
+    entry = cast_tag_guild_spell(campaign, character, spell_key=str(payload.get("spell_key") or ""))
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/finance-action")
+async def campaign_tag_finance_action(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, resolve_tag_finance_action, save_campaign
+
+    campaign = load_campaign(store)
+    character = _optional_campaign_character(payload)
+    entry = resolve_tag_finance_action(
+        campaign,
+        character,
+        finance_action=str(payload.get("finance_action") or "loan_enforcement"),
+        amount_gp=int(payload.get("amount_gp") or 0),
+        note=str(payload.get("note") or ""),
+    )
+    if character is not None:
+        store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
 @app.post("/api/campaign/tag/create-adventure")
 async def campaign_tag_create_adventure(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.adventure_import import import_adventure_manifest

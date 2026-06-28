@@ -81,6 +81,9 @@ Use Home → Adventure → TAG Settlement → **Maps and Adventure Leads**. The 
 | TAG.5 | Guild Job install | TAG p.54+ | Select Guild Job; enter 1-6 or leave blank | Guild table row is used; minor quests carry named source/reward notes; rumor/theme jobs reuse their profiles |
 | TAG.6 | TAG references in Services | TAG pp.54, 61-65 | Refresh TAG services | Adventurers Guild jobs, Trinkets, Guild spells, and TAG special foes rows appear with cost/summary/automation text and hover hints |
 | TAG.7 | Mixed TAG finales | TAG pp.31, 48, 55 | Create Shaura, Bandit Hideout, or Gorungar leads | Final encounter includes multiple foe groups where printed: priestess + cultists, chieftain + bandits, Gorungar + archers |
+| TAG.8 | Branch action controls | TAG scene pages | TAG Actions → Branch | Social choices log, Clue spends deduct Clues, variable counts roll/log, capture-alive can award a Clue, rewards can add gp |
+| TAG.9 | Trinkets and Guild spells | TAG pp.61-65 | TAG Actions → Trinket / Guild spell | Carried trinkets/scrolls are consumed where present; safe status/healing markers are applied and logged |
+| TAG.10 | Finance enforcement | TAG pp.9-16, p.53 | TAG Actions → Finance | Inheritance notes, robbery risk/recovery, loan enforcement, and guild upkeep write TAG log entries; upkeep deducts coffers |
 
 **Current boundary:** TAG-specific foe names are now spawnable from `tag_monsters.json`, separate from the locked EE bestiary. Some printed branch choices, variable counts, social outcomes, and rewards still need manual PDF handling; `tag_reference.rules` and room log text name those points for signoff.
 

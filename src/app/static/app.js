@@ -273,6 +273,19 @@ const tagFollowMap = document.getElementById("tag-follow-map");
 const tagAdventureLeadType = document.getElementById("tag-adventure-lead-type");
 const tagAdventureLeadDetail = document.getElementById("tag-adventure-lead-detail");
 const tagCreateAdventure = document.getElementById("tag-create-adventure");
+const tagActionCharacter = document.getElementById("tag-action-character");
+const tagBranchAction = document.getElementById("tag-branch-action");
+const tagBranchReference = document.getElementById("tag-branch-reference");
+const tagBranchNumber = document.getElementById("tag-branch-number");
+const tagResolveBranch = document.getElementById("tag-resolve-branch");
+const tagTrinket = document.getElementById("tag-trinket");
+const tagUseTrinket = document.getElementById("tag-use-trinket");
+const tagGuildSpell = document.getElementById("tag-guild-spell");
+const tagCastGuildSpell = document.getElementById("tag-cast-guild-spell");
+const tagFinanceAction = document.getElementById("tag-finance-action");
+const tagFinanceAmount = document.getElementById("tag-finance-amount");
+const tagFinanceNote = document.getElementById("tag-finance-note");
+const tagRunFinance = document.getElementById("tag-run-finance");
 const tagMoneylenderDebt = document.getElementById("tag-moneylender-debt");
 const tagRefreshServices = document.getElementById("tag-refresh-services");
 const tagSettlementServices = document.getElementById("tag-settlement-services");
@@ -8431,6 +8444,19 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   adventureLeadType: "Choose the TAG lead type to convert into a normal installed adventure module. Generated modules include TAG source pages, rewards, rule notes, and encounter proxies.",
   adventureLeadDetail: "Optional result number: rumor 1-12, thematic dungeon 1-6, treasure-map destination 1-6, or guild job 1-6. Leave blank to roll where appropriate.",
   createAdventure: "Create a playable TAG adventure and add it to the normal Adventure section/dropdown with source-page notes for checking against the PDF.",
+  actionCharacter: "Character used by TAG branch, trinket, Guild spell, or finance actions. Leave blank only where the action allows campaign-level logging.",
+  branchAction: "Resolve or log a TAG generated-adventure branch: social choice, Clue spend, variable count, capture-alive result, or reward claim.",
+  branchReference: "Scene/page/result note saved into the TAG log so the branch can be checked against the PDF.",
+  branchNumber: "Numeric field for branch actions: Clue cost, variable-count modifier, or reward gp depending on the selected branch action.",
+  resolveBranch: "Apply the selected TAG branch action and write a dated result into the campaign log.",
+  trinket: "TAG trinket to use. If the selected character carries the item, the app consumes it; otherwise it logs the manual use.",
+  useTrinket: "Use the selected TAG trinket for the chosen character and apply any safe status/healing effect.",
+  guildSpell: "TAG Guild spell to cast or log. Scrolls are consumed when present; known spells are logged for slot tracking.",
+  castGuildSpell: "Cast or log the selected TAG Guild spell and apply the safe status marker where applicable.",
+  financeAction: "TAG banking/loan action: inheritance note, robbery risk, robbery recovery, loan enforcement, or guild upkeep.",
+  financeAmount: "Gold amount for finance actions, mainly loan enforcement or reward/storage handling.",
+  financeNote: "Optional heir, debt, bank, robber, or ruling note stored in the TAG log.",
+  runFinance: "Run the selected TAG finance action and log the result.",
   services: "Refresh TAG treasure/service rows for the current settlement size.",
   serviceAvailability: "Roll this service/item availability using d6 plus settlement size, then log the result.",
   hiddenTroveRisk: "Roll 3d6 for a hidden treasure trove between-adventure risk; on 3-5 the cache is stolen.",
@@ -8520,7 +8546,15 @@ const TAG_HELP_CONTENT = {
     lines: [
       "Follow map rolls the TAG treasure-map procedure and, on a real map, the Map Leads To result. Guild cartographer applies the guild map-adjustment option when enabled.",
       "Create adventure converts a TAG lead into a normal installed adventure module. Choose Rumor Scene, Treasure Map, Thematic Dungeon, or Guild Job, then add an optional result number if you want to force a particular branch.",
-      "The new module is added to the Adventure section and selected automatically. These are playable lead modules now; exact branch content is the next TAG phase.",
+      "The new module is added to the Adventure section and selected automatically. Use TAG Actions for follow-up branch choices, Clue spends, variable counts, capture-alive outcomes, and rewards.",
+    ],
+  },
+  actions: {
+    title: "TAG Actions",
+    lines: [
+      "TAG Actions cover follow-up decisions after a generated adventure exists: branch choices, Clue spends, variable counts, capture-alive outcomes, reward claims, trinkets, Guild spells, and finance enforcement.",
+      "Branch and finance actions write audit-friendly log entries. Where a safe state change is obvious, such as spending Clues, awarding gp, healing from a potion, or charging guild upkeep, the app applies it.",
+      "Trinkets and Guild spells consume carried items or scrolls when present and add status markers for effects that need to be remembered during play.",
     ],
   },
   services: {
@@ -10353,6 +10387,19 @@ function applyTagSettlementTooltips() {
   setTooltip(tagAdventureLeadType, TAG_SETTLEMENT_TOOLTIPS.adventureLeadType);
   setTooltip(tagAdventureLeadDetail, TAG_SETTLEMENT_TOOLTIPS.adventureLeadDetail);
   setButtonTooltip(tagCreateAdventure, TAG_SETTLEMENT_TOOLTIPS.createAdventure);
+  setTooltip(tagActionCharacter, TAG_SETTLEMENT_TOOLTIPS.actionCharacter);
+  setTooltip(tagBranchAction, TAG_SETTLEMENT_TOOLTIPS.branchAction);
+  setTooltip(tagBranchReference, TAG_SETTLEMENT_TOOLTIPS.branchReference);
+  setTooltip(tagBranchNumber, TAG_SETTLEMENT_TOOLTIPS.branchNumber);
+  setButtonTooltip(tagResolveBranch, TAG_SETTLEMENT_TOOLTIPS.resolveBranch);
+  setTooltip(tagTrinket, TAG_SETTLEMENT_TOOLTIPS.trinket);
+  setButtonTooltip(tagUseTrinket, TAG_SETTLEMENT_TOOLTIPS.useTrinket);
+  setTooltip(tagGuildSpell, TAG_SETTLEMENT_TOOLTIPS.guildSpell);
+  setButtonTooltip(tagCastGuildSpell, TAG_SETTLEMENT_TOOLTIPS.castGuildSpell);
+  setTooltip(tagFinanceAction, TAG_SETTLEMENT_TOOLTIPS.financeAction);
+  setTooltip(tagFinanceAmount, TAG_SETTLEMENT_TOOLTIPS.financeAmount);
+  setTooltip(tagFinanceNote, TAG_SETTLEMENT_TOOLTIPS.financeNote);
+  setButtonTooltip(tagRunFinance, TAG_SETTLEMENT_TOOLTIPS.runFinance);
   setTooltip(tagMoneylenderDebt, TAG_SETTLEMENT_TOOLTIPS.moneylenderDebt);
   setButtonTooltip(tagRefreshServices, TAG_SETTLEMENT_TOOLTIPS.services);
   setTooltip(tagSettlementServices, TAG_SETTLEMENT_TOOLTIPS.services);
@@ -11384,6 +11431,7 @@ function renderTagCharacterOptions(campaign = state.campaign) {
   fillTagCharacterSelect(tagStorageCharacter, roster, tagStorageCharacter?.value);
   fillTagCharacterSelect(tagPurchaseCharacter, roster, tagPurchaseCharacter?.value);
   fillTagCharacterSelect(tagLockerCharacter, roster, tagLockerCharacter?.value);
+  fillTagCharacterSelect(tagActionCharacter, roster, tagActionCharacter?.value);
   if (tagTroupeActive) {
     const selected = new Set(campaign?.tag_troupe_active_character_ids || []);
     tagTroupeActive.replaceChildren();
@@ -11797,6 +11845,70 @@ async function createTagAdventureLead() {
   }
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(`Created ${result.title || result.adventure_id}. It is selected in the Adventure section.`);
+}
+
+async function resolveTagBranchAction() {
+  const numeric = Number(tagBranchNumber?.value || 0);
+  const result = await api("/api/campaign/tag/branch-action", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagActionCharacter?.value || "",
+      branch_action: tagBranchAction?.value || "social_choice",
+      reference: tagBranchReference?.value || "",
+      clue_cost: numeric,
+      reward_gp: numeric,
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG branch action logged.");
+}
+
+async function useTagTrinketAction() {
+  if (!tagActionCharacter?.value) throw new Error("Choose a character for the TAG trinket.");
+  const result = await api("/api/campaign/tag/use-trinket", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagActionCharacter.value,
+      trinket_key: tagTrinket?.value || "",
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG trinket used.");
+}
+
+async function castTagGuildSpellAction() {
+  if (!tagActionCharacter?.value) throw new Error("Choose a character for the TAG Guild spell.");
+  const result = await api("/api/campaign/tag/guild-spell", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagActionCharacter.value,
+      spell_key: tagGuildSpell?.value || "",
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG Guild spell logged.");
+}
+
+async function runTagFinanceAction() {
+  const result = await api("/api/campaign/tag/finance-action", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagActionCharacter?.value || "",
+      finance_action: tagFinanceAction?.value || "loan_enforcement",
+      amount_gp: Number(tagFinanceAmount?.value || 0),
+      note: tagFinanceNote?.value || "",
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG finance action logged.");
 }
 
 function isForsakenDepthsRulesetSelected() {
@@ -27467,6 +27579,18 @@ tagFollowMap?.addEventListener("click", () => {
 });
 tagCreateAdventure?.addEventListener("click", () => {
   createTagAdventureLead().catch(handleError);
+});
+tagResolveBranch?.addEventListener("click", () => {
+  resolveTagBranchAction().catch(handleError);
+});
+tagUseTrinket?.addEventListener("click", () => {
+  useTagTrinketAction().catch(handleError);
+});
+tagCastGuildSpell?.addEventListener("click", () => {
+  castTagGuildSpellAction().catch(handleError);
+});
+tagRunFinance?.addEventListener("click", () => {
+  runTagFinanceAction().catch(handleError);
 });
 startCampedOutside?.addEventListener("change", () => {
   writeStartSetupPrefs();

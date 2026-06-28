@@ -272,7 +272,7 @@ TAG_SETTLEMENT_SERVICES = [
         "min_size": -3,
         "cost": "Not normally purchased; used for small-party starts and loot substitutions.",
         "summary": "Minor magic items for small parties: scrolls, healing potion, Power Cookie, enchanted shot, spheres, candy, and bauble.",
-        "automation": "Reference row; trinket grant/use buttons are not automated yet.",
+        "automation": "Use TAG Actions > Trinket to consume carried trinkets and apply safe healing/status markers.",
     },
     {
         "key": "guild_spells",
@@ -281,7 +281,7 @@ TAG_SETTLEMENT_SERVICES = [
         "min_size": -3,
         "cost": "Learn or find as basic Guild spell scrolls when allowed by TAG.",
         "summary": "Guild spell table: Speedy Recovery, Temporary Weapon Enchantment, Troupe Switch, Look Tough, Silence of the Mouse, Wizard's Luck.",
-        "automation": "Reference row; spell preparation/casting effects remain manual until the spell-engine pass.",
+        "automation": "Use TAG Actions > Guild spell to consume scrolls or log known-spell casts with status markers.",
     },
     {
         "key": "tag_special_foes",
@@ -469,6 +469,90 @@ TAG_GUILD_SPELLS: dict[int, str] = {
     4: "Look Tough",
     5: "Silence of the Mouse",
     6: "Wizard's Luck",
+}
+
+TAG_BRANCH_ACTIONS: dict[str, str] = {
+    "social_choice": "Resolve social/choice branch",
+    "spend_clues": "Spend Clues for branch",
+    "roll_variable_count": "Roll variable count",
+    "capture_alive": "Capture-alive outcome",
+    "claim_reward": "Claim printed reward",
+}
+
+TAG_TRINKET_EFFECTS: dict[str, dict[str, object]] = {
+    "power_cookie": {
+        "name": "Power Cookie",
+        "item": "Power Cookie",
+        "summary": "Mark the next appropriate roll or combat action as boosted by the Power Cookie; consume after use.",
+        "status": "TAG Power Cookie boost pending",
+    },
+    "enchanted_sling_bullet": {
+        "name": "Enchanted Sling Bullet",
+        "item": "Enchanted Sling Bullet",
+        "summary": "Use for the next sling shot; consume the bullet and apply the printed enchanted-shot effect manually.",
+    },
+    "mist_sphere": {
+        "name": "Mist Sphere",
+        "item": "Mist Sphere",
+        "summary": "Break to create mist; log the escape/cover window and consume the sphere.",
+        "status": "TAG Mist Sphere mist active",
+    },
+    "darkness_sphere": {
+        "name": "Darkness Sphere",
+        "item": "Darkness Sphere",
+        "summary": "Break to create darkness; log the darkness window and consume the sphere.",
+        "status": "TAG Darkness Sphere darkness active",
+    },
+    "candy_of_hyperactivity": {
+        "name": "Candy of Hyperactivity",
+        "item": "Candy of Hyperactivity",
+        "summary": "Mark the character's next speed/action benefit and consume the candy.",
+        "status": "TAG hyperactivity candy active",
+    },
+    "enchanted_bauble": {
+        "name": "Enchanted Bauble",
+        "item": "Enchanted Bauble",
+        "summary": "Use as a minor magical decoy/charm per TAG; consume or mark spent after the scene.",
+        "status": "TAG enchanted bauble active",
+    },
+    "potion_of_healing": {
+        "name": "Potion of Healing",
+        "item": "Potion of Healing",
+        "summary": "Heal the character to full Life and remove ordinary poison/disease; does not cure dark plague.",
+        "heal_full": True,
+    },
+}
+
+TAG_GUILD_SPELL_EFFECTS: dict[str, dict[str, object]] = {
+    "speedy_recovery": {
+        "name": "Speedy Recovery",
+        "summary": "Mark one character for fast recovery in the current between-adventure or recovery window.",
+        "status": "TAG Speedy Recovery pending",
+    },
+    "temporary_weapon_enchantment": {
+        "name": "Temporary Weapon Enchantment",
+        "summary": "Mark the caster's chosen weapon as temporarily enchanted for this encounter/adventure window.",
+        "status": "TAG temporary weapon enchantment",
+    },
+    "troupe_switch": {
+        "name": "Troupe Switch",
+        "summary": "Log that the troupe may switch an eligible active/home character according to the printed Guild spell.",
+    },
+    "look_tough": {
+        "name": "Look Tough",
+        "summary": "Mark the caster with the Look Tough reputation effect used by TAG Streetwise/riff-raff handling.",
+        "status": "TAG Look Tough spell",
+    },
+    "silence_of_the_mouse": {
+        "name": "Silence of the Mouse",
+        "summary": "Mark the caster/party for the printed stealth silence window.",
+        "status": "TAG Silence of the Mouse active",
+    },
+    "wizards_luck": {
+        "name": "Wizard's Luck",
+        "summary": "Mark the caster with the printed Wizard's Luck reroll/luck window.",
+        "status": "TAG Wizard's Luck pending",
+    },
 }
 
 TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
@@ -1613,6 +1697,172 @@ def run_streetwise_action(
         total=total,
         result_text=result,
     )
+
+
+def resolve_tag_branch_action(
+    campaign: CampaignState,
+    character: Character | None = None,
+    *,
+    branch_action: str,
+    reference: str = "",
+    clue_cost: int = 0,
+    reward_gp: int = 0,
+) -> TagDowntimeLogEntry:
+    clean_action = branch_action if branch_action in TAG_BRANCH_ACTIONS else "social_choice"
+    label = reference.strip()[:120] or TAG_BRANCH_ACTIONS[clean_action]
+    cost = max(0, int(clue_cost))
+    reward = max(0, int(reward_gp))
+    roll: int | None = None
+    total: int | None = None
+    parts: list[str] = [f"{TAG_BRANCH_ACTIONS[clean_action]}: {label}."]
+    if clean_action == "spend_clues":
+        if character is None:
+            parts.append("Choose a character before spending Clues.")
+        elif character.clues < cost:
+            parts.append(f"{character.name} needs {cost} Clue(s) but has {character.clues}.")
+        else:
+            character.clues -= cost
+            character.updated_at = now_utc()
+            parts.append(f"{character.name} spends {cost} Clue(s); remaining Clues {character.clues}.")
+    elif clean_action == "roll_variable_count":
+        roll = roll_d6()
+        total = roll + max(0, int(clue_cost))
+        parts.append(f"Variable count roll d6={roll} plus modifier {max(0, int(clue_cost))} gives {total}. Apply the printed count formula.")
+    elif clean_action == "capture_alive":
+        if character is not None:
+            character.clues += 1
+            character.updated_at = now_utc()
+            parts.append(f"{character.name} records the capture-alive information reward and gains 1 Clue.")
+        else:
+            parts.append("Capture-alive outcome logged; choose the receiving character manually if a Clue is awarded.")
+    elif clean_action == "claim_reward":
+        if character is not None and reward:
+            character.gold += reward
+            character.updated_at = now_utc()
+            parts.append(f"{character.name} receives {reward} gp.")
+        elif reward:
+            campaign.tag_storage_gold_gp += reward
+            parts.append(f"{reward} gp added to TAG settlement storage.")
+        else:
+            parts.append("Printed reward claimed; add non-gold items or XP manually where required.")
+    else:
+        parts.append("Choice branch logged. Apply any printed social consequence, hostility shift, or scene branch.")
+    return append_tag_log(
+        campaign,
+        action=f"branch_{clean_action}",
+        character=character,
+        roll=roll,
+        total=total,
+        cost_gp=0,
+        result_text=" ".join(parts),
+    )
+
+
+def use_tag_trinket(campaign: CampaignState, character: Character, *, trinket_key: str) -> TagDowntimeLogEntry:
+    effect = TAG_TRINKET_EFFECTS.get(trinket_key)
+    if effect is None:
+        return append_tag_log(campaign, action="use_trinket", character=character, result_text=f"Unknown TAG trinket: {trinket_key}.")
+    item = str(effect.get("item") or effect["name"])
+    if item in character.inventory:
+        character.inventory.remove(item)
+        consumed = True
+    else:
+        consumed = False
+    if effect.get("heal_full"):
+        character.current_life = character.max_life
+        character.statuses = [
+            status
+            for status in character.statuses
+            if "poison" not in status.lower() and "disease" not in status.lower()
+        ]
+    status = effect.get("status")
+    if isinstance(status, str) and status not in character.statuses:
+        character.statuses.append(status)
+    character.updated_at = now_utc()
+    consume_text = "consumed from inventory" if consumed else "not found in inventory; effect logged without consuming an item"
+    return append_tag_log(
+        campaign,
+        action="use_trinket",
+        character=character,
+        result_text=f"{character.name} uses {effect['name']} ({consume_text}). {effect['summary']}",
+    )
+
+
+def cast_tag_guild_spell(campaign: CampaignState, character: Character, *, spell_key: str) -> TagDowntimeLogEntry:
+    effect = TAG_GUILD_SPELL_EFFECTS.get(spell_key)
+    if effect is None:
+        return append_tag_log(campaign, action="guild_spell", character=character, result_text=f"Unknown TAG Guild spell: {spell_key}.")
+    spell_name = str(effect["name"])
+    if spell_name not in character.spells and f"Scroll of {spell_name}" not in character.inventory:
+        availability = "spell not found on character; effect logged for manual scroll/caster handling"
+    elif f"Scroll of {spell_name}" in character.inventory:
+        character.inventory.remove(f"Scroll of {spell_name}")
+        availability = "scroll consumed"
+    else:
+        availability = "known spell cast; mark the spell slot manually if needed"
+    status = effect.get("status")
+    if isinstance(status, str) and status not in character.statuses:
+        character.statuses.append(status)
+    if spell_key == "look_tough" and character.id not in campaign.tag_look_tough_character_ids:
+        campaign.tag_look_tough_character_ids.append(character.id)
+    character.updated_at = now_utc()
+    return append_tag_log(
+        campaign,
+        action="guild_spell",
+        character=character,
+        result_text=f"{character.name} casts {spell_name}: {availability}. {effect['summary']}",
+    )
+
+
+def resolve_tag_finance_action(
+    campaign: CampaignState,
+    character: Character | None = None,
+    *,
+    finance_action: str,
+    amount_gp: int = 0,
+    note: str = "",
+) -> TagDowntimeLogEntry:
+    amount = max(0, int(amount_gp))
+    clean_note = note.strip()[:120]
+    action = finance_action if finance_action in {"inheritance", "robbery_risk", "robbery_recovery", "loan_enforcement", "guild_upkeep"} else "loan_enforcement"
+    if action == "inheritance":
+        result = (
+            f"Bank inheritance recorded for {character.name}: {clean_note or 'heir noted in campaign log'}. "
+            "Apply the 20% inheritance tax when transferred."
+            if character is not None
+            else "Bank inheritance note recorded. Choose an account owner for exact transfer handling."
+        )
+        return append_tag_log(campaign, action="bank_inheritance", character=character, result_text=result)
+    if action == "robbery_risk":
+        total, rolls = roll_3d6()
+        robbed = total <= 5
+        result = (
+            f"Bank/hidden-storage robbery risk {total} ({'+'.join(str(roll) for roll in rolls)}): "
+            + ("robbery or theft occurs; use recovery action if pursuing it." if robbed else "storage remains safe.")
+        )
+        return append_tag_log(campaign, action="bank_robbery_risk", character=character, roll=total, total=total, result_text=result)
+    if action == "robbery_recovery":
+        cost_clues = 4
+        if character is not None and character.clues >= cost_clues:
+            character.clues -= cost_clues
+            character.updated_at = now_utc()
+            result = f"{character.name} spends 4 Clues to pursue stolen TAG funds. Resolve Interrogation vs L6 and restore recovered holdings on success."
+        else:
+            result = "Robbery recovery requires 4 Clues on a chosen character, then Interrogation vs L6."
+        return append_tag_log(campaign, action="bank_robbery_recovery", character=character, result_text=result)
+    if action == "guild_upkeep":
+        upkeep = ceil(max(0, campaign.tag_guild_coffers_gp) * 0.1)
+        paid = min(upkeep, campaign.tag_guild_coffers_gp)
+        campaign.tag_guild_coffers_gp -= paid
+        result = f"Guild upkeep charged 10%: {paid} gp paid from coffers. Coffers now {campaign.tag_guild_coffers_gp} gp."
+        if campaign.tag_guild_coffers_gp <= 0:
+            result += " Guild benefits are suspended until coffers are restored."
+        return append_tag_log(campaign, action="guild_upkeep", character=character, cost_gp=paid, result_text=result)
+    entry = roll_moneylender_follow_chance(campaign, debt_gp=amount)
+    entry.action = "loan_enforcement"
+    if clean_note:
+        entry.result_text += f" Note: {clean_note}."
+    return entry
 
 
 def follow_treasure_map(campaign: CampaignState, *, use_guild_cartographer: bool = False) -> TagDowntimeLogEntry:

@@ -1811,6 +1811,15 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-adventure-lead-type",
         "tag-adventure-lead-detail",
         "tag-create-adventure",
+        "tag-action-character",
+        "tag-branch-action",
+        "tag-resolve-branch",
+        "tag-trinket",
+        "tag-use-trinket",
+        "tag-guild-spell",
+        "tag-cast-guild-spell",
+        "tag-finance-action",
+        "tag-run-finance",
     ]:
         assert f'id="{element_id}"' in INDEX_HTML
     for endpoint in [
@@ -1821,9 +1830,17 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "/api/campaign/tag/streetwise-action",
         "/api/campaign/tag/follow-treasure-map",
         "/api/campaign/tag/create-adventure",
+        "/api/campaign/tag/branch-action",
+        "/api/campaign/tag/use-trinket",
+        "/api/campaign/tag/guild-spell",
+        "/api/campaign/tag/finance-action",
     ]:
         assert endpoint in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.storageKind" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.followMap" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.createAdventure" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.resolveBranch" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.useTrinket" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.castGuildSpell" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.runFinance" in APP_JS
     assert "Created ${result.title || result.adventure_id}. It is selected in the Adventure section." in APP_JS

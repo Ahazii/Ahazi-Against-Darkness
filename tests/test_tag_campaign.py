@@ -20,11 +20,15 @@ from app.engine.tag_campaign import (
     roll_moneylender_follow_chance,
     roll_treasure_map_price,
     run_streetwise_action,
+    cast_tag_guild_spell,
+    resolve_tag_branch_action,
+    resolve_tag_finance_action,
     settlement_size_from_roll,
     settlement_service_rows,
     store_tag_treasure,
     summon_magic_locker,
     travel_to_new_settlement,
+    use_tag_trinket,
     update_troupe,
     withdraw_tag_stored_gold,
 )
@@ -381,3 +385,49 @@ def test_tag_special_foes_are_allowlisted_and_used_in_generated_adventures() -> 
         {"name": "Bandit Chieftain", "count": 1},
         {"name": "TAG Bandits", "count": 6},
     ]
+
+
+def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(
+        gold=10,
+        clues=5,
+        current_life=1,
+        inventory=["Potion of Healing", "Scroll of Wizard's Luck"],
+        spells=["Look Tough"],
+        statuses=["Poisoned"],
+    )
+
+    branch = resolve_tag_branch_action(
+        campaign,
+        hero,
+        branch_action="spend_clues",
+        reference="Scene 16 clue spend",
+        clue_cost=2,
+    )
+    assert hero.clues == 3
+    assert "spends 2 Clue" in branch.result_text
+
+    trinket = use_tag_trinket(campaign, hero, trinket_key="potion_of_healing")
+    assert hero.current_life == hero.max_life
+    assert "Poisoned" not in hero.statuses
+    assert "Potion of Healing" not in hero.inventory
+    assert "uses Potion of Healing" in trinket.result_text
+
+    spell = cast_tag_guild_spell(campaign, hero, spell_key="wizards_luck")
+    assert "Scroll of Wizard's Luck" not in hero.inventory
+    assert "TAG Wizard's Luck pending" in hero.statuses
+    assert "scroll consumed" in spell.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
+    risk = resolve_tag_finance_action(campaign, hero, finance_action="robbery_risk")
+    assert risk.total == 3
+    assert "robbery or theft occurs" in risk.result_text
+
+    recovery = resolve_tag_finance_action(campaign, hero, finance_action="robbery_recovery")
+    assert "requires 4 Clues" in recovery.result_text
+
+    campaign.tag_guild_coffers_gp = 1000
+    upkeep = resolve_tag_finance_action(campaign, finance_action="guild_upkeep")
+    assert campaign.tag_guild_coffers_gp == 900
+    assert "100 gp paid" in upkeep.result_text
