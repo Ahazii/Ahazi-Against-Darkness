@@ -1,53 +1,325 @@
 {
-  "ruleset_status": "Four Against the Abyss Phase B — indexed Abyss dungeon tables (engine routing deferred until ruleset profiles gate Abyss adventures).",
+  "ruleset_status": "Four Against the Abyss runtime tables: room content plus playable Abyss monster/event routing. Detailed one-off effects remain summarized unless already covered by generalized monster hooks.",
   "abyss_room_content_table": [
     {
-      "roll": "1",
-      "key": "abyss_vermin",
-      "name": "Abyss Vermin",
-      "effect": "spawn_vermin",
-      "summary": "Roll on the Abyss vermin table (4AA Phase B — PDF index pending full extraction).",
-      "source_page": 0
-    },
-    {
       "roll": "2",
-      "key": "abyss_minions",
-      "name": "Abyss Minions",
-      "effect": "spawn_minions",
-      "summary": "Roll on the Abyss minions table (4AA Phase B).",
-      "source_page": 0
-    },
-    {
-      "roll": "3",
-      "key": "abyss_weird",
-      "name": "Abyss Weird",
-      "effect": "spawn_weird",
-      "summary": "Roll on the Abyss weird monster table (4AA Phase B).",
-      "source_page": 0
-    },
-    {
-      "roll": "4",
-      "key": "abyss_trap",
-      "name": "Abyss Trap",
-      "effect": "trap",
-      "summary": "Roll on the Abyss trap table (4AA Phase B).",
-      "source_page": 0
-    },
-    {
-      "roll": "5",
       "key": "abyss_treasure",
       "name": "Abyss Treasure",
       "effect": "treasure",
-      "summary": "Roll on the Abyss treasure table (4AA Phase B).",
-      "source_page": 0
+      "summary": "Roll on the Abyss Treasure table; on d6=6 the treasure is guarded by an Abyss Boss.",
+      "source_page": 46
     },
     {
-      "roll": "6",
+      "roll": "3",
+      "key": "abyss_trap_treasure",
+      "name": "Abyss Trap and Treasure",
+      "effect": "trap_treasure",
+      "summary": "Roll on the Abyss Traps table and Abyss Treasure table.",
+      "source_page": 46
+    },
+    {
+      "roll": "4",
       "key": "abyss_unique_event",
       "name": "Abyss Unique Event",
       "effect": "unique_event",
-      "summary": "Roll on the Abyss unique events table (4AA Phase B).",
-      "source_page": 0
+      "summary": "Roll on the Abyss Unique Events table.",
+      "source_page": 46
+    },
+    {
+      "roll": "5",
+      "key": "abyss_special_feature",
+      "name": "Abyss Special Feature",
+      "effect": "special_feature",
+      "summary": "Corridor is empty; room rolls on Abyss Special Feature table.",
+      "source_page": 46
+    },
+    {
+      "roll": "6",
+      "key": "abyss_vermin",
+      "name": "Abyss Vermin",
+      "effect": "spawn",
+      "monster_table": "abyss_vermin_table",
+      "category": "vermin",
+      "summary": "Roll on the Abyss Vermin table.",
+      "source_page": 46
+    },
+    {
+      "roll": "7",
+      "key": "abyss_minions",
+      "name": "Abyss Minions",
+      "effect": "spawn",
+      "monster_table": "abyss_minions_table",
+      "category": "minions",
+      "summary": "Roll on the Abyss Minions table.",
+      "source_page": 46
+    },
+    {
+      "roll": "8",
+      "key": "abyss_minions_or_empty",
+      "name": "Abyss Minions or Empty",
+      "effect": "spawn_room_only",
+      "monster_table": "abyss_minions_table",
+      "category": "minions",
+      "summary": "Corridor is empty; room rolls on Abyss Minions table.",
+      "source_page": 46
+    },
+    {
+      "roll": "9",
+      "key": "abyss_empty_unique",
+      "name": "Abyss Empty / Unique Event",
+      "effect": "empty_unique",
+      "summary": "Empty; on d6=5-6 roll a not-yet-used Abyss Unique Event, otherwise searchable.",
+      "source_page": 46
+    },
+    {
+      "roll": "10",
+      "key": "abyss_trap_or_weird",
+      "name": "Abyss Trap or Weird Monster",
+      "effect": "trap_corridor_weird_room",
+      "monster_table": "abyss_weird_table",
+      "category": "weird",
+      "summary": "Corridor rolls on Abyss Traps; room rolls on Abyss Weird Monsters.",
+      "source_page": 46
+    },
+    {
+      "roll": "11",
+      "key": "abyss_boss",
+      "name": "Abyss Boss",
+      "effect": "boss",
+      "monster_table": "abyss_boss_table",
+      "category": "boss",
+      "summary": "Room rolls on Abyss Boss table; final-boss check uses d6 plus defeated bosses.",
+      "source_page": 46
+    },
+    {
+      "roll": "12",
+      "key": "abyss_boss_or_dragon",
+      "name": "Abyss Boss or Dragon",
+      "effect": "boss_or_dragon",
+      "monster_table": "abyss_boss_table",
+      "dragon_table": "abyss_dragon_table",
+      "category": "boss",
+      "summary": "Corridor empty; regular room treats as boss result, large room is a dragon lair.",
+      "source_page": 46
     }
+  ],
+  "abyss_vermin_table": [
+    {
+      "roll": "1",
+      "name": "Black Orc Bandits",
+      "count": "2d6",
+      "level": 6,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 1,
+      "tags": ["abyss", "orc"],
+      "summary": "Level 6 bandits; normal treasure; bribe or fight.",
+      "source_page": 49
+    },
+    {
+      "roll": "2",
+      "name": "Shrieking Fungi",
+      "count": "d6+2",
+      "level": 6,
+      "life": 1,
+      "attacks": 0,
+      "treasure_rolls": 0,
+      "tags": ["abyss", "fungus", "no_wandering"],
+      "summary": "Do not attack; spells at -1; wandering monsters arrive if not killed within 2 turns.",
+      "source_page": 49
+    },
+    {
+      "roll": "3",
+      "name": "Champions of Ssikliss",
+      "count": "2d6",
+      "level": 8,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 1,
+      "tags": ["abyss", "serpent"],
+      "summary": "Serpent people warriors; normal treasure.",
+      "source_page": 49
+    },
+    {
+      "roll": "4",
+      "name": "Ant People Warriors",
+      "count": "d6+3",
+      "level": 7,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 1,
+      "tags": ["abyss", "ant_people"],
+      "summary": "Chemical marker can impose -1 Defense against ant people until Blessing or immersion.",
+      "source_page": 49
+    },
+    {
+      "roll": "5",
+      "name": "Kobold Ghouls",
+      "count": "d6+1",
+      "level": 7,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 0,
+      "tags": ["abyss", "undead"],
+      "on_hit_effects": [{"type": "status", "status": "Paralyzed", "save_type": "poison", "save_level": 6, "immune_classes": ["elf"]}],
+      "summary": "Undead; wounded heroes save vs poison or become paralyzed until Blessing/end of combat.",
+      "source_page": 49
+    },
+    {
+      "roll": "6",
+      "name": "Brownies",
+      "count": "d6+3",
+      "level": 8,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 1,
+      "tags": ["abyss", "fey"],
+      "summary": "Morale -1; feed on gold each turn; treasure is gems/magic rather than coins.",
+      "source_page": 49
+    }
+  ],
+  "abyss_minions_table": [
+    {
+      "roll": "1",
+      "name": "Hairy Goblins",
+      "count": "4d6",
+      "level": 6,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 1,
+      "leader_chance": 1,
+      "leader": {"name": "Goblin Leader", "level": 10, "life": 4, "category": "boss"},
+      "tags": ["abyss", "goblin"],
+      "summary": "1-in-6 chance of a level 10 goblin leader; trial of champions possible.",
+      "source_page": 52
+    },
+    {
+      "roll": "2",
+      "name": "Abyss Ghouls",
+      "count": "2d6+1",
+      "level": 8,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 1,
+      "leader_chance": 1,
+      "leader_table": "abyss_boss_table",
+      "leader_roll": 4,
+      "tags": ["abyss", "undead"],
+      "on_hit_effects": [{"type": "status", "status": "Paralyzed", "save_type": "poison", "save_level": 7, "class_bonus": {"elf": "L"}}],
+      "summary": "Undead; 1-in-6 chance of a Ghoul King leader; wounded heroes save vs poison or paralysis.",
+      "source_page": 52
+    },
+    {
+      "roll": "3",
+      "name": "Dark Dwarves",
+      "count": "2d6-1",
+      "level": 8,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 2,
+      "tags": ["abyss", "dwarf"],
+      "summary": "Two treasure rolls; 2-in-6 chance to ignore Sleep for the whole group.",
+      "source_page": 52
+    },
+    {
+      "roll": "4",
+      "name": "Flying Skulls",
+      "count": "d6",
+      "level": 9,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 1,
+      "tags": ["abyss", "undead", "flying"],
+      "summary": "Crushing +1; arrows -2; natural 1 melee can disarm the attacker.",
+      "source_page": 52
+    },
+    {
+      "roll": "5",
+      "name": "Chaotic Ratmen",
+      "count": "2d6",
+      "level": 7,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 2,
+      "leader": {"name": "Ratman Leader", "level": "d3+8", "life": "d6+2", "category": "boss"},
+      "on_hit_effects": [{"type": "disease", "save_level": 0, "damage": 1, "timing": "end_of_encounter", "once_per_encounter": true}],
+      "tags": ["abyss", "ratman"],
+      "summary": "Leader present; infected blades can cause an extra wound at encounter end.",
+      "source_page": 52
+    },
+    {
+      "roll": "6",
+      "name": "Chaos Fanatics",
+      "count": "d6+4",
+      "level": 7,
+      "life": 1,
+      "attacks": 1,
+      "treasure_rolls": 1,
+      "leader_chance": 2,
+      "leader_table": "abyss_boss_table",
+      "leader_roll": 5,
+      "tags": ["abyss", "chaos"],
+      "summary": "Morale +1; 2-in-6 chance of a Dark Lord of Xichtul leader.",
+      "source_page": 52
+    }
+  ],
+  "abyss_boss_table": [
+    {"roll": "1", "name": "Dragon Man", "level": 9, "life": 8, "attacks": 2, "treasure_rolls": 1, "tags": ["abyss", "dragon"], "encounter_start_effects": [{"type": "log", "summary": "First turn dragon fire: all heroes save vs level 8 or lose 1 Life."}], "summary": "First-turn dragon fire; then claw attacks.", "source_page": 55},
+    {"roll": "2", "name": "Mind Screamer", "level": 10, "life": 9, "attacks": 3, "treasure_rolls": 1, "tags": ["abyss", "mind"], "summary": "3-in-6 surprise; mental bolts ignore armor/shields and inflict Madness.", "source_page": 55},
+    {"roll": "3", "name": "Tentacled Brain", "level": 9, "life": 8, "attacks": 0, "treasure_rolls": 2, "tags": ["abyss", "flying", "mind"], "per_turn_effects": [{"type": "log", "summary": "Each turn all heroes save vs 5 or lose 1 Life and gain 1 Madness."}], "summary": "Hard to hit except ranged/spells; aura wounds and maddens each turn.", "source_page": 55},
+    {"roll": "4", "name": "Ghoul King", "level": 10, "life": 10, "attacks": 4, "treasure_rolls": 2, "tags": ["abyss", "undead"], "on_hit_effects": [{"type": "status", "status": "Paralyzed", "save_type": "poison", "save_level": 5, "class_bonus": {"elf": "L"}}], "summary": "Undead; wounded heroes save vs poison or paralysis; fights to death.", "source_page": 55},
+    {"roll": "5", "name": "Dark Lord of Xichtul", "level": 11, "life": 12, "attacks": 4, "treasure_rolls": 2, "tags": ["abyss", "chaos"], "summary": "Hits inflict 2 damage; natural 1 Defense can destroy a shield.", "source_page": 55},
+    {"roll": "6", "name": "Major Vampire", "level": 10, "life": 11, "attacks": 1, "treasure_rolls": 2, "tags": ["abyss", "undead", "vampire", "magic_weapon_required"], "on_hit_effects": [{"type": "level_drain", "save_type": "magic", "save_level": 5}], "summary": "Vampire restrictions; damage can cause level loss.", "source_page": 55}
+  ],
+  "abyss_weird_table": [
+    {"roll": "1", "name": "Zombie Minotaur", "level": 6, "life": 10, "attacks": 2, "treasure_rolls": 1, "tags": ["abyss", "undead"], "summary": "Defense rolls against it are at -1.", "source_page": 56},
+    {"roll": "2", "name": "Giant Constrictor Snake", "level": 7, "life": 6, "attacks": 1, "treasure_rolls": 0, "tags": ["abyss", "snake"], "summary": "Failed Defense constricts for 1 Life per turn until killed or escaped.", "source_page": 56},
+    {"roll": "3", "name": "Minor Vampire", "level": 8, "life": 6, "attacks": 1, "treasure_rolls": 0, "tags": ["abyss", "undead", "vampire", "magic_weapon_required"], "on_hit_effects": [{"type": "level_drain", "save_type": "magic", "save_level": 4}], "summary": "Vampire restrictions; damage can cause level loss.", "source_page": 56},
+    {"roll": "4", "name": "Werewolf", "level": 8, "life": 8, "attacks": 2, "treasure_rolls": 2, "tags": ["abyss", "werecreature"], "on_hit_effects": [{"type": "status", "status": "Lycanthropy exposure", "save_type": "curse", "save_level": 5, "timing": "end_of_encounter"}], "summary": "Silver +1; wounded heroes save vs curse for lycanthropy exposure.", "source_page": 56},
+    {"roll": "5", "name": "Phasing Panther", "level": 7, "life": 5, "attacks": 3, "treasure_rolls": 2, "tags": ["abyss", "beast", "always_first"], "summary": "Always attacks first; 4+ blink ignores a wound.", "source_page": 56},
+    {"roll": "6", "name": "Lich", "level": 10, "life": 8, "attacks": 4, "treasure_rolls": 3, "tags": ["abyss", "undead"], "encounter_start_effects": [{"type": "madness", "amount": 1}], "summary": "Meeting it causes Madness; fear save can impose -1 Attack; possible skeletal warriors.", "source_page": 56}
+  ],
+  "abyss_dragon_table": [
+    {"roll": "1", "name": "Purple Dragon", "level": 10, "life": 8, "attacks": 2, "treasure_rolls": 1, "tags": ["abyss", "dragon"], "summary": "Electrical blast can wound heavy-armor wearers.", "source_page": 58},
+    {"roll": "2", "name": "Mirage Drake", "level": 9, "life": 7, "attacks": 1, "treasure_rolls": 1, "tags": ["abyss", "dragon"], "summary": "Illusion save can block attacks/spells.", "source_page": 58},
+    {"roll": "3", "name": "Luck Dragon", "level": 9, "life": 10, "attacks": 2, "treasure_rolls": 4, "tags": ["abyss", "dragon"], "summary": "Slaying it grants surviving heroes 1 temporary Luck point.", "source_page": 58},
+    {"roll": "4", "name": "Ghoul Dragon", "level": 10, "life": 8, "attacks": 2, "treasure_rolls": 2, "tags": ["abyss", "dragon", "undead"], "on_hit_effects": [{"type": "status", "status": "Paralyzed", "save_type": "poison", "save_level": 4, "class_bonus": {"elf": "L"}}], "summary": "Undead; wounded heroes save vs poison or paralysis.", "source_page": 58},
+    {"roll": "5", "name": "Darkness Dragon", "level": 10, "life": 12, "attacks": 4, "treasure_rolls": 2, "tags": ["abyss", "dragon"], "summary": "Lightning spell deals extra damage.", "source_page": 58},
+    {"roll": "6", "name": "Young Chaos Dragon", "level": 11, "life": 10, "attacks": 5, "treasure_rolls": 2, "tags": ["abyss", "dragon", "chaos"], "summary": "Blessing can adjust its reaction roll; varied reaction outcomes.", "source_page": 58}
+  ],
+  "abyss_trap_table": [
+    {"roll": "1", "key": "dart_shooting_mechanism", "name": "Dart Shooting Mechanism", "summary": "Level d8+3 trap attacks one random hero; failed poison save can inflict 2 wounds.", "source_page": 47},
+    {"roll": "2", "key": "giant_metal_ball", "name": "Giant Metal Ball", "summary": "Spiked ball attacks all heroes; room level 7, corridor level 9.", "source_page": 47},
+    {"roll": "3", "key": "crocodile_pit", "name": "Crocodile Pit Trapdoor", "summary": "Random hero may fall into a pit with a level 7 spiked crocodile.", "source_page": 47},
+    {"roll": "4", "key": "guillotine", "name": "Guillotine", "summary": "Level d6+2 blade; failed save deals 3 wounds.", "source_page": 47},
+    {"roll": "5", "key": "electrical_blast", "name": "Electrical Blast", "summary": "All heroes save vs level 7 electricity or take 1 wound.", "source_page": 47},
+    {"roll": "6", "key": "steel_spear", "name": "Steel Spear", "summary": "Marching-order dodge/block sequence; failures take d3 wounds.", "source_page": 47}
+  ],
+  "abyss_treasure_table": [
+    {"roll": "0", "summary": "No treasure found.", "gold": 0, "items": [], "source_page": 48},
+    {"roll": "1", "summary": "d8 x 5 gp or one non-magical weapon.", "gold_formula": "d8*5", "items": [], "source_page": 48},
+    {"roll": "2", "summary": "4d6 x 10 gp or one Useful Stuff item.", "gold_formula": "4d6*10", "items": [], "source_page": 48},
+    {"roll": "3", "summary": "Scroll with a random Abyss spell.", "items": ["Abyss spell scroll"], "source_page": 48},
+    {"roll": "4", "summary": "Gem worth 3d6 x 20 gp.", "gold_formula": "3d6*20", "items": ["Abyss gem"], "source_page": 48},
+    {"roll": "5", "summary": "Jewelry worth 4d6 x 15 gp or one Useful Stuff item.", "gold_formula": "4d6*15", "items": ["Abyss jewelry"], "source_page": 48},
+    {"roll": "6", "summary": "One random Abyss magic treasure item.", "items": ["Abyss magic treasure"], "source_page": 48},
+    {"roll": "7", "summary": "One random magical defense item.", "items": ["Abyss magical defense"], "source_page": 48},
+    {"roll": "8", "summary": "Magical defense item or 4d6 x 25 gp.", "gold_formula": "4d6*25", "items": ["Abyss magical defense"], "source_page": 48}
+  ],
+  "abyss_special_feature_table": [
+    {"roll": "1", "key": "enchanted_banquet", "name": "Enchanted Banquet", "summary": "Heroes may eat; each eater rolls on the Enchanted Banquet table.", "source_page": 50},
+    {"roll": "2", "key": "lava_river", "name": "Lava River", "summary": "A random magic item is across a lava river; leap out and back or suffer wounds.", "source_page": 50},
+    {"roll": "3", "key": "room_of_horrors", "name": "Room of Horrors", "summary": "All heroes gain Madness and save vs fear or suffer -1 Attack until Blessing.", "source_page": 50},
+    {"roll": "4", "key": "chained_monster", "name": "Chained Monster", "summary": "A random Abyss boss is imprisoned; leave, kill without reward, or free it for gold and a Clue.", "source_page": 50},
+    {"roll": "5", "key": "repository_secret_knowledge", "name": "Repository of Secret Knowledge", "summary": "Research risks wandering monsters; one hero gains a Clue and may gain Madness.", "source_page": 50},
+    {"roll": "6", "key": "puzzle_room", "name": "Puzzle Room", "summary": "Puzzle box level d8+4; failed attempts cost Life or Madness; success rolls treasure.", "source_page": 50}
+  ],
+  "abyss_unique_event_table": [
+    {"roll": "1", "key": "book_of_secrets", "name": "Book of Secrets", "summary": "A chosen reader gains d6 Clues but saves vs Clues+2 or gains d3 Madness.", "source_page": 59},
+    {"roll": "2", "key": "dark_plague", "name": "Dark Plague", "summary": "Random hero saves vs level 5 disease or contracts Dark Plague.", "source_page": 59},
+    {"roll": "3", "key": "swarm_of_critters", "name": "Swarm of Critters", "summary": "Fireball disperses it; otherwise all heroes take 1 wound.", "source_page": 59},
+    {"roll": "4", "key": "secret_stairs", "name": "Secret Stairs", "summary": "Secret passage to an upper-level room/corridor, with possible wandering monster.", "source_page": 59},
+    {"roll": "5", "key": "gold_ghost", "name": "Gold Ghost", "summary": "Sacrifice 100 gp or all heroes suffer -1 Defense until individually Blessed.", "source_page": 59},
+    {"roll": "6", "key": "mana_sink", "name": "Mana Sink", "summary": "Spellcasters save per spell vs power 7 mana sink or lose spells; one-time room effect.", "source_page": 59}
   ]
 }

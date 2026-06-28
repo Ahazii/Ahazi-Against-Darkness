@@ -44,9 +44,13 @@ Include:
 - corrected map-editor save-path documentation and the five-book master coverage
   tracker.
 
+Recent deeper-rule work:
+
+- **Abyss runtime pass (2026-06-28):** Four Against the Abyss profile added to setup; Abyss 2d6 room content, monster subtables, claimable treasure payloads, unique-feature/event summaries, and Abyss wandering spawns are routed through `abyss_tables.json`.
+
 Defer to later releases:
 
-- new Abyss procedural table runtime (Phase B indexed; engine routing next);
+- exact automation for Abyss long-form traps/features/events, Trial of Champions/hordes/multiple bosses, disease/transformation lifecycles, and campaign plots;
 - full TAG settlement/downtime UI (campaign shell + banking toggle wired);
 - large `app.js` / `random_dungeon.py` decomposition.
 

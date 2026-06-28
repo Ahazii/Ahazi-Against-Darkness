@@ -34,6 +34,7 @@ def test_ruleset_profiles_api(client: TestClient) -> None:
     assert response.status_code == 200
     profiles = response.json()
     assert any(item["id"] == "ee_random" for item in profiles)
+    assert any(item["id"] == "abyss" and "abyss" in item["source_books"] for item in profiles)
     assert any(item["id"] == "forsaken_depths" for item in profiles)
 
     filtered = client.get("/api/rules/classes", params={"ruleset_profile_id": "forsaken_depths_no_courtship"})
@@ -85,8 +86,21 @@ def test_heroic_spell_catalog_matches_fd_table() -> None:
 
 def test_abyss_phase_b_room_content_table_indexed() -> None:
     rows = abyss_table_rows("abyss_room_content_table")
-    assert len(rows) == 6
-    assert abyss_table_roll_keys("abyss_room_content_table") == ["1", "2", "3", "4", "5", "6"]
+    assert len(rows) == 11
+    assert abyss_table_roll_keys("abyss_room_content_table") == [
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+    ]
+    assert abyss_table_roll_keys("abyss_boss_table") == ["1", "2", "3", "4", "5", "6"]
 
 
 def test_campaign_api_and_adventure_completion(client: TestClient) -> None:

@@ -12,6 +12,16 @@
       "source_books": ["ee", "fiendish_foes"]
     },
     {
+      "id": "abyss",
+      "label": "Four Against the Abyss",
+      "description": "Expert-tier Abyss random dungeon profile: Abyss 2d6 room contents, Abyss monster/event routing, expert skills/spells, secrets, and hirelings.",
+      "ruleset": "ee",
+      "courtship_enabled": false,
+      "fiendish_foes_default": false,
+      "adventure_modes": ["random"],
+      "source_books": ["ee", "abyss"]
+    },
+    {
       "id": "forsaken_depths",
       "label": "Four Against the Forsaken Depths (+ TCOTFD)",
       "description": "FD dungeon/river catalogs, tier dice, quests, and Courtship Demesne branch.",

@@ -98,6 +98,17 @@ class RulesRepository:
                 if key in {"ruleset_status", "validation"}:
                     continue
                 packaged[key] = value
+        abyss_path = self.packaged_dir / "abyss_tables.json"
+        if abyss_path.exists():
+            abyss_tables = json.loads(abyss_path.read_text(encoding="utf-8"))
+            for key, value in abyss_tables.items():
+                if key == "ruleset_status" and isinstance(value, str):
+                    base = str(packaged.get("ruleset_status") or "").strip()
+                    packaged["ruleset_status"] = f"{base} {value}".strip() if base else value
+                    continue
+                if key in {"ruleset_status", "validation"}:
+                    continue
+                packaged[key] = value
         bos_path = self.packaged_dir / "courtship_book_of_secrets.json"
         if bos_path.exists():
             bos_data = json.loads(bos_path.read_text(encoding="utf-8"))

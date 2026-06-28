@@ -2596,12 +2596,17 @@ class RandomDungeonEngine:
             session.log.append("Miners' Ointment or gremlin repellant wards off Wandering Monsters.")
             return
         hcl = self._highest_character_level(session.party)
+        from .abyss_tables import is_abyss_profile
+
+        abyss_profile = is_abyss_profile(session)
         if is_fd_ruleset(session) and not special_event:
             wandering = self.table_roller.roll_fd_wandering_monsters()
         else:
             wandering = self.table_roller.roll_wandering_monsters(special_event=special_event)
         if show_rolls:
-            label = "Special event wandering" if special_event else "Wandering Monsters"
+            label = "Abyss Wandering Monsters" if abyss_profile and not special_event else (
+                "Special event wandering" if special_event else "Wandering Monsters"
+            )
             session.log.append(f"{label} table: d6 = {wandering.roll} -> {wandering.enemy_category}.")
         foe = self._roll_wandering_enemies(session, wandering.enemy_category, hcl)
         if not foe:
@@ -3345,6 +3350,20 @@ class RandomDungeonEngine:
             session.log.append(f"The scout flees back to {origin.title if origin else 'the previous room'}.")
 
     def _roll_wandering_enemies(self, session: SessionState, category: str, hcl: int) -> list[EnemyState]:
+        from .abyss_tables import is_abyss_profile
+
+        if is_abyss_profile(session):
+            table_by_category = {
+                "vermin": "abyss_vermin_table",
+                "minions": "abyss_minions_table",
+                "weird": "abyss_weird_table",
+                "boss": "abyss_boss_table",
+            }
+            table_name = table_by_category.get(category, "abyss_minions_table")
+            enemies, _ = self._roll_abyss_monster_row(session, table_name, category if category in table_by_category else "minions")
+            for enemy in enemies:
+                enemy.tags.append("wandering_spawn")
+            return enemies
         for _ in range(6):
             enemies = self._roll_enemy(session, category, hcl, wandering=True)
             if not enemies:
@@ -11312,6 +11331,11 @@ class RandomDungeonEngine:
             tile_catalog=session_tile_catalog(session),
             room_codes=list(tile_def.room_codes) if tile_def else [],
         )
+        if content.get("treasure_summary"):
+            tile.treasure_summary = str(content["treasure_summary"])
+            tile.treasure_gold = int(content.get("treasure_gold") or 0)
+            tile.treasure_items = list(content.get("treasure_items") or [])
+            tile.treasure_claimed = False
         if content.get("special_event_key"):
             tile.special_event_key = content["special_event_key"]
         if content.get("special_event_summary"):
@@ -11429,6 +11453,10 @@ class RandomDungeonEngine:
             )
         if is_fd_ruleset(session):
             return self._roll_fd_content(session, tile_type, hcl)
+        from .abyss_tables import is_abyss_profile
+
+        if is_abyss_profile(session):
+            return self._roll_abyss_content(session, tile_type, hcl)
         roll = roll_2d6()
         outcome = self.table_roller.lookup_room_content(roll, tile_type)
         if outcome is None:
@@ -11466,6 +11494,196 @@ class RandomDungeonEngine:
             roll=roll,
             choices=list(outcome.choices),
         )
+
+    def _roll_abyss_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
+        from .abyss_tables import lookup_abyss_table_row
+
+        roll = roll_2d6()
+        row = lookup_abyss_table_row("abyss_room_content_table", roll)
+        if row is None:
+            return self._content("abyss_empty", "The Abyss chamber is quiet and searchable.", ["Searchable"], [], roll=roll)
+        effect = str(row.get("effect") or "")
+        name = str(row.get("name") or row.get("key") or "Abyss content")
+        summary = str(row.get("summary") or "")
+        description = f"Abyss room content: {name} (2d6={roll}). {summary}".strip()
+        if effect == "spawn" or (effect == "spawn_room_only" and tile_type == "room"):
+            enemies, subdesc = self._roll_abyss_monster_row(
+                session,
+                str(row.get("monster_table") or ""),
+                str(row.get("category") or "minions"),
+            )
+            if subdesc:
+                description = f"{description} {subdesc}"
+            return self._content(str(row.get("key") or "abyss_encounter"), description, ["Abyss encounter"], enemies, roll=roll)
+        if effect == "spawn_room_only":
+            return self._content("abyss_empty", f"{description} Corridor result: empty and searchable.", ["Searchable"], [], roll=roll)
+        if effect == "trap_corridor_weird_room":
+            if tile_type == "room":
+                enemies, subdesc = self._roll_abyss_monster_row(session, "abyss_weird_table", "weird")
+                if subdesc:
+                    description = f"{description} {subdesc}"
+                return self._content("abyss_weird", description, ["Abyss weird monster"], enemies, roll=roll)
+            trap = self._roll_abyss_subtable("abyss_trap_table")
+            if trap:
+                description = f"{description} Trap: {trap.get('name')} - {trap.get('summary')}"
+            return self._content("abyss_trap", description, ["Abyss Trap"], [], roll=roll)
+        if effect in {"boss", "boss_or_dragon"}:
+            table_name = "abyss_boss_table"
+            key = "abyss_boss"
+            if effect == "boss_or_dragon" and tile_type == "room" and self._is_large_abyss_room(session):
+                table_name = "abyss_dragon_table"
+                key = "abyss_dragon"
+            enemies, subdesc = self._roll_abyss_monster_row(session, table_name, "boss")
+            if subdesc:
+                description = f"{description} {subdesc}"
+            if table_name == "abyss_boss_table":
+                final_roll = roll_d6() + session.major_foes_defeated
+                description = f"{description} Final Boss check: d6 + defeated bosses = {final_roll}."
+                if final_roll >= 6 and not dungeon_has_final_boss(session):
+                    for enemy in enemies:
+                        if enemy.category == "boss":
+                            enemy.tags.append("final_boss")
+                    session.final_boss_designated = True
+                    description = f"{description} This is the Final Boss."
+                elif dungeon_has_final_boss(session):
+                    description = f"{description} A Final Boss is already designated."
+            return self._content(key, description, ["Abyss boss"], enemies, roll=roll)
+        if effect in {"treasure", "trap_treasure"}:
+            extra = self._roll_abyss_treasure_extra()
+            objects = ["Abyss Treasure"]
+            if effect == "trap_treasure":
+                trap = self._roll_abyss_subtable("abyss_trap_table")
+                trap_text = f" Trap: {trap.get('name')} - {trap.get('summary')}" if trap else ""
+                description = f"{description}{trap_text}"
+                objects.insert(0, "Abyss Trap")
+            if effect == "treasure" and roll_d6() == 6:
+                enemies, subdesc = self._roll_abyss_monster_row(session, "abyss_boss_table", "boss")
+                if subdesc:
+                    description = f"{description} Guarded treasure: {subdesc}"
+                return self._content("abyss_guarded_treasure", description, objects, enemies, roll=roll, extra=extra)
+            return self._content(str(row.get("key") or "abyss_treasure"), description, objects, [], roll=roll, extra=extra)
+        if effect == "special_feature":
+            if tile_type != "room":
+                return self._content("abyss_empty", f"{description} Corridor result: empty and searchable.", ["Searchable"], [], roll=roll)
+            feature = self._roll_abyss_subtable("abyss_special_feature_table")
+            extra_text = f" Feature: {feature.get('name')} - {feature.get('summary')}" if feature else ""
+            return self._content("abyss_special_feature", f"{description}{extra_text}", ["Abyss Special Feature"], [], roll=roll)
+        if effect in {"unique_event", "empty_unique"}:
+            if effect == "empty_unique" and roll_d6() < 5:
+                return self._content("abyss_empty", f"{description} No unique event appears; the area is searchable.", ["Searchable"], [], roll=roll)
+            event = self._roll_abyss_subtable("abyss_unique_event_table")
+            if event:
+                description = f"{description} Event: {event.get('name')} - {event.get('summary')}"
+                return self._content(
+                    "abyss_unique_event",
+                    description,
+                    ["Abyss Unique Event"],
+                    [],
+                    roll=roll,
+                    extra={"special_event_key": event.get("key"), "special_event_summary": event.get("summary")},
+                )
+        return self._content(str(row.get("key") or "abyss_empty"), description, ["Searchable"], [], roll=roll)
+
+    def _roll_abyss_subtable(self, table_name: str) -> dict | None:
+        from .abyss_tables import lookup_abyss_table_row
+
+        return lookup_abyss_table_row(table_name, roll_d6())
+
+    def _is_large_abyss_room(self, session: SessionState) -> bool:
+        return False
+
+    def _roll_abyss_treasure_extra(self) -> dict:
+        from .abyss_tables import lookup_abyss_table_row
+
+        roll = roll_die(8)
+        row = lookup_abyss_table_row("abyss_treasure_table", roll)
+        if row is None:
+            row = lookup_abyss_table_row("abyss_treasure_table", 0) or {}
+        gold = 0
+        formula = row.get("gold_formula")
+        if formula:
+            gold = self._resolve_abyss_formula(str(formula))
+        items = list(row.get("items") or [])
+        summary = f"Abyss Treasure d8={roll}: {row.get('summary', 'No treasure found.')}"
+        if gold:
+            summary = f"{summary} ({gold}gp)"
+        return {"treasure_summary": summary, "treasure_gold": gold, "treasure_items": items}
+
+    def _roll_abyss_monster_row(
+        self,
+        session: SessionState,
+        table_name: str,
+        category: str,
+        *,
+        fixed_roll: int | None = None,
+    ) -> tuple[list[EnemyState], str]:
+        from .abyss_tables import lookup_abyss_table_row
+
+        roll = fixed_roll if fixed_roll is not None else roll_d6()
+        row = lookup_abyss_table_row(table_name, roll)
+        if row is None:
+            return [], f"Abyss {category} roll d6={roll}: no row found."
+        enemies = self._abyss_spawn_from_row(session, row, category)
+        return enemies, f"Abyss {category} roll d6={roll}: {row.get('name')} - {row.get('summary', '')}"
+
+    def _abyss_spawn_from_row(self, session: SessionState, row: dict, category: str) -> list[EnemyState]:
+        enemies: list[EnemyState] = []
+        count = max(1, self._resolve_abyss_formula(str(row.get("count", "1"))))
+        for _ in range(count):
+            enemies.append(self._abyss_enemy_from_row(row, category))
+        leader = row.get("leader")
+        leader_chance = int(row.get("leader_chance") or 0)
+        if isinstance(leader, dict) and (not leader_chance or roll_d6() <= leader_chance):
+            enemies.append(self._abyss_enemy_from_row(leader, str(leader.get("category") or "boss")))
+        leader_table = row.get("leader_table")
+        leader_roll = row.get("leader_roll")
+        if leader_table and leader_roll and (not leader_chance or roll_d6() <= leader_chance):
+            leader_enemies, _ = self._roll_abyss_monster_row(
+                session,
+                str(leader_table),
+                "boss",
+                fixed_roll=int(leader_roll),
+            )
+            enemies.extend(leader_enemies[:1])
+        return enemies
+
+    def _abyss_enemy_from_row(self, row: dict, category: str) -> EnemyState:
+        level_value = row.get("level", 1)
+        level = self._resolve_abyss_formula(str(level_value)) if isinstance(level_value, str) else int(level_value)
+        life_value = row.get("life", 1)
+        life = self._resolve_abyss_formula(str(life_value)) if isinstance(life_value, str) else int(life_value)
+        attacks_value = row.get("attacks", 1)
+        attacks = self._resolve_abyss_formula(str(attacks_value)) if isinstance(attacks_value, str) else int(attacks_value)
+        tags = [str(tag) for tag in row.get("tags", [])]
+        tags.append("abyss")
+        treasure_rolls = int(row.get("treasure_rolls") or 0)
+        if treasure_rolls <= 0:
+            tags.append("no_treasure")
+        else:
+            tags.append(f"abyss_treasure_rolls:{treasure_rolls}")
+        return EnemyState(
+            id=uuid4().hex,
+            name=str(row.get("name") or "Abyss Foe"),
+            category=category,
+            level=max(1, level),
+            life=max(1, life),
+            max_life=max(1, life),
+            attacks=max(0, attacks),
+            tags=tags,
+            on_hit_effects=list(row.get("on_hit_effects") or []),
+            encounter_start_effects=list(row.get("encounter_start_effects") or []),
+            per_turn_effects=list(row.get("per_turn_effects") or []),
+            special_attacks=list(row.get("special_attacks") or []),
+        )
+
+    def _resolve_abyss_formula(self, formula: str) -> int:
+        formula = formula.strip().lower().replace(" ", "")
+        if "*" in formula:
+            total = 1
+            for part in formula.split("*"):
+                total *= self._resolve_abyss_formula(part)
+            return total
+        return roll_formula(formula)
 
     def _roll_fd_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
         roll = roll_2d6()
@@ -11693,6 +11911,7 @@ class RandomDungeonEngine:
         *,
         choices: list[str] | None = None,
         auto_secret_passage: bool = False,
+        extra: dict | None = None,
     ) -> dict:
         content = {"key": key, "description": description, "objects": objects, "enemies": enemies}
         if roll is not None:
@@ -11701,6 +11920,8 @@ class RandomDungeonEngine:
             content["choices"] = choices
         if auto_secret_passage:
             content["auto_secret_passage"] = True
+        if extra:
+            content.update(extra)
         return content
 
     def _select_placement(
@@ -16232,6 +16453,16 @@ class RandomDungeonEngine:
         defeated = list(tile.defeated_enemies)
         if not defeated or self.rules is None:
             return 1
+        abyss_rolls = 0
+        for enemy in defeated:
+            for tag in enemy.tags:
+                if tag.startswith("abyss_treasure_rolls:"):
+                    try:
+                        abyss_rolls += max(0, int(tag.split(":", 1)[1]))
+                    except ValueError:
+                        pass
+        if abyss_rolls:
+            return abyss_rolls
         return treasure_roll_count_from_defeated(
             defeated,
             lookup_template=self._monster_template_for_enemy,
@@ -17232,6 +17463,10 @@ class RandomDungeonEngine:
                 tile.treasure_gold = 0
                 tile.treasure_items = []
                 tile.treasure_claimed = False
+                if content.get("treasure_summary"):
+                    tile.treasure_summary = str(content["treasure_summary"])
+                    tile.treasure_gold = int(content.get("treasure_gold") or 0)
+                    tile.treasure_items = list(content.get("treasure_items") or [])
                 tile.special_event_key = None
                 tile.special_event_summary = None
                 self._seed_tile_features(tile, hcl, show_rolls=show_rolls, session=session)

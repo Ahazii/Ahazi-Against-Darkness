@@ -29,7 +29,7 @@ whole-book completion.
 | Book | Current position | Major completed areas | Major missing areas |
 | --- | --- | --- | --- |
 | Expanded Edition | advanced | Procedural dungeon loop, classes, combat, equipment, dungeon/cavern/fungal tables, bestiary, reactions, Secrets, quests, Fiendish Foes, EE map catalog | Remaining manual sign-off, selected UI/fidelity edges, roleplaying/adventure-authoring scope decisions |
-| Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals | Abyss dungeon table **runtime** (Phase B indexed in `abyss_tables.json`), bestiary routing, leaders/multiple bosses, diseases/transformations, campaign plots |
+| Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals; **Abyss profile** with 2d6 room-content routing, Abyss monster/event tables, claimable Abyss treasure, and Abyss wandering spawns | Exact automation for long-form traps/features/events, Trial of Champions/hordes/multiple bosses, full diseases/transformations, campaign plots |
 | Forsaken Depths | advanced partial | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, **6 Heroic spells (catalog + cast)** including Fire of Truth chaos-hit bonus, Teleport Enemy return tracking with occupied-room reaction rolls, and Mass Blessing party/hireling condition choices; Legendary spell cast path, **72 validated tiles**, FD dungeon/river runtime, quests, citadels, TCOTFD branch | Remaining FD content families and manual sign-off |
 | Adventurers' Guild | foundation + shell | Persistent roster, multiple parties, banking, **campaign state** (`days_passed`, TAG banking toggle, `/api/campaign`) | Settlements UI, troupe rules, downtime, availability/Streetwise, rumors, treasure maps, Guild jobs |
 | Netherworld | missing/foundation only | Generic Madness/combat/economy primitives can be reused | Classes, expert skills, soul economy, food, planar gates, hex exploration, terrain, reactions, objectives, bestiary, spells, merchants and treasure |
@@ -53,15 +53,13 @@ Next work:
 
 Primary audit: [ABYSS_COMPLIANCE_AUDIT.md](ABYSS_COMPLIANCE_AUDIT.md).
 
-The existing audit currently covers expert advancement, skills, spells, Secrets
-and hirelings. It is not yet a whole-book audit. A second phase must index and
-implement the remaining PDF sections, especially:
+The existing audit covers expert advancement, skills, spells, Secrets and
+hirelings. Phase B adds a playable Abyss random-dungeon profile and table
+routing. It is still not a whole-book audit; remaining PDF sections needing
+full automation include:
 
-- deeper/Abyss dungeon generation and content tables;
 - minion leaders, multiple bosses, hordes and Trial of Champions rules;
-- traps, treasure, hidden treasure, scrolls and magical defenses;
-- Abyss vermin, minions, bosses, weird monsters and dragons;
-- unique events and enchanted banquet/useful-stuff tables;
+- detailed trap, special feature, unique event, banquet/useful-stuff and magical defense effects;
 - vampirism, Dark Plague, lycanthropy and campaign plots.
 
 ## Four Against the Forsaken Depths

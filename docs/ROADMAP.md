@@ -241,8 +241,10 @@ Goal: broaden rule coverage safely.
 - Use [`MASTER_RULE_COVERAGE.md`](MASTER_RULE_COVERAGE.md) as the program-level
   source of truth for EE, Four Against the Abyss, Four Against the Forsaken
   Depths, Tales from the Adventurers' Guild, and Four Against the Netherworld.
-- Complete the whole-book Abyss audit and implement its dedicated procedural
-  dungeon tables before treating Abyss as complete.
+- Complete the whole-book Abyss audit. The profile and dedicated procedural
+  runtime are now started; exact automation for long-form traps, events,
+  multiple-boss/horde rules, diseases/transformations, and campaign plots
+  remains before treating Abyss as complete.
 - Complete Forsaken Depths tile metadata, then add its dungeon/river runtime and
   remaining spells, encounters, items, tables, Citadels, ruins and Secrets.
 - Build Adventurers' Guild as the reusable campaign/downtime layer: settlement,
@@ -265,7 +267,7 @@ Goal: broaden rule coverage safely.
   accidentally mix disabled supplement rules.
 - **Ruleset profiles (2026-06-24):** `data/rules/ruleset_profiles.json`, `GET /api/rules/profiles`, session `ruleset_profile_id`, TCOTFD class gating via `source_books`, home profile dropdown.
 - **FD Heroic spells (2026-06-24):** PDF-accurate 6-spell d6 table in `heroic_spells.json`; full cast resolver in `forsaken_depths_heroic_spells.py` wired through `resolve_spell_cast`, river hazards, combat bonuses, scroll rewards, and Cyclopean Idol bas-relief.
-- **Abyss Phase B (2026-06-24):** `abyss_tables.json` + `docs/ABYSS_PHASE_B_AUDIT.md` — indexed room content stubs; runtime deferred.
+- **Abyss runtime pass (2026-06-28):** `abyss` ruleset profile, Abyss 2d6 room-content routing, monster subtables, claimable treasure payloads, unique/event summaries, and Abyss wandering spawns are implemented and tested.
 - **TAG campaign shell (2026-06-24):** `CampaignState`, `GET/PUT /api/campaign`, `days_passed` on adventure complete, TAG banking toggle on session start.
 - **FD/TAG rules pass (2026-06-28):** Teleport Enemy return tracking with occupied-room reaction rolls, Mass Blessing target/condition UI including hirelings, and TAG Settlement Apothecary brew panel/action are implemented and tested.
 - **Courtship of Flower Demons — planned sequence:**

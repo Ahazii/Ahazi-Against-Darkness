@@ -7,6 +7,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from .dungeon_table_roller import parse_roll_range
+
+ABYSS_PROFILE_ID = "abyss"
+
 
 def _tables_path() -> Path:
     return Path(__file__).resolve().parents[3] / "data" / "rules" / "abyss_tables.json"
@@ -26,3 +30,18 @@ def abyss_table_rows(table_key: str) -> list[dict[str, Any]]:
 
 def abyss_table_roll_keys(table_key: str) -> list[str]:
     return [str(row.get("roll", "")).strip() for row in abyss_table_rows(table_key) if row.get("roll")]
+
+
+def is_abyss_profile(session: Any) -> bool:
+    return str(getattr(session, "ruleset_profile_id", "")).strip().lower() == ABYSS_PROFILE_ID
+
+
+def lookup_abyss_table_row(table_key: str, roll: int) -> dict[str, Any] | None:
+    for row in abyss_table_rows(table_key):
+        roll_value = str(row.get("roll", "")).strip()
+        if not roll_value:
+            continue
+        low, high = parse_roll_range(roll_value)
+        if low <= roll <= high:
+            return row
+    return None

@@ -216,6 +216,16 @@ API_MERGED_TABLE_KEYS = {
 }
 
 VERIFIED_RULE_TABLE_KEYS = {
+    "abyss_boss_table",
+    "abyss_dragon_table",
+    "abyss_minions_table",
+    "abyss_room_content_table",
+    "abyss_special_feature_table",
+    "abyss_trap_table",
+    "abyss_treasure_table",
+    "abyss_unique_event_table",
+    "abyss_vermin_table",
+    "abyss_weird_table",
     "basic_spells_table",
     "caverns_special_events_table",
     "caverns_special_features_table",

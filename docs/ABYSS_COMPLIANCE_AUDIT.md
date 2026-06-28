@@ -151,16 +151,24 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 
 ---
 
-## 6. Whole-book Abyss areas not covered by this audit
+## 6. Whole-book Abyss areas beyond Phase A
 
-The following book areas remain unimplemented or unaudited and must not be
-included in the Phase A percentage:
+The following book areas are outside the original Phase A percentage. The
+2026-06-28 runtime pass makes the random-dungeon subset playable and indexed,
+but several long-form procedures remain summary/log guided rather than exact
+automation:
 
-- deeper/Abyss dungeon generation and content tables;
+- deeper/Abyss dungeon generation and content tables — playable profile, p.46
+  room content routing, monsters, treasure payloads, and wandering spawns are
+  wired;
 - minion leaders, multiple bosses, hordes and Trial of Champions rules;
-- traps, treasure, hidden treasure, scrolls and magical defenses;
-- Abyss vermin, minions, bosses, weird monsters and dragons;
-- unique events, enchanted banquet and useful-stuff tables;
+- traps, treasure, hidden treasure, scrolls and magical defenses — treasure is
+  claimable; long-form traps/magical defenses remain summary-guided;
+- Abyss vermin, minions, bosses, weird monsters and dragons — vermin, minions,
+  bosses, and weird monsters are routed; dragon table is indexed, with exact
+  large-room lair detection still pending;
+- unique events, enchanted banquet and useful-stuff tables — unique events are
+  indexed/logged; banquet/useful-stuff details remain pending;
 - vampirism, Dark Plague, lycanthropy and campaign plots.
 
 ## 7. Not Abyss (clarification)
@@ -202,5 +210,6 @@ These appear in the app but are **not** Four Against the Abyss content:
 | Expert spells (6) | **~100%** |
 | Abyss p.14 secrets (3) | **~100%** |
 | Hirelings | **~100%** |
+| Abyss random-dungeon runtime | **partial/playable** |
 
 **Implemented Phase A subset: ~99%. Whole-book Abyss coverage: partial.**
