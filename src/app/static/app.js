@@ -278,6 +278,8 @@ const tagBranchAction = document.getElementById("tag-branch-action");
 const tagBranchReference = document.getElementById("tag-branch-reference");
 const tagBranchNumber = document.getElementById("tag-branch-number");
 const tagResolveBranch = document.getElementById("tag-resolve-branch");
+const tagSceneAction = document.getElementById("tag-scene-action");
+const tagRunSceneAction = document.getElementById("tag-run-scene-action");
 const tagTrinket = document.getElementById("tag-trinket");
 const tagUseTrinket = document.getElementById("tag-use-trinket");
 const tagGuildSpell = document.getElementById("tag-guild-spell");
@@ -8447,14 +8449,16 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   actionCharacter: "Character used by TAG branch, trinket, Guild spell, or finance actions. Leave blank only where the action allows campaign-level logging.",
   branchAction: "Resolve or log a TAG generated-adventure branch: social choice, Clue spend, variable count, capture-alive result, or reward claim.",
   branchReference: "Scene/page/result note saved into the TAG log so the branch can be checked against the PDF.",
-  branchNumber: "Numeric field for branch actions: Clue cost, variable-count modifier, or reward gp depending on the selected branch action.",
+  branchNumber: "Numeric field for branch and scene actions: Clue cost, variable-count modifier, reward gp, gargoyle count, or training override.",
   resolveBranch: "Apply the selected TAG branch action and write a dated result into the campaign log.",
+  sceneAction: "Apply exact TAG scene rewards and outcomes such as Medusa pendant, gargoyle bounty, Gorungar bounty, Shaura reward, Agaratha, Deoldyn training, or dragon reveal.",
+  runSceneAction: "Apply the selected TAG scene result to the chosen character and write the exact reward or outcome into the campaign log.",
   trinket: "TAG trinket to use. If the selected character carries the item, the app consumes it; otherwise it logs the manual use.",
   useTrinket: "Use the selected TAG trinket for the chosen character and apply any safe status/healing effect.",
   guildSpell: "TAG Guild spell to cast or log. Scrolls are consumed when present; known spells are logged for slot tracking.",
   castGuildSpell: "Cast or log the selected TAG Guild spell and apply the safe status marker where applicable.",
-  financeAction: "TAG banking/loan action: inheritance note, robbery risk, robbery recovery, loan enforcement, or guild upkeep.",
-  financeAmount: "Gold amount for finance actions, mainly loan enforcement or reward/storage handling.",
+  financeAction: "TAG banking/loan action: bank deposit, bank withdraw, inheritance note or transfer, robbery risk, robbery recovery, loan enforcement, or guild upkeep.",
+  financeAmount: "Gold amount for finance actions: deposit, withdraw, loan, reward, recovery, or storage handling.",
   financeNote: "Optional heir, debt, bank, robber, or ruling note stored in the TAG log.",
   runFinance: "Run the selected TAG finance action and log the result.",
   services: "Refresh TAG treasure/service rows for the current settlement size.",
@@ -8552,8 +8556,9 @@ const TAG_HELP_CONTENT = {
   actions: {
     title: "TAG Actions",
     lines: [
-      "TAG Actions cover follow-up decisions after a generated adventure exists: branch choices, Clue spends, variable counts, capture-alive outcomes, reward claims, trinkets, Guild spells, and finance enforcement.",
-      "Branch and finance actions write audit-friendly log entries. Where a safe state change is obvious, such as spending Clues, awarding gp, healing from a potion, or charging guild upkeep, the app applies it.",
+      "TAG Actions cover follow-up decisions after a generated adventure exists: branch choices, Clue spends, variable counts, capture-alive outcomes, exact scene rewards, trinkets, Guild spells, and finance enforcement.",
+      "Scene results apply printed outcomes such as Medusa pendant, gargoyle bounty, Gorungar bounty, bandit capture, Shaura reward, Daroc's cat, mutant-fish rations, Agaratha, Deoldyn training, and Dragon's Lair type reveal.",
+      "Finance actions now include per-character bank deposit and withdrawal, inheritance notes, and inheritance transfer with the TAG 20% tax. Branch and finance entries remain audit-friendly in the TAG log.",
       "Trinkets and Guild spells consume carried items or scrolls when present and add status markers for effects that need to be remembered during play.",
     ],
   },
@@ -10392,6 +10397,8 @@ function applyTagSettlementTooltips() {
   setTooltip(tagBranchReference, TAG_SETTLEMENT_TOOLTIPS.branchReference);
   setTooltip(tagBranchNumber, TAG_SETTLEMENT_TOOLTIPS.branchNumber);
   setButtonTooltip(tagResolveBranch, TAG_SETTLEMENT_TOOLTIPS.resolveBranch);
+  setTooltip(tagSceneAction, TAG_SETTLEMENT_TOOLTIPS.sceneAction);
+  setButtonTooltip(tagRunSceneAction, TAG_SETTLEMENT_TOOLTIPS.runSceneAction);
   setTooltip(tagTrinket, TAG_SETTLEMENT_TOOLTIPS.trinket);
   setButtonTooltip(tagUseTrinket, TAG_SETTLEMENT_TOOLTIPS.useTrinket);
   setTooltip(tagGuildSpell, TAG_SETTLEMENT_TOOLTIPS.guildSpell);
@@ -11878,6 +11885,22 @@ async function useTagTrinketAction() {
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG trinket used.");
+}
+
+async function runTagSceneAction() {
+  if (!tagActionCharacter?.value) throw new Error("Choose a character for the TAG scene result.");
+  const result = await api("/api/campaign/tag/scene-action", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagActionCharacter.value,
+      scene_action: tagSceneAction?.value || "",
+      amount: Number(tagBranchNumber?.value || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG scene result applied.");
 }
 
 async function castTagGuildSpellAction() {
@@ -27582,6 +27605,9 @@ tagCreateAdventure?.addEventListener("click", () => {
 });
 tagResolveBranch?.addEventListener("click", () => {
   resolveTagBranchAction().catch(handleError);
+});
+tagRunSceneAction?.addEventListener("click", () => {
+  runTagSceneAction().catch(handleError);
 });
 tagUseTrinket?.addEventListener("click", () => {
   useTagTrinketAction().catch(handleError);

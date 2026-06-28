@@ -1013,7 +1013,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.13"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.14"></script>' in INDEX_HTML
 
 
 def test_trial_of_champions_reaction_has_champion_picker_buttons() -> None:
@@ -1814,6 +1814,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-action-character",
         "tag-branch-action",
         "tag-resolve-branch",
+        "tag-scene-action",
+        "tag-run-scene-action",
         "tag-trinket",
         "tag-use-trinket",
         "tag-guild-spell",
@@ -1831,6 +1833,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "/api/campaign/tag/follow-treasure-map",
         "/api/campaign/tag/create-adventure",
         "/api/campaign/tag/branch-action",
+        "/api/campaign/tag/scene-action",
         "/api/campaign/tag/use-trinket",
         "/api/campaign/tag/guild-spell",
         "/api/campaign/tag/finance-action",
@@ -1840,6 +1843,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.followMap" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.createAdventure" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.resolveBranch" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.sceneAction" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.runSceneAction" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.useTrinket" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.castGuildSpell" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.runFinance" in APP_JS

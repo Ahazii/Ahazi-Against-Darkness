@@ -773,6 +773,25 @@ async def campaign_tag_use_trinket(payload: dict[str, Any]) -> dict[str, Any]:
     return {"campaign": campaign, "character": character, "entry": entry}
 
 
+@app.post("/api/campaign/tag/scene-action")
+async def campaign_tag_scene_action(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, resolve_tag_scene_action, save_campaign
+
+    character = _optional_campaign_character(payload)
+    if character is None:
+        raise HTTPException(status_code=400, detail="Character is required.")
+    campaign = load_campaign(store)
+    entry = resolve_tag_scene_action(
+        campaign,
+        character,
+        scene_action=str(payload.get("scene_action") or ""),
+        amount=int(payload.get("amount") or 0),
+    )
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
 @app.post("/api/campaign/tag/guild-spell")
 async def campaign_tag_guild_spell(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import cast_tag_guild_spell, load_campaign, save_campaign

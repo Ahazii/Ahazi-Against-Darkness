@@ -588,10 +588,27 @@
                       <input id="tag-branch-reference" type="text" maxlength="120" placeholder="Scene/page/result note" />
                     </label>
                     <label for="tag-branch-number">
-                      <span>Clues/gp</span>
+                      <span>Amount</span>
                       <input id="tag-branch-number" type="number" min="0" step="1" inputmode="numeric" value="0" />
                     </label>
                     <button id="tag-resolve-branch" type="button" class="secondary">Resolve branch</button>
+                    <label for="tag-scene-action">
+                      <span>Scene result</span>
+                      <select id="tag-scene-action">
+                        <option value="medusa_pendant" title="Add the Medusa pendant item note to the selected character.">Medusa pendant</option>
+                        <option value="gargoyle_bounty" title="Pay 15 gp per gargoyle; Amount is the number of heads.">Gargoyle bounty</option>
+                        <option value="gorungar_head" title="Pay Gorungar head bounty and roll his coin bag.">Gorungar head</option>
+                        <option value="gorungar_alive" title="Pay Gorungar alive bounty and roll his coin bag.">Gorungar alive</option>
+                        <option value="bandit_chieftain_capture" title="Pay capture reward and add the information Clue.">Bandit capture</option>
+                        <option value="shaura_reward" title="Pay Shaura cult reward.">Shaura reward</option>
+                        <option value="daroc_cat" title="Pay Daroc's cat reward and mark XP pending.">Daroc cat</option>
+                        <option value="mutant_fish_rations" title="Roll d6+3 food rations.">Fish rations</option>
+                        <option value="agaratha" title="Add Agaratha and its Luck marker.">Agaratha</option>
+                        <option value="deoldyn_training" title="Pay Deoldyn training cost; Amount can override 60 gp x level.">Deoldyn training</option>
+                        <option value="dragon_type_reveal" title="Spend 2 Clues and roll the Dragon's Lair type.">Dragon reveal</option>
+                      </select>
+                    </label>
+                    <button id="tag-run-scene-action" type="button" class="secondary">Apply scene</button>
                     <label for="tag-trinket">
                       <span>Trinket</span>
                       <select id="tag-trinket">
@@ -620,7 +637,10 @@
                     <label for="tag-finance-action">
                       <span>Finance</span>
                       <select id="tag-finance-action">
+                        <option value="bank_deposit">Bank deposit</option>
+                        <option value="bank_withdraw">Bank withdraw</option>
                         <option value="inheritance">Inheritance note</option>
+                        <option value="inheritance_transfer">Inheritance transfer</option>
                         <option value="robbery_risk">Robbery risk</option>
                         <option value="robbery_recovery">Robbery recovery</option>
                         <option value="loan_enforcement">Loan enforcement</option>
@@ -1182,6 +1202,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.69.13"></script>
+    <script src="/static/app.js?v=0.69.14"></script>
   </body>
 </html>

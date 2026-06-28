@@ -12,6 +12,7 @@ from ..schemas import (
     Character,
     SessionState,
     TagAvailabilityCheckState,
+    TagBankAccountState,
     TagDowntimeLogEntry,
     TagMagicLockerState,
     TagStoredItemState,
@@ -477,6 +478,20 @@ TAG_BRANCH_ACTIONS: dict[str, str] = {
     "roll_variable_count": "Roll variable count",
     "capture_alive": "Capture-alive outcome",
     "claim_reward": "Claim printed reward",
+}
+
+TAG_SCENE_ACTIONS: dict[str, str] = {
+    "medusa_pendant": "Medusa pendant",
+    "gargoyle_bounty": "Gargoyle bounty",
+    "gorungar_head": "Gorungar head bounty",
+    "gorungar_alive": "Gorungar alive bounty",
+    "bandit_chieftain_capture": "Bandit Chieftain capture",
+    "shaura_reward": "Shaura cult reward",
+    "daroc_cat": "Daroc's cat reward",
+    "mutant_fish_rations": "Mutant fish rations",
+    "agaratha": "Agaratha recovered",
+    "deoldyn_training": "Deoldyn training",
+    "dragon_type_reveal": "Dragon type reveal",
 }
 
 TAG_TRINKET_EFFECTS: dict[str, dict[str, object]] = {
@@ -1758,6 +1773,106 @@ def resolve_tag_branch_action(
     )
 
 
+def _tag_bank_account(campaign: CampaignState, character: Character) -> TagBankAccountState:
+    account = next((item for item in campaign.tag_bank_accounts if item.owner_character_id == character.id), None)
+    if account is None:
+        account = TagBankAccountState(
+            owner_character_id=character.id,
+            owner_name=character.name,
+            created_at=now_utc(),
+        )
+        campaign.tag_bank_accounts.append(account)
+    account.owner_name = character.name
+    return account
+
+
+def resolve_tag_scene_action(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    scene_action: str,
+    amount: int = 0,
+) -> TagDowntimeLogEntry:
+    action = scene_action if scene_action in TAG_SCENE_ACTIONS else "medusa_pendant"
+    value = max(0, int(amount))
+    roll: int | None = None
+    total: int | None = None
+    result = ""
+    if action == "medusa_pendant":
+        character.inventory.append("Medusa pendant (260 gp, necros)")
+        result = f"{character.name} receives the Medusa pendant item note (260 gp and necros value; Luck test remains per scene text)."
+    elif action == "gargoyle_bounty":
+        count = value or 1
+        reward = 15 * count
+        character.gold += reward
+        result = f"{character.name} claims {reward} gp for {count} white gargoyle head(s)."
+    elif action == "gorungar_head":
+        character.gold += 50
+        character.inventory.append("Gorungar armband")
+        roll = roll_d6() + roll_d6()
+        character.gold += roll
+        result = f"{character.name} claims 50 gp for Gorungar's head, Gorungar's armband, and {roll} gp from his bag."
+    elif action == "gorungar_alive":
+        character.gold += 100
+        character.inventory.append("Gorungar armband")
+        roll = roll_d6() + roll_d6()
+        character.gold += roll
+        result = f"{character.name} claims 100 gp for bringing Gorungar alive, Gorungar's armband, and {roll} gp from his bag."
+    elif action == "bandit_chieftain_capture":
+        character.gold += 100
+        character.clues += 1
+        result = f"{character.name} claims the Bandit Chieftain alive bounty: 100 gp and 1 information Clue."
+    elif action == "shaura_reward":
+        character.gold += 150
+        result = f"{character.name} claims the Shaura cult reward: 150 gp. Record XP from the final fight normally."
+    elif action == "daroc_cat":
+        character.gold += 100
+        character.statuses.append("TAG Daroc cat XP pending")
+        result = f"{character.name} receives Daroc's 100 gp reward and an XP-pending marker."
+    elif action == "mutant_fish_rations":
+        roll = roll_d6()
+        total = roll + 3
+        character.inventory.extend(["Food ration"] * total)
+        result = f"{character.name} receives {total} food ration(s) from the mutant fish scene; count the scene as two minion encounters for XP."
+    elif action == "agaratha":
+        if "Agaratha" not in character.inventory:
+            character.inventory.append("Agaratha")
+        character.statuses.append("TAG Agaratha Luck-on-major-kill")
+        result = f"{character.name} receives Agaratha, a magic masterwork sword; Luck-on-major-kill marker added."
+    elif action == "deoldyn_training":
+        cost = max(60 * max(1, character.level), value)
+        if character.gold < cost:
+            result = f"{character.name} needs {cost} gp for Deoldyn's archery training."
+        else:
+            character.gold -= cost
+            character.statuses.append("TAG Deoldyn archery XP roll pending")
+            result = f"{character.name} pays {cost} gp for Deoldyn training; archery XP roll marker added."
+    elif action == "dragon_type_reveal":
+        if character.clues < 2:
+            result = f"{character.name} needs 2 Clues to reveal the TAG Dragon's Lair type."
+        else:
+            character.clues -= 2
+            roll = roll_d6()
+            dragon = {
+                1: "Small Dragon",
+                2: "Small Dragon",
+                3: "Small Dragon",
+                4: "Young Red Dragon",
+                5: "Young Red Dragon",
+                6: "Darkness Dragon or Ghoul Dragon; split by the printed d6 follow-up.",
+            }[roll]
+            result = f"{character.name} spends 2 Clues and reveals TAG Dragon's Lair type roll {roll}: {dragon}"
+    character.updated_at = now_utc()
+    return append_tag_log(
+        campaign,
+        action=f"scene_{action}",
+        character=character,
+        roll=roll,
+        total=total,
+        result_text=result,
+    )
+
+
 def use_tag_trinket(campaign: CampaignState, character: Character, *, trinket_key: str) -> TagDowntimeLogEntry:
     effect = TAG_TRINKET_EFFECTS.get(trinket_key)
     if effect is None:
@@ -1824,8 +1939,50 @@ def resolve_tag_finance_action(
 ) -> TagDowntimeLogEntry:
     amount = max(0, int(amount_gp))
     clean_note = note.strip()[:120]
-    action = finance_action if finance_action in {"inheritance", "robbery_risk", "robbery_recovery", "loan_enforcement", "guild_upkeep"} else "loan_enforcement"
+    action = finance_action if finance_action in {
+        "bank_deposit",
+        "bank_withdraw",
+        "inheritance",
+        "inheritance_transfer",
+        "robbery_risk",
+        "robbery_recovery",
+        "loan_enforcement",
+        "guild_upkeep",
+    } else "loan_enforcement"
+    if action == "bank_deposit":
+        if character is None:
+            return append_tag_log(campaign, action="bank_deposit", result_text="Choose a character for TAG bank deposit.")
+        fee = ceil(amount * 0.1) if amount else 0
+        total_cost = amount + fee
+        if amount <= 0:
+            result = "Enter a bank deposit amount above 0 gp."
+        elif character.gold < total_cost:
+            result = f"{character.name} needs {total_cost} gp for a {amount} gp TAG bank deposit plus {fee} gp fee."
+        else:
+            account = _tag_bank_account(campaign, character)
+            character.gold -= total_cost
+            account.gold_gp += amount
+            account.notes = clean_note or account.notes
+            character.updated_at = now_utc()
+            result = f"{character.name} deposits {amount} gp into a TAG bank account and pays {fee} gp fee. Account balance {account.gold_gp} gp."
+        return append_tag_log(campaign, action="bank_deposit", character=character, cost_gp=total_cost if amount else 0, result_text=result)
+    if action == "bank_withdraw":
+        if character is None:
+            return append_tag_log(campaign, action="bank_withdraw", result_text="Choose a character for TAG bank withdrawal.")
+        account = _tag_bank_account(campaign, character)
+        withdrawn = min(amount, account.gold_gp)
+        if withdrawn <= 0:
+            result = f"{character.name}'s TAG bank account has no gold to withdraw."
+        else:
+            account.gold_gp -= withdrawn
+            character.gold += withdrawn
+            character.updated_at = now_utc()
+            result = f"{character.name} withdraws {withdrawn} gp from TAG bank account. Account balance {account.gold_gp} gp."
+        return append_tag_log(campaign, action="bank_withdraw", character=character, result_text=result)
     if action == "inheritance":
+        if character is not None:
+            account = _tag_bank_account(campaign, character)
+            account.heir_name = clean_note
         result = (
             f"Bank inheritance recorded for {character.name}: {clean_note or 'heir noted in campaign log'}. "
             "Apply the 20% inheritance tax when transferred."
@@ -1833,6 +1990,23 @@ def resolve_tag_finance_action(
             else "Bank inheritance note recorded. Choose an account owner for exact transfer handling."
         )
         return append_tag_log(campaign, action="bank_inheritance", character=character, result_text=result)
+    if action == "inheritance_transfer":
+        if character is None:
+            return append_tag_log(campaign, action="bank_inheritance_transfer", result_text="Choose the heir/recipient character for inheritance transfer.")
+        donor = next((account for account in campaign.tag_bank_accounts if account.heir_name and account.heir_name.lower() in character.name.lower()), None)
+        if donor is None:
+            result = f"No TAG bank account names {character.name} as heir. Record an inheritance note first or transfer manually."
+        elif donor.gold_gp <= 0:
+            result = f"{donor.owner_name}'s TAG bank account has no gold to inherit."
+        else:
+            tax = ceil(donor.gold_gp * 0.2)
+            transferred = max(0, donor.gold_gp - tax)
+            character.gold += transferred
+            donor.gold_gp = 0
+            donor.notes = f"Inherited by {character.name}; tax {tax} gp."
+            character.updated_at = now_utc()
+            result = f"{character.name} inherits {transferred} gp from {donor.owner_name}'s TAG bank account after {tax} gp inheritance tax."
+        return append_tag_log(campaign, action="bank_inheritance_transfer", character=character, result_text=result)
     if action == "robbery_risk":
         total, rolls = roll_3d6()
         robbed = total <= 5

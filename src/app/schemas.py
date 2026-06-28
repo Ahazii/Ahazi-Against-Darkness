@@ -661,6 +661,17 @@ class TagMagicLockerState(BaseModel):
     created_at: str
 
 
+class TagBankAccountState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    owner_character_id: str
+    owner_name: str
+    gold_gp: int = Field(default=0, ge=0)
+    heir_name: str = ""
+    robbed: bool = False
+    notes: str = ""
+    created_at: str
+
+
 class CampaignState(BaseModel):
     id: str = "default"
     tag_banking_enabled: bool = False
@@ -676,6 +687,7 @@ class CampaignState(BaseModel):
     tag_generated_adventure_ids: list[str] = Field(default_factory=list)
     tag_stored_items: list[TagStoredItemState] = Field(default_factory=list)
     tag_magic_lockers: list[TagMagicLockerState] = Field(default_factory=list)
+    tag_bank_accounts: list[TagBankAccountState] = Field(default_factory=list)
     settlement_name: str = "Home Settlement"
     settlement_size: int = Field(default=0, ge=-3, le=3)
     settlement_notes: str = ""

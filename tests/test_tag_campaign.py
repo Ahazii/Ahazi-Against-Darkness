@@ -23,6 +23,7 @@ from app.engine.tag_campaign import (
     cast_tag_guild_spell,
     resolve_tag_branch_action,
     resolve_tag_finance_action,
+    resolve_tag_scene_action,
     settlement_size_from_roll,
     settlement_service_rows,
     store_tag_treasure,
@@ -431,3 +432,38 @@ def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None
     upkeep = resolve_tag_finance_action(campaign, finance_action="guild_upkeep")
     assert campaign.tag_guild_coffers_gp == 900
     assert "100 gp paid" in upkeep.result_text
+
+
+def test_tag_scene_rewards_and_bank_ledgers(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(gold=500, clues=3, level=2, inventory=[], statuses=[])
+
+    bounty = resolve_tag_scene_action(campaign, hero, scene_action="gargoyle_bounty", amount=3)
+    assert hero.gold == 545
+    assert "45 gp" in bounty.result_text
+
+    agaratha = resolve_tag_scene_action(campaign, hero, scene_action="agaratha")
+    assert "Agaratha" in hero.inventory
+    assert "TAG Agaratha Luck-on-major-kill" in hero.statuses
+    assert "Luck-on-major-kill" in agaratha.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    reveal = resolve_tag_scene_action(campaign, hero, scene_action="dragon_type_reveal")
+    assert hero.clues == 1
+    assert "Dragon's Lair" in reveal.result_text
+
+    deposit = resolve_tag_finance_action(campaign, hero, finance_action="bank_deposit", amount_gp=100, note="Sister Joyce")
+    assert hero.gold == 435
+    assert campaign.tag_bank_accounts[0].gold_gp == 100
+    assert campaign.tag_bank_accounts[0].notes == "Sister Joyce"
+    assert "10 gp fee" in deposit.result_text
+
+    inheritance = resolve_tag_finance_action(campaign, hero, finance_action="inheritance", note="Sister Joyce")
+    assert campaign.tag_bank_accounts[0].heir_name == "Sister Joyce"
+    assert "20% inheritance tax" in inheritance.result_text
+
+    heir = _character(id="heir-1", name="Sister Joyce", gold=0)
+    transfer = resolve_tag_finance_action(campaign, heir, finance_action="inheritance_transfer")
+    assert heir.gold == 80
+    assert campaign.tag_bank_accounts[0].gold_gp == 0
+    assert "20 gp inheritance tax" in transfer.result_text
