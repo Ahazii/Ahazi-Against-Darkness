@@ -8,7 +8,11 @@ future maintainers know the consequence of removing or changing the guarded code
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 
 APP_JS = Path("src/app/static/app.js").read_text(encoding="utf-8")
@@ -947,7 +951,27 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.5"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.6"></script>' in INDEX_HTML
+
+
+def test_app_js_has_no_syntax_errors() -> None:
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not available for syntax check")
+    result = subprocess.run(
+        [node, "--check", "src/app/static/app.js"],
+        capture_output=True,
+        text=True,
+        cwd=Path("."),
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_append_party_member_sheet_uses_return_for_detached_heroes() -> None:
+    body = _function_body("appendPartyMemberSheet", APP_JS)
+    assert "if (memberAway)" in body
+    assert "return;" in body
+    assert "continue;" not in body
 
 
 def test_unified_marching_order_ui_helpers_exist() -> None:

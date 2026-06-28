@@ -25035,7 +25035,7 @@ function appendPartyMemberSheet(target, session, member, renderCtx) {
         state.partySheetOpen[member.character_id] = details.open;
       });
       target.appendChild(details);
-      continue;
+      return;
     }
     const xpSystem = session.xp_system || "classical";
     const levelUpSpellPickPending = Boolean(session.level_up_spell_pending_character_id);
@@ -25247,7 +25247,6 @@ function appendPartyMemberSheet(target, session, member, renderCtx) {
       state.partySheetOpen[member.character_id] = details.open;
     });
     target.appendChild(details);
-  }
 }
 
 function renderPartyState(session) {
