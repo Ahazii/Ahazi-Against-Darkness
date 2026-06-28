@@ -306,6 +306,30 @@
     {"roll": "7", "summary": "One random magical defense item.", "items": ["Abyss magical defense"], "source_page": 48},
     {"roll": "8", "summary": "Magical defense item or 4d6 x 25 gp.", "gold_formula": "4d6*25", "items": ["Abyss magical defense"], "source_page": 48}
   ],
+  "abyss_magic_treasure_table": [
+    {"roll": "1", "name": "Amulet of Protection versus Undead", "summary": "+1 Defense and saves against undead attacks; resale 250gp.", "source_page": 51},
+    {"roll": "2", "name": "Medallion of Snake Charming", "summary": "d8+L can make snakes or lizardmen minions friendly; resale 100gp.", "source_page": 51},
+    {"roll": "3", "name": "Parchment of Banishing", "summary": "Wizard/cleric scroll; 2 wounds to one undead or demon, then dust.", "source_page": 51},
+    {"roll": "4", "name": "Baton of Righteousness", "summary": "Crushing hand weapon; heals 1 Life when it kills a boss or weird monster; resale 250gp.", "source_page": 51},
+    {"roll": "5", "name": "Philter of Fire Breathing", "summary": "One encounter dragon-fire immunity plus one breath attack; resale 80gp.", "source_page": 51},
+    {"roll": "6", "name": "Ring of Three Wishes", "summary": "d3 wishes for reroll, monster damage, non-magical treasure/equipment, basic spell, or full wearer healing.", "source_page": 51}
+  ],
+  "abyss_scroll_table": [
+    {"roll": "1", "name": "Healing Surge", "source_page": 53},
+    {"roll": "2", "name": "Infallible Missile", "source_page": 53},
+    {"roll": "3", "name": "Lifeforce Control", "source_page": 53},
+    {"roll": "4", "name": "Mass Teleport", "source_page": 53},
+    {"roll": "5", "name": "Aura of Terror", "source_page": 53},
+    {"roll": "6", "name": "Reverse Gaze", "source_page": 53}
+  ],
+  "abyss_magical_defense_table": [
+    {"roll": "1", "name": "Ring of Defense", "summary": "+1 Defense; only one ring of defense may be worn.", "source_page": 53},
+    {"roll": "2", "name": "Cross against Vampires", "summary": "+2 Defense against vampires; only one may be worn.", "source_page": 53},
+    {"roll": "3", "name": "Brownie Ward", "summary": "Brownies immediately make a morale roll when encountered.", "source_page": 53},
+    {"roll": "4", "name": "Magic Shield", "summary": "+2 Defense shield, indestructible; usable by shield-eligible characters.", "source_page": 53},
+    {"roll": "5", "name": "Elfin Chain Mail", "summary": "Light armor with +2 Defense; non-magical, so barbarians may wear it.", "source_page": 53},
+    {"roll": "6", "name": "Suit of Enchanted Armor", "summary": "Heavy armor with +3 Defense; adapts to wearer size.", "source_page": 53}
+  ],
   "abyss_special_feature_table": [
     {"roll": "1", "key": "enchanted_banquet", "name": "Enchanted Banquet", "summary": "Heroes may eat; each eater rolls on the Enchanted Banquet table.", "source_page": 50},
     {"roll": "2", "key": "lava_river", "name": "Lava River", "summary": "A random magic item is across a lava river; leap out and back or suffer wounds.", "source_page": 50},
@@ -321,5 +345,21 @@
     {"roll": "4", "key": "secret_stairs", "name": "Secret Stairs", "summary": "Secret passage to an upper-level room/corridor, with possible wandering monster.", "source_page": 59},
     {"roll": "5", "key": "gold_ghost", "name": "Gold Ghost", "summary": "Sacrifice 100 gp or all heroes suffer -1 Defense until individually Blessed.", "source_page": 59},
     {"roll": "6", "key": "mana_sink", "name": "Mana Sink", "summary": "Spellcasters save per spell vs power 7 mana sink or lose spells; one-time room effect.", "source_page": 59}
+  ],
+  "abyss_enchanted_banquet_table": [
+    {"roll": "1", "name": "Magical Food", "summary": "Heal 3 Life, then fey steals d6xd6 gp or valuables; curse with magical bells if nothing valuable.", "source_page": 60},
+    {"roll": "2", "name": "Nourishing Food", "summary": "Heal 1 Life.", "source_page": 60},
+    {"roll": "3", "name": "Spoiled Lamb", "summary": "Save vs L7 poison or suffer -1 Attack for next two encounters.", "source_page": 60},
+    {"roll": "4", "name": "Ghost Food", "summary": "Save vs L6 magic or gain 1 Madness.", "source_page": 60},
+    {"roll": "5", "name": "That's My Food", "summary": "Unique two-headed ogre attacks with surprise; silverware worth 100gp.", "source_page": 60},
+    {"roll": "6", "name": "Fey Food", "summary": "Gain one random basic spell until cast; barbarians ignore.", "source_page": 60}
+  ],
+  "abyss_useful_stuff_table": [
+    {"roll": "1", "name": "Rope, lantern, or hand weapon", "summary": "Choose rope, lantern, or one slashing/crushing hand weapon.", "source_page": 61},
+    {"roll": "2", "name": "Blessed Stakes", "summary": "d6 blessed stakes count as magic weapons against vampires only.", "source_page": 61},
+    {"roll": "3", "name": "Wolvesbane", "summary": "Thrown at wolf/were-creature to force morale; resale 10gp.", "source_page": 61},
+    {"roll": "4", "name": "Silver Weapon", "summary": "Silver slashing hand weapon or dagger; +1 vs werewolves; resale 20gp.", "source_page": 61},
+    {"roll": "5", "name": "Blessed Horseshoe", "summary": "Reroll one die roll, then spent; resale 10gp unused.", "source_page": 61},
+    {"roll": "6", "name": "Elven Bread", "summary": "d3 loaves; heal 1 Life or remove Dark Plague, elves heal 3 Life; resale 10gp each.", "source_page": 61}
   ]
 }

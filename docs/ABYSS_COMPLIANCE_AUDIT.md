@@ -154,21 +154,21 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 ## 6. Whole-book Abyss areas beyond Phase A
 
 The following book areas are outside the original Phase A percentage. The
-2026-06-28 runtime pass makes the random-dungeon subset playable and indexed,
-but several long-form procedures remain summary/log guided rather than exact
-automation:
+2026-06-28 runtime and phase-1 exact-effect passes make the random-dungeon
+subset playable, indexed, and automated for the first trap/feature/event layer:
 
 - deeper/Abyss dungeon generation and content tables — playable profile, p.46
   room content routing, monsters, treasure payloads, and wandering spawns are
   wired;
 - minion leaders, multiple bosses, hordes and Trial of Champions rules;
-- traps, treasure, hidden treasure, scrolls and magical defenses — treasure is
-  claimable; long-form traps/magical defenses remain summary-guided;
+- traps, treasure, hidden treasure, scrolls and magical defenses — Abyss traps,
+  treasure choices, scroll/magic/defense rows, Useful Stuff, and magical defense
+  item names are wired; exact inventory use-actions for every item remain later;
 - Abyss vermin, minions, bosses, weird monsters and dragons — vermin, minions,
   bosses, and weird monsters are routed; dragon table is indexed, with exact
   large-room lair detection still pending;
-- unique events, enchanted banquet and useful-stuff tables — unique events are
-  indexed/logged; banquet/useful-stuff details remain pending;
+- unique events, enchanted banquet and useful-stuff tables — event choices and
+  direct effects are wired through the existing feature/treasure UI;
 - vampirism, Dark Plague, lycanthropy and campaign plots.
 
 ## 7. Not Abyss (clarification)

@@ -11335,7 +11335,11 @@ class RandomDungeonEngine:
             tile.treasure_summary = str(content["treasure_summary"])
             tile.treasure_gold = int(content.get("treasure_gold") or 0)
             tile.treasure_items = list(content.get("treasure_items") or [])
+            tile.pending_treasure_choice = content.get("pending_treasure_choice")
             tile.treasure_claimed = False
+        if content.get("trap_key"):
+            tile.trap_key = str(content["trap_key"])
+            tile.trap_level = int(content.get("trap_level") or hcl)
         if content.get("special_event_key"):
             tile.special_event_key = content["special_event_key"]
         if content.get("special_event_summary"):
@@ -11526,7 +11530,14 @@ class RandomDungeonEngine:
             trap = self._roll_abyss_subtable("abyss_trap_table")
             if trap:
                 description = f"{description} Trap: {trap.get('name')} - {trap.get('summary')}"
-            return self._content("abyss_trap", description, ["Abyss Trap"], [], roll=roll)
+            return self._content(
+                "abyss_trap",
+                description,
+                ["Abyss Trap"],
+                [],
+                roll=roll,
+                extra=self._abyss_trap_extra(trap, tile_type, hcl),
+            )
         if effect in {"boss", "boss_or_dragon"}:
             table_name = "abyss_boss_table"
             key = "abyss_boss"
@@ -11556,6 +11567,7 @@ class RandomDungeonEngine:
                 trap_text = f" Trap: {trap.get('name')} - {trap.get('summary')}" if trap else ""
                 description = f"{description}{trap_text}"
                 objects.insert(0, "Abyss Trap")
+                extra.update(self._abyss_trap_extra(trap, tile_type, hcl))
             if effect == "treasure" and roll_d6() == 6:
                 enemies, subdesc = self._roll_abyss_monster_row(session, "abyss_boss_table", "boss")
                 if subdesc:
@@ -11567,7 +11579,14 @@ class RandomDungeonEngine:
                 return self._content("abyss_empty", f"{description} Corridor result: empty and searchable.", ["Searchable"], [], roll=roll)
             feature = self._roll_abyss_subtable("abyss_special_feature_table")
             extra_text = f" Feature: {feature.get('name')} - {feature.get('summary')}" if feature else ""
-            return self._content("abyss_special_feature", f"{description}{extra_text}", ["Abyss Special Feature"], [], roll=roll)
+            return self._content(
+                "abyss_special_feature",
+                f"{description}{extra_text}",
+                ["Abyss Special Feature"],
+                [],
+                roll=roll,
+                extra={"special_event_key": feature.get("key"), "special_event_summary": feature.get("summary")} if feature else None,
+            )
         if effect in {"unique_event", "empty_unique"}:
             if effect == "empty_unique" and roll_d6() < 5:
                 return self._content("abyss_empty", f"{description} No unique event appears; the area is searchable.", ["Searchable"], [], roll=roll)
@@ -11583,6 +11602,24 @@ class RandomDungeonEngine:
                     extra={"special_event_key": event.get("key"), "special_event_summary": event.get("summary")},
                 )
         return self._content(str(row.get("key") or "abyss_empty"), description, ["Searchable"], [], roll=roll)
+
+    def _abyss_trap_extra(self, trap: dict | None, tile_type: str, hcl: int) -> dict:
+        if not trap:
+            return {}
+        key = f"abyss_{trap.get('key')}"
+        if key == "abyss_dart_shooting_mechanism":
+            level = roll_die(8) + 3
+        elif key == "abyss_giant_metal_ball":
+            level = 7 if tile_type == "room" else 9
+        elif key == "abyss_crocodile_pit":
+            level = 6
+        elif key == "abyss_guillotine":
+            level = roll_d6() + 2
+        elif key in {"abyss_electrical_blast", "abyss_steel_spear"}:
+            level = 7
+        else:
+            level = max(1, hcl)
+        return {"trap_key": key, "trap_level": level}
 
     def _roll_abyss_subtable(self, table_name: str) -> dict | None:
         from .abyss_tables import lookup_abyss_table_row
@@ -11607,7 +11644,55 @@ class RandomDungeonEngine:
         summary = f"Abyss Treasure d8={roll}: {row.get('summary', 'No treasure found.')}"
         if gold:
             summary = f"{summary} ({gold}gp)"
-        return {"treasure_summary": summary, "treasure_gold": gold, "treasure_items": items}
+        choice = None
+        if roll == 1:
+            choice = "abyss_gold_or_weapon"
+        elif roll == 2:
+            choice = "abyss_gold_or_useful"
+        elif roll == 5:
+            choice = "abyss_jewelry_or_useful"
+        elif roll == 8:
+            choice = "abyss_defense_or_gold"
+        if roll in {6, 7, 8}:
+            items = [self._roll_abyss_magic_or_defense_item(defense=roll in {7, 8})]
+        return {"treasure_summary": summary, "treasure_gold": gold, "treasure_items": items, "pending_treasure_choice": choice}
+
+    def _roll_abyss_useful_item(self) -> str:
+        roll = roll_d6()
+        if roll == 1:
+            return "Abyss Useful Stuff: rope, lantern, or hand weapon"
+        if roll == 2:
+            return f"{roll_d6()} blessed stakes"
+        if roll == 3:
+            return "Wolvesbane"
+        if roll == 4:
+            return "Silver weapon"
+        if roll == 5:
+            return "Blessed horseshoe"
+        return f"{roll_d3()} loaves of elven bread"
+
+    def _roll_abyss_magic_or_defense_item(self, *, defense: bool) -> str:
+        if defense:
+            roll = roll_d6()
+            names = {
+                1: "Ring of Defense",
+                2: "Cross against Vampires",
+                3: "Brownie Ward",
+                4: "Magic Shield",
+                5: "Elfin Chain Mail",
+                6: "Suit of Enchanted Armor",
+            }
+            return names.get(roll, "Abyss magical defense")
+        roll = roll_d6()
+        names = {
+            1: "Amulet of Protection versus Undead",
+            2: "Medallion of Snake Charming",
+            3: "Parchment of Banishing",
+            4: "Baton of Righteousness",
+            5: "Philter of Fire Breathing",
+            6: f"Ring of Three Wishes ({roll_d3()} wishes)",
+        }
+        return names.get(roll, "Abyss magic treasure")
 
     def _roll_abyss_monster_row(
         self,
@@ -14529,7 +14614,9 @@ class RandomDungeonEngine:
             session.log.append("Choose a treasure outcome.")
             return
         choice_key = tile.pending_treasure_choice
-        if choice_key.startswith("fd_"):
+        if choice_key.startswith("abyss_"):
+            outcome = self._resolve_abyss_treasure_choice(choice_key, pick, tile)
+        elif choice_key.startswith("fd_"):
             outcome = self.table_roller.resolve_fd_treasure_choice(
                 choice_key,
                 pick,
@@ -14557,6 +14644,28 @@ class RandomDungeonEngine:
         self._apply_treasure_doubling(tile)
         if outcome.gold or outcome.items:
             session.pending_treasure_reroll_tile_id = tile.id
+
+    def _resolve_abyss_treasure_choice(self, choice_key: str, pick: str, tile: TileState) -> TreasureOutcome:
+        if choice_key == "abyss_gold_or_weapon":
+            if pick == "weapon":
+                return TreasureOutcome("Abyss treasure: one non-magical weapon of your choice.", 0, ["Non-magical weapon"], [])
+            return TreasureOutcome(tile.treasure_summary or "Abyss gold.", tile.treasure_gold, [], [])
+        if choice_key == "abyss_gold_or_useful":
+            if pick == "useful":
+                item = self._roll_abyss_useful_item()
+                return TreasureOutcome(f"Abyss Useful Stuff: {item}.", 0, [item], [])
+            return TreasureOutcome(tile.treasure_summary or "Abyss gold.", tile.treasure_gold, [], [])
+        if choice_key == "abyss_jewelry_or_useful":
+            if pick == "useful":
+                item = self._roll_abyss_useful_item()
+                return TreasureOutcome(f"Abyss Useful Stuff: {item}.", 0, [item], [])
+            return TreasureOutcome(tile.treasure_summary or "Abyss jewelry.", tile.treasure_gold, ["Abyss jewelry"], [])
+        if choice_key == "abyss_defense_or_gold":
+            if pick == "gold":
+                return TreasureOutcome(tile.treasure_summary or "Abyss gold.", tile.treasure_gold, [], [])
+            item = tile.treasure_items[0] if tile.treasure_items else self._roll_abyss_magic_or_defense_item(defense=True)
+            return TreasureOutcome(f"Abyss magical defense: {item}.", 0, [item], [])
+        return TreasureOutcome(tile.treasure_summary or "Abyss treasure.", tile.treasure_gold, list(tile.treasure_items), [])
 
     def _fd_oblivion_redeem_madness(
         self,
@@ -14754,7 +14863,7 @@ class RandomDungeonEngine:
         show_rolls: bool,
         session: SessionState | None = None,
     ) -> None:
-        if tile.content_key in {"treasure", "trap_treasure"} or any("treasure" in item.lower() for item in tile.objects):
+        if (tile.content_key in {"treasure", "trap_treasure"} or any("treasure" in item.lower() for item in tile.objects)) and not tile.treasure_summary:
             outcome = self._roll_treasure(session)
             if show_rolls and session is not None:
                 session.log.extend(outcome.log)
@@ -14764,7 +14873,7 @@ class RandomDungeonEngine:
                 tile.treasure_summary = outcome.summary
                 tile.treasure_gold = outcome.gold
                 tile.treasure_items = list(outcome.items)
-        if tile.content_key == "trap_treasure" or any("trap" in item.lower() for item in tile.objects):
+        if (tile.content_key == "trap_treasure" or any("trap" in item.lower() for item in tile.objects)) and not tile.trap_key:
             if session is not None and is_fd_ruleset(session):
                 trap = self.table_roller.roll_fd_trap(
                     hcl,
@@ -14850,6 +14959,13 @@ class RandomDungeonEngine:
             from .forsaken_depths_side_sheet import apply_fd_side_sheet_room
 
             apply_fd_side_sheet_room(self, session, tile, show_rolls=show_rolls)
+        elif tile.content_key in {"abyss_special_feature", "abyss_unique_event"} and tile.special_event_key and not tile.resolved:
+            self._apply_abyss_pending_feature_or_event(
+                session,
+                tile,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
         elif is_fd_ruleset(session):
             from .forsaken_depths_content import maybe_fd_stirs_on_tile_enter
 
@@ -14864,6 +14980,38 @@ class RandomDungeonEngine:
             session.log.append(
                 "Event: This area is empty and searchable, or you may spend 2 Clues to find a secret passage."
             )
+
+    def _apply_abyss_pending_feature_or_event(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        key = tile.special_event_key or ""
+        if key == "room_of_horrors":
+            self._resolve_abyss_room_of_horrors(session, tile, show_rolls=show_rolls)
+            return
+        if key == "dark_plague":
+            self._resolve_abyss_dark_plague(session, tile, show_rolls=show_rolls)
+            return
+        if key == "mana_sink":
+            self._resolve_abyss_mana_sink(session, tile, show_rolls=show_rolls)
+            return
+        choice_labels = {
+            "enchanted_banquet": "eat from the Enchanted Banquet or leave it alone",
+            "lava_river": "choose a hero to leap the Lava River or leave the item",
+            "chained_monster": "free, kill, or leave the chained Abyss boss",
+            "repository_secret_knowledge": "research the repository or leave it alone",
+            "puzzle_room": "choose a hero to solve the Abyss puzzle box or leave it alone",
+            "book_of_secrets": "choose a reader for the Book of Secrets or leave it alone",
+            "swarm_of_critters": "cast Fireball or endure the swarm",
+            "secret_stairs": "take the secret stairs or leave them alone",
+            "gold_ghost": "pay 100gp or refuse the Gold Ghost",
+        }
+        if key in choice_labels:
+            session.log.append(f"Abyss event: {choice_labels[key]}.")
 
     def _mark_environment_event_resolved(
         self,
@@ -15648,6 +15796,357 @@ class RandomDungeonEngine:
             else:
                 session.log.append(f"{member.name} resists the spore cloud.")
 
+    def _resolve_abyss_room_of_horrors(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
+        from .heroic_skill_effects import resolve_fear_save
+
+        for member in session.party:
+            if member.current_life <= 0:
+                continue
+            session.log.extend(apply_madness_gain(session, member, source="Abyss Room of Horrors", show_rolls=show_rolls))
+            saved, fear_log = resolve_fear_save(
+                session,
+                member,
+                6,
+                party=session.party,
+                show_rolls=show_rolls,
+                label="Room of Horrors fear",
+                madness_source="Room of Horrors",
+            )
+            session.log.extend(fear_log)
+            if not saved and "Abyss Room of Horrors -1 Attack" not in member.statuses:
+                member.statuses.append("Abyss Room of Horrors -1 Attack")
+                session.log.append(f"Effect: {member.name} suffers -1 Attack until blessed.")
+        self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+
+    def _resolve_abyss_dark_plague(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
+        living = [member for member in session.party if member.current_life > 0]
+        if not living:
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            return
+        target = random.choice(living)
+        bonus = save_modifier(target)
+        passed = self._abyss_save(target, 5, show_rolls=show_rolls, log=session.log, label="Dark Plague", bonus=bonus)
+        if not passed and "Dark Plague" not in target.statuses:
+            target.statuses.append("Dark Plague")
+            session.log.append(f"Effect: {target.name} contracts the Dark Plague (Abyss p.37).")
+        self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+
+    def _resolve_abyss_mana_sink(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
+        for member in session.party:
+            if member.current_life <= 0:
+                continue
+            spells = list(member.spells or [])
+            if not spells:
+                continue
+            kept: list[str] = []
+            lost: list[str] = []
+            bonus = member.level // 2
+            for spell in spells:
+                if self._abyss_save(member, 7, show_rolls=show_rolls, log=session.log, label=f"Mana Sink ({spell})", bonus=bonus):
+                    kept.append(spell)
+                else:
+                    lost.append(spell)
+            member.spells = kept
+            if lost:
+                session.log.append(f"Effect: {member.name} loses prepared spell(s): {', '.join(lost)}.")
+        self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+
+    def _resolve_abyss_special_feature_choice(
+        self,
+        session: SessionState,
+        tile: TileState,
+        choice: str | None,
+        *,
+        target_character_id: str | None,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        key = tile.special_event_key or ""
+        if key == "enchanted_banquet":
+            if choice == "leave_abyss_banquet":
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+                session.log.append("Abyss Banquet: the party leaves the food untouched.")
+                return
+            if choice != "eat_abyss_banquet":
+                session.log.append("Choose whether the party eats from the Enchanted Banquet.")
+                return
+            for member in [item for item in session.party if item.current_life > 0]:
+                self._resolve_abyss_banquet_eater(session, tile, member, show_rolls=show_rolls)
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            return
+        if key == "lava_river":
+            if choice == "leave_abyss_lava":
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+                session.log.append("Abyss Lava River: the party leaves the item across the lava.")
+                return
+            if choice != "leap_abyss_lava":
+                session.log.append("Choose a living hero to leap the Lava River.")
+                return
+            member = self._chosen_or_lead(session, target_character_id)
+            if member is None:
+                session.log.append("Choose a living hero to leap the Lava River.")
+                return
+            bonus = member.level if member.class_id.lower() == "rogue" else 0
+            if member.class_id.lower() in {"halfling", "elf"}:
+                bonus += 1
+            if member.class_id.lower() == "dwarf" or "heavy armor" in " ".join(member.inventory).lower():
+                bonus -= 1
+            crossed = self._abyss_save(member, 6, show_rolls=show_rolls, log=session.log, label="Lava River leap out", bonus=bonus)
+            returned = crossed and self._abyss_save(member, 6, show_rolls=show_rolls, log=session.log, label="Lava River leap back", bonus=bonus)
+            if crossed:
+                item = self._roll_abyss_magic_or_defense_item(defense=False)
+                tile.treasure_items.append(item)
+                tile.treasure_summary = f"Lava River prize: {item}."
+                tile.treasure_claimed = False
+                session.log.append(f"Abyss Lava River: {member.name} recovers {item}.")
+            if not crossed or not returned:
+                self._damage_member(member, roll_d6(), session.log, "falling into lava")
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            return
+        if key == "chained_monster":
+            self._resolve_abyss_chained_monster(session, tile, choice, show_rolls=show_rolls)
+            return
+        if key == "repository_secret_knowledge":
+            if choice == "leave_abyss_repository":
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+                session.log.append("Abyss Repository: the party leaves the books alone.")
+                return
+            if choice != "research_abyss_repository":
+                session.log.append("Choose whether to research the Repository of Secret Knowledge.")
+                return
+            self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls, start_combat=False)
+            member = self._chosen_or_lead(session, target_character_id)
+            if member:
+                self._grant_clue_to_member(session, member, tile)
+                if roll_die(8) <= 2:
+                    session.log.extend(apply_madness_gain(session, member, source="Abyss Repository", show_rolls=show_rolls))
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            return
+        if key == "puzzle_room":
+            if choice == "leave_abyss_puzzle":
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+                session.log.append("Abyss Puzzle Room: the party leaves the puzzle box alone.")
+                return
+            if choice != "attempt_abyss_puzzle":
+                session.log.append("Choose a living hero to attempt the Abyss puzzle box.")
+                return
+            member = self._chosen_or_lead(session, target_character_id)
+            if member is None:
+                session.log.append("Choose a living hero to attempt the Abyss puzzle box.")
+                return
+            level = roll_die(8) + 4
+            bonus = member.level if member.class_id.lower() in {"wizard", "rogue"} else 0
+            if self._abyss_save(member, level, show_rolls=show_rolls, log=session.log, label="Abyss puzzle box", bonus=bonus):
+                outcome = self._roll_abyss_treasure_outcome()
+                self._stage_treasure_outcome(session, tile, outcome, show_rolls=show_rolls)
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            else:
+                self._damage_member(member, 1, session.log, "failed Abyss puzzle")
+            return
+
+    def _resolve_abyss_unique_event_choice(
+        self,
+        session: SessionState,
+        tile: TileState,
+        choice: str | None,
+        *,
+        target_character_id: str | None,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        key = tile.special_event_key or ""
+        if key == "book_of_secrets":
+            if choice == "leave_abyss_book":
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+                session.log.append("Abyss Book of Secrets: the party leaves the book hidden.")
+                return
+            if choice != "read_abyss_book":
+                session.log.append("Choose a living reader for the Book of Secrets.")
+                return
+            member = self._chosen_or_lead(session, target_character_id)
+            if member is None:
+                session.log.append("Choose a living reader for the Book of Secrets.")
+                return
+            clues = roll_d6()
+            for _ in range(clues):
+                self._grant_clue_to_member(session, member, tile)
+            bonus = member.level // 2 if member.class_id.lower() == "wizard" else 0
+            if not self._abyss_save(member, clues + 2, show_rolls=show_rolls, log=session.log, label="Book of Secrets madness", bonus=bonus):
+                for _ in range(roll_d3()):
+                    session.log.extend(apply_madness_gain(session, member, source="Book of Secrets", show_rolls=show_rolls))
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            return
+        if key == "swarm_of_critters":
+            if choice == "cast_fireball_abyss_swarm":
+                caster = self._chosen_or_lead(session, target_character_id)
+                if caster and self._spend_prepared_spell(caster, "Fireball"):
+                    session.log.append(f"Abyss Swarm: {caster.name} casts Fireball and disperses the critters.")
+                    self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+                    return
+                session.log.append("Choose a living caster with a prepared Fireball, or endure the swarm.")
+                return
+            if choice != "endure_abyss_swarm":
+                session.log.append("Choose Fireball or endure the Swarm of Critters.")
+                return
+            for member in [item for item in session.party if item.current_life > 0]:
+                self._damage_member(member, 1, session.log, "Swarm of Critters")
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            return
+        if key == "secret_stairs":
+            if choice == "leave_abyss_stairs":
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+                session.log.append("Abyss Secret Stairs: the party leaves the passage alone.")
+                return
+            if choice != "take_abyss_stairs":
+                session.log.append("Choose whether to take the Secret Stairs.")
+                return
+            if roll_d6() == 1:
+                self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls, combat_message="Wandering Monsters wait on the Secret Stairs!")
+            else:
+                session.log.append("Abyss Secret Stairs: no wandering monsters appear.")
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            return
+        if key == "gold_ghost":
+            if choice == "pay_abyss_gold_ghost":
+                paid, log = self._spend_party_gold(session, 100)
+                if not paid:
+                    session.log.append("The party needs 100gp to appease the Gold Ghost.")
+                    return
+                session.log.extend(log)
+                session.log.append("Abyss Gold Ghost: the spirit accepts 100gp and fades.")
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+                return
+            if choice != "refuse_abyss_gold_ghost":
+                session.log.append("Choose whether to pay 100gp or refuse the Gold Ghost.")
+                return
+            for member in [item for item in session.party if item.current_life > 0]:
+                if "Gold Ghost -1 Defense" not in member.statuses:
+                    member.statuses.append("Gold Ghost -1 Defense")
+            session.log.append("Abyss Gold Ghost: all living heroes suffer -1 Defense until individually Blessed.")
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+
+    def _resolve_abyss_banquet_eater(self, session: SessionState, tile: TileState, member: PartyMemberState, *, show_rolls: bool) -> None:
+        roll = roll_d6()
+        if show_rolls:
+            session.log.append(f"Enchanted Banquet: {member.name} rolls d6 = {roll}.")
+        if roll == 1:
+            healed = min(3, member.max_life - member.current_life)
+            member.current_life += healed
+            loss = roll_d6() * roll_d6()
+            member.gold = max(0, member.gold - loss)
+            session.log.append(f"Magical Food: {member.name} heals {healed} Life; a fey steals up to {loss}gp.")
+            if loss <= 0 and "Magical Bells" not in member.statuses:
+                member.statuses.append("Magical Bells")
+        elif roll == 2:
+            member.current_life = min(member.max_life, member.current_life + 1)
+            session.log.append(f"Nourishing Food: {member.name} heals 1 Life.")
+        elif roll == 3:
+            bonus = member.level if member.class_id.lower() == "halfling" else (1 if member.class_id.lower() == "barbarian" else 0)
+            if not self._abyss_save(member, 7, show_rolls=show_rolls, log=session.log, label="Spoiled lamb poison", bonus=bonus):
+                member.statuses.append("Spoiled Banquet -1 Attack (2 encounters)")
+        elif roll == 4:
+            bonus = member.level // 2 if member.class_id.lower() in {"wizard", "cleric"} else 0
+            if not self._abyss_save(member, 6, show_rolls=show_rolls, log=session.log, label="Ghost Food magic", bonus=bonus):
+                session.log.extend(apply_madness_gain(session, member, source="Ghost Food", show_rolls=show_rolls))
+        elif roll == 5:
+            if not any(enemy.name == "Two-Headed Ogre" for enemy in tile.enemies + tile.defeated_enemies):
+                tile.enemies.append(
+                    EnemyState(
+                        id=uuid4().hex,
+                        name="Two-Headed Ogre",
+                        category="boss",
+                        level=7,
+                        life=6,
+                        max_life=6,
+                        attacks=2,
+                        tags=["abyss", "surprise", "fight_to_death", "abyss_treasure_rolls:1"],
+                    )
+                )
+                tile.treasure_summary = "Two-Headed Ogre silverware worth 100gp."
+                tile.treasure_gold = 100
+                tile.treasure_claimed = False
+                session.log.append(f"That's My Food: a two-headed ogre attacks {member.name} with surprise.")
+        elif roll == 6:
+            if member.class_id.lower() == "barbarian":
+                session.log.append(f"Fey Food: {member.name} is a barbarian and ignores the spell gift.")
+                return
+            spell = self.table_roller.roll_random_basic_spell()
+            spell_name = str(spell.get("spell", "Fireball")) if spell else "Fireball"
+            member.inventory.append(f"One-use Fey Food spell: {spell_name}")
+            session.log.append(f"Fey Food: {member.name} gains a one-use {spell_name} spell.")
+
+    def _chosen_or_lead(self, session: SessionState, character_id: str | None) -> PartyMemberState | None:
+        if character_id:
+            chosen = next((member for member in session.party if member.character_id == character_id), None)
+            if chosen is not None and chosen.current_life > 0:
+                return chosen
+        return self._member_by_marching_order(session, 1)
+
+    def _grant_clue_to_member(self, session: SessionState, member: PartyMemberState, tile: TileState) -> None:
+        member.clues += 1
+        if "Clue" not in tile.objects:
+            tile.objects.append("Clue")
+        session.log.append(f"Effect: {member.name} gains 1 Clue (now {member.clues}).")
+
+    def _spend_prepared_spell(self, member: PartyMemberState, spell_name: str) -> bool:
+        target = spell_name.lower()
+        for index, spell in enumerate(list(member.spells or [])):
+            if str(spell).lower() == target:
+                del member.spells[index]
+                return True
+        return False
+
+    def _resolve_abyss_chained_monster(
+        self,
+        session: SessionState,
+        tile: TileState,
+        choice: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if choice == "leave_abyss_chained_monster":
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            session.log.append("Abyss Chained Monster: the party leaves the prisoner chained.")
+            return
+        if choice == "free_abyss_chained_monster":
+            gold = roll_d6() * roll_d6()
+            tile.treasure_summary = f"Chained monster reward worth {gold}gp."
+            tile.treasure_gold = gold
+            tile.treasure_claimed = False
+            lead = self._member_by_marching_order(session, 1)
+            if lead:
+                self._grant_clue_to_member(session, lead, tile)
+            session.log.append(
+                "Abyss Chained Monster: the freed boss pays the party and may return beside the Final Boss (2-in-6; tracked in log)."
+            )
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            return
+        if choice == "kill_abyss_chained_monster":
+            enemies, subdesc = self._roll_abyss_monster_row(session, "abyss_boss_table", "boss")
+            for enemy in enemies:
+                if "no_treasure" not in enemy.tags:
+                    enemy.tags.append("no_treasure")
+                if "no_xp" not in enemy.tags:
+                    enemy.tags.append("no_xp")
+            tile.enemies.extend(enemies)
+            tile.initial_enemy_count = max(tile.initial_enemy_count, len(tile.enemies))
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            session.log.append(f"Abyss Chained Monster: the party attacks the prisoner without XP or treasure. {subdesc}")
+            if enemies:
+                self._begin_combat(session, "The chained Abyss boss fights for its life.", tile=tile, show_rolls=show_rolls)
+            return
+        session.log.append("Choose whether to free, kill, or leave the chained Abyss boss.")
+
+    def _roll_abyss_treasure_outcome(self) -> TreasureOutcome:
+        extra = self._roll_abyss_treasure_extra()
+        return TreasureOutcome(
+            str(extra.get("treasure_summary") or "Abyss treasure."),
+            int(extra.get("treasure_gold") or 0),
+            list(extra.get("treasure_items") or []),
+            [],
+            choice_key=extra.get("pending_treasure_choice"),
+        )
+
     def _resolve_tile_content_choice(
         self,
         session: SessionState,
@@ -15839,8 +16338,25 @@ class RandomDungeonEngine:
             session.log.append("Resolve special features during exploration.")
             return
         tile = self._active_tile(session)
-        pending_keys = {"statue", "puzzle_box", "blessed_temple"}
-        if tile.content_key != "special_feature" or tile.special_event_key not in pending_keys:
+        pending_keys = {
+            "statue",
+            "puzzle_box",
+            "blessed_temple",
+            "enchanted_banquet",
+            "lava_river",
+            "chained_monster",
+            "repository_secret_knowledge",
+            "puzzle_room",
+            "book_of_secrets",
+            "swarm_of_critters",
+            "secret_stairs",
+            "gold_ghost",
+        }
+        abyss_content_keys = {"abyss_special_feature", "abyss_unique_event"}
+        if (
+            (tile.content_key != "special_feature" and tile.content_key not in abyss_content_keys)
+            or tile.special_event_key not in pending_keys
+        ):
             if not (
                 session.adventure_type == "imported"
                 and tile.content_key.startswith(IMPORTED_ROOM_PREFIX)
@@ -15913,6 +16429,32 @@ class RandomDungeonEngine:
                 session.log.append("Event: The party leaves the puzzle box alone.")
                 return
             session.log.append("Choose whether to attempt the puzzle box or leave it alone.")
+            return
+        if tile.special_event_key in {
+            "enchanted_banquet",
+            "lava_river",
+            "chained_monster",
+            "repository_secret_knowledge",
+            "puzzle_room",
+        }:
+            self._resolve_abyss_special_feature_choice(
+                session,
+                tile,
+                choice,
+                target_character_id=target_character_id,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+            return
+        if tile.special_event_key in {"book_of_secrets", "swarm_of_critters", "secret_stairs", "gold_ghost"}:
+            self._resolve_abyss_unique_event_choice(
+                session,
+                tile,
+                choice,
+                target_character_id=target_character_id,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
 
     def _resolve_statue_feature(self, session: SessionState, tile: TileState, hcl: int, *, show_rolls: bool) -> None:
         roll = roll_d6()
@@ -16134,6 +16676,10 @@ class RandomDungeonEngine:
             session.log.append(f"{member.name}'s {lost} is snatched away forever by the mycelium.")
             self._finalize_trap_resolution(session, tile, trap_log=[], show_rolls=show_rolls)
             return
+        if (tile.trap_key or "").startswith("abyss_"):
+            trap_log = self._resolve_abyss_trap(session, tile, show_rolls=show_rolls)
+            self._finalize_trap_resolution(session, tile, trap_log=trap_log, show_rolls=show_rolls)
+            return
         lead = next(
             (
                 item
@@ -16295,6 +16841,136 @@ class RandomDungeonEngine:
         if session.illusionary_servant_active:
             self._dismiss_illusionary_servant(session, "trapped by the mechanism")
         self._after_trap_resolved(session, tile)
+
+    def _resolve_abyss_trap(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> list[str]:
+        key = tile.trap_key or ""
+        level = tile.trap_level or self._highest_character_level(session.party)
+        living = [member for member in sorted(session.party, key=lambda row: row.marching_order) if member.current_life > 0]
+        log: list[str] = []
+        if not living:
+            return log
+        if key == "abyss_dart_shooting_mechanism":
+            target = random.choice(living)
+            failed = not self._abyss_save(target, level, show_rolls=show_rolls, log=log, label="Dart trap", bonus=self._abyss_trap_bonus(target, key))
+            if failed:
+                poison_bonus = 1 if target.class_id.lower() == "barbarian" else 0
+                poisoned = not self._abyss_save(target, 4, show_rolls=show_rolls, log=log, label="Dart poison", bonus=poison_bonus)
+                if poisoned:
+                    self._damage_member(target, 2, log, "poisonous dart")
+            return log
+        if key == "abyss_giant_metal_ball":
+            for member in living:
+                failed = not self._abyss_save(member, level, show_rolls=show_rolls, log=log, label="Giant metal ball", bonus=self._abyss_trap_bonus(member, key))
+                if failed:
+                    self._damage_member(member, 1, log, "giant metal ball")
+            return log
+        if key == "abyss_crocodile_pit":
+            target = random.choice(living)
+            failed = not self._abyss_save(target, level, show_rolls=show_rolls, log=log, label="Crocodile pit", bonus=self._abyss_trap_bonus(target, key))
+            if failed:
+                self._damage_member(target, 1, log, "falling into the crocodile pit")
+                crocodile = EnemyState(
+                    id=uuid4().hex,
+                    name="Spiked Crocodile",
+                    category="weird",
+                    level=7,
+                    life=3,
+                    max_life=3,
+                    attacks=1,
+                    tags=["abyss", "crocodile", "surprise", "no_treasure"],
+                )
+                tile.enemies.append(crocodile)
+                tile.initial_enemy_count = max(tile.initial_enemy_count, len(tile.enemies))
+                log.append("A level 7 spiked crocodile attacks from the pit; it strikes first and fights to the death.")
+                if roll_d6() <= 2:
+                    gold = roll_formula("8d6")
+                    tile.treasure_summary = f"Crocodile pit victims' treasure worth {gold}gp."
+                    tile.treasure_gold = gold
+                    tile.treasure_claimed = False
+                    log.append(f"Pit remains: 2-in-6 treasure found, worth {gold}gp after the crocodile is slain.")
+            return log
+        if key == "abyss_guillotine":
+            target = random.choice(living)
+            failed = not self._abyss_save(target, level, show_rolls=show_rolls, log=log, label="Guillotine", bonus=self._abyss_trap_bonus(target, key))
+            if failed:
+                self._damage_member(target, 3, log, "guillotine blade")
+            return log
+        if key == "abyss_electrical_blast":
+            for member in living:
+                failed = not self._abyss_save(member, 7, show_rolls=show_rolls, log=log, label="Electrical blast", bonus=0)
+                if failed:
+                    self._damage_member(member, 1, log, "electrical blast")
+            return log
+        if key == "abyss_steel_spear":
+            spear_level = 7
+            for member in living:
+                bonus = self._abyss_trap_bonus(member, key)
+                failed = not self._abyss_save(member, spear_level, show_rolls=show_rolls, log=log, label="Steel spear dodge", bonus=bonus)
+                if failed:
+                    damage = roll_d3()
+                    self._damage_member(member, damage, log, "steel spear")
+                    spear_level = max(1, spear_level - 1)
+                    log.append(f"The spear continues; its level drops to {spear_level}.")
+                    continue
+                log.append(f"{member.name} dodges; the spear continues toward the next hero.")
+            return log
+        log.append(f"Abyss trap {key} has no exact resolver; no effect applied.")
+        return log
+
+    def _abyss_trap_bonus(self, member: PartyMemberState, trap_key: str) -> int:
+        class_id = member.class_id.lower()
+        if trap_key == "abyss_dart_shooting_mechanism":
+            return member.level if class_id in {"halfling", "rogue"} else 0
+        if trap_key == "abyss_giant_metal_ball":
+            bonus = 0
+            if class_id == "rogue":
+                bonus += member.level
+            elif class_id in {"halfling", "swashbuckler", "elf"}:
+                bonus += member.level // 2
+            inventory = " ".join(member.inventory).lower()
+            if "heavy armor" in inventory:
+                bonus += 1
+            if "shield" in inventory:
+                bonus += 1
+            return bonus
+        if trap_key == "abyss_guillotine":
+            if class_id == "rogue":
+                return member.level
+            if class_id in {"elf", "swashbuckler", "halfling"}:
+                return 1
+            return 0
+        if trap_key == "abyss_steel_spear":
+            if class_id == "rogue":
+                return member.level
+            if class_id in {"elf", "halfling"}:
+                return member.level // 2
+            return 0
+        return 0
+
+    def _abyss_save(
+        self,
+        member: PartyMemberState,
+        level: int,
+        *,
+        show_rolls: bool,
+        log: list[str],
+        label: str,
+        bonus: int = 0,
+    ) -> bool:
+        total, rolls = roll_exploding_for_level(member)
+        score = total + bonus + encumbrance_penalty(member)
+        if show_rolls:
+            detail = f"{' + '.join(str(value) for value in rolls)}"
+            if bonus:
+                detail += f" + {bonus}"
+            log.append(f"{label}: {member.name} rolls {detail} vs L{level}.")
+        passed = rolls[0] != 1 and score >= level
+        log.append(f"{member.name} {'succeeds' if passed else 'fails'} the {label.lower()} save.")
+        return passed
+
+    def _damage_member(self, member: PartyMemberState, amount: int, log: list[str], source: str) -> None:
+        member.current_life = max(0, member.current_life - max(0, amount))
+        log.append(f"Effect: {member.name} loses {amount} Life from {source} ({member.current_life}/{member.max_life}).")
 
     def _resolve_environment_trap_wandering_follow_up(
         self,

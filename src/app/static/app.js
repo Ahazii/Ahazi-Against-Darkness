@@ -13543,8 +13543,13 @@ const RULES_TABLE_ORDER = [
   "abyss_room_content_table",
   "abyss_trap_table",
   "abyss_treasure_table",
+  "abyss_magic_treasure_table",
+  "abyss_scroll_table",
+  "abyss_magical_defense_table",
   "abyss_special_feature_table",
   "abyss_unique_event_table",
+  "abyss_enchanted_banquet_table",
+  "abyss_useful_stuff_table",
   "abyss_vermin_table",
   "abyss_minions_table",
   "abyss_boss_table",
@@ -16364,10 +16369,27 @@ function renderArmoryChoices(session) {
 }
 
 function pendingSpecialFeatureChoice(tile) {
-  if (!tile || tile.content_key !== "special_feature" || tile.resolved) return null;
+  if (!tile || tile.resolved) return null;
+  const allowedContent = tile.content_key === "special_feature" || tile.content_key === "abyss_special_feature" || tile.content_key === "abyss_unique_event";
+  if (!allowedContent) return null;
   if (tile.special_event_key === "statue") return "statue";
   if (tile.special_event_key === "puzzle_box") return "puzzle_box";
   if (tile.special_event_key === "blessed_temple") return "blessed_temple";
+  if (
+    [
+      "enchanted_banquet",
+      "lava_river",
+      "chained_monster",
+      "repository_secret_knowledge",
+      "puzzle_room",
+      "book_of_secrets",
+      "swarm_of_critters",
+      "secret_stairs",
+      "gold_ghost",
+    ].includes(tile.special_event_key)
+  ) {
+    return tile.special_event_key;
+  }
   return null;
 }
 
@@ -16403,6 +16425,7 @@ function pendingSpecialFeatureTitle(feature) {
   if (feature === "blessed_temple") {
     return "Special feature: Blessed Temple — choose which hero receives +1 Attack vs undead or demons";
   }
+  if (feature) return `Abyss feature: ${feature.replaceAll("_", " ")} awaiting choice`;
   return "Special feature awaiting choice";
 }
 
@@ -16427,6 +16450,123 @@ function renderSpecialFeatureChoices(session) {
     return;
   }
   specialFeatureChoicesEl.classList.remove("hidden");
+  const abyssChoiceButton = (label, choice, title, extra = {}) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary";
+    btn.textContent = label;
+    setButtonTooltip(btn, title);
+    if (!extra.__manual) {
+      btn.addEventListener("click", () =>
+        advance("resolve_special_feature", { special_feature_choice: choice, ...extra })
+      );
+    }
+    specialFeatureChoicesEl.appendChild(btn);
+    return btn;
+  };
+  const appendLivingSelect = () => {
+    const living = (session.party || []).filter((member) => member.current_life > 0);
+    const select = document.createElement("select");
+    select.className = "search-select";
+    for (const member of living) {
+      const option = document.createElement("option");
+      option.value = member.character_id;
+      option.textContent = member.name;
+      select.appendChild(option);
+    }
+    specialFeatureChoicesEl.appendChild(select);
+    return select;
+  };
+  if (feature === "enchanted_banquet") {
+    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Enchanted Banquet — decide before rolling:"));
+    abyssChoiceButton("Eat and drink", "eat_abyss_banquet", "Abyss p.50/p.60: every living hero rolls on the Enchanted Banquet table.");
+    abyssChoiceButton("Leave alone", "leave_abyss_banquet", "Ignore the banquet without rolling.");
+    return;
+  }
+  if (feature === "lava_river") {
+    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Lava River — choose jumper:"));
+    const select = appendLivingSelect();
+    abyssChoiceButton("Leap for item", "leap_abyss_lava", "Abyss p.50: Save vs L6 out and back; failure causes d6 wounds.", {
+      target_character_id: select.value,
+      __manual: true,
+    }).addEventListener("click", (event) => {
+      event.preventDefault();
+      advance("resolve_special_feature", { special_feature_choice: "leap_abyss_lava", target_character_id: select.value });
+    });
+    abyssChoiceButton("Leave item", "leave_abyss_lava", "Do not risk the lava crossing.");
+    return;
+  }
+  if (feature === "chained_monster") {
+    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Chained Monster — choose:"));
+    abyssChoiceButton("Free monster", "free_abyss_chained_monster", "Abyss p.50: gain d6 x d6 gp and a Clue; the monster may join the Final Boss.");
+    abyssChoiceButton("Kill monster", "kill_abyss_chained_monster", "Fight a random Abyss Boss, but gain no XP rolls or treasure.");
+    abyssChoiceButton("Leave chained", "leave_abyss_chained_monster", "Ignore the chained boss.");
+    return;
+  }
+  if (feature === "repository_secret_knowledge") {
+    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Repository — choose researcher:"));
+    const select = appendLivingSelect();
+    abyssChoiceButton("Research", "research_abyss_repository", "Abyss p.50: roll wandering monsters, then gain 1 Clue; d8 1-2 also gains Madness.", {
+      target_character_id: select.value,
+      __manual: true,
+    }).addEventListener("click", (event) => {
+      event.preventDefault();
+      advance("resolve_special_feature", { special_feature_choice: "research_abyss_repository", target_character_id: select.value });
+    });
+    abyssChoiceButton("Leave books", "leave_abyss_repository", "Do not research the repository.");
+    return;
+  }
+  if (feature === "puzzle_room") {
+    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Puzzle Room — choose solver:"));
+    const select = appendLivingSelect();
+    abyssChoiceButton("Attempt puzzle", "attempt_abyss_puzzle", "Abyss p.50: puzzle level d8+4; Wizard/Rogue +L; failure costs 1 Life.", {
+      target_character_id: select.value,
+      __manual: true,
+    }).addEventListener("click", (event) => {
+      event.preventDefault();
+      advance("resolve_special_feature", { special_feature_choice: "attempt_abyss_puzzle", target_character_id: select.value });
+    });
+    abyssChoiceButton("Leave puzzle", "leave_abyss_puzzle", "Ignore the puzzle box.");
+    return;
+  }
+  if (feature === "book_of_secrets") {
+    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Book of Secrets — choose reader:"));
+    const select = appendLivingSelect();
+    abyssChoiceButton("Read book", "read_abyss_book", "Abyss p.59: gain d6 Clues, then save vs Clues+2 or gain d3 Madness.", {
+      target_character_id: select.value,
+      __manual: true,
+    }).addEventListener("click", (event) => {
+      event.preventDefault();
+      advance("resolve_special_feature", { special_feature_choice: "read_abyss_book", target_character_id: select.value });
+    });
+    abyssChoiceButton("Leave book", "leave_abyss_book", "Do not read the Book of Secrets.");
+    return;
+  }
+  if (feature === "swarm_of_critters") {
+    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Swarm of Critters — choose:"));
+    const select = appendLivingSelect();
+    abyssChoiceButton("Cast Fireball", "cast_fireball_abyss_swarm", "Abyss p.59: Fireball disperses the swarm.", {
+      target_character_id: select.value,
+      __manual: true,
+    }).addEventListener("click", (event) => {
+      event.preventDefault();
+      advance("resolve_special_feature", { special_feature_choice: "cast_fireball_abyss_swarm", target_character_id: select.value });
+    });
+    abyssChoiceButton("Endure swarm", "endure_abyss_swarm", "All living heroes lose 1 Life.");
+    return;
+  }
+  if (feature === "secret_stairs") {
+    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Secret Stairs — choose:"));
+    abyssChoiceButton("Take stairs", "take_abyss_stairs", "Abyss p.59: 1-in-6 chance of wandering monsters.");
+    abyssChoiceButton("Leave stairs", "leave_abyss_stairs", "Ignore the secret stairs.");
+    return;
+  }
+  if (feature === "gold_ghost") {
+    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Gold Ghost — choose:"));
+    abyssChoiceButton("Pay 100gp", "pay_abyss_gold_ghost", "Abyss p.59: sacrifice 100gp to appease the spirit.");
+    abyssChoiceButton("Refuse", "refuse_abyss_gold_ghost", "All living heroes suffer -1 Defense until individually Blessed.");
+    return;
+  }
   if (feature === "statue") {
     specialFeatureChoicesEl.appendChild(
       node("span", "search-label", "Statue — leave alone or touch:")
@@ -21190,6 +21330,30 @@ function treasureOutcomeChoices(choiceKey) {
         label: "Jackpot: roll 4× (4-in-6 wanderers)",
         title: "Roll four times on the table; 4-in-6 wandering monsters while looting (FD p.62).",
       },
+    ];
+  }
+  if (choiceKey === "abyss_gold_or_weapon") {
+    return [
+      { pick: "gold", label: "Abyss: take gold", title: "Abyss p.48: d8 x 5 gp." },
+      { pick: "weapon", label: "Abyss: non-magical weapon", title: "Abyss p.48: take one non-magical weapon of your choice." },
+    ];
+  }
+  if (choiceKey === "abyss_gold_or_useful") {
+    return [
+      { pick: "gold", label: "Abyss: take gold", title: "Abyss p.48: 4d6 x 10 gp." },
+      { pick: "useful", label: "Abyss: Useful Stuff", title: "Abyss p.48/p.61: roll/take one Useful Stuff item." },
+    ];
+  }
+  if (choiceKey === "abyss_jewelry_or_useful") {
+    return [
+      { pick: "jewelry", label: "Abyss: take jewelry", title: "Abyss p.48: jewelry worth 4d6 x 15 gp." },
+      { pick: "useful", label: "Abyss: Useful Stuff", title: "Abyss p.48/p.61: roll/take one Useful Stuff item." },
+    ];
+  }
+  if (choiceKey === "abyss_defense_or_gold") {
+    return [
+      { pick: "defense", label: "Abyss: magical defense", title: "Abyss p.48: take a magical defense item." },
+      { pick: "gold", label: "Abyss: take gold", title: "Abyss p.48: take 4d6 x 25 gp instead." },
     ];
   }
   return [];

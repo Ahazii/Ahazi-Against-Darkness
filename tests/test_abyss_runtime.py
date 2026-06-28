@@ -69,6 +69,28 @@ def test_abyss_treasure_content_uses_claimable_payload(monkeypatch) -> None:
     assert content["enemies"] == []
 
 
+def test_abyss_treasure_choice_can_take_useful_stuff(monkeypatch) -> None:
+    eng = _engine()
+    session = eng.create_session("abyss-2b", "party-1", [_member()], ruleset_profile_id="abyss")
+    monkeypatch.setattr("app.engine.random_dungeon.roll_2d6", lambda: 2)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_die", lambda sides: 2 if sides == 8 else 1)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 3)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_formula", lambda formula: 4 if formula == "4d6" else 1)
+
+    content = eng._roll_content(session, "room", 5)
+    tile = session.map_state.tiles[0]
+    tile.treasure_summary = content["treasure_summary"]
+    tile.treasure_gold = content["treasure_gold"]
+    tile.pending_treasure_choice = content["pending_treasure_choice"]
+
+    assert tile.pending_treasure_choice == "abyss_gold_or_useful"
+    eng.advance(session, "choose_treasure_outcome", show_rolls=False, treasure_outcome_choice="useful")
+
+    assert tile.pending_treasure_choice is None
+    assert tile.treasure_items == ["Wolvesbane"]
+    assert tile.treasure_gold == 0
+
+
 def test_abyss_wandering_uses_abyss_monster_rows(monkeypatch) -> None:
     eng = _engine()
     session = eng.create_session("abyss-3", "party-1", [_member()], ruleset_profile_id="abyss")
@@ -82,3 +104,36 @@ def test_abyss_wandering_uses_abyss_monster_rows(monkeypatch) -> None:
     assert tile.enemies
     assert tile.enemies[0].name == "Phasing Panther"
     assert any("Abyss Wandering Monsters table" in line for line in session.log)
+
+
+def test_abyss_trap_resolves_with_abyss_effects(monkeypatch) -> None:
+    eng = _engine()
+    member = _member()
+    session = eng.create_session("abyss-4", "party-1", [member], ruleset_profile_id="abyss")
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "abyss_electrical_blast"
+    tile.trap_level = 7
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda hero: (1, [1]))
+
+    eng.advance(session, "resolve_trap", show_rolls=True)
+
+    assert tile.trap_resolved is True
+    assert session.party[0].current_life == 11
+    assert any("Electrical blast" in line for line in session.log)
+
+
+def test_abyss_room_of_horrors_applies_madness_and_resolves(monkeypatch) -> None:
+    eng = _engine()
+    member = _member()
+    member.level = 5
+    session = eng.create_session("abyss-5", "party-1", [member], ruleset_profile_id="abyss")
+    tile = session.map_state.tiles[0]
+    tile.content_key = "abyss_special_feature"
+    tile.special_event_key = "room_of_horrors"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda hero: (1, [1]))
+
+    eng._prepare_tile_features(session, tile, show_rolls=True, explain_math=False)
+
+    assert tile.resolved is True
+    assert session.party[0].madness >= 1
+    assert "Abyss Room of Horrors -1 Attack" in session.party[0].statuses

@@ -47,10 +47,11 @@ Include:
 Recent deeper-rule work:
 
 - **Abyss runtime pass (2026-06-28):** Four Against the Abyss profile added to setup; Abyss 2d6 room content, monster subtables, claimable treasure payloads, unique-feature/event summaries, and Abyss wandering spawns are routed through `abyss_tables.json`.
+- **Abyss phase 1 exact effects (2026-06-28):** Abyss traps, special-feature choices, unique-event choices, Enchanted Banquet, Useful Stuff choices, and magical-defense item names now resolve through existing trap/feature/treasure UI.
 
 Defer to later releases:
 
-- exact automation for Abyss long-form traps/features/events, Trial of Champions/hordes/multiple bosses, disease/transformation lifecycles, and campaign plots;
+- Abyss Trial of Champions/hordes/multiple bosses, exact inventory use-actions for every Abyss item, disease/transformation lifecycles, and campaign plots;
 - full TAG settlement/downtime UI (campaign shell + banking toggle wired);
 - large `app.js` / `random_dungeon.py` decomposition.
 
