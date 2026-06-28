@@ -951,7 +951,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.6"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.7"></script>' in INDEX_HTML
 
 
 def test_app_js_has_no_syntax_errors() -> None:

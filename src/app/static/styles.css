@@ -1329,10 +1329,9 @@ button.secondary,
 }
 
 .map-log-row:not(.log-row-expanded) .map-exits-dock:has(.map-exits-details[open]) {
-  flex: 1 1 auto;
-  height: auto;
-  max-height: none;
+  flex: 1 1 0%;
   min-height: 0;
+  max-height: 100%;
   align-self: stretch;
 }
 
@@ -1392,13 +1391,12 @@ button.secondary,
 }
 
 .map-exits-dock .map-exits-details[open] .map-exits-scroll {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
-  max-height: none;
 }
 
 .map-exits-scroll {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
   max-height: 100%;
   overflow-x: hidden;
@@ -1409,7 +1407,7 @@ button.secondary,
 }
 
 .map-exits-scroll.has-scroll {
-  overflow-y: auto;
+  overflow-y: scroll;
   scrollbar-gutter: stable;
 }
 

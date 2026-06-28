@@ -19615,33 +19615,38 @@ function sumExitRowWeights(session, tile) {
   return Math.max(1, total);
 }
 
-function bindMapExitsScrollHint(shell) {
-  if (!shell || shell.dataset.scrollBound === "1") return;
+function updateMapExitsScrollState(shell) {
+  if (!shell) return;
   const scroll = shell.querySelector(".map-exits-scroll");
   const hint = shell.querySelector(".map-exits-scroll-hint");
   if (!scroll) return;
-  shell.dataset.scrollBound = "1";
-  const update = () => {
-    const scrollable = scroll.scrollHeight > scroll.clientHeight + 2;
-    const atTop = scroll.scrollTop <= 2;
-    const atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 2;
-    const exitRows = scroll.querySelectorAll(".exit-row").length;
-    const rowHeight = scroll.querySelector(".exit-row")?.offsetHeight || 76;
-    const visibleEstimate = scroll.clientHeight > 0 ? Math.max(1, Math.floor(scroll.clientHeight / rowHeight)) : 1;
-    const hiddenCount = Math.max(0, exitRows - visibleEstimate);
-    scroll.classList.toggle("has-scroll", scrollable);
-    scroll.classList.toggle("at-scroll-top", atTop);
-    scroll.classList.toggle("at-scroll-bottom", atBottom);
-    if (hint) {
-      if (!scrollable) {
-        hint.classList.add("hidden");
-      } else {
-        hint.classList.remove("hidden");
-        const more = hiddenCount > 0 ? `${hiddenCount} more exit${hiddenCount === 1 ? "" : "s"} — ` : "";
-        hint.textContent = atBottom ? `${more}End of list`.trim() : `${more}Scroll for more exits ↓`.trim();
-      }
+  const scrollable = scroll.scrollHeight > scroll.clientHeight + 1;
+  const atTop = scroll.scrollTop <= 1;
+  const atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 1;
+  const exitRows = scroll.querySelectorAll(".exit-row").length;
+  const rowHeight = scroll.querySelector(".exit-row")?.offsetHeight || 76;
+  const visibleEstimate = scroll.clientHeight > 0 ? Math.max(1, Math.floor(scroll.clientHeight / rowHeight)) : 1;
+  const hiddenCount = Math.max(0, exitRows - visibleEstimate);
+  scroll.classList.toggle("has-scroll", scrollable);
+  scroll.classList.toggle("at-scroll-top", atTop);
+  scroll.classList.toggle("at-scroll-bottom", atBottom);
+  if (hint) {
+    if (!scrollable) {
+      hint.classList.add("hidden");
+    } else {
+      hint.classList.remove("hidden");
+      const more = hiddenCount > 0 ? `${hiddenCount} more exit${hiddenCount === 1 ? "" : "s"} — ` : "";
+      hint.textContent = atBottom ? `${more}End of list`.trim() : `${more}Scroll for more exits ↓`.trim();
     }
-  };
+  }
+}
+
+function bindMapExitsScrollHint(shell) {
+  if (!shell || shell.dataset.scrollBound === "1") return;
+  const scroll = shell.querySelector(".map-exits-scroll");
+  if (!scroll) return;
+  shell.dataset.scrollBound = "1";
+  const update = () => updateMapExitsScrollState(shell);
   update();
   scroll.addEventListener("scroll", update, { passive: true });
   if (typeof ResizeObserver !== "undefined") {
@@ -19652,6 +19657,17 @@ function bindMapExitsScrollHint(shell) {
   }
   window.setTimeout(update, 0);
   window.setTimeout(update, 120);
+  window.setTimeout(update, 320);
+}
+
+function scheduleMapExitsScrollRefresh(shell) {
+  if (!shell) return;
+  const refresh = () => updateMapExitsScrollState(shell);
+  requestAnimationFrame(() => {
+    refresh();
+    requestAnimationFrame(refresh);
+  });
+  window.setTimeout(refresh, 120);
 }
 
 function createExitRowElement(session, tile, exit, sideLabels, mode, { dock = false } = {}) {
@@ -19724,7 +19740,7 @@ function renderMapExitsOverlay(session) {
       const scoutableExitCount = (tile.exits || []).filter(
         (exit) => !exit.dungeon_exit && exit.status !== "blocked" && (exit.kind !== "door" || exit.door_open)
       ).length;
-      shell.appendChild(
+      scroll.appendChild(
         node(
           "div",
           "exit-section-note scout-exit-note",
@@ -19765,10 +19781,16 @@ function renderMapExitsOverlay(session) {
   details.addEventListener("toggle", () => {
     state.mapExitsOpen = details.open;
     saveLayoutPrefs();
-    if (details.open) requestAnimationFrame(() => bindMapExitsScrollHint(shell));
+    if (details.open) {
+      bindMapExitsScrollHint(shell);
+      scheduleMapExitsScrollRefresh(shell);
+    }
   });
   mapExitsPanel.appendChild(details);
-  if (details.open) requestAnimationFrame(() => bindMapExitsScrollHint(shell));
+  if (details.open) {
+    bindMapExitsScrollHint(shell);
+    scheduleMapExitsScrollRefresh(shell);
+  }
 }
 
 function doorTypeHint(exit, session) {
