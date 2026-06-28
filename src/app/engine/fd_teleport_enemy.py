@@ -3,8 +3,17 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 
 from ..schemas import EnemyState, SessionState, TeleportEnemyReturnState, TileState
+from .dice import roll_d6
+from .reactions import (
+    apply_reaction_overlays,
+    build_reaction_outcome,
+    lookup_reaction_row,
+    normalize_reaction_row,
+    resolve_reaction_source,
+)
 
 
 def _tile_by_id(session: SessionState, tile_id: str | None) -> TileState | None:
@@ -95,6 +104,8 @@ def tick_teleport_enemy_returns(
     *,
     log: list[str] | None = None,
     reason: str = "turn",
+    reaction_tables: dict[str, list[dict]] | None = None,
+    roll_reaction: Callable[[str, int], dict | None] | None = None,
 ) -> None:
     output = log if log is not None else session.log
     remaining: list[TeleportEnemyReturnState] = []
@@ -127,12 +138,53 @@ def tick_teleport_enemy_returns(
         if dest_id == pending.origin_tile_id:
             _restore_enemy(session, pending, output)
             continue
-        if any(enemy.life > 0 for enemy in dest.enemies):
-            output.append(
-                f"{pending.enemy.name} crosses occupied {dest.title}; roll reactions manually if applicable (FD p.19)."
-            )
+        _resolve_occupied_room_reaction(
+            pending,
+            dest,
+            output,
+            reaction_tables=reaction_tables or {},
+            roll_reaction=roll_reaction,
+        )
         remaining.append(pending)
     session.fd_teleport_enemy_returns = remaining
+
+
+def _resolve_occupied_room_reaction(
+    pending: TeleportEnemyReturnState,
+    dest: TileState,
+    log: list[str],
+    *,
+    reaction_tables: dict[str, list[dict]],
+    roll_reaction: Callable[[str, int], dict | None] | None,
+) -> None:
+    living = [enemy for enemy in dest.enemies if enemy.life > 0]
+    if not living:
+        return
+    source = resolve_reaction_source(living, reaction_tables)
+    roll = roll_d6()
+    if source.inline_rows:
+        row = lookup_reaction_row(source.inline_rows, roll)
+        table_label = f"{source.label} reaction table"
+    else:
+        table_label = source.table_name or "default_reaction_table"
+        row = roll_reaction(table_label, roll) if roll_reaction else None
+    if row is None:
+        row = {"key": "fight", "result": "The occupants attack!", "foes_first": True}
+        table_label = "default reaction fallback"
+    row = normalize_reaction_row(apply_reaction_overlays(row, living, roll) or row)
+    outcome = build_reaction_outcome(row, hcl=max(1, pending.enemy.level), foe_count=len(living))
+    log.append(
+        f"Teleport Enemy occupied-room reaction: {pending.enemy.name} crosses {dest.title}; "
+        f"d6 = {roll} on {table_label} (FD p.19)."
+    )
+    log.append(f"Occupied-room reaction outcome: {outcome.result}")
+    if outcome.foes_first or outcome.key in {"fight", "fight_to_death", "capture", "puzzle", "magic_challenge"}:
+        log.append(
+            f"{dest.title}'s occupants engage {pending.enemy.name}; resolve that monster clash if it matters "
+            "before the returning foe reaches the party (FD p.19)."
+        )
+    else:
+        log.append(f"{dest.title}'s occupants do not block {pending.enemy.name}'s return route (FD p.19).")
 
 
 def _restore_enemy(session: SessionState, pending: TeleportEnemyReturnState, log: list[str]) -> None:

@@ -281,6 +281,122 @@ def test_teleport_enemy_tracks_room_by_room_return(monkeypatch) -> None:
     assert any(enemy.id == "foe-1" and enemy.life == 3 for enemy in origin.enemies)
 
 
+def test_teleport_enemy_rolls_reaction_when_crossing_occupied_room(monkeypatch) -> None:
+    foe = _foe(id="teleported", tags=[], life=3, max_life=3)
+    occupant = _foe(id="guard", name="Goblin Guard", category="minions", life=1, max_life=1, level=3)
+    session = SessionState.model_validate(
+        {
+            "id": "s1",
+            "party_id": "p1",
+            "adventure_id": "random",
+            "adventure_type": "random",
+            "party": [_caster().model_dump(mode="json")],
+            "map_state": {
+                "width": 3,
+                "height": 1,
+                "current_tile_id": "t0",
+                "tiles": [
+                    {
+                        "id": "t0",
+                        "x": 0,
+                        "y": 0,
+                        "tile_key": "room",
+                        "tile_type": "room",
+                        "title": "Origin",
+                        "description": "",
+                        "exits": [
+                            {
+                                "id": "e0",
+                                "direction": "east",
+                                "kind": "passage",
+                                "status": "open",
+                                "door_open": True,
+                                "destination_tile_id": "t1",
+                            }
+                        ],
+                    },
+                    {
+                        "id": "t1",
+                        "x": 1,
+                        "y": 0,
+                        "tile_key": "room",
+                        "tile_type": "room",
+                        "title": "Guard Room",
+                        "description": "",
+                        "enemies": [occupant.model_dump(mode="json")],
+                        "exits": [
+                            {
+                                "id": "e1w",
+                                "direction": "west",
+                                "kind": "passage",
+                                "status": "open",
+                                "door_open": True,
+                                "destination_tile_id": "t0",
+                            },
+                            {
+                                "id": "e1e",
+                                "direction": "east",
+                                "kind": "passage",
+                                "status": "open",
+                                "door_open": True,
+                                "destination_tile_id": "t2",
+                            },
+                        ],
+                    },
+                    {
+                        "id": "t2",
+                        "x": 2,
+                        "y": 0,
+                        "tile_key": "room",
+                        "tile_type": "room",
+                        "title": "Far Room",
+                        "description": "",
+                        "exits": [
+                            {
+                                "id": "e2",
+                                "direction": "west",
+                                "kind": "passage",
+                                "status": "open",
+                                "door_open": True,
+                                "destination_tile_id": "t1",
+                            }
+                        ],
+                    },
+                ],
+            },
+            "visited_tile_ids": ["t0", "t1", "t2"],
+            "fd_teleport_enemy_returns": [
+                {
+                    "enemy": foe.model_dump(mode="json"),
+                    "origin_tile_id": "t0",
+                    "current_tile_id": "t2",
+                    "route_tile_ids": ["t2", "t1", "t0"],
+                    "turns_remaining": 2,
+                }
+            ],
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        }
+    )
+
+    monkeypatch.setattr("app.engine.fd_teleport_enemy.roll_d6", lambda: 5)
+
+    tick_teleport_enemy_returns(
+        session,
+        reason="test turn",
+        roll_reaction=lambda _table, _roll: {
+            "key": "fight",
+            "result": "The minions attack!",
+            "foes_first": True,
+        },
+    )
+
+    assert session.fd_teleport_enemy_returns[0].current_tile_id == "t1"
+    assert any("occupied-room reaction" in line for line in session.log)
+    assert any("The minions attack!" in line for line in session.log)
+    assert any("resolve that monster clash" in line for line in session.log)
+
+
 def test_mass_blessing_removes_selected_hireling_status() -> None:
     caster = _caster(
         class_id="cleric",

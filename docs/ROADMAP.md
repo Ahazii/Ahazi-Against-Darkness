@@ -267,7 +267,7 @@ Goal: broaden rule coverage safely.
 - **FD Heroic spells (2026-06-24):** PDF-accurate 6-spell d6 table in `heroic_spells.json`; full cast resolver in `forsaken_depths_heroic_spells.py` wired through `resolve_spell_cast`, river hazards, combat bonuses, scroll rewards, and Cyclopean Idol bas-relief.
 - **Abyss Phase B (2026-06-24):** `abyss_tables.json` + `docs/ABYSS_PHASE_B_AUDIT.md` — indexed room content stubs; runtime deferred.
 - **TAG campaign shell (2026-06-24):** `CampaignState`, `GET/PUT /api/campaign`, `days_passed` on adventure complete, TAG banking toggle on session start.
-- **FD/TAG rules pass (2026-06-28):** Teleport Enemy return tracking, Mass Blessing target/condition UI including hirelings, and TAG Settlement Apothecary brew panel/action are implemented and tested.
+- **FD/TAG rules pass (2026-06-28):** Teleport Enemy return tracking with occupied-room reaction rolls, Mass Blessing target/condition UI including hirelings, and TAG Settlement Apothecary brew panel/action are implemented and tested.
 - **Courtship of Flower Demons — planned sequence:**
   1. ~~Small courtship gaps~~ — virile might +1 breeding saves, Flower Portal water-adjacent validation, rulebook status (done).
   2. ~~**Apothecary Cookbook (medium scope)**~~ — TCOTFD appendix recipes, brew-between-encounters UI, difficulty rolls, Wandering Alchemist gating, Karmic Calcinator duration doubling, portable brewed items (done).

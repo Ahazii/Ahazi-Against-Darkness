@@ -1066,6 +1066,7 @@ class RandomDungeonEngine:
                 teleport_character_ids=teleport_character_ids,
                 mass_blessing_target_ids=mass_blessing_target_ids,
                 mass_blessing_condition_choices=mass_blessing_condition_choices,
+                courtship_choice=courtship_choice,
                 wand_power_charges=wand_power_charges,
                 use_prayer_bead=use_prayer_bead,
                 item_name=item_name,
@@ -6068,6 +6069,7 @@ class RandomDungeonEngine:
         teleport_character_ids: list[str] | None = None,
         mass_blessing_target_ids: list[str] | None = None,
         mass_blessing_condition_choices: dict[str, list[str]] | None = None,
+        courtship_choice: str | None = None,
         from_scroll: bool = False,
         scroll_item: str | None = None,
         from_magic_item: bool = False,
@@ -6094,6 +6096,7 @@ class RandomDungeonEngine:
         if caster is None or caster.current_life <= 0:
             session.log.append("That hero cannot cast.")
             return
+        from_item = from_scroll or from_magic_item
         if caster.class_id.lower() == "conservationist":
             from .courtship_classes import conservationist_forbidden_spell_attempt
 
@@ -6148,7 +6151,6 @@ class RandomDungeonEngine:
         if caster.character_id not in fighter_ids:
             session.log.append(f"{caster.name} is not on the current map element.")
             return
-        from_item = from_scroll or from_magic_item
         if barbarian_cannot_use_magic(caster.class_id) and from_item:
             session.log.append("Barbarians cannot use magic items or scrolls.")
             return
@@ -9442,7 +9444,15 @@ class RandomDungeonEngine:
             return
         from .fd_teleport_enemy import tick_teleport_enemy_returns
 
-        tick_teleport_enemy_returns(session, reason=reason)
+        reaction_tables = self.rules.monsters().get("reaction_tables", {})
+        if not isinstance(reaction_tables, dict):
+            reaction_tables = {}
+        tick_teleport_enemy_returns(
+            session,
+            reason=reason,
+            reaction_tables=reaction_tables,
+            roll_reaction=self.table_roller.roll_reaction,
+        )
 
     def _flee(
         self,

@@ -427,8 +427,9 @@ Use a Forsaken Depths session with a Heroic-trained caster or a Heroic spell scr
 | 12b.3 | Kill the target with **Fire of Truth** | Insight roll can grant 1 Clue; natural 1 schedules a wandering-monster check |
 | 12b.4 | Cast **Teleport Enemy** in a mapped/visited area | Target leaves the fight, a returning-foe log is created, and later movement/combat turns tick it back one room/hex/area at a time |
 | 12b.5 | Block Teleport Enemy's return route | Log says the foe cannot return because an obstacle blocks the route |
-| 12b.6 | Party sheet → **Mass Blessing** | UI shows living heroes/hirelings plus Blessing-removable condition checkboxes with hover hints |
-| 12b.7 | Cast **Mass Blessing** with one hireling condition selected | Caster Life cost equals selected targets beyond the first + selected conditions; selected hireling status is removed and non-selected statuses remain |
+| 12b.6 | Teleport Enemy return crosses a room with living occupants | Log includes the occupied-room d6 reaction roll, table source, outcome, and whether the occupants engage or do not block the return |
+| 12b.7 | Party sheet → **Mass Blessing** | UI shows living heroes/hirelings plus Blessing-removable condition checkboxes with hover hints |
+| 12b.8 | Cast **Mass Blessing** with one hireling condition selected | Caster Life cost equals selected targets beyond the first + selected conditions; selected hireling status is removed and non-selected statuses remain |
 
 ---
 

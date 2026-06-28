@@ -176,6 +176,32 @@ def test_wandering_alchemist_innate_flower_portal_once_per_adventure() -> None:
     assert flower_portal_casts_remaining(session, alchemist) == 0
 
 
+def test_satyr_innate_blossoms_cast_uses_limit_without_uninitialized_locals(monkeypatch) -> None:
+    satyr = _party_member()
+    satyr.class_id = "satyr"
+    satyr.class_name = "Satyr"
+    satyr.level = 2
+    eng = engine()
+    session = eng.create_session("satyr-blossoms", "party-1", [satyr])
+
+    def fake_cast_blossoms_spell(*args, **kwargs):
+        session.log.append("Satyr Blossoms spell resolved.")
+        return True
+
+    monkeypatch.setattr("app.engine.courtship_blossoms_spells.cast_blossoms_spell", fake_cast_blossoms_spell)
+
+    eng._cast_spell(
+        session,
+        satyr.character_id,
+        "Flower Portal",
+        courtship_choice="seaside",
+        show_rolls=False,
+    )
+
+    assert session.courtship_satyr_blossoms_casts[satyr.character_id] == 1
+    assert "Satyr Blossoms spell resolved." in session.log
+
+
 def test_halfling_luck_on_woo_reroll(monkeypatch) -> None:
     halfling = _party_member()
     halfling.class_id = "halfling"
