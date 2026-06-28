@@ -510,6 +510,36 @@ async def campaign_tag_moneylender_follow(payload: dict[str, Any]) -> dict[str, 
     return {"campaign": campaign, "entry": entry}
 
 
+@app.post("/api/campaign/tag/horn-attract")
+async def campaign_tag_horn_attract() -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, roll_horn_wandering_attraction, save_campaign
+
+    campaign = load_campaign(store)
+    entry = roll_horn_wandering_attraction(campaign)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
+@app.post("/api/campaign/tag/flammable-oil-throw")
+async def campaign_tag_flammable_oil_throw() -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, roll_flammable_oil_throw, save_campaign
+
+    campaign = load_campaign(store)
+    entry = roll_flammable_oil_throw(campaign)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
+@app.post("/api/campaign/tag/aspergillum-break")
+async def campaign_tag_aspergillum_break() -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, roll_aspergillum_break_chance, save_campaign
+
+    campaign = load_campaign(store)
+    entry = roll_aspergillum_break_chance(campaign)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
 @app.post("/api/campaign/tag/travel-settlement")
 async def campaign_tag_travel_settlement(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, save_campaign, travel_to_new_settlement

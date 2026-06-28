@@ -7,6 +7,9 @@ from app.engine.tag_campaign import (
     default_campaign,
     look_for_clues,
     roll_hidden_treasure_trove_risk,
+    roll_aspergillum_break_chance,
+    roll_flammable_oil_throw,
+    roll_horn_wandering_attraction,
     roll_moneylender_follow_chance,
     roll_treasure_map_price,
     settlement_size_from_roll,
@@ -126,7 +129,7 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
     campaign.settlement_size = -1
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}
 
-    assert list(rows)[:18] == [
+    assert list(rows)[:24] == [
         "bank_account",
         "bank_inheritance",
         "magic_locker",
@@ -145,6 +148,12 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
         "moneylenders",
         "good_boots",
         "flammable_oil",
+        "horn",
+        "wineskin",
+        "flail_axe",
+        "aspergillum",
+        "availability_rolls",
+        "streetwise_rules",
     ]
     assert rows["bank_account"]["status"] == "available"
     assert rows["magic_locker"]["status"] == "unavailable"
@@ -152,6 +161,8 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
     assert rows["bag_of_carrying"]["availability_difficulty"] == 6
     assert rows["very_nutritious_food"]["availability_difficulty"] == 4
     assert rows["moneylenders"]["credit_limit_gp"] == 1800
+    assert rows["horn"]["action"] == "horn_attract"
+    assert rows["aspergillum"]["action"] == "aspergillum_break"
 
     campaign.settlement_size = 3
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}
@@ -191,3 +202,17 @@ def test_tag_moneylender_follow_chance(monkeypatch) -> None:
     assert entry.total == 4
     assert "4-in-6 chance" in entry.result_text
     assert "enforcers follow" in entry.result_text
+
+
+def test_tag_horn_oil_and_aspergillum_rolls(monkeypatch) -> None:
+    campaign = default_campaign()
+    rolls = iter([2, 1, 2])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+
+    horn = roll_horn_wandering_attraction(campaign)
+    oil = roll_flammable_oil_throw(campaign)
+    aspergillum = roll_aspergillum_break_chance(campaign)
+
+    assert "wandering monsters are attracted" in horn.result_text
+    assert "sprays a friend" in oil.result_text
+    assert "breaks" in aspergillum.result_text

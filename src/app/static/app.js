@@ -8369,6 +8369,9 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   moneylenderDebt: "Debt amount for the moneylender pursuit check after moving to another settlement.",
   treasureMapPrice: "Roll a treasure map price using 5d6 with exploding sixes.",
   moneylenderFollow: "Roll whether moneylender enforcers follow after moving settlement: 1-in-6 per 100 gp or fraction owed.",
+  hornAttract: "Roll the horn's 2-in-6 wandering-monster attraction check after the encounter.",
+  flammableOilThrow: "Roll the flammable-oil throw result: friend splash, wasted flask, or fire damage.",
+  aspergillumBreak: "Roll the aspergillum's 2-in-6 break chance after an Attack roll of natural 1.",
 };
 
 const AI_ADVENTURE_TOOLTIPS = {
@@ -11192,6 +11195,27 @@ function renderTagSettlementServices(services = []) {
       follow.addEventListener("click", () => rollMoneylenderFollow().catch(handleError));
       row.appendChild(follow);
     }
+    if (service.action === "horn_attract") {
+      const horn = node("button", "secondary", "Roll horn");
+      horn.type = "button";
+      setButtonTooltip(horn, TAG_SETTLEMENT_TOOLTIPS.hornAttract);
+      horn.addEventListener("click", () => rollTagServiceAction("/api/campaign/tag/horn-attract").catch(handleError));
+      row.appendChild(horn);
+    }
+    if (service.action === "flammable_oil_throw") {
+      const oil = node("button", "secondary", "Roll oil");
+      oil.type = "button";
+      setButtonTooltip(oil, TAG_SETTLEMENT_TOOLTIPS.flammableOilThrow);
+      oil.addEventListener("click", () => rollTagServiceAction("/api/campaign/tag/flammable-oil-throw").catch(handleError));
+      row.appendChild(oil);
+    }
+    if (service.action === "aspergillum_break") {
+      const aspergillum = node("button", "secondary", "Roll break");
+      aspergillum.type = "button";
+      setButtonTooltip(aspergillum, TAG_SETTLEMENT_TOOLTIPS.aspergillumBreak);
+      aspergillum.addEventListener("click", () => rollTagServiceAction("/api/campaign/tag/aspergillum-break").catch(handleError));
+      row.appendChild(aspergillum);
+    }
     if (service.availability_difficulty) {
       const availability = node("button", "secondary", "Check availability");
       availability.type = "button";
@@ -11274,6 +11298,13 @@ async function rollMoneylenderFollow() {
   state.campaign = result.campaign;
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG moneylender pursuit rolled.");
+}
+
+async function rollTagServiceAction(endpoint) {
+  const result = await api(endpoint, { method: "POST" });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG service roll resolved.");
 }
 
 async function checkTagServiceAvailability(service) {

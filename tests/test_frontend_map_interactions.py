@@ -137,6 +137,10 @@ def test_tag_settlement_controls_and_tooltips_are_present() -> None:
     assert 'id="tag-moneylender-debt"' in INDEX_HTML
     assert "Roll map price" in APP_JS
     assert "Roll pursuit" in APP_JS
+    assert "Roll horn" in APP_JS
+    assert "Roll oil" in APP_JS
+    assert "Roll break" in APP_JS
+    assert "/api/campaign/tag/aspergillum-break" in APP_JS
 
 
 def test_render_map_bounds_use_map_render_pad() -> None:

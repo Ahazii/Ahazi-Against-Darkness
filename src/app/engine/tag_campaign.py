@@ -194,7 +194,64 @@ TAG_SETTLEMENT_SERVICES = [
         "min_size": -3,
         "cost": "5 gp; one carried per character",
         "summary": "One action with a live flame; d6 throw can splash a friend, waste, or deal fire damage.",
-        "automation": "Reference row; combat throw action is not automated yet.",
+        "automation": "Throw result roll is automated here; target selection/damage application remains manual.",
+        "action": "flammable_oil_throw",
+    },
+    {
+        "key": "horn",
+        "name": "Horn",
+        "source_page": 18,
+        "min_size": -3,
+        "cost": "2 gp; may be crafted from suitable horned creatures",
+        "summary": "Sounding takes 1 turn; party gains +1 to next melee Attack, then roll 2-in-6 for wandering monsters.",
+        "automation": "Wandering-monster attraction roll is automated; attack-bonus state remains manual.",
+        "action": "horn_attract",
+    },
+    {
+        "key": "wineskin",
+        "name": "Wineskin",
+        "source_page": 18,
+        "min_size": -3,
+        "cost": "First wineskin free; 4 gp refill per adventure",
+        "summary": "+1 wooing and fear/terror Saves, but -1 spellcasting, -2 puzzles, and -1 other Saves while drinking.",
+        "automation": "Reference row; tipsy status tracking is not automated yet.",
+    },
+    {
+        "key": "flail_axe",
+        "name": "Flail-Axe",
+        "source_page": 18,
+        "min_size": -3,
+        "cost": "8 gp",
+        "summary": "One-handed slashing weapon with two-handed +1 Attack advantage; natural 1 hits the user for 1 Life.",
+        "automation": "Reference row; weapon purchase/combat self-hit automation remains deferred.",
+    },
+    {
+        "key": "aspergillum",
+        "name": "Aspergillum",
+        "source_page": 19,
+        "min_size": -3,
+        "cost": "20 gp, plus holy water; 8 gp repair",
+        "summary": "Light silver crushing weapon with holy-water reservoir; on Attack roll 1, roll 2-in-6 break chance.",
+        "automation": "Break chance roll is automated; weapon/holy-water combat integration remains manual.",
+        "action": "aspergillum_break",
+    },
+    {
+        "key": "availability_rolls",
+        "name": "Availability Rolls",
+        "source_page": 19,
+        "min_size": -3,
+        "cost": "No cost unless item is available",
+        "summary": "Special TAG items roll d6 plus settlement size vs difficulty; fail-by-1 adds 20% surcharge.",
+        "automation": "Use the Check availability controls above or row-level availability buttons.",
+    },
+    {
+        "key": "streetwise_rules",
+        "name": "Streetwise Rules",
+        "source_page": 20,
+        "min_size": -3,
+        "cost": "Depends on action; Look for Clues costs d6 gp bribes",
+        "summary": "Town underworld Saves for clues, interrogation, rumors and similar actions, with class modifiers.",
+        "automation": "Look for Clue is automated above; interrogation and other Streetwise actions remain future work.",
     },
 ]
 
@@ -347,6 +404,64 @@ def roll_moneylender_follow_chance(campaign: CampaignState, *, debt_gp: int) -> 
         roll=roll,
         total=chance,
         cost_gp=debt,
+        result_text=result,
+        created_at=now_utc(),
+    )
+    campaign.tag_downtime_log.append(entry)
+    trim_tag_logs(campaign)
+    return entry
+
+
+def roll_horn_wandering_attraction(campaign: CampaignState) -> TagDowntimeLogEntry:
+    roll = roll_d6()
+    attracted = roll <= 2
+    result = (
+        f"Horn wandering-monster attraction roll: d6={roll}; "
+        f"{'wandering monsters are attracted before the party moves' if attracted else 'no wandering monsters are attracted'}."
+    )
+    entry = TagDowntimeLogEntry(
+        action="horn_attract",
+        roll=roll,
+        total=roll,
+        result_text=result,
+        created_at=now_utc(),
+    )
+    campaign.tag_downtime_log.append(entry)
+    trim_tag_logs(campaign)
+    return entry
+
+
+def roll_flammable_oil_throw(campaign: CampaignState) -> TagDowntimeLogEntry:
+    roll = roll_d6()
+    if roll == 1:
+        result = "Flammable oil throw: d6=1; oil sprays a friend for 2 fire damage."
+    elif roll == 2:
+        result = "Flammable oil throw: d6=2; flask is wasted with no damage."
+    else:
+        result = "Flammable oil throw: d6>=3; deal 2 fire damage to a major foe or 3 to a horde/minor group."
+    entry = TagDowntimeLogEntry(
+        action="flammable_oil_throw",
+        roll=roll,
+        total=roll,
+        result_text=result,
+        created_at=now_utc(),
+    )
+    campaign.tag_downtime_log.append(entry)
+    trim_tag_logs(campaign)
+    return entry
+
+
+def roll_aspergillum_break_chance(campaign: CampaignState) -> TagDowntimeLogEntry:
+    roll = roll_d6()
+    breaks = roll <= 2
+    result = (
+        f"Aspergillum break roll after natural 1 Attack: d6={roll}; "
+        f"{'the aspergillum breaks and holy water is wasted' if breaks else 'the aspergillum survives'}."
+    )
+    entry = TagDowntimeLogEntry(
+        action="aspergillum_break",
+        roll=roll,
+        total=roll,
         result_text=result,
         created_at=now_utc(),
     )
