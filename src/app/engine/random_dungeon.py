@@ -9380,6 +9380,33 @@ class RandomDungeonEngine:
             session.foe_taunt_pending = {}
         missile_used = set(session.missile_used_character_ids)
         ability_log: list[str] = []
+        from .abyss_tactics import (
+            apply_abyss_multiple_boss_defaults,
+            coerce_abyss_attack_targets,
+        )
+
+        attack_targets, multiple_boss_log = apply_abyss_multiple_boss_defaults(
+            party_here,
+            tile.enemies,
+            tile_type=tile.tile_type,
+            attack_targets=attack_targets,
+        )
+        attack_targets, leader_lock_log = coerce_abyss_attack_targets(
+            party_here,
+            tile.enemies,
+            tile_type=tile.tile_type,
+            attack_targets=attack_targets,
+        )
+        attack_secondary_targets, secondary_leader_lock_log = coerce_abyss_attack_targets(
+            party_here,
+            tile.enemies,
+            tile_type=tile.tile_type,
+            attack_targets=attack_secondary_targets,
+            label="second target",
+        )
+        ability_log.extend(multiple_boss_log)
+        ability_log.extend(leader_lock_log)
+        ability_log.extend(secondary_leader_lock_log)
         combat_context = self._combat_context(
             session,
             tile,

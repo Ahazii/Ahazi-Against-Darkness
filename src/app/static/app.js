@@ -4394,13 +4394,15 @@ function toggleCombatHeroDrawer(characterId, session) {
 function appendHeroCombatPlanningRows(parent, session, member, tile, livingFoes) {
   if (!livingFoes.length || member.current_life <= 0) return;
   const targetSelect = document.createElement("select");
-  for (const foe of livingFoes) {
-    const option = document.createElement("option");
-    option.value = foe.id;
-    option.textContent = `${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`;
-    targetSelect.appendChild(option);
-  }
-  targetSelect.value = state.combatTargets[member.character_id] || livingFoes[0].id;
+  populateCombatTargetSelect(targetSelect, session, member, tile, livingFoes);
+  targetSelect.value = legalCombatTargetValue(
+    session,
+    member,
+    tile,
+    livingFoes,
+    state.combatTargets[member.character_id]
+  );
+  state.combatTargets[member.character_id] = targetSelect.value;
   targetSelect.addEventListener("change", () => {
     state.combatTargets[member.character_id] = targetSelect.value;
     renderCombatHeroDrawer(session);
@@ -4452,21 +4454,23 @@ function appendHeroCombatPlanningRows(parent, session, member, tile, livingFoes)
   }
   if (ability === "double_attack" && livingFoes.length > 1) {
     const secondarySelect = document.createElement("select");
-    for (const foe of livingFoes) {
-      const option = document.createElement("option");
-      option.value = foe.id;
-      option.textContent = `${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`;
-      secondarySelect.appendChild(option);
-    }
+    populateCombatTargetSelect(secondarySelect, session, member, tile, livingFoes);
     secondarySelect.value =
-      state.combatSecondaryTargets?.[member.character_id] || livingFoes[1]?.id || livingFoes[0].id;
+      legalCombatTargetValue(
+        session,
+        member,
+        tile,
+        livingFoes,
+        state.combatSecondaryTargets?.[member.character_id] || livingFoes[1]?.id || livingFoes[0].id
+      );
     secondarySelect.addEventListener("change", () => {
       state.combatSecondaryTargets[member.character_id] = secondarySelect.value;
     });
     appendCombatSelectRow(parent, "2nd attack target", secondarySelect);
   }
   if (ability === "double_kick") {
-    const minors = livingFoeMinors(livingFoes);
+    const legalIds = new Set(legalCombatTargets(session, member, tile, livingFoes).map((foe) => foe.id));
+    const minors = livingFoeMinors(livingFoes).filter((foe) => legalIds.has(foe.id));
     if (minors.length >= 2) {
       for (let index = 0; index < 2; index += 1) {
         const kickSelect = document.createElement("select");
@@ -6573,7 +6577,14 @@ function renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPe
   );
   const list = node("div", "combat-attack-preview");
   for (const member of livingHeroes.sort((left, right) => left.marching_order - right.marching_order)) {
-    const targetId = state.combatTargets[member.character_id] || livingFoes[0]?.id;
+    const targetId = legalCombatTargetValue(
+      session,
+      member,
+      tile,
+      livingFoes,
+      state.combatTargets[member.character_id]
+    );
+    if (targetId) state.combatTargets[member.character_id] = targetId;
     const foe = livingFoes.find((entry) => entry.id === targetId);
     const foeLabel = foe ? foeLabels.get(foe.id) || foe.name : "—";
     const plan = heroCombatPlanLabel(session, member, tile);
@@ -6600,6 +6611,95 @@ function appendCombatSelectRow(parent, labelText, select) {
   row.appendChild(document.createTextNode(`${labelText}:`));
   row.appendChild(select);
   parent.appendChild(row);
+}
+
+function foeTagSet(foe) {
+  return new Set((foe?.tags || []).map((tag) => String(tag).toLowerCase()));
+}
+
+function foeIsAbyssFoe(foe) {
+  const tags = foeTagSet(foe);
+  return tags.has("abyss") || [...tags].some((tag) => tag.startsWith("reaction_table:abyss "));
+}
+
+function foeIsAbyssLeader(foe) {
+  return (foe?.life || 0) > 0 && foeTagSet(foe).has("abyss_leader");
+}
+
+function foeIsAbyssMinion(foe) {
+  return (foe?.life || 0) > 0 && foe?.category === "minions" && foeIsAbyssFoe(foe) && !foeIsAbyssLeader(foe);
+}
+
+function foeIsHorde(foe) {
+  const tags = foeTagSet(foe);
+  return foe?.category === "horde" || tags.has("horde");
+}
+
+function livingAbyssLeaders(foes) {
+  return (foes || []).filter(foeIsAbyssLeader);
+}
+
+function livingAbyssMinions(foes) {
+  return (foes || []).filter(foeIsAbyssMinion);
+}
+
+function livingAbyssBosses(foes) {
+  return (foes || []).filter((foe) => (foe.life || 0) > 0 && foe.category === "boss" && foeIsAbyssFoe(foe));
+}
+
+function abyssLeaderChampion(session) {
+  return livingPartySorted(combatPartyMembers(session))[0] || null;
+}
+
+function legalCombatTargets(session, member, tile, livingFoes) {
+  const leaders = livingAbyssLeaders(livingFoes);
+  const minions = livingAbyssMinions(livingFoes);
+  if (!leaders.length || !minions.length) return livingFoes;
+  const tileType = tile?.tile_type || "room";
+  if (tileType === "corridor") {
+    const legal = livingFoes.filter((foe) => !foeIsAbyssLeader(foe));
+    return legal.length ? legal : livingFoes;
+  }
+  const champion = abyssLeaderChampion(session);
+  if (champion && champion.character_id === member.character_id) return leaders;
+  return minions;
+}
+
+function abyssTargetLockReason(session, member, tile, foe, livingFoes) {
+  const legal = legalCombatTargets(session, member, tile, livingFoes);
+  if (legal.some((entry) => entry.id === foe.id)) return "";
+  if (foeIsAbyssLeader(foe) && (tile?.tile_type || "room") === "corridor") {
+    return "Abyss leader lock: corridor leaders cannot be targeted until their minions are defeated.";
+  }
+  const champion = abyssLeaderChampion(session);
+  if (champion && champion.character_id === member.character_id) {
+    return "Abyss leader lock: this champion must fight the leader while minions remain.";
+  }
+  return "Abyss leader lock: non-champions must fight minions until the leader is exposed.";
+}
+
+function legalCombatTargetValue(session, member, tile, livingFoes, requestedId) {
+  const legal = legalCombatTargets(session, member, tile, livingFoes);
+  if (!legal.length) return requestedId || livingFoes[0]?.id || "";
+  if (requestedId && legal.some((foe) => foe.id === requestedId)) return requestedId;
+  return legal[0].id;
+}
+
+function populateCombatTargetSelect(select, session, member, tile, livingFoes) {
+  for (const foe of livingFoes) {
+    const option = document.createElement("option");
+    option.value = foe.id;
+    option.textContent = `${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`;
+    const reason = abyssTargetLockReason(session, member, tile, foe, livingFoes);
+    if (reason) {
+      option.disabled = true;
+      option.title = reason;
+    } else {
+      option.title = "Choose this foe as the target for this character's next attack.";
+    }
+    select.appendChild(option);
+  }
+  select.title = "Choose this character's combat target. Some Abyss targets are locked by leader rules.";
 }
 
 function renderCombatHeroRows(session, tile, livingFoes) {
@@ -6638,13 +6738,15 @@ function renderCombatHeroRows(session, tile, livingFoes) {
     if (livingFoes.length) {
       const targetSelect = document.createElement("select");
       targetSelect.dataset.characterId = member.character_id;
-      for (const foe of livingFoes) {
-        const option = document.createElement("option");
-        option.value = foe.id;
-        option.textContent = `${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`;
-        targetSelect.appendChild(option);
-      }
-      targetSelect.value = state.combatTargets[member.character_id] || livingFoes[0].id;
+      populateCombatTargetSelect(targetSelect, session, member, tile, livingFoes);
+      targetSelect.value = legalCombatTargetValue(
+        session,
+        member,
+        tile,
+        livingFoes,
+        state.combatTargets[member.character_id]
+      );
+      state.combatTargets[member.character_id] = targetSelect.value;
       targetSelect.addEventListener("change", () => {
         state.combatTargets[member.character_id] = targetSelect.value;
         renderSession();
@@ -6810,7 +6912,9 @@ function previewEnemyAttacks(session, tile) {
     const attackers = enemies.slice(0, 2);
     const pairs = [];
     for (const enemy of attackers) {
-      const repeat = Math.max(1, enemy.attacks || 1);
+      const repeat = foeIsHorde(enemy)
+        ? Math.max(1, pool.length) * Math.max(1, enemy.attacks || 1)
+        : Math.max(1, enemy.attacks || 1);
       for (let index = 0; index < repeat; index += 1) {
         pairs.push({ enemy, target: pool[index % pool.length] });
       }
@@ -6820,7 +6924,9 @@ function previewEnemyAttacks(session, tile) {
 
   const strikes = [];
   for (const enemy of enemies) {
-    const repeat = Math.max(1, enemy.attacks || 1);
+    const repeat = foeIsHorde(enemy)
+      ? Math.max(1, living.length) * Math.max(1, enemy.attacks || 1)
+      : Math.max(1, enemy.attacks || 1);
     for (let index = 0; index < repeat; index += 1) {
       strikes.push(enemy);
     }
@@ -6895,6 +7001,35 @@ function combatContextNotes(session, tile) {
     const kind = (session.druid_companion_kind || "wolf").replace(/^./, (c) => c.toUpperCase());
     notes.push(
       `Druid companion (${kind}): ${session.druid_companion_life}/${session.druid_companion_max_life || session.druid_companion_life} Life, L${session.druid_companion_level || 3}.`
+    );
+  }
+  const livingFoes = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
+  const leaders = livingAbyssLeaders(livingFoes);
+  const minions = livingAbyssMinions(livingFoes);
+  if (leaders.length && minions.length) {
+    if (tileType === "corridor") {
+      notes.push("Abyss leader lock: leaders cannot be targeted in corridors until their minions are defeated.");
+    } else {
+      const champion = abyssLeaderChampion(session);
+      const championText = champion ? `#${champion.marching_order} ${champion.name}` : "the first living hero";
+      notes.push(`Abyss leader lock: ${championText} fights the leader; everyone else fights minions.`);
+    }
+  }
+  const bosses = livingAbyssBosses(livingFoes);
+  if (tileType === "room" && bosses.length >= 2) {
+    const livingHeroes = livingPartySorted(combatPartyMembers(session));
+    notes.push(
+      livingHeroes.length === 1
+        ? "Abyss multiple bosses: choose a main boss; the lone hero has -1 Defense against the others."
+        : "Abyss multiple bosses: split party targets across bosses, then retarget when a boss falls."
+    );
+  }
+  for (const horde of livingFoes.filter(foeIsHorde)) {
+    const attacks = Math.max(1, horde.attacks || 1);
+    notes.push(
+      attacks === 1
+        ? `Horde: ${horde.name} attacks once per living character each round.`
+        : `Horde: ${horde.name} attacks ${attacks} times per living character each round.`
     );
   }
   return notes;

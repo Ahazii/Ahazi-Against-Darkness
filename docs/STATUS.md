@@ -48,10 +48,12 @@ Recent deeper-rule work:
 
 - **Abyss runtime pass (2026-06-28):** Four Against the Abyss profile added to setup; Abyss 2d6 room content, monster subtables, claimable treasure payloads, unique-feature/event summaries, and Abyss wandering spawns are routed through `abyss_tables.json`.
 - **Abyss phase 1 exact effects (2026-06-28):** Abyss traps, special-feature choices, unique-event choices, Enchanted Banquet, Useful Stuff choices, and magical-defense item names now resolve through existing trap/feature/treasure UI.
+- **Abyss phase 2 tactical reactions (2026-06-28):** Abyss minion reaction tables from p.53 are wired, including exact bribes, fight-to-the-death fallback, Trial of Champions champion choice, and tagged leader priority.
+- **Abyss phase 3 targeting (2026-06-28):** leader-lock targeting is enforced server-side and mirrored in the combat UI; multiple Abyss bosses get default split targets and lone-hero secondary-boss Defense penalties; tagged hordes attack once or twice per living character as specified.
 
 Defer to later releases:
 
-- Abyss Trial of Champions/hordes/multiple bosses, exact inventory use-actions for every Abyss item, disease/transformation lifecycles, and campaign plots;
+- Abyss exact inventory use-actions for every Abyss item, disease/transformation lifecycles, campaign plots, and large-room dragon-lair detection;
 - full TAG settlement/downtime UI (campaign shell + banking toggle wired);
 - large `app.js` / `random_dungeon.py` decomposition.
 

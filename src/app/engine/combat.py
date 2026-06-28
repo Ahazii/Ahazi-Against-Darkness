@@ -606,7 +606,7 @@ def assign_enemy_attacks(
         eligible = [pc for pc in living if pc.marching_order in positions] or living[:2]
         attackers = living_enemies[:2]
         for enemy in attackers:
-            repeat = 1 if once_per_foe else max(1, enemy.attacks)
+            repeat = 1 if once_per_foe else _enemy_attack_repetitions(enemy, target_count=len(eligible))
             for attack_index in range(repeat):
                 target = eligible[attack_index % len(eligible)]
                 attack_pairs.append((enemy, target))
@@ -614,7 +614,7 @@ def assign_enemy_attacks(
 
     strikes: list[EnemyState] = []
     for enemy in living_enemies:
-        repeat = 1 if once_per_foe else max(1, enemy.attacks)
+        repeat = 1 if once_per_foe else _enemy_attack_repetitions(enemy, target_count=len(living))
         strikes.extend([enemy] * repeat)
 
     from .monster_template_effects import DOPPELGANGER_MIMIC_PREFIX
@@ -684,7 +684,7 @@ def _log_multi_attack_assignments(
 ) -> None:
     grouped: dict[str, tuple[EnemyState, list[PartyMemberState]]] = {}
     for enemy, target in attack_pairs:
-        if enemy.attacks <= 1:
+        if enemy.attacks <= 1 and not _enemy_is_horde(enemy):
             continue
         if enemy.id not in grouped:
             grouped[enemy.id] = (enemy, [])
@@ -694,6 +694,20 @@ def _log_multi_attack_assignments(
             continue
         target_text = ", ".join(f"#{target.marching_order} {target.name}" for target in targets)
         log.append(f"Event: {enemy.name} makes {len(targets)} attacks this round: {target_text}.")
+
+
+def _enemy_is_horde(enemy: EnemyState) -> bool:
+    from .abyss_tactics import is_horde
+
+    return is_horde(enemy)
+
+
+def _enemy_attack_repetitions(enemy: EnemyState, *, target_count: int) -> int:
+    if not _enemy_is_horde(enemy):
+        return max(1, enemy.attacks)
+    from .abyss_tactics import horde_attacks_per_character
+
+    return max(1, target_count) * horde_attacks_per_character(enemy)
 
 
 def _is_skeleton_or_undead(enemy: EnemyState) -> bool:
@@ -751,6 +765,26 @@ def _defense_bonus(
         from .milestones import milestone_defense_bonus
 
         expert_bonus += milestone_defense_bonus(member, enemy)
+        from .abyss_tactics import abyss_single_hero_secondary_boss_penalty
+
+        current_tile = None
+        if session.map_state.current_tile_id:
+            tiles = session.map_state.tiles
+            if hasattr(tiles, "get"):
+                current_tile = tiles.get(session.map_state.current_tile_id)
+            else:
+                current_tile = next(
+                    (tile for tile in tiles if tile.id == session.map_state.current_tile_id),
+                    None,
+                )
+        if current_tile is not None:
+            modifier += abyss_single_hero_secondary_boss_penalty(
+                member,
+                enemy,
+                party=session.party,
+                enemies=current_tile.enemies,
+                attack_targets=context.round_attack_targets,
+            )
     heroic_bonus = heroic_defense_bonus(
         member,
         single_attacker=living_foe_count == 1,
@@ -2463,6 +2497,11 @@ def resolve_combat_round(
         log.append("The party uses subdual attacks (foes are knocked out at 0 Life, not slain).")
 
     session = context.session
+    if session is not None:
+        from .abyss_tactics import abyss_tactical_notes
+
+        log.extend(abyss_tactical_notes(party, living_enemies, tile_type=context.tile_type))
+
     if encounter_round == 0 and session is not None and resume_after_bodyguard is None:
         from .monster_template_effects import apply_encounter_start_effects, apply_first_turn_special_attacks
 
@@ -2716,10 +2755,25 @@ def resolve_combat_round(
                     for enemy in living_enemies
                     if enemy.category in {"vermin", "minions"} and enemy.life > 0
                 ]
+                from .abyss_tactics import legal_abyss_attack_targets
+
+                legal_ids = {
+                    enemy.id
+                    for enemy in legal_abyss_attack_targets(
+                        pc,
+                        party,
+                        living_enemies,
+                        tile_type=context.tile_type,
+                    )
+                }
+                if legal_ids:
+                    minors = [enemy for enemy in minors if enemy.id in legal_ids]
                 chosen_ids = context.double_kick_targets.get(pc.character_id) or []
                 if len(chosen_ids) >= 2:
                     picked = [
-                        enemy for enemy in living_enemies if enemy.id in chosen_ids[:2] and enemy.life > 0
+                        enemy
+                        for enemy in living_enemies
+                        if enemy.id in chosen_ids[:2] and enemy.life > 0 and enemy.id in legal_ids
                     ]
                     if len(picked) >= 2:
                         minors = picked

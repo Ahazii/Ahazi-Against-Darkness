@@ -18,6 +18,13 @@ resolver from Abyss minions, tagged leaders are preferred as the foe champion,
 and bribes count the minions in the printed group rather than accidentally
 charging for an attached boss leader.
 
+The third tactical pass enforces Abyss combat targeting rules in the combat
+engine and mirrors them in the UI. Leader-lock fights now redirect illegal
+targets server-side, target selectors disable illegal leader/minion choices with
+hover explanations, multiple-boss rooms spread unset party targets and apply the
+lone-hero secondary-boss Defense penalty, and tagged hordes multiply attacks by
+the number of living characters.
+
 ## Indexed tables
 
 | Table key | Status | Notes |
@@ -31,14 +38,14 @@ charging for an attached boss leader.
 | `abyss_enchanted_banquet_table` / `abyss_useful_stuff_table` | indexed/wired | exact p.60-61 rows exposed; banquet and Useful Stuff outcomes resolve through existing UI |
 | `abyss_vermin_table` / `abyss_minions_table` / `abyss_boss_table` / `abyss_weird_table` / `abyss_dragon_table` | wired | Spawn rows create `EnemyState` entries with Abyss tags, levels, attacks, Life, treasure metadata, and generalized on-hit/start hooks where available |
 | Abyss minion reaction tables | wired | p.53 Hairy Goblins, Ghouls, Dark Dwarves, Flying Skulls, Chaotic Ratmen, and Chaos Fanatics use their printed flee/bribe/fight/trial outcomes |
+| Abyss tactical targeting | wired | p.8 leader-lock targeting, p.10 multiple-boss target split / lone-hero penalty, and p.11 horde attacks are enforced by `abyss_tactics.py`, combat target selectors, and horde attack assignment |
 
 ## Remaining gaps
 
-1. Full round-by-round leader lock targeting, horde handling, and multiple-boss tactical targeting rules.
-2. Campaign plot automation, including plot state and victory conditions.
-3. Full disease/transformation lifecycle for vampirism, Dark Plague, and lycanthropy beyond current status/on-hit/status hooks.
-4. Large-room dragon-lair detection should receive the actual generated room key rather than using the regular boss branch.
-5. Exact use-action automation for every Abyss magic/defense/useful item after it enters inventory; item names and loot choices are now present.
+1. Campaign plot automation, including plot state and victory conditions.
+2. Full disease/transformation lifecycle for vampirism, Dark Plague, and lycanthropy beyond current status/on-hit/status hooks.
+3. Large-room dragon-lair detection should receive the actual generated room key rather than using the regular boss branch.
+4. Exact use-action automation for every Abyss magic/defense/useful item after it enters inventory; item names and loot choices are now present.
 
 ## Tests
 

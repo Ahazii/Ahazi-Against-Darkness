@@ -231,6 +231,21 @@ def test_combat_focus_reaction_outcome_block_summarizes_outstanding_choices() ->
     assert ".reaction-outcome-block" in STYLES_CSS
 
 
+def test_abyss_combat_target_ui_guards_leader_lock_and_hordes() -> None:
+    """
+    Abyss leader-lock rules must be visible in both combat target selectors, and
+    horde attack previews must multiply attacks by living character count.
+    """
+    assert "function legalCombatTargets" in APP_JS
+    assert "function populateCombatTargetSelect" in APP_JS
+    assert "Abyss leader lock" in APP_JS
+    assert "option.disabled = true;" in APP_JS
+    assert "foeIsHorde(enemy)" in APP_JS
+    body = _function_body("previewEnemyAttacks", APP_JS)
+    assert "Math.max(1, living.length) * Math.max(1, enemy.attacks || 1)" in body
+    assert "Math.max(1, pool.length) * Math.max(1, enemy.attacks || 1)" in body
+
+
 # ── syncMapViewportMode: per-axis mode sync ────────────────────────────────────
 
 def test_sync_map_viewport_mode_per_axis() -> None:

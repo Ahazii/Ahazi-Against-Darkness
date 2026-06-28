@@ -3,6 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.abyss_tactics import (
+    abyss_single_hero_secondary_boss_penalty,
+    apply_abyss_multiple_boss_defaults,
+    coerce_abyss_attack_targets,
+)
+from app.engine.combat import CombatContext, assign_enemy_attacks
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, PartyMemberState
 
@@ -32,6 +38,14 @@ def _member() -> PartyMemberState:
             "marching_order": 1,
         }
     )
+
+
+def _second_member() -> PartyMemberState:
+    member = _member().model_copy(deep=True)
+    member.character_id = "hero-2"
+    member.name = "Second Hero"
+    member.marching_order = 2
+    return member
 
 
 def test_abyss_profile_routes_room_content_to_abyss_minions(monkeypatch) -> None:
@@ -247,3 +261,173 @@ def test_abyss_flying_skulls_fight_to_death_when_not_outnumbered(monkeypatch) ->
 
     assert session.reaction_key == "fight_to_death"
     assert any("fight to the death" in entry.lower() for entry in session.log)
+
+
+def test_abyss_corridor_leader_lock_redirects_targets_to_minions() -> None:
+    hero = _member()
+    minion = EnemyState(
+        id="rat-1",
+        name="Chaotic Ratman",
+        category="minions",
+        level=7,
+        life=1,
+        max_life=1,
+        tags=["abyss"],
+    )
+    leader = EnemyState(
+        id="rat-leader",
+        name="Ratman Leader",
+        category="boss",
+        level=9,
+        life=4,
+        max_life=4,
+        tags=["abyss", "abyss_leader"],
+    )
+
+    targets, log = coerce_abyss_attack_targets(
+        [hero],
+        [leader, minion],
+        tile_type="corridor",
+        attack_targets={hero.character_id: leader.id},
+    )
+
+    assert targets == {hero.character_id: minion.id}
+    assert any("corridor leaders cannot be attacked" in entry for entry in log)
+
+
+def test_abyss_room_leader_lock_assigns_champion_and_minion_targets() -> None:
+    champion = _member()
+    ally = _second_member()
+    minion = EnemyState(
+        id="goblin-1",
+        name="Hairy Goblin",
+        category="minions",
+        level=6,
+        life=1,
+        max_life=1,
+        tags=["abyss"],
+    )
+    leader = EnemyState(
+        id="goblin-leader",
+        name="Goblin Leader",
+        category="boss",
+        level=10,
+        life=4,
+        max_life=4,
+        tags=["abyss", "abyss_leader"],
+    )
+
+    targets, log = coerce_abyss_attack_targets(
+        [champion, ally],
+        [minion, leader],
+        tile_type="room",
+        attack_targets={ally.character_id: leader.id},
+    )
+
+    assert targets == {
+        champion.character_id: leader.id,
+        ally.character_id: minion.id,
+    }
+    assert any("non-champions fight minions" in entry for entry in log)
+
+
+def test_abyss_multiple_boss_defaults_spread_unset_party_targets() -> None:
+    first = _member()
+    second = _second_member()
+    bosses = [
+        EnemyState(
+            id="boss-1",
+            name="Abyss Boss 1",
+            category="boss",
+            level=8,
+            life=4,
+            max_life=4,
+            tags=["abyss"],
+        ),
+        EnemyState(
+            id="boss-2",
+            name="Abyss Boss 2",
+            category="boss",
+            level=8,
+            life=4,
+            max_life=4,
+            tags=["abyss"],
+        ),
+    ]
+
+    targets, log = apply_abyss_multiple_boss_defaults(
+        [first, second],
+        bosses,
+        tile_type="room",
+        attack_targets=None,
+    )
+
+    assert targets == {first.character_id: "boss-1", second.character_id: "boss-2"}
+    assert any("multiple bosses" in entry for entry in log)
+
+
+def test_abyss_lone_hero_has_defense_penalty_against_secondary_bosses() -> None:
+    hero = _member()
+    main = EnemyState(
+        id="boss-1",
+        name="Abyss Boss 1",
+        category="boss",
+        level=8,
+        life=4,
+        max_life=4,
+        tags=["abyss"],
+    )
+    secondary = EnemyState(
+        id="boss-2",
+        name="Abyss Boss 2",
+        category="boss",
+        level=8,
+        life=4,
+        max_life=4,
+        tags=["abyss"],
+    )
+
+    assert (
+        abyss_single_hero_secondary_boss_penalty(
+            hero,
+            main,
+            party=[hero],
+            enemies=[main, secondary],
+            attack_targets={hero.character_id: main.id},
+        )
+        == 0
+    )
+    assert (
+        abyss_single_hero_secondary_boss_penalty(
+            hero,
+            secondary,
+            party=[hero],
+            enemies=[main, secondary],
+            attack_targets={hero.character_id: main.id},
+        )
+        == -1
+    )
+
+
+def test_horde_attacks_once_per_character_per_attack_value() -> None:
+    party = [_member(), _second_member()]
+    horde = EnemyState(
+        id="horde",
+        name="Horde of Lizardmen of the Deep",
+        category="boss",
+        level=7,
+        life=8,
+        max_life=8,
+        attacks=2,
+        tags=["horde", "forsaken_depths"],
+    )
+
+    pairs = assign_enemy_attacks(
+        [horde],
+        party,
+        context=CombatContext(tile_type="room"),
+    )
+
+    assert len(pairs) == 4
+    assert [target.character_id for _, target in pairs].count("hero-1") == 2
+    assert [target.character_id for _, target in pairs].count("hero-2") == 2

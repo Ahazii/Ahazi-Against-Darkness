@@ -51,6 +51,24 @@
       "implementation_status": "implemented"
     },
     {
+      "id": "abyss_random_dungeon_profile",
+      "title": "Abyss Random Dungeon Profile",
+      "category": "exploration",
+      "source_page": 46,
+      "keywords": [
+        "abyss",
+        "four against the abyss",
+        "leader lock",
+        "horde",
+        "multiple bosses",
+        "trial of champions",
+        "abyss reactions"
+      ],
+      "summary": "Four Against the Abyss random-dungeon profile with Abyss tables, reactions, and tactical targeting.",
+      "body": "Select **Four Against the Abyss** in the Adventure ruleset dropdown to use Abyss room content, monster subtables, wandering monsters, treasure choices, traps, features, events, and p.53 minion reaction tables.\n\n**Leader lock (Abyss p.8)** - minion leaders are tagged when spawned. In corridors the leader cannot be targeted until minions are defeated. In rooms the first living combatant by marching order is the champion locked with the leader; the rest target minions until none remain. Combat target selectors disable illegal targets with hover explanations, and the server redirects stale/illegal target payloads before dice are rolled.\n\n**Multiple bosses (Abyss p.10)** - room encounters with multiple Abyss bosses spread unset party targets across bosses. A lone hero chooses a main boss through the target selector and receives -1 Defense against other Abyss bosses.\n\n**Hordes (Abyss p.11 / FD p.42 compatible)** - foes tagged `horde` attack once per living character, or twice per living character when their stat row has 2 attacks. The expected-foe-attacks preview uses the same multiplier as the combat engine.\n\nCurrent deferrals: campaign plots, full disease/transformation lifecycles, large-room dragon-lair detection by generated room key, and exact use-actions for every Abyss item after it enters inventory.",
+      "implementation_status": "implemented"
+    },
+    {
       "id": "tier_dice",
       "title": "Tier Dice",
       "category": "combat",
