@@ -92,6 +92,7 @@ Implemented first slice:
 - TAG settlement Apothecary hook when TCOTFD is also in use;
 - troupe name/active party/guild coffer state, settlement storage, fixed service purchases, magic lockers, Gambling House gp outcomes, Streetwise Listen to Rumors/Interrogate/Look Tough, and Following the Treasure Map / Map Leads To roll summaries;
 - TAG Rumor Scene, Treasure Map, Thematic Dungeon, and Guild Job leads create normal installed adventure modules in the Adventure section/dropdown.
+- Home-panel TAG tools are grouped into collapsible sections with compact `?` help summaries for settlement, troupe, travel, availability, Streetwise, storage, buyer, magic lockers, maps/adventure leads, and services/log.
 
 Next slices:
 

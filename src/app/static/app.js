@@ -8442,6 +8442,97 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   aspergillumBreak: "Roll the aspergillum's 2-in-6 break chance after an Attack roll of natural 1.",
 };
 
+const TAG_HELP_CONTENT = {
+  overview: {
+    title: "TAG Settlement Help",
+    lines: [
+      "The TAG settlement panel is a town or village downtime layer, not the Camp Outside Dungeon. Use it to track the party's home settlement, troupe, guild state, services, storage, travel, Streetwise actions, and adventure leads.",
+      "Most buttons write a dated result into the TAG log. Where the book requires a roll, the app logs the dice math so the result can be checked against the PDF.",
+      "The generated adventure controls create normal installed adventures in the Adventure section. They are currently lead templates; exact Rumor Scene and Thematic Dungeon branches are the next content phase.",
+    ],
+  },
+  settlement: {
+    title: "TAG Settlement",
+    lines: [
+      "Settlement records the current town or village name, size modifier, and free notes. Size modifies special-item availability checks.",
+      "Roll size uses the TAG settlement-size roll and stores the modifier. Save settlement writes manual name, size, and notes to the campaign record.",
+      "Use notes for services found, rulings, outstanding debts, NPC names, and any PDF result you want to preserve between adventures.",
+    ],
+  },
+  troupe: {
+    title: "Troupe",
+    lines: [
+      "The troupe is your wider Adventurers' Guild company. The active party selector marks up to four roster heroes as the current TAG adventuring group while other troupe members remain at home.",
+      "Guild members enables guild-facing benefits already wired, including the cartographer map adjustment. Guild gp tracks shared guild coffers separately from hero gold and settlement storage.",
+      "Save troupe stores the troupe name, active party, guild membership flag, and coffer amount.",
+    ],
+  },
+  travel: {
+    title: "Travel",
+    lines: [
+      "Travel moves the home base to another settlement, advances campaign days, rolls the new settlement size, and records the route in the TAG log.",
+      "Simple travel rolls 3d6-3 days with a minimum of 1 day. Hex map travel logs direction, distance, whether a road exists, and how many encounter checks would be made.",
+      "Pay road tithe records the road-tithe option when a road exists. The current UI logs this cost rather than deducting it because no travelling purse is selected here.",
+    ],
+  },
+  availability: {
+    title: "Availability",
+    lines: [
+      "Availability is for TAG special items and services that are not automatically present in every settlement. Enter the item name, difficulty, and optional base price.",
+      "Check availability rolls d6 plus settlement size. Success means the item is available at normal price. Failing by 1 means it is available with a 20% surcharge. Larger failure means retry after an adventure.",
+      "The result is logged and saved so you can check later which items were available, surcharged, or unavailable.",
+    ],
+  },
+  streetwise: {
+    title: "Streetwise",
+    lines: [
+      "Streetwise actions model town information gathering. Choose the acting hero first; class and character modifiers are handled by the backend where implemented.",
+      "Look for Clue spends d6 gp in bribes and rolls a Streetwise Save against L6. On a natural 1 with no Clues, choose the listed consequence option before rolling.",
+      "Listen to rumors, Interrogate, and Look Tough use the Streetwise action selector. Interrogate uses the target level field and optional target note for the log.",
+    ],
+  },
+  storage: {
+    title: "Storage",
+    lines: [
+      "Storage tracks treasure kept in the settlement rather than carried into a dungeon. Choose the character involved, storage type, gold, optional item name, and quantity.",
+      "Bank storage applies the TAG bank behavior currently wired by the app. Hidden troves are tracked in settlement storage and have separate risk rolls in the services list.",
+      "Withdraw gp moves stored settlement gold to the selected character. Item withdrawal is not yet a full inventory picker, so item entries are recorded for signoff/manual management.",
+    ],
+  },
+  buyer: {
+    title: "Buyer",
+    lines: [
+      "Buyer chooses the hero paying for TAG services and equipment. Buy deducts cost and applies implemented inventory, status, campaign, or training effects.",
+      "The purchase list currently covers the implemented TAG service rows: tags, platinum, carrying/storage aids, food, training, oil, horn, wineskin, flail-axe, and aspergillum.",
+      "Gamble uses the selected buyer and stake to roll the Gambling House outcome. The app applies simple gp results and logs the table result.",
+    ],
+  },
+  lockers: {
+    title: "Magic Lockers",
+    lines: [
+      "Magic lockers are settlement-created storage notes that can later be summoned during an adventure.",
+      "Create locker records an item or gold locker for the selected owner. Gold lockers are capped by the UI at 5000 gp.",
+      "Summon rolls the locker retrieval check. A low result causes the mishap logged by the app; otherwise the locker is available according to the recorded result.",
+    ],
+  },
+  maps: {
+    title: "Maps and Adventure Leads",
+    lines: [
+      "Follow map rolls the TAG treasure-map procedure and, on a real map, the Map Leads To result. Guild cartographer applies the guild map-adjustment option when enabled.",
+      "Create adventure converts a TAG lead into a normal installed adventure module. Choose Rumor Scene, Treasure Map, Thematic Dungeon, or Guild Job, then add an optional result number if you want to force a particular branch.",
+      "The new module is added to the Adventure section and selected automatically. These are playable lead modules now; exact branch content is the next TAG phase.",
+    ],
+  },
+  services: {
+    title: "Services and Log",
+    lines: [
+      "Services lists the wired TAG treasure, service, and procedure rows for the current settlement size. Refresh services recalculates their availability display.",
+      "Service-row buttons roll specific procedures such as hidden-trove risk, treasure-map price, moneylender pursuit, horn attraction, oil throw, aspergillum breakage, and item availability.",
+      "The TAG log shows recent availability, downtime, and travel results. Use it as the signoff trail when checking the game against the PDF.",
+    ],
+  },
+};
+
 const AI_ADVENTURE_TOOLTIPS = {
   theme: "Short theme for the external LLM prompt (e.g. undead crypt, goblin warren).",
   difficulty: "Easy, Standard, or Hard — steers foe counts and trap pressure in the generated module.",
@@ -10211,6 +10302,7 @@ function applySetupTooltips() {
 
 function applyTagSettlementTooltips() {
   setTooltip(tagCampaignSettlementPanel, TAG_SETTLEMENT_TOOLTIPS.panel);
+  wireTagHelpButtons();
   setTooltip(tagSettlementName, TAG_SETTLEMENT_TOOLTIPS.name);
   setTooltip(tagSettlementSize, TAG_SETTLEMENT_TOOLTIPS.size);
   setButtonTooltip(tagSaveSettlement, TAG_SETTLEMENT_TOOLTIPS.save);
@@ -10264,6 +10356,51 @@ function applyTagSettlementTooltips() {
   setTooltip(tagMoneylenderDebt, TAG_SETTLEMENT_TOOLTIPS.moneylenderDebt);
   setButtonTooltip(tagRefreshServices, TAG_SETTLEMENT_TOOLTIPS.services);
   setTooltip(tagSettlementServices, TAG_SETTLEMENT_TOOLTIPS.services);
+}
+
+function wireTagHelpButtons() {
+  if (!tagCampaignSettlementPanel || tagCampaignSettlementPanel.dataset.helpBound === "1") return;
+  tagCampaignSettlementPanel.dataset.helpBound = "1";
+  for (const button of tagCampaignSettlementPanel.querySelectorAll(".tag-help-button[data-tag-help]")) {
+    const key = button.dataset.tagHelp || "";
+    const content = TAG_HELP_CONTENT[key];
+    const title = content?.title ? `${content.title} help` : "TAG help";
+    button.title = title;
+    button.setAttribute("aria-label", title);
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openTagHelp(key);
+    });
+  }
+}
+
+function openTagHelp(key) {
+  const content = TAG_HELP_CONTENT[key];
+  if (!content) return;
+  const dialog = document.createElement("dialog");
+  dialog.className = "help-dialog tag-help-dialog";
+  dialog.setAttribute("aria-label", content.title);
+  const heading = node("h2", "", content.title);
+  const body = node("div", "help-body", "");
+  for (const line of content.lines || []) {
+    body.appendChild(node("p", "", line));
+  }
+  const closeRow = node("div", "panel-actions", "");
+  const close = node("button", "secondary", "Close");
+  close.type = "button";
+  setButtonTooltip(close, "Close this TAG help summary.");
+  close.addEventListener("click", () => dialog.close());
+  closeRow.appendChild(close);
+  dialog.append(heading, body, closeRow);
+  dialog.addEventListener("close", () => dialog.remove());
+  document.body.appendChild(dialog);
+  if (typeof dialog.showModal === "function") {
+    dialog.showModal();
+  } else {
+    window.alert(`${content.title}\n\n${(content.lines || []).join("\n\n")}`);
+    dialog.remove();
+  }
 }
 
 function applyAiAdventureTooltips() {

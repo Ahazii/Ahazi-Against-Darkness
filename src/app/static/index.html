@@ -260,241 +260,327 @@
             </p>
             <p id="campaign-days-hint" class="muted" role="status"></p>
             <section id="tag-campaign-settlement-panel" class="tag-settlement-panel" aria-label="TAG settlement tools">
-              <div class="campaign-status-title">TAG settlement</div>
-              <div class="tag-settlement-grid">
-                <label for="tag-settlement-name">
+              <div class="tag-panel-heading">
+                <div>
+                  <div class="campaign-status-title">TAG settlement</div>
+                  <p class="muted">Town and guild downtime tools, separate from Camp Outside Dungeon.</p>
+                </div>
+                <button type="button" class="tag-help-button" data-tag-help="overview" aria-label="TAG settlement help">?</button>
+              </div>
+              <details class="tag-help-section" open>
+                <summary>
                   <span>Settlement</span>
-                  <input id="tag-settlement-name" type="text" maxlength="80" />
-                </label>
-                <label for="tag-settlement-size">
-                  <span>Size</span>
-                  <select id="tag-settlement-size">
-                    <option value="-3">-3</option>
-                    <option value="-2">-2</option>
-                    <option value="-1">-1</option>
-                    <option value="0">0</option>
-                    <option value="1">+1</option>
-                    <option value="2">+2</option>
-                    <option value="3">+3</option>
-                  </select>
-                </label>
-                <button id="tag-save-settlement" type="button" class="secondary">Save settlement</button>
-                <button id="tag-roll-settlement-size" type="button" class="secondary">Roll size</button>
-              </div>
-              <label for="tag-settlement-notes">
-                <span>Settlement notes</span>
-                <textarea id="tag-settlement-notes" rows="2" maxlength="1000"></textarea>
-              </label>
-              <div class="tag-settlement-grid">
-                <label for="tag-troupe-name">
+                  <button type="button" class="tag-help-button" data-tag-help="settlement" aria-label="Settlement help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label for="tag-settlement-name">
+                      <span>Settlement</span>
+                      <input id="tag-settlement-name" type="text" maxlength="80" />
+                    </label>
+                    <label for="tag-settlement-size">
+                      <span>Size</span>
+                      <select id="tag-settlement-size">
+                        <option value="-3">-3</option>
+                        <option value="-2">-2</option>
+                        <option value="-1">-1</option>
+                        <option value="0">0</option>
+                        <option value="1">+1</option>
+                        <option value="2">+2</option>
+                        <option value="3">+3</option>
+                      </select>
+                    </label>
+                    <button id="tag-save-settlement" type="button" class="secondary">Save settlement</button>
+                    <button id="tag-roll-settlement-size" type="button" class="secondary">Roll size</button>
+                  </div>
+                  <label for="tag-settlement-notes">
+                    <span>Settlement notes</span>
+                    <textarea id="tag-settlement-notes" rows="2" maxlength="1000"></textarea>
+                  </label>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
                   <span>Troupe</span>
-                  <input id="tag-troupe-name" type="text" maxlength="80" />
-                </label>
-                <label for="tag-troupe-active">
-                  <span>Active party</span>
-                  <select id="tag-troupe-active" multiple size="4"></select>
-                </label>
-                <label class="session-option compact-option" for="tag-guild-member">
-                  <input type="checkbox" id="tag-guild-member" />
-                  <span>Guild members</span>
-                </label>
-                <label for="tag-guild-coffers">
-                  <span>Guild gp</span>
-                  <input id="tag-guild-coffers" type="number" min="0" step="1" inputmode="numeric" />
-                </label>
-                <button id="tag-save-troupe" type="button" class="secondary">Save troupe</button>
-              </div>
-              <div class="tag-settlement-grid">
-                <label for="tag-travel-destination">
-                  <span>New settlement</span>
-                  <input id="tag-travel-destination" type="text" maxlength="80" />
-                </label>
-                <label for="tag-travel-mode">
-                  <span>Travel method</span>
-                  <select id="tag-travel-mode">
-                    <option value="simple">3d6-3 days</option>
-                    <option value="hex">Hex map</option>
-                  </select>
-                </label>
-                <label class="session-option compact-option" for="tag-pay-road-tithe">
-                  <input type="checkbox" id="tag-pay-road-tithe" />
-                  <span>Pay road tithe</span>
-                </label>
-                <button id="tag-travel-settlement" type="button" class="secondary">Travel</button>
-              </div>
-              <div class="tag-settlement-grid">
-                <label for="tag-availability-item">
-                  <span>Item</span>
-                  <input id="tag-availability-item" type="text" maxlength="100" />
-                </label>
-                <label for="tag-availability-difficulty">
-                  <span>Difficulty</span>
-                  <input id="tag-availability-difficulty" type="number" min="1" max="12" step="1" value="6" />
-                </label>
-                <label for="tag-availability-price">
-                  <span>Price gp</span>
-                  <input id="tag-availability-price" type="number" min="0" step="1" inputmode="numeric" />
-                </label>
-                <button id="tag-check-availability" type="button" class="secondary">Check availability</button>
-              </div>
-              <div class="tag-settlement-grid">
-                <label for="tag-clue-character">
-                  <span>Streetwise character</span>
-                  <select id="tag-clue-character"></select>
-                </label>
-                <label for="tag-clue-consequence">
-                  <span>No-Clue natural 1</span>
-                  <select id="tag-clue-consequence">
-                    <option value="gold">Lose 3d6 gp</option>
-                    <option value="life">Lose 1 Life</option>
-                  </select>
-                </label>
-                <button id="tag-look-for-clue" type="button" class="secondary">Look for Clue</button>
-              </div>
-              <div class="tag-settlement-grid">
-                <label for="tag-streetwise-action">
-                  <span>Streetwise action</span>
-                  <select id="tag-streetwise-action">
-                    <option value="listen_rumors">Listen to rumors</option>
-                    <option value="interrogate">Interrogate</option>
-                    <option value="look_tough">Look Tough</option>
-                  </select>
-                </label>
-                <label for="tag-streetwise-target">
-                  <span>Target L</span>
-                  <input id="tag-streetwise-target" type="number" min="1" max="20" step="1" value="6" />
-                </label>
-                <label for="tag-streetwise-target-name">
-                  <span>Target note</span>
-                  <input id="tag-streetwise-target-name" type="text" maxlength="80" />
-                </label>
-                <button id="tag-run-streetwise" type="button" class="secondary">Roll Streetwise</button>
-              </div>
-              <div class="tag-settlement-grid">
-                <label for="tag-storage-character">
-                  <span>Storage character</span>
-                  <select id="tag-storage-character"></select>
-                </label>
-                <label for="tag-storage-kind">
+                  <button type="button" class="tag-help-button" data-tag-help="troupe" aria-label="Troupe help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label for="tag-troupe-name">
+                      <span>Troupe</span>
+                      <input id="tag-troupe-name" type="text" maxlength="80" />
+                    </label>
+                    <label for="tag-troupe-active">
+                      <span>Active party</span>
+                      <select id="tag-troupe-active" multiple size="4"></select>
+                    </label>
+                    <label class="session-option compact-option" for="tag-guild-member">
+                      <input type="checkbox" id="tag-guild-member" />
+                      <span>Guild members</span>
+                    </label>
+                    <label for="tag-guild-coffers">
+                      <span>Guild gp</span>
+                      <input id="tag-guild-coffers" type="number" min="0" step="1" inputmode="numeric" />
+                    </label>
+                    <button id="tag-save-troupe" type="button" class="secondary">Save troupe</button>
+                  </div>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
+                  <span>Travel</span>
+                  <button type="button" class="tag-help-button" data-tag-help="travel" aria-label="Travel help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label for="tag-travel-destination">
+                      <span>New settlement</span>
+                      <input id="tag-travel-destination" type="text" maxlength="80" />
+                    </label>
+                    <label for="tag-travel-mode">
+                      <span>Travel method</span>
+                      <select id="tag-travel-mode">
+                        <option value="simple">3d6-3 days</option>
+                        <option value="hex">Hex map</option>
+                      </select>
+                    </label>
+                    <label class="session-option compact-option" for="tag-pay-road-tithe">
+                      <input type="checkbox" id="tag-pay-road-tithe" />
+                      <span>Pay road tithe</span>
+                    </label>
+                    <button id="tag-travel-settlement" type="button" class="secondary">Travel</button>
+                  </div>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
+                  <span>Availability</span>
+                  <button type="button" class="tag-help-button" data-tag-help="availability" aria-label="Availability help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label for="tag-availability-item">
+                      <span>Item</span>
+                      <input id="tag-availability-item" type="text" maxlength="100" />
+                    </label>
+                    <label for="tag-availability-difficulty">
+                      <span>Difficulty</span>
+                      <input id="tag-availability-difficulty" type="number" min="1" max="12" step="1" value="6" />
+                    </label>
+                    <label for="tag-availability-price">
+                      <span>Price gp</span>
+                      <input id="tag-availability-price" type="number" min="0" step="1" inputmode="numeric" />
+                    </label>
+                    <button id="tag-check-availability" type="button" class="secondary">Check availability</button>
+                  </div>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
+                  <span>Streetwise</span>
+                  <button type="button" class="tag-help-button" data-tag-help="streetwise" aria-label="Streetwise help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label for="tag-clue-character">
+                      <span>Streetwise character</span>
+                      <select id="tag-clue-character"></select>
+                    </label>
+                    <label for="tag-clue-consequence">
+                      <span>No-Clue natural 1</span>
+                      <select id="tag-clue-consequence">
+                        <option value="gold">Lose 3d6 gp</option>
+                        <option value="life">Lose 1 Life</option>
+                      </select>
+                    </label>
+                    <button id="tag-look-for-clue" type="button" class="secondary">Look for Clue</button>
+                  </div>
+                  <div class="tag-settlement-grid">
+                    <label for="tag-streetwise-action">
+                      <span>Streetwise action</span>
+                      <select id="tag-streetwise-action">
+                        <option value="listen_rumors">Listen to rumors</option>
+                        <option value="interrogate">Interrogate</option>
+                        <option value="look_tough">Look Tough</option>
+                      </select>
+                    </label>
+                    <label for="tag-streetwise-target">
+                      <span>Target L</span>
+                      <input id="tag-streetwise-target" type="number" min="1" max="20" step="1" value="6" />
+                    </label>
+                    <label for="tag-streetwise-target-name">
+                      <span>Target note</span>
+                      <input id="tag-streetwise-target-name" type="text" maxlength="80" />
+                    </label>
+                    <button id="tag-run-streetwise" type="button" class="secondary">Roll Streetwise</button>
+                  </div>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
                   <span>Storage</span>
-                  <select id="tag-storage-kind">
-                    <option value="trove">Hidden trove</option>
-                    <option value="bank">Bank</option>
-                    <option value="magic_locker">Magic locker note</option>
-                  </select>
-                </label>
-                <label for="tag-storage-gold">
-                  <span>Gold gp</span>
-                  <input id="tag-storage-gold" type="number" min="0" step="1" inputmode="numeric" />
-                </label>
-                <label for="tag-storage-item">
-                  <span>Item</span>
-                  <input id="tag-storage-item" type="text" maxlength="100" />
-                </label>
-                <label for="tag-storage-quantity">
-                  <span>Qty</span>
-                  <input id="tag-storage-quantity" type="number" min="1" step="1" value="1" />
-                </label>
-                <button id="tag-store-treasure" type="button" class="secondary">Store</button>
-                <button id="tag-withdraw-storage" type="button" class="secondary">Withdraw gp</button>
-              </div>
-              <div class="tag-settlement-grid">
-                <label for="tag-purchase-character">
+                  <button type="button" class="tag-help-button" data-tag-help="storage" aria-label="Storage help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label for="tag-storage-character">
+                      <span>Storage character</span>
+                      <select id="tag-storage-character"></select>
+                    </label>
+                    <label for="tag-storage-kind">
+                      <span>Storage</span>
+                      <select id="tag-storage-kind">
+                        <option value="trove">Hidden trove</option>
+                        <option value="bank">Bank</option>
+                        <option value="magic_locker">Magic locker note</option>
+                      </select>
+                    </label>
+                    <label for="tag-storage-gold">
+                      <span>Gold gp</span>
+                      <input id="tag-storage-gold" type="number" min="0" step="1" inputmode="numeric" />
+                    </label>
+                    <label for="tag-storage-item">
+                      <span>Item</span>
+                      <input id="tag-storage-item" type="text" maxlength="100" />
+                    </label>
+                    <label for="tag-storage-quantity">
+                      <span>Qty</span>
+                      <input id="tag-storage-quantity" type="number" min="1" step="1" value="1" />
+                    </label>
+                    <button id="tag-store-treasure" type="button" class="secondary">Store</button>
+                    <button id="tag-withdraw-storage" type="button" class="secondary">Withdraw gp</button>
+                  </div>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
                   <span>Buyer</span>
-                  <select id="tag-purchase-character"></select>
-                </label>
-                <label for="tag-purchase-service">
-                  <span>Purchase</span>
-                  <select id="tag-purchase-service">
-                    <option value="resurrection_tag">Resurrection tag</option>
-                    <option value="blessing_tag">Blessing tag</option>
-                    <option value="platinum_piece">Platinum piece</option>
-                    <option value="bag_of_carrying">Bag of Carrying</option>
-                    <option value="ten_foot_pole">10-foot pole</option>
-                    <option value="lantern_hook">Lantern hook</option>
-                    <option value="very_nutritious_food">Very nutritious food</option>
-                    <option value="poison_resistance_training">Poison resistance training</option>
-                    <option value="martial_arts_training">Martial arts training</option>
-                    <option value="good_boots">Good boots</option>
-                    <option value="flammable_oil">Flammable oil</option>
-                    <option value="horn">Horn</option>
-                    <option value="wineskin">Wineskin/refill</option>
-                    <option value="flail_axe">Flail-Axe</option>
-                    <option value="aspergillum">Aspergillum</option>
-                  </select>
-                </label>
-                <label for="tag-purchase-quantity">
-                  <span>Qty</span>
-                  <input id="tag-purchase-quantity" type="number" min="1" step="1" value="1" />
-                </label>
-                <button id="tag-purchase-service-button" type="button" class="secondary">Buy</button>
-                <label for="tag-gambling-stake">
-                  <span>Stake gp</span>
-                  <input id="tag-gambling-stake" type="number" min="0" step="1" inputmode="numeric" />
-                </label>
-                <button id="tag-roll-gambling" type="button" class="secondary">Gamble</button>
-              </div>
-              <div class="tag-settlement-grid">
-                <label for="tag-locker-character">
-                  <span>Locker owner</span>
-                  <select id="tag-locker-character"></select>
-                </label>
-                <label for="tag-locker-kind">
-                  <span>Locker kind</span>
-                  <select id="tag-locker-kind">
-                    <option value="item">Item</option>
-                    <option value="gold">Gold</option>
-                  </select>
-                </label>
-                <label for="tag-locker-contents">
-                  <span>Contents</span>
-                  <input id="tag-locker-contents" type="text" maxlength="100" />
-                </label>
-                <label for="tag-locker-gold">
-                  <span>Gold gp</span>
-                  <input id="tag-locker-gold" type="number" min="0" max="5000" step="1" inputmode="numeric" />
-                </label>
-                <button id="tag-create-locker" type="button" class="secondary">Create locker</button>
-                <label for="tag-locker-select">
-                  <span>Summon locker</span>
-                  <select id="tag-locker-select"></select>
-                </label>
-                <button id="tag-summon-locker" type="button" class="secondary">Summon</button>
-              </div>
-              <div class="tag-settlement-grid">
-                <label class="session-option compact-option" for="tag-map-cartographer">
-                  <input type="checkbox" id="tag-map-cartographer" />
-                  <span>Guild cartographer</span>
-                </label>
-                <button id="tag-follow-map" type="button" class="secondary">Follow map</button>
-              </div>
-              <div class="tag-settlement-grid">
-                <label for="tag-adventure-lead-type">
-                  <span>Adventure lead</span>
-                  <select id="tag-adventure-lead-type">
-                    <option value="rumor">Rumor Scene</option>
-                    <option value="treasure_map">Treasure Map</option>
-                    <option value="thematic_dungeon">Thematic Dungeon</option>
-                    <option value="guild_job">Guild Job</option>
-                  </select>
-                </label>
-                <label for="tag-adventure-lead-detail">
-                  <span>Detail</span>
-                  <input id="tag-adventure-lead-detail" type="text" maxlength="40" placeholder="Optional roll/result number" />
-                </label>
-                <button id="tag-create-adventure" type="button" class="secondary">Create adventure</button>
-              </div>
-              <div class="tag-settlement-services-head">
-                <div class="campaign-status-title">TAG services</div>
-                <label for="tag-moneylender-debt">
-                  <span>Debt gp</span>
-                  <input id="tag-moneylender-debt" type="number" min="0" step="1" inputmode="numeric" value="100" />
-                </label>
-                <button id="tag-refresh-services" type="button" class="secondary">Refresh services</button>
-              </div>
-              <div id="tag-settlement-services" class="tag-settlement-services"></div>
-              <div id="tag-settlement-result" class="campaign-status-line muted" role="status"></div>
-              <div id="tag-settlement-log" class="tag-settlement-log"></div>
+                  <button type="button" class="tag-help-button" data-tag-help="buyer" aria-label="Buyer help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label for="tag-purchase-character">
+                      <span>Buyer</span>
+                      <select id="tag-purchase-character"></select>
+                    </label>
+                    <label for="tag-purchase-service">
+                      <span>Purchase</span>
+                      <select id="tag-purchase-service">
+                        <option value="resurrection_tag">Resurrection tag</option>
+                        <option value="blessing_tag">Blessing tag</option>
+                        <option value="platinum_piece">Platinum piece</option>
+                        <option value="bag_of_carrying">Bag of Carrying</option>
+                        <option value="ten_foot_pole">10-foot pole</option>
+                        <option value="lantern_hook">Lantern hook</option>
+                        <option value="very_nutritious_food">Very nutritious food</option>
+                        <option value="poison_resistance_training">Poison resistance training</option>
+                        <option value="martial_arts_training">Martial arts training</option>
+                        <option value="good_boots">Good boots</option>
+                        <option value="flammable_oil">Flammable oil</option>
+                        <option value="horn">Horn</option>
+                        <option value="wineskin">Wineskin/refill</option>
+                        <option value="flail_axe">Flail-Axe</option>
+                        <option value="aspergillum">Aspergillum</option>
+                      </select>
+                    </label>
+                    <label for="tag-purchase-quantity">
+                      <span>Qty</span>
+                      <input id="tag-purchase-quantity" type="number" min="1" step="1" value="1" />
+                    </label>
+                    <button id="tag-purchase-service-button" type="button" class="secondary">Buy</button>
+                    <label for="tag-gambling-stake">
+                      <span>Stake gp</span>
+                      <input id="tag-gambling-stake" type="number" min="0" step="1" inputmode="numeric" />
+                    </label>
+                    <button id="tag-roll-gambling" type="button" class="secondary">Gamble</button>
+                  </div>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
+                  <span>Magic Lockers</span>
+                  <button type="button" class="tag-help-button" data-tag-help="lockers" aria-label="Magic lockers help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label for="tag-locker-character">
+                      <span>Locker owner</span>
+                      <select id="tag-locker-character"></select>
+                    </label>
+                    <label for="tag-locker-kind">
+                      <span>Locker kind</span>
+                      <select id="tag-locker-kind">
+                        <option value="item">Item</option>
+                        <option value="gold">Gold</option>
+                      </select>
+                    </label>
+                    <label for="tag-locker-contents">
+                      <span>Contents</span>
+                      <input id="tag-locker-contents" type="text" maxlength="100" />
+                    </label>
+                    <label for="tag-locker-gold">
+                      <span>Gold gp</span>
+                      <input id="tag-locker-gold" type="number" min="0" max="5000" step="1" inputmode="numeric" />
+                    </label>
+                    <button id="tag-create-locker" type="button" class="secondary">Create locker</button>
+                    <label for="tag-locker-select">
+                      <span>Summon locker</span>
+                      <select id="tag-locker-select"></select>
+                    </label>
+                    <button id="tag-summon-locker" type="button" class="secondary">Summon</button>
+                  </div>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
+                  <span>Maps and Adventure Leads</span>
+                  <button type="button" class="tag-help-button" data-tag-help="maps" aria-label="Maps and adventure leads help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-grid">
+                    <label class="session-option compact-option" for="tag-map-cartographer">
+                      <input type="checkbox" id="tag-map-cartographer" />
+                      <span>Guild cartographer</span>
+                    </label>
+                    <button id="tag-follow-map" type="button" class="secondary">Follow map</button>
+                  </div>
+                  <div class="tag-settlement-grid">
+                    <label for="tag-adventure-lead-type">
+                      <span>Adventure lead</span>
+                      <select id="tag-adventure-lead-type">
+                        <option value="rumor">Rumor Scene</option>
+                        <option value="treasure_map">Treasure Map</option>
+                        <option value="thematic_dungeon">Thematic Dungeon</option>
+                        <option value="guild_job">Guild Job</option>
+                      </select>
+                    </label>
+                    <label for="tag-adventure-lead-detail">
+                      <span>Detail</span>
+                      <input id="tag-adventure-lead-detail" type="text" maxlength="40" placeholder="Optional roll/result number" />
+                    </label>
+                    <button id="tag-create-adventure" type="button" class="secondary">Create adventure</button>
+                  </div>
+                </div>
+              </details>
+              <details class="tag-help-section" open>
+                <summary>
+                  <span>Services and Log</span>
+                  <button type="button" class="tag-help-button" data-tag-help="services" aria-label="Services and log help">?</button>
+                </summary>
+                <div class="tag-help-section-body">
+                  <div class="tag-settlement-services-head">
+                    <div class="campaign-status-title">TAG services</div>
+                    <label for="tag-moneylender-debt">
+                      <span>Debt gp</span>
+                      <input id="tag-moneylender-debt" type="number" min="0" step="1" inputmode="numeric" value="100" />
+                    </label>
+                    <button id="tag-refresh-services" type="button" class="secondary">Refresh services</button>
+                  </div>
+                  <div id="tag-settlement-services" class="tag-settlement-services"></div>
+                  <div id="tag-settlement-result" class="campaign-status-line muted" role="status"></div>
+                  <div id="tag-settlement-log" class="tag-settlement-log"></div>
+                </div>
+              </details>
             </section>
             <div id="abyss-campaign-status" class="abyss-campaign-status hidden" role="status"></div>
             <label class="session-option" for="start-camped-outside">

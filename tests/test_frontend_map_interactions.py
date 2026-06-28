@@ -125,7 +125,19 @@ def test_tag_settlement_controls_and_tooltips_are_present() -> None:
     assert 'id="tag-pay-road-tithe"' in INDEX_HTML
     assert 'id="tag-refresh-services"' in INDEX_HTML
     assert 'id="tag-settlement-services"' in INDEX_HTML
+    assert 'class="tag-help-section"' in INDEX_HTML
+    assert 'class="tag-help-button"' in INDEX_HTML
+    assert 'data-tag-help="settlement"' in INDEX_HTML
+    assert 'data-tag-help="troupe"' in INDEX_HTML
+    assert 'data-tag-help="travel"' in INDEX_HTML
+    assert 'data-tag-help="streetwise"' in INDEX_HTML
+    assert 'data-tag-help="storage"' in INDEX_HTML
+    assert 'data-tag-help="buyer"' in INDEX_HTML
     assert "TAG_SETTLEMENT_TOOLTIPS" in APP_JS
+    assert "TAG_HELP_CONTENT" in APP_JS
+    assert "wireTagHelpButtons" in APP_JS
+    assert "openTagHelp" in APP_JS
+    assert "town or village downtime layer" in APP_JS
     assert "Roll d6 + settlement size" in APP_JS
     assert "Streetwise Save vs L6" in APP_JS
     assert "3d6-3 days" in APP_JS
