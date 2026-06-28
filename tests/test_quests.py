@@ -306,6 +306,17 @@ def test_use_potion_heals_to_full() -> None:
     assert "Potion of Healing" not in session.party[0].inventory
 
 
+def test_use_potion_only_consumes_one_of_many() -> None:
+    eng = engine()
+    session = base_session()
+    session.party[0].current_life = 1
+    session.party[0].inventory = ["Potion of Healing", "Potion of Healing", "Potion of Healing"]
+    eng.advance(session, "use_potion", character_id="h", item_name="Potion of Healing")
+    assert session.party[0].current_life == 3
+    assert session.party[0].inventory.count("Potion of Healing") == 2
+    assert "h" in session.potion_used_character_ids
+
+
 def test_use_potion_of_sleep_in_combat(monkeypatch) -> None:
     eng = engine()
     foe = EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1)

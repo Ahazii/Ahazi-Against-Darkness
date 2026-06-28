@@ -19626,8 +19626,33 @@ function sumExitRowWeights(session, tile) {
   return Math.max(1, total);
 }
 
+function clampMapExitsScrollHeight(shell) {
+  const scroll = shell?.querySelector(".map-exits-scroll");
+  const hint = shell?.querySelector(".map-exits-scroll-hint");
+  if (!scroll || !shell) return;
+  const hintHeight = hint && !hint.classList.contains("hidden") ? hint.offsetHeight : 0;
+  let available = shell.clientHeight - hintHeight;
+  if (available <= 0) {
+    const dock = shell.closest(".map-exits-dock");
+    const details = shell.closest(".map-exits-details");
+    const summary = details?.querySelector(":scope > summary");
+    if (dock && summary) {
+      const dockStyle = window.getComputedStyle(dock);
+      const padY =
+        (parseFloat(dockStyle.paddingTop) || 0) + (parseFloat(dockStyle.paddingBottom) || 0);
+      available = dock.clientHeight - summary.offsetHeight - padY - hintHeight;
+    }
+  }
+  if (available > 0) {
+    scroll.style.maxHeight = `${Math.round(available)}px`;
+  } else {
+    scroll.style.maxHeight = "";
+  }
+}
+
 function updateMapExitsScrollState(shell) {
   if (!shell) return;
+  clampMapExitsScrollHeight(shell);
   const scroll = shell.querySelector(".map-exits-scroll");
   const hint = shell.querySelector(".map-exits-scroll-hint");
   if (!scroll) return;
@@ -19667,6 +19692,8 @@ function bindMapExitsScrollHint(shell) {
     const observer = new ResizeObserver(update);
     observer.observe(shell);
     observer.observe(scroll);
+    const dock = shell.closest(".map-exits-dock");
+    if (dock) observer.observe(dock);
     for (const child of scroll.children) observer.observe(child);
   }
   window.setTimeout(update, 0);

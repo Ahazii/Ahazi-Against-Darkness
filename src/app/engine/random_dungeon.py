@@ -44,6 +44,7 @@ from .death_recovery import (
 )
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
 from .firearm import gnome_repair_firearm
+from .gem_items import remove_inventory_item
 from .hunger import eat_food_ration, feed_all_living_heroes, feed_hungry_heroes
 from .combat_modifiers import consume_clarity_bonus
 from .consumables import (
@@ -17625,7 +17626,7 @@ class RandomDungeonEngine:
 
             if not apply_lex_soul_tax_if_needed(session, member, potion_name, show_rolls=show_rolls):
                 return
-            member.inventory = [item for item in member.inventory if item != potion_name]
+            remove_inventory_item(member, potion_name)
             session.log.append(f"{member.name} quaffs {potion_name}.")
             active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
             standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
@@ -17672,7 +17673,7 @@ class RandomDungeonEngine:
 
         if not apply_lex_soul_tax_if_needed(session, member, potion_name, show_rolls=show_rolls):
             return
-        member.inventory = [item for item in member.inventory if item != potion_name]
+        remove_inventory_item(member, potion_name)
         lost_life = member.max_life - member.current_life
         member.current_life = member.max_life
         session.potion_used_character_ids.append(member.character_id)
