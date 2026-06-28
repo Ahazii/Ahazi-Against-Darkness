@@ -68,6 +68,25 @@ Use this to validate **how the game behaves** — not to change `RULE_COVERAGE.m
 
 ---
 
+## §TAG Adventure Leads (`Tales_from_the_adventurers_guild.pdf`)
+
+Use Home → Adventure → TAG Settlement → **Maps and Adventure Leads**. The **Adventure lead** dropdown has hover text for valid Detail ranges. After creating a lead, open the normal **Adventure** section/dropdown and start the generated module.
+
+| # | Mechanic | PDF | How to trigger | Check |
+|---|----------|-----|----------------|-------|
+| TAG.1 | Rumor Scene install | TAG pp.22-24, scenes pp.25-31 | Select Rumor Scene; enter 1-12; Create adventure | Installed adventure title names the rumor; `source.parameters.tag_reference` has scene/page/reward notes; finale uses exact existing foe where available, otherwise a named proxy note |
+| TAG.2 | Medusa rumor exact foe | TAG pp.22, 25-26 | Rumor Scene Detail `2` | Final room is Xasartha's cabin; foe spawn is Medusa; notes mention Scene 10 assassins, Scene 1 pendant, and source pages |
+| TAG.3 | Thematic Dungeon install | TAG pp.38-48 | Select Thematic Dungeon; enter 1-6 | Title and room text match the theme; tag reference lists target room count, special rules, final proxy, rewards |
+| TAG.4 | Dragon's Lair theme | TAG pp.39-40 | Thematic Dungeon Detail `3` | Notes mention four-room target, 2-Clue dragon-type reveal, and Young Dragon/Young Red Dragon handling |
+| TAG.5 | Guild Job install | TAG p.54+ | Select Guild Job; enter 1-6 or leave blank | Guild table row is used; minor quests carry named source/reward notes; rumor/theme jobs reuse their profiles |
+| TAG.6 | TAG references in Services | TAG pp.54, 61-65 | Refresh TAG services | Adventurers Guild jobs, Trinkets, and Guild spells rows appear with cost/summary/automation text and hover hints |
+
+**Current boundary:** bespoke TAG foes not already in the bestiary, such as white gargoyles, bandit chieftain, hill giant, and some minor-quest creatures, are represented by existing encounter proxies. The proxy name and printed rule notes are recorded in `tag_reference` so signoff can distinguish implemented automation from manual PDF handling.
+
+**Pass/Fail notes:**
+
+---
+
 ## §1 Exploration harness
 
 Validate the shell before table-specific rows.

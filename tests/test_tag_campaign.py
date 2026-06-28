@@ -143,7 +143,7 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
     campaign.settlement_size = -1
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}
 
-    assert list(rows)[:24] == [
+    assert list(rows)[:27] == [
         "bank_account",
         "bank_inheritance",
         "magic_locker",
@@ -168,6 +168,9 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
         "aspergillum",
         "availability_rolls",
         "streetwise_rules",
+        "adventurers_guild_jobs",
+        "trinkets",
+        "guild_spells",
     ]
     assert rows["bank_account"]["status"] == "available"
     assert rows["magic_locker"]["status"] == "unavailable"
@@ -177,6 +180,9 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
     assert rows["moneylenders"]["credit_limit_gp"] == 1800
     assert rows["horn"]["action"] == "horn_attract"
     assert rows["aspergillum"]["action"] == "aspergillum_break"
+    assert "Adventure module" in rows["adventurers_guild_jobs"]["automation"]
+    assert "Power Cookie" in rows["trinkets"]["summary"]
+    assert "Wizard's Luck" in rows["guild_spells"]["summary"]
 
     campaign.settlement_size = 3
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}
@@ -307,3 +313,46 @@ def test_tag_adventure_manifest_generation_validates() -> None:
         assert manifest["id"] in campaign.tag_generated_adventure_ids
         assert manifest["source"]["parameters"]["lead_type"] == lead_type
         assert "Adventure section" in entry.result_text
+
+
+def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="2")
+    result = validate_adventure_manifest(manifest, rules_repo=repo)
+
+    assert result.valid, result.errors
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    assert manifest["title"] == "TAG Rumor 2: Medusa in the Hunter's Cabin"
+    assert reference["scene"] == "Scene 10 leading to Scene 1"
+    assert reference["pdf_pages"] == "TAG pp.22, 25-26"
+    assert reference["final_foe_proxy"] == "Medusa"
+    assert "Pendant worth 260 gp" in reference["rewards"]
+    final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+    assert final_room["triggers"][0]["encounter"]["foes"] == [{"name": "Medusa", "count": 1}]
+
+
+def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+
+    dragon, _entry = build_tag_adventure_manifest(campaign, lead_type="thematic_dungeon", detail="3")
+    dragon_result = validate_adventure_manifest(dragon, rules_repo=repo)
+    assert dragon_result.valid, dragon_result.errors
+    dragon_ref = dragon["source"]["parameters"]["tag_reference"]
+    assert dragon["title"] == "TAG Thematic Dungeon: Dragon's Lair"
+    assert dragon_ref["pdf_pages"] == "TAG pp.39-40"
+    assert dragon_ref["final_foe_proxy"] == "Young Dragon"
+    assert any("Four-room target" in rule for rule in dragon_ref["rules"])
+
+    rolls = iter([2])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    job, _entry = build_tag_adventure_manifest(campaign, lead_type="guild_job", detail="1")
+    job_result = validate_adventure_manifest(job, rules_repo=repo)
+    assert job_result.valid, job_result.errors
+    job_ref = job["source"]["parameters"]["tag_reference"]
+    assert job["title"] == "TAG Guild Job 1: Gorungar the Mighty"
+    assert job_ref["pdf_pages"] == "TAG p.55"
+    assert job_ref["final_foe_proxy"] == "Goblins"
+    assert "50 gp for his head" in job_ref["rewards"]

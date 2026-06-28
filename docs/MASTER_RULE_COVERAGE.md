@@ -31,7 +31,7 @@ whole-book completion.
 | Expanded Edition | advanced | Procedural dungeon loop, classes, combat, equipment, dungeon/cavern/fungal tables, bestiary, reactions, Secrets, quests, Fiendish Foes, EE map catalog | Remaining manual sign-off, selected UI/fidelity edges, roleplaying/adventure-authoring scope decisions |
 | Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals; **Abyss profile** with 2d6 room-content routing, exact Abyss traps/features/events phase, claimable/choice Abyss treasure, Useful Stuff/magical defense item rows, Abyss wandering spawns, Abyss minion reaction/Trial routing, tactical targeting for minion leaders, multiple bosses, and hordes, core Abyss item use-actions/passive item math, Abyss affliction lifecycles for Dark Plague/lycanthropy/vampire-drain resurrection blocking, persistent playable campaign plots, vampire sire hunt/re-encounter, and large-room dragon-lair routing | Manual playtest sign-off for rare optional extended-campaign chaining and broader frontend decomposition |
 | Forsaken Depths | advanced partial | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, **6 Heroic spells (catalog + cast)** including Fire of Truth chaos-hit bonus, Teleport Enemy return tracking with occupied-room reaction rolls, and Mass Blessing party/hireling condition choices; Legendary spell cast path, **72 validated tiles**, FD dungeon/river runtime, quests, citadels, TCOTFD branch | Remaining FD content families and manual sign-off |
-| Adventurers' Guild | partial campaign | Persistent roster, multiple parties, banking, **campaign state** (`days_passed`, TAG banking toggle, `/api/campaign`), home settlement identity/size/notes, troupe/guild/coffer state, active party selection, settlement storage, magic lockers, platinum pieces, special-item availability, Streetwise Look for Clues/rumors/interrogation/Look Tough, travel to new settlements with simple or hex-route logging, treasure-map follow rolls, Gambling House gp outcomes, first twenty-four treasure/service/procedure rows from TAG pp.9-20, and TAG lead generation into normal installed adventures | Exact full Rumor Scene branches, exact Thematic Dungeon tables, solo missions, trinkets, Guild spells, richer bank inheritance/robbery recovery |
+| Adventurers' Guild | partial campaign | Persistent roster, multiple parties, banking, **campaign state** (`days_passed`, TAG banking toggle, `/api/campaign`), home settlement identity/size/notes, troupe/guild/coffer state, active party selection, settlement storage, magic lockers, platinum pieces, special-item availability, Streetwise Look for Clues/rumors/interrogation/Look Tough, travel to new settlements with simple or hex-route logging, treasure-map follow rolls, Gambling House gp outcomes, first twenty-seven treasure/service/procedure rows from TAG pp.9-20, p.54, and pp.61-65, and TAG lead generation into normal installed adventures with structured Rumor/Thematic/Guild Job rule profiles | Exact custom foe profiles and fully automated branches for bespoke TAG scenes, trinket-use buttons, Guild spell casting effects, richer bank inheritance/robbery recovery |
 | Netherworld | missing/foundation only | Generic Madness/combat/economy primitives can be reused | Classes, expert skills, soul economy, food, planar gates, hex exploration, terrain, reactions, objectives, bestiary, spells, merchants and treasure |
 
 ## Expanded Edition
@@ -88,16 +88,17 @@ Implemented first slice:
 - moving to a different settlement by simple 3d6-3 travel days or optional hex-map route logging;
 - special-item availability with settlement-size modifier and fail-by-1 surcharge;
 - Streetwise Look for Clues with character choice, bribe cost, class modifier and natural-1 consequence;
-- first twenty-four TAG treasure/service/procedure rows (through Streetwise Rules), with hidden-trove risk roll, treasure-map price, moneylender pursuit, horn attraction, flammable-oil throw, aspergillum break, and row-level availability checks;
+- first twenty-seven TAG treasure/service/procedure rows (through Streetwise Rules plus Adventurers Guild jobs, Trinkets, and Guild spells), with hidden-trove risk roll, treasure-map price, moneylender pursuit, horn attraction, flammable-oil throw, aspergillum break, and row-level availability checks;
 - TAG settlement Apothecary hook when TCOTFD is also in use;
 - troupe name/active party/guild coffer state, settlement storage, fixed service purchases, magic lockers, Gambling House gp outcomes, Streetwise Listen to Rumors/Interrogate/Look Tough, and Following the Treasure Map / Map Leads To roll summaries;
 - TAG Rumor Scene, Treasure Map, Thematic Dungeon, and Guild Job leads create normal installed adventure modules in the Adventure section/dropdown.
+- TAG lead modules carry `source.parameters.tag_reference` with PDF pages, scene/theme notes, reward notes, and the current exact/proxy finale foe; all 12 Rumor Scenes, six Thematic Dungeons, and six Guild Job minor quests have structured profiles.
 - Home-panel TAG tools are grouped into collapsible sections with compact `?` help summaries for settlement, troupe, travel, availability, Streetwise, storage, buyer, magic lockers, maps/adventure leads, and services/log.
 
 Next slices:
 
-- exact full Rumor Scene branches and Thematic Dungeon table payloads;
-- solo missions, trinkets and Guild spells.
+- exact custom foe profiles and fully automated branch choices for bespoke Rumor Scene, Thematic Dungeon, and Guild Job results;
+- trinket-use buttons and Guild spell casting effects.
 
 Later slices can deepen bank inheritance/robbery recovery and full per-character
 loan enforcement.

@@ -256,6 +256,33 @@ TAG_SETTLEMENT_SERVICES = [
         "summary": "Town underworld Saves for clues, interrogation, rumors and similar actions, with class modifiers.",
         "automation": "Look for Clue is automated above; interrogation and other Streetwise actions remain future work.",
     },
+    {
+        "key": "adventurers_guild_jobs",
+        "name": "Adventurers Guild jobs",
+        "source_page": 54,
+        "min_size": -3,
+        "cost": "Guild job table; payment depends on the rolled job.",
+        "summary": "Rolls Minor Unique Quest, Rumor, or Thematic Dungeon work and can install it as an Adventure module.",
+        "automation": "Use Maps and Adventure Leads > Guild Job to create a playable Adventure module with TAG source notes.",
+    },
+    {
+        "key": "trinkets",
+        "name": "Trinkets",
+        "source_page": 61,
+        "min_size": -3,
+        "cost": "Not normally purchased; used for small-party starts and loot substitutions.",
+        "summary": "Minor magic items for small parties: scrolls, healing potion, Power Cookie, enchanted shot, spheres, candy, and bauble.",
+        "automation": "Reference row; trinket grant/use buttons are not automated yet.",
+    },
+    {
+        "key": "guild_spells",
+        "name": "Guild spells",
+        "source_page": 65,
+        "min_size": -3,
+        "cost": "Learn or find as basic Guild spell scrolls when allowed by TAG.",
+        "summary": "Guild spell table: Speedy Recovery, Temporary Weapon Enchantment, Troupe Switch, Look Tough, Silence of the Mouse, Wizard's Luck.",
+        "automation": "Reference row; spell preparation/casting effects remain manual until the spell-engine pass.",
+    },
 ]
 
 FIGHTING_CLASS_IDS = {
@@ -415,6 +442,387 @@ TAG_THEMATIC_DUNGEONS: dict[int, str] = {
     4: "Fiendish Abyss",
     5: "Minotaur Maze",
     6: "Bandit Hideout",
+}
+
+TAG_TRINKETS: dict[int, str] = {
+    1: "Power Cookie",
+    2: "Enchanted Sling Bullet",
+    3: "Mist Sphere",
+    4: "Darkness Sphere",
+    5: "Candy of Hyperactivity",
+    6: "Enchanted Bauble",
+}
+
+TAG_GUILD_SPELLS: dict[int, str] = {
+    1: "Speedy Recovery",
+    2: "Temporary Weapon Enchantment",
+    3: "Troupe Switch",
+    4: "Look Tough",
+    5: "Silence of the Mouse",
+    6: "Wizard's Luck",
+}
+
+TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
+    1: {
+        "title": "Bofto's Star-Shaped Find",
+        "scene": "Scene 9, then Scene 17 if the family is questioned",
+        "pdf_pages": "TAG pp.22, 29, 31",
+        "objective": "Investigate Bofto's strange star-shaped object and decide whether to steal it, question the family, or leave it alone.",
+        "entry": "Bofto's vineyard has been quiet since the star-shaped object appeared.",
+        "side": "Questioning the family confirms Bofto has changed and points back to the object.",
+        "complication": "Treat theft or confrontation as a manual TAG social choice before combat starts.",
+        "final_title": "The Star Object",
+        "final_description": "A star-shaped object hums in the vineyard. Use the TAG Scene 9 choices: steal, talk, or leave; record consequences manually.",
+        "final_foe": "Goblins",
+        "final_count": 4,
+        "rewards": "Depends on the chosen Scene 9 resolution.",
+        "rules": [
+            "Rumor is crossed off once played.",
+            "This is primarily a choice scene; the installed encounter is a proxy if the table result turns hostile.",
+        ],
+    },
+    2: {
+        "title": "Medusa in the Hunter's Cabin",
+        "scene": "Scene 10 leading to Scene 1",
+        "pdf_pages": "TAG pp.22, 25-26",
+        "objective": "Survive or talk down the assassins, then resolve the medusa Xasartha.",
+        "entry": "A hunter's cabin hides more than a monster story.",
+        "side": "Streetwise or roleplay may reveal why the assassins want the medusa dead.",
+        "complication": "Scene 10 calls for d3+2 agents at HCL+2 and a possible Streetwise L5 parley.",
+        "final_title": "Xasartha's Cabin",
+        "final_description": "Xasartha, the medusa, waits in the cabin. Apply her gaze and pendant rules from TAG Scene 1.",
+        "final_foe": "Medusa",
+        "final_count": 1,
+        "rewards": "Pendant worth 260 gp and necros; trying it can grant Luck as described in Scene 1.",
+        "rules": [
+            "Assassin count and parley are not auto-rolled inside the module.",
+            "Use the Medusa combat profile for the final encounter.",
+        ],
+    },
+    3: {
+        "title": "The Paladin's Sword",
+        "scene": "Scene 11",
+        "pdf_pages": "TAG pp.23, 30",
+        "objective": "Check the old miller's farm and discover whether the sword rumor is true.",
+        "entry": "The farm is watched by locals who have repeated the sword story too often.",
+        "side": "Search the outbuildings for the false trail and any remaining tracks.",
+        "complication": "Scene 11 is a red herring with a 2-in-6 Riff-Raff or Outside ambush chance.",
+        "final_title": "False Sword Trail",
+        "final_description": "No paladin sword is here. Roll the Scene 11 ambush chance manually if you want the printed resolution.",
+        "final_foe": "Goblins",
+        "final_count": 4,
+        "rewards": "No sword; possible ambush rewards only.",
+        "rules": ["Installed combat is a proxy for the optional ambush."],
+    },
+    4: {
+        "title": "Mutant Fish Under the Bridge",
+        "scene": "Scene 12",
+        "pdf_pages": "TAG pp.23, 30",
+        "objective": "Face the mutant fish's hypnosis at the bridge.",
+        "entry": "The stream under the bridge is unnaturally still.",
+        "side": "The banks show signs of travellers walking willingly into the water.",
+        "complication": "All characters Save vs L5 hypnosis; chaos-tainted characters fail automatically.",
+        "final_title": "The Bridge Pool",
+        "final_description": "Resolve the mutant fish hypnosis and rescue timing from TAG Scene 12 before ending the scene.",
+        "final_foe": "Cave Dragon",
+        "final_count": 1,
+        "rewards": "If the party survives, d6+3 food rations; counts as two minion encounters for XP.",
+        "rules": ["Cave Dragon is a proxy spawn; apply the printed mutant fish rules manually."],
+    },
+    5: {
+        "title": "Dragon in Disguise",
+        "scene": "Scene 13",
+        "pdf_pages": "TAG pp.22, 31, 39-40",
+        "objective": "Decide whether the disguised traveller is truly a dragon and spend Clues if the lair is pursued.",
+        "entry": "A too-polished stranger keeps appearing in local accounts.",
+        "side": "Clues can later reveal the dragon's lair and type.",
+        "complication": "If the party pursues the real dragon, TAG uses the Dragon's Lair thematic dungeon.",
+        "final_title": "The Disguised Dragon",
+        "final_description": "The mask drops. Use Scene 13 to decide whether this becomes a Dragon's Lair hunt.",
+        "final_foe": "Young Dragon",
+        "final_count": 1,
+        "rewards": "Dragon lair treasure if pursued; spend 2 Clues to learn dragon type before the final room.",
+        "rules": ["Use the Dragon's Lair thematic notes in source.parameters for the full lair version."],
+    },
+    6: {
+        "title": "Leprechauns at Blackbird Hill",
+        "scene": "Scene 2",
+        "pdf_pages": "TAG pp.23, 25",
+        "objective": "Find the leprechauns and decide whether to buy Shoes of Fast Walk or learn their illusion spell.",
+        "entry": "Blackbird Hill is dotted with tiny tracks and mocking laughter.",
+        "side": "The leprechauns prefer bargaining to fighting.",
+        "complication": "They sell Shoes of Fast Walk and may teach an illusion spell under the Scene 2 terms.",
+        "final_title": "Blackbird Hill Bargain",
+        "final_description": "Resolve the leprechaun bargain; fight only if your table turns the scene hostile.",
+        "final_foe": "Goblins",
+        "final_count": 4,
+        "rewards": "Shoes of Fast Walk for 200 gp; illusion spell instruction per Scene 2.",
+        "rules": ["Installed combat is only a hostile-scene proxy."],
+    },
+    7: {
+        "title": "The Stair Under Tamas Zeya",
+        "scene": "Scene 15",
+        "pdf_pages": "TAG pp.24, 31",
+        "objective": "Enter the hidden temple stair under Tamas Zeya and clear the small temple dungeon.",
+        "entry": "A concealed stair descends below Tamas Zeya.",
+        "side": "Old offerings mark this as a temple site rather than a normal cellar.",
+        "complication": "Scene 15 calls for a small seven-room dungeon using 4AD or Lost Temples support.",
+        "final_title": "Temple Below Tamas Zeya",
+        "final_description": "Resolve this as the temple finale for the seven-room Scene 15 dungeon.",
+        "final_foe": "Mummy",
+        "final_count": 1,
+        "rewards": "Temple treasure per the generated rooms.",
+        "rules": ["This module is a compact handoff; expand to seven rooms if playing the PDF literally."],
+    },
+    8: {
+        "title": "Shaura's Chaos Cult",
+        "scene": "Scene 16",
+        "pdf_pages": "TAG pp.24, 31",
+        "objective": "Spend the needed Clues, find Shaura, and break the chaos cult.",
+        "entry": "Names whispered in town all point to Shaura.",
+        "side": "The cult signs require careful Streetwise work before the dungeon can be found.",
+        "complication": "Scene 16 requires 2 Clues and a ten-room dungeon; final fight is Silent Scream cultists plus priestess.",
+        "final_title": "Silent Scream Shrine",
+        "final_description": "The cult gathers around Shaura's shrine. Use the printed cultist/priestess mix for the exact final fight.",
+        "final_foe": "Wraith",
+        "final_count": 1,
+        "rewards": "150 gp and XP after the cult is defeated.",
+        "rules": ["Wraith is a proxy for the cult priestess until cultist foes are added as exact spawn profiles."],
+    },
+    9: {
+        "title": "Daroc's Lost Familiar",
+        "scene": "Scene 5",
+        "pdf_pages": "TAG pp.24, 27",
+        "objective": "Use town Clues to find Daroc's lost cat familiar.",
+        "entry": "Daroc's familiar has vanished into the settlement alleys.",
+        "side": "Beastmasters, druids, cat-like characters, or cat companions reduce the Clue burden.",
+        "complication": "Scene 5 requires 2 Clues from town Streetwise, reduced to 1 with the listed cat/beast help.",
+        "final_title": "The Familiar's Hiding Place",
+        "final_description": "The familiar is cornered by rough locals. Resolve the Clue spend before claiming the reward.",
+        "final_foe": "Goblins",
+        "final_count": 4,
+        "rewards": "100 gp and 1 XP.",
+        "rules": ["Installed combat represents trouble around the familiar, not a mandatory PDF fight."],
+    },
+    10: {
+        "title": "Winged Things Over the Burgomaster's House",
+        "scene": "Scene 8",
+        "pdf_pages": "TAG pp.24, 29",
+        "objective": "Stop the white gargoyles above the burgomaster's house.",
+        "entry": "Winged shapes circle the burgomaster's roof at dusk.",
+        "side": "Witnesses disagree on how many creatures came down.",
+        "complication": "Scene 8 uses d6+2 white gargoyles, surprise chance, and no escape until conditions are met.",
+        "final_title": "Burgomaster's Roof",
+        "final_description": "White gargoyles descend. Use Scene 8 for count, surprise, escape limits, and bounty.",
+        "final_foe": "Wraith",
+        "final_count": 1,
+        "rewards": "15 gp per gargoyle head.",
+        "rules": ["Wraith is a flying-threat proxy until white gargoyles are added as exact foes."],
+    },
+    11: {
+        "title": "Deoldyn's Archery Training",
+        "scene": "Scene 3",
+        "pdf_pages": "TAG pp.24, 25",
+        "objective": "Meet Deoldyn and decide who pays for elven archery training.",
+        "entry": "Targets split cleanly on Deoldyn's practice range.",
+        "side": "The training is expensive but can unlock archery advancement.",
+        "complication": "Training costs 60 gp x level and grants one XP roll for Deadly Accuracy or Dead Shot.",
+        "final_title": "Deoldyn's Range",
+        "final_description": "Resolve payment and training; the encounter is only used if the meeting is interrupted.",
+        "final_foe": "Goblins",
+        "final_count": 4,
+        "rewards": "One qualifying XP roll for the listed archery benefits.",
+        "rules": ["Installed combat is a proxy interruption, not required by the training scene."],
+    },
+    12: {
+        "title": "Shinta and Agaratha",
+        "scene": "Scene 4, then Scene 7",
+        "pdf_pages": "TAG pp.24, 26-29",
+        "objective": "Accept Shinta's request and recover the magic sword Agaratha from the bandit hideout.",
+        "entry": "Shinta's story starts as a request and ends at a bandit hideout.",
+        "side": "Agaratha is recovered through a solo ten-room Bandit Hideout quest in the printed scene.",
+        "complication": "Scene 7 is a special solo quest with the Bandit Hideout theme.",
+        "final_title": "Agaratha's Hideout",
+        "final_description": "Bandits hold Agaratha. Use Scene 7 for the solo-quest restrictions and sword reward.",
+        "final_foe": "Goblins",
+        "final_count": 6,
+        "rewards": "Agaratha, a magic masterwork sword with the printed Luck-on-major-kill rule.",
+        "rules": ["This generated module supports normal party play; enforce solo restrictions manually if desired."],
+    },
+}
+
+TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
+    1: {
+        "title": "Ghastly Mine",
+        "pdf_pages": "TAG pp.38, 41-42",
+        "objective": "Clear nine rooms of undead mine workings and survive cave-ins.",
+        "entry": "Rotten pit props and stale air identify the dungeon as a Ghastly Mine.",
+        "side": "Gold results may become gems or nuggets.",
+        "complication": "Minion, Boss, and Weird results are replaced by the Ghastly Mine undead tables on 4-in-6.",
+        "final_title": "Collapsed Undead Shaft",
+        "final_description": "The deepest shaft holds the mine's major undead. Track cave-in trap count manually.",
+        "final_foe": "Wraith",
+        "final_count": 1,
+        "rewards": "Normal treasure, with gp-to-gem/nugget conversion where the theme says so.",
+        "rules": ["Nine-room target.", "Cave-in traps affect all characters and become worse after repeated collapses."],
+    },
+    2: {
+        "title": "Giant's Lair",
+        "pdf_pages": "TAG p.43",
+        "objective": "Reach the HCL+5 room count and defeat the hill giant finale.",
+        "entry": "The ceiling rises and the furniture is built for giant hands.",
+        "side": "The party can identify the lair before pressing deeper.",
+        "complication": "No normal Final Boss check; the final room must be large enough for the giant.",
+        "final_title": "Hill Giant Hall",
+        "final_description": "A hill giant hurls a boulder before closing for melee. Use TAG p.43 for the exact giant profile.",
+        "final_foe": "Minotaur",
+        "final_count": 1,
+        "rewards": "Three treasure rolls and double gp in the final room.",
+        "rules": ["Minotaur is a large-foe proxy until a hill giant profile is added.", "Spells hit the hill giant at +2."],
+    },
+    3: {
+        "title": "Dragon's Lair",
+        "pdf_pages": "TAG pp.39-40",
+        "objective": "Complete four rooms, spend Clues if desired, and defeat the dragon in the final room.",
+        "entry": "Heat, claw marks, and old scales reveal a dragon lair.",
+        "side": "Spend 2 Clues before the final room to learn the dragon type.",
+        "complication": "Dragon type is rolled from the TAG table: Small, Young Red, Darkness, or Ghoul Dragon.",
+        "final_title": "Dragon Hoard",
+        "final_description": "The dragon waits on its hoard. Roll or choose the TAG dragon type before combat.",
+        "final_foe": "Young Dragon",
+        "final_count": 1,
+        "rewards": "Dragon treasure per the selected dragon profile.",
+        "rules": ["Four-room target.", "Use Young Red Dragon if the type roll selects that printed result."],
+    },
+    4: {
+        "title": "Fiendish Abyss",
+        "pdf_pages": "TAG p.45",
+        "objective": "Resolve an Abyss-themed dungeon and free or exploit any lair prisoner result.",
+        "entry": "Abyssal sigils mark the entrance.",
+        "side": "Spend 2 Clues to learn the Final Boss nature before the ending.",
+        "complication": "Use Fiendish Foes/Abyss monsters; if absent, raise monster levels and minor counts as printed.",
+        "final_title": "Abyssal Lair",
+        "final_description": "The abyssal final boss guards a prisoner or treasure hook. Roll the lair prisoner table manually.",
+        "final_foe": "Wraith",
+        "final_count": 1,
+        "rewards": "Lair prisoner reward table: noble mission, merchant reward/rumor, or silver knife/holy water/map.",
+        "rules": ["No normal Final Boss check; ends at HCL+5 rooms."],
+    },
+    5: {
+        "title": "Minotaur Maze",
+        "pdf_pages": "TAG pp.46-47",
+        "objective": "Navigate d6+5 rooms, avoid getting lost, and defeat the minotaur lord.",
+        "entry": "Passages turn back on themselves and hoofprints cross in every direction.",
+        "side": "Searching empty rooms or corridors can reveal shortcuts.",
+        "complication": "Truncated rooms can dead-end; backtracking may get the party lost on 3-in-6.",
+        "final_title": "Minotaur Lord's Maze",
+        "final_description": "The minotaur lord blocks the maze heart. Apply halfling and first-defense restrictions from TAG.",
+        "final_foe": "Minotaur",
+        "final_count": 1,
+        "rewards": "Treasure +1 from the minotaur lord.",
+        "rules": ["d6+5-room target.", "Young/adult minotaur replacement tables are not auto-rolled yet."],
+    },
+    6: {
+        "title": "Bandit Hideout",
+        "pdf_pages": "TAG p.48",
+        "objective": "Clear the hideout after HCL+3 rooms and decide whether to capture the chieftain alive.",
+        "entry": "Boot tracks and stolen goods point into the hideout.",
+        "side": "Each room has a 1-in-6 stolen-goods chance in the printed theme.",
+        "complication": "Rooms may have trapdoors; final boss is a chieftain with bandit guards.",
+        "final_title": "Bandit Chieftain's Den",
+        "final_description": "The chieftain and guards defend the loot. Capturing the chieftain alive changes the reward.",
+        "final_foe": "Goblins",
+        "final_count": 6,
+        "rewards": "8d6 gp, random magic item, plus bounty or free rumor if captured alive.",
+        "rules": ["Goblins are a bandit proxy until bandit spawn profiles are added."],
+    },
+}
+
+TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
+    1: {
+        "title": "Clean Up My Castle",
+        "pdf_pages": "TAG p.55",
+        "objective": "Clear the patron's ten-room castle without leaving and returning.",
+        "entry": "The ruined castle is still legally owned by the patron.",
+        "side": "A hidden portrait cache can be found by spending 1 Clue.",
+        "complication": "No exit/re-enter; count slain minions, vermin, Weird Monsters, and Bosses for payment.",
+        "final_title": "Castle Last Holdout",
+        "final_description": "The last squatters make their stand. Track the printed per-foe payment manually.",
+        "final_foe": "Wraith",
+        "final_count": 1,
+        "rewards": "25 gp per character, 2 gp per minion/vermin, 20 gp per Boss/Weird, possible 100 gp portrait cache.",
+        "rules": ["Ten-room quest target."],
+    },
+    2: {
+        "title": "Gorungar the Mighty",
+        "pdf_pages": "TAG p.55",
+        "objective": "Defeat or capture Gorungar and his goblin archers.",
+        "entry": "Gorungar's archers choose ground with clear lines of fire.",
+        "side": "The armband and coin bag can be claimed after victory.",
+        "complication": "Printed encounter: 2d6 goblin archers plus Gorungar, with poison arrows and surprise chance.",
+        "final_title": "Gorungar's Ambush",
+        "final_description": "Gorungar bellows orders while archers fire from cover.",
+        "final_foe": "Goblins",
+        "final_count": 8,
+        "rewards": "50 gp for his head or 100 gp alive, plus armband and coin bag.",
+        "rules": ["Use Goblins as the archer/Gorungar proxy until the exact mixed encounter is added."],
+    },
+    3: {
+        "title": "Griffin Omelets, Anyone?",
+        "pdf_pages": "TAG p.54+",
+        "objective": "Recover griffin eggs for the guild patron.",
+        "entry": "Claw marks and feathers lead to a high nesting site.",
+        "side": "The nest approach should be treated as a dangerous climb or wilderness scene.",
+        "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
+        "final_title": "Griffin Nest",
+        "final_description": "The nest is guarded. Resolve the exact griffin/egg handling from the PDF during play.",
+        "final_foe": "Young Dragon",
+        "final_count": 1,
+        "rewards": "Guild job reward per the printed quest.",
+        "rules": ["Young Dragon is a flying major-foe proxy."],
+    },
+    4: {
+        "title": "A Portrait in Red",
+        "pdf_pages": "TAG p.54+",
+        "objective": "Resolve the guild's bloody portrait commission.",
+        "entry": "A patron wants the party to recover or investigate a disturbing portrait.",
+        "side": "Use town clues and scene text to identify the patron's real need.",
+        "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
+        "final_title": "Red Gallery",
+        "final_description": "The portrait's secret is revealed in the gallery.",
+        "final_foe": "Wraith",
+        "final_count": 1,
+        "rewards": "Guild job reward per the printed quest.",
+        "rules": ["Wraith is a supernatural-problem proxy."],
+    },
+    5: {
+        "title": "Sewers Search",
+        "pdf_pages": "TAG p.54+",
+        "objective": "Search the settlement sewers for the guild target.",
+        "entry": "The trail drops below the street grates.",
+        "side": "The sewer route can be handled as a compact dungeon.",
+        "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
+        "final_title": "Sewer Sump",
+        "final_description": "The search ends in a foul sump chamber.",
+        "final_foe": "Skeletons/Zombies",
+        "final_count": 6,
+        "rewards": "Guild job reward per the printed quest.",
+        "rules": ["Skeletons/Zombies are a sewer-danger proxy."],
+    },
+    6: {
+        "title": "Monoceros Hunt",
+        "pdf_pages": "TAG p.54+",
+        "objective": "Track and resolve the monoceros hunt.",
+        "entry": "The quarry's tracks leave deep, single-horn gouges.",
+        "side": "Treat pursuit as wilderness tracking before the final confrontation.",
+        "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
+        "final_title": "Monoceros Glade",
+        "final_description": "The hunt catches up with the monoceros in a secluded glade.",
+        "final_foe": "Minotaur",
+        "final_count": 1,
+        "rewards": "Guild job reward per the printed quest.",
+        "rules": ["Minotaur is a charging major-foe proxy."],
+    },
 }
 
 
@@ -1244,9 +1652,26 @@ def _tag_manifest(
     objective: str,
     lead_type: str,
     lead_detail: str,
+    profile: dict[str, object],
     final_room_title: str,
     final_room_description: str,
 ) -> dict[str, object]:
+    final_foe = str(profile.get("final_foe") or "Wraith")
+    final_count = max(1, int(profile.get("final_count") or 1))
+    source_parameters = {
+        "origin": "Tales from the Adventurers' Guild",
+        "lead_type": lead_type,
+        "lead_detail": lead_detail,
+        "tag_reference": {
+            "title": profile.get("title", lead_detail),
+            "scene": profile.get("scene", ""),
+            "pdf_pages": profile.get("pdf_pages", ""),
+            "rules": profile.get("rules", []),
+            "rewards": profile.get("rewards", ""),
+            "final_foe_proxy": final_foe,
+            "final_foe_count": final_count,
+        },
+    }
     return {
         "schema_version": 1,
         "id": adventure_id,
@@ -1254,11 +1679,7 @@ def _tag_manifest(
         "synopsis": synopsis,
         "source": {
             "type": "hand",
-            "parameters": {
-                "origin": "Tales from the Adventurers' Guild",
-                "lead_type": lead_type,
-                "lead_detail": lead_detail,
-            },
+            "parameters": source_parameters,
         },
         "recommended_levels": [1, 5],
         "default_environment": "dungeon",
@@ -1270,7 +1691,7 @@ def _tag_manifest(
             "giver_room_id": "tag-lead-entry",
             "complete_when": {
                 "type": "boss_defeated",
-                "boss_name": "Wraith",
+                "boss_name": final_foe,
                 "room_id": "tag-final-scene",
             },
         },
@@ -1279,7 +1700,7 @@ def _tag_manifest(
                 "id": "tag-contact",
                 "name": "Guild Contact",
                 "room_id": "tag-lead-entry",
-                "description": "A local contact points the troupe toward the lead recorded in the TAG settlement log.",
+                "description": str(profile.get("entry") or "A local contact points the troupe toward the lead recorded in the TAG settlement log."),
                 "dialogue": objective,
             }
         ],
@@ -1288,7 +1709,7 @@ def _tag_manifest(
                 "id": "tag-lead-entry",
                 "tile_key": "02",
                 "title": "Lead Trail",
-                "description": "The party follows a TAG campaign lead out of the settlement. The first signs point north, while a side clue lies east.",
+                "description": str(profile.get("entry") or "The party follows a TAG campaign lead out of the settlement. The first signs point north, while a side clue lies east."),
                 "environment": "dungeon",
                 "exits": [
                     {
@@ -1312,7 +1733,7 @@ def _tag_manifest(
                 "id": "tag-side-clue",
                 "tile_key": "12",
                 "title": "Side Clue",
-                "description": "Discarded gear and frightened local gossip confirm that the lead is real.",
+                "description": str(profile.get("side") or "Discarded gear and frightened local gossip confirm that the lead is real."),
                 "exits": [
                     {
                         "id": "tag-side-clue-west",
@@ -1326,7 +1747,7 @@ def _tag_manifest(
                     {
                         "when": "on_search",
                         "once": True,
-                        "log": "The party finds a small payment hidden with the clue.",
+                        "log": f"TAG note: {profile.get('rewards') or 'Record any printed reward from the source scene.'}",
                         "treasure": {"gold": 12, "items": []},
                     }
                 ],
@@ -1335,7 +1756,7 @@ def _tag_manifest(
                 "id": "tag-complication",
                 "tile_key": "13",
                 "title": "Complication",
-                "description": "Local troublemakers have reached the lead first.",
+                "description": str(profile.get("complication") or "Local troublemakers have reached the lead first."),
                 "exits": [
                     {
                         "id": "tag-complication-south",
@@ -1363,6 +1784,7 @@ def _tag_manifest(
                     {
                         "when": "on_enter",
                         "once": True,
+                        "log": f"TAG source {profile.get('pdf_pages') or 'page ?'}: {profile.get('complication') or 'Resolve the lead complication.'}",
                         "encounter": {"foes": [{"name": "Goblins", "count": 4}]},
                     }
                 ],
@@ -1385,7 +1807,8 @@ def _tag_manifest(
                     {
                         "when": "on_enter",
                         "once": True,
-                        "encounter": {"foes": [{"name": "Wraith", "count": 1}]},
+                        "log": f"TAG final note: {profile.get('rewards') or 'Apply printed reward text after victory.'}",
+                        "encounter": {"foes": [{"name": final_foe, "count": final_count}]},
                     }
                 ],
             },
@@ -1407,10 +1830,39 @@ def _tag_manifest(
             },
         ],
         "ending": {
-            "victory_text": "The party returns to the settlement with the TAG lead resolved.",
+            "victory_text": f"The party returns to the settlement with the TAG lead resolved. Reward note: {profile.get('rewards') or 'see source scene.'}",
             "defeat_text": "The TAG lead remains unresolved in the settlement records.",
         },
     }
+
+
+def _profile_title(profile: dict[str, object], fallback: str) -> str:
+    return str(profile.get("title") or fallback)
+
+
+def _profile_synopsis(campaign: CampaignState, lead_detail: str, profile: dict[str, object]) -> str:
+    pages = profile.get("pdf_pages")
+    page_text = f" Source: {pages}." if pages else ""
+    return f"Generated from TAG campaign downtime in {campaign.settlement_name}: {lead_detail}.{page_text}"
+
+
+def _guild_job_profile(campaign: CampaignState, detail: str) -> tuple[str, str, dict[str, object]]:
+    job_roll = int(detail) if detail.isdigit() else roll_d6()
+    job_roll = max(1, min(6, job_roll))
+    if job_roll <= 3:
+        quest_roll = roll_d6()
+        profile = TAG_MINOR_QUEST_PROFILES[quest_roll]
+        lead_detail = f"Guild Job {job_roll}: Minor Unique Quest {quest_roll} - {_profile_title(profile, TAG_MINOR_UNIQUE_QUESTS[quest_roll])}"
+    elif job_roll <= 5:
+        rumor_roll = roll_d12()
+        profile = TAG_RUMOR_PROFILES[rumor_roll]
+        lead_detail = f"Guild Job {job_roll}: Rumor {rumor_roll} - {_profile_title(profile, TAG_RUMORS[rumor_roll])}"
+        campaign.tag_used_rumor_numbers = sorted(set(campaign.tag_used_rumor_numbers + [rumor_roll]))
+    else:
+        theme_roll = roll_d6()
+        profile = TAG_THEMATIC_DUNGEON_PROFILES[theme_roll]
+        lead_detail = f"Guild Job {job_roll}: Thematic Dungeon {theme_roll} - {_profile_title(profile, TAG_THEMATIC_DUNGEONS[theme_roll])}"
+    return f"Guild Job {job_roll}", lead_detail, profile
 
 
 def build_tag_adventure_manifest(
@@ -1425,55 +1877,61 @@ def build_tag_adventure_manifest(
         rumor_number = int(clean_detail) if clean_detail.isdigit() else roll_d12()
         rumor_number = max(1, min(12, rumor_number))
         label = f"Rumor {rumor_number}"
-        lead_detail = TAG_RUMORS[rumor_number]
+        profile = TAG_RUMOR_PROFILES[rumor_number]
+        lead_detail = f"{_profile_title(profile, TAG_RUMORS[rumor_number])}: {profile.get('scene', 'TAG scene')}"
         campaign.tag_used_rumor_numbers = sorted(set(campaign.tag_used_rumor_numbers + [rumor_number]))
-        title = f"TAG {label}: {lead_detail.split(':', 1)[0]}"
-        objective = f"Investigate TAG {label} from the settlement rumor list."
-        final_title = f"{label} Resolution"
-        final_description = f"This room represents the playable handoff for {lead_detail}"
+        title = f"TAG {label}: {_profile_title(profile, TAG_RUMORS[rumor_number])}"
+        objective = str(profile.get("objective") or f"Investigate TAG {label} from the settlement rumor list.")
+        final_title = str(profile.get("final_title") or f"{label} Resolution")
+        final_description = str(profile.get("final_description") or f"This room represents the playable handoff for {lead_detail}")
     elif clean_type == "treasure_map":
         map_roll = int(clean_detail) if clean_detail.isdigit() else roll_d6()
         map_roll = max(1, min(6, map_roll))
         label = f"Treasure Map {map_roll}"
         lead_detail = TAG_MAP_LEADS_TO[map_roll]
+        profile = {
+            "title": lead_detail.split(":", 1)[0],
+            "pdf_pages": "TAG p.16",
+            "objective": "Follow the purchased TAG treasure map and resolve the destination.",
+            "entry": "The map marks a route away from the settlement.",
+            "side": "Old notes in the margin hint at danger and possible false trails.",
+            "complication": "Following the map can reveal a deathtrap, a waste of time, a partial clue, or a real destination.",
+            "final_title": "Mapped Treasure Site",
+            "final_description": lead_detail,
+            "final_foe": "Wraith" if map_roll in {4, 5, 6} else "Goblins",
+            "final_count": 1 if map_roll in {4, 5, 6} else 4,
+            "rewards": "Apply The Map Leads To reward text for the rolled destination.",
+            "rules": ["This generator uses The Map Leads To destinations, not the preliminary fake-map outcomes."],
+        }
         title = f"TAG Treasure Map: {lead_detail.split(':', 1)[0]}"
-        objective = "Follow the purchased TAG treasure map and resolve the destination."
-        final_title = "Mapped Treasure Site"
-        final_description = lead_detail
+        objective = str(profile["objective"])
+        final_title = str(profile["final_title"])
+        final_description = str(profile["final_description"])
     elif clean_type == "thematic_dungeon":
         theme_roll = int(clean_detail) if clean_detail.isdigit() else roll_d6()
         theme_roll = max(1, min(6, theme_roll))
         lead_detail = TAG_THEMATIC_DUNGEONS[theme_roll]
+        profile = TAG_THEMATIC_DUNGEON_PROFILES[theme_roll]
         label = lead_detail
-        title = f"TAG Thematic Dungeon: {lead_detail}"
-        objective = f"Resolve the TAG thematic dungeon lead: {lead_detail}."
-        final_title = lead_detail
-        final_description = f"This is the TAG adventure handoff for {lead_detail}. Expand with the full PDF table during later authoring."
+        title = f"TAG Thematic Dungeon: {_profile_title(profile, lead_detail)}"
+        objective = str(profile.get("objective") or f"Resolve the TAG thematic dungeon lead: {lead_detail}.")
+        final_title = str(profile.get("final_title") or lead_detail)
+        final_description = str(profile.get("final_description") or f"This is the TAG adventure handoff for {lead_detail}.")
     else:
-        job_roll = roll_d6()
-        if job_roll <= 3:
-            quest_roll = roll_d6()
-            lead_detail = f"Guild Job {job_roll}: Minor Unique Quest - {TAG_MINOR_UNIQUE_QUESTS[quest_roll]}"
-        elif job_roll <= 5:
-            rumor_roll = roll_d12()
-            lead_detail = f"Guild Job {job_roll}: Rumor - {TAG_RUMORS[rumor_roll]}"
-            campaign.tag_used_rumor_numbers = sorted(set(campaign.tag_used_rumor_numbers + [rumor_roll]))
-        else:
-            theme_roll = roll_d6()
-            lead_detail = f"Guild Job {job_roll}: Thematic Dungeon - {TAG_THEMATIC_DUNGEONS[theme_roll]}"
-        label = f"Guild Job {job_roll}"
-        title = f"TAG {label}"
-        objective = "Complete the work assigned by the Adventurers Guild job table."
-        final_title = label
-        final_description = lead_detail
+        label, lead_detail, profile = _guild_job_profile(campaign, clean_detail)
+        title = f"TAG {label}: {_profile_title(profile, lead_detail)}"
+        objective = str(profile.get("objective") or "Complete the work assigned by the Adventurers Guild job table.")
+        final_title = str(profile.get("final_title") or label)
+        final_description = str(profile.get("final_description") or lead_detail)
     adventure_id = _tag_adventure_id(clean_type, label)
     manifest = _tag_manifest(
         adventure_id=adventure_id,
         title=title[:120],
-        synopsis=f"Generated from TAG campaign downtime in {campaign.settlement_name}: {lead_detail}",
+        synopsis=_profile_synopsis(campaign, lead_detail, profile),
         objective=objective,
         lead_type=clean_type,
         lead_detail=lead_detail,
+        profile=profile,
         final_room_title=final_title,
         final_room_description=final_description,
     )
