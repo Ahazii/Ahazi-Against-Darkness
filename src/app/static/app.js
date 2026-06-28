@@ -19630,11 +19630,22 @@ function clampMapExitsScrollHeight(shell) {
   const scroll = shell?.querySelector(".map-exits-scroll");
   const hint = shell?.querySelector(".map-exits-scroll-hint");
   if (!scroll || !shell) return;
+  const dock = shell.closest(".map-exits-dock");
+  const details = shell.closest(".map-exits-details");
   const hintHeight = hint && !hint.classList.contains("hidden") ? hint.offsetHeight : 0;
-  let available = shell.clientHeight - hintHeight;
+  const shellRect = shell.getBoundingClientRect();
+  const scrollRect = scroll.getBoundingClientRect();
+  const clipBottoms = [shellRect.bottom];
+  const detailsRect = details?.getBoundingClientRect();
+  const dockRect = dock?.getBoundingClientRect();
+  if (detailsRect?.height) clipBottoms.push(detailsRect.bottom);
+  if (dockRect?.height) {
+    const dockStyle = window.getComputedStyle(dock);
+    const dockPaddingBottom = parseFloat(dockStyle.paddingBottom) || 0;
+    clipBottoms.push(dockRect.bottom - dockPaddingBottom);
+  }
+  let available = Math.min(...clipBottoms) - scrollRect.top - hintHeight;
   if (available <= 0) {
-    const dock = shell.closest(".map-exits-dock");
-    const details = shell.closest(".map-exits-details");
     const summary = details?.querySelector(":scope > summary");
     if (dock && summary) {
       const dockStyle = window.getComputedStyle(dock);
@@ -19644,8 +19655,11 @@ function clampMapExitsScrollHeight(shell) {
     }
   }
   if (available > 0) {
-    scroll.style.maxHeight = `${Math.round(available)}px`;
+    const clamped = `${Math.max(0, Math.round(available))}px`;
+    scroll.style.height = clamped;
+    scroll.style.maxHeight = clamped;
   } else {
+    scroll.style.height = "";
     scroll.style.maxHeight = "";
   }
 }

@@ -141,6 +141,11 @@ def test_frontend_log_exits_row_is_resizable_without_exits_forcing_map_smaller()
     assert ".map-log-row {\n  display: flex;" in styles
     assert "height: min(var(--log-panel-height, 240px), 58vh);" in styles
     assert ".map-exits-body {\n  display: grid;\n  grid-template-rows: minmax(0, 1fr) auto;" in styles
+    assert "const shellRect = shell.getBoundingClientRect();" in app_js
+    assert "const dockRect = dock?.getBoundingClientRect();" in app_js
+    assert "scroll.style.height = clamped;" in app_js
+    exits_body_rule = styles[styles.index(".map-exits-body {") : styles.index(".map-exits-scroll {")]
+    assert "\n  height: 100%;" not in exits_body_rule
     assert "function clampMapExitsScrollHeight(shell)" in app_js
     assert ".map-log-row:not(.log-row-expanded) .map-exits-dock:has(.map-exits-details[open]) {\n  flex: 0 0 var(--exits-panel-width, 280px);" in styles
     assert ".map-exits-scroll.has-scroll {\n  overflow-y: scroll;" in styles
