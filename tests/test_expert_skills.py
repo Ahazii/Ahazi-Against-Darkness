@@ -225,3 +225,15 @@ def test_validate_blocks_duplicate_skill() -> None:
         learned_expert_skills=["shield_bash"],
     )
     assert validate_expert_skill_choice(warrior, "shield_bash", catalog) is not None
+
+
+def test_expert_skills_catalog_includes_effect_summaries() -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    rules = RulesRepository(packaged, packaged / "_override")
+    from app.engine.expert_skills import expert_skills_catalog_with_summaries
+
+    catalog = expert_skills_catalog_with_summaries(rules.expert_skills())
+    shield = next(item for item in catalog["skills"] if item["id"] == "shield_bash")
+    assert "Defense" in shield["summary"]
+    healing = next(item for item in catalog["expert_spells"] if item["id"] == "healing_surge")
+    assert "Heal 2 Life" in healing["summary"]

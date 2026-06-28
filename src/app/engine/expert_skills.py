@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 from ..schemas import PartyMemberState
@@ -199,6 +200,43 @@ def apply_expert_skill_learn(
     return [f"Unknown expert skill {skill_id}."]
 
 
+EXPERT_SPELL_MECHANICS: dict[str, str] = {
+    "healing_surge": "Heal 2 Life to all allies except the caster; vampires lose 2 Life.",
+    "infallible_missile": "Deal 1 Life damage with an auto-hit missile; exploding d6 chains. Level 8+ creates two missiles.",
+    "lifeforce_control": "Transfer Life: caster loses X Life; ally heals X or vampire foe loses X.",
+    "mass_teleport": "Teleport chosen allies to any visited room; caster pays 1 Life per ally moved.",
+    "aura_of_terror": "Morale d6 ≤3 makes a boss or minion group flee; undead, final bosses, and fear foes are immune.",
+    "reverse_gaze": "Block gaze on the caster; d8 + level vs foe level may reflect gaze (Medusa petrifies).",
+}
+
+
+def attach_skill_summaries(
+    catalog: dict[str, Any],
+    *,
+    mechanics: dict[str, str],
+    spell_mechanics: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    enriched = deepcopy(catalog)
+    for skill in enriched.get("skills", []):
+        skill_id = str(skill.get("id", "")).strip().lower()
+        skill["summary"] = mechanics.get(skill_id, "")
+    if spell_mechanics:
+        for spell in enriched.get("expert_spells", []):
+            spell_id = str(spell.get("id", "")).strip().lower()
+            spell["summary"] = spell_mechanics.get(spell_id, "")
+    return enriched
+
+
+def expert_skills_catalog_with_summaries(catalog: dict[str, Any]) -> dict[str, Any]:
+    from .expert_skill_effects import SKILL_MECHANICS
+
+    return attach_skill_summaries(
+        catalog,
+        mechanics=SKILL_MECHANICS,
+        spell_mechanics=EXPERT_SPELL_MECHANICS,
+    )
+
+
 def expert_skills_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
     from .expert_skill_effects import SKILL_MECHANICS, IMPLEMENTATION_STATUS
 
@@ -222,14 +260,6 @@ def expert_skills_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
 
 def expert_spells_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
     codes = catalog.get("class_codes", {})
-    mechanics: dict[str, str] = {
-        "healing_surge": "All allies except caster heal 2 Life; vampires lose 2 Life.",
-        "infallible_missile": "1 Life wound auto-hit; exploding d6 chains. L8+ creates two missiles.",
-        "lifeforce_control": "Caster loses X Life; ally heals X, or vampire foe loses X. UI: Life amount + ally/foe target (combat or exploration).",
-        "mass_teleport": "Teleport chosen allies to any visited room; caster pays 1 Life per ally moved. UI: destination + ally checkboxes.",
-        "aura_of_terror": "Morale d6 ≤3 flees boss or minion group; undead/final boss/fear foes immune.",
-        "reverse_gaze": "Blocks gaze on caster; d8 + level vs foe level may reflect gaze (Medusa petrifies).",
-    }
     rows: list[dict[str, str]] = []
     for spell in catalog.get("expert_spells", []):
         spell_id = str(spell.get("id", "")).strip().lower()
@@ -239,7 +269,7 @@ def expert_spells_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
                 "spell": str(spell.get("name", "")),
                 "classes": class_names,
                 "min_level": str(spell.get("min_level", 5)),
-                "result": mechanics.get(spell_id, ""),
+                "result": EXPERT_SPELL_MECHANICS.get(spell_id, ""),
                 "implementation": "yes",
                 "source_page": str(spell.get("source_page", "")),
             }

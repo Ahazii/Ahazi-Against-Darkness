@@ -148,6 +148,14 @@ def advancement_fork_label(fork: str) -> str:
     }.get(fork, fork.replace("_", " ").title())
 
 
+def tier_skills_catalog_with_summaries(catalog: dict[str, Any], tier: SkillTier) -> dict[str, Any]:
+    from .expert_skills import attach_skill_summaries
+    from .heroic_skill_effects import HEROIC_SKILL_MECHANICS, LEGENDARY_SKILL_MECHANICS
+
+    mechanics = HEROIC_SKILL_MECHANICS if tier == "heroic" else LEGENDARY_SKILL_MECHANICS
+    return attach_skill_summaries(catalog, mechanics=mechanics)
+
+
 def tier_skills_table_rows(catalog: dict[str, Any], tier: SkillTier) -> list[dict[str, str]]:
     from .heroic_skill_effects import LEGENDARY_SKILL_MECHANICS, HEROIC_SKILL_MECHANICS, tier_skill_status
 

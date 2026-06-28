@@ -1343,6 +1343,7 @@ function eligibleHeroicSkillOptions(member) {
       category: skill.category || "",
       classes: skill.classes || [],
       repeatable: Boolean(skill.repeatable),
+      summary: skill.summary || "",
     });
   }
   return options.sort((left, right) => left.label.localeCompare(right.label));
@@ -1371,6 +1372,7 @@ function eligibleLegendarySkillOptions(member) {
       classes: skill.classes || [],
       repeatable: Boolean(skill.repeatable),
       upgrades: skill.upgrades || "",
+      summary: skill.summary || "",
     });
   }
   return options.sort((left, right) => left.label.localeCompare(right.label));
@@ -1441,6 +1443,34 @@ function skillTableMechanic(option, fork) {
   return row.mechanic || row.result || "";
 }
 
+function skillEffectSummary(option, fork) {
+  if (option.summary) return option.summary;
+  if (fork === "learn_expert_skill") {
+    if (option.kind === "spell") {
+      const spell = (state.expertSkillsCatalog?.expert_spells || []).find(
+        (item) => String(item.id || "").toLowerCase() === String(option.id || "").toLowerCase()
+      );
+      if (spell?.summary) return spell.summary;
+    } else {
+      const skill = (state.expertSkillsCatalog?.skills || []).find(
+        (item) => String(item.id || "").toLowerCase() === String(option.id || "").toLowerCase()
+      );
+      if (skill?.summary) return skill.summary;
+    }
+  } else if (fork === "learn_heroic_skill") {
+    const skill = (state.heroicSkillsCatalog?.skills || []).find(
+      (item) => String(item.id || "").toLowerCase() === String(option.id || "").toLowerCase()
+    );
+    if (skill?.summary) return skill.summary;
+  } else if (fork === "learn_legendary_skill") {
+    const skill = (state.legendarySkillsCatalog?.skills || []).find(
+      (item) => String(item.id || "").toLowerCase() === String(option.id || "").toLowerCase()
+    );
+    if (skill?.summary) return skill.summary;
+  }
+  return skillTableMechanic(option, fork);
+}
+
 function skillOptionTooltip(option, fork) {
   const catalog =
     fork === "learn_expert_skill"
@@ -1454,10 +1484,15 @@ function skillOptionTooltip(option, fork) {
       : fork === "learn_heroic_skill"
         ? "heroic"
         : "legendary";
-  const parts = [
-    option.disabledReason || `Spend this advancement roll to attempt learning ${option.label}.`,
-    `${titleCase(tier)} ${option.kind === "spell" ? "spell" : "skill"}.`,
-  ];
+  const effect = skillEffectSummary(option, fork);
+  const parts = [];
+  if (effect) parts.push(effect);
+  if (option.disabledReason) {
+    parts.push(option.disabledReason);
+  } else if (!effect) {
+    parts.push(`Spend this advancement roll to attempt learning ${option.label}.`);
+  }
+  parts.push(`${titleCase(tier)} ${option.kind === "spell" ? "spell" : "skill"}.`);
   if (option.category) parts.push(`Category: ${titleCase(option.category)}.`);
   const classNames = skillClassNames(option, catalog);
   if (classNames.length) parts.push(`Eligible classes: ${classNames.join(", ")}.`);
@@ -1466,8 +1501,6 @@ function skillOptionTooltip(option, fork) {
   if (EXPERT_TARGET_SKILLS.has(option.id)) parts.push("Requires a monster type target when chosen.");
   if (HEROIC_TARGET_SKILLS.has(option.id)) parts.push("Requires a weapon type target when chosen.");
   if (option.upgrades) parts.push(`Requires ${titleCase(String(option.upgrades).replace(/_/g, " "))}.`);
-  const mechanic = skillTableMechanic(option, fork);
-  if (mechanic) parts.push(mechanic);
   return parts.join(" ");
 }
 
@@ -1604,6 +1637,7 @@ function eligibleExpertSkillOptions(member) {
       classes: skill.classes || [],
       classIds: skill.class_ids || [],
       repeatable: Boolean(skill.repeatable),
+      summary: skill.summary || "",
       disabled: Boolean(disabledReason),
       disabledReason,
     });
@@ -1628,6 +1662,7 @@ function eligibleExpertSkillOptions(member) {
       kind: "spell",
       classes: spell.classes || [],
       minLevel,
+      summary: spell.summary || "",
       disabled: Boolean(disabledReason),
       disabledReason,
     });
@@ -1914,7 +1949,20 @@ function skillCatalogName(tier, id) {
   return skill?.name || titleFromKey(baseId);
 }
 
-function skillMechanic(tier, name) {
+function skillMechanic(tier, name, skillId = "") {
+  const normalizedId = String(skillId || "").toLowerCase();
+  if (normalizedId) {
+    if (tier === "expert") {
+      const skill = (state.expertSkillsCatalog?.skills || []).find((item) => item.id === normalizedId);
+      if (skill?.summary) return skill.summary;
+      const spell = (state.expertSkillsCatalog?.expert_spells || []).find((item) => item.id === normalizedId);
+      if (spell?.summary) return spell.summary;
+    } else {
+      const catalog = tier === "heroic" ? state.heroicSkillsCatalog : state.legendarySkillsCatalog;
+      const skill = (catalog?.skills || []).find((item) => item.id === normalizedId);
+      if (skill?.summary) return skill.summary;
+    }
+  }
   const tableKey =
     tier === "expert"
       ? "expert_skill_implementation_table"
@@ -1924,7 +1972,7 @@ function skillMechanic(tier, name) {
   const row = (state.rulesTables?.[tableKey] || []).find(
     (item) => String(item.skill || "").toLowerCase() === String(name || "").toLowerCase()
   );
-  return row?.mechanic || "";
+  return row?.mechanic || row?.result || "";
 }
 
 function learnedSkillNotes(member, tier) {
@@ -1935,8 +1983,9 @@ function learnedSkillNotes(member, tier) {
         ? "learned_heroic_skills"
         : "learned_legendary_skills";
   return (member[field] || []).map((entry) => {
+    const baseId = skillBaseId(entry);
     const name = skillCatalogName(tier, entry);
-    const mechanic = skillMechanic(tier, name);
+    const mechanic = skillMechanic(tier, name, baseId);
     return {
       name: `${name}${skillTargetText(entry)}`,
       mechanic,

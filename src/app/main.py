@@ -47,11 +47,20 @@ from .engine.roster_sync import (
     unlock_characters_for_session,
 )
 from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
-from .engine.expert_skills import expert_skills_table_rows, expert_spells_table_rows
+from .engine.expert_skills import (
+    expert_skills_catalog_with_summaries,
+    expert_skills_table_rows,
+    expert_spells_table_rows,
+)
 from .engine.expert_skill_effects import expert_skill_implementation_rows
 from .engine.hirelings import hirelings_table_rows, load_hirelings_catalog
 from .engine.milestones import milestones_table_rows
-from .engine.tier_skills import class_tricks_implementation_rows, ee_class_trick_flags_table_rows, tier_skills_table_rows
+from .engine.tier_skills import (
+    class_tricks_implementation_rows,
+    ee_class_trick_flags_table_rows,
+    tier_skills_catalog_with_summaries,
+    tier_skills_table_rows,
+)
 from .engine.tile_catalogs import room_codes_table_rows
 from .engine.tile_validation import map_elements_validation_table_rows
 from .engine.tier_advancement import TIER_ENTRY
@@ -540,17 +549,17 @@ def _rules_tables_payload() -> dict:
 
 @app.get("/api/rules/expert-skills")
 async def expert_skills_catalog() -> dict:
-    return rules.expert_skills()
+    return expert_skills_catalog_with_summaries(rules.expert_skills())
 
 
 @app.get("/api/rules/heroic-skills")
 async def heroic_skills_catalog() -> dict:
-    return rules.heroic_skills()
+    return tier_skills_catalog_with_summaries(rules.heroic_skills(), "heroic")
 
 
 @app.get("/api/rules/legendary-skills")
 async def legendary_skills_catalog() -> dict:
-    return rules.legendary_skills()
+    return tier_skills_catalog_with_summaries(rules.legendary_skills(), "legendary")
 
 
 @app.get("/api/rules/enchanted-paint-options")

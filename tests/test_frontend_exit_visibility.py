@@ -92,7 +92,9 @@ def test_frontend_expert_skill_buttons_have_hover_text() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
 
     assert "function skillOptionTooltip(option, fork)" in app_js
+    assert "function skillEffectSummary(option, fork)" in app_js
     assert "setButtonTooltip(skillBtn, skillOptionTooltip(option, fork));" in app_js
+    assert "if (effect) parts.push(effect);" in _function_body("skillOptionTooltip", app_js)
     assert "Eligible classes:" in app_js
     assert "Requires a monster type target when chosen." in app_js
     assert "Minimum level:" in app_js
@@ -110,7 +112,8 @@ def test_frontend_expert_skill_picker_dims_ineligible_options() -> None:
     assert "disabled: Boolean(disabledReason)" in picker
     assert "skillBtn.disabled = Boolean(option.disabled);" in append
     assert "if (option.disabled) return;" in append
-    assert "option.disabledReason || `Spend this advancement roll" in tooltip
+    assert "if (option.disabledReason) {" in tooltip
+    assert "parts.push(option.disabledReason);" in tooltip
 
 
 def test_combat_minimap_uses_displayed_cells_not_full_tile_rectangles() -> None:
