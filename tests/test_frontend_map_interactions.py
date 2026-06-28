@@ -687,7 +687,7 @@ def test_undead_holy_ui_hints_cover_actions_and_chips() -> None:
     assert "heroHolyWaterItems(member)" in APP_JS
     assert "Holy water affects undead only; no living undead foe is present." in APP_JS
     assert "Target: ${selectedHolyWaterTarget.name}." in APP_JS
-    party_render = _function_body("renderPartyState", APP_JS)
+    party_render = _function_body("appendPartyMemberSheet", APP_JS)
     assert "Turn Undead affects undead only; no living undead foe is present." in party_render
     assert "Turn Undead has already been used by this hero in this encounter." in party_render
     foe_summary = _function_body("foeRulesSummary", APP_JS)
@@ -947,7 +947,27 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.4"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.5"></script>' in INDEX_HTML
+
+
+def test_unified_marching_order_ui_helpers_exist() -> None:
+    body = APP_JS
+    assert "function hirelingNeedsReassignment(session, hireling)" in body
+    assert "function hirelingIsNestedUnderAssignee(session, hireling)" in body
+    assert "function buildHirelingPartySheet(session, hireling, mode = \"standalone\")" in body
+    assert "function openEditPartyDialog(session)" in body
+    assert "function renderActiveHirelingsPanel" not in body
+    assert "Swap Party Members" not in body
+    assert 'node("button", "secondary", "Edit Party")' in body
+    assert "HIRELING_TOOLTIPS.groupMarchingOrder" in body
+    assert "ACTION_TOOLTIPS.heroMarchUp" in body
+
+
+def test_party_sheet_styles_cover_nested_hirelings() -> None:
+    styles = Path("src/app/static/styles.css").read_text(encoding="utf-8")
+    assert ".party-hireling-sheet.party-hireling-nested" in styles
+    assert ".party-hireling-orphan-badge" in styles
+    assert ".edit-party-dialog" in styles
 
 
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:
@@ -1082,17 +1102,19 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     assert "if (!target) return;" in body
     assert "const detachedCombat = renderDetachedCombatPanel(session);" in body
     assert "const groupInfoByMember = new Map" in body
-    assert "target.appendChild(partyGroupHeading(groupInfo, session));" in body
-    assert "setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.leaveBehind);" in body
-    assert "setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutAhead);" in body
-    assert "setButtonTooltip(rejoinBtn, ACTION_TOOLTIPS.rejoinGroup);" in body
-    assert "setButtonTooltip(callBtn, ACTION_TOOLTIPS.callOfTheWild);" in body
-    assert "Call of the Wild: returns in ${callTurns} turn(s)." in body
-    assert "rejoinBtn.disabled = callTurns > 0;" in body
-    assert "const memberAway = isDetachedElsewhere(session, member);" in body
-    assert "if (memberAway)" in body
-    assert "appendDetachedNavigationPrompt(body, session, elsewhere, member);" in body
-    assert "continue;" in body
+    assert "target.appendChild(partyGroupHeading(bucket.info, session));" in body
+    member_body = _function_body("appendPartyMemberSheet", APP_JS)
+    assert "if (memberAway)" in member_body or "isDetachedElsewhere(session, member)" in member_body
+    assert "setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.leaveBehind);" in member_body
+    assert "setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutAhead);" in member_body
+    assert "setButtonTooltip(rejoinBtn, ACTION_TOOLTIPS.rejoinGroup);" in member_body
+    assert "setButtonTooltip(callBtn, ACTION_TOOLTIPS.callOfTheWild);" in member_body
+    assert "Call of the Wild: returns in ${callTurns} turn(s)." in member_body
+    assert "rejoinBtn.disabled = callTurns > 0;" in member_body
+    assert "const memberAway = isDetachedElsewhere(session, member);" in member_body
+    assert "if (memberAway)" in member_body
+    assert "appendDetachedNavigationPrompt(body, session, elsewhere, member);" in member_body
+    assert "continue;" in member_body
     prompt = _function_body("appendDetachedNavigationPrompt", APP_JS)
     assert "Scout is ahead:" in prompt
     assert "Navigate back" in prompt
@@ -1350,7 +1372,7 @@ def test_scout_ahead_ui_uses_pending_scout_id_and_exit_button() -> None:
     """
     assert "pendingScoutId: null" in APP_JS
 
-    party_body = _function_body("renderPartyState", APP_JS)
+    party_body = _function_body("appendPartyMemberSheet", APP_JS)
     # Scout ahead button sets state.pendingScoutId instead of calling advance directly
     assert "state.pendingScoutId = member.character_id" in party_body
     assert "Cancel scout" in party_body

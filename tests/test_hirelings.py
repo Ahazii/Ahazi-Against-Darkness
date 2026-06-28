@@ -430,6 +430,31 @@ def test_repair_shared_marching_orders_moves_duplicate_hirelings() -> None:
     assert len(set(orders)) == 2
 
 
+def test_moving_cleric_repositions_attached_acolyte() -> None:
+    from app.engine.hirelings import set_party_member_marching_order
+
+    cleric = _member(character_id="c1", class_id="cleric", class_name="Cleric", marching_order=4)
+    session = _session(party=[cleric])
+    hire_retainer(session, "acolyte", assigned_character_id="c1")
+    acolyte = session.hirelings[0]
+    assert acolyte.marching_order == 5
+    log = set_party_member_marching_order(session, "c1", 3)
+    assert any("moves" in line.lower() for line in log)
+    assert cleric.marching_order == 3
+    assert abs(acolyte.marching_order - cleric.marching_order) == 1
+
+
+def test_hireling_needs_reassignment_when_assignee_falls() -> None:
+    from app.engine.hirelings import hireling_needs_reassignment
+
+    cleric = _member(character_id="c1", class_id="cleric", class_name="Cleric", marching_order=4)
+    session = _session(party=[cleric])
+    hire_retainer(session, "acolyte", assigned_character_id="c1")
+    acolyte = session.hirelings[0]
+    cleric.current_life = 0
+    assert hireling_needs_reassignment(acolyte, session.party)
+
+
 def test_acolyte_only_preserves_for_assigned_cleric() -> None:
     from app.engine.hirelings import try_acolyte_preserve_blessing, _adjacent_marching_orders
 

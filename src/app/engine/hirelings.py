@@ -337,6 +337,66 @@ def _adjacent_marching_orders(left: int, right: int) -> bool:
     return abs(left - right) == 1
 
 
+def _retainer_requires_assignment(row: dict[str, Any]) -> bool:
+    return str(row.get("assignment", "none")) in {"cleric", "protectee", "gear_owner"}
+
+
+def _attached_hirelings_for_member(session: SessionState, character_id: str) -> list[HirelingState]:
+    catalog = load_hirelings_catalog()
+    attached: list[HirelingState] = []
+    for hireling in living_hirelings(session):
+        if hireling.assigned_character_id != character_id:
+            continue
+        row = retainer_definition(catalog, hireling.retainer_type) or {}
+        if _retainer_requires_assignment(row):
+            attached.append(hireling)
+    return sorted(attached, key=lambda item: (item.marching_order, item.name))
+
+
+def _sync_attached_hirelings_to_assignee(session: SessionState, member: PartyMemberState) -> None:
+    catalog = load_hirelings_catalog()
+    for hireling in _attached_hirelings_for_member(session, member.character_id):
+        row = retainer_definition(catalog, hireling.retainer_type) or {}
+        assignment = str(row.get("assignment", "none"))
+        taken = {item.marching_order for item in _marching_occupants(session, exclude_hireling_id=hireling.id)}
+        if assignment == "protectee":
+            candidates = (member.marching_order - 1, member.marching_order + 1, member.marching_order)
+        else:
+            candidates = (member.marching_order + 1, member.marching_order - 1, member.marching_order)
+        slot = None
+        for candidate in candidates:
+            if candidate in HIRELING_MARCHING_ORDERS and candidate not in taken:
+                slot = candidate
+                break
+        if slot is None:
+            for candidate in HIRELING_MARCHING_ORDERS:
+                if candidate not in taken and _adjacent_marching_orders(candidate, member.marching_order):
+                    slot = candidate
+                    break
+        if slot is not None and hireling.marching_order != slot:
+            _move_hireling_marching_order(session, hireling, slot)
+
+
+def hireling_needs_reassignment(
+    hireling: HirelingState,
+    party: list[PartyMemberState],
+    *,
+    catalog: dict[str, Any] | None = None,
+) -> bool:
+    catalog = catalog or load_hirelings_catalog()
+    row = retainer_definition(catalog, hireling.retainer_type) or {}
+    if not _retainer_requires_assignment(row):
+        return False
+    if not hireling.assigned_character_id:
+        return True
+    assignee = next((member for member in party if member.character_id == hireling.assigned_character_id), None)
+    if assignee is None or assignee.current_life <= 0:
+        return True
+    if str(row.get("assignment", "none")) == "cleric" and assignee.class_id.lower() != "cleric":
+        return True
+    return not _adjacent_marching_orders(hireling.marching_order, assignee.marching_order)
+
+
 def _marching_occupants(
     session: SessionState,
     *,
@@ -656,6 +716,7 @@ def set_party_member_marching_order(
     if not _move_marching_occupant(session, member, position, exclude_character_id=member.character_id):
         _restore_marching_order_snapshot(session, snapshot)
         return ["No marching slots (#1–#6) are free."]
+    _sync_attached_hirelings_to_assignee(session, member)
     for hireling in living_hirelings(session):
         valid, note = assignment_valid(hireling, session.party)
         if not valid:

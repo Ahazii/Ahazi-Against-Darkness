@@ -610,9 +610,17 @@ const ACTION_TOOLTIPS = {
   useProfessional:
     "Between-adventure service while camped (max 3 per camp). Expert tier required. Buff applies on the next foray.",
   hirelingMarchUp:
-    "Move this retainer one step forward in the shared marching order. Must stay adjacent to an assigned hero when required.",
+    "Move this unassigned or orphaned retainer one step forward in the shared marching order (#1 leads).",
   hirelingMarchDown:
-    "Move this retainer one step back in the shared marching order. Must stay adjacent to an assigned hero when required.",
+    "Move this unassigned or orphaned retainer one step back in the shared marching order.",
+  heroMarchUp:
+    "Move this hero one step forward (#1 leads). Attached acolytes, bodyguards, and spear carriers move with them to stay adjacent.",
+  heroMarchDown:
+    "Move this hero one step back. Attached acolytes, bodyguards, and spear carriers move with them to stay adjacent.",
+  editParty:
+    "Swap which four heroes from your home roster join the next foray while camped. Fallen bodies and explored map state stay in the dungeon.",
+  assignOrphanHireling:
+    "Reassign this retainer after their hero fell or moved away. Bodyguards may reassign between rooms (Abyss p.27).",
   minstrelSong: "Once per adventure: the minstrel removes 1 Madness from each living hero.",
   fdOblivionRedemption:
     "River of Oblivion (once per adventure): remove 1 Madness from this hero while the redemption offer is pending (FD p.32).",
@@ -856,7 +864,15 @@ const HIRELING_TOOLTIPS = {
   outsideGold:
     "Gold available for camp hires: sum of carried gold and home-bank funds on living heroes.",
   marchingSlots:
-    "Retainers occupy a space in the party marching order like any other character. Bodyguards, Acolytes, and Spear Carriers must be adjacent to their assigned hero — choose the hero first when hiring, then pick a slot in front of or behind them.",
+    "Retainers share the party #1–#6 marching order with heroes. Assigned retainers appear nested under their hero and move with hero ↑/↓. Lantern bearers, porters, and other unassigned types have their own row.",
+  groupMarchingOrder:
+    "Four Against the Abyss p.27–33. Heroes and retainers share one marching line (#1 front through #6). Traps and corridor combat use these positions. When a hero falls, surviving retainers test morale; assigned retainers need a new hero or become orphaned rows.",
+  nestedRetainer:
+    "Attached to this hero and moves with their ↑/↓ controls. Must stay in an adjacent marching slot per Abyss hireling rules.",
+  orphanRetainer:
+    "This retainer's assigned hero fell or is no longer valid. Reassign before re-entering, or move them with ↑/↓ to an adjacent living hero.",
+  standaloneRetainer:
+    "Unassigned retainer type (lantern bearer, porter, etc.). Use ↑/↓ to reposition in the shared marching order.",
   poisonExpertProfessional:
     "Abyss p.32: rogue L5+ envenoms a slashing weapon or one arrow (+1 vs first minion, or d8+L boss level drop).",
 };
@@ -21757,6 +21773,91 @@ function hirelingAssignmentLabel(session, hireling) {
   return assignee ? assignee.name : "Unknown hero";
 }
 
+function hirelingNeedsReassignment(session, hireling) {
+  if (!hireling || hireling.life <= 0) return false;
+  const row = retainerRowForType(hireling.retainer_type);
+  if (!retainerNeedsAssignment(row)) return false;
+  if (!hireling.assigned_character_id) return true;
+  const assignee = (session.party || []).find((member) => member.character_id === hireling.assigned_character_id);
+  if (!assignee || assignee.current_life <= 0) return true;
+  if (String(row?.assignment || "none") === "cleric" && String(assignee.class_id || "").toLowerCase() !== "cleric") {
+    return true;
+  }
+  return Math.abs((hireling.marching_order || 0) - (assignee.marching_order || 0)) !== 1;
+}
+
+function hirelingIsNestedUnderAssignee(session, hireling) {
+  if (!hireling || hireling.life <= 0) return false;
+  const row = retainerRowForType(hireling.retainer_type);
+  if (!retainerNeedsAssignment(row)) return false;
+  return !hirelingNeedsReassignment(session, hireling);
+}
+
+function buildHirelingPartySheet(session, hireling, mode = "standalone") {
+  const details = document.createElement("details");
+  details.className = `party-hireling-sheet party-hireling-${mode} item`;
+  if (!state.partySheetOpen) state.partySheetOpen = {};
+  const sheetKey = `hireling:${hireling.id}`;
+  details.open = state.partySheetOpen[sheetKey] ?? false;
+
+  const summary = document.createElement("summary");
+  summary.className = "party-sheet-summary marching-order-row";
+  summary.appendChild(node("span", "position", `#${hireling.marching_order}`));
+  summary.appendChild(
+    node(
+      "span",
+      "party-sheet-meta",
+      `${hireling.name} (${retainerTypeLabel(hireling.retainer_type)}) · ${hireling.life}/${hireling.max_life} Life`
+    )
+  );
+  if (mode === "nested") {
+    const assignee = (session.party || []).find((member) => member.character_id === hireling.assigned_character_id);
+    summary.appendChild(node("span", "party-hireling-nested-badge muted", assignee ? `Attached to ${assignee.name}` : "Attached"));
+    setTooltip(summary, HIRELING_TOOLTIPS.nestedRetainer);
+  } else if (mode === "orphan") {
+    summary.appendChild(node("span", "party-hireling-orphan-badge", "Needs reassignment"));
+    setTooltip(summary, HIRELING_TOOLTIPS.orphanRetainer);
+  } else {
+    setTooltip(summary, HIRELING_TOOLTIPS.standaloneRetainer);
+  }
+
+  const headerActions = node("div", "marching-order-actions");
+  if (mode !== "nested" && session.mode === "exploration" && hireling.life > 0) {
+    appendHirelingMarchingControls(headerActions, session, hireling);
+  }
+  if (mode === "orphan" && session.mode === "exploration" && hireling.life > 0) {
+    const retainerRow = retainerRowForType(hireling.retainer_type) || {};
+    const assignSelect = document.createElement("select");
+    populateHirelingAssignSelect(session, assignSelect, retainerRow, hireling.marching_order, hireling.assigned_character_id || "", {
+      insert: false,
+    });
+    const assignBtn = node("button", "secondary small", "Assign");
+    assignBtn.type = "button";
+    setButtonTooltip(assignBtn, ACTION_TOOLTIPS.assignOrphanHireling);
+    assignBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (!assignSelect.value) return;
+      advance("assign_hireling", { hireling_id: hireling.id, target_character_id: assignSelect.value });
+    });
+    headerActions.append(assignSelect, assignBtn);
+  }
+  if (headerActions.childElementCount) summary.appendChild(headerActions);
+  details.appendChild(summary);
+
+  const body = node("div", "party-sheet-body");
+  body.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, hireling)}`));
+  if (hireling.cargo_gp) body.appendChild(subline(`Porter cargo: ${hireling.cargo_gp}gp`));
+  if (hireling.cargo_items?.length) body.appendChild(subline(`Porter items: ${hireling.cargo_items.join(", ")}`));
+  if (hireling.carried_gear) body.appendChild(subline(`Carrying: ${hireling.carried_gear}`));
+  if (hireling.lantern_lit) body.appendChild(subline("Carrying the party lantern."));
+  appendHirelingAbilityButtons(body, session, hireling);
+  details.appendChild(body);
+  details.addEventListener("toggle", () => {
+    state.partySheetOpen[sheetKey] = details.open;
+  });
+  return details;
+}
+
 function assignedRetainersForMember(session, member) {
   return (session.hirelings || [])
     .filter((hireling) => hireling.life > 0 && hireling.assigned_character_id === member.character_id)
@@ -22273,7 +22374,9 @@ function appendCampHirelingsPanel(parent, session) {
         }
       }
 
-      appendHirelingMarchingControls(actions, session, hireling);
+      if (!hirelingIsNestedUnderAssignee(session, hireling)) {
+        appendHirelingMarchingControls(actions, session, hireling);
+      }
 
       if (hireling.life > 0 && !hireling.treasure_share_paid) {
         const shareBtn = node("button", "secondary", `Treasure share (${hireling.fee_paid_gp * 2}gp)`);
@@ -22640,46 +22743,6 @@ function appendCampHirelingsPanel(parent, session) {
   parent.appendChild(details);
 }
 
-function renderActiveHirelingsPanel(session, parent) {
-  const hirelings = (session.hirelings || []).filter((item) => item.life > 0);
-  if (!hirelings.length) return;
-  const panel = node("div", "party-hirelings-panel item");
-  panel.appendChild(node("strong", "", "Retainers"));
-  setButtonTooltip(panel.querySelector("strong"), HIRELING_TOOLTIPS.retainerMorale);
-  panel.appendChild(
-    subline("Hero party sheets are below under Group 1 - Main Group. This panel tracks retainers in the shared #1–#6 marching order.")
-  );
-  const marching = node("div", "party-hirelings-roster");
-  marching.appendChild(node("strong", "", "Combined marching order"));
-  setTooltip(marching.querySelector("strong"), HIRELING_TOOLTIPS.marchingSlots);
-  for (const rowInfo of projectedMarchingRows(session)) {
-    const row = node("div", "party-hireling-row marching-order-row");
-    row.appendChild(node("span", "position", `#${rowInfo.marching_order}`));
-    if (rowInfo.kind === "hero") {
-      row.appendChild(node("span", "", `${rowInfo.name} (${rowInfo.member.class_name || titleFromKey(rowInfo.member.class_id)})`));
-    } else {
-      const hireling = rowInfo.hireling;
-      row.appendChild(
-        node(
-          "span",
-          "",
-          `${rowInfo.name} (${retainerTypeLabel(hireling.retainer_type)}) · ${hireling.life}/${hireling.max_life} Life`
-        )
-      );
-      row.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, hireling)}`));
-      if (hireling.cargo_gp) row.appendChild(subline(`Porter cargo: ${hireling.cargo_gp}gp`));
-      if (hireling.cargo_items?.length) row.appendChild(subline(`Porter items: ${hireling.cargo_items.join(", ")}`));
-      if (hireling.carried_gear) row.appendChild(subline(`Carrying: ${hireling.carried_gear}`));
-      if (hireling.lantern_lit) row.appendChild(subline("Carrying the party lantern."));
-      appendHirelingAbilityButtons(row, session, hireling);
-      appendHirelingMarchingControls(row, session, hireling);
-    }
-    marching.appendChild(row);
-  }
-  panel.appendChild(marching);
-  parent.appendChild(panel);
-}
-
 function appendCampXpPanel(parent, session) {
   const pending = session.xp_rolls_pending || 0;
   if (pending <= 0 || (session.xp_system || "classical") !== "classical") return;
@@ -22765,6 +22828,13 @@ function renderCampPanel(session) {
   appendCampHirelingsPanel(campPanel, session);
 
   const actions = node("div", "camp-panel-actions");
+  if (session.party_editable) {
+    const editPartyBtn = node("button", "secondary", "Edit Party");
+    editPartyBtn.type = "button";
+    setButtonTooltip(editPartyBtn, ACTION_TOOLTIPS.editParty);
+    editPartyBtn.addEventListener("click", () => openEditPartyDialog(session));
+    actions.appendChild(editPartyBtn);
+  }
   const returnBtn = node("button", "", REENTER_DUNGEON_LABEL);
   returnBtn.type = "button";
   setButtonTooltip(returnBtn, ACTION_TOOLTIPS.reenterDungeon);
@@ -23691,66 +23761,64 @@ function characterAvailableForSession(character, sessionId) {
   return character.active_session_id === sessionId;
 }
 
-function renderPartyRegroup(session) {
-  if (!session.party_editable) return null;
-  const details = document.createElement("details");
-  details.className = "party-regroup-details";
-  details.open = Boolean(state.partyRegroupOpen);
-  const summary = document.createElement("summary");
-  summary.appendChild(document.createTextNode("Swap Party Members"));
-  const summaryHint = node(
-    "span",
-    "party-regroup-summary-hint",
-    "Camped outside - swap active heroes before re-entering. Use party sheet arrows for marching order only."
+function openEditPartyDialog(session) {
+  if (!session.party_editable) return;
+  let dialog = document.getElementById("edit-party-dialog");
+  if (!dialog) {
+    dialog = document.createElement("dialog");
+    dialog.id = "edit-party-dialog";
+    dialog.className = "edit-party-dialog";
+    document.body.appendChild(dialog);
+  }
+  dialog.replaceChildren();
+  const form = document.createElement("form");
+  form.method = "dialog";
+  form.className = "edit-party-form";
+  form.appendChild(node("h3", "", "Edit Party"));
+  form.appendChild(
+    node(
+      "p",
+      "edit-party-instruction",
+      "Choose four different heroes from your home roster for the next foray. Replaced heroes return to the roster; fallen bodies and explored map state stay in the dungeon."
+    )
   );
-  summary.appendChild(summaryHint);
-  details.appendChild(summary);
-
-  const instruction = node(
-    "p",
-    "party-regroup-instruction",
-    "Pick four different heroes for marching order #1 (lead) through #4 (rear), then Apply. " +
-      "Heroes you remove return to the home roster; the explored map and any fallen bodies stay as they are."
-  );
-  details.appendChild(instruction);
-
   const ordered = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
   const slotIds = ordered.map((member) => member.character_id);
   while (slotIds.length < 4) slotIds.push("");
   const selects = [];
-  const rosterChoices = state.characters.filter((character) =>
-    characterAvailableForSession(character, session.id)
-  );
+  const rosterChoices = state.characters.filter((character) => characterAvailableForSession(character, session.id));
   const slots = node("div", "party-regroup-slots");
   for (let index = 0; index < 4; index += 1) {
     const row = node("div", "combat-target-row");
-    row.appendChild(document.createTextNode(`#${index + 1}`));
+    row.appendChild(document.createTextNode(`Active hero #${index + 1}`));
     const select = document.createElement("select");
     select.dataset.slotIndex = String(index);
-    const empty = document.createElement("option");
-    empty.value = "";
-    empty.textContent = "Choose hero";
-    select.appendChild(empty);
+    select.appendChild(new Option("Choose hero", ""));
     for (const character of rosterChoices) {
-      const option = document.createElement("option");
-      option.value = character.id;
-      option.textContent = `${character.name} (${character.class_name} L${character.level})`;
-      select.appendChild(option);
+      select.appendChild(new Option(`${character.name} (${character.class_name} L${character.level})`, character.id));
     }
     select.value = slotIds[index] || "";
     selects.push(select);
     row.appendChild(select);
     slots.appendChild(row);
   }
-  details.appendChild(slots);
-
-  const applyBtn = node("button", "secondary party-regroup-apply", "Apply party swap");
-  applyBtn.type = "button";
-  applyBtn.title = "Reorder the active party's marching positions (#1 front to #4 rear).";
-  applyBtn.addEventListener("click", async () => {
+  form.appendChild(slots);
+  const actions = node("div", "edit-party-actions");
+  const applyBtn = node("button", "", "Apply");
+  applyBtn.type = "submit";
+  setButtonTooltip(applyBtn, ACTION_TOOLTIPS.editParty);
+  actions.appendChild(applyBtn);
+  const cancelBtn = node("button", "secondary", "Cancel");
+  cancelBtn.type = "button";
+  setButtonTooltip(cancelBtn, "Close without changing the active party.");
+  cancelBtn.addEventListener("click", () => dialog.close());
+  actions.appendChild(cancelBtn);
+  form.appendChild(actions);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
     const character_ids = selects.map((select) => select.value).filter(Boolean);
     if (character_ids.length !== 4 || new Set(character_ids).size !== 4) {
-      setStatus("Choose four different heroes for marching order #1–#4.");
+      setStatus("Choose four different heroes for the active party.");
       return;
     }
     try {
@@ -23760,20 +23828,15 @@ function renderPartyRegroup(session) {
       });
       syncSessionListFromSession(state.session, { render: setupViewVisible() });
       await reloadCharacters();
-      state.partyRegroupOpen = false;
-      saveLayoutPrefs();
+      dialog.close();
       renderSession();
-      setStatus("Party swap applied.");
+      setStatus("Active party updated.");
     } catch (error) {
       handleError(error);
     }
   });
-  details.appendChild(applyBtn);
-  details.addEventListener("toggle", () => {
-    state.partyRegroupOpen = details.open;
-    saveLayoutPrefs();
-  });
-  return details;
+  dialog.appendChild(form);
+  dialog.showModal();
 }
 
 function appendExplorationClassAbilities(item, session, member, tile) {
@@ -24829,48 +24892,8 @@ function renderPartySuppliesPanel(session) {
   return details;
 }
 
-function renderPartyState(session) {
-  const target = partyStateTarget(session);
-  if (!target) return;
-  if (partyState && partyState !== target) partyState.replaceChildren();
-  target.replaceChildren();
-  target.classList.remove("party-sheet-strip");
-  const capturePanel = renderCapturePanel(session);
-  if (capturePanel) target.appendChild(capturePanel);
-  const detachedCombat = renderDetachedCombatPanel(session);
-  if (detachedCombat) target.appendChild(detachedCombat);
-  const regroup = renderPartyRegroup(session);
-  if (regroup) target.appendChild(regroup);
-  appendFdRevelationActions(target, session);
-  appendFdCitadelSideSheetActions(target, session);
-  if (session.mode === "exploration") {
-    renderActiveHirelingsPanel(session, target);
-    renderTrainedProfessionalPanel(session, target);
-  }
-  const tile = currentTile(session);
-  const members = session.party || [];
-  if (!members.length) {
-    target.appendChild(node("div", "item", "No party members in this session."));
-    return;
-  }
-  if (!state.partySheetOpen) state.partySheetOpen = {};
-  const groupInfoByMember = new Map(members.map((member) => [member.character_id, partyGroupInfo(session, member)]));
-  const ordered = [...members].sort((left, right) => {
-    const leftGroup = groupInfoByMember.get(left.character_id);
-    const rightGroup = groupInfoByMember.get(right.character_id);
-    if ((leftGroup?.order || 1) !== (rightGroup?.order || 1)) {
-      return (leftGroup?.order || 1) - (rightGroup?.order || 1);
-    }
-    return left.marching_order - right.marching_order;
-  });
-  const canReorder = session.mode === "exploration";
-  let lastGroupKey = "";
-  for (const member of ordered) {
-    const groupInfo = groupInfoByMember.get(member.character_id) || partyGroupInfo(session, member);
-    if (groupInfo.key !== lastGroupKey) {
-      target.appendChild(partyGroupHeading(groupInfo, session));
-      lastGroupKey = groupInfo.key;
-    }
+function appendPartyMemberSheet(target, session, member, renderCtx) {
+  const { canReorder, tile, groupInfoByMember } = renderCtx;
     const details = document.createElement("details");
     details.className = "party-sheet-details item";
     if (member.current_life <= 0) {
@@ -24898,7 +24921,7 @@ function renderPartyState(session) {
       const up = node("button", "secondary", "↑");
       up.type = "button";
       up.disabled = member.marching_order <= 1;
-      setButtonTooltip(up, "Move this hero one step forward in the shared marching order (position 1 leads).");
+      setButtonTooltip(up, ACTION_TOOLTIPS.heroMarchUp);
       up.addEventListener("click", (event) => {
         event.stopPropagation();
         advance("set_marching_order", {
@@ -24909,7 +24932,7 @@ function renderPartyState(session) {
       const down = node("button", "secondary", "↓");
       down.type = "button";
       down.disabled = member.marching_order >= 6;
-      setButtonTooltip(down, "Move this hero one step back in the shared marching order.");
+      setButtonTooltip(down, ACTION_TOOLTIPS.heroMarchDown);
       down.addEventListener("click", (event) => {
         event.stopPropagation();
         advance("set_marching_order", {
@@ -24961,8 +24984,14 @@ function renderPartyState(session) {
     appendStatusChips(body, heroStatusChips(session, member, tile));
     const abilityLine = abilityStatusLine(session, member);
     if (abilityLine) body.appendChild(subline(abilityLine));
-    const assignedRetainer = assignedRetainerLine(session, member);
-    if (assignedRetainer) body.appendChild(subline(`Retainer: ${assignedRetainer}`));
+    const nestedRetainers = assignedRetainersForMember(session, member).filter((item) =>
+      hirelingIsNestedUnderAssignee(session, item)
+    );
+    if (nestedRetainers.length) {
+      body.appendChild(
+        subline(`Retainers: ${nestedRetainers.map((hireling) => `#${hireling.marching_order} ${hireling.name}`).join(", ")} (nested below)`)
+      );
+    }
     const callTurns = callOfTheWildTurns(session, member);
     if (callTurns > 0) body.appendChild(subline(`Call of the Wild: returns in ${callTurns} turn(s).`));
     appendSheetRulesNotes(body, member, session);
@@ -25218,6 +25247,83 @@ function renderPartyState(session) {
       state.partySheetOpen[member.character_id] = details.open;
     });
     target.appendChild(details);
+  }
+}
+
+function renderPartyState(session) {
+  const target = partyStateTarget(session);
+  if (!target) return;
+  if (partyState && partyState !== target) partyState.replaceChildren();
+  target.replaceChildren();
+  target.classList.remove("party-sheet-strip");
+  const capturePanel = renderCapturePanel(session);
+  if (capturePanel) target.appendChild(capturePanel);
+  const detachedCombat = renderDetachedCombatPanel(session);
+  if (detachedCombat) target.appendChild(detachedCombat);
+  appendFdRevelationActions(target, session);
+  appendFdCitadelSideSheetActions(target, session);
+  if (session.mode === "exploration") {
+    renderTrainedProfessionalPanel(session, target);
+  }
+  const tile = currentTile(session);
+  const members = session.party || [];
+  if (!members.length) {
+    target.appendChild(node("div", "item", "No party members in this session."));
+    return;
+  }
+  if (!state.partySheetOpen) state.partySheetOpen = {};
+  const groupInfoByMember = new Map(members.map((member) => [member.character_id, partyGroupInfo(session, member)]));
+  const ordered = [...members].sort((left, right) => {
+    const leftGroup = groupInfoByMember.get(left.character_id);
+    const rightGroup = groupInfoByMember.get(right.character_id);
+    if ((leftGroup?.order || 1) !== (rightGroup?.order || 1)) {
+      return (leftGroup?.order || 1) - (rightGroup?.order || 1);
+    }
+    return left.marching_order - right.marching_order;
+  });
+  const canReorder = session.mode === "exploration";
+  const renderCtx = { canReorder, tile, groupInfoByMember };
+  const partyGroups = [];
+  for (const member of ordered) {
+    const groupInfo = groupInfoByMember.get(member.character_id) || partyGroupInfo(session, member);
+    let bucket = partyGroups.find((group) => group.info.key === groupInfo.key);
+    if (!bucket) {
+      bucket = { info: groupInfo, memberIds: new Set() };
+      partyGroups.push(bucket);
+    }
+    bucket.memberIds.add(member.character_id);
+  }
+  for (const bucket of partyGroups) {
+    target.appendChild(partyGroupHeading(bucket.info, session));
+    if (session.mode === "exploration" && bucket.info.key === "main") {
+      const marchingHint = node(
+        "p",
+        "party-group-marching-hint muted",
+        "Shared #1–#6 marching order. Hero ↑/↓ moves attached retainers. Unassigned retainers use their own row."
+      );
+      setTooltip(marchingHint, HIRELING_TOOLTIPS.groupMarchingOrder);
+      target.appendChild(marchingHint);
+    }
+    for (const marchRow of projectedMarchingRows(session)) {
+      if (marchRow.kind === "hero" && bucket.memberIds.has(marchRow.id)) {
+        appendPartyMemberSheet(target, session, marchRow.member, renderCtx);
+        if (session.mode === "exploration" && bucket.info.key === "main") {
+          for (const hireling of assignedRetainersForMember(session, marchRow.member).filter((item) =>
+            hirelingIsNestedUnderAssignee(session, item)
+          )) {
+            target.appendChild(buildHirelingPartySheet(session, hireling, "nested"));
+          }
+        }
+      } else if (
+        marchRow.kind === "hireling" &&
+        bucket.info.key === "main" &&
+        session.mode === "exploration" &&
+        !hirelingIsNestedUnderAssignee(session, marchRow.hireling)
+      ) {
+        const mode = hirelingNeedsReassignment(session, marchRow.hireling) ? "orphan" : "standalone";
+        target.appendChild(buildHirelingPartySheet(session, marchRow.hireling, mode));
+      }
+    }
   }
   if (session.mode === "exploration") {
     target.appendChild(renderPartySuppliesPanel(session));

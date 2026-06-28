@@ -1402,15 +1402,15 @@ button.secondary,
   min-height: 0;
   max-height: 100%;
   overflow-x: hidden;
-  overflow-y: scroll;
-  scrollbar-gutter: stable;
+  overflow-y: auto;
   position: relative;
   overscroll-behavior: contain;
   padding-right: 2px;
 }
 
 .map-exits-scroll.has-scroll {
-  overflow-y: scroll;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .map-exits-scroll::-webkit-scrollbar {
@@ -4259,6 +4259,70 @@ button.door-destroy-spell {
 .party-hireling-row {
   display: grid;
   gap: 2px;
+}
+
+.party-group-marching-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.party-hireling-sheet {
+  margin-left: 14px;
+  border-left: 2px solid rgba(198, 143, 59, 0.35);
+}
+
+.party-hireling-sheet.party-hireling-nested {
+  margin-left: 22px;
+}
+
+.party-hireling-sheet.party-hireling-orphan {
+  border-left-color: rgba(220, 120, 90, 0.65);
+}
+
+.party-hireling-nested-badge,
+.party-hireling-orphan-badge {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.party-hireling-orphan-badge {
+  color: #e8a07a;
+}
+
+.edit-party-dialog {
+  width: min(520px, 92vw);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0;
+  background: #1b1c17;
+  color: var(--text);
+}
+
+.edit-party-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.edit-party-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.edit-party-instruction {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(245, 245, 240, 0.82);
+}
+
+.edit-party-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .final-boss-complete-banner {

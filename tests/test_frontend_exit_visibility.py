@@ -143,7 +143,8 @@ def test_frontend_log_exits_row_is_resizable_without_exits_forcing_map_smaller()
     assert ".map-exits-dock .map-exits-details[open] .map-exits-scroll {\n  flex: 1 1 auto;\n  min-height: 0;\n  max-height: none;" in styles
     assert ".map-exits-body {\n  display: grid;\n  grid-template-rows: minmax(0, 1fr) auto;\n  flex: 1 1 auto;" in styles
     assert ".map-exits-scroll {\n  flex: 1 1 auto;\n  min-height: 0;\n  max-height: 100%;" in styles
-    assert "overflow-y: scroll;" in styles
+    assert "overflow-y: auto;" in styles
+    assert ".map-exits-scroll.has-scroll {\n  overflow-y: auto;\n  scrollbar-gutter: stable;" in styles
     assert "calc(var(--exit-row-weight, var(--exit-row-count, 1)) * 100px)" not in styles
 
 
