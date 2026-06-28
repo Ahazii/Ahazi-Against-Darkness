@@ -100,6 +100,25 @@ h2 {
   margin-bottom: 12px;
 }
 
+.abyss-campaign-status {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #171814;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.campaign-status-title {
+  font-weight: 700;
+}
+
+.campaign-status-line {
+  color: var(--text);
+  line-height: 1.35;
+}
+
 .heading-title,
 .label-with-help {
   display: inline-flex;

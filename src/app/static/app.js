@@ -85,6 +85,7 @@ const state = {
   setupRosterDirty: false,
   sessionRenderCache: {},
   hirelingsCatalog: null,
+  campaign: null,
 };
 
 let combatRoundToastTimer = null;
@@ -221,6 +222,7 @@ const fiendishFoesPrefs = document.getElementById("fiendish-foes-prefs");
 const tagBankingEnabled = document.getElementById("tag-banking-enabled");
 const tagBankingHint = document.getElementById("tag-banking-hint");
 const campaignDaysHint = document.getElementById("campaign-days-hint");
+const abyssCampaignStatus = document.getElementById("abyss-campaign-status");
 const startCampedOutside = document.getElementById("start-camped-outside");
 const FIENDISH_FOES_PREFS_KEY = "fiendishFoesPrefs";
 const TAG_BANKING_PREFS_KEY = "tagBankingEnabled";
@@ -10245,6 +10247,7 @@ async function loadAll(options = {}) {
     if (campaignDaysHint && campaign) {
       campaignDaysHint.textContent = `Campaign time: ${campaign.days_passed} day(s) passed · ${campaign.adventures_completed} adventure(s) completed.`;
     }
+    renderAbyssCampaignStatus(campaign);
     loadTagBankingPrefIntoControls();
     state.lastAdventureReport = readLastAdventureReport();
     apiStatus.textContent = "Connected";
@@ -10333,6 +10336,7 @@ function renderSetup(options = {}) {
   renderRulesTables();
   updateResumeSessionButtonVisibility();
   applySetupTooltips();
+  renderAbyssCampaignStatus(state.campaign);
 }
 
 function updateSetupBankButton() {
@@ -10988,6 +10992,7 @@ async function syncCampaignFromServer() {
     if (campaignDaysHint) {
       campaignDaysHint.textContent = `Campaign time: ${campaign.days_passed} day(s) passed · ${campaign.adventures_completed} adventure(s) completed.`;
     }
+    renderAbyssCampaignStatus(campaign);
     loadTagBankingPrefIntoControls();
   } catch {
     loadTagBankingPrefIntoControls();
@@ -11003,6 +11008,7 @@ async function saveCampaignTagBanking(enabled) {
     if (campaignDaysHint && state.campaign) {
       campaignDaysHint.textContent = `Campaign time: ${state.campaign.days_passed} day(s) passed · ${state.campaign.adventures_completed} adventure(s) completed.`;
     }
+    renderAbyssCampaignStatus(state.campaign);
   } catch {
     writeTagBankingPref(Boolean(enabled));
   }
@@ -11170,6 +11176,67 @@ function courtshipApothecaryBrewAvailable(session) {
       (item) => /mortar/i.test(item) && /pestle/i.test(item)
     );
   });
+}
+
+function abyssPlotNextStep(plot) {
+  if (!plot) return "";
+  if (plot.completed) return "Completed.";
+  if (plot.finale_pending === "assassins_ambush") return "Resolve the assassins' delivery ambush from the room panel.";
+  if (plot.finale_pending === "rebellion_war") {
+    const total = Number(plot.rebellion_battles_total || 0);
+    const resolved = Number(plot.rebellion_battles_resolved || 0);
+    return total > 0
+      ? `Resolve the rebellion battles from the room panel (${resolved}/${total} complete).`
+      : "Resolve the rebellion battles from the room panel.";
+  }
+  if (plot.finale_pending === "destroy_artifact") return "Defeat the Final Boss, then destroy the artefact through the portal.";
+  if (plot.finale_pending === "kidnap_bosses") return "Leave the dungeon to trigger the two-boss ambush.";
+  if (plot.finale_pending === "enchantress_lich") return "Leave the dungeon to trigger the enchantress Lich ambush.";
+  if (plot.key === "assassination") return `Defeat Final Bosses and collect evidence (${plot.progress || 0}/3).`;
+  if (plot.key === "rebellion") return `Fund the rebellion (${plot.gold_contributed || 0}/3000gp).`;
+  if (plot.key === "entity") return `Claim one artefact piece per dungeon from magic item treasure (${plot.progress || 0}/3).`;
+  if (plot.key === "invasion") return `Spend 9 Clues, keep the artefact carrier alive, then defeat the Final Boss (${plot.artifact_clues_spent || 0}/9).`;
+  if (plot.key === "kidnap") return plot.chosen_one_rescued ? "Leave the dungeon for the finale." : "Find corridor non-undead minions holding the chosen one.";
+  if (plot.key === "enchantment") return `Collect dragon blood from Final Boss dragons (${plot.progress || 0}/3).`;
+  return "Continue the active Abyss plot.";
+}
+
+function renderAbyssCampaignStatus(campaign = state.campaign) {
+  if (!abyssCampaignStatus) return;
+  abyssCampaignStatus.innerHTML = "";
+  const plot = campaign?.abyss_campaign_plot;
+  const sire = campaign?.abyss_vampire_sire;
+  const completed = Array.isArray(campaign?.abyss_campaign_completed_plots)
+    ? campaign.abyss_campaign_completed_plots
+    : [];
+  if (!plot && !sire && !completed.length) {
+    abyssCampaignStatus.classList.add("hidden");
+    return;
+  }
+  abyssCampaignStatus.classList.remove("hidden");
+  const title = node("div", "campaign-status-title", "Abyss campaign");
+  setTooltip(title, "Persistent Four Against the Abyss campaign state saved outside a single dungeon session.");
+  abyssCampaignStatus.appendChild(title);
+  if (plot) {
+    const active = node("div", "campaign-status-line", `${abyssPlotLabel(plot)}: ${abyssPlotNextStep(plot)}`);
+    setTooltip(active, "This plot carries into the next Four Against the Abyss session until completed.");
+    abyssCampaignStatus.appendChild(active);
+  } else {
+    const idle = node("div", "campaign-status-line muted", "No active Abyss plot.");
+    setTooltip(idle, "Start a plot inside a Four Against the Abyss dungeon from the room panel.");
+    abyssCampaignStatus.appendChild(idle);
+  }
+  if (sire) {
+    const sireLine = node("div", "campaign-status-line", `Tracked vampire sire: ${sire.name}`);
+    setTooltip(sireLine, "Start or resume a Four Against the Abyss session and use Hunt vampire sire to force the re-encounter.");
+    abyssCampaignStatus.appendChild(sireLine);
+  }
+  if (completed.length) {
+    const names = completed.slice(-3).map((item) => abyssPlotLabel(item)).join(", ");
+    const done = node("div", "campaign-status-line muted", `Completed plots: ${names}`);
+    setTooltip(done, "Most recent completed Abyss campaign plots saved in persistent campaign history.");
+    abyssCampaignStatus.appendChild(done);
+  }
 }
 
 function tagSettlementApothecaryAvailable(session) {
@@ -27037,6 +27104,7 @@ async function advance(action, extra = {}) {
         ...extra,
       }),
     });
+    syncCampaignFromServer().catch(() => {});
     state.pendingScoutId = null;
     writeActiveSessionId(state.session.id);
     syncSessionListFromSession(state.session, { render: setupViewVisible() });

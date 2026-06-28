@@ -50,6 +50,14 @@ hunting after vampire escape or level-drain death. Large Abyss rooms now route
 room-content roll 12 to the Dragon Lair branch instead of the regular boss
 branch.
 
+The persistence polish pass moves active Abyss plot and tracked vampire-sire
+state into the shared campaign store, applies it to later Abyss sessions, and
+records completed plot history. The setup screen now shows a persistent Abyss
+campaign status panel with hover hints. Entity artefact pieces are limited to
+one per dungeon adventure, then reset when the persistent plot is applied to a
+new Abyss session. Rebellion finales resolve one battle at a time so the party
+can use the between-battle window for resurrection/recovery decisions.
+
 ## Indexed tables
 
 | Table key | Status | Notes |
@@ -66,15 +74,14 @@ branch.
 | Abyss tactical targeting | wired | p.8 leader-lock targeting, p.10 multiple-boss target split / lone-hero penalty, and p.11 horde attacks are enforced by `abyss_tactics.py`, combat target selectors, and horde attack assignment |
 | Abyss item use-actions | wired | p.51 magic treasure and p.61 Useful Stuff actions: Elven Bread, Blessed Horseshoe, Parchment, Medallion, Philter, Ring wishes; passive defenses/weapons are included in combat math |
 | Abyss afflictions | wired | Dark Plague L10 exposure/spread/ticks/immunity, lycanthropy exposure/treatment/transformation, and vampire level-drain resurrection block |
-| Abyss campaign plots | wired/playable | Six campaign plots track progress, finale triggers, rewards, UI controls, and key Clue/gold/Life/Madness costs |
-| Vampire sire hunt | wired | Vampire escape and level-drain death can track the sire; Hunt spends Clues and forces the re-encounter |
+| Abyss campaign plots | wired/playable | Six campaign plots track progress, finale triggers, rewards, UI controls, cross-session persistence, and key Clue/gold/Life/Madness costs |
+| Vampire sire hunt | wired | Vampire escape and level-drain death can track the sire across sessions; Hunt spends Clues and forces the re-encounter |
 | Large-room dragon lair | wired | Abyss roll 12 detects large generated rooms and routes to `abyss_dragon_table` |
 
 ## Remaining gaps
 
-1. Manual PDF sign-off for all campaign plot edge cases, especially optional extended-campaign chaining.
-2. Longer campaign persistence polish if campaign plots need to survive across separate saved sessions rather than the active adventure session.
-3. Frontend decomposition: the new controls are intentionally wired into the existing room panel, but `app.js` still needs a broader split.
+1. Manual playtest sign-off for rare optional extended-campaign chaining choices.
+2. Frontend decomposition: the new controls are intentionally wired into the existing room panel and setup panel, but `app.js` still needs a broader split.
 
 ## Tests
 

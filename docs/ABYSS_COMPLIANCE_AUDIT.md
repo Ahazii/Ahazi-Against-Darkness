@@ -170,8 +170,9 @@ subset playable, indexed, and automated for the first trap/feature/event layer:
   direct effects are wired through the existing feature/treasure UI;
 - Dark Plague and lycanthropy lifecycles are wired; vampire level-drain death
   blocks ordinary resurrection. Vampire sire hunt/re-encounter and the six
-  Abyss campaign plots have playable state/UI; edge-case sign-off and
-  cross-session campaign persistence polish remain.
+  Abyss campaign plots have playable persistent state/UI; Entity enforces one
+  artefact piece per dungeon adventure. Optional extended-campaign chaining
+  still needs manual playtest sign-off.
 
 ## 7. Not Abyss (clarification)
 

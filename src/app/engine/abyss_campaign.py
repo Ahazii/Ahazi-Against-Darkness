@@ -176,12 +176,15 @@ def take_entity_artifact_piece(session: SessionState, tile: TileState) -> list[s
         return ["No active Entity plot needs artefact pieces."]
     if state.progress >= state.goal:
         return ["All artefact pieces have already been found."]
+    if state.entity_piece_claimed_this_adventure:
+        return ["Entity plot: only one artefact piece may be found in the same dungeon adventure."]
     if not (tile.treasure_items or tile.treasure_summary):
         return ["Find a magic item treasure result before taking an artefact piece."]
     tile.treasure_items = []
     tile.treasure_gold = 0
     tile.treasure_summary = "Entity plot artefact piece claimed instead of magic item treasure."
     tile.treasure_claimed = True
+    state.entity_piece_claimed_this_adventure = True
     state.progress += 1
     log = [f"Entity plot: artefact piece found ({state.progress}/3)."]
     if state.progress >= state.goal:
@@ -361,16 +364,25 @@ def resolve_plot_finale(session: SessionState) -> list[str]:
             log.append("No hero survives the assassins' ambush.")
         return log
     if state.key == "rebellion" and state.finale_pending == "rebellion_war":
-        battles = roll_d3()
-        log.append(f"Rebellion war: d3 = {battles} battle(s).")
-        for battle in range(1, battles + 1):
-            survivors = _save_or_die_all(session, 5, f"battle {battle}")
-            successes = len(survivors)
-            session.xp_rolls_pending += successes
-            log.append(f"Battle {battle}: {successes} survivor(s) gain XP roll credit.")
-            if not survivors:
-                log.append("The party is destroyed in the rebellion.")
-                return log
+        if state.rebellion_battles_total <= 0:
+            state.rebellion_battles_total = roll_d3()
+            state.rebellion_battles_resolved = 0
+            log.append(f"Rebellion war: d3 = {state.rebellion_battles_total} battle(s).")
+        battle = state.rebellion_battles_resolved + 1
+        survivors = _save_or_die_all(session, 5, f"battle {battle}")
+        successes = len(survivors)
+        session.xp_rolls_pending += successes
+        state.rebellion_battles_resolved = battle
+        log.append(f"Battle {battle}: {successes} survivor(s) gain XP roll credit.")
+        if not survivors:
+            log.append("The party is destroyed in the rebellion.")
+            return log
+        if state.rebellion_battles_resolved < state.rebellion_battles_total:
+            remaining = state.rebellion_battles_total - state.rebellion_battles_resolved
+            log.append(
+                f"Rebellion war pauses between battles. {remaining} battle(s) remain; resolve resurrection or recovery before continuing."
+            )
+            return log
         log.append("At least one hero survives all battles; the rebellion succeeds.")
         complete_plot(session, log)
         return log

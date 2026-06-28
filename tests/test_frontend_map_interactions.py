@@ -969,7 +969,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.12"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.13"></script>' in INDEX_HTML
 
 
 def test_trial_of_champions_reaction_has_champion_picker_buttons() -> None:

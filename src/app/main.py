@@ -1509,6 +1509,9 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+    from .engine.tag_campaign import apply_abyss_campaign_to_session
+
+    session = apply_abyss_campaign_to_session(store, session)
     session.minor_encounters_defeated = max(
         (character.minor_encounters_cleared for character in characters),
         default=0,
@@ -1720,6 +1723,9 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         alchemist_potion_id=payload.alchemist_potion_id,
     )
     _restore_missing_recovery_members(session)
+    from .engine.tag_campaign import sync_abyss_campaign_from_session
+
+    sync_abyss_campaign_from_session(store, session)
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
     if payload.action in {"transfer_gold", "transfer_item"} and payload.character_id and payload.target_character_id:

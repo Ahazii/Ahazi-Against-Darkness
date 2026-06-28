@@ -78,6 +78,10 @@ UI_MARKERS = [
     "Fund rebellion",
     "Take artefact piece",
     "Hunt vampire sire",
+    "abyss-campaign-status",
+    "renderAbyssCampaignStatus",
+    "Persistent Four Against the Abyss campaign state",
+    "Tracked vampire sire",
 ]
 
 

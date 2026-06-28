@@ -329,6 +329,9 @@ class AbyssCampaignPlotState(BaseModel):
     gold_contributed: int = Field(default=0, ge=0)
     artifact_holder_id: str | None = None
     artifact_clues_spent: int = Field(default=0, ge=0)
+    entity_piece_claimed_this_adventure: bool = False
+    rebellion_battles_total: int = Field(default=0, ge=0)
+    rebellion_battles_resolved: int = Field(default=0, ge=0)
     chosen_one_found: bool = False
     chosen_one_rescued: bool = False
     finale_pending: str | None = None
@@ -595,6 +598,9 @@ class CampaignState(BaseModel):
     tag_banking_enabled: bool = False
     days_passed: int = Field(default=0, ge=0)
     adventures_completed: int = Field(default=0, ge=0)
+    abyss_campaign_plot: AbyssCampaignPlotState | None = None
+    abyss_vampire_sire: EnemyState | None = None
+    abyss_campaign_completed_plots: list[AbyssCampaignPlotState] = Field(default_factory=list)
     created_at: str
     updated_at: str
 

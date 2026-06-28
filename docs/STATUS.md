@@ -52,11 +52,11 @@ Recent deeper-rule work:
 - **Abyss phase 3 targeting (2026-06-28):** leader-lock targeting is enforced server-side and mirrored in the combat UI; multiple Abyss bosses get default split targets and lone-hero secondary-boss Defense penalties; tagged hordes attack once or twice per living character as specified.
 - **Abyss item actions (2026-06-28):** Elven Bread, Blessed Horseshoe, Parchment of Banishing, Medallion of Snake Charming, Philter of Fire Breathing, and Ring of Three Wishes have party-sheet use buttons with hover hints; passive Abyss armor, undead/vampire defenses, silver weapons, blessed stakes, and Baton of Righteousness are in combat math.
 - **Abyss afflictions (2026-06-28):** Dark Plague L10 exposure, room-entry harm/spread, Blessing/Elven Bread immunity, lycanthropy exposure/treatment/transformation, and vampire-drain resurrection blocking are implemented with focused regression coverage.
-- **Abyss campaign plots (2026-06-28):** Six campaign plots now have playable state, room-panel controls with hover hints, key gold/Clue/Life/Madness costs, finale triggers, rewards, vampire sire hunt/re-encounter, and large-room Dragon Lair routing.
+- **Abyss campaign plots (2026-06-28):** Six campaign plots now have persistent playable state, setup/room-panel controls with hover hints, key gold/Clue/Life/Madness costs, finale triggers, rewards, vampire sire hunt/re-encounter, one Entity artefact piece per dungeon, and large-room Dragon Lair routing.
 
 Defer to later releases:
 
-- Abyss campaign-plot edge-case sign-off and longer-lived cross-session campaign persistence polish;
+- Abyss optional extended-campaign chaining playtest sign-off;
 - full TAG settlement/downtime UI (campaign shell + banking toggle wired);
 - large `app.js` / `random_dungeon.py` decomposition.
 
