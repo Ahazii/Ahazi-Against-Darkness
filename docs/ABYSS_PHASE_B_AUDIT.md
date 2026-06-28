@@ -25,6 +25,13 @@ hover explanations, multiple-boss rooms spread unset party targets and apply the
 lone-hero secondary-boss Defense penalty, and tagged hordes multiply attacks by
 the number of living characters.
 
+The item-use pass wires Abyss inventory actions from pp.51 and 61 into the
+party sheet. Elven Bread, Blessed Horseshoe, Parchment of Banishing, Medallion
+of Snake Charming, Philter of Fire Breathing, and Ring of Three Wishes have
+server actions plus hover-text UI controls. Abyss passive equipment now feeds
+the existing combat math for undead/vampire defenses, magic armor, silver
+weapons, blessed stakes, and Baton of Righteousness healing.
+
 ## Indexed tables
 
 | Table key | Status | Notes |
@@ -39,15 +46,16 @@ the number of living characters.
 | `abyss_vermin_table` / `abyss_minions_table` / `abyss_boss_table` / `abyss_weird_table` / `abyss_dragon_table` | wired | Spawn rows create `EnemyState` entries with Abyss tags, levels, attacks, Life, treasure metadata, and generalized on-hit/start hooks where available |
 | Abyss minion reaction tables | wired | p.53 Hairy Goblins, Ghouls, Dark Dwarves, Flying Skulls, Chaotic Ratmen, and Chaos Fanatics use their printed flee/bribe/fight/trial outcomes |
 | Abyss tactical targeting | wired | p.8 leader-lock targeting, p.10 multiple-boss target split / lone-hero penalty, and p.11 horde attacks are enforced by `abyss_tactics.py`, combat target selectors, and horde attack assignment |
+| Abyss item use-actions | wired | p.51 magic treasure and p.61 Useful Stuff actions: Elven Bread, Blessed Horseshoe, Parchment, Medallion, Philter, Ring wishes; passive defenses/weapons are included in combat math |
 
 ## Remaining gaps
 
 1. Campaign plot automation, including plot state and victory conditions.
 2. Full disease/transformation lifecycle for vampirism, Dark Plague, and lycanthropy beyond current status/on-hit/status hooks.
 3. Large-room dragon-lair detection should receive the actual generated room key rather than using the regular boss branch.
-4. Exact use-action automation for every Abyss magic/defense/useful item after it enters inventory; item names and loot choices are now present.
 
 ## Tests
 
 - `tests/test_program_phase4.py::test_abyss_phase_b_room_content_table_indexed`
 - `tests/test_abyss_runtime.py`
+- `tests/test_abyss_items.py`

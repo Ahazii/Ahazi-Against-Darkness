@@ -18,6 +18,7 @@ SPECIAL_ITEM_ACTIONS = {
     "use_enchanted_paint",
     "use_berserkers_mushroom",
     "use_wolfsbane",
+    "use_abyss_item",
     "spend_torch",
     "climb_from_pit",
 }
@@ -46,6 +47,9 @@ UI_MARKERS = [
     "Use map fragment",
     "Wand of Power",
     "Throw wolfsbane",
+    "use_abyss_item",
+    "Wish: wound foe",
+    "Eat Elven Bread",
     "Spend torch",
     "Eat Berserker's Mushroom",
     "Use Enchanted Paint",

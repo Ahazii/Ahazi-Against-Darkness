@@ -984,6 +984,7 @@ class RandomDungeonEngine:
             "courtship_brew_apothecary",
             "use_apothecary_brew",
             "use_blossoms_item",
+            "use_abyss_item",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -1288,6 +1289,15 @@ class RandomDungeonEngine:
                 character_id,
                 item_name,
                 courtship_choice,
+                show_rolls=show_rolls,
+            )
+        elif action == "use_abyss_item":
+            self._use_abyss_item(
+                session,
+                character_id,
+                item_name,
+                mode=treasure_outcome_choice or courtship_choice,
+                target_enemy_id=foe_id,
                 show_rolls=show_rolls,
             )
         elif action == "courtship_damsel_penalty":
@@ -6844,6 +6854,270 @@ class RandomDungeonEngine:
             mode,
             show_rolls=show_rolls,
         )
+
+    def _use_abyss_item(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None,
+        *,
+        mode: str | None = None,
+        target_enemy_id: str | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode == "complete":
+            session.log.append("This adventure is complete.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to use the Abyss item.")
+            return
+        tile = self._current_tile(session)
+        if member.character_id not in {pc.character_id for pc in combat_party(session, tile.id)}:
+            session.log.append(f"{member.name} is not on the current map element.")
+            return
+
+        from .abyss_items import (
+            consume_inventory_item,
+            has_fire_breath_status,
+            is_blessed_horseshoe,
+            is_elven_bread,
+            is_medallion_of_snake_charming,
+            is_parchment_of_banishing,
+            is_philter_of_fire_breathing,
+            is_ring_of_three_wishes,
+            target_is_snake_or_lizardman_minion,
+            target_is_undead_or_demon,
+            use_blessed_horseshoe,
+            use_elven_bread,
+            use_philter_of_fire_breathing,
+        )
+
+        selected = item_name if item_name and item_name in member.inventory else None
+        lower = selected.lower() if selected else ""
+        mode_key = (mode or "").strip().lower()
+
+        if selected and is_elven_bread(selected):
+            session.log.extend(use_elven_bread(member, selected))
+            return
+        if selected and is_blessed_horseshoe(selected):
+            session.log.extend(use_blessed_horseshoe(member, selected))
+            return
+        if selected and is_philter_of_fire_breathing(selected):
+            if member.class_id.lower() == "barbarian":
+                session.log.append("Barbarians cannot use the Philter of Fire Breathing.")
+                return
+            session.log.extend(use_philter_of_fire_breathing(member, selected))
+            return
+        if mode_key == "fire_breath":
+            self._abyss_fire_breath(
+                session,
+                tile,
+                member,
+                target_enemy_id=target_enemy_id,
+                show_rolls=show_rolls,
+            )
+            return
+        if selected and is_parchment_of_banishing(selected):
+            if member.class_id.lower() not in {"wizard", "cleric"}:
+                session.log.append("Parchment of Banishing may be used only by wizards and clerics.")
+                return
+            if session.mode != "combat":
+                session.log.append("Parchment of Banishing requires an undead or demon foe in combat.")
+                return
+            living = [enemy for enemy in tile.enemies if enemy.life > 0]
+            targets = [enemy for enemy in living if target_is_undead_or_demon(enemy)]
+            target = next((enemy for enemy in targets if enemy.id == target_enemy_id), None) or (targets[0] if targets else None)
+            if target is None:
+                session.log.append("There is no undead or demon foe to banish.")
+                return
+            if not self._commit_immediate_attack(session):
+                return
+            active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+            standing_before = {pc.character_id for pc in combat_party(session, tile.id) if pc.current_life > 0}
+            consume_inventory_item(member, selected)
+            apply_enemy_damage(target, 2, damage_kind="holy")
+            session.log.append(f"{member.name} reads {selected}; {target.name} suffers 2 wounds and the parchment turns to dust.")
+            self._abyss_finish_item_attack(session, tile, active_enemy_ids, standing_before, show_rolls=show_rolls)
+            return
+        if selected and is_medallion_of_snake_charming(selected):
+            if session.mode != "combat":
+                session.log.append("Medallion of Snake Charming requires snake or lizardman minions in combat.")
+                return
+            living = [enemy for enemy in tile.enemies if enemy.life > 0]
+            targets = [enemy for enemy in living if target_is_snake_or_lizardman_minion(enemy)]
+            target = next((enemy for enemy in targets if enemy.id == target_enemy_id), None) or (targets[0] if targets else None)
+            if target is None:
+                session.log.append("There are no snake or lizardman minions to charm.")
+                return
+            if not self._commit_immediate_attack(session):
+                return
+            total = roll_die(8) + member.level
+            if show_rolls:
+                session.log.append(f"Medallion of Snake Charming: {member.name} rolls d8+L = {total} vs L{target.level}.")
+            if total >= target.level:
+                target.life = 0
+                session.log.append(f"{target.name} become friendly and ignore the party while the medallion remains with them.")
+                if not any(enemy.life > 0 for enemy in tile.enemies):
+                    self._clear_combat_statuses(session)
+                    session.combat_round = 0
+                    session.mode = "exploration"
+                    session.log.append("Combat ends peacefully.")
+            else:
+                session.log.append(f"{target.name} resist the medallion.")
+            return
+        if selected and is_ring_of_three_wishes(selected):
+            if member.class_id.lower() == "barbarian":
+                session.log.append("Barbarians cannot use the Ring of Three Wishes.")
+                return
+            self._abyss_ring_wish(
+                session,
+                tile,
+                member,
+                selected,
+                mode_key,
+                target_enemy_id=target_enemy_id,
+                show_rolls=show_rolls,
+            )
+            return
+        if has_fire_breath_status(member):
+            self._abyss_fire_breath(
+                session,
+                tile,
+                member,
+                target_enemy_id=target_enemy_id,
+                show_rolls=show_rolls,
+            )
+            return
+        item_label = selected or lower or "that item"
+        session.log.append(f"{item_label} has no Abyss use action here.")
+
+    def _abyss_fire_breath(
+        self,
+        session: SessionState,
+        tile: TileState,
+        member: PartyMemberState,
+        *,
+        target_enemy_id: str | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Fire breath can be used only during combat.")
+            return
+        from .abyss_items import consume_fire_breath_status, has_fire_breath_status
+
+        if not has_fire_breath_status(member):
+            session.log.append(f"{member.name} has no unused Philter fire breath.")
+            return
+        living = [enemy for enemy in tile.enemies if enemy.life > 0]
+        targets = [enemy for enemy in living if "dragon" not in enemy.name.lower() and "dragon" not in {tag.lower() for tag in enemy.tags}]
+        target = next((enemy for enemy in targets if enemy.id == target_enemy_id), None) or (targets[0] if targets else None)
+        if target is None:
+            session.log.append("Fire breath has no effect on dragons, and no other living foe is present.")
+            return
+        if not self._commit_immediate_attack(session):
+            return
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in combat_party(session, tile.id) if pc.current_life > 0}
+        consume_fire_breath_status(member)
+        if target.category in {"vermin", "minions"}:
+            slain = min(2, target.life)
+            target.life -= slain
+            session.log.append(f"{member.name} breathes fire, killing {slain} {target.name}.")
+        else:
+            apply_enemy_damage(target, 2, damage_kind="fire")
+            session.log.append(f"{member.name} breathes fire; {target.name} suffers 2 wounds.")
+        self._abyss_finish_item_attack(session, tile, active_enemy_ids, standing_before, show_rolls=show_rolls)
+
+    def _abyss_ring_wish(
+        self,
+        session: SessionState,
+        tile: TileState,
+        member: PartyMemberState,
+        ring: str,
+        mode: str,
+        *,
+        target_enemy_id: str | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        from .abyss_items import consume_ring_wish, ring_wish_count
+
+        if ring not in member.inventory or ring_wish_count(ring) <= 0:
+            session.log.append(f"{member.name}'s Ring of Three Wishes has no wishes left.")
+            return
+
+        if mode in {"", "heal"}:
+            consume_ring_wish(member, ring)
+            member.current_life = member.max_life
+            member.madness = 0
+            session.log.append(f"{member.name} spends a ring wish to heal all Life damage and Madness.")
+            return
+        if mode == "reroll":
+            consume_ring_wish(member, ring)
+            member.statuses.append("Ring of Three Wishes reroll")
+            session.log.append(f"{member.name} spends a ring wish; mark the next failed die roll as rerolled.")
+            return
+        if mode in {"equipment", "treasure"}:
+            consume_ring_wish(member, ring)
+            member.inventory.append("Wish-created non-magical treasure/equipment (<=300gp)")
+            session.log.append(f"{member.name} spends a ring wish to create one non-magical treasure or equipment item worth 300gp or less.")
+            return
+        if mode == "basic_spell":
+            consume_ring_wish(member, ring)
+            member.statuses.append("Ring of Three Wishes basic spell")
+            session.log.append(f"{member.name} spends a ring wish; cast one spell from the basic spell list.")
+            return
+        if mode == "wound_foe":
+            if session.mode != "combat":
+                session.log.append("Ring damage wishes require a combat target.")
+                return
+            living = [enemy for enemy in tile.enemies if enemy.life > 0]
+            target = next((enemy for enemy in living if enemy.id == target_enemy_id), None) or (living[0] if living else None)
+            if target is None:
+                session.log.append("There are no foes to target with the wish.")
+                return
+            if not self._commit_immediate_attack(session):
+                return
+            active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+            standing_before = {pc.character_id for pc in combat_party(session, tile.id) if pc.current_life > 0}
+            consume_ring_wish(member, ring)
+            if target.category in {"vermin", "minions"}:
+                slain = min(2, target.life)
+                target.life -= slain
+                session.log.append(f"{member.name} spends a ring wish, killing {slain} {target.name}.")
+            else:
+                apply_enemy_damage(target, 2, damage_kind="magic")
+                session.log.append(f"{member.name} spends a ring wish; {target.name} suffers 2 wounds.")
+            self._abyss_finish_item_attack(session, tile, active_enemy_ids, standing_before, show_rolls=show_rolls)
+            return
+        session.log.append("Choose a Ring of Three Wishes effect: heal, reroll, wound foe, equipment, or basic spell.")
+
+    def _abyss_finish_item_attack(
+        self,
+        session: SessionState,
+        tile: TileState,
+        active_enemy_ids: set[str],
+        standing_before: set[str],
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            self._apply_combat_result(
+                session,
+                tile,
+                CombatRound(
+                    party=session.party,
+                    enemies=tile.enemies,
+                    log=[],
+                    combat_over=True,
+                ),
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
+            return
+        remaining = sum(1 for enemy in tile.enemies if enemy.life > 0)
+        session.log.append(f"{remaining} foe(s) remain after the Abyss item action — use Resolve Round to continue.")
 
     def _use_apothecary_brew(
         self,

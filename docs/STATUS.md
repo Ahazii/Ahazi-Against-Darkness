@@ -50,10 +50,11 @@ Recent deeper-rule work:
 - **Abyss phase 1 exact effects (2026-06-28):** Abyss traps, special-feature choices, unique-event choices, Enchanted Banquet, Useful Stuff choices, and magical-defense item names now resolve through existing trap/feature/treasure UI.
 - **Abyss phase 2 tactical reactions (2026-06-28):** Abyss minion reaction tables from p.53 are wired, including exact bribes, fight-to-the-death fallback, Trial of Champions champion choice, and tagged leader priority.
 - **Abyss phase 3 targeting (2026-06-28):** leader-lock targeting is enforced server-side and mirrored in the combat UI; multiple Abyss bosses get default split targets and lone-hero secondary-boss Defense penalties; tagged hordes attack once or twice per living character as specified.
+- **Abyss item actions (2026-06-28):** Elven Bread, Blessed Horseshoe, Parchment of Banishing, Medallion of Snake Charming, Philter of Fire Breathing, and Ring of Three Wishes have party-sheet use buttons with hover hints; passive Abyss armor, undead/vampire defenses, silver weapons, blessed stakes, and Baton of Righteousness are in combat math.
 
 Defer to later releases:
 
-- Abyss exact inventory use-actions for every Abyss item, disease/transformation lifecycles, campaign plots, and large-room dragon-lair detection;
+- Abyss disease/transformation lifecycles, campaign plots, and large-room dragon-lair detection;
 - full TAG settlement/downtime UI (campaign shell + banking toggle wired);
 - large `app.js` / `random_dungeon.py` decomposition.
 

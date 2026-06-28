@@ -72,8 +72,11 @@ def light_gladiator_weapon_bonus(member: PartyMemberState, weapon_light: bool) -
 
 
 def defense_modifier(member: PartyMemberState, enemy: EnemyState | None = None) -> int:
+    from .abyss_items import abyss_defense_bonus
+
     class_id = member.class_id.lower()
     status_bonus = 1 if any(status.lower().startswith("phoenix mushroom") for status in member.statuses) else 0
+    status_bonus += abyss_defense_bonus(member, enemy)
     if has_active_bear_trap_wound(member):
         status_bonus -= 1
     if any(status.lower() == "tar in eyes -1" for status in member.statuses):
@@ -124,6 +127,7 @@ def save_modifier(
     enemies: list[EnemyState] | None = None,
     session: SessionState | None = None,
 ) -> int:
+    from .abyss_items import abyss_save_bonus
     from .equipment_effects import armor_swim_climb_penalty, talisman_save_bonus
     from .milestones import milestone_save_bonus
     from .secrets import secret_save_bonus
@@ -169,7 +173,7 @@ def save_modifier(
             poison=poison,
             gas="gas" in save_label.lower(),
         )
-    return base + milestone_save_bonus(member, save_label=save_label, enemies=enemies) + secret_save_bonus(
+    return base + abyss_save_bonus(member, enemies, save_label) + milestone_save_bonus(member, save_label=save_label, enemies=enemies) + secret_save_bonus(
         member, session, save_label=save_label
     ) + hireling_bonus
 

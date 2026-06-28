@@ -82,6 +82,8 @@ def _item_is_ring_of_protection(lower: str) -> bool:
 
 
 def magic_armor_defense_bonus(member: PartyMemberState, *, include_shield: bool = True) -> int:
+    from .abyss_items import abyss_magic_armor_bonus
+
     body_bonus = 0
     shield_bonus = 0
     ring_bonus = 0
@@ -96,15 +98,18 @@ def magic_armor_defense_bonus(member: PartyMemberState, *, include_shield: bool 
             shield_bonus = max(shield_bonus, value)
         elif _item_is_ring_of_protection(lower):
             ring_bonus = max(ring_bonus, value)
-    return body_bonus + shield_bonus + ring_bonus
+    return body_bonus + shield_bonus + ring_bonus + abyss_magic_armor_bonus(member, include_shield=include_shield)
 
 
 def mundane_armor_defense_bonus(member: PartyMemberState, *, include_shield: bool = True) -> int:
+    from .abyss_items import member_has_abyss_body_armor, member_has_abyss_magic_shield
     from .weapon_finishes import leafsteel_defense_bonus
 
     inventory = " ".join(item.lower() for item in member.inventory)
     has_magic_body = any(_item_is_magic_body_armor(item.lower()) for item in member.inventory if is_magic_armor(item))
+    has_magic_body = has_magic_body or member_has_abyss_body_armor(member)
     has_magic_shield = any(_item_is_magic_shield(item.lower()) for item in member.inventory if is_magic_armor(item))
+    has_magic_shield = has_magic_shield or member_has_abyss_magic_shield(member)
     bonus = leafsteel_defense_bonus(member)
     if not has_magic_body and bonus == 0:
         if "heavy armor" in inventory:

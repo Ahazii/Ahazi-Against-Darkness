@@ -7544,6 +7544,196 @@ function appendHeroBlossomsItemActions(actions, session, member) {
   return hasActions;
 }
 
+function abyssItemLower(item) {
+  return String(item || "").toLowerCase();
+}
+
+function heroAbyssItems(member, predicate) {
+  return (member.inventory || []).filter((item) => predicate(abyssItemLower(item)));
+}
+
+function foeIsAbyssUndeadOrDemon(foe) {
+  const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
+  const name = (foe.name || "").toLowerCase();
+  return tags.has("undead") || tags.has("demon") || name.includes("undead") || name.includes("demon") || name.includes("vampire");
+}
+
+function foeIsAbyssSnakeOrLizardMinion(foe) {
+  const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
+  const name = (foe.name || "").toLowerCase();
+  return foe.category === "minions" && (tags.has("snake") || tags.has("lizardman") || tags.has("lizardmen") || name.includes("snake") || name.includes("lizard"));
+}
+
+function foeIsAbyssFireBreathTarget(foe) {
+  const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
+  return !tags.has("dragon") && !(foe.name || "").toLowerCase().includes("dragon");
+}
+
+function memberHasAbyssFireBreath(member) {
+  return (member.statuses || []).includes("Abyss Fire Breathing");
+}
+
+function abyssTargetButton(actions, session, member, label, tooltip, foes, mode, itemName = null, disabled = false) {
+  const row = node("div", "combat-target-row");
+  row.appendChild(document.createTextNode("Target:"));
+  let targetId = state.combatTargets[member.character_id] || foes[0]?.id || "";
+  const select = createFoeTargetSelect(foes, {
+    value: targetId,
+    onChange: (value) => {
+      targetId = value;
+      state.combatTargets[member.character_id] = value;
+    },
+  });
+  row.appendChild(select);
+  const button = node("button", "secondary", label);
+  button.type = "button";
+  button.disabled = disabled || !foes.length;
+  setButtonTooltip(button, foes.length ? immediateActionTooltip(session, tooltip) : "No eligible target is present.");
+  button.addEventListener("click", () =>
+    advance("use_abyss_item", {
+      character_id: member.character_id,
+      ...(itemName ? { item_name: itemName } : {}),
+      treasure_outcome_choice: mode,
+      foe_id: targetId || foes[0]?.id,
+    })
+  );
+  row.appendChild(button);
+  actions.appendChild(row);
+}
+
+function appendHeroAbyssItemActions(actions, session, member, livingFoes = []) {
+  if (member.current_life <= 0) return false;
+  const classId = String(member.class_id || "").toLowerCase();
+  let hasActions = false;
+  for (const bread of heroAbyssItems(member, (lower) => lower.includes("elven bread"))) {
+    const breadBtn = node("button", "secondary", "Eat Elven Bread");
+    breadBtn.type = "button";
+    setButtonTooltip(breadBtn, "Abyss p.61: heal 1 Life, remove Dark Plague instead, or heal 3 Life for elves; usable once per game.");
+    breadBtn.addEventListener("click", () =>
+      advance("use_abyss_item", { character_id: member.character_id, item_name: bread })
+    );
+    actions.appendChild(breadBtn);
+    hasActions = true;
+  }
+  for (const horseshoe of heroAbyssItems(member, (lower) => lower.includes("blessed horseshoe"))) {
+    const shoeBtn = node("button", "secondary", "Use Blessed Horseshoe");
+    shoeBtn.type = "button";
+    setButtonTooltip(shoeBtn, "Abyss p.61: mark one failed die roll for a reroll, then the horseshoe loses its power.");
+    shoeBtn.addEventListener("click", () =>
+      advance("use_abyss_item", { character_id: member.character_id, item_name: horseshoe })
+    );
+    actions.appendChild(shoeBtn);
+    hasActions = true;
+  }
+  for (const philter of heroAbyssItems(member, (lower) => lower.includes("philter of fire breathing"))) {
+    const philterBtn = node("button", "secondary", "Drink Philter");
+    philterBtn.type = "button";
+    philterBtn.disabled = classId === "barbarian";
+    setButtonTooltip(philterBtn, "Abyss p.51: gain dragon-fire immunity for this encounter and one fire breath attack; barbarians cannot use it.");
+    philterBtn.addEventListener("click", () =>
+      advance("use_abyss_item", { character_id: member.character_id, item_name: philter })
+    );
+    actions.appendChild(philterBtn);
+    hasActions = true;
+  }
+  for (const ring of heroAbyssItems(member, (lower) => lower.includes("ring of three wishes"))) {
+    const healBtn = node("button", "secondary", "Wish: heal wearer");
+    healBtn.type = "button";
+    healBtn.disabled = classId === "barbarian";
+    setButtonTooltip(healBtn, "Abyss p.51: spend one wish to heal all Life damage and Madness on the wearer.");
+    healBtn.addEventListener("click", () =>
+      advance("use_abyss_item", { character_id: member.character_id, item_name: ring, treasure_outcome_choice: "heal" })
+    );
+    actions.appendChild(healBtn);
+    const rerollBtn = node("button", "secondary", "Wish: reroll");
+    rerollBtn.type = "button";
+    rerollBtn.disabled = classId === "barbarian";
+    setButtonTooltip(rerollBtn, "Abyss p.51: spend one wish to reroll any failed die roll; this marks the reroll for manual application.");
+    rerollBtn.addEventListener("click", () =>
+      advance("use_abyss_item", { character_id: member.character_id, item_name: ring, treasure_outcome_choice: "reroll" })
+    );
+    actions.appendChild(rerollBtn);
+    const gearBtn = node("button", "secondary", "Wish: gear/treasure");
+    gearBtn.type = "button";
+    gearBtn.disabled = classId === "barbarian";
+    setButtonTooltip(gearBtn, "Abyss p.51: create non-magical treasure or one equipment item worth 300gp or less; added as a voucher.");
+    gearBtn.addEventListener("click", () =>
+      advance("use_abyss_item", { character_id: member.character_id, item_name: ring, treasure_outcome_choice: "equipment" })
+    );
+    actions.appendChild(gearBtn);
+    const spellBtn = node("button", "secondary", "Wish: basic spell");
+    spellBtn.type = "button";
+    spellBtn.disabled = classId === "barbarian";
+    setButtonTooltip(spellBtn, "Abyss p.51: cast one spell from the basic spell list, not the Abyss spell list; marks the spell choice.");
+    spellBtn.addEventListener("click", () =>
+      advance("use_abyss_item", { character_id: member.character_id, item_name: ring, treasure_outcome_choice: "basic_spell" })
+    );
+    actions.appendChild(spellBtn);
+    hasActions = true;
+  }
+  if (session.mode === "combat") {
+    const immediateLocked = surpriseReactionLocked(session);
+    const fireTargets = livingFoes.filter(foeIsAbyssFireBreathTarget);
+    if (memberHasAbyssFireBreath(member)) {
+      abyssTargetButton(
+        actions,
+        session,
+        member,
+        "Breathe fire",
+        "Abyss p.51: automatic 2 wounds to a boss/weird or kill two minions/vermin; no effect on dragons.",
+        fireTargets,
+        "fire_breath",
+        null,
+        immediateLocked
+      );
+      hasActions = true;
+    }
+    for (const parchment of heroAbyssItems(member, (lower) => lower.includes("parchment of banishing"))) {
+      abyssTargetButton(
+        actions,
+        session,
+        member,
+        "Read Parchment",
+        "Abyss p.51: wizard/cleric scroll-like item, automatic 2 wounds to one undead or demon, then consumed.",
+        livingFoes.filter(foeIsAbyssUndeadOrDemon),
+        "banish",
+        parchment,
+        immediateLocked || !["wizard", "cleric"].includes(classId)
+      );
+      hasActions = true;
+    }
+    for (const medallion of heroAbyssItems(member, (lower) => lower.includes("medallion of snake charming"))) {
+      abyssTargetButton(
+        actions,
+        session,
+        member,
+        "Charm snakes",
+        "Abyss p.51: roll d8+L vs snake/lizardman minions' Level; success makes them friendly.",
+        livingFoes.filter(foeIsAbyssSnakeOrLizardMinion),
+        "charm",
+        medallion,
+        immediateLocked
+      );
+      hasActions = true;
+    }
+    for (const ring of heroAbyssItems(member, (lower) => lower.includes("ring of three wishes"))) {
+      abyssTargetButton(
+        actions,
+        session,
+        member,
+        "Wish: wound foe",
+        "Abyss p.51: spend one wish for 2 wounds to any monster, or kill two minions.",
+        livingFoes,
+        "wound_foe",
+        ring,
+        immediateLocked || classId === "barbarian"
+      );
+      hasActions = true;
+    }
+  }
+  return hasActions;
+}
+
 function isLanternOilItem(item) {
   return item.toLowerCase().includes("lantern oil");
 }
@@ -9288,6 +9478,9 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
     if (appendHeroBlossomsItemActions(actions, session, member)) {
       hasActions = true;
     }
+    if (appendHeroAbyssItemActions(actions, session, member, [])) {
+      hasActions = true;
+    }
   }
 
   for (const mushroomName of heroUsableMushrooms(session, member)) {
@@ -9609,6 +9802,8 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     });
     actions.appendChild(wolfsbaneBtn);
   }
+
+  appendHeroAbyssItemActions(actions, session, member, livingFoes);
 
   if (combatNeedsTorchForFlee(session, livingFoes) && heroHasTorch(member)) {
     const torchBtn = node("button", "secondary", "Spend torch (burn webs)");

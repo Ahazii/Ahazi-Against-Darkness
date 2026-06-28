@@ -1043,6 +1043,7 @@ class SessionAction(BaseModel):
         "cast_spell",
         "burn_scroll",
         "use_magic_item",
+        "use_abyss_item",
         "spellcast_door",
         "spend_clues_on_door",
         "reveal_secret_with_clues",

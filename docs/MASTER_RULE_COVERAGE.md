@@ -29,7 +29,7 @@ whole-book completion.
 | Book | Current position | Major completed areas | Major missing areas |
 | --- | --- | --- | --- |
 | Expanded Edition | advanced | Procedural dungeon loop, classes, combat, equipment, dungeon/cavern/fungal tables, bestiary, reactions, Secrets, quests, Fiendish Foes, EE map catalog | Remaining manual sign-off, selected UI/fidelity edges, roleplaying/adventure-authoring scope decisions |
-| Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals; **Abyss profile** with 2d6 room-content routing, exact Abyss traps/features/events phase, claimable/choice Abyss treasure, Useful Stuff/magical defense item rows, Abyss wandering spawns, Abyss minion reaction/Trial routing, and tactical targeting for minion leaders, multiple bosses, and hordes | Full diseases/transformations, campaign plots, exact inventory use-actions for every Abyss item |
+| Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals; **Abyss profile** with 2d6 room-content routing, exact Abyss traps/features/events phase, claimable/choice Abyss treasure, Useful Stuff/magical defense item rows, Abyss wandering spawns, Abyss minion reaction/Trial routing, tactical targeting for minion leaders, multiple bosses, and hordes, and core Abyss item use-actions/passive item math | Full diseases/transformations, campaign plots, large-room dragon-lair detection |
 | Forsaken Depths | advanced partial | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, **6 Heroic spells (catalog + cast)** including Fire of Truth chaos-hit bonus, Teleport Enemy return tracking with occupied-room reaction rolls, and Mass Blessing party/hireling condition choices; Legendary spell cast path, **72 validated tiles**, FD dungeon/river runtime, quests, citadels, TCOTFD branch | Remaining FD content families and manual sign-off |
 | Adventurers' Guild | foundation + shell | Persistent roster, multiple parties, banking, **campaign state** (`days_passed`, TAG banking toggle, `/api/campaign`) | Settlements UI, troupe rules, downtime, availability/Streetwise, rumors, treasure maps, Guild jobs |
 | Netherworld | missing/foundation only | Generic Madness/combat/economy primitives can be reused | Classes, expert skills, soul economy, food, planar gates, hex exploration, terrain, reactions, objectives, bestiary, spells, merchants and treasure |
@@ -58,7 +58,7 @@ hirelings. Phase B adds a playable Abyss random-dungeon profile and table
 routing. It is still not a whole-book audit; remaining PDF sections needing
 full automation include:
 
-- exact inventory use-actions for every Abyss magic/defense/useful item now that item rows are indexed;
+- remaining edge-case item polish after the core Abyss item actions/passive item math pass;
 - vampirism, Dark Plague, lycanthropy and campaign plots.
 
 ## Four Against the Forsaken Depths

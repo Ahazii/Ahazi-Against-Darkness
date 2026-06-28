@@ -50,6 +50,12 @@ def _parse_weapon_item(item: str) -> WeaponProfile | None:
         return WeaponProfile(item=item, kind="melee", light=True, slashing=True)
     if "magic shovel" in lower:
         return WeaponProfile(item=item, kind="melee", light=True, crushing=True)
+    if "baton of righteousness" in lower:
+        return WeaponProfile(item=item, kind="melee", crushing=True)
+    if "silver weapon" in lower:
+        return WeaponProfile(item=item, kind="melee", slashing=True)
+    if "blessed stake" in lower:
+        return WeaponProfile(item=item, kind="melee", light=True, slashing=True)
 
     two_handed = "heavy weapon" in lower or "two-handed" in lower or "two handed" in lower
     light = any(token in lower for token in ("light hand weapon", "light weapon", "dagger", "scimitar"))
@@ -267,9 +273,11 @@ def weapon_attack_modifier(
         if any("arrow" in item.lower() for item in member.inventory):
             modifier += 1
     if member is not None and enemy is not None:
+        from .abyss_items import abyss_weapon_attack_bonus
         from .equipment_effects import silver_gild_attack_bonus
         from .firearm import firearm_attack_bonus, is_firearm_item
 
+        modifier += abyss_weapon_attack_bonus(member, enemy, weapon.item)
         modifier += silver_gild_attack_bonus(member, enemy, weapon_item=weapon.item)
         if is_firearm_item(weapon.item):
             modifier += firearm_attack_bonus(weapon.item)

@@ -242,10 +242,10 @@ Goal: broaden rule coverage safely.
   source of truth for EE, Four Against the Abyss, Four Against the Forsaken
   Depths, Tales from the Adventurers' Guild, and Four Against the Netherworld.
 - Complete the whole-book Abyss audit. The profile, dedicated procedural
-  runtime, exact trap/feature/event pass, reaction routing, and tactical
-  leader-lock/multiple-boss/horde targeting are now started; item use-actions,
-  diseases/transformations, and campaign plots remain before treating Abyss as
-  complete.
+  runtime, exact trap/feature/event pass, reaction routing, tactical
+  leader-lock/multiple-boss/horde targeting, and core item use-actions are now
+  started; diseases/transformations and campaign plots remain before treating
+  Abyss as complete.
 - Complete Forsaken Depths tile metadata, then add its dungeon/river runtime and
   remaining spells, encounters, items, tables, Citadels, ruins and Secrets.
 - Build Adventurers' Guild as the reusable campaign/downtime layer: settlement,
@@ -272,6 +272,7 @@ Goal: broaden rule coverage safely.
 - **Abyss phase 1 exact effects (2026-06-28):** Abyss traps, special features, unique events, Enchanted Banquet, Useful Stuff, and magical-defense item rows are exposed and wired through trap/feature/treasure UI.
 - **Abyss phase 2 tactical reactions (2026-06-28):** Abyss minion reaction tables from p.53 are wired, including exact bribe amounts, Flying Skull fight-to-the-death fallback, Trial of Champions champion picker UI, and tagged minion leaders as Trial champions.
 - **Abyss phase 3 tactical targeting (2026-06-28):** Abyss minion leaders enforce corridor/room leader-lock targeting, combat target selectors disable illegal choices with hover hints, multiple-boss rooms spread unset party targets and apply the lone-hero secondary-boss Defense penalty, and tagged hordes multiply attacks by living characters.
+- **Abyss item actions (2026-06-28):** Party-sheet use buttons and engine actions are wired for Elven Bread, Blessed Horseshoe, Parchment of Banishing, Medallion of Snake Charming, Philter of Fire Breathing, Ring of Three Wishes, and passive Abyss armor/weapon/defense items.
 - **TAG campaign shell (2026-06-24):** `CampaignState`, `GET/PUT /api/campaign`, `days_passed` on adventure complete, TAG banking toggle on session start.
 - **FD/TAG rules pass (2026-06-28):** Teleport Enemy return tracking with occupied-room reaction rolls, Mass Blessing target/condition UI including hirelings, and TAG Settlement Apothecary brew panel/action are implemented and tested.
 - **Courtship of Flower Demons — planned sequence:**

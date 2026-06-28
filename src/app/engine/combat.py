@@ -934,6 +934,10 @@ def _apply_pc_hit(
                 log.append("Effect: Blessed Temple bonus ends after an undead or demon foe is slain.")
             if on_foe_kill is not None:
                 on_foe_kill(pc.character_id)
+            if weapon is not None:
+                from .abyss_items import baton_heal_on_kill
+
+                log.extend(baton_heal_on_kill(pc, target, weapon.item))
             updated = [enemy for enemy in living_enemies if enemy.life > 0]
             if session:
                 updated, chain_log = _heroic_minion_kill_followups(
@@ -1088,6 +1092,10 @@ def _apply_pc_hit(
             log.append("Effect: Blessed Temple bonus ends after an undead or demon foe is slain.")
         if on_foe_kill is not None:
             on_foe_kill(pc.character_id)
+        if weapon is not None:
+            from .abyss_items import baton_heal_on_kill
+
+            log.extend(baton_heal_on_kill(pc, target, weapon.item))
         updated = [enemy for enemy in living_enemies if enemy.life > 0]
         if session and target.category in {"vermin", "minions"}:
             chain_log: list[str] = []
@@ -1421,6 +1429,12 @@ def _resolve_pc_attack(
     if weapon is not None and weapon.crushing and _is_skeleton_or_undead(target):
         if not armor_neutralizes_crushing_bonus(foe_template):
             log.append(f"Effect: {weapon_label(weapon)} gains +1 Attack vs skeleton/undead {target.name}.")
+    if weapon is not None:
+        from .abyss_items import abyss_weapon_attack_note
+
+        abyss_note = abyss_weapon_attack_note(pc, target, weapon.item)
+        if abyss_note:
+            log.append(f"Effect: {abyss_note}.")
     session = context.session
     gladiator_match = gladiator_fight(living_enemies)
     expert_bonus = 0
