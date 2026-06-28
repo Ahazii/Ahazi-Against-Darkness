@@ -1377,6 +1377,38 @@ def test_append_member_exploration_actions_defines_in_exploration() -> None:
     assert "const immediateLocked = surpriseReactionLocked(session);" in body
 
 
+def test_fiendish_foes_prefs_element_is_bound() -> None:
+    """syncRulesetControls toggles the Fiendish Foes fieldset; missing const crashes startup."""
+    assert 'const fiendishFoesPrefs = document.getElementById("fiendish-foes-prefs");' in APP_JS
+    sync_body = _function_body("syncRulesetControls", APP_JS)
+    assert "fiendishFoesPrefs?.classList.toggle" in sync_body
+
+
+def test_dom_optional_chain_targets_are_declared() -> None:
+    """Identifiers used with ?. must be declared somewhere in app.js (prevents ReferenceError crashes)."""
+    declared = set(re.findall(r"\b(?:const|let|var|function)\s+(\w+)", APP_JS))
+    declared.update(re.findall(r"\((\w+)\)\s*=>", APP_JS))
+    dom_suffixes = ("El", "Btn", "Select", "Prefs", "Hint", "Panel", "Form", "Input", "Dialog")
+    pattern = re.compile(rf"\b(\w+(?:{'|'.join(dom_suffixes)}))\?\.")
+
+    missing: list[str] = []
+    for match in pattern.finditer(APP_JS):
+        ident = match.group(1)
+        if ident not in declared:
+            missing.append(ident)
+    assert not missing, f"DOM-like handles used with ?. but never declared: {sorted(set(missing))}"
+
+
+def test_scope_sensitive_action_helpers_declare_lock_flags() -> None:
+    """Combat/exploration action helpers must declare lock flags locally, not leak from siblings."""
+    for fn_name in ("appendMemberExplorationActions", "appendMemberCombatActions", "renderCombatDeckSlim"):
+        body = _function_body(fn_name, APP_JS)
+        if "immediateLocked" in body:
+            assert re.search(r"\bconst immediateLocked\b", body), f"{fn_name} uses immediateLocked without declaring it"
+        if "combatLocked" in body:
+            assert re.search(r"\bconst combatLocked\b", body), f"{fn_name} uses combatLocked without declaring it"
+
+
 def test_fiendish_foes_and_poison_expert_setup_tooltips() -> None:
     """Fiendish Foes checkboxes and Poison Expert camp controls should expose hover hints."""
     setup_body = _function_body("applySetupTooltips", APP_JS)
