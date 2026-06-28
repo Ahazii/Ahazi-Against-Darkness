@@ -74,14 +74,15 @@ Use Home → Adventure → TAG Settlement → **Maps and Adventure Leads**. The 
 
 | # | Mechanic | PDF | How to trigger | Check |
 |---|----------|-----|----------------|-------|
-| TAG.1 | Rumor Scene install | TAG pp.22-24, scenes pp.25-31 | Select Rumor Scene; enter 1-12; Create adventure | Installed adventure title names the rumor; `source.parameters.tag_reference` has scene/page/reward notes; finale uses exact existing foe where available, otherwise a named proxy note |
+| TAG.1 | Rumor Scene install | TAG pp.22-24, scenes pp.25-31 | Select Rumor Scene; enter 1-12; Create adventure | Installed adventure title names the rumor; `source.parameters.tag_reference` has scene/page/reward notes; finale uses the TAG-specific foe profile where one is defined |
 | TAG.2 | Medusa rumor exact foe | TAG pp.22, 25-26 | Rumor Scene Detail `2` | Final room is Xasartha's cabin; foe spawn is Medusa; notes mention Scene 10 assassins, Scene 1 pendant, and source pages |
-| TAG.3 | Thematic Dungeon install | TAG pp.38-48 | Select Thematic Dungeon; enter 1-6 | Title and room text match the theme; tag reference lists target room count, special rules, final proxy, rewards |
+| TAG.3 | Thematic Dungeon install | TAG pp.38-48 | Select Thematic Dungeon; enter 1-6 | Title and room text match the theme; tag reference lists target room count, special rules, final foe groups, rewards |
 | TAG.4 | Dragon's Lair theme | TAG pp.39-40 | Thematic Dungeon Detail `3` | Notes mention four-room target, 2-Clue dragon-type reveal, and Young Dragon/Young Red Dragon handling |
 | TAG.5 | Guild Job install | TAG p.54+ | Select Guild Job; enter 1-6 or leave blank | Guild table row is used; minor quests carry named source/reward notes; rumor/theme jobs reuse their profiles |
-| TAG.6 | TAG references in Services | TAG pp.54, 61-65 | Refresh TAG services | Adventurers Guild jobs, Trinkets, and Guild spells rows appear with cost/summary/automation text and hover hints |
+| TAG.6 | TAG references in Services | TAG pp.54, 61-65 | Refresh TAG services | Adventurers Guild jobs, Trinkets, Guild spells, and TAG special foes rows appear with cost/summary/automation text and hover hints |
+| TAG.7 | Mixed TAG finales | TAG pp.31, 48, 55 | Create Shaura, Bandit Hideout, or Gorungar leads | Final encounter includes multiple foe groups where printed: priestess + cultists, chieftain + bandits, Gorungar + archers |
 
-**Current boundary:** bespoke TAG foes not already in the bestiary, such as white gargoyles, bandit chieftain, hill giant, and some minor-quest creatures, are represented by existing encounter proxies. The proxy name and printed rule notes are recorded in `tag_reference` so signoff can distinguish implemented automation from manual PDF handling.
+**Current boundary:** TAG-specific foe names are now spawnable from `tag_monsters.json`, separate from the locked EE bestiary. Some printed branch choices, variable counts, social outcomes, and rewards still need manual PDF handling; `tag_reference.rules` and room log text name those points for signoff.
 
 **Pass/Fail notes:**
 

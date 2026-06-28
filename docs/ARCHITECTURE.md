@@ -105,6 +105,9 @@ Home screen rule browsing:
   `equipment_shop_table` rows from `equipment_shop.json`.
 - `GET /api/rules/monsters` and `GET /api/rules/monster-reactions` feed the
   home **Rules tables** panel (bestiary spawn templates and per-foe reactions).
+  `RulesRepository` merges supplement files such as `fd_monsters.json`,
+  `courtship_monsters.json`, and `tag_monsters.json` into the live bestiary
+  without altering the locked Expanded Edition `monsters.json` rows.
 - `GET /api/rules/tiles` and `GET /api/rules/icons` feed map element and icon
   registry groups on the home **Rules tables** panel. The icon endpoint merges
   `icons.json` overrides with generated defaults for room states, class icons,

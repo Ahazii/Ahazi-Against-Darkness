@@ -143,7 +143,7 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
     campaign.settlement_size = -1
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}
 
-    assert list(rows)[:27] == [
+    assert list(rows)[:28] == [
         "bank_account",
         "bank_inheritance",
         "magic_locker",
@@ -171,6 +171,7 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
         "adventurers_guild_jobs",
         "trinkets",
         "guild_spells",
+        "tag_special_foes",
     ]
     assert rows["bank_account"]["status"] == "available"
     assert rows["magic_locker"]["status"] == "unavailable"
@@ -183,6 +184,7 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
     assert "Adventure module" in rows["adventurers_guild_jobs"]["automation"]
     assert "Power Cookie" in rows["trinkets"]["summary"]
     assert "Wizard's Luck" in rows["guild_spells"]["summary"]
+    assert "white gargoyles" in rows["tag_special_foes"]["summary"]
 
     campaign.settlement_size = 3
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}
@@ -354,5 +356,28 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     job_ref = job["source"]["parameters"]["tag_reference"]
     assert job["title"] == "TAG Guild Job 1: Gorungar the Mighty"
     assert job_ref["pdf_pages"] == "TAG p.55"
-    assert job_ref["final_foe_proxy"] == "Goblins"
+    assert job_ref["final_foe_proxy"] == "Gorungar the Mighty"
     assert "50 gp for his head" in job_ref["rewards"]
+    final_room = next(room for room in job["rooms"] if room["id"] == "tag-final-scene")
+    assert final_room["triggers"][0]["encounter"]["foes"] == [
+        {"name": "Gorungar the Mighty", "count": 1},
+        {"name": "Gorungar's Goblin Archers", "count": 8},
+    ]
+
+
+def test_tag_special_foes_are_allowlisted_and_used_in_generated_adventures() -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+
+    rumor, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="10")
+    assert validate_adventure_manifest(rumor, rules_repo=repo).valid
+    rumor_ref = rumor["source"]["parameters"]["tag_reference"]
+    assert rumor_ref["final_foes"] == [{"name": "White Gargoyles", "count": 8}]
+
+    theme, _entry = build_tag_adventure_manifest(campaign, lead_type="thematic_dungeon", detail="6")
+    assert validate_adventure_manifest(theme, rules_repo=repo).valid
+    theme_ref = theme["source"]["parameters"]["tag_reference"]
+    assert theme_ref["final_foes"] == [
+        {"name": "Bandit Chieftain", "count": 1},
+        {"name": "TAG Bandits", "count": 6},
+    ]

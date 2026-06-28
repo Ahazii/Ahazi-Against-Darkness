@@ -283,6 +283,15 @@ TAG_SETTLEMENT_SERVICES = [
         "summary": "Guild spell table: Speedy Recovery, Temporary Weapon Enchantment, Troupe Switch, Look Tough, Silence of the Mouse, Wizard's Luck.",
         "automation": "Reference row; spell preparation/casting effects remain manual until the spell-engine pass.",
     },
+    {
+        "key": "tag_special_foes",
+        "name": "TAG special foes",
+        "source_page": 25,
+        "min_size": -3,
+        "cost": "Used by generated TAG adventure modules",
+        "summary": "TAG-specific foe profiles are available for assassins, white gargoyles, cultists, hill giant, bandits, Gorungar, griffin, monoceros, and other generated finales.",
+        "automation": "Reference row; generated TAG adventures now spawn these named foes where their scene/theme calls for them.",
+    },
 ]
 
 FIGHTING_CLASS_IDS = {
@@ -524,10 +533,10 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "complication": "All characters Save vs L5 hypnosis; chaos-tainted characters fail automatically.",
         "final_title": "The Bridge Pool",
         "final_description": "Resolve the mutant fish hypnosis and rescue timing from TAG Scene 12 before ending the scene.",
-        "final_foe": "Cave Dragon",
+        "final_foe": "Mutant Fish",
         "final_count": 1,
         "rewards": "If the party survives, d6+3 food rations; counts as two minion encounters for XP.",
-        "rules": ["Cave Dragon is a proxy spawn; apply the printed mutant fish rules manually."],
+        "rules": ["Resolve the printed hypnosis sequence before ordinary combat if the table calls for it."],
     },
     5: {
         "title": "Dragon in Disguise",
@@ -584,10 +593,11 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Scene 16 requires 2 Clues and a ten-room dungeon; final fight is Silent Scream cultists plus priestess.",
         "final_title": "Silent Scream Shrine",
         "final_description": "The cult gathers around Shaura's shrine. Use the printed cultist/priestess mix for the exact final fight.",
-        "final_foe": "Wraith",
+        "final_foe": "Silent Scream Priestess",
         "final_count": 1,
+        "final_extra_foes": [{"name": "Silent Scream Cultists", "count": 9}],
         "rewards": "150 gp and XP after the cult is defeated.",
-        "rules": ["Wraith is a proxy for the cult priestess until cultist foes are added as exact spawn profiles."],
+        "rules": ["Final encounter includes the priestess and nine Silent Scream cultists."],
     },
     9: {
         "title": "Daroc's Lost Familiar",
@@ -614,10 +624,10 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Scene 8 uses d6+2 white gargoyles, surprise chance, and no escape until conditions are met.",
         "final_title": "Burgomaster's Roof",
         "final_description": "White gargoyles descend. Use Scene 8 for count, surprise, escape limits, and bounty.",
-        "final_foe": "Wraith",
-        "final_count": 1,
+        "final_foe": "White Gargoyles",
+        "final_count": 8,
         "rewards": "15 gp per gargoyle head.",
-        "rules": ["Wraith is a flying-threat proxy until white gargoyles are added as exact foes."],
+        "rules": ["Use d6+2 gargoyles at the table if you want to roll the exact count instead of the generated count."],
     },
     11: {
         "title": "Deoldyn's Archery Training",
@@ -675,10 +685,10 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "complication": "No normal Final Boss check; the final room must be large enough for the giant.",
         "final_title": "Hill Giant Hall",
         "final_description": "A hill giant hurls a boulder before closing for melee. Use TAG p.43 for the exact giant profile.",
-        "final_foe": "Minotaur",
+        "final_foe": "Hill Giant",
         "final_count": 1,
         "rewards": "Three treasure rolls and double gp in the final room.",
-        "rules": ["Minotaur is a large-foe proxy until a hill giant profile is added.", "Spells hit the hill giant at +2."],
+        "rules": ["Hill Giant is now a TAG-specific foe profile.", "Spells hit the hill giant at +2."],
     },
     3: {
         "title": "Dragon's Lair",
@@ -717,10 +727,10 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Truncated rooms can dead-end; backtracking may get the party lost on 3-in-6.",
         "final_title": "Minotaur Lord's Maze",
         "final_description": "The minotaur lord blocks the maze heart. Apply halfling and first-defense restrictions from TAG.",
-        "final_foe": "Minotaur",
+        "final_foe": "Minotaur Lord",
         "final_count": 1,
         "rewards": "Treasure +1 from the minotaur lord.",
-        "rules": ["d6+5-room target.", "Young/adult minotaur replacement tables are not auto-rolled yet."],
+        "rules": ["d6+5-room target.", "Young/adult minotaur replacement tables are indexed as TAG foes but not auto-rolled for room replacement yet."],
     },
     6: {
         "title": "Bandit Hideout",
@@ -731,10 +741,11 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Rooms may have trapdoors; final boss is a chieftain with bandit guards.",
         "final_title": "Bandit Chieftain's Den",
         "final_description": "The chieftain and guards defend the loot. Capturing the chieftain alive changes the reward.",
-        "final_foe": "Goblins",
-        "final_count": 6,
+        "final_foe": "Bandit Chieftain",
+        "final_count": 1,
+        "final_extra_foes": [{"name": "TAG Bandits", "count": 6}],
         "rewards": "8d6 gp, random magic item, plus bounty or free rumor if captured alive.",
-        "rules": ["Goblins are a bandit proxy until bandit spawn profiles are added."],
+        "rules": ["Final encounter includes the chieftain and TAG Bandits as guards."],
     },
 }
 
@@ -762,10 +773,11 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Printed encounter: 2d6 goblin archers plus Gorungar, with poison arrows and surprise chance.",
         "final_title": "Gorungar's Ambush",
         "final_description": "Gorungar bellows orders while archers fire from cover.",
-        "final_foe": "Goblins",
-        "final_count": 8,
+        "final_foe": "Gorungar the Mighty",
+        "final_count": 1,
+        "final_extra_foes": [{"name": "Gorungar's Goblin Archers", "count": 8}],
         "rewards": "50 gp for his head or 100 gp alive, plus armband and coin bag.",
-        "rules": ["Use Goblins as the archer/Gorungar proxy until the exact mixed encounter is added."],
+        "rules": ["Final encounter includes Gorungar and goblin archers; roll 2d6 archers manually if you want the exact count."],
     },
     3: {
         "title": "Griffin Omelets, Anyone?",
@@ -776,10 +788,10 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
         "final_title": "Griffin Nest",
         "final_description": "The nest is guarded. Resolve the exact griffin/egg handling from the PDF during play.",
-        "final_foe": "Young Dragon",
+        "final_foe": "Griffin",
         "final_count": 1,
         "rewards": "Guild job reward per the printed quest.",
-        "rules": ["Young Dragon is a flying major-foe proxy."],
+        "rules": ["Griffin is a TAG-specific foe profile; resolve egg handling from the printed quest."],
     },
     4: {
         "title": "A Portrait in Red",
@@ -790,10 +802,10 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
         "final_title": "Red Gallery",
         "final_description": "The portrait's secret is revealed in the gallery.",
-        "final_foe": "Wraith",
+        "final_foe": "Red Portrait Horror",
         "final_count": 1,
         "rewards": "Guild job reward per the printed quest.",
-        "rules": ["Wraith is a supernatural-problem proxy."],
+        "rules": ["Red Portrait Horror is a generated foe profile for the supernatural finale."],
     },
     5: {
         "title": "Sewers Search",
@@ -818,10 +830,10 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
         "final_title": "Monoceros Glade",
         "final_description": "The hunt catches up with the monoceros in a secluded glade.",
-        "final_foe": "Minotaur",
+        "final_foe": "Monoceros",
         "final_count": 1,
         "rewards": "Guild job reward per the printed quest.",
-        "rules": ["Minotaur is a charging major-foe proxy."],
+        "rules": ["Monoceros is a generated foe profile; resolve pursuit and reward from the printed quest."],
     },
 }
 
@@ -1658,6 +1670,12 @@ def _tag_manifest(
 ) -> dict[str, object]:
     final_foe = str(profile.get("final_foe") or "Wraith")
     final_count = max(1, int(profile.get("final_count") or 1))
+    final_extra_foes = [
+        {"name": str(foe.get("name")), "count": max(1, int(foe.get("count", 1)))}
+        for foe in profile.get("final_extra_foes", [])
+        if isinstance(foe, dict) and foe.get("name")
+    ]
+    final_foes = [{"name": final_foe, "count": final_count}, *final_extra_foes]
     source_parameters = {
         "origin": "Tales from the Adventurers' Guild",
         "lead_type": lead_type,
@@ -1670,6 +1688,7 @@ def _tag_manifest(
             "rewards": profile.get("rewards", ""),
             "final_foe_proxy": final_foe,
             "final_foe_count": final_count,
+            "final_foes": final_foes,
         },
     }
     return {
@@ -1808,7 +1827,7 @@ def _tag_manifest(
                         "when": "on_enter",
                         "once": True,
                         "log": f"TAG final note: {profile.get('rewards') or 'Apply printed reward text after victory.'}",
-                        "encounter": {"foes": [{"name": final_foe, "count": final_count}]},
+                        "encounter": {"foes": final_foes},
                     }
                 ],
             },

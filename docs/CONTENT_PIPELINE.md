@@ -141,6 +141,10 @@ engine should appear in that file and in `RULES_TABLE_ORDER` inside
 are excluded from the list. Additional home **Rules tables** groups are fed by
 `GET /api/rules/monsters`, `GET /api/rules/monster-reactions`,
 `GET /api/rules/tiles`, `GET /api/rules/icons`, and `GET /api/rules/classes`.
+Supplemental monster files such as `fd_monsters.json`, `courtship_monsters.json`,
+and `tag_monsters.json` are merged by `RulesRepository` so supplement-specific
+foes can be spawnable without changing the locked Expanded Edition rows in
+`monsters.json`.
 The icon registry group should explain that the API returns generated defaults
 plus `icons.json` overrides, not just rows physically present in the JSON file.
 Keep `rulebook_reference.json` in sync when player-facing mechanics change.

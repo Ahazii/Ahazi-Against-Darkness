@@ -27,6 +27,9 @@ CATEGORY_BY_TABLE = {
     "fiendish_foes_minions": "minions",
     "fiendish_foes_weird": "weird",
     "fiendish_foes_boss": "boss",
+    "tag_minions": "minions",
+    "tag_weird": "weird",
+    "tag_boss": "boss",
     "wandering": "minions",
 }
 

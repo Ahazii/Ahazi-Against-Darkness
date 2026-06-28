@@ -40,6 +40,11 @@ class RulesRepository:
             courtship_monsters = json.loads(courtship_path.read_text(encoding="utf-8"))
             for key, value in courtship_monsters.items():
                 packaged[key] = value
+        tag_path = self.packaged_dir / "tag_monsters.json"
+        if tag_path.exists():
+            tag_monsters = json.loads(tag_path.read_text(encoding="utf-8"))
+            for key, value in tag_monsters.items():
+                packaged[key] = value
         override_path = self.override_dir / "monsters.json"
         if not override_path.exists():
             return packaged

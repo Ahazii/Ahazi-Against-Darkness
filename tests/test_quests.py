@@ -281,6 +281,8 @@ def test_major_foe_table_keys_include_all_environments_and_fiendish() -> None:
         "fungal_grottoes_boss",
         "fiendish_foes_weird",
         "fiendish_foes_boss",
+        "tag_weird",
+        "tag_boss",
         "fd_weird",
         "fd_boss",
         "fd_horde",

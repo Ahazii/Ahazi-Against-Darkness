@@ -66,6 +66,23 @@ def test_foe_spawn_names_include_bosses(repo: RulesRepository) -> None:
         assert boss in foes
 
 
+def test_tag_special_foes_are_live_spawn_names(repo: RulesRepository) -> None:
+    allowlists = build_adventure_allowlists(repo)
+    foes = foe_names_for_validation(allowlists)
+    for name in (
+        "White Gargoyles",
+        "Silent Scream Priestess",
+        "Hill Giant",
+        "Bandit Chieftain",
+        "Gorungar the Mighty",
+        "Griffin",
+        "Monoceros",
+    ):
+        assert name in foes
+    assert "TAG Bandits" in allowlists["monsters_by_table"]["tag_minions"]
+    assert "Hill Giant" in allowlists["monsters_by_table"]["tag_boss"]
+
+
 def test_environment_pack_subset_of_global(repo: RulesRepository) -> None:
     global_lists = build_adventure_allowlists(repo)
     pack = build_environment_pack(repo, "dungeon")

@@ -1,0 +1,197 @@
+{
+  "tag_minions": [
+    {
+      "name": "TAG Assassins",
+      "level_delta": 2,
+      "count": "d3+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minion", "tag", "human"],
+      "treasure_modifier": 0,
+      "notes": "TAG Scene 10: d3+2 agents, HCL+2 minions. Streetwise L5 may avert the fight before the medusa scene."
+    },
+    {
+      "name": "White Gargoyles",
+      "level_delta": 4,
+      "count": "d6+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minion", "tag", "flying", "stone"],
+      "treasure_modifier": 0,
+      "surprise_chance": "2-in-6",
+      "notes": "TAG Scene 8: d6+2 L5 white gargoyle minions. Check surprise; escape is blocked until the printed outnumber/flying/teleport conditions are met. Bounty is 15 gp per head."
+    },
+    {
+      "name": "Silent Scream Cultists",
+      "level_delta": 0,
+      "count": "9",
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minion", "tag", "chaos", "cultist"],
+      "treasure_modifier": 0,
+      "notes": "TAG Scene 16: nine L3 Silent Scream chaos-cultist minions accompany the priestess in the final shrine."
+    },
+    {
+      "name": "TAG Bandits",
+      "level_delta": 0,
+      "count": "d6+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minion", "tag", "human", "bandit"],
+      "treasure_modifier": 0,
+      "notes": "TAG Bandit Hideout: d6+2 L4 bandits protect the chieftain. Used as the exact bandit-guard spawn in TAG generated adventures."
+    },
+    {
+      "name": "Gorungar's Goblin Archers",
+      "level_delta": 1,
+      "count": "2d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minion", "tag", "goblin", "archer", "poison"],
+      "treasure_modifier": 0,
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "save_type": "poison",
+          "save_level": 4,
+          "description": "Poison arrows: wounded heroes save vs L4 poison or suffer the printed TAG poison consequence."
+        }
+      ],
+      "notes": "TAG Gorungar the Mighty: 2d6 goblin archers at HCL+1, shooting as HCL+3, morale -1, poison arrows L4."
+    },
+    {
+      "name": "Young Minotaurs",
+      "level_delta": 3,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minion", "tag", "minotaur", "charge"],
+      "treasure_modifier": -1,
+      "encounter_start_effects": [
+        {
+          "type": "charge",
+          "description": "Charge: first attack is made at HCL+4 by TAG Minotaur Maze rules."
+        }
+      ],
+      "notes": "TAG Minotaur Maze: d6 young minotaurs, HCL+3 minions, morale +1, treasure -1; first charge attacks at HCL+4 and they prefer halfling targets."
+    }
+  ],
+  "tag_weird": [
+    {
+      "name": "Adult Minotaur",
+      "level_delta": 4,
+      "count": "1",
+      "life": 4,
+      "attacks": 2,
+      "tags": ["weird", "tag", "minotaur"],
+      "treasure_rolls": 1,
+      "notes": "TAG Minotaur Maze: HCL+4 Weird Monster, 4 Life, 2 attacks. First Defense against it is at -1; halflings cannot use Luck against it."
+    }
+  ],
+  "tag_boss": [
+    {
+      "name": "Mutant Fish",
+      "level_delta": 3,
+      "count": "1",
+      "life": 4,
+      "attacks": 1,
+      "tags": ["boss", "tag", "aquatic", "hypnosis"],
+      "treasure_rolls": 0,
+      "notes": "TAG Scene 12: mutant fish under the bridge. Surviving party gains d6+3 food rations and the scene counts as two minion encounters for XP."
+    },
+    {
+      "name": "Silent Scream Priestess",
+      "level_delta": 3,
+      "count": "1",
+      "life": "HCL+2",
+      "attacks": 1,
+      "tags": ["boss", "tag", "chaos", "cultist", "caster"],
+      "treasure_rolls": 1,
+      "notes": "TAG Scene 16: chaos priestess Boss HCL+3 with HCL+2 Life, accompanied by nine Silent Scream cultists. Printed reward is 150 gp plus XP."
+    },
+    {
+      "name": "Hill Giant",
+      "level_delta": 2,
+      "count": "1",
+      "life": 8,
+      "attacks": 2,
+      "tags": ["boss", "tag", "giant"],
+      "treasure_rolls": 3,
+      "encounter_start_effects": [
+        {
+          "type": "preset_trap",
+          "description": "First turn boulder: 4-in-6 chance to hurl a boulder for 3 damage by TAG Giant's Lair rules."
+        }
+      ],
+      "notes": "TAG Giant's Lair: HCL+2 Boss, 8 Life, 2 attacks for 2 damage, targets dwarves if present. Spells hit at +2. Treasure: 3 rolls and double gp; fights to death."
+    },
+    {
+      "name": "Minotaur Lord",
+      "level_delta": 5,
+      "count": "1",
+      "life": 6,
+      "attacks": 2,
+      "tags": ["boss", "tag", "minotaur"],
+      "treasure_rolls": 1,
+      "treasure_modifier": 1,
+      "notes": "TAG Minotaur Maze final boss: HCL+5 Weird-style foe, 6 Life, 2 attacks, treasure +1. First Defense is at -1; damage scales by Tier; halflings cannot use Luck."
+    },
+    {
+      "name": "Bandit Chieftain",
+      "level_delta": 4,
+      "count": "1",
+      "life": 6,
+      "attacks": 4,
+      "tags": ["boss", "tag", "human", "bandit"],
+      "treasure_rolls": 1,
+      "notes": "TAG Bandit Hideout final boss: HCL+4, 6 Life, 4 attacks, protected by d6+2 L4 bandits. Treasure is 8d6 gp plus a random magic item. Capture alive for bounty or a free rumor."
+    },
+    {
+      "name": "Gorungar the Mighty",
+      "level_delta": 5,
+      "count": "1",
+      "life": 8,
+      "attacks": 2,
+      "tags": ["boss", "tag", "goblin"],
+      "treasure_rolls": 1,
+      "surprise_chance": "2-in-6",
+      "notes": "TAG minor quest: HCL+5 Boss, 8 Life, 2 attacks, with 2d6 goblin archers. Reward is 50 gp for his head or 100 gp alive, plus armband and coin bag."
+    },
+    {
+      "name": "Griffin",
+      "level_delta": 5,
+      "count": "1",
+      "life": 5,
+      "attacks": 2,
+      "tags": ["boss", "tag", "flying", "animal"],
+      "treasure_rolls": 1,
+      "notes": "TAG Griffin Omelets, Anyone?: flying nest guardian used for the generated guild-job finale. Resolve egg handling and exact rewards from the printed quest."
+    },
+    {
+      "name": "Red Portrait Horror",
+      "level_delta": 4,
+      "count": "1",
+      "life": 5,
+      "attacks": 2,
+      "tags": ["boss", "tag", "spirit"],
+      "treasure_rolls": 1,
+      "notes": "TAG A Portrait in Red: supernatural portrait threat for the generated guild-job finale. Use printed scene text for exact non-combat choices."
+    },
+    {
+      "name": "Monoceros",
+      "level_delta": 4,
+      "count": "1",
+      "life": 6,
+      "attacks": 2,
+      "tags": ["boss", "tag", "animal", "charge"],
+      "treasure_rolls": 1,
+      "encounter_start_effects": [
+        {
+          "type": "charge",
+          "description": "Charging horn attack: apply the printed Monoceros Hunt opening attack if used at the table."
+        }
+      ],
+      "notes": "TAG Monoceros Hunt: wilderness hunt finale. Track pursuit and printed reward manually."
+    }
+  ]
+}

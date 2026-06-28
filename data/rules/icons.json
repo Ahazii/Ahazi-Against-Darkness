@@ -636,6 +636,42 @@
     "notes": "Reuses tentacles-skull; fiendish foes weird category icon."
   },
   {
+    "id": "monster-category-tag-boss",
+    "label": "TAG Boss",
+    "category": "monster",
+    "description": "Fallback icon for Tales from the Adventurers' Guild boss encounters.",
+    "file": "icons/user/game-icons/daemon-skull.svg",
+    "fallback": "monster",
+    "source_url": "https://game-icons.net/1x1/lorc/daemon-skull.html",
+    "attribution": "Icons made by Lorc from game-icons.net",
+    "license": "CC BY 3.0",
+    "notes": "Reuses boss daemon-skull; TAG boss category icon."
+  },
+  {
+    "id": "monster-category-tag-minions",
+    "label": "TAG Minions",
+    "category": "monster",
+    "description": "Fallback icon for Tales from the Adventurers' Guild minion encounters.",
+    "file": "icons/user/game-icons/goblin-head.svg",
+    "fallback": "monster",
+    "source_url": "https://game-icons.net/1x1/delapouite/goblin-head.html",
+    "attribution": "Icons made by Delapouite from game-icons.net",
+    "license": "CC BY 3.0",
+    "notes": "Reuses goblin-head; TAG minions category icon."
+  },
+  {
+    "id": "monster-category-tag-weird",
+    "label": "TAG Weird",
+    "category": "monster",
+    "description": "Fallback icon for Tales from the Adventurers' Guild weird monster encounters.",
+    "file": "icons/user/game-icons/tentacles-skull.svg",
+    "fallback": "monster",
+    "source_url": "https://game-icons.net/1x1/lorc/tentacles-skull.html",
+    "attribution": "Icons made by Lorc from game-icons.net",
+    "license": "CC BY 3.0",
+    "notes": "Reuses tentacles-skull; TAG weird category icon."
+  },
+  {
     "id": "monster-category-courtship-demons",
     "label": "Courtship Demons",
     "category": "monster",
