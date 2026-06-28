@@ -12,6 +12,8 @@ from ..schemas import (
     SessionState,
     TagAvailabilityCheckState,
     TagDowntimeLogEntry,
+    TagMagicLockerState,
+    TagStoredItemState,
     TagTravelLogEntry,
 )
 from .abyss_tables import is_abyss_profile
@@ -267,6 +269,135 @@ FIGHTING_CLASS_IDS = {
 ROGUE_SAVE_CLASS_IDS = {"assassin", "rogue", "swashbuckler"}
 INTERROGATION_CLASS_IDS = {"atrocity", "cambion", "inquisitor", "investigator", "sleuth", "witch_hunter"}
 
+TAG_PURCHASABLE_SERVICES: dict[str, dict[str, object]] = {
+    "resurrection_tag": {
+        "label": "Resurrection tag",
+        "cost_gp": 500,
+        "inventory": "TAG Resurrection tag",
+        "result": "prepaid resurrection tag added to inventory",
+    },
+    "blessing_tag": {
+        "label": "Blessing tag",
+        "cost_gp": 80,
+        "inventory": "TAG Blessing tag",
+        "result": "prepaid Blessing tag added to inventory",
+    },
+    "bag_of_carrying": {
+        "label": "Bag of Carrying",
+        "cost_gp": 200,
+        "inventory": "Bag of Carrying",
+        "result": "Bag of Carrying added to inventory",
+    },
+    "ten_foot_pole": {
+        "label": "10-foot pole",
+        "cost_gp": 2,
+        "inventory": "10-foot pole",
+        "result": "10-foot pole added to inventory",
+    },
+    "lantern_hook": {
+        "label": "Lantern hook",
+        "cost_gp": 2,
+        "inventory": "Lantern hook",
+        "result": "Lantern hook added to inventory",
+    },
+    "very_nutritious_food": {
+        "label": "Very nutritious food",
+        "cost_gp": 20,
+        "inventory": "Very nutritious food",
+        "result": "Very nutritious food added to inventory",
+    },
+    "poison_resistance_training": {
+        "label": "Poison resistance training",
+        "cost_gp": 20,
+        "status": "TAG poison resistance training",
+        "result": "next-adventure poison resistance training recorded",
+    },
+    "martial_arts_training": {
+        "label": "Martial arts training",
+        "cost_gp": 25,
+        "status": "TAG martial arts training",
+        "result": "next-adventure martial arts training recorded",
+    },
+    "good_boots": {
+        "label": "Good boots",
+        "cost_gp": 6,
+        "inventory": "Good boots",
+        "result": "good boots added to inventory",
+    },
+    "flammable_oil": {
+        "label": "Flask of flammable oil",
+        "cost_gp": 5,
+        "inventory": "Flask of flammable oil",
+        "result": "flammable oil added to inventory",
+    },
+    "horn": {
+        "label": "Horn",
+        "cost_gp": 2,
+        "inventory": "Horn",
+        "result": "horn added to inventory",
+    },
+    "wineskin": {
+        "label": "Wineskin refill",
+        "cost_gp": 4,
+        "inventory": "Wineskin",
+        "result": "wineskin/refill added to inventory",
+    },
+    "flail_axe": {
+        "label": "Flail-Axe",
+        "cost_gp": 8,
+        "inventory": "Flail-Axe",
+        "result": "Flail-Axe added to inventory",
+    },
+    "aspergillum": {
+        "label": "Aspergillum",
+        "cost_gp": 20,
+        "inventory": "Aspergillum",
+        "result": "aspergillum added to inventory",
+    },
+}
+
+TAG_RUMORS: dict[int, str] = {
+    1: "Bofto's strange star-shaped vineyard find: investigate Scene 9.",
+    2: "Medusa in the hunter's cabin: investigate Scene 10.",
+    3: "Stolen paladin sword at the old miller's farm: investigate Scene 11.",
+    4: "Mutant fish under the bridge: investigate Scene 12.",
+    5: "Dragon living in disguise: investigate Scene 13.",
+    6: "Leprechauns at Blackbird Hill: investigate Scene 2.",
+    7: "Secret temple stair under Tamas Zeya: investigate Scene 15.",
+    8: "Shaura and the chaos cultists: investigate Scene 16.",
+    9: "Daroc's lost cat familiar: investigate Scene 5.",
+    10: "Winged things over the burgomaster's house: investigate Scene 8.",
+    11: "Deoldyn's elven archery training: investigate Scene 3.",
+    12: "Shinta's magic sword Agaratha: investigate Scene 4.",
+}
+
+TAG_RED_HERRINGS: dict[int, str] = {
+    1: "Trap: single character ambushed by Riff-Raff; surrender carried goods or fight without withdrawal.",
+    2: "Trap: single character ambushed by Riff-Raff; surrender carried goods or fight without withdrawal.",
+    3: "Waste of time: lose d3 days.",
+    4: "Waste of time: lose d3 days.",
+    5: "False information: lose 1 Clue if possible, otherwise choose d6 gp or d3 days.",
+    6: "Hidden-ruins detour: play a d6-room dungeon with no Final Boss and +1 minion/vermin counts.",
+}
+
+TAG_TREASURE_MAP_RESULTS: dict[int, str] = {
+    1: "Deathtrap: party ambushed by Riff-Raff; surrender carried goods or fight, foes go first, no withdrawal.",
+    2: "Deathtrap: party ambushed by Riff-Raff; surrender carried goods or fight, foes go first, no withdrawal.",
+    3: "Waste of time: map leads nowhere; roll 3-in-6 for an Outside of Town Opposition encounter.",
+    4: "Incomplete but accurate: gain a one-time +1 bonus for a future treasure-map roll.",
+    5: "The Real Deal: roll on The Map Leads To table.",
+    6: "The Real Deal: roll on The Map Leads To table.",
+}
+
+TAG_MAP_LEADS_TO: dict[int, str] = {
+    1: "Underground caves: 4AD dungeon, d6+3 rooms, last room has a boosted Boss and double maximum treasure.",
+    2: "Forgotten temple: chaos cultists, no withdrawal, golden idol worth 1d3x100 gp plus cultist treasure.",
+    3: "Hostile humanoid camp: report for 4d6 gp or attempt stealth theft/fight the camp.",
+    4: "Underground structure: 2d6 rooms/corridors, all generated treasure accumulates on the final Boss.",
+    5: "Boss-only underground structure: as result 4, but every monster is a Boss; final treasure minimum 200 gp and 2 magic items.",
+    6: "Lich sepulchral chamber: one-room undead fight with death-magic entry Save and phylactery attack option.",
+}
+
 
 def default_campaign() -> CampaignState:
     timestamp = now_utc()
@@ -313,6 +444,48 @@ def roll_exploding_d6(count: int) -> tuple[int, list[int]]:
             rolls.append(roll)
             total += roll
     return total, rolls
+
+
+def roll_d3() -> int:
+    return ceil(roll_d6() / 2)
+
+
+def roll_d10() -> int:
+    value = 11
+    while value > 10:
+        value = ((roll_d6() - 1) * 2) + (1 if roll_d6() <= 3 else 2)
+    return value
+
+
+def roll_d12() -> int:
+    return ((roll_d6() - 1) * 2) + (1 if roll_d6() <= 3 else 2)
+
+
+def append_tag_log(
+    campaign: CampaignState,
+    *,
+    action: str,
+    result_text: str,
+    character: Character | None = None,
+    roll: int | None = None,
+    modifier: int = 0,
+    total: int | None = None,
+    cost_gp: int = 0,
+) -> TagDowntimeLogEntry:
+    entry = TagDowntimeLogEntry(
+        action=action,
+        character_id=character.id if character is not None else None,
+        character_name=character.name if character is not None else None,
+        roll=roll,
+        modifier=modifier,
+        total=total,
+        cost_gp=max(0, int(cost_gp)),
+        result_text=result_text,
+        created_at=now_utc(),
+    )
+    campaign.tag_downtime_log.append(entry)
+    trim_tag_logs(campaign)
+    return entry
 
 
 def settlement_service_rows(campaign: CampaignState) -> list[dict[str, object]]:
@@ -665,6 +838,373 @@ def look_for_clues(
     campaign.tag_downtime_log.append(entry)
     trim_tag_logs(campaign)
     return entry
+
+
+def update_troupe(
+    campaign: CampaignState,
+    *,
+    troupe_name: str | None = None,
+    active_character_ids: list[str] | None = None,
+    guild_member: bool | None = None,
+    guild_coffers_gp: int | None = None,
+) -> CampaignState:
+    if troupe_name is not None:
+        campaign.tag_troupe_name = (troupe_name.strip() or "Adventuring Troupe")[:80]
+    if active_character_ids is not None:
+        seen: set[str] = set()
+        campaign.tag_troupe_active_character_ids = [
+            str(character_id)
+            for character_id in active_character_ids
+            if str(character_id) and not (str(character_id) in seen or seen.add(str(character_id)))
+        ][:4]
+    if guild_member is not None:
+        campaign.tag_guild_member = bool(guild_member)
+    if guild_coffers_gp is not None:
+        campaign.tag_guild_coffers_gp = max(0, int(guild_coffers_gp))
+    return campaign
+
+
+def store_tag_treasure(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    storage: str = "trove",
+    gold_gp: int = 0,
+    item_name: str = "",
+    quantity: int = 1,
+    notes: str = "",
+) -> TagDowntimeLogEntry:
+    clean_storage = storage if storage in {"trove", "bank", "magic_locker"} else "trove"
+    gold = max(0, int(gold_gp))
+    qty = max(1, int(quantity))
+    clean_item = item_name.strip()[:100]
+    fee = ceil(gold * 0.1) if clean_storage == "bank" and gold else 0
+    total_gold_needed = gold + fee
+    if total_gold_needed > character.gold:
+        return append_tag_log(
+            campaign,
+            action="store_treasure",
+            character=character,
+            result_text=f"{character.name} needs {total_gold_needed} gp to store {gold} gp in {clean_storage}.",
+        )
+    if gold:
+        character.gold -= total_gold_needed
+        campaign.tag_storage_gold_gp += gold
+    if clean_item:
+        campaign.tag_stored_items.append(
+            TagStoredItemState(
+                owner_character_id=character.id,
+                owner_name=character.name,
+                item_name=clean_item,
+                quantity=qty,
+                storage=clean_storage,  # type: ignore[arg-type]
+                notes=notes.strip()[:200],
+                created_at=now_utc(),
+            )
+        )
+    character.updated_at = now_utc()
+    parts: list[str] = []
+    if gold:
+        fee_text = f" plus {fee} gp bank fee" if fee else ""
+        parts.append(f"{gold} gp{fee_text}")
+    if clean_item:
+        parts.append(f"{qty}x {clean_item}")
+    stored = " and ".join(parts) if parts else "nothing"
+    return append_tag_log(
+        campaign,
+        action="store_treasure",
+        character=character,
+        cost_gp=total_gold_needed,
+        result_text=f"{character.name} stores {stored} in TAG {clean_storage}. Settlement storage now holds {campaign.tag_storage_gold_gp} gp.",
+    )
+
+
+def withdraw_tag_stored_gold(campaign: CampaignState, character: Character, *, gold_gp: int) -> TagDowntimeLogEntry:
+    amount = min(max(0, int(gold_gp)), campaign.tag_storage_gold_gp)
+    if amount <= 0:
+        return append_tag_log(
+            campaign,
+            action="withdraw_stored_gold",
+            character=character,
+            result_text="No TAG stored gold was withdrawn.",
+        )
+    campaign.tag_storage_gold_gp -= amount
+    character.gold += amount
+    character.updated_at = now_utc()
+    return append_tag_log(
+        campaign,
+        action="withdraw_stored_gold",
+        character=character,
+        result_text=f"{character.name} withdraws {amount} gp from TAG stored treasure.",
+    )
+
+
+def create_magic_locker(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    contents: str,
+    kind: str = "item",
+    gold_gp: int = 0,
+) -> TagDowntimeLogEntry:
+    clean_kind = "gold" if kind == "gold" else "item"
+    gold = min(5000, max(0, int(gold_gp)))
+    label = contents.strip()[:100] or ("Gold pouch" if clean_kind == "gold" else "Stored item")
+    cost = 50 + (gold if clean_kind == "gold" else 0)
+    if campaign.settlement_size < 0:
+        return append_tag_log(
+            campaign,
+            action="magic_locker_create",
+            character=character,
+            result_text="Magic lockers require a size 0 or larger settlement.",
+        )
+    if character.gold < cost:
+        return append_tag_log(
+            campaign,
+            action="magic_locker_create",
+            character=character,
+            result_text=f"{character.name} needs {cost} gp for the magic locker setup.",
+        )
+    character.gold -= cost
+    character.updated_at = now_utc()
+    campaign.tag_magic_lockers.append(
+        TagMagicLockerState(
+            owner_character_id=character.id,
+            owner_name=character.name,
+            contents=label,
+            kind=clean_kind,  # type: ignore[arg-type]
+            gold_gp=gold if clean_kind == "gold" else 0,
+            created_at=now_utc(),
+        )
+    )
+    return append_tag_log(
+        campaign,
+        action="magic_locker_create",
+        character=character,
+        cost_gp=cost,
+        result_text=f"{character.name} creates a magic locker for {label}. Cost {cost} gp.",
+    )
+
+
+def summon_magic_locker(campaign: CampaignState, *, locker_id: str) -> TagDowntimeLogEntry:
+    locker = next((item for item in campaign.tag_magic_lockers if item.id == locker_id), None)
+    if locker is None:
+        return append_tag_log(campaign, action="magic_locker_summon", result_text="Magic locker not found.")
+    total, rolls = roll_3d6()
+    if total <= 6:
+        locker.mishap_locked = True
+        result = (
+            f"{locker.owner_name}'s magic locker summon for {locker.contents}: "
+            f"{'+'.join(str(roll) for roll in rolls)} = {total}; mishap, contents unavailable until visiting the bank."
+        )
+    else:
+        result = (
+            f"{locker.owner_name}'s magic locker summon for {locker.contents}: "
+            f"{'+'.join(str(roll) for roll in rolls)} = {total}; contents appear ready to use."
+        )
+    return append_tag_log(campaign, action="magic_locker_summon", roll=total, total=total, result_text=result)
+
+
+def purchase_tag_service(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    service_key: str,
+    quantity: int = 1,
+) -> TagDowntimeLogEntry:
+    qty = max(1, int(quantity))
+    if service_key == "platinum_piece":
+        cost = 20 * qty
+        if campaign.settlement_size < 3:
+            return append_tag_log(
+                campaign,
+                action="purchase_service",
+                character=character,
+                result_text="Buying platinum pieces requires a size +3 settlement.",
+            )
+        if character.gold < cost:
+            return append_tag_log(
+                campaign,
+                action="purchase_service",
+                character=character,
+                result_text=f"{character.name} needs {cost} gp to buy {qty} PP.",
+            )
+        character.gold -= cost
+        campaign.tag_platinum_pieces += qty
+        character.updated_at = now_utc()
+        return append_tag_log(
+            campaign,
+            action="purchase_service",
+            character=character,
+            cost_gp=cost,
+            result_text=f"{character.name} buys {qty} PP for {cost} gp. Campaign PP now {campaign.tag_platinum_pieces}.",
+        )
+    service = TAG_PURCHASABLE_SERVICES.get(service_key)
+    if service is None:
+        return append_tag_log(
+            campaign,
+            action="purchase_service",
+            character=character,
+            result_text=f"Unknown TAG purchase service: {service_key}.",
+        )
+    cost = int(service["cost_gp"]) * qty
+    if character.gold < cost:
+        return append_tag_log(
+            campaign,
+            action="purchase_service",
+            character=character,
+            result_text=f"{character.name} needs {cost} gp for {qty}x {service['label']}.",
+        )
+    character.gold -= cost
+    item = service.get("inventory")
+    status = service.get("status")
+    if isinstance(item, str):
+        character.inventory.extend([item] * qty)
+    if isinstance(status, str) and status not in character.statuses:
+        character.statuses.append(status)
+    character.updated_at = now_utc()
+    return append_tag_log(
+        campaign,
+        action="purchase_service",
+        character=character,
+        cost_gp=cost,
+        result_text=f"{character.name} buys {qty}x {service['label']} for {cost} gp; {service['result']}.",
+    )
+
+
+def roll_gambling_house(campaign: CampaignState, character: Character, *, stake_gp: int) -> TagDowntimeLogEntry:
+    stake = max(0, int(stake_gp))
+    if stake <= 0:
+        return append_tag_log(campaign, action="gambling_house", character=character, result_text="Enter a gambling stake above 0 gp.")
+    if character.gold < stake:
+        return append_tag_log(
+            campaign,
+            action="gambling_house",
+            character=character,
+            result_text=f"{character.name} needs {stake} gp to gamble that stake.",
+        )
+    roll = roll_d10()
+    class_id = (character.class_id or character.class_name or "").lower().replace(" ", "_").replace("-", "_")
+    gambler_bonus = 1 if class_id in {"halfling", "rogue", "swashbuckler", "harlequin", "assassin"} else 0
+    total = roll + gambler_bonus
+    character.gold -= stake
+    if total <= 4:
+        result = f"{character.name} loses the {stake} gp stake at the gambling house."
+    elif total <= 6:
+        result = f"{character.name} loses {stake} gp but hears useful information: roll Rumors or a 3-in-6 chance for 1 Clue."
+    elif total <= 8:
+        win = ceil(stake * 1.1)
+        character.gold += win
+        result = f"{character.name} wins +10% and leaves with {win} gp from a {stake} gp stake."
+    elif total == 9:
+        win = ceil(stake * 1.2)
+        character.gold += win
+        result = f"{character.name} wins +20% and leaves with {win} gp from a {stake} gp stake."
+    elif total == 10:
+        win = ceil(stake * 1.5)
+        character.gold += win
+        result = f"{character.name} wins +50% and leaves with {win} gp from a {stake} gp stake."
+    else:
+        win = stake * 2
+        character.gold += win
+        result = f"{character.name} wins +100% and leaves with {win} gp; resolve the L6 temptation Save manually."
+    character.updated_at = now_utc()
+    return append_tag_log(
+        campaign,
+        action="gambling_house",
+        character=character,
+        roll=roll,
+        modifier=gambler_bonus,
+        total=total,
+        cost_gp=stake,
+        result_text=result,
+    )
+
+
+def run_streetwise_action(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    action: str,
+    target_level: int = 6,
+    target_name: str = "",
+) -> TagDowntimeLogEntry:
+    clean_action = action if action in {"listen_rumors", "interrogate", "look_tough"} else "listen_rumors"
+    target = max(1, int(target_level))
+    roll = roll_d6()
+    modifier = streetwise_modifier(character, action="interrogation" if clean_action == "interrogate" else clean_action)
+    total = roll + modifier
+    if clean_action == "listen_rumors":
+        target = 4
+        if roll == 1:
+            red_roll = roll_d6()
+            result = f"{character.name} hears a red herring: {TAG_RED_HERRINGS[red_roll]}"
+        elif total >= target:
+            rumor_roll = roll_d12()
+            result = f"{character.name} hears rumor {rumor_roll}: {TAG_RUMORS[rumor_roll]}"
+        else:
+            result = f"{character.name} finds no useful rumor and may try again after one adventure."
+    elif clean_action == "interrogate":
+        target = target + 1
+        label = target_name.strip()[:80] or "captured riff-raff"
+        if roll == 1:
+            result = f"{character.name} gets no information and is hated by all Riff-Raff in the next Riff-Raff encounter."
+        elif total >= target:
+            character.clues += 1
+            result = f"{character.name} interrogates {label} and gains 1 Clue; same-type foes hate the interrogator next encounter."
+        else:
+            result = f"{character.name} interrogates {label} but gains no information."
+    else:
+        target = 6
+        if roll == 1 or total < target:
+            damage = roll_d3()
+            character.current_life = max(0, character.current_life - damage)
+            result = f"{character.name} fails to look tough and loses {damage} Life in a street brawl."
+        else:
+            if character.id not in campaign.tag_look_tough_character_ids:
+                campaign.tag_look_tough_character_ids.append(character.id)
+            result = f"{character.name} gains a tough reputation: Riff-Raff morale rolls take an extra -1 until the bonus is lost."
+    character.updated_at = now_utc()
+    return append_tag_log(
+        campaign,
+        action=clean_action,
+        character=character,
+        roll=roll,
+        modifier=modifier,
+        total=total,
+        result_text=result,
+    )
+
+
+def follow_treasure_map(campaign: CampaignState, *, use_guild_cartographer: bool = False) -> TagDowntimeLogEntry:
+    roll = roll_d6()
+    bonus = campaign.tag_map_bonus + (1 if use_guild_cartographer and campaign.tag_guild_member else 0)
+    total = roll if roll == 1 else roll + bonus
+    table_key = max(1, min(6, total))
+    result = TAG_TREASURE_MAP_RESULTS[table_key]
+    extra = ""
+    if table_key == 4:
+        campaign.tag_map_bonus += 1
+        extra = f" Stored map bonus is now +{campaign.tag_map_bonus}."
+    elif table_key >= 5:
+        lead_roll = roll_d6()
+        extra = f" The Map Leads To {lead_roll}: {TAG_MAP_LEADS_TO[lead_roll]}"
+    return append_tag_log(
+        campaign,
+        action="follow_treasure_map",
+        roll=roll,
+        modifier=bonus,
+        total=total,
+        result_text=f"Following Treasure Map roll d6={roll} {format_bonus(bonus)} = {total}: {result}{extra}",
+    )
+
+
+def format_bonus(value: int) -> str:
+    if value > 0:
+        return f"+{value}"
+    if value < 0:
+        return str(value)
+    return "+0"
 
 
 def load_campaign(store: Store) -> CampaignState:

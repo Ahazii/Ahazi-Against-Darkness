@@ -1779,3 +1779,33 @@ def test_tag_settlement_apothecary_panel_is_separate_from_camp_panel() -> None:
     assert "function renderTagSettlementPanel(session)" in APP_JS
     assert 'advance("tag_settlement_brew_apothecary"' in APP_JS
     assert "This is separate from camp outside the dungeon." in APP_JS
+
+
+def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
+    for element_id in [
+        "tag-troupe-name",
+        "tag-troupe-active",
+        "tag-save-troupe",
+        "tag-storage-character",
+        "tag-store-treasure",
+        "tag-withdraw-storage",
+        "tag-purchase-service",
+        "tag-purchase-service-button",
+        "tag-create-locker",
+        "tag-summon-locker",
+        "tag-streetwise-action",
+        "tag-run-streetwise",
+        "tag-follow-map",
+    ]:
+        assert f'id="{element_id}"' in INDEX_HTML
+    for endpoint in [
+        "/api/campaign/tag/troupe",
+        "/api/campaign/tag/store-treasure",
+        "/api/campaign/tag/purchase-service",
+        "/api/campaign/tag/magic-locker",
+        "/api/campaign/tag/streetwise-action",
+        "/api/campaign/tag/follow-treasure-map",
+    ]:
+        assert endpoint in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.storageKind" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.followMap" in APP_JS

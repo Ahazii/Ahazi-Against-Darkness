@@ -4,17 +4,26 @@ from app.db import now_utc
 from app.engine import tag_campaign
 from app.engine.tag_campaign import (
     check_item_availability,
+    create_magic_locker,
     default_campaign,
+    follow_treasure_map,
     look_for_clues,
+    purchase_tag_service,
+    roll_gambling_house,
     roll_hidden_treasure_trove_risk,
     roll_aspergillum_break_chance,
     roll_flammable_oil_throw,
     roll_horn_wandering_attraction,
     roll_moneylender_follow_chance,
     roll_treasure_map_price,
+    run_streetwise_action,
     settlement_size_from_roll,
     settlement_service_rows,
+    store_tag_treasure,
+    summon_magic_locker,
     travel_to_new_settlement,
+    update_troupe,
+    withdraw_tag_stored_gold,
 )
 from app.schemas import Character
 
@@ -216,3 +225,68 @@ def test_tag_horn_oil_and_aspergillum_rolls(monkeypatch) -> None:
     assert "wandering monsters are attracted" in horn.result_text
     assert "sprays a friend" in oil.result_text
     assert "breaks" in aspergillum.result_text
+
+
+def test_tag_troupe_storage_purchase_and_locker(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(gold=1000)
+
+    update_troupe(
+        campaign,
+        troupe_name="Varian Guild",
+        active_character_ids=["hero-1", "hero-2", "hero-1"],
+        guild_member=True,
+        guild_coffers_gp=5000,
+    )
+    assert campaign.tag_troupe_name == "Varian Guild"
+    assert campaign.tag_troupe_active_character_ids == ["hero-1", "hero-2"]
+    assert campaign.tag_guild_member is True
+
+    stored = store_tag_treasure(campaign, hero, storage="bank", gold_gp=100, item_name="Ruby", quantity=2)
+    assert hero.gold == 890
+    assert campaign.tag_storage_gold_gp == 100
+    assert campaign.tag_stored_items[0].item_name == "Ruby"
+    assert "10 gp bank fee" in stored.result_text
+
+    withdrawn = withdraw_tag_stored_gold(campaign, hero, gold_gp=40)
+    assert hero.gold == 930
+    assert campaign.tag_storage_gold_gp == 60
+    assert "withdraws 40 gp" in withdrawn.result_text
+
+    purchase = purchase_tag_service(campaign, hero, service_key="blessing_tag", quantity=2)
+    assert hero.gold == 770
+    assert hero.inventory.count("TAG Blessing tag") == 2
+    assert "Blessing tag" in purchase.result_text
+
+    campaign.settlement_size = 0
+    locker = create_magic_locker(campaign, hero, contents="Silver sword", kind="item")
+    assert hero.gold == 720
+    assert campaign.tag_magic_lockers[0].contents == "Silver sword"
+    assert "magic locker" in locker.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    summon = summon_magic_locker(campaign, locker_id=campaign.tag_magic_lockers[0].id)
+    assert campaign.tag_magic_lockers[0].mishap_locked is True
+    assert "mishap" in summon.result_text
+
+
+def test_tag_streetwise_gambling_and_treasure_map(monkeypatch) -> None:
+    campaign = default_campaign()
+    campaign.tag_guild_member = True
+    hero = _character(gold=100, current_life=4)
+
+    rolls = iter([5, 5, 6])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    monkeypatch.setattr(tag_campaign, "roll_d10", lambda: 7)
+    monkeypatch.setattr(tag_campaign, "roll_d12", lambda: 6)
+
+    rumor = run_streetwise_action(campaign, hero, action="listen_rumors")
+    assert "hears rumor" in rumor.result_text
+
+    gamble = roll_gambling_house(campaign, hero, stake_gp=10)
+    assert gamble.total == 8
+    assert "wins +10%" in gamble.result_text
+
+    map_entry = follow_treasure_map(campaign, use_guild_cartographer=True)
+    assert map_entry.total == 6
+    assert "The Map Leads To 6" in map_entry.result_text

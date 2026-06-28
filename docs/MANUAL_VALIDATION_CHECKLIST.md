@@ -441,6 +441,21 @@ Use a TAG banking/settlement-mode session with a living Wandering Alchemist carr
 |------|-------|---------------|
 | 12c.1 | Side panel → **TAG Settlement Apothecary** | Panel appears separately from **Camp Outside Dungeon** when TAG banking is enabled and an eligible brewer is present |
 | 12c.2 | Hover recipe buttons | Tooltip describes TAG settlement downtime brew, difficulty, materials, and TCOTFD ingredient requirement |
+
+## §12d TAG Troupe, Storage, Maps, and Streetwise
+
+Use the home Adventure setup TAG settlement panel.
+
+| Check | Action | Expected |
+| --- | --- | --- |
+| 12d.1 | Save troupe name, active party, guild membership, and guild gp | Campaign reload preserves the troupe state |
+| 12d.2 | Store gp in Bank | Character pays stored gp plus 10% rounded-up fee; campaign storage gp increases |
+| 12d.3 | Withdraw stored gp | Character receives gp; campaign storage gp decreases |
+| 12d.4 | Buy a fixed TAG item/service | Character gold decreases and inventory/status/campaign PP updates as appropriate |
+| 12d.5 | Create and summon magic locker | Size 0+ settlement allows setup; summon rolls 3d6 and logs success/mishap |
+| 12d.6 | Roll Gambling House | Stake is spent and gp outcome is applied/logged |
+| 12d.7 | Roll Streetwise actions | Look for Clue, Listen to Rumors, Interrogate, and Look Tough log the correct TAG result class |
+| 12d.8 | Follow treasure map | Following the Treasure Map result logs; Real Deal also logs Map Leads To summary |
 | 12c.3 | Brew with missing ingredients | Log blocks the brew with missing ingredient/material message |
 | 12c.4 | Brew with valid ingredients/materials | Ingredients/gp are consumed, d6+L rolls when required, and the brewed `(Apothecary` item is added to the brewer inventory |
 

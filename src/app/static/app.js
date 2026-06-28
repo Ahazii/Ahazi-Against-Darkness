@@ -228,6 +228,11 @@ const tagSettlementSize = document.getElementById("tag-settlement-size");
 const tagSaveSettlement = document.getElementById("tag-save-settlement");
 const tagRollSettlementSize = document.getElementById("tag-roll-settlement-size");
 const tagSettlementNotes = document.getElementById("tag-settlement-notes");
+const tagTroupeName = document.getElementById("tag-troupe-name");
+const tagTroupeActive = document.getElementById("tag-troupe-active");
+const tagGuildMember = document.getElementById("tag-guild-member");
+const tagGuildCoffers = document.getElementById("tag-guild-coffers");
+const tagSaveTroupe = document.getElementById("tag-save-troupe");
 const tagTravelDestination = document.getElementById("tag-travel-destination");
 const tagTravelMode = document.getElementById("tag-travel-mode");
 const tagPayRoadTithe = document.getElementById("tag-pay-road-tithe");
@@ -239,6 +244,32 @@ const tagCheckAvailability = document.getElementById("tag-check-availability");
 const tagClueCharacter = document.getElementById("tag-clue-character");
 const tagClueConsequence = document.getElementById("tag-clue-consequence");
 const tagLookForClue = document.getElementById("tag-look-for-clue");
+const tagStreetwiseAction = document.getElementById("tag-streetwise-action");
+const tagStreetwiseTarget = document.getElementById("tag-streetwise-target");
+const tagStreetwiseTargetName = document.getElementById("tag-streetwise-target-name");
+const tagRunStreetwise = document.getElementById("tag-run-streetwise");
+const tagStorageCharacter = document.getElementById("tag-storage-character");
+const tagStorageKind = document.getElementById("tag-storage-kind");
+const tagStorageGold = document.getElementById("tag-storage-gold");
+const tagStorageItem = document.getElementById("tag-storage-item");
+const tagStorageQuantity = document.getElementById("tag-storage-quantity");
+const tagStoreTreasure = document.getElementById("tag-store-treasure");
+const tagWithdrawStorage = document.getElementById("tag-withdraw-storage");
+const tagPurchaseCharacter = document.getElementById("tag-purchase-character");
+const tagPurchaseService = document.getElementById("tag-purchase-service");
+const tagPurchaseQuantity = document.getElementById("tag-purchase-quantity");
+const tagPurchaseServiceButton = document.getElementById("tag-purchase-service-button");
+const tagGamblingStake = document.getElementById("tag-gambling-stake");
+const tagRollGambling = document.getElementById("tag-roll-gambling");
+const tagLockerCharacter = document.getElementById("tag-locker-character");
+const tagLockerKind = document.getElementById("tag-locker-kind");
+const tagLockerContents = document.getElementById("tag-locker-contents");
+const tagLockerGold = document.getElementById("tag-locker-gold");
+const tagCreateLocker = document.getElementById("tag-create-locker");
+const tagLockerSelect = document.getElementById("tag-locker-select");
+const tagSummonLocker = document.getElementById("tag-summon-locker");
+const tagMapCartographer = document.getElementById("tag-map-cartographer");
+const tagFollowMap = document.getElementById("tag-follow-map");
 const tagMoneylenderDebt = document.getElementById("tag-moneylender-debt");
 const tagRefreshServices = document.getElementById("tag-refresh-services");
 const tagSettlementServices = document.getElementById("tag-settlement-services");
@@ -8352,6 +8383,11 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   save: "Save settlement name, size modifier, and notes to the persistent campaign record.",
   rollSize: "Roll d6 for a random TAG settlement size: 1=-2, 2=-1, 3=0, 4=+1, 5=+2, 6=+3.",
   notes: "Free notes for settlement details, known services, missing services, and rulings.",
+  troupeName: "Persistent TAG troupe or adventuring company name.",
+  troupeActive: "Select up to four roster characters as the current TAG active party. Troupe members not selected stay home.",
+  guildMember: "Marks this troupe as Adventurers Guild members for guild benefits such as cartographer map adjustment.",
+  guildCoffers: "Guild coffer total for TAG guild upkeep and benefits. This is campaign state, separate from individual gold.",
+  saveTroupe: "Save troupe name, active party selection, guild membership, and guild coffers.",
   travelDestination: "Name for the next TAG settlement. The destination becomes the new home settlement after travel.",
   travelMode: "Simple travel rolls 3d6-3 days, minimum 1. Hex map travel rolls direction, distance, road existence, and encounter-check cadence.",
   payRoadTithe: "When hex travel finds a road, record the 1 gp per 3 hexes tithe cost and use the safer road encounter cadence. Cost is logged, not deducted, because no travelling party purse is selected here.",
@@ -8363,6 +8399,32 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   clueCharacter: "Character making the TAG Streetwise Look for Clues attempt.",
   clueConsequence: "If a natural 1 happens and the character has no Clues, choose whether to lose gold or Life.",
   lookForClue: "Spend d6 gp in bribes, then roll a TAG Streetwise Save vs L6 to gain a Clue.",
+  streetwiseAction: "Choose the TAG Streetwise action: rumors, interrogation, or Look Tough.",
+  streetwiseTarget: "Interrogation target level before the +1 difficulty. Rumors and Look Tough use their fixed TAG levels.",
+  streetwiseTargetName: "Optional captured foe or note for the Streetwise log.",
+  runStreetwise: "Roll the selected TAG Streetwise action and log the result.",
+  storageCharacter: "Character paying for or receiving TAG settlement storage.",
+  storageKind: "Bank charges a 10% one-time fee on stored gold; hidden trove has risk rolls; magic locker notes item storage.",
+  storageGold: "Gold amount to store or withdraw from TAG settlement storage.",
+  storageItem: "Optional item name to record in TAG settlement storage.",
+  storageQuantity: "Quantity of the named item to record in TAG storage.",
+  storeTreasure: "Store gold and/or an item in the selected TAG storage type.",
+  withdrawStorage: "Withdraw gp from TAG settlement stored treasure to the selected character.",
+  purchaseCharacter: "Character buying a TAG service or item.",
+  purchaseService: "TAG service/item purchase. Costs are deducted and inventory/status/campaign state is updated where implemented.",
+  purchaseQuantity: "Number of service/item units to buy.",
+  purchaseServiceButton: "Buy the selected TAG service or item for the selected character.",
+  gamblingStake: "Stake for the TAG Gambling House table. The selected buyer is the gambler.",
+  rollGambling: "Roll d10 on the TAG Gambling House table and apply simple gp outcomes.",
+  lockerCharacter: "Character creating the magic locker and paying the setup cost.",
+  lockerKind: "Magic locker content type: one item or up to 5000 gp.",
+  lockerContents: "Short description of the item or pouch kept in the magic locker.",
+  lockerGold: "Gold stored in a magic locker, up to 5000 gp, paid in addition to the 50 gp locker cost.",
+  createLocker: "Create a TAG magic locker in a size 0+ settlement.",
+  lockerSelect: "Existing TAG magic locker to summon.",
+  summonLocker: "Roll 3d6 to summon this locker during an adventure; 6 or less causes a mishap.",
+  mapCartographer: "Use the Adventurers Guild cartographer +1 map adjustment if the troupe belongs to a guild.",
+  followMap: "Roll on TAG Following the Treasure Map Table and, on a real map, The Map Leads To table.",
   services: "Refresh TAG treasure/service rows for the current settlement size.",
   serviceAvailability: "Roll this service/item availability using d6 plus settlement size, then log the result.",
   hiddenTroveRisk: "Roll 3d6 for a hidden treasure trove between-adventure risk; on 3-5 the cache is stolen.",
@@ -10148,6 +10210,11 @@ function applyTagSettlementTooltips() {
   setButtonTooltip(tagSaveSettlement, TAG_SETTLEMENT_TOOLTIPS.save);
   setButtonTooltip(tagRollSettlementSize, TAG_SETTLEMENT_TOOLTIPS.rollSize);
   setTooltip(tagSettlementNotes, TAG_SETTLEMENT_TOOLTIPS.notes);
+  setTooltip(tagTroupeName, TAG_SETTLEMENT_TOOLTIPS.troupeName);
+  setTooltip(tagTroupeActive, TAG_SETTLEMENT_TOOLTIPS.troupeActive);
+  if (tagGuildMember?.closest("label")) setTooltip(tagGuildMember.closest("label"), TAG_SETTLEMENT_TOOLTIPS.guildMember);
+  setTooltip(tagGuildCoffers, TAG_SETTLEMENT_TOOLTIPS.guildCoffers);
+  setButtonTooltip(tagSaveTroupe, TAG_SETTLEMENT_TOOLTIPS.saveTroupe);
   setTooltip(tagTravelDestination, TAG_SETTLEMENT_TOOLTIPS.travelDestination);
   setTooltip(tagTravelMode, TAG_SETTLEMENT_TOOLTIPS.travelMode);
   if (tagPayRoadTithe?.closest("label")) setTooltip(tagPayRoadTithe.closest("label"), TAG_SETTLEMENT_TOOLTIPS.payRoadTithe);
@@ -10159,6 +10226,32 @@ function applyTagSettlementTooltips() {
   setTooltip(tagClueCharacter, TAG_SETTLEMENT_TOOLTIPS.clueCharacter);
   setTooltip(tagClueConsequence, TAG_SETTLEMENT_TOOLTIPS.clueConsequence);
   setButtonTooltip(tagLookForClue, TAG_SETTLEMENT_TOOLTIPS.lookForClue);
+  setTooltip(tagStreetwiseAction, TAG_SETTLEMENT_TOOLTIPS.streetwiseAction);
+  setTooltip(tagStreetwiseTarget, TAG_SETTLEMENT_TOOLTIPS.streetwiseTarget);
+  setTooltip(tagStreetwiseTargetName, TAG_SETTLEMENT_TOOLTIPS.streetwiseTargetName);
+  setButtonTooltip(tagRunStreetwise, TAG_SETTLEMENT_TOOLTIPS.runStreetwise);
+  setTooltip(tagStorageCharacter, TAG_SETTLEMENT_TOOLTIPS.storageCharacter);
+  setTooltip(tagStorageKind, TAG_SETTLEMENT_TOOLTIPS.storageKind);
+  setTooltip(tagStorageGold, TAG_SETTLEMENT_TOOLTIPS.storageGold);
+  setTooltip(tagStorageItem, TAG_SETTLEMENT_TOOLTIPS.storageItem);
+  setTooltip(tagStorageQuantity, TAG_SETTLEMENT_TOOLTIPS.storageQuantity);
+  setButtonTooltip(tagStoreTreasure, TAG_SETTLEMENT_TOOLTIPS.storeTreasure);
+  setButtonTooltip(tagWithdrawStorage, TAG_SETTLEMENT_TOOLTIPS.withdrawStorage);
+  setTooltip(tagPurchaseCharacter, TAG_SETTLEMENT_TOOLTIPS.purchaseCharacter);
+  setTooltip(tagPurchaseService, TAG_SETTLEMENT_TOOLTIPS.purchaseService);
+  setTooltip(tagPurchaseQuantity, TAG_SETTLEMENT_TOOLTIPS.purchaseQuantity);
+  setButtonTooltip(tagPurchaseServiceButton, TAG_SETTLEMENT_TOOLTIPS.purchaseServiceButton);
+  setTooltip(tagGamblingStake, TAG_SETTLEMENT_TOOLTIPS.gamblingStake);
+  setButtonTooltip(tagRollGambling, TAG_SETTLEMENT_TOOLTIPS.rollGambling);
+  setTooltip(tagLockerCharacter, TAG_SETTLEMENT_TOOLTIPS.lockerCharacter);
+  setTooltip(tagLockerKind, TAG_SETTLEMENT_TOOLTIPS.lockerKind);
+  setTooltip(tagLockerContents, TAG_SETTLEMENT_TOOLTIPS.lockerContents);
+  setTooltip(tagLockerGold, TAG_SETTLEMENT_TOOLTIPS.lockerGold);
+  setButtonTooltip(tagCreateLocker, TAG_SETTLEMENT_TOOLTIPS.createLocker);
+  setTooltip(tagLockerSelect, TAG_SETTLEMENT_TOOLTIPS.lockerSelect);
+  setButtonTooltip(tagSummonLocker, TAG_SETTLEMENT_TOOLTIPS.summonLocker);
+  if (tagMapCartographer?.closest("label")) setTooltip(tagMapCartographer.closest("label"), TAG_SETTLEMENT_TOOLTIPS.mapCartographer);
+  setButtonTooltip(tagFollowMap, TAG_SETTLEMENT_TOOLTIPS.followMap);
   setTooltip(tagMoneylenderDebt, TAG_SETTLEMENT_TOOLTIPS.moneylenderDebt);
   setButtonTooltip(tagRefreshServices, TAG_SETTLEMENT_TOOLTIPS.services);
   setTooltip(tagSettlementServices, TAG_SETTLEMENT_TOOLTIPS.services);
@@ -11099,8 +11192,11 @@ function renderTagCampaignSettlementPanel(campaign = state.campaign) {
   if (tagSettlementName) tagSettlementName.value = campaign.settlement_name || "Home Settlement";
   if (tagSettlementSize) tagSettlementSize.value = String(campaign.settlement_size ?? 0);
   if (tagSettlementNotes) tagSettlementNotes.value = campaign.settlement_notes || "";
+  if (tagTroupeName) tagTroupeName.value = campaign.tag_troupe_name || "Adventuring Troupe";
+  if (tagGuildMember) tagGuildMember.checked = Boolean(campaign.tag_guild_member);
+  if (tagGuildCoffers) tagGuildCoffers.value = String(campaign.tag_guild_coffers_gp ?? 0);
   if (tagPayRoadTithe) tagPayRoadTithe.disabled = tagTravelMode?.value !== "hex";
-  renderTagClueCharacterOptions();
+  renderTagCharacterOptions(campaign);
   const latestAvailability = Array.isArray(campaign.tag_availability_checks)
     ? campaign.tag_availability_checks[campaign.tag_availability_checks.length - 1]
     : null;
@@ -11110,6 +11206,7 @@ function renderTagCampaignSettlementPanel(campaign = state.campaign) {
   if (tagSettlementResult) {
     const parts = [
       `${campaign.settlement_name || "Home Settlement"} size ${formatSigned(campaign.settlement_size ?? 0)}.`,
+      `${campaign.tag_troupe_name || "Adventuring Troupe"} storage: ${campaign.tag_storage_gold_gp || 0} gp, ${campaign.tag_platinum_pieces || 0} PP, ${(campaign.tag_magic_lockers || []).length} locker(s).`,
     ];
     if (latestAvailability) parts.push(latestAvailability.result_text);
     if (latestDowntime) parts.push(latestDowntime.result_text);
@@ -11119,18 +11216,58 @@ function renderTagCampaignSettlementPanel(campaign = state.campaign) {
   refreshTagSettlementServices({ silent: true }).catch(() => {});
 }
 
-function renderTagClueCharacterOptions() {
-  if (!tagClueCharacter) return;
-  const current = tagClueCharacter.value;
-  tagClueCharacter.replaceChildren();
-  const roster = Array.isArray(state.characters) ? state.characters : [];
+function fillTagCharacterSelect(select, roster, currentValue) {
+  if (!select) return;
+  select.replaceChildren();
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Choose character";
+  select.appendChild(blank);
   for (const character of roster) {
     const option = document.createElement("option");
     option.value = character.id;
-    option.textContent = `${character.name} (${character.class_name}, L${character.level})`;
-    tagClueCharacter.appendChild(option);
+    option.textContent = `${character.name} (${character.class_name}, L${character.level}, ${character.gold || 0}gp)`;
+    select.appendChild(option);
   }
-  if (current) setSelectValueIfOptionExists(tagClueCharacter, current);
+  if (currentValue) setSelectValueIfOptionExists(select, currentValue);
+}
+
+function renderTagCharacterOptions(campaign = state.campaign) {
+  const roster = Array.isArray(state.characters) ? state.characters : [];
+  fillTagCharacterSelect(tagClueCharacter, roster, tagClueCharacter?.value);
+  fillTagCharacterSelect(tagStorageCharacter, roster, tagStorageCharacter?.value);
+  fillTagCharacterSelect(tagPurchaseCharacter, roster, tagPurchaseCharacter?.value);
+  fillTagCharacterSelect(tagLockerCharacter, roster, tagLockerCharacter?.value);
+  if (tagTroupeActive) {
+    const selected = new Set(campaign?.tag_troupe_active_character_ids || []);
+    tagTroupeActive.replaceChildren();
+    for (const character of roster) {
+      const option = document.createElement("option");
+      option.value = character.id;
+      option.textContent = `${character.name} (${character.class_name}, L${character.level})`;
+      option.selected = selected.has(character.id);
+      tagTroupeActive.appendChild(option);
+    }
+  }
+  if (tagLockerSelect) {
+    const current = tagLockerSelect.value;
+    tagLockerSelect.replaceChildren();
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "Choose locker";
+    tagLockerSelect.appendChild(blank);
+    for (const locker of campaign?.tag_magic_lockers || []) {
+      const option = document.createElement("option");
+      option.value = locker.id;
+      option.textContent = `${locker.owner_name}: ${locker.contents}${locker.mishap_locked ? " (mishap)" : ""}`;
+      tagLockerSelect.appendChild(option);
+    }
+    if (current) setSelectValueIfOptionExists(tagLockerSelect, current);
+  }
+}
+
+function renderTagClueCharacterOptions() {
+  renderTagCharacterOptions();
 }
 
 function renderTagSettlementLog(campaign) {
@@ -11142,8 +11279,8 @@ function renderTagSettlementLog(campaign) {
       hint: "TAG availability history: d6 plus settlement size against item difficulty.",
     })),
     ...(campaign.tag_downtime_log || []).slice(-3).map((entry) => ({
-      text: `Streetwise: ${entry.character_name || "Character"} paid ${entry.cost_gp} gp, rolled ${entry.roll} ${formatSigned(entry.modifier)} = ${entry.total}. ${entry.result_text}`,
-      hint: "TAG Streetwise history: d6 gp bribe, then Streetwise Save vs L6.",
+      text: formatTagDowntimeEntry(entry),
+      hint: "TAG downtime history: settlement services, Streetwise actions, storage, maps, and magic lockers.",
     })),
     ...(campaign.tag_travel_log || []).slice(-3).map((entry) => ({
       text: `Travel: ${entry.result_text}`,
@@ -11155,6 +11292,18 @@ function renderTagSettlementLog(campaign) {
     setTooltip(line, entry.hint);
     tagSettlementLog.appendChild(line);
   }
+}
+
+function formatTagDowntimeEntry(entry) {
+  const label = String(entry.action || "downtime").replaceAll("_", " ");
+  const pieces = [`TAG ${label}:`];
+  if (entry.character_name) pieces.push(entry.character_name);
+  if (entry.cost_gp) pieces.push(`paid ${entry.cost_gp} gp`);
+  if (entry.roll !== null && entry.roll !== undefined) {
+    pieces.push(`rolled ${entry.roll} ${formatSigned(entry.modifier || 0)} = ${entry.total ?? entry.roll}`);
+  }
+  pieces.push(entry.result_text || "");
+  return pieces.join(" ").replace(/\s+/g, " ").trim();
 }
 
 function renderTagSettlementServices(services = []) {
@@ -11348,6 +11497,141 @@ async function runTagLookForClue() {
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG Streetwise attempt resolved.");
+}
+
+async function saveTagTroupe() {
+  const selectedIds = Array.from(tagTroupeActive?.selectedOptions || []).map((option) => option.value).filter(Boolean);
+  const result = await api("/api/campaign/tag/troupe", {
+    method: "POST",
+    body: JSON.stringify({
+      troupe_name: tagTroupeName?.value || "Adventuring Troupe",
+      active_character_ids: selectedIds,
+      guild_member: Boolean(tagGuildMember?.checked),
+      guild_coffers_gp: Number(tagGuildCoffers?.value || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus("TAG troupe saved.");
+}
+
+async function storeTagTreasure() {
+  if (!tagStorageCharacter?.value) throw new Error("Choose a character for TAG storage.");
+  const result = await api("/api/campaign/tag/store-treasure", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagStorageCharacter.value,
+      storage: tagStorageKind?.value || "trove",
+      gold_gp: Number(tagStorageGold?.value || 0),
+      item_name: tagStorageItem?.value || "",
+      quantity: Number(tagStorageQuantity?.value || 1),
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG treasure stored.");
+}
+
+async function withdrawTagStorage() {
+  if (!tagStorageCharacter?.value) throw new Error("Choose a character for TAG storage withdrawal.");
+  const result = await api("/api/campaign/tag/withdraw-stored-gold", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagStorageCharacter.value,
+      gold_gp: Number(tagStorageGold?.value || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG stored gold withdrawn.");
+}
+
+async function purchaseTagService() {
+  if (!tagPurchaseCharacter?.value) throw new Error("Choose a buyer for the TAG purchase.");
+  const result = await api("/api/campaign/tag/purchase-service", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagPurchaseCharacter.value,
+      service_key: tagPurchaseService?.value || "",
+      quantity: Number(tagPurchaseQuantity?.value || 1),
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG purchase resolved.");
+}
+
+async function rollTagGambling() {
+  if (!tagPurchaseCharacter?.value) throw new Error("Choose a gambler in the Buyer field.");
+  const result = await api("/api/campaign/tag/gambling-house", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagPurchaseCharacter.value,
+      stake_gp: Number(tagGamblingStake?.value || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG gambling resolved.");
+}
+
+async function createTagMagicLocker() {
+  if (!tagLockerCharacter?.value) throw new Error("Choose a magic locker owner.");
+  const result = await api("/api/campaign/tag/magic-locker", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagLockerCharacter.value,
+      kind: tagLockerKind?.value || "item",
+      contents: tagLockerContents?.value || "",
+      gold_gp: Number(tagLockerGold?.value || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG magic locker created.");
+}
+
+async function summonTagMagicLocker() {
+  if (!tagLockerSelect?.value) throw new Error("Choose a TAG magic locker to summon.");
+  const result = await api("/api/campaign/tag/magic-locker-summon", {
+    method: "POST",
+    body: JSON.stringify({ locker_id: tagLockerSelect.value }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG magic locker summon rolled.");
+}
+
+async function runTagStreetwiseAction() {
+  if (!tagClueCharacter?.value) throw new Error("Choose a character for the TAG Streetwise action.");
+  const result = await api("/api/campaign/tag/streetwise-action", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagClueCharacter.value,
+      action: tagStreetwiseAction?.value || "listen_rumors",
+      target_level: Number(tagStreetwiseTarget?.value || 6),
+      target_name: tagStreetwiseTargetName?.value || "",
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG Streetwise action resolved.");
+}
+
+async function followTagTreasureMap() {
+  const result = await api("/api/campaign/tag/follow-treasure-map", {
+    method: "POST",
+    body: JSON.stringify({ use_guild_cartographer: Boolean(tagMapCartographer?.checked) }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG treasure map followed.");
 }
 
 function isForsakenDepthsRulesetSelected() {
@@ -26988,6 +27272,33 @@ tagCheckAvailability?.addEventListener("click", () => {
 });
 tagLookForClue?.addEventListener("click", () => {
   runTagLookForClue().catch(handleError);
+});
+tagSaveTroupe?.addEventListener("click", () => {
+  saveTagTroupe().catch(handleError);
+});
+tagStoreTreasure?.addEventListener("click", () => {
+  storeTagTreasure().catch(handleError);
+});
+tagWithdrawStorage?.addEventListener("click", () => {
+  withdrawTagStorage().catch(handleError);
+});
+tagPurchaseServiceButton?.addEventListener("click", () => {
+  purchaseTagService().catch(handleError);
+});
+tagRollGambling?.addEventListener("click", () => {
+  rollTagGambling().catch(handleError);
+});
+tagCreateLocker?.addEventListener("click", () => {
+  createTagMagicLocker().catch(handleError);
+});
+tagSummonLocker?.addEventListener("click", () => {
+  summonTagMagicLocker().catch(handleError);
+});
+tagRunStreetwise?.addEventListener("click", () => {
+  runTagStreetwiseAction().catch(handleError);
+});
+tagFollowMap?.addEventListener("click", () => {
+  followTagTreasureMap().catch(handleError);
 });
 startCampedOutside?.addEventListener("change", () => {
   writeStartSetupPrefs();

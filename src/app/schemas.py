@@ -639,9 +639,41 @@ class TagTravelLogEntry(BaseModel):
     created_at: str
 
 
+class TagStoredItemState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    owner_character_id: str | None = None
+    owner_name: str | None = None
+    item_name: str
+    quantity: int = Field(default=1, ge=1)
+    storage: Literal["trove", "bank", "magic_locker"] = "trove"
+    notes: str = ""
+    created_at: str
+
+
+class TagMagicLockerState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    owner_character_id: str
+    owner_name: str
+    contents: str
+    kind: Literal["item", "gold"] = "item"
+    gold_gp: int = Field(default=0, ge=0, le=5000)
+    mishap_locked: bool = False
+    created_at: str
+
+
 class CampaignState(BaseModel):
     id: str = "default"
     tag_banking_enabled: bool = False
+    tag_troupe_name: str = "Adventuring Troupe"
+    tag_troupe_active_character_ids: list[str] = Field(default_factory=list)
+    tag_guild_member: bool = False
+    tag_guild_coffers_gp: int = Field(default=0, ge=0)
+    tag_storage_gold_gp: int = Field(default=0, ge=0)
+    tag_platinum_pieces: int = Field(default=0, ge=0)
+    tag_map_bonus: int = Field(default=0, ge=0)
+    tag_look_tough_character_ids: list[str] = Field(default_factory=list)
+    tag_stored_items: list[TagStoredItemState] = Field(default_factory=list)
+    tag_magic_lockers: list[TagMagicLockerState] = Field(default_factory=list)
     settlement_name: str = "Home Settlement"
     settlement_size: int = Field(default=0, ge=-3, le=3)
     settlement_notes: str = ""

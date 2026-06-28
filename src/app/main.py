@@ -576,6 +576,159 @@ async def campaign_tag_look_for_clues(payload: dict[str, Any]) -> dict[str, Any]
     return {"campaign": campaign, "character": character, "entry": entry}
 
 
+@app.post("/api/campaign/tag/troupe")
+async def campaign_tag_troupe(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, save_campaign, update_troupe
+
+    raw_ids = payload.get("active_character_ids")
+    active_ids = raw_ids if isinstance(raw_ids, list) else []
+    campaign = load_campaign(store)
+    update_troupe(
+        campaign,
+        troupe_name=str(payload.get("troupe_name") or ""),
+        active_character_ids=[str(character_id) for character_id in active_ids],
+        guild_member=_parse_bool(payload.get("guild_member")),
+        guild_coffers_gp=int(payload.get("guild_coffers_gp") or 0),
+    )
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign}
+
+
+@app.post("/api/campaign/tag/store-treasure")
+async def campaign_tag_store_treasure(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, save_campaign, store_tag_treasure
+
+    character_id = str(payload.get("character_id") or "").strip()
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    campaign = load_campaign(store)
+    entry = store_tag_treasure(
+        campaign,
+        character,
+        storage=str(payload.get("storage") or "trove"),
+        gold_gp=int(payload.get("gold_gp") or 0),
+        item_name=str(payload.get("item_name") or ""),
+        quantity=int(payload.get("quantity") or 1),
+        notes=str(payload.get("notes") or ""),
+    )
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/withdraw-stored-gold")
+async def campaign_tag_withdraw_stored_gold(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, save_campaign, withdraw_tag_stored_gold
+
+    character_id = str(payload.get("character_id") or "").strip()
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    campaign = load_campaign(store)
+    entry = withdraw_tag_stored_gold(campaign, character, gold_gp=int(payload.get("gold_gp") or 0))
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/magic-locker")
+async def campaign_tag_magic_locker(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import create_magic_locker, load_campaign, save_campaign
+
+    character_id = str(payload.get("character_id") or "").strip()
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    campaign = load_campaign(store)
+    entry = create_magic_locker(
+        campaign,
+        character,
+        contents=str(payload.get("contents") or ""),
+        kind=str(payload.get("kind") or "item"),
+        gold_gp=int(payload.get("gold_gp") or 0),
+    )
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/magic-locker-summon")
+async def campaign_tag_magic_locker_summon(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, save_campaign, summon_magic_locker
+
+    campaign = load_campaign(store)
+    entry = summon_magic_locker(campaign, locker_id=str(payload.get("locker_id") or ""))
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
+@app.post("/api/campaign/tag/purchase-service")
+async def campaign_tag_purchase_service(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, purchase_tag_service, save_campaign
+
+    character_id = str(payload.get("character_id") or "").strip()
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    campaign = load_campaign(store)
+    entry = purchase_tag_service(
+        campaign,
+        character,
+        service_key=str(payload.get("service_key") or ""),
+        quantity=int(payload.get("quantity") or 1),
+    )
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/gambling-house")
+async def campaign_tag_gambling_house(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, roll_gambling_house, save_campaign
+
+    character_id = str(payload.get("character_id") or "").strip()
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    campaign = load_campaign(store)
+    entry = roll_gambling_house(campaign, character, stake_gp=int(payload.get("stake_gp") or 0))
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/streetwise-action")
+async def campaign_tag_streetwise_action(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, run_streetwise_action, save_campaign
+
+    character_id = str(payload.get("character_id") or "").strip()
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    campaign = load_campaign(store)
+    entry = run_streetwise_action(
+        campaign,
+        character,
+        action=str(payload.get("action") or "listen_rumors"),
+        target_level=int(payload.get("target_level") or 6),
+        target_name=str(payload.get("target_name") or ""),
+    )
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/follow-treasure-map")
+async def campaign_tag_follow_treasure_map(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import follow_treasure_map, load_campaign, save_campaign
+
+    campaign = load_campaign(store)
+    entry = follow_treasure_map(campaign, use_guild_cartographer=_parse_bool(payload.get("use_guild_cartographer")))
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
 @app.get("/api/rules/tiles")
 async def list_tiles(catalog: str = "ee") -> list[TileDefinition]:
     try:
