@@ -8755,6 +8755,7 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
 function appendMemberExplorationActions(item, session, member, tile = null) {
   if (session.mode !== "exploration" || member.current_life <= 0) return;
   const inExploration = session.mode === "exploration" && member.current_life > 0;
+  const immediateLocked = surpriseReactionLocked(session);
   syncAllySpellTargets(session);
   const actions = node("div", "item-actions member-sheet-actions");
   let hasActions = appendMemberSecretActions(actions, session, member, tile || currentTile(session), []);

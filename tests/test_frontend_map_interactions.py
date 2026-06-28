@@ -1374,6 +1374,7 @@ def test_append_member_exploration_actions_defines_in_exploration() -> None:
     """Exploration item buttons must not reference an undefined inExploration flag."""
     body = _function_body("appendMemberExplorationActions", APP_JS)
     assert "const inExploration = session.mode === \"exploration\" && member.current_life > 0;" in body
+    assert "const immediateLocked = surpriseReactionLocked(session);" in body
 
 
 def test_fiendish_foes_and_poison_expert_setup_tooltips() -> None:
