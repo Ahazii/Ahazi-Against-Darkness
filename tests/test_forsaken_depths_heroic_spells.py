@@ -7,6 +7,8 @@ from app.engine.forsaken_depths_heroic_spells import (
     heroic_spell_name_for_roll,
     try_resolve_fd_heroic_spell,
 )
+from app.engine.combat_modifiers import spellcasting_modifier
+from app.engine.fd_teleport_enemy import tick_teleport_enemy_returns
 from app.engine.spells import normalize_spell_name
 from app.schemas import EnemyState, PartyMemberState, SessionState
 
@@ -136,6 +138,36 @@ def test_fire_of_truth_rejects_unliving(monkeypatch) -> None:
     assert foe.life == 8
 
 
+def test_fire_of_truth_chaos_bonus_applies_to_hit_roll(monkeypatch) -> None:
+    caster = _caster(spells=["Fire of Truth"])
+    foe = _foe(name="Chaos Cultist", tags=["chaos"], life=2, max_life=2, level=8)
+    captured: dict[str, int | str] = {}
+
+    def fake_resolve_spell_effect(*args, **kwargs):
+        captured["label"] = kwargs["label"]
+        captured["modifier"] = kwargs["modifier_override"]
+        return False, ["miss"], 0, []
+
+    monkeypatch.setattr("app.engine.spells.resolve_spell_effect", fake_resolve_spell_effect)
+    log: list[str] = []
+    outcome = try_resolve_fd_heroic_spell(
+        "fire_of_truth",
+        "Fire of Truth",
+        caster,
+        [caster],
+        [foe],
+        log,
+        target_foe_id="foe-1",
+        show_rolls=False,
+    )
+
+    assert outcome is not None
+    assert captured["label"] == "Fire of Truth"
+    assert captured["modifier"] == spellcasting_modifier(caster) + 1
+    assert "Fire of Truth gains +1 vs chaos creature Chaos Cultist (FD p.19)." in log
+    assert "Fire of Truth misses" in log[-1]
+
+
 def test_teleport_enemy_removes_foe_on_hit(monkeypatch) -> None:
     caster = _caster(spells=["Teleport Enemy"])
     foe = _foe(tags=[])
@@ -159,6 +191,142 @@ def test_teleport_enemy_removes_foe_on_hit(monkeypatch) -> None:
     assert outcome.spell_consumed is True
     assert foe.life == 0
     assert "fd_teleported_away" in foe.tags
+
+
+def test_teleport_enemy_tracks_room_by_room_return(monkeypatch) -> None:
+    caster = _caster(spells=["Teleport Enemy"])
+    foe = _foe(tags=[], life=3, max_life=3)
+    session = SessionState.model_validate(
+        {
+            "id": "s1",
+            "party_id": "p1",
+            "adventure_id": "random",
+            "adventure_type": "random",
+            "party": [caster.model_dump(mode="json")],
+            "map_state": {
+                "width": 4,
+                "height": 1,
+                "current_tile_id": "t0",
+                "tiles": [
+                    {
+                        "id": "t0",
+                        "x": 0,
+                        "y": 0,
+                        "tile_key": "room",
+                        "tile_type": "room",
+                        "title": "Origin",
+                        "description": "",
+                        "exits": [
+                            {
+                                "id": "e0",
+                                "direction": "east",
+                                "kind": "passage",
+                                "status": "open",
+                                "door_open": True,
+                                "destination_tile_id": "t1",
+                            }
+                        ],
+                    },
+                    {
+                        "id": "t1",
+                        "x": 1,
+                        "y": 0,
+                        "tile_key": "room",
+                        "tile_type": "room",
+                        "title": "Visited One",
+                        "description": "",
+                        "exits": [
+                            {
+                                "id": "e1",
+                                "direction": "west",
+                                "kind": "passage",
+                                "status": "open",
+                                "door_open": True,
+                                "destination_tile_id": "t0",
+                            }
+                        ],
+                    },
+                ],
+            },
+            "visited_tile_ids": ["t0", "t1"],
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        }
+    )
+    monkeypatch.setattr(
+        "app.engine.forsaken_depths_heroic_spells.spell_hits",
+        lambda *args, **kwargs: (True, ["hit"], 10, []),
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_heroic_spells.roll_d6", lambda: 1)
+    log: list[str] = []
+    outcome = try_resolve_fd_heroic_spell(
+        "teleport_enemy",
+        "Teleport Enemy",
+        caster,
+        [caster],
+        [foe],
+        log,
+        target_foe_id="foe-1",
+        show_rolls=False,
+        session=session,
+    )
+    assert outcome is not None
+    assert foe.life == 0
+    assert len(session.fd_teleport_enemy_returns) == 1
+    assert session.fd_teleport_enemy_returns[0].turns_remaining == 1
+
+    tick_teleport_enemy_returns(session, reason="test turn")
+    origin = next(tile for tile in session.map_state.tiles if tile.id == "t0")
+    assert not session.fd_teleport_enemy_returns
+    assert any(enemy.id == "foe-1" and enemy.life == 3 for enemy in origin.enemies)
+
+
+def test_mass_blessing_removes_selected_hireling_status() -> None:
+    caster = _caster(
+        class_id="cleric",
+        class_name="Cleric",
+        spells=["Mass Blessing"],
+        current_life=14,
+    )
+    session = SessionState.model_validate(
+        {
+            "id": "s1",
+            "party_id": "p1",
+            "adventure_id": "random",
+            "adventure_type": "random",
+            "party": [caster.model_dump(mode="json")],
+            "map_state": {"width": 1, "height": 1, "tiles": [], "current_tile_id": "t0"},
+            "hirelings": [
+                {
+                    "id": "h1",
+                    "retainer_type": "bodyguard",
+                    "name": "Dora Shield",
+                    "life": 2,
+                    "max_life": 2,
+                    "marching_order": 5,
+                    "statuses": ["Cursed", "Lantern lit"],
+                }
+            ],
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        }
+    )
+    log: list[str] = []
+    outcome = try_resolve_fd_heroic_spell(
+        "mass_blessing",
+        "Mass Blessing",
+        caster,
+        [caster],
+        [],
+        log,
+        session=session,
+        mass_blessing_target_ids=["hero:wiz-1", "hireling:h1"],
+        mass_blessing_condition_choices={"hireling:h1": ["status:Cursed"]},
+    )
+    assert outcome is not None
+    assert outcome.spell_consumed is True
+    assert caster.current_life == 12
+    assert session.hirelings[0].statuses == ["Lantern lit"]
 
 
 def test_eldritch_fist_hold_and_clear() -> None:

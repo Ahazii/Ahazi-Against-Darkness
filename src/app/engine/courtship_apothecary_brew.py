@@ -86,7 +86,11 @@ def apothecary_brew_context_label(session: SessionState) -> str:
 
 def tag_settlement_apothecary_available(session: SessionState) -> bool:
     """TAG settlement apothecary when guild banking campaign mode is active."""
-    return bool(session.tag_banking_enabled)
+    if not session.tag_banking_enabled:
+        return False
+    if session.mode != "exploration":
+        return False
+    return True
 
 
 def try_outdoor_ingredient_forage(
@@ -309,15 +313,23 @@ def brew_apothecary_recipe(
     recipe_key: str,
     *,
     show_rolls: bool = True,
+    tag_settlement: bool = False,
 ) -> bool:
-    if not apothecary_brew_available(session):
+    if tag_settlement:
+        available = tag_settlement_apothecary_available(session)
+        context = "during TAG settlement downtime"
+    else:
+        available = apothecary_brew_available(session)
+        context = apothecary_brew_context_label(session)
+    if not available:
         session.log.append(
-            f"Apothecary brewing is only available {apothecary_brew_context_label(session)} (TCOTFD p.8)."
+            f"Apothecary brewing is only available {context} (TCOTFD p.8; TAG settlement downtime)."
         )
         return False
     brewer = apothecary_brewer(session)
     if brewer is None:
-        session.log.append("A Wandering Alchemist with mortar and pestle must brew (TCOTFD p.7-9).")
+        context_note = " during TAG settlement downtime" if tag_settlement else ""
+        session.log.append(f"A Wandering Alchemist with mortar and pestle must brew{context_note} (TCOTFD p.7-9).")
         return False
     recipe = recipe_by_key(recipe_key)
     if recipe is None:
@@ -344,7 +356,12 @@ def brew_apothecary_recipe(
         )
     session.log.extend(log)
     if not ok:
-        if session.courtship_demesne_active:
+        if tag_settlement:
+            session.log.append(
+                f"The settlement brew fails — {brewer.name} may try another downtime brew when materials remain "
+                "(TCOTFD p.8; TAG settlement)."
+            )
+        elif session.courtship_demesne_active:
             session.courtship_apothecary_brew_locked = True
             session.log.append(
                 f"The brew fails — {brewer.name} cannot try again until after another Demesne encounter (TCOTFD p.8)."
@@ -372,7 +389,7 @@ def unlock_apothecary_brew_after_encounter(session: SessionState) -> None:
 
 
 def list_brewable_recipe_keys(session: SessionState) -> list[str]:
-    if not apothecary_brew_available(session):
+    if not apothecary_brew_available(session) and not tag_settlement_apothecary_available(session):
         return []
     living = [member for member in session.party if member.current_life > 0]
     brewer = apothecary_brewer(session)
@@ -404,6 +421,19 @@ def resolve_apothecary_brew_choice(
     session.courtship_pending_choice = None
     session.courtship_pending_choice_label = None
     return brew_apothecary_recipe(engine, session, choice, show_rolls=show_rolls)
+
+
+def resolve_tag_settlement_apothecary_brew(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    choice: str | None,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if choice is None:
+        session.log.append("Choose an Apothecary recipe for TAG settlement downtime.")
+        return False
+    return brew_apothecary_recipe(engine, session, choice, show_rolls=show_rolls, tag_settlement=True)
 
 
 def use_apothecary_brew(

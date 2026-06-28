@@ -127,6 +127,9 @@ def test_abyss_p15_p25_expert_skill_catalog_has_pdf_rows_and_pages() -> None:
         ("Vampire Hunter", 22),
         ("Withstand Pain", 22),
         ("Whirlwind of Steel", 22),
+        ("Surgeon (Hireling Training)", "TCOTFD p.8-9"),
+        ("Herbalist (Hireling Training)", "TCOTFD p.8-9"),
+        ("Poison Expert (Hireling Training)", "TCOTFD p.8-9"),
     ]
     assert [(row["name"], row["source_page"]) for row in catalog["skills"]] == expected_skills
     assert [(row["name"], row["source_page"]) for row in catalog["expert_spells"]] == [

@@ -223,7 +223,7 @@ def test_fungal_roll_5_room_offers_secret_passage_placement(monkeypatch) -> None
     )
     monkeypatch.setattr("app.engine.random_dungeon.roll_2d6", lambda: 5)
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
-    monkeypatch.setattr(RandomDungeonEngine, "_roll_generated_tile_key", lambda self: "24")
+    monkeypatch.setattr(RandomDungeonEngine, "_roll_generated_tile_key", lambda self, session: "24")
     eng._explore(session, exit_id=exit_state.id, show_rolls=False, explain_math=False)
     fungal_room = next(tile for tile in session.map_state.tiles if tile.id != origin.id)
     assert fungal_room.tile_type == "room"

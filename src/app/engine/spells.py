@@ -268,6 +268,8 @@ def resolve_spell_cast(
     life_transfer_amount: int | None = None,
     teleport_tile_id: str | None = None,
     teleport_character_ids: list[str] | None = None,
+    mass_blessing_target_ids: list[str] | None = None,
+    mass_blessing_condition_choices: dict[str, list[str]] | None = None,
     final_boss: bool = False,
     session: SessionState | None = None,
     spellcasting_bonus: int = 0,
@@ -299,6 +301,8 @@ def resolve_spell_cast(
             target_character_id=target_character_id,
             target_foe_id=target_foe_id,
             spell_target_mode=spell_target_mode,
+            mass_blessing_target_ids=mass_blessing_target_ids,
+            mass_blessing_condition_choices=mass_blessing_condition_choices,
             door_type=door_type,
             show_rolls=show_rolls,
             final_boss=final_boss,
@@ -583,9 +587,11 @@ def _cast_fireball(
     target_foe_id: str | None = None,
     spell_target_mode: str | None = None,
     session: SessionState | None = None,
+    label: str = "Fireball",
+    modifier_bonus: int = 0,
 ) -> SpellOutcome:
     if not enemies:
-        log.append("There are no targets for Fireball.")
+        log.append(f"There are no targets for {label}.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
     target, use_mass_kill = _resolve_fireball_target(
         enemies,
@@ -596,23 +602,23 @@ def _cast_fireball(
     if target is None or use_mass_kill is None:
         return SpellOutcome(log, enemies, party, spell_consumed=False)
     if "dragon" in target.tags and "undead" not in target.tags:
-        log.append("Fireball has no effect on this dragon.")
+        log.append(f"{label} has no effect on this dragon.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
     bonus = fireball_modifier_bonus(target)
-    modifier = spellcasting_modifier(caster) + bonus + eldritch_aim_bonus(caster)
+    modifier = spellcasting_modifier(caster) + bonus + modifier_bonus + eldritch_aim_bonus(caster)
     if bonus:
-        log.append(f"Fireball gains +{bonus} vs {target.name}.")
+        log.append(f"{label} gains +{bonus} vs {target.name}.")
     hit, hit_log, final_total, _ = resolve_spell_effect(
         caster,
         target,
         show_rolls=show_rolls,
-        label="Fireball",
+        label=label,
         modifier_override=modifier,
         session=session,
     )
     log.extend(hit_log)
     if not hit:
-        log.append("Fireball misses — the once-per-adventure slot is still expended.")
+        log.append(f"{label} misses — the once-per-adventure slot is still expended.")
         return SpellOutcome(log, enemies, party)
     if use_mass_kill:
         capacity = max(1, final_total - target.level)
@@ -625,10 +631,10 @@ def _cast_fireball(
                 enemy.life = 0
                 kill_capacity -= 1
                 slain += 1
-                log.append(f"Fireball slays {enemy.name}.")
+                log.append(f"{label} slays {enemy.name}.")
         remaining = sum(1 for enemy in enemies if enemy.life > 0)
         log.append(
-            f"Fireball kills up to {capacity} minion(s) at 1 Life; "
+            f"{label} kills up to {capacity} minion(s) at 1 Life; "
             f"{slain} slain{f'; {remaining} foe(s) remain' if remaining else ''}."
         )
     else:
@@ -643,7 +649,7 @@ def _cast_fireball(
             courtship_spell_party=party,
             courtship_spell_log=log,
         )
-        log.append(f"Fireball hits {target.name} for {total_damage} damage.")
+        log.append(f"{label} hits {target.name} for {total_damage} damage.")
         if apply_major_foe_level_drop(target):
             log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
         if target.life <= 0:

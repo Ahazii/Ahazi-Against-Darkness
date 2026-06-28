@@ -40,6 +40,8 @@ const state = {
   forsakenDepthsMapElements: [],
   forsakenDepthsRiversMapElements: [],
   allySpellTargets: {},
+  massBlessingTargets: {},
+  massBlessingConditions: {},
   spellLifeTransfer: {},
   teleportTileId: {},
   teleportAllies: {},
@@ -316,6 +318,7 @@ const partyState = document.getElementById("party-state");
 const partySheetsExpandBtn = document.getElementById("party-sheets-expand");
 const partySheetsCollapseBtn = document.getElementById("party-sheets-collapse");
 const campPanel = document.getElementById("camp-panel");
+const tagSettlementPanel = document.getElementById("tag-settlement-panel");
 const transferItemsSetupBtn = document.getElementById("transfer-items-setup");
 const bankSetupBtn = document.getElementById("bank-setup");
 const equipmentShopSetupBtn = document.getElementById("equipment-shop-setup");
@@ -2693,6 +2696,89 @@ function sessionDisplayTitle(session) {
   return `${partyNameById(session.party_id)} — ${session.adventure_id}`;
 }
 
+function massBlessingTargetId(target, kind) {
+  return `${kind}:${kind === "hireling" ? target.id : target.character_id}`;
+}
+
+function blessingRemovableConditions(target, kind, session = null) {
+  const rows = [];
+  for (const status of target.statuses || []) {
+    const lower = status.toLowerCase();
+    if (
+      lower === "cursed" ||
+      lower === "petrified" ||
+      lower === "slime disease" ||
+      lower.startsWith("cordyceps infected")
+    ) {
+      rows.push({
+        key: `status:${status}`,
+        label: status,
+        title: "Blessing-removable condition. Mass Blessing costs +1 Life for each condition the caster chooses to remove.",
+      });
+    }
+  }
+  if (kind === "hero" && (target.madness || 0) > 0) {
+    rows.push({
+      key: "madness",
+      label: "1 Madness",
+      title: "Blessing can heal 1 Madness. Mass Blessing costs +1 Life if this removal is selected.",
+    });
+  }
+  if (
+    kind === "hero" &&
+    (session?.cavern_contaminated_character_ids || []).includes(target.character_id)
+  ) {
+    rows.push({
+      key: "cavern_water",
+      label: "Contaminated water",
+      title: "Blessing can cleanse this cavern contamination. Mass Blessing costs +1 Life if selected.",
+    });
+  }
+  return rows;
+}
+
+function massBlessingSelectableTargets(session) {
+  const heroes = (session.party || [])
+    .filter((member) => member.current_life > 0)
+    .map((member) => ({ kind: "hero", id: massBlessingTargetId(member, "hero"), target: member }));
+  const hirelings = (session.hirelings || [])
+    .filter((hireling) => hireling.life > 0)
+    .map((hireling) => ({ kind: "hireling", id: massBlessingTargetId(hireling, "hireling"), target: hireling }));
+  return [...heroes, ...hirelings];
+}
+
+function syncMassBlessingSelections(session, casterId) {
+  const targets = massBlessingSelectableTargets(session);
+  const targetSet = new Set(targets.map((item) => item.id));
+  const selected = new Set(state.massBlessingTargets[casterId] || targets.map((item) => item.id));
+  const nextTargets = targets.filter((item) => selected.has(item.id)).map((item) => item.id);
+  state.massBlessingTargets[casterId] = nextTargets.length ? nextTargets : targets.map((item) => item.id);
+  const choices = { ...(state.massBlessingConditions[casterId] || {}) };
+  for (const key of Object.keys(choices)) {
+    if (!targetSet.has(key)) delete choices[key];
+  }
+  for (const item of targets) {
+    const available = blessingRemovableConditions(item.target, item.kind, session).map((row) => row.key);
+    if (!choices[item.id]) choices[item.id] = available;
+    choices[item.id] = choices[item.id].filter((key) => available.includes(key));
+  }
+  state.massBlessingConditions[casterId] = choices;
+}
+
+function massBlessingPayload(session, casterId) {
+  syncMassBlessingSelections(session, casterId);
+  const targetIds = state.massBlessingTargets[casterId] || [];
+  const choices = state.massBlessingConditions[casterId] || {};
+  const selectedChoices = {};
+  for (const targetId of targetIds) {
+    selectedChoices[targetId] = choices[targetId] || [];
+  }
+  return {
+    mass_blessing_target_ids: targetIds,
+    mass_blessing_condition_choices: selectedChoices,
+  };
+}
+
 function importedAdventureListDetail(session) {
   if (session?.adventure_type !== "imported") return null;
   const manifest = session.imported_manifest || {};
@@ -2778,6 +2864,9 @@ function spellCastPayload(casterId, spellName, extra = {}) {
     if (Array.isArray(selected) && selected.length) {
       payload.teleport_character_ids = selected;
     }
+  }
+  if (key === "mass_blessing" && session) {
+    Object.assign(payload, massBlessingPayload(session, casterId));
   }
   if (isFdLegendarySpell(spellName)) {
     const spellKey = normalizeSpellKey(spellName);
@@ -8012,15 +8101,32 @@ function spellRow(spellName) {
   return null;
 }
 
+const FD_HEROIC_SPELL_TOOLTIPS = {
+  boatmans_luck:
+    "Forsaken Depths Heroic spell (FD p.19): cast from an intact river boat to skip the first river hazard, make the boat fireproof on the River of Flame, and bank a +Tier melee bonus for the first river fight.",
+  eldritch_fist:
+    "Forsaken Depths Heroic spell (FD p.19): choose withdraw, strike, door, lift, or grab. Grab holds one foe and gives melee attacks +Tier until another spell is cast.",
+  mass_blessing:
+    "Forsaken Depths Heroic spell (FD p.19): Blessing for every living party member, companion, and hireling. The caster pays 1 Life per extra target or extra condition removed.",
+  fire_of_truth:
+    "Forsaken Depths Heroic spell (FD p.19): Fireball against living foes only; +1 on the spell roll versus chaos creatures. If the target dies, roll for insight: success grants 1 Clue, natural 1 triggers a wandering-monster check.",
+  teleport_enemy:
+    "Forsaken Depths Heroic spell (FD p.19): spell roll versus one foe's Level; on a hit, teleport it d6 visited rooms away and remove it from this fight.",
+  mass_invisibility:
+    "Forsaken Depths Heroic spell (FD p.19): hide the party from one eligible foe so they may withdraw unseen; a rogue can try to steal while invisible.",
+};
+
 function spellTooltip(spellName, session = null, member = null) {
   const row = spellRow(spellName);
   const parts = [];
-  if (row) {
+  const key = normalizeSpellKey(spellName);
+  if (FD_HEROIC_SPELL_TOOLTIPS[key]) {
+    parts.push(FD_HEROIC_SPELL_TOOLTIPS[key]);
+  } else if (row) {
     parts.push(`${row.spell}: ${row.result}`);
   } else {
     parts.push(`Cast ${spellName}. Once per adventure unless noted.`);
   }
-  const key = normalizeSpellKey(spellName);
   if (key === "fireball" && session && member) {
     const tile = currentTile(session);
     const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
@@ -8120,7 +8226,7 @@ function appendMassTeleportTargeting(container, session, member) {
 function appendSpellTargetingRows(container, session, member, livingFoes, extraSpells = []) {
   const spells = [...heroCombatSpells(session, member), ...extraSpells];
   if (!spells.length) return;
-  const foelessOk = new Set(["mass_teleport", "healing_surge", "lifeforce_control"]);
+  const foelessOk = new Set(["mass_teleport", "healing_surge", "lifeforce_control", "mass_blessing"]);
   const allNeedFoes = spells.every((spell) => !foelessOk.has(normalizeSpellKey(spell)));
   if (allNeedFoes && !livingFoes.length) return;
 
@@ -8232,12 +8338,81 @@ function appendSpellTargetingRows(container, session, member, livingFoes, extraS
   if (spells.some((spell) => normalizeSpellKey(spell) === "mass_teleport")) {
     appendMassTeleportTargeting(container, session, member);
   }
+  if (spells.some((spell) => normalizeSpellKey(spell) === "mass_blessing")) {
+    appendMassBlessingTargeting(container, session, member);
+  }
 
   for (const spell of spells) {
     if (isFdLegendarySpell(spell)) {
       appendFdLegendarySpellUi(container, session, member, spell, livingFoes);
     }
   }
+}
+
+function appendMassBlessingTargeting(container, session, member) {
+  syncMassBlessingSelections(session, member.character_id);
+  const targets = massBlessingSelectableTargets(session);
+  if (!targets.length) return;
+  const wrap = node("div", "mass-blessing-targets stack");
+  wrap.appendChild(node("div", "combat-section-label", "Mass Blessing"));
+  wrap.appendChild(
+    subline(
+      "Choose who receives the spell and which Blessing-removable conditions to clear. Cost: 1 Life per target beyond the first, +1 per condition removed."
+    )
+  );
+  const selectedTargets = new Set(state.massBlessingTargets[member.character_id] || []);
+  const conditionChoices = state.massBlessingConditions[member.character_id] || {};
+  for (const item of targets) {
+    const target = item.target;
+    const label = item.kind === "hireling"
+      ? `${target.name} (hireling, ${target.life}/${target.max_life} Life)`
+      : `${target.name} (${target.current_life}/${target.max_life} Life)`;
+    const row = node("div", "mass-blessing-row");
+    const targetLabel = document.createElement("label");
+    targetLabel.className = "inline-checkbox";
+    const targetBox = document.createElement("input");
+    targetBox.type = "checkbox";
+    targetBox.checked = selectedTargets.has(item.id);
+    setTooltip(
+      targetBox,
+      "Include this living hero, companion, animal companion, or hireling in Mass Blessing (FD p.19)."
+    );
+    targetBox.addEventListener("change", () => {
+      const next = new Set(state.massBlessingTargets[member.character_id] || []);
+      if (targetBox.checked) next.add(item.id);
+      else next.delete(item.id);
+      state.massBlessingTargets[member.character_id] = [...next];
+    });
+    targetLabel.appendChild(targetBox);
+    targetLabel.appendChild(document.createTextNode(` ${label}`));
+    row.appendChild(targetLabel);
+    const conditions = blessingRemovableConditions(target, item.kind, session);
+    if (conditions.length) {
+      const conditionWrap = node("div", "mass-blessing-conditions");
+      for (const condition of conditions) {
+        const condLabel = document.createElement("label");
+        condLabel.className = "inline-checkbox";
+        const condBox = document.createElement("input");
+        condBox.type = "checkbox";
+        condBox.checked = (conditionChoices[item.id] || []).includes(condition.key);
+        setTooltip(condBox, condition.title);
+        condBox.addEventListener("change", () => {
+          const choices = { ...(state.massBlessingConditions[member.character_id] || {}) };
+          const current = new Set(choices[item.id] || []);
+          if (condBox.checked) current.add(condition.key);
+          else current.delete(condition.key);
+          choices[item.id] = [...current];
+          state.massBlessingConditions[member.character_id] = choices;
+        });
+        condLabel.appendChild(condBox);
+        condLabel.appendChild(document.createTextNode(` ${condition.label}`));
+        conditionWrap.appendChild(condLabel);
+      }
+      row.appendChild(conditionWrap);
+    }
+    wrap.appendChild(row);
+  }
+  container.appendChild(wrap);
 }
 
 function appendSpellSubline(container, spells, session = null, member = null) {
@@ -10617,6 +10792,19 @@ function courtshipApothecaryBrewAvailable(session) {
   if (session.mode !== "exploration" || session.courtship_woo_active) return false;
   if (session.courtship_apothecary_brew_locked) return false;
   if (!session.courtship_demesne_active && !session.camped_outside) return false;
+  return (session.party || []).some((member) => {
+    if (member.current_life <= 0) return false;
+    const classId = String(member.class_id || "").toLowerCase();
+    if (classId !== "wandering_alchemist" && classId !== "wandering alchemist") return false;
+    return (member.inventory || []).some(
+      (item) => /mortar/i.test(item) && /pestle/i.test(item)
+    );
+  });
+}
+
+function tagSettlementApothecaryAvailable(session) {
+  if (!session?.tag_banking_enabled) return false;
+  if (session.mode !== "exploration") return false;
   return (session.party || []).some((member) => {
     if (member.current_life <= 0) return false;
     const classId = String(member.class_id || "").toLowerCase();
@@ -14398,6 +14586,7 @@ function renderSession() {
   cachedSessionRender("iconKey", iconKeyRenderSignature(), () => renderIconKey());
   safeSessionRender("mapExits", () => renderMapExitsOverlay(session));
   safeSessionRender("campPanel", () => renderCampPanel(session));
+  safeSessionRender("tagSettlementPanel", () => renderTagSettlementPanel(session));
   safeSessionRender("exitActions", () => renderExitActions(session));
   safeSessionRender("combatPanel", () => renderCombatPanel(session));
   safeSessionRender("partyState", () => renderPartyState(session));
@@ -16284,15 +16473,31 @@ function renderSpecialFeatureChoices(session) {
     return;
   }
   specialFeatureChoicesEl.appendChild(
-    node("span", "search-label", "Puzzle box — attempt or leave:")
+    node("span", "search-label", "Puzzle box — choose hero, then attempt or leave:")
   );
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  const select = document.createElement("select");
+  select.className = "search-select";
+  for (const member of living) {
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = member.name;
+    select.appendChild(option);
+  }
+  specialFeatureChoicesEl.appendChild(select);
   const attempt = document.createElement("button");
   attempt.type = "button";
   attempt.className = "secondary";
   attempt.textContent = "Attempt Box";
-  setButtonTooltip(attempt, "Roll the box Level on d6, then the first hero saves; failure costs 1 Life.");
+  setButtonTooltip(
+    attempt,
+    "Roll the box Level on d6, then the chosen hero saves (Wizard/Rogue +Level); failure costs 1 Life."
+  );
   attempt.addEventListener("click", () =>
-    advance("resolve_special_feature", { special_feature_choice: "attempt_puzzle_box" })
+    advance("resolve_special_feature", {
+      special_feature_choice: "attempt_puzzle_box",
+      target_character_id: select.value,
+    })
   );
   specialFeatureChoicesEl.appendChild(attempt);
   const leave = document.createElement("button");
@@ -21976,6 +22181,16 @@ function buildHirelingPartySheet(session, hireling, mode = "standalone") {
   if (hireling.cargo_items?.length) body.appendChild(subline(`Porter items: ${hireling.cargo_items.join(", ")}`));
   if (hireling.carried_gear) body.appendChild(subline(`Carrying: ${hireling.carried_gear}`));
   if (hireling.lantern_lit) body.appendChild(subline("Carrying the party lantern."));
+  if ((hireling.statuses || []).length) {
+    appendStatusChips(
+      body,
+      (hireling.statuses || []).map((status) => ({
+        label: status,
+        kind: /cursed|petrified|disease|cordyceps/i.test(status) ? "danger" : "buff",
+        title: statusChipTooltip(status),
+      }))
+    );
+  }
   appendHirelingAbilityButtons(body, session, hireling);
   details.appendChild(body);
   details.addEventListener("toggle", () => {
@@ -23030,6 +23245,49 @@ function renderCampPanel(session) {
 
   campPanel.appendChild(actions);
   refreshButtonTooltips(campPanel);
+}
+
+function renderTagSettlementPanel(session) {
+  if (!tagSettlementPanel) return;
+  tagSettlementPanel.replaceChildren();
+  const show = tagSettlementApothecaryAvailable(session);
+  tagSettlementPanel.classList.toggle("hidden", !show);
+  if (!show) return;
+  const brewer = (session.party || []).find((member) => {
+    const classId = String(member.class_id || "").toLowerCase();
+    return (
+      member.current_life > 0 &&
+      (classId === "wandering_alchemist" || classId === "wandering alchemist") &&
+      (member.inventory || []).some((item) => /mortar/i.test(item) && /pestle/i.test(item))
+    );
+  });
+  tagSettlementPanel.appendChild(node("h2", "", "TAG Settlement Apothecary"));
+  tagSettlementPanel.appendChild(
+    subline(
+      `${brewer?.name || "A Wandering Alchemist"} may brew Apothecary Cookbook recipes as town/village downtime. This is separate from camp outside the dungeon.`
+    )
+  );
+  const catalog = state.rulesTables?.courtship_apothecary_recipes_table || [];
+  const actions = node("div", "camp-panel-actions tag-settlement-recipes");
+  for (const recipe of catalog) {
+    const button = node("button", "secondary", `${recipe.name} (${recipe.cost_gp || 0}gp)`);
+    button.type = "button";
+    const difficulty = Number(recipe.difficulty || 0);
+    const rollHint = difficulty > 0 ? `d6+L vs ${difficulty}` : "automatic success";
+    setButtonTooltip(
+      button,
+      `${recipe.summary || recipe.item || recipe.name}. TAG settlement downtime brew; ${rollHint}. Requires the listed TCOTFD ingredients and material cost.`
+    );
+    button.addEventListener("click", () =>
+      advance("tag_settlement_brew_apothecary", { courtship_choice: recipe.key })
+    );
+    actions.appendChild(button);
+  }
+  if (!catalog.length) {
+    actions.appendChild(subline("Apothecary recipe table is not loaded."));
+  }
+  tagSettlementPanel.appendChild(actions);
+  refreshButtonTooltips(tagSettlementPanel);
 }
 
 function finalBossCompletionBanner(session) {

@@ -8,14 +8,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from ..schemas import EnemyState, PartyMemberState, SessionState
+from ..schemas import EnemyState, HirelingState, PartyMemberState, SessionState
 from .combat import apply_enemy_damage, living_party
 from .combat_modifiers import resolve_spell_effect, spellcasting_modifier
 from .dice import roll_d6, roll_exploding_for_level
 from .experience import tier_for_level
 from .spells import (
     SpellOutcome,
-    _cast_blessing,
     _cast_fireball,
     normalize_spell_name,
     spell_hits,
@@ -109,6 +108,8 @@ def try_resolve_fd_heroic_spell(
     target_character_id: str | None = None,
     target_foe_id: str | None = None,
     spell_target_mode: str | None = None,
+    mass_blessing_target_ids: list[str] | None = None,
+    mass_blessing_condition_choices: dict[str, list[str]] | None = None,
     door_type: str | None = None,
     show_rolls: bool = True,
     session: SessionState | None = None,
@@ -142,6 +143,8 @@ def try_resolve_fd_heroic_spell(
             session=session,
             show_rolls=show_rolls,
             from_scroll=from_scroll,
+            target_ids=mass_blessing_target_ids,
+            condition_choices=mass_blessing_condition_choices,
         )
     if spell_key == "fire_of_truth":
         return _cast_fire_of_truth(
@@ -162,6 +165,7 @@ def try_resolve_fd_heroic_spell(
             log,
             target_foe_id=target_foe_id,
             show_rolls=show_rolls,
+            session=session,
         )
     if spell_key == "mass_invisibility":
         return _cast_mass_invisibility(
@@ -290,22 +294,40 @@ def _cast_mass_blessing(
     session: SessionState | None,
     show_rolls: bool,
     from_scroll: bool,
+    target_ids: list[str] | None = None,
+    condition_choices: dict[str, list[str]] | None = None,
 ) -> SpellOutcome:
     if caster.class_id.lower() == "elf" and not from_scroll:
         log.append("Elves may not learn Mass Blessing but may cast it from a scroll (FD p.19).")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
 
-    targets = [member for member in living_party(party)]
+    party_targets = [member for member in living_party(party)]
+    hireling_targets = [item for item in (session.hirelings if session is not None else []) if item.life > 0]
+    selected_ids = set(target_ids or [])
+    if selected_ids:
+        party_targets = [
+            member
+            for member in party_targets
+            if member.character_id in selected_ids or f"hero:{member.character_id}" in selected_ids
+        ]
+        hireling_targets = [
+            hireling
+            for hireling in hireling_targets
+            if hireling.id in selected_ids or f"hireling:{hireling.id}" in selected_ids
+        ]
+    targets = [*party_targets, *hireling_targets]
     if not targets:
         log.append("No one is alive to receive Mass Blessing.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
 
     life_cost = max(0, len(targets) - 1)
-    if session is not None and session.hirelings:
-        hireling_count = sum(1 for item in session.hirelings if item.life > 0)
-        if hireling_count:
-            life_cost += hireling_count
-            log.append(f"Mass Blessing includes {hireling_count} hireling(s) (FD p.19).")
+    condition_plan = _mass_blessing_condition_plan(targets, condition_choices)
+    condition_cost = sum(len(items) for items in condition_plan.values())
+    life_cost += condition_cost
+    if hireling_targets:
+        log.append(f"Mass Blessing includes {len(hireling_targets)} hireling(s) (FD p.19).")
+    if condition_cost:
+        log.append(f"Mass Blessing will remove {condition_cost} chosen condition(s) (FD p.19).")
     if life_cost and caster.current_life <= life_cost:
         log.append(f"{caster.name} needs at least {life_cost + 1} Life to bless everyone (FD p.19).")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
@@ -313,11 +335,116 @@ def _cast_mass_blessing(
         caster.current_life -= life_cost
         log.append(f"{caster.name} loses {life_cost} Life straining to bless {len(targets)} recipients (FD p.19).")
 
-    for target in targets:
-        outcome = _cast_blessing(caster, party, enemies, target.character_id, [], session=session)
-        log.extend(outcome.log)
+    for target in party_targets:
+        _apply_mass_blessing_to_party_target(log, target, session, condition_plan)
+    for hireling in hireling_targets:
+        _apply_mass_blessing_to_hireling(log, hireling, condition_plan)
     log.append("Mass Blessing completes (FD p.19).")
     return SpellOutcome(log, enemies, party, spell_consumed=True)
+
+
+BLESSING_STATUS_NAMES = {"cursed", "petrified", "slime disease"}
+
+
+def _target_choice_ids(target: PartyMemberState | HirelingState) -> set[str]:
+    if isinstance(target, HirelingState):
+        return {target.id, f"hireling:{target.id}"}
+    return {target.character_id, f"hero:{target.character_id}"}
+
+
+def _mass_blessing_condition_plan(
+    targets: list[PartyMemberState | HirelingState],
+    choices: dict[str, list[str]] | None,
+) -> dict[str, list[str]]:
+    plan: dict[str, list[str]] = {}
+    for target in targets:
+        keys = _target_choice_ids(target)
+        selected: list[str] = []
+        if choices is None:
+            selected = _blessing_removable_condition_keys(target)
+        else:
+            for key in keys:
+                selected = list(choices.get(key, []))
+                if selected:
+                    break
+        if selected:
+            plan[next(iter(keys))] = selected
+    return plan
+
+
+def _plan_for_target(
+    target: PartyMemberState | HirelingState,
+    plan: dict[str, list[str]],
+) -> list[str]:
+    for key in _target_choice_ids(target):
+        if key in plan:
+            return plan[key]
+    return []
+
+
+def _blessing_removable_condition_keys(target: PartyMemberState | HirelingState) -> list[str]:
+    keys: list[str] = []
+    from .monster_template_effects import PETRIFIED_STATUS
+    from .fungal_traps import cordyceps_infected_turns
+
+    statuses = target.statuses
+    for status in statuses:
+        lower = status.lower()
+        if lower in BLESSING_STATUS_NAMES or status == PETRIFIED_STATUS or lower.startswith("cordyceps infected"):
+            keys.append(f"status:{status}")
+    if isinstance(target, PartyMemberState) and target.madness > 0:
+        keys.append("madness")
+    return keys
+
+
+def _apply_mass_blessing_to_party_target(
+    log: list[str],
+    target: PartyMemberState,
+    session: SessionState | None,
+    condition_plan: dict[str, list[str]],
+) -> None:
+    selected = _plan_for_target(target, condition_plan)
+    if not selected:
+        log.append(f"Mass Blessing covers {target.name}; no conditions were chosen for removal (FD p.19).")
+        return
+    _remove_selected_conditions(target, selected, log)
+    if "madness" in selected:
+        from .madness import heal_madness
+
+        if heal_madness(target, 1):
+            log.append(f"Mass Blessing heals 1 Madness from {target.name} (FD p.19).")
+    if session is not None and "cavern_water" in selected:
+        from .cavern_features import cleanse_cavern_water_contamination
+
+        if cleanse_cavern_water_contamination(session, target.character_id):
+            log.append(f"Mass Blessing cleanses contaminated water from {target.name} (FD p.19).")
+
+
+def _apply_mass_blessing_to_hireling(
+    log: list[str],
+    hireling: HirelingState,
+    condition_plan: dict[str, list[str]],
+) -> None:
+    selected = _plan_for_target(hireling, condition_plan)
+    if selected:
+        _remove_selected_conditions(hireling, selected, log)
+    else:
+        log.append(f"Mass Blessing covers {hireling.name}; no conditions were chosen for removal (FD p.19).")
+
+
+def _remove_selected_conditions(
+    target: PartyMemberState | HirelingState,
+    selected: list[str],
+    log: list[str],
+) -> None:
+    removals = {item.removeprefix("status:") for item in selected if item.startswith("status:")}
+    if not removals:
+        return
+    before = list(target.statuses)
+    target.statuses = [status for status in target.statuses if status not in removals]
+    removed = [status for status in before if status not in target.statuses]
+    if removed:
+        log.append(f"Mass Blessing removes {', '.join(removed)} from {target.name} (FD p.19).")
 
 
 def _cast_fire_of_truth(
@@ -352,6 +479,8 @@ def _cast_fire_of_truth(
         target_foe_id=target.id,
         spell_target_mode=spell_target_mode,
         session=session,
+        label="Fire of Truth",
+        modifier_bonus=chaos_bonus,
     )
     if not outcome.spell_consumed:
         return outcome
@@ -385,6 +514,7 @@ def _cast_teleport_enemy(
     *,
     target_foe_id: str | None,
     show_rolls: bool,
+    session: SessionState | None,
 ) -> SpellOutcome:
     target = _pick_foe(enemies, target_foe_id)
     if target is None:
@@ -402,6 +532,16 @@ def _cast_teleport_enemy(
         log.append("Teleport Enemy fails (FD p.19).")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
     distance = roll_d6()
+    if session is not None and session.map_state.current_tile_id:
+        from .fd_teleport_enemy import queue_teleport_enemy_return
+
+        queue_teleport_enemy_return(
+            session,
+            target,
+            origin_tile_id=session.map_state.current_tile_id,
+            distance=distance,
+            log=log,
+        )
     target.life = 0
     target.tags = list({*target.tags, "fd_teleported_away"})
     log.append(

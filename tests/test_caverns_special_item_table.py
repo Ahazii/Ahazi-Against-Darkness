@@ -70,9 +70,11 @@ def test_caverns_special_item_table_roll_outcomes(
         table_name="caverns_special_item_table",
     )
     if roll == 1:
-        assert outcome.gold == 13
+        assert outcome.gold == 0
+        assert outcome.items
+        assert "13gp" in outcome.items[0]
         assert "13gp" in outcome.summary
-        assert not outcome.items
+        assert not outcome.gold
         return
     if choice_key:
         assert outcome.choice_key == choice_key
@@ -92,7 +94,9 @@ def test_caverns_gem_roll_uses_3d6_plus_3_formula(monkeypatch: pytest.MonkeyPatc
         environment="caverns",
         table_name="caverns_special_item_table",
     )
-    assert outcome.gold == 15
+    assert outcome.gold == 0
+    assert outcome.items
+    assert "15gp" in outcome.items[0]
 
 
 def test_caverns_adventurer_body_choice_resolves_gear_and_gems() -> None:

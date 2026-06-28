@@ -308,6 +308,16 @@ class HirelingState(BaseModel):
     equipped_weapon: str | None = None
     equipped_armor: str | None = None
     lantern_lit: bool = False
+    statuses: list[str] = Field(default_factory=list)
+
+
+class TeleportEnemyReturnState(BaseModel):
+    enemy: EnemyState
+    origin_tile_id: str
+    current_tile_id: str
+    route_tile_ids: list[str] = Field(default_factory=list)
+    turns_remaining: int = Field(default=0, ge=0)
+    blocked: bool = False
 
 
 class PartyMemberState(BaseModel):
@@ -970,6 +980,7 @@ class SessionState(BaseModel):
     pending_mycelium_snare: PendingMyceliumSnareState | None = None
     pending_free_slaves_tile_id: str | None = None
     pending_end_of_combat_poison: list[tuple[str, int, str]] = Field(default_factory=list)
+    fd_teleport_enemy_returns: list[TeleportEnemyReturnState] = Field(default_factory=list)
     madness_exit_healed: bool = False
     strong_will_madness_ignored: list[str] = Field(default_factory=list)
     alchemist_event_tile_ids: list[str] = Field(default_factory=list)
@@ -1166,6 +1177,7 @@ class SessionAction(BaseModel):
         "courtship_damsel_penalty",
         "courtship_libidinal_reroll",
         "courtship_brew_apothecary",
+        "tag_settlement_brew_apothecary",
         "use_apothecary_brew",
     ]
     exit_id: str | None = None
@@ -1344,6 +1356,8 @@ class SessionAction(BaseModel):
     life_transfer_amount: int | None = Field(default=None, ge=1)
     teleport_tile_id: str | None = None
     teleport_character_ids: list[str] | None = None
+    mass_blessing_target_ids: list[str] | None = None
+    mass_blessing_condition_choices: dict[str, list[str]] | None = None
     save_label: str | None = Field(default=None, max_length=80)
     detached_character_ids: list[str] | None = None
     detached_tile_id: str | None = None

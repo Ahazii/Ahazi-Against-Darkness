@@ -408,7 +408,7 @@ def test_entrance_door_stays_open_after_round_trip(monkeypatch) -> None:
 def test_first_explore_from_entrance_opens_chosen_door(monkeypatch) -> None:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
-    monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda: "11")
+    monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda _session: "11")
     monkeypatch.setattr(random_dungeon.random, "shuffle", lambda items: None)
     entrance_door = ExitState(id="entrance-north", direction="north", kind="door")
     entrance = TileState(
@@ -491,7 +491,7 @@ def test_entrance_dungeon_exit_stays_open_after_backtrack(monkeypatch) -> None:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
     monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "02")
-    monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda: "11")
+    monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda _session: "11")
     monkeypatch.setattr(random_dungeon.random, "shuffle", lambda items: None)
     monkeypatch.setattr(
         engine,

@@ -416,6 +416,37 @@ Use after hard-refresh (`app.js` v0.68.43+). Hover any AI Adventure control for 
 
 ---
 
+## §12b Forsaken Depths Heroic Spells
+
+Use a Forsaken Depths session with a Heroic-trained caster or a Heroic spell scroll. Hover spell buttons/tags to confirm the rule hint before casting.
+
+| Step | Where | Pass criteria |
+|------|-------|---------------|
+| 12b.1 | Party sheet / combat spell button → **Fire of Truth** | Hover text says living foes only, +1 on the spell roll vs chaos creatures, Clue insight on a kill, and natural 1 wandering-monster risk |
+| 12b.2 | Cast **Fire of Truth** at a chaos living foe | Verbose spell roll includes the +1 chaos bonus; miss/hit log names Fire of Truth, not generic Fireball |
+| 12b.3 | Kill the target with **Fire of Truth** | Insight roll can grant 1 Clue; natural 1 schedules a wandering-monster check |
+| 12b.4 | Cast **Teleport Enemy** in a mapped/visited area | Target leaves the fight, a returning-foe log is created, and later movement/combat turns tick it back one room/hex/area at a time |
+| 12b.5 | Block Teleport Enemy's return route | Log says the foe cannot return because an obstacle blocks the route |
+| 12b.6 | Party sheet → **Mass Blessing** | UI shows living heroes/hirelings plus Blessing-removable condition checkboxes with hover hints |
+| 12b.7 | Cast **Mass Blessing** with one hireling condition selected | Caster Life cost equals selected targets beyond the first + selected conditions; selected hireling status is removed and non-selected statuses remain |
+
+---
+
+## §12c TAG Settlement Apothecary
+
+Use a TAG banking/settlement-mode session with a living Wandering Alchemist carrying mortar and pestle. This is a settlement/town downtime surface, not the Camp Outside Dungeon panel.
+
+| Step | Where | Pass criteria |
+|------|-------|---------------|
+| 12c.1 | Side panel → **TAG Settlement Apothecary** | Panel appears separately from **Camp Outside Dungeon** when TAG banking is enabled and an eligible brewer is present |
+| 12c.2 | Hover recipe buttons | Tooltip describes TAG settlement downtime brew, difficulty, materials, and TCOTFD ingredient requirement |
+| 12c.3 | Brew with missing ingredients | Log blocks the brew with missing ingredient/material message |
+| 12c.4 | Brew with valid ingredients/materials | Ingredients/gp are consumed, d6+L rolls when required, and the brewed `(Apothecary` item is added to the brewer inventory |
+
+**Pass/Fail notes:**
+
+---
+
 ## §13 Map Element Editor / Inset Exits
 
 Use after hard-refreshing the editor (`tile-editor.js` v0.40.2+).

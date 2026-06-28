@@ -694,6 +694,79 @@ def test_touching_statue_can_animate_it(engine: RandomDungeonEngine, monkeypatch
     statue = next(enemy for enemy in tile.enemies if enemy.name == "Living Statue")
     assert "spell_immune" in statue.tags
     assert "living_statue" in statue.tags
+    hcl = engine._highest_character_level(session.party)
+    from app.engine.random_dungeon import _hcl_to_tier, _parse_monster_life
+
+    assert statue.level == max(1, hcl + 3)
+    expected_life = _parse_monster_life("Tier+5", hcl)
+    expected_attacks = max(1, _hcl_to_tier(hcl))
+    if "final_boss" in statue.tags:
+        expected_life += 1
+        expected_attacks += 1
+    assert statue.life == expected_life
+    assert statue.attacks == expected_attacks
+
+
+def test_defeated_living_statue_awards_gold(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_feature"
+    tile.special_event_key = "statue"
+    tile.resolved = True
+    tile.defeated_enemies = [
+        EnemyState(
+            id="statue",
+            name="Living Statue",
+            category="boss",
+            level=4,
+            life=0,
+            max_life=6,
+            attacks=1,
+            tags=["boss", "artificial", "spell_immune", "living_statue"],
+        )
+    ]
+    monkeypatch.setattr("app.engine.random_dungeon.resolve_gold_formula", lambda formula, hcl=0: 120)
+
+    engine._award_treasure(session, tile, show_rolls=False)
+
+    assert tile.treasure_gold == 120
+    assert "Living Statue treasure: 120gp" in session.log[-1]
+
+
+def test_puzzle_box_uses_chosen_hero(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    rogue = PartyMemberState(
+        character_id="rogue",
+        name="Rogue",
+        class_id="rogue",
+        class_name="Rogue",
+        level=3,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=2,
+    )
+    session.party.append(rogue)
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_feature"
+    tile.special_event_key = "puzzle_box"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda member: (6, [6]))
+
+    engine.advance(
+        session,
+        "resolve_special_feature",
+        special_feature_choice="attempt_puzzle_box",
+        target_character_id="rogue",
+        show_rolls=False,
+    )
+
+    assert tile.resolved is True
+    assert "Event: The puzzle box opens!" in session.log
 
 
 def test_puzzle_box_feature_failed_attempt_stays_pending(engine: RandomDungeonEngine, monkeypatch) -> None:

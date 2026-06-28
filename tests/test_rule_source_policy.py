@@ -68,6 +68,8 @@ def test_packaged_rule_source_fields_reference_allowed_pdfs() -> None:
         "Netherworld",
         "Courtship of Flower Demons",
         "TCOTFD",
+        "4AD Magic Treasure",
+        "4AD p.158",
         "Rules/The_Courtship_of_Flower_Demons.pdf",
         "Rules/Four_Against_Darkness_Expanded_Edition.pdf",
     }

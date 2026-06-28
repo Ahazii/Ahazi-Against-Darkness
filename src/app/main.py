@@ -1670,6 +1670,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         life_transfer_amount=payload.life_transfer_amount,
         teleport_tile_id=payload.teleport_tile_id,
         teleport_character_ids=payload.teleport_character_ids,
+        mass_blessing_target_ids=payload.mass_blessing_target_ids,
+        mass_blessing_condition_choices=payload.mass_blessing_condition_choices,
         dungeon_exit_intent=payload.dungeon_exit_intent,
         detached_character_ids=payload.detached_character_ids,
         detached_tile_id=payload.detached_tile_id,

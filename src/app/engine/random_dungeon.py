@@ -548,7 +548,9 @@ class RandomDungeonEngine:
         )
         chosen_ruleset = normalize_ruleset(profile.ruleset)
         fd_ruleset = chosen_ruleset == "forsaken_depths"
-        chosen_courtship = profile.courtship_enabled
+        chosen_courtship = (
+            courtship_enabled if courtship_enabled is not None else profile.courtship_enabled
+        )
         start_catalog = starting_tile_catalog(chosen_ruleset)
         if fd_ruleset:
             tile_key = roll_fd_dungeon_start_key()
@@ -829,6 +831,8 @@ class RandomDungeonEngine:
         life_transfer_amount: int | None = None,
         teleport_tile_id: str | None = None,
         teleport_character_ids: list[str] | None = None,
+        mass_blessing_target_ids: list[str] | None = None,
+        mass_blessing_condition_choices: dict[str, list[str]] | None = None,
         dungeon_exit_intent: str | None = None,
         detached_character_ids: list[str] | None = None,
         detached_tile_id: str | None = None,
@@ -1060,6 +1064,8 @@ class RandomDungeonEngine:
                 life_transfer_amount=life_transfer_amount,
                 teleport_tile_id=teleport_tile_id,
                 teleport_character_ids=teleport_character_ids,
+                mass_blessing_target_ids=mass_blessing_target_ids,
+                mass_blessing_condition_choices=mass_blessing_condition_choices,
                 wand_power_charges=wand_power_charges,
                 use_prayer_bead=use_prayer_bead,
                 item_name=item_name,
@@ -1304,6 +1310,15 @@ class RandomDungeonEngine:
                 courtship_choice,
                 show_rolls=show_rolls,
             )
+        elif action == "tag_settlement_brew_apothecary":
+            from .courtship_apothecary_brew import resolve_tag_settlement_apothecary_brew
+
+            resolve_tag_settlement_apothecary_brew(
+                self,
+                session,
+                courtship_choice,
+                show_rolls=show_rolls,
+            )
         elif action == "use_apothecary_brew":
             self._use_apothecary_brew(
                 session,
@@ -1338,6 +1353,8 @@ class RandomDungeonEngine:
                 target_character_id=target_character_id,
                 target_foe_id=foe_id,
                 spell_target_mode=spell_target_mode,
+                mass_blessing_target_ids=mass_blessing_target_ids,
+                mass_blessing_condition_choices=mass_blessing_condition_choices,
                 courtship_choice=courtship_choice,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
@@ -1352,6 +1369,8 @@ class RandomDungeonEngine:
                 target_character_id=target_character_id,
                 target_foe_id=foe_id,
                 spell_target_mode=spell_target_mode,
+                mass_blessing_target_ids=mass_blessing_target_ids,
+                mass_blessing_condition_choices=mass_blessing_condition_choices,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -2177,6 +2196,7 @@ class RandomDungeonEngine:
                     fire_imported_triggers(self, session, existing, "on_enter", show_rolls=show_rolls)
                 self._tick_phoenix_mushrooms(session)
                 self._tick_toxic_spores(session)
+                self._tick_teleport_enemy_returns(session, reason="movement")
                 if exit_state.acute_hearing_cleared and existing.id not in session.expert_acute_hearing_tiles:
                     session.expert_acute_hearing_tiles.append(existing.id)
                 session.log.extend(maybe_summon_on_wilderness_entry(session, existing))
@@ -2289,6 +2309,7 @@ class RandomDungeonEngine:
             tick_party_hunger(session, [pc for pc in session.party if pc.current_life > 0], log=session.log)
             self._tick_phoenix_mushrooms(session)
             self._tick_toxic_spores(session)
+            self._tick_teleport_enemy_returns(session, reason="movement")
             if exit_state.acute_hearing_cleared and new_tile.id not in session.expert_acute_hearing_tiles:
                 session.expert_acute_hearing_tiles.append(new_tile.id)
             session.log.extend(maybe_summon_on_wilderness_entry(session, new_tile))
@@ -6045,6 +6066,8 @@ class RandomDungeonEngine:
         life_transfer_amount: int | None = None,
         teleport_tile_id: str | None = None,
         teleport_character_ids: list[str] | None = None,
+        mass_blessing_target_ids: list[str] | None = None,
+        mass_blessing_condition_choices: dict[str, list[str]] | None = None,
         from_scroll: bool = False,
         scroll_item: str | None = None,
         from_magic_item: bool = False,
@@ -6277,6 +6300,8 @@ class RandomDungeonEngine:
             life_transfer_amount=life_transfer_amount,
             teleport_tile_id=teleport_tile_id,
             teleport_character_ids=teleport_character_ids,
+            mass_blessing_target_ids=mass_blessing_target_ids,
+            mass_blessing_condition_choices=mass_blessing_condition_choices,
             final_boss=tile.final_boss_treasure,
             session=session,
             item_name=item_name,
@@ -6569,6 +6594,8 @@ class RandomDungeonEngine:
         target_character_id: str | None = None,
         target_foe_id: str | None = None,
         spell_target_mode: str | None = None,
+        mass_blessing_target_ids: list[str] | None = None,
+        mass_blessing_condition_choices: dict[str, list[str]] | None = None,
         courtship_choice: str | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
@@ -6614,6 +6641,8 @@ class RandomDungeonEngine:
             target_character_id=target_character_id,
             target_foe_id=target_foe_id,
             spell_target_mode=spell_target_mode,
+            mass_blessing_target_ids=mass_blessing_target_ids,
+            mass_blessing_condition_choices=mass_blessing_condition_choices,
             from_scroll=True,
             scroll_item=scroll_item,
             show_rolls=show_rolls,
@@ -6632,6 +6661,8 @@ class RandomDungeonEngine:
         target_character_id: str | None = None,
         target_foe_id: str | None = None,
         spell_target_mode: str | None = None,
+        mass_blessing_target_ids: list[str] | None = None,
+        mass_blessing_condition_choices: dict[str, list[str]] | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
     ) -> None:
@@ -6695,6 +6726,8 @@ class RandomDungeonEngine:
         target_character_id: str | None = None,
         target_foe_id: str | None = None,
         spell_target_mode: str | None = None,
+        mass_blessing_target_ids: list[str] | None = None,
+        mass_blessing_condition_choices: dict[str, list[str]] | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
     ) -> None:
@@ -6731,6 +6764,8 @@ class RandomDungeonEngine:
             target_character_id=target_character_id,
             target_foe_id=target_foe_id,
             spell_target_mode=spell_target_mode,
+            mass_blessing_target_ids=mass_blessing_target_ids,
+            mass_blessing_condition_choices=mass_blessing_condition_choices,
             from_magic_item=True,
             magic_item=magic_item,
             show_rolls=show_rolls,
@@ -9396,10 +9431,18 @@ class RandomDungeonEngine:
             active_enemy_ids=active_enemy_ids,
             standing_before=standing_before,
         )
+        self._tick_teleport_enemy_returns(session, reason="combat turn")
         from .heroic_skill_effects import rotate_aggressive_stance_penalty
 
         aggressive = {cid for cid, choice in (combat_abilities or {}).items() if choice == "aggressive_stance"}
         rotate_aggressive_stance_penalty(session, aggressive)
+
+    def _tick_teleport_enemy_returns(self, session: SessionState, *, reason: str) -> None:
+        if not session.fd_teleport_enemy_returns:
+            return
+        from .fd_teleport_enemy import tick_teleport_enemy_returns
+
+        tick_teleport_enemy_returns(session, reason=reason)
 
     def _flee(
         self,
@@ -15615,10 +15658,19 @@ class RandomDungeonEngine:
             return
         if tile.special_event_key == "puzzle_box":
             if choice == "attempt_puzzle_box":
+                chosen = (
+                    next((member for member in session.party if member.character_id == target_character_id), None)
+                    if target_character_id
+                    else self._member_by_marching_order(session, 1)
+                )
+                if chosen is None or chosen.current_life <= 0:
+                    session.log.append("Choose a living hero to attempt the puzzle box.")
+                    return
                 solved = self._resolve_puzzle_box(
                     session,
                     tile,
                     hcl,
+                    member=chosen,
                     show_rolls=show_rolls,
                     explain_math=explain_math,
                 )
@@ -15637,7 +15689,8 @@ class RandomDungeonEngine:
             session.log.append(f"Statue touch roll: d6 = {roll}.")
         if roll <= 3:
             level = max(1, hcl + 3)
-            life = max(5, hcl + 5)
+            life = _parse_monster_life("Tier+5", hcl)
+            attacks = max(1, _hcl_to_tier(hcl))
             tile.enemies.append(
                 EnemyState(
                     id=uuid4().hex,
@@ -15646,7 +15699,7 @@ class RandomDungeonEngine:
                     level=level,
                     life=life,
                     max_life=life,
-                    attacks=max(1, (hcl + 2) // 2),
+                    attacks=attacks,
                     tags=["boss", "artificial", "spell_immune", "living_statue"],
                 )
             )
@@ -15664,14 +15717,11 @@ class RandomDungeonEngine:
         tile: TileState,
         hcl: int,
         *,
+        member: PartyMemberState,
         show_rolls: bool,
         explain_math: bool,
     ) -> bool:
         box_level = roll_d6()
-        member = self._member_by_marching_order(session, 1)
-        if member is None:
-            session.log.append("No one is available to solve the puzzle box.")
-            return False
         modifier = member.level if member.class_id.lower() in {"wizard", "rogue"} else 0
         modifier += expert_puzzle_bonus(session.party)
         total, rolls = roll_exploding_for_level(member)
@@ -16250,6 +16300,28 @@ class RandomDungeonEngine:
         summary = "; ".join(summaries) if summaries else "Treasure"
         return TreasureOutcome(summary, gold, items, log)
 
+    def _maybe_award_living_statue_treasure(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+    ) -> bool:
+        if not any("living_statue" in enemy.tags for enemy in tile.defeated_enemies):
+            return False
+        if tile.treasure_gold or tile.treasure_items:
+            return False
+        gold = resolve_gold_formula("3d6*10", hcl=0)
+        if tile.final_boss_treasure:
+            gold = apply_final_boss_treasure_bonus(gold)
+        tile.treasure_gold = gold
+        tile.treasure_summary = f"Defeated Living Statue yields {gold}gp."
+        tile.treasure_claimed = False
+        session.pending_treasure_reroll_tile_id = tile.id
+        session.log.append(f"Living Statue treasure: {gold}gp inside the broken statue.")
+        self._apply_treasure_doubling(tile)
+        return True
+
     def _award_treasure(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
         if session.adventure_type == "imported":
             return
@@ -16260,6 +16332,9 @@ class RandomDungeonEngine:
         if tile.content_key in {"treasure", "trap_treasure"} or tile.resolved:
             if is_fd_ruleset(session):
                 self._award_fd_defeated_foe_treasure(session, tile, show_rolls=show_rolls)
+                self._append_arcane_tanner_hides(session, tile, show_rolls=show_rolls)
+                return
+            if self._maybe_award_living_statue_treasure(session, tile, show_rolls=show_rolls):
                 self._append_arcane_tanner_hides(session, tile, show_rolls=show_rolls)
                 return
             roll_count = self._treasure_roll_count_for_tile(session, tile)

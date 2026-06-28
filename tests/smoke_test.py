@@ -154,7 +154,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         explore_exit = next(exit_state for exit_state in entrance["exits"] if not exit_state["dungeon_exit"])
 
         engine = main.random_engine
-        monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda: "11")
+        monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda _session: "11")
         monkeypatch.setattr(random_dungeon, "roll_2d6", lambda: 8)
         monkeypatch.setattr("app.engine.dice.roll_2d6", lambda: 8)
 

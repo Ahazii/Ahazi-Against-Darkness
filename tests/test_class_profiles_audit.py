@@ -41,11 +41,9 @@ RULEBOOK_L1_LIFE: dict[str, int] = {
     "wizard": 3,
 }
 
-EXPECTED_CLASS_CATALOG_SIGNATURE = "05f5a0250bfaf703838ae35bf2460ae033139e55b2dcc9b36e784698524bb7d4"
+EXPECTED_CLASS_CATALOG_SIGNATURE = "8d1577fa09c040ec16e983ef0cb0cfaac5d8eb17e398c52906763b021c2c2b30"
 EXPECTED_CLASS_COUNT = 26
-TCOTFD_PARTIAL_CLASS_IDS = frozenset(
-    {"satyr", "conservationist", "demonologist", "cambion", "succubus"}
-)
+TCOTFD_PARTIAL_CLASS_IDS = frozenset({"demonologist", "cambion", "succubus"})
 CLASS_CATALOG_SIGNATURE_FIELDS = (
     "id",
     "name",

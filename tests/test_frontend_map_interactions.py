@@ -618,10 +618,10 @@ def test_special_feature_choice_controls_are_wired() -> None:
     body = _function_body("renderSpecialFeatureChoices", APP_JS)
     assert 'advance("resolve_special_feature", { special_feature_choice: "touch_statue" })' in body
     assert 'advance("resolve_special_feature", { special_feature_choice: "leave_statue" })' in body
-    assert 'advance("resolve_special_feature", { special_feature_choice: "attempt_puzzle_box" })' in body
+    assert 'special_feature_choice: "attempt_puzzle_box"' in body
     assert 'advance("resolve_special_feature", { special_feature_choice: "leave_puzzle_box" })' in body
     assert 'special_feature_choice: "bless_temple"' in body
-    assert "target_character_id: select.value" in body
+    assert body.count("target_character_id: select.value") >= 2
     assert "Roll d6: 1-3 animates a Living Statue; 4-6 breaks it open for gold." in body
     assert "failure costs 1 Life" in body
     assert 'safeSessionRender("specialFeatureChoices", () => renderSpecialFeatureChoices(session))' in APP_JS
@@ -951,7 +951,14 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.8"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.11"></script>' in INDEX_HTML
+
+
+def test_fd_heroic_spell_tooltips_cover_fire_of_truth_bonus() -> None:
+    assert "const FD_HEROIC_SPELL_TOOLTIPS = {" in APP_JS
+    assert "Fireball against living foes only; +1 on the spell roll versus chaos creatures." in APP_JS
+    assert "success grants 1 Clue, natural 1 triggers a wandering-monster check." in APP_JS
+    assert "FD_HEROIC_SPELL_TOOLTIPS[key]" in _function_body("spellTooltip", APP_JS)
 
 
 def test_app_js_has_no_syntax_errors() -> None:
@@ -1699,3 +1706,18 @@ def test_exploration_command_bar_stays_visible_and_typable() -> None:
     assert "explorationCommandInput.disabled" not in render_body
     assert "flex: 1 1 0%" in STYLES_CSS.split(".map-log {", 1)[1].split("}", 1)[0]
     assert "flex-shrink: 0" in STYLES_CSS.split(".exploration-command-bar {", 1)[1].split("}", 1)[0]
+
+
+def test_mass_blessing_ui_sends_targets_and_conditions() -> None:
+    assert "function appendMassBlessingTargeting(container, session, member)" in APP_JS
+    assert "mass_blessing_target_ids" in APP_JS
+    assert "mass_blessing_condition_choices" in APP_JS
+    assert "Choose who receives the spell and which Blessing-removable conditions to clear." in APP_JS
+    assert "hireling:" in APP_JS
+
+
+def test_tag_settlement_apothecary_panel_is_separate_from_camp_panel() -> None:
+    assert 'id="tag-settlement-panel"' in INDEX_HTML
+    assert "function renderTagSettlementPanel(session)" in APP_JS
+    assert 'advance("tag_settlement_brew_apothecary"' in APP_JS
+    assert "This is separate from camp outside the dungeon." in APP_JS

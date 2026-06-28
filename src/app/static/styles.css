@@ -4169,6 +4169,41 @@ button.door-destroy-spell {
   min-width: 0;
 }
 
+.tag-settlement-panel {
+  border-color: rgba(95, 159, 116, 0.4);
+}
+
+.tag-settlement-recipes {
+  grid-template-columns: 1fr;
+}
+
+.mass-blessing-targets {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mass-blessing-row {
+  display: grid;
+  gap: 4px;
+  padding: 5px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mass-blessing-row:first-of-type {
+  border-top: 0;
+}
+
+.mass-blessing-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding-left: 18px;
+  font-size: 11px;
+}
+
 .camp-hirelings-panel {
   display: grid;
   gap: 8px;

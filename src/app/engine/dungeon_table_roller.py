@@ -1583,6 +1583,7 @@ class DungeonTableRoller:
         show_rolls: bool,
         explain_math: bool,
         trap_key: str = "",
+        session: SessionState | None = None,
     ) -> list[str]:
         shield_applies = row.get("shield_applies", True)
         if save_type == "poison":
@@ -2019,6 +2020,7 @@ def _save_trap_hit(
     bear_trap: bool = False,
     double_on_natural_1: bool = False,
     trap_key: str = "",
+    session: SessionState | None = None,
 ) -> list[str]:
     from .heroic_skill_effects import trap_damage_after_reduction, trap_save_bonus
 

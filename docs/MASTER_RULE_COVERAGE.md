@@ -1,6 +1,6 @@
 # Master Rule Coverage
 
-Last reviewed: 2026-06-25
+Last reviewed: 2026-06-28
 
 This is the program-level tracker for the current target books:
 
@@ -30,7 +30,7 @@ whole-book completion.
 | --- | --- | --- | --- |
 | Expanded Edition | advanced | Procedural dungeon loop, classes, combat, equipment, dungeon/cavern/fungal tables, bestiary, reactions, Secrets, quests, Fiendish Foes, EE map catalog | Remaining manual sign-off, selected UI/fidelity edges, roleplaying/adventure-authoring scope decisions |
 | Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals | Abyss dungeon table **runtime** (Phase B indexed in `abyss_tables.json`), bestiary routing, leaders/multiple bosses, diseases/transformations, campaign plots |
-| Forsaken Depths | advanced partial | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, **6 Heroic spells (catalog + cast)**, Legendary spell cast path, **72 validated tiles**, FD dungeon/river runtime, quests, citadels, TCOTFD branch | Remaining FD content families, Heroic spell polish edges, manual sign-off |
+| Forsaken Depths | advanced partial | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, **6 Heroic spells (catalog + cast)** including Fire of Truth chaos-hit bonus, Teleport Enemy return tracking, and Mass Blessing party/hireling condition choices; Legendary spell cast path, **72 validated tiles**, FD dungeon/river runtime, quests, citadels, TCOTFD branch | Remaining FD content families, automated Teleport Enemy occupied-room reactions, manual sign-off |
 | Adventurers' Guild | foundation + shell | Persistent roster, multiple parties, banking, **campaign state** (`days_passed`, TAG banking toggle, `/api/campaign`) | Settlements UI, troupe rules, downtime, availability/Streetwise, rumors, treasure maps, Guild jobs |
 | Netherworld | missing/foundation only | Generic Madness/combat/economy primitives can be reused | Classes, expert skills, soul economy, food, planar gates, hex exploration, terrain, reactions, objectives, bestiary, spells, merchants and treasure |
 
@@ -122,4 +122,3 @@ spells, merchants and treasure.
    state.
 6. Require every completed rule family to link source rows, engine actions, UI,
    persistence and behavior tests.
-

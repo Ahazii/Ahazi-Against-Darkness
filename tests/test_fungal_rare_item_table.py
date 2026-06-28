@@ -85,7 +85,9 @@ def test_fungal_gem_choice_uses_2d6_plus_2_formula(monkeypatch: pytest.MonkeyPat
     roller = _roller()
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_formula", lambda _f: 7)
     outcome = roller.resolve_environment_treasure_choice("fungal_gem_or_leafsteel", "gem")
-    assert outcome.gold == 9
+    assert outcome.gold == 0
+    assert outcome.items
+    assert "9gp" in outcome.items[0]
     assert "9gp" in outcome.summary
 
 

@@ -34,14 +34,14 @@ SPELLS_SKILLS_COMBAT_TABLE_KEYS = [
     "combat_notes",
 ]
 
-EXPECTED_SPELLS_SKILLS_COMBAT_SIGNATURE = "67c4053afd48375e9d0f9ae74f5ee3a11636a8351e9dc611af7ab4994379dac5"
+EXPECTED_SPELLS_SKILLS_COMBAT_SIGNATURE = "38a73580578bb8321560b6357d8f47bf2246e3ec5152b6839d367d281147fd43"
 EXPECTED_SPELLS_SKILLS_COMBAT_ROW_COUNTS = {
     "basic_spells_table": 7,
     "druid_spells_table": 12,
     "illusionist_spells_table": 12,
     "scrolls_table": 6,
-    "expert_skills_table": 41,
-    "expert_skill_implementation_table": 41,
+    "expert_skills_table": 44,
+    "expert_skill_implementation_table": 44,
     "expert_spells_table": 6,
     "heroic_skills_table": 45,
     "legendary_skills_table": 20,

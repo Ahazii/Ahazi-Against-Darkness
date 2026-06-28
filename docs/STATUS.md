@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-06-24
+Last updated: 2026-06-28
 
 ## Summary
 
@@ -23,6 +23,8 @@ loop, and partial Abyss and Forsaken Depths layers.
   the river hazard and printed tile usage.
 - **Courtship of Flower Demons (TCOTFD)** — Blossoms' Demesne portal branch, woo/fight, Book of Secrets, Blossoms spells/items, Apothecary Cookbook brewing, and **six playable TCOTFD classes** (Wandering Alchemist, Satyr, Conservationist, Demonologist, Cambion, Succubus). See `docs/FORSAKEN_DEPTHS_ENGINE.md` and rulebook entry `tcotfd_playable_classes`.
 - **Program Phase 4 (2026-06-24):** ruleset profiles (`ruleset_profiles.json`, `/api/rules/profiles`), FD Heroic spell catalog + cast resolver (`heroic_spells.json`, `forsaken_depths_heroic_spells.py`), Abyss Phase B table index (`abyss_tables.json`), TAG campaign shell (`/api/campaign`, days passed on adventure complete).
+- **Stabilization pass (2026-06-28):** EE spell resolver coverage promoted to validated (`tests/test_ee_spells_audit.py`), puzzle-box attempts can target the chosen hero, Living Statue stats/treasure are covered, TCOTFD/FD icon rows are expanded, and FD Fire of Truth applies its +1 chaos-creature bonus to the actual spell roll with matching UI hover text.
+- **FD/TAG rules pass (2026-06-28):** Teleport Enemy now persists returning foes and ticks them back room-by-room unless blocked; Mass Blessing targets living party members and hirelings with explicit condition-removal choices and Life-cost accounting; TAG settlement Apothecary brewing has its own UI/action separate from camp outside the dungeon.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
 - Expert-skill learning keeps class-ineligible options visible but disabled with
