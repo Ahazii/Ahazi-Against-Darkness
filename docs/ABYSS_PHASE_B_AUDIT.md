@@ -32,6 +32,15 @@ server actions plus hover-text UI controls. Abyss passive equipment now feeds
 the existing combat math for undead/vampire defenses, magic armor, silver
 weapons, blessed stakes, and Baton of Righteousness healing.
 
+The affliction pass wires the Abyss disease/transformation loop. Dark Plague
+now uses the printed L10 save, ticks on room entry, spreads room-by-room to
+non-immune party members, and grants adventure-long immunity after saving,
+Blessing cure, or Elven Bread. Werewolf wounds queue an end-of-encounter
+lycanthropy save, infected heroes drop silver/lantern gear, monastery treatment
+is available from camp, and Madness-over-Level transformation spawns the former
+hero as a werewolf foe. Vampire level drain can now produce a vampire-rise
+pending state that blocks ordinary resurrection until the sire is destroyed.
+
 ## Indexed tables
 
 | Table key | Status | Notes |
@@ -47,11 +56,12 @@ weapons, blessed stakes, and Baton of Righteousness healing.
 | Abyss minion reaction tables | wired | p.53 Hairy Goblins, Ghouls, Dark Dwarves, Flying Skulls, Chaotic Ratmen, and Chaos Fanatics use their printed flee/bribe/fight/trial outcomes |
 | Abyss tactical targeting | wired | p.8 leader-lock targeting, p.10 multiple-boss target split / lone-hero penalty, and p.11 horde attacks are enforced by `abyss_tactics.py`, combat target selectors, and horde attack assignment |
 | Abyss item use-actions | wired | p.51 magic treasure and p.61 Useful Stuff actions: Elven Bread, Blessed Horseshoe, Parchment, Medallion, Philter, Ring wishes; passive defenses/weapons are included in combat math |
+| Abyss afflictions | wired | Dark Plague L10 exposure/spread/ticks/immunity, lycanthropy exposure/treatment/transformation, and vampire level-drain resurrection block |
 
 ## Remaining gaps
 
 1. Campaign plot automation, including plot state and victory conditions.
-2. Full disease/transformation lifecycle for vampirism, Dark Plague, and lycanthropy beyond current status/on-hit/status hooks.
+2. Vampire sire hunt/re-encounter automation after level-drain death or vampire escape.
 3. Large-room dragon-lair detection should receive the actual generated room key rather than using the regular boss branch.
 
 ## Tests
@@ -59,3 +69,4 @@ weapons, blessed stakes, and Baton of Righteousness healing.
 - `tests/test_program_phase4.py::test_abyss_phase_b_room_content_table_indexed`
 - `tests/test_abyss_runtime.py`
 - `tests/test_abyss_items.py`
+- `tests/test_abyss_afflictions.py`

@@ -378,7 +378,15 @@ def resolve_spell_cast(
     if key == "protection":
         return _cast_protection(caster, party, living_enemies, target_character_id, log)
     if key == "blessing":
-        return _cast_blessing(caster, party, living_enemies, target_character_id, log, session=session)
+        return _cast_blessing(
+            caster,
+            party,
+            living_enemies,
+            target_character_id,
+            log,
+            session=session,
+            show_rolls=show_rolls,
+        )
     if key in {"healing_prayer", "healing"}:
         return _cast_healing_prayer(
             caster,
@@ -816,11 +824,22 @@ def _cast_blessing(
     log: list[str],
     *,
     session: SessionState | None = None,
+    show_rolls: bool = True,
 ) -> SpellOutcome:
     target = _pick_target(party, target_character_id) or caster
     from .monster_template_effects import PETRIFIED_STATUS
     from .fungal_traps import cordyceps_infected_turns
+    from .abyss_afflictions import apply_blessing_to_dark_plague
 
+    dark_plague_result = apply_blessing_to_dark_plague(
+        caster,
+        target,
+        log=log,
+        show_rolls=show_rolls,
+        session=session,
+    )
+    if dark_plague_result is False:
+        return SpellOutcome(log, enemies, party, spell_consumed=True, curse_break_target_id=target.character_id)
     had_cordyceps = cordyceps_infected_turns(target) is not None
     target.statuses = [
         item
@@ -840,6 +859,8 @@ def _cast_blessing(
 
         if cleanse_cavern_water_contamination(session, target.character_id):
             log.append(f"Blessing cleanses contaminated water from {target.name}.")
+    if dark_plague_result is True:
+        log.append("Dark Plague uses the Abyss d8+L cure check; other Blessing effects resolve normally.")
     return SpellOutcome(log, enemies, party, spell_consumed=True, curse_break_target_id=target.character_id)
 
 

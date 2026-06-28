@@ -204,6 +204,13 @@ def attempt_resurrection(
     if fallen is None or fallen.current_life > 0:
         log.append("That hero is not awaiting resurrection.")
         return log
+    from .abyss_afflictions import has_vampire_rise_pending
+
+    if has_vampire_rise_pending(fallen):
+        log.append(
+            f"{fallen.name} was slain by vampire level drain and cannot be resurrected until the sire vampire is destroyed."
+        )
+        return log
     holy_symbol_index = next(
         (
             index

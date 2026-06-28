@@ -169,7 +169,9 @@ subset playable, indexed, and automated for the first trap/feature/event layer:
   large-room lair detection still pending;
 - unique events, enchanted banquet and useful-stuff tables — event choices and
   direct effects are wired through the existing feature/treasure UI;
-- vampirism, Dark Plague, lycanthropy and campaign plots.
+- Dark Plague and lycanthropy lifecycles are wired; vampire level-drain death
+  blocks ordinary resurrection. Vampire sire hunt/re-encounter automation and
+  campaign plots remain pending.
 
 ## 7. Not Abyss (clarification)
 

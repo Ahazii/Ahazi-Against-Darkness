@@ -281,7 +281,7 @@
     {"roll": "1", "name": "Zombie Minotaur", "level": 6, "life": 10, "attacks": 2, "treasure_rolls": 1, "tags": ["abyss", "undead"], "summary": "Defense rolls against it are at -1.", "source_page": 56},
     {"roll": "2", "name": "Giant Constrictor Snake", "level": 7, "life": 6, "attacks": 1, "treasure_rolls": 0, "tags": ["abyss", "snake"], "summary": "Failed Defense constricts for 1 Life per turn until killed or escaped.", "source_page": 56},
     {"roll": "3", "name": "Minor Vampire", "level": 8, "life": 6, "attacks": 1, "treasure_rolls": 0, "tags": ["abyss", "undead", "vampire", "magic_weapon_required"], "on_hit_effects": [{"type": "level_drain", "save_type": "magic", "save_level": 4}], "summary": "Vampire restrictions; damage can cause level loss.", "source_page": 56},
-    {"roll": "4", "name": "Werewolf", "level": 8, "life": 8, "attacks": 2, "treasure_rolls": 2, "tags": ["abyss", "werecreature"], "on_hit_effects": [{"type": "status", "status": "Lycanthropy exposure", "save_type": "curse", "save_level": 5, "timing": "end_of_encounter"}], "summary": "Silver +1; wounded heroes save vs curse for lycanthropy exposure.", "source_page": 56},
+    {"roll": "4", "name": "Werewolf", "level": 8, "life": 8, "attacks": 2, "treasure_rolls": 2, "tags": ["abyss", "werecreature"], "on_hit_effects": [{"type": "status", "status": "Lycanthropy exposure", "save_type": "infection", "save_level": 5, "timing": "end_of_encounter"}], "summary": "Silver +1; wounded heroes save vs L5 infection for lycanthropy at encounter end.", "source_page": 56},
     {"roll": "5", "name": "Phasing Panther", "level": 7, "life": 5, "attacks": 3, "treasure_rolls": 2, "tags": ["abyss", "beast", "always_first"], "summary": "Always attacks first; 4+ blink ignores a wound.", "source_page": 56},
     {"roll": "6", "name": "Lich", "level": 10, "life": 8, "attacks": 4, "treasure_rolls": 3, "tags": ["abyss", "undead"], "encounter_start_effects": [{"type": "madness", "amount": 1}], "summary": "Meeting it causes Madness; fear save can impose -1 Attack; possible skeletal warriors.", "source_page": 56}
   ],
@@ -346,7 +346,7 @@
   ],
   "abyss_unique_event_table": [
     {"roll": "1", "key": "book_of_secrets", "name": "Book of Secrets", "summary": "A chosen reader gains d6 Clues but saves vs Clues+2 or gains d3 Madness.", "source_page": 59},
-    {"roll": "2", "key": "dark_plague", "name": "Dark Plague", "summary": "Random hero saves vs level 5 disease or contracts Dark Plague.", "source_page": 59},
+    {"roll": "2", "key": "dark_plague", "name": "Dark Plague", "summary": "Random hero saves vs L10 disease or contracts Dark Plague; infected heroes roll d8 each room and spread saves to non-immune allies.", "source_page": 59},
     {"roll": "3", "key": "swarm_of_critters", "name": "Swarm of Critters", "summary": "Fireball disperses it; otherwise all heroes take 1 wound.", "source_page": 59},
     {"roll": "4", "key": "secret_stairs", "name": "Secret Stairs", "summary": "Secret passage to an upper-level room/corridor, with possible wandering monster.", "source_page": 59},
     {"roll": "5", "key": "gold_ghost", "name": "Gold Ghost", "summary": "Sacrifice 100 gp or all heroes suffer -1 Defense until individually Blessed.", "source_page": 59},
@@ -366,6 +366,6 @@
     {"roll": "3", "name": "Wolvesbane", "summary": "Thrown at wolf/were-creature to force morale; resale 10gp.", "source_page": 61},
     {"roll": "4", "name": "Silver Weapon", "summary": "Silver slashing hand weapon or dagger; +1 vs werewolves; resale 20gp.", "source_page": 61},
     {"roll": "5", "name": "Blessed Horseshoe", "summary": "Reroll one die roll, then spent; resale 10gp unused.", "source_page": 61},
-    {"roll": "6", "name": "Elven Bread", "summary": "d3 loaves; heal 1 Life or remove Dark Plague, elves heal 3 Life; resale 10gp each.", "source_page": 61}
+    {"roll": "6", "name": "Elven Bread", "summary": "d3 loaves; heal 1 Life or remove Dark Plague and grant plague immunity, elves heal 3 Life; resale 10gp each.", "source_page": 61}
   ]
 }

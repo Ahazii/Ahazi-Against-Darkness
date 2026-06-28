@@ -7300,6 +7300,11 @@ function statusChipTooltip(label) {
   if (lower.includes("slumber amanita")) return "Slumber Amanita: next Sleep cast gains +Tier, including scrolls and Wand of Sleep.";
   if (lower.includes("phoenix mushroom")) return "Phoenix Mushroom: +1 Defense and Saves until the tile countdown expires, then lose 1 Life.";
   if (lower.includes("toxic spores")) return "Toxic Spores: -1 on all Saves until the room countdown expires.";
+  if (lower === "dark plague") return "Abyss Dark Plague: roll d8 each room; on 1 lose 1 Life. Other non-immune party members save vs L10 when entering rooms with an infected hero.";
+  if (lower === "dark plague immunity") return "Abyss Dark Plague: immune for the rest of this adventure after saving, Blessing cure, or Elven Bread.";
+  if (lower === "lycanthropy") return "Abyss Lycanthropy: Blessing and Healing do not cure it; leave the dungeon for 400gp monastery treatment. If Madness exceeds Level, the hero transforms.";
+  if (lower === "lycanthropy immunity") return "Immune to further lycanthropy infection.";
+  if (lower === "vampire-rise pending") return "Slain by vampire level drain; ordinary resurrection is blocked until the sire vampire is destroyed.";
   if (lower === "bear trap wound") return "Bear Trap Wound: -2 vs further bear traps/trapdoors and -1 Attack/Defense until the lost Life is recovered.";
   if (lower.includes("arrow of slaying")) return "Epic Reward: usable only by a PC with a bow; automatically deals 3 damage to its rolled target Foe, then breaks.";
   if (lower.includes("book of skalitos") || lower.startsWith("skalitos")) return "Epic Reward: six basic wizard spell pages; each use casts one page as a scroll.";
@@ -9481,6 +9486,23 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
     if (appendHeroAbyssItemActions(actions, session, member, [])) {
       hasActions = true;
     }
+  }
+
+  if ((member.statuses || []).some((status) => String(status).toLowerCase() === "lycanthropy")) {
+    const treatBtn = node("button", "secondary", "Treat Lycanthropy");
+    treatBtn.type = "button";
+    treatBtn.disabled = !session.camped_outside;
+    setButtonTooltip(
+      treatBtn,
+      session.camped_outside
+        ? "Abyss p.39: pay 400gp at a monastery and save vs L5 infection at +1; natural 1 kills, exploding cure grants immunity."
+        : "Leave the dungeon and camp outside before seeking the monastery lycanthropy cure."
+    );
+    treatBtn.addEventListener("click", () =>
+      advance("treat_lycanthropy", { character_id: member.character_id })
+    );
+    actions.appendChild(treatBtn);
+    hasActions = true;
   }
 
   for (const mushroomName of heroUsableMushrooms(session, member)) {

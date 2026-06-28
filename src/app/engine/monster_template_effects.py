@@ -209,6 +209,25 @@ def apply_member_level_loss(
 ) -> list[str]:
     if amount <= 0:
         return []
+    if "level drain" in source.lower():
+        old_level = member.level
+        old_max_life = member.max_life
+        member.level = max(0, member.level - amount)
+        member.max_life = max(0, member.max_life - amount)
+        member.current_life = max(0, min(member.current_life - amount, member.max_life))
+        log = [
+            f"{member.name} fails the save — Level drops from L{old_level} to L{member.level} "
+            f"and max Life drops from {old_max_life} to {member.max_life} due to {source}."
+        ]
+        if member.level <= 0 or member.current_life <= 0:
+            from .abyss_afflictions import mark_vampire_rise_pending
+
+            member.current_life = 0
+            mark_vampire_rise_pending(member)
+            log.append(
+                f"{member.name} is slain by vampire level drain and will rise as a vampire unless the sire is destroyed."
+            )
+        return log
     if member.level <= 1:
         return [f"{member.name} is already at minimum Level and cannot lose another Level to {source}."]
     old_level = member.level
@@ -1035,6 +1054,18 @@ def apply_on_hit_effects(
             if not passed:
                 _add_status(target, SLIME_DISEASE_STATUS)
                 log.append(f"Effect: {target.name} is infected with slime disease.")
+        elif effect_type == "status":
+            status = str(effect.get("status", "")).strip()
+            if status.lower().startswith("lycanthropy exposure"):
+                from .abyss_afflictions import mark_lycanthropy_exposure
+
+                mark_lycanthropy_exposure(target)
+                log.append(
+                    f"Effect: {target.name} is exposed to lycanthropy; save at encounter end."
+                )
+            elif status:
+                _add_status(target, status)
+                log.append(f"Effect: {target.name} gains status: {status}.")
         elif effect_type in {"magic", "disease", "petrification", "slime_disease"}:
             description = str(effect.get("description", effect_type))
             log.append(f"Event: {enemy.name} — {description} (timing {effect.get('timing', 'immediate')} pending).")

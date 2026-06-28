@@ -600,6 +600,9 @@ def test_epic_reward_statuses_have_ui_actions_and_hints() -> None:
     assert "rolled target Foe" in tooltip
     assert "Bear Trap Wound" in tooltip
     assert "six basic wizard spell pages" in tooltip
+    assert "Dark Plague: roll d8 each room" in tooltip
+    assert "Abyss Lycanthropy: Blessing and Healing do not cure it" in tooltip
+    assert "Slain by vampire level drain" in tooltip
     status = _function_body("heroStatusChips", APP_JS)
     assert "enchanted weapon" in status
     assert "kerrak dar hoard" in status

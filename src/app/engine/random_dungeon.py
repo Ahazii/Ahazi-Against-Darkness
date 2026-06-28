@@ -985,6 +985,7 @@ class RandomDungeonEngine:
             "use_apothecary_brew",
             "use_blossoms_item",
             "use_abyss_item",
+            "treat_lycanthropy",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -1300,6 +1301,8 @@ class RandomDungeonEngine:
                 target_enemy_id=foe_id,
                 show_rolls=show_rolls,
             )
+        elif action == "treat_lycanthropy":
+            self._treat_lycanthropy(session, character_id, show_rolls=show_rolls)
         elif action == "courtship_damsel_penalty":
             from .courtship_demesne import resolve_courtship_damsel_penalty
 
@@ -1871,6 +1874,8 @@ class RandomDungeonEngine:
             self._attempt_resurrection(session, target_character_id or character_id, show_rolls=show_rolls)
         elif action == "accept_fallen_loss":
             self._accept_fallen_loss(session, target_character_id or character_id)
+        elif action == "treat_lycanthropy":
+            self._treat_lycanthropy(session, character_id, show_rolls=show_rolls)
         elif action == "use_class_ability":
             self._use_class_ability(
                 session,
@@ -2207,6 +2212,7 @@ class RandomDungeonEngine:
                     fire_imported_triggers(self, session, existing, "on_enter", show_rolls=show_rolls)
                 self._tick_phoenix_mushrooms(session)
                 self._tick_toxic_spores(session)
+                self._tick_abyss_room_entry_afflictions(session, existing, show_rolls=show_rolls)
                 self._tick_teleport_enemy_returns(session, reason="movement")
                 if exit_state.acute_hearing_cleared and existing.id not in session.expert_acute_hearing_tiles:
                     session.expert_acute_hearing_tiles.append(existing.id)
@@ -2320,6 +2326,7 @@ class RandomDungeonEngine:
             tick_party_hunger(session, [pc for pc in session.party if pc.current_life > 0], log=session.log)
             self._tick_phoenix_mushrooms(session)
             self._tick_toxic_spores(session)
+            self._tick_abyss_room_entry_afflictions(session, new_tile, show_rolls=show_rolls)
             self._tick_teleport_enemy_returns(session, reason="movement")
             if exit_state.acute_hearing_cleared and new_tile.id not in session.expert_acute_hearing_tiles:
                 session.expert_acute_hearing_tiles.append(new_tile.id)
@@ -9348,6 +9355,9 @@ class RandomDungeonEngine:
             session.log,
             show_rolls=show_rolls,
         )
+        from .abyss_afflictions import resolve_lycanthropy_exposures
+
+        session.log.extend(resolve_lycanthropy_exposures(session, tile, show_rolls=show_rolls))
 
         from .swashbuckler_traits import apply_lucky_hat_blocked_damage, clear_blade_dance_on_combat_end
 
@@ -9388,6 +9398,10 @@ class RandomDungeonEngine:
         tile.resolved = True
         session.mode = "exploration"
         session.log.append("Combat ends.")
+        if any("former_party_member" in {tag.lower() for tag in enemy.tags} for enemy in tile.enemies):
+            session.log.append("A transformed ally is now an active foe.")
+            self._announce_encounter(session, tile, show_rolls=show_rolls)
+            return
         if result.morale_failed:
             self._award_treasure(session, tile, show_rolls=show_rolls)
         elif not tile.enemies:
@@ -16078,6 +16092,17 @@ class RandomDungeonEngine:
             if expired:
                 session.log.append(f"Toxic spores clear from {member.name}; Save penalty removed.")
 
+    def _tick_abyss_room_entry_afflictions(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        from .abyss_afflictions import tick_dark_plague_on_room_entry
+
+        session.log.extend(tick_dark_plague_on_room_entry(session, tile, show_rolls=show_rolls))
+
     def _tile_has_morlocks(self, tile: TileState) -> bool:
         return any(
             enemy.life > 0
@@ -16168,11 +16193,15 @@ class RandomDungeonEngine:
             self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
             return
         target = random.choice(living)
-        bonus = save_modifier(target)
-        passed = self._abyss_save(target, 5, show_rolls=show_rolls, log=session.log, label="Dark Plague", bonus=bonus)
-        if not passed and "Dark Plague" not in target.statuses:
-            target.statuses.append("Dark Plague")
-            session.log.append(f"Effect: {target.name} contracts the Dark Plague (Abyss p.37).")
+        from .abyss_afflictions import apply_dark_plague_exposure
+
+        apply_dark_plague_exposure(
+            target,
+            session=session,
+            log=session.log,
+            show_rolls=show_rolls,
+            source="Dark Plague",
+        )
         self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
 
     def _resolve_abyss_mana_sink(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
@@ -17800,6 +17829,18 @@ class RandomDungeonEngine:
         show_rolls: bool,
     ) -> None:
         session.log.extend(attempt_resurrection(session, fallen_id, show_rolls=show_rolls))
+
+    def _treat_lycanthropy(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        from .abyss_afflictions import treat_lycanthropy_at_monastery
+
+        session.log.extend(treat_lycanthropy_at_monastery(session, member, show_rolls=show_rolls))
 
     def _accept_fallen_loss(self, session: SessionState, fallen_id: str | None) -> None:
         session.log.extend(accept_fallen_loss(session, fallen_id))

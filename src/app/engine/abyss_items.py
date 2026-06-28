@@ -6,6 +6,8 @@ import re
 
 from app.schemas import EnemyState, PartyMemberState
 
+from .abyss_afflictions import cure_dark_plague, mark_dark_plague_immune
+
 
 ABYSS_FIRE_BREATH_STATUS = "Abyss Fire Breathing"
 ABYSS_ELVEN_BREAD_USED_STATUS = "Abyss Elven Bread used"
@@ -174,8 +176,9 @@ def use_elven_bread(member: PartyMemberState, item_name: str | None = None) -> l
     consume_inventory_item(member, bread)
     member.statuses.append(ABYSS_ELVEN_BREAD_USED_STATUS)
     if any("dark plague" in status.lower() for status in member.statuses):
-        member.statuses = [status for status in member.statuses if "dark plague" not in status.lower()]
-        return [f"{member.name} eats {bread}; Dark Plague is removed."]
+        cure_dark_plague(member)
+        return [f"{member.name} eats {bread}; Dark Plague is removed and they are immune this adventure."]
+    mark_dark_plague_immune(member)
     amount = 3 if member.class_id.lower() == "elf" else 1
     before = member.current_life
     member.current_life = min(member.max_life, member.current_life + amount)

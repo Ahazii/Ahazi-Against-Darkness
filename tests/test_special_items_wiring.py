@@ -53,6 +53,9 @@ UI_MARKERS = [
     "Spend torch",
     "Eat Berserker's Mushroom",
     "Use Enchanted Paint",
+    "Treat Lycanthropy",
+    "treat_lycanthropy",
+    "monastery lycanthropy cure",
 ]
 
 
@@ -80,6 +83,8 @@ def test_special_item_actions_are_schema_actions_and_engine_handlers() -> None:
     branches = _engine_branches()
     assert SPECIAL_ITEM_ACTIONS <= actions
     assert SPECIAL_ITEM_ACTIONS <= branches
+    assert "treat_lycanthropy" in actions
+    assert "treat_lycanthropy" in branches
 
 
 def test_special_item_reference_entries_exist() -> None:

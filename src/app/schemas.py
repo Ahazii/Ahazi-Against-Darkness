@@ -1096,6 +1096,7 @@ class SessionAction(BaseModel):
         "drop_body",
         "attempt_resurrection",
         "accept_fallen_loss",
+        "treat_lycanthropy",
         "use_class_ability",
         "detach_heroes",
         "reattach_heroes",
