@@ -106,7 +106,7 @@ The following party-splitting mechanics were identified in the EE rulebook but a
   `tests/test_tier_dice.py`, `tests/test_tier_training.py`, `tests/test_expert_skills.py`, `tests/test_expert_skill_effects.py`,   `tests/test_expert_spells.py`, `tests/test_tier_skills.py`, `tests/test_tier15_effects.py`, `tests/test_heroic_skill_effects.py`, `tests/test_split_party.py`, `tests/test_tiles_validation.py`, `tests/test_capture.py`, `tests/test_secrets_reactions_table_family.py`,
   `tests/test_terrain.py`, `tests/test_outdoor_ee_rules.py`, `tests/test_pdf_table_compliance.py`, `tests/test_bestiary_coverage.py`, `tests/test_special_bribe_reactions.py`, `tests/test_courtship_classes.py`
 - Structural validators: `tools/validate_tiles.py` (map elements), `tools/validate_monsters.py` (monster entries + reaction_tables rows), `tools/list_reaction_tables.py` (reaction table index)
-- Last validation pass: 2026-06-24 (Program Phase 4: ruleset profiles, FD Heroic catalog, Abyss Phase B index, TAG campaign shell)
+- Last validation pass: 2026-06-28 (FD/TAG rules pass: Teleport Enemy return state, Mass Blessing party/hireling condition choices, TAG settlement Apothecary panel/action; full suite 1747 passed, 6 skipped)
 
 ## Next depth (planned)
 

@@ -267,14 +267,16 @@ Goal: broaden rule coverage safely.
 - **FD Heroic spells (2026-06-24):** PDF-accurate 6-spell d6 table in `heroic_spells.json`; full cast resolver in `forsaken_depths_heroic_spells.py` wired through `resolve_spell_cast`, river hazards, combat bonuses, scroll rewards, and Cyclopean Idol bas-relief.
 - **Abyss Phase B (2026-06-24):** `abyss_tables.json` + `docs/ABYSS_PHASE_B_AUDIT.md` — indexed room content stubs; runtime deferred.
 - **TAG campaign shell (2026-06-24):** `CampaignState`, `GET/PUT /api/campaign`, `days_passed` on adventure complete, TAG banking toggle on session start.
+- **FD/TAG rules pass (2026-06-28):** Teleport Enemy return tracking, Mass Blessing target/condition UI including hirelings, and TAG Settlement Apothecary brew panel/action are implemented and tested.
 - **Courtship of Flower Demons — planned sequence:**
   1. ~~Small courtship gaps~~ — virile might +1 breeding saves, Flower Portal water-adjacent validation, rulebook status (done).
   2. ~~**Apothecary Cookbook (medium scope)**~~ — TCOTFD appendix recipes, brew-between-encounters UI, difficulty rolls, Wandering Alchemist gating, Karmic Calcinator duration doubling, portable brewed items (done).
   3. ~~**TCOTFD class pass**~~ — Wandering Alchemist, Satyr, Conservationist, and cross-book cambion/succubus/demonologist hooks; satyr outdoor seduce/treasure/exhaustion, halfling Lucky Wooers, Conservationist vow→BoS 16, Flower Portal innate once/adventure (scrolls unlimited), satyr innate Blossoms, Expert Surgeon/Herbalist/Poison Expert training, Wandering Alchemist L1 expert skills and halfling-skill expansion at Expert tier (done).
   4. ~~**FD treasure on monsters**, citadel auto-gen, and river edge cases~~ (done).
   5. ~~**Lex opposition, alchemist expert skills, FD tile validation, apothecary camp/forage**~~ (done 2026-06-24).
-  6. ~~**TCOTFD polish**~~ — Lex sleep-on-hit and insect-fear combat; BoS entries 2/5/6/7; soul-tax Meadows reroll (done 2026-06-24). **TAG settlement apothecary** stub remains.
-- **Apothecary Cookbook — broad scope:** camp brewing and outdoor Norindaal foraging wired (2026-06-24). **TAG settlement brew** still deferred until TAG downtime layer exists.
+  6. ~~**TCOTFD polish**~~ — Lex sleep-on-hit and insect-fear combat; BoS entries 2/5/6/7; soul-tax Meadows reroll (done 2026-06-24).
+  7. ~~**TAG settlement apothecary**~~ — separate town/village downtime panel and `tag_settlement_brew_apothecary` action wired (done 2026-06-28).
+- **Apothecary Cookbook — broad scope:** camp brewing and outdoor Norindaal foraging wired (2026-06-24); TAG settlement brewing wired separately from camp outside the dungeon (2026-06-28).
 - Track a possible product rename from **Ahazi Against Darkness** to **Four
   Against Darkness**. Technically this is a small branding/configuration pass
   across the app title, API title, package text, docs, and deployment labels;
