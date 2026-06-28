@@ -1329,16 +1329,10 @@ button.secondary,
 }
 
 .map-log-row:not(.log-row-expanded) .map-exits-dock:has(.map-exits-details[open]) {
-  flex: 1 1 0%;
+  flex: 0 0 var(--exits-panel-width, 280px);
+  height: 100%;
   min-height: 0;
   max-height: 100%;
-  align-self: stretch;
-}
-
-.map-log-row:not(.log-row-expanded) .map-exits-dock {
-  flex: 0 0 var(--exits-panel-width, 280px);
-  height: auto;
-  max-height: none;
   align-self: stretch;
 }
 
@@ -1380,25 +1374,18 @@ button.secondary,
 }
 
 .map-exits-body {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
   gap: 0;
   padding: 4px 0 0;
-  height: 100%;
   min-height: 0;
   overflow: hidden;
-}
-
-.map-exits-dock .map-exits-details[open] .map-exits-scroll {
-  flex: 1 1 0%;
-  min-height: 0;
 }
 
 .map-exits-scroll {
   flex: 1 1 0%;
   min-height: 0;
-  max-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;

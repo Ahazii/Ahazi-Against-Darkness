@@ -15928,6 +15928,11 @@ function applyLayoutCss() {
   if (charactersEl) {
     charactersEl.style.setProperty("--roster-list-height", `${Math.round(state.rosterListHeight)}px`);
   }
+  scheduleMapExitsScrollRefresh(mapExitsPanel?.querySelector(".map-exits-body"));
+}
+
+function refreshMapExitsScrollAfterLayout() {
+  scheduleMapExitsScrollRefresh(mapExitsPanel?.querySelector(".map-exits-body"));
 }
 
 function setupDragResizer(handle, { onDelta, onComplete, onReset }) {
@@ -15980,7 +15985,10 @@ function initLayoutResizers() {
       state.logPanelHeight = clampFloat(state.logPanelHeight + dy, 120, window.innerHeight * 0.68);
       applyLayoutCss();
     },
-    onComplete: saveLayoutPrefs,
+    onComplete: () => {
+      saveLayoutPrefs();
+      refreshMapExitsScrollAfterLayout();
+    },
     onReset: () => resetLayoutPref("logPanelHeight"),
   });
   setupDragResizer(sessionColumnResizer, {
@@ -15996,7 +16004,10 @@ function initLayoutResizers() {
       state.exitsPanelWidth = clampFloat(state.exitsPanelWidth - dx, 160, 520);
       applyLayoutCss();
     },
-    onComplete: saveLayoutPrefs,
+    onComplete: () => {
+      saveLayoutPrefs();
+      refreshMapExitsScrollAfterLayout();
+    },
     onReset: () => resetLayoutPref("exitsPanelWidth"),
   });
   setupDragResizer(mapBottomResizer, {
@@ -19620,12 +19631,15 @@ function updateMapExitsScrollState(shell) {
   const scroll = shell.querySelector(".map-exits-scroll");
   const hint = shell.querySelector(".map-exits-scroll-hint");
   if (!scroll) return;
-  const scrollable = scroll.scrollHeight > scroll.clientHeight + 1;
+  const list = scroll.querySelector(".exit-list");
+  const contentHeight = list?.scrollHeight ?? scroll.scrollHeight;
+  const viewportHeight = scroll.clientHeight;
+  const scrollable = contentHeight > viewportHeight + 1;
   const atTop = scroll.scrollTop <= 1;
-  const atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 1;
+  const atBottom = scroll.scrollTop + viewportHeight >= scroll.scrollHeight - 1;
   const exitRows = scroll.querySelectorAll(".exit-row").length;
   const rowHeight = scroll.querySelector(".exit-row")?.offsetHeight || 76;
-  const visibleEstimate = scroll.clientHeight > 0 ? Math.max(1, Math.floor(scroll.clientHeight / rowHeight)) : 1;
+  const visibleEstimate = viewportHeight > 0 ? Math.max(1, Math.floor(viewportHeight / rowHeight)) : 1;
   const hiddenCount = Math.max(0, exitRows - visibleEstimate);
   scroll.classList.toggle("has-scroll", scrollable);
   scroll.classList.toggle("at-scroll-top", atTop);

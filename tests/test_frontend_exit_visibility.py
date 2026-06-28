@@ -140,11 +140,12 @@ def test_frontend_log_exits_row_is_resizable_without_exits_forcing_map_smaller()
     assert "mapLogRow.style.height = \"\";" in app_js
     assert ".map-log-row {\n  display: flex;" in styles
     assert "height: min(var(--log-panel-height, 240px), 58vh);" in styles
-    assert ".map-exits-dock .map-exits-details[open] .map-exits-scroll {\n  flex: 1 1 0%;\n  min-height: 0;\n}" in styles
-    assert "max-height: none" not in styles.split(".map-exits-scroll")[1].split(".map-exits-scroll-hint")[0]
+    assert ".map-exits-body {\n  display: flex;\n  flex-direction: column;" in styles
+    assert "grid-template-rows: minmax(0, 1fr) auto" not in styles.split(".map-exits-body")[1].split(".map-exits-scroll")[0]
+    assert ".map-log-row:not(.log-row-expanded) .map-exits-dock:has(.map-exits-details[open]) {\n  flex: 0 0 var(--exits-panel-width, 280px);" in styles
     assert ".map-exits-scroll.has-scroll {\n  overflow-y: scroll;" in styles
     assert "function updateMapExitsScrollState(shell)" in app_js
-    assert "function scheduleMapExitsScrollRefresh(shell)" in app_js
+    assert "function refreshMapExitsScrollAfterLayout()" in app_js
     assert "calc(var(--exit-row-weight, var(--exit-row-count, 1)) * 100px)" not in styles
 
 
