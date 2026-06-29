@@ -649,6 +649,17 @@ h2 {
 .tag-bank-transfer-dialog,
 .tag-action-dialog {
   width: min(760px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+.tag-action-dialog .transfer-dialog-actions {
+  position: sticky;
+  bottom: -14px;
+  margin: 12px -14px -14px;
+  padding: 10px 14px 14px;
+  background: linear-gradient(180deg, rgba(29, 31, 24, 0), var(--panel) 28%);
 }
 
 .tag-action-guide {

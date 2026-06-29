@@ -11076,7 +11076,10 @@ function trackedSessionActionButton() {
 }
 
 function beginSessionAction(action, button = trackedSessionActionButton()) {
-  if (state.sessionActionPending) return false;
+  if (state.sessionActionPending) {
+    setStatus("Still resolving the previous action. Wait for the session update before clicking again.");
+    return false;
+  }
   state.sessionActionPending = true;
   state.sessionActionButton = button?.isConnected ? button : null;
   state.sessionActionButtonDisabled = Boolean(state.sessionActionButton?.disabled);
@@ -11118,6 +11121,39 @@ document.addEventListener(
   },
   true
 );
+
+function openTagAdventureActions() {
+  if (!tagAdventureActionsDialog) {
+    setStatus("TAG Actions dialog is not available on this screen.");
+    return;
+  }
+  if (tagAdventureActionsDialog.parentElement !== document.body) {
+    document.body.appendChild(tagAdventureActionsDialog);
+  }
+  renderTagCharacterOptions(state.campaign);
+  updateTagBranchActionHint();
+  try {
+    if (!tagAdventureActionsDialog.open) {
+      if (typeof tagAdventureActionsDialog.showModal === "function") {
+        tagAdventureActionsDialog.showModal();
+      } else {
+        tagAdventureActionsDialog.setAttribute("open", "");
+      }
+    }
+    tagAdventureActionsDialog.scrollTop = 0;
+    tagBranchAction?.focus();
+    setStatus("TAG Actions opened.");
+  } catch (error) {
+    handleError(error);
+    try {
+      tagAdventureActionsDialog.setAttribute("open", "");
+      tagBranchAction?.focus();
+      setStatus("TAG Actions opened without modal support.");
+    } catch {
+      setStatus("Could not open TAG Actions.");
+    }
+  }
+}
 
 function classImageUrl(profile) {
   if (!profile?.image) return "";
@@ -28472,11 +28508,7 @@ tagRefreshServices?.addEventListener("click", () => {
 });
 tagOpenTroupeManager?.addEventListener("click", () => openTagTroupeDialog());
 tagOpenBankTransfer?.addEventListener("click", () => openTagBankTransferDialog());
-tagOpenAdventureActions?.addEventListener("click", () => {
-  renderTagCharacterOptions(state.campaign);
-  updateTagBranchActionHint();
-  tagAdventureActionsDialog?.showModal();
-});
+tagOpenAdventureActions?.addEventListener("click", () => openTagAdventureActions());
 tagCheckAvailability?.addEventListener("click", () => {
   checkTagAvailability().catch(handleError);
 });
