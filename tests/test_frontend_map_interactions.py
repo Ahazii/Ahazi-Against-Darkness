@@ -1863,6 +1863,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html#manual-test-generated-tag-adventures"' in INDEX_HTML
     assert "TAG Generated Test Checklist" in MODERN_PAGES_JS
     assert "#manual-test-generated-tag-adventures" in MODERN_PAGES_JS
+    assert "adventure.name || adventure.title || adventureId" in MODERN_PAGES_JS
+    assert "adventureSource === \"rules\"" in MODERN_PAGES_JS
     assert '<details class="tag-help-section" open>' not in INDEX_HTML
     tag_guide_html = Path("docs/Checking/TAG_SECTION_GUIDE.html").read_text(encoding="utf-8")
     tag_guide_md = Path("docs/Checking/TAG_SECTION_GUIDE.md").read_text(encoding="utf-8")
@@ -2092,6 +2094,11 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "Known Settlements",
         "Save Preferences",
         "Load Saved Game",
+        "Create TAG Adventure Lead",
+        "modern-tag-lead-type",
+        "modern-tag-lead-detail",
+        "Create TAG Module",
+        "It is selected in Adventure/module.",
         "sessionStorage.setItem(\"ahazi-modern-dev-unlocked\"",
         "availability reroll ${campaign.tag_guild_availability_reroll_used",
         "modernTablePreview",

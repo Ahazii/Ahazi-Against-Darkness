@@ -54,12 +54,12 @@ Current generated TAG prompt coverage includes specific buttons for Rumor scene 
 Use this workflow when playtesting the generated TAG modules against `Tales_from_the_adventurers_guild.pdf`.
 
 1. **Prepare a clean test party**: create or choose four living characters, enable TAG banking if you want finance prompts, and save the active party.
-2. **Create the lead**: Home -> Adventure -> TAG Settlement -> Maps and Adventure Leads. Choose one lead type and detail number, then press **Create adventure**. Use these detail ranges:
+2. **Create the lead**: New Dashboard -> Go Adventure! -> Create TAG Adventure Lead. Choose one lead type and detail number, then press **Create TAG Module**. The legacy route still works from Home -> Adventure -> TAG Settlement -> Maps and Adventure Leads. Use these detail ranges:
    - Rumor Scene: 1-12.
    - Thematic Dungeon: 1-6.
    - Treasure Map destination: 1-6.
    - Guild Job: 1-6 or blank to roll.
-3. **Confirm installation**: the generated module should appear in the normal Adventure dropdown and usually be selected automatically. The title should name the TAG lead.
+3. **Confirm installation**: the generated module should appear in Adventure/module as an Imported Adventure Module and should be selected automatically. The title should name the TAG lead.
 4. **Start the adventure**: choose your party and start the selected generated module.
 5. **Check every room prompt**: in exploration, inspect the room detail panel. For new generated modules you should see a **TAG scene prompt** with source pages, target/procedure/check notes, and shortcut buttons.
 6. **Hover every prompt button**: each shortcut should have a tooltip explaining what it will prefill. Buttons should open **TAG Actions** rather than changing state immediately.

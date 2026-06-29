@@ -424,10 +424,13 @@ function partyOptions(blank = "Choose party") {
 function adventureOptions(kind = "all") {
   const rows = kind === "random" || kind === "ruleset" || kind === "all" ? [["random", "Random Dungeon"]] : [];
   for (const adventure of modernState.adventures) {
-    if (kind === "ai" && !String(adventure.id || "").startsWith("ai-")) continue;
-    if (kind === "imported" && String(adventure.id || "").startsWith("ai-")) continue;
+    const adventureId = String(adventure.id || "");
+    const adventureSource = String(adventure.source || "");
+    const adventureName = adventure.name || adventure.title || adventureId;
+    if (kind === "ai" && !adventureId.startsWith("ai-")) continue;
+    if (kind === "imported" && (adventureId === "random" || adventureId === "ai-adventure" || adventureId.startsWith("ai-") || adventureSource === "rules")) continue;
     if ((kind === "random" || kind === "ruleset") && adventure.id !== "random") continue;
-    rows.push([adventure.id, adventure.title || adventure.id]);
+    rows.push([adventure.id, adventureName]);
   }
   return rows;
 }
@@ -1206,6 +1209,30 @@ function renderGoAdventure() {
     profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
   });
   profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
+  const tagLead = card("Create TAG Adventure Lead", "Player-facing TAG lead creation. Use this to install a Rumor, Treasure Map destination, Thematic Dungeon, or Guild Job as a playable imported module.");
+  const tagLeadType = select("modern-tag-lead-type", "Choose which TAG lead table to generate from.", [
+    ["rumor", "Rumor Scene"],
+    ["treasure_map", "Treasure Map destination"],
+    ["thematic_dungeon", "Thematic Dungeon"],
+    ["guild_job", "Guild Job"],
+  ]);
+  const tagLeadDetail = input("number", "modern-tag-lead-detail", "Optional result number: Rumor 1-12, Treasure Map 1-6, Thematic Dungeon 1-6, Guild Job 1-6. Leave blank to roll.", "");
+  tagLeadDetail.min = "1";
+  tagLeadDetail.step = "1";
+  tagLead.append(field("Lead type", tagLeadType), field("Detail", tagLeadDetail));
+  tagLead.appendChild(button("Create TAG Module", "Create and install the selected TAG lead as a playable imported adventure, then select it above.", async () => {
+    const result = await api("/api/campaign/tag/create-adventure", {
+      method: "POST",
+      body: JSON.stringify({ lead_type: tagLeadType.value, detail: tagLeadDetail.value }),
+    });
+    modernState.campaign = result.campaign;
+    modernState.adventures = await api("/api/adventures");
+    type.value = "imported";
+    adventure.replaceChildren(...optionRows(adventureOptions("imported")));
+    adventure.value = result.adventure_id || "";
+    profile.closest("label")?.classList.add("hidden");
+    setStatus(`Created ${result.title || result.adventure_id}. It is selected in Adventure/module.`);
+  }));
   panel.appendChild(button("Start Adventure", "Create a new session with the selected party and adventure settings.", async () => {
     if (!party.value) throw new Error("Choose a party.");
     writeModernPrefs({ lastPartyId: party.value, defaultRulesetProfile: profile.value, defaultXpSystem: xp.value, defaultMapMode: mapMode.value, defaultMapLimit: Number(mapLimit.value || 60) });
@@ -1245,7 +1272,7 @@ function renderGoAdventure() {
     sessions.appendChild(row);
   }
   if (!modernState.sessions.length) sessions.appendChild(el("p", "muted", "No active or saved sessions."));
-  rootEl.append(panel, sessions);
+  rootEl.append(panel, tagLead, sessions);
 }
 
 async function renderRulesReference() {
