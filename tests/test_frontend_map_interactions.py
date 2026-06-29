@@ -1924,11 +1924,14 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "openTagActionsWithDefaults" in APP_JS
     assert "tagPromptDefaultsFromAction" in APP_JS
     assert "appendTagMetadataPromptActions" in APP_JS
+    assert "appendTagModuleProfile" in APP_JS
     assert "room_prompts" in APP_JS
+    assert "module_profile" in APP_JS
     assert "tag-lead-entry" in APP_JS
     assert "tag-complication" in APP_JS
     assert "tag-final-scene" in APP_JS
     assert "tag-context-actions" in STYLES_CSS
+    assert "tag-context-module-profile" in STYLES_CSS
     assert "Class dossier" in MODERN_PAGES_JS
     assert "modern-class-info" in MODERN_PAGES_JS
     assert "Create / Save Troupe" in MODERN_PAGES_JS

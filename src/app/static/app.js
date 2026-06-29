@@ -21650,6 +21650,24 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
   return true;
 }
 
+function appendTagModuleProfile(parent, moduleProfile) {
+  if (!moduleProfile || typeof moduleProfile !== "object") return;
+  const targetRooms = moduleProfile.target_rooms || "";
+  const procedure = Array.isArray(moduleProfile.procedure) ? moduleProfile.procedure : [];
+  const signoffChecks = Array.isArray(moduleProfile.signoff_checks) ? moduleProfile.signoff_checks : [];
+  if (!targetRooms && !procedure.length && !signoffChecks.length) return;
+  const profile = node("div", "tag-context-module-profile");
+  setTooltip(profile, "Generated TAG module profile: target room count, special procedure notes, and signoff checks from the indexed TAG lead profile.");
+  if (targetRooms) profile.appendChild(subline(`Target: ${targetRooms}`));
+  for (const item of procedure.slice(0, 3)) {
+    profile.appendChild(subline(`Procedure: ${item}`));
+  }
+  for (const item of signoffChecks.slice(0, 3)) {
+    profile.appendChild(subline(`Check: ${item}`));
+  }
+  parent.appendChild(profile);
+}
+
 function appendTagContextualActions(parent, session, tile) {
   const tagReference = tagReferenceForGeneratedAdventure(session);
   if (!tagReference || session?.mode !== "exploration") return;
@@ -21671,6 +21689,7 @@ function appendTagContextualActions(parent, session, tile) {
   );
   setTooltip(prompt, "Generated TAG modules can contain printed choices that the app cannot infer automatically from movement alone.");
   block.appendChild(prompt);
+  appendTagModuleProfile(block, tagReference.module_profile);
   if (appendTagMetadataPromptActions(block, promptData, fallbackReference)) {
     parent.appendChild(block);
     return;

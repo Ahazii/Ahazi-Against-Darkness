@@ -420,12 +420,15 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     assert dragon["title"] == "TAG Thematic Dungeon: Dragon's Lair"
     assert dragon_ref["pdf_pages"] == "TAG pp.39-40"
     assert dragon_ref["final_foe_proxy"] == "Young Dragon"
+    assert dragon_ref["module_profile"]["target_rooms"] == "4-room dungeon"
+    assert "Complete exactly four rooms" in dragon_ref["module_profile"]["procedure"][0]
     assert any("Four-room target" in rule for rule in dragon_ref["rules"])
     dragon_actions = dragon_ref["room_prompts"]["tag-complication"]["actions"]
     assert any(
         action["action_value"] == "clue_gate_unlocked" and action["amount"] == 2 and "dragon type" in action["label"].lower()
         for action in dragon_actions
     )
+    assert any(action["action_value"] == "dragon_type_reveal" for action in dragon_actions)
 
     rolls = iter([2])
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
@@ -437,7 +440,9 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     assert job_ref["pdf_pages"] == "TAG p.55"
     assert job_ref["final_foe_proxy"] == "Gorungar the Mighty"
     assert "50 gp for his head" in job_ref["rewards"]
+    assert job_ref["module_profile"]["target_rooms"] == "single guild-job encounter"
     assert job_ref["room_prompts"]["tag-final-scene"]["title"] == "Final scene closeout"
+    assert any(action["action_value"] == "gorungar_alive" for action in job_ref["room_prompts"]["tag-final-scene"]["actions"])
     final_room = next(room for room in job["rooms"] if room["id"] == "tag-final-scene")
     assert final_room["triggers"][0]["encounter"]["foes"] == [
         {"name": "Gorungar the Mighty", "count": 1},
@@ -448,6 +453,16 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
 def test_tag_special_foes_are_allowlisted_and_used_in_generated_adventures() -> None:
     repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
     campaign = default_campaign()
+
+    shaura, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="8")
+    assert validate_adventure_manifest(shaura, rules_repo=repo).valid
+    shaura_ref = shaura["source"]["parameters"]["tag_reference"]
+    assert shaura_ref["module_profile"]["target_rooms"] == "10-room dungeon"
+    assert shaura_ref["final_foes"] == [
+        {"name": "Silent Scream Priestess", "count": 1},
+        {"name": "Silent Scream Cultists", "count": 9},
+    ]
+    assert any(action["action_value"] == "shaura_reward" for action in shaura_ref["room_prompts"]["tag-final-scene"]["actions"])
 
     rumor, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="10")
     assert validate_adventure_manifest(rumor, rules_repo=repo).valid
@@ -461,6 +476,8 @@ def test_tag_special_foes_are_allowlisted_and_used_in_generated_adventures() -> 
         {"name": "Bandit Chieftain", "count": 1},
         {"name": "TAG Bandits", "count": 6},
     ]
+    assert theme_ref["module_profile"]["target_rooms"] == "HCL+3 rooms"
+    assert any(action["action_value"] == "bandit_chieftain_capture" for action in theme_ref["room_prompts"]["tag-final-scene"]["actions"])
 
 
 def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None:

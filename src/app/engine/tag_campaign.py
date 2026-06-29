@@ -734,6 +734,28 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "rewards": "150 gp and XP after the cult is defeated.",
         "clue_gate_cost": 2,
         "clue_gate_label": "Spend 2 Clues to find Shaura",
+        "module_profile": {
+            "target_rooms": "10-room dungeon",
+            "procedure": [
+                "Spend 2 Clues before the cult location is opened.",
+                "Use the generated module as the ten-room cult dungeon handoff.",
+                "Final encounter is Silent Scream Priestess plus nine cultists.",
+            ],
+            "signoff_checks": [
+                "Confirm the 2-Clue gate is paid before opening the finale route.",
+                "After victory, apply the 150 gp reward and pending XP handling.",
+            ],
+        },
+        "final_prompt_actions": [
+            {
+                "label": "Apply Shaura reward",
+                "tooltip": "Prefill the printed Shaura cult reward action.",
+                "action_type": "scene",
+                "action_value": "shaura_reward",
+                "reference": "Shaura cult reward",
+                "amount": 150,
+            }
+        ],
         "rules": ["Final encounter includes the priestess and nine Silent Scream cultists."],
     },
     9: {
@@ -843,6 +865,28 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "rewards": "Dragon treasure per the selected dragon profile.",
         "clue_gate_cost": 2,
         "clue_gate_label": "Spend 2 Clues to reveal dragon type",
+        "module_profile": {
+            "target_rooms": "4-room dungeon",
+            "procedure": [
+                "Complete exactly four rooms for this compact lair.",
+                "Before the final room, the party may spend 2 Clues to reveal the dragon type.",
+                "Final encounter uses the selected TAG dragon profile; Young Dragon remains the safe generated proxy until a type is chosen.",
+            ],
+            "signoff_checks": [
+                "Check whether the party spent 2 Clues before revealing the final room.",
+                "Record the dragon type reveal result before resolving the hoard.",
+            ],
+        },
+        "complication_prompt_actions": [
+            {
+                "label": "Reveal dragon type",
+                "tooltip": "Prefill the Dragon's Lair type reveal scene action; it spends 2 Clues and rolls the TAG dragon type.",
+                "action_type": "scene",
+                "action_value": "dragon_type_reveal",
+                "reference": "Dragon's Lair type reveal",
+                "amount": 2,
+            }
+        ],
         "rules": ["Four-room target.", "Use Young Red Dragon if the type roll selects that printed result."],
     },
     4: {
@@ -888,6 +932,36 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "final_count": 1,
         "final_extra_foes": [{"name": "TAG Bandits", "count": 6}],
         "rewards": "8d6 gp, random magic item, plus bounty or free rumor if captured alive.",
+        "module_profile": {
+            "target_rooms": "HCL+3 rooms",
+            "procedure": [
+                "Each room has a 1-in-6 stolen-goods chance in the printed theme.",
+                "Rooms may include trapdoors; record any trapdoor result as a route/signoff note.",
+                "Final encounter is Bandit Chieftain plus bandit guards.",
+            ],
+            "signoff_checks": [
+                "Check stolen-goods chance room by room while playing the hideout.",
+                "Decide whether the chieftain is killed or captured alive before applying reward.",
+            ],
+        },
+        "final_prompt_actions": [
+            {
+                "label": "Capture chieftain alive",
+                "tooltip": "Prefill the printed capture-alive branch for the Bandit Chieftain reward path.",
+                "action_type": "branch",
+                "action_value": "capture_alive",
+                "reference": "Bandit Chieftain captured alive",
+                "amount": 0,
+            },
+            {
+                "label": "Bandit capture reward",
+                "tooltip": "Prefill the Bandit Chieftain capture scene reward.",
+                "action_type": "scene",
+                "action_value": "bandit_chieftain_capture",
+                "reference": "Bandit Chieftain capture reward",
+                "amount": 0,
+            },
+        ],
         "rules": ["Final encounter includes the chieftain and TAG Bandits as guards."],
     },
 }
@@ -920,6 +994,36 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         "final_count": 1,
         "final_extra_foes": [{"name": "Gorungar's Goblin Archers", "count": 8}],
         "rewards": "50 gp for his head or 100 gp alive, plus armband and coin bag.",
+        "module_profile": {
+            "target_rooms": "single guild-job encounter",
+            "procedure": [
+                "Printed encounter is Gorungar plus 2d6 goblin archers.",
+                "Generated module uses eight archers as the fixed proxy; roll 2d6 manually if exact count is required.",
+                "Archers use poison arrows and the printed surprise/morale notes.",
+            ],
+            "signoff_checks": [
+                "Confirm whether Gorungar was killed or captured alive.",
+                "Roll or record the coin bag and armband reward after victory.",
+            ],
+        },
+        "final_prompt_actions": [
+            {
+                "label": "Claim head bounty",
+                "tooltip": "Prefill the Gorungar head bounty scene reward.",
+                "action_type": "scene",
+                "action_value": "gorungar_head",
+                "reference": "Gorungar head bounty",
+                "amount": 0,
+            },
+            {
+                "label": "Claim alive bounty",
+                "tooltip": "Prefill the Gorungar alive bounty scene reward.",
+                "action_type": "scene",
+                "action_value": "gorungar_alive",
+                "reference": "Gorungar alive bounty",
+                "amount": 0,
+            },
+        ],
         "rules": ["Final encounter includes Gorungar and goblin archers; roll 2d6 archers manually if you want the exact count."],
     },
     3: {
@@ -3065,6 +3169,32 @@ def _tag_prompt_action(
     }
 
 
+def _tag_prompt_action_from_profile(action: object) -> dict[str, object] | None:
+    if not isinstance(action, dict) or not action.get("label"):
+        return None
+    return _tag_prompt_action(
+        str(action.get("label") or "TAG action"),
+        str(action.get("tooltip") or "Open TAG Actions with this generated-module prompt prefilled."),
+        action_type=str(action.get("action_type") or "dialog"),
+        action_value=str(action.get("action_value") or ""),
+        reference=str(action.get("reference") or ""),
+        amount=max(0, int(action.get("amount") or 0)),
+    )
+
+
+def _extend_prompt_actions(prompt: dict[str, object], actions: object) -> None:
+    if not isinstance(actions, list):
+        return
+    prompt_actions = prompt.setdefault("actions", [])
+    if not isinstance(prompt_actions, list):
+        prompt["actions"] = []
+        prompt_actions = prompt["actions"]
+    for action in actions:
+        clean = _tag_prompt_action_from_profile(action)
+        if clean:
+            prompt_actions.append(clean)
+
+
 def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object]) -> dict[str, object]:
     profile_title = str(profile.get("title") or lead_detail)
     base_ref = title or profile_title
@@ -3196,6 +3326,8 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             ],
         },
     }
+    _extend_prompt_actions(prompts["tag-complication"], profile.get("complication_prompt_actions"))
+    _extend_prompt_actions(prompts["tag-final-scene"], profile.get("final_prompt_actions"))
     return prompts
 
 
@@ -3232,6 +3364,7 @@ def _tag_manifest(
             "final_foe_proxy": final_foe,
             "final_foe_count": final_count,
             "final_foes": final_foes,
+            "module_profile": profile.get("module_profile", {}),
             "room_prompts": _tag_room_prompts(title=title, lead_detail=lead_detail, profile=profile),
         },
     }

@@ -497,6 +497,15 @@ h2 {
   gap: 8px;
 }
 
+.tag-context-module-profile {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #3c3a30;
+  border-radius: 6px;
+  background: #11130f;
+  padding: 8px;
+}
+
 .tag-panel-heading {
   display: flex;
   align-items: flex-start;
