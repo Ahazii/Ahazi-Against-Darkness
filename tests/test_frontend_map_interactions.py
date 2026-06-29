@@ -1833,7 +1833,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-guide-link",
     ]:
         assert f'id="{element_id}"' in INDEX_HTML
-    assert 'href="/docs/Checking/TAG_SECTION_GUIDE.md"' in INDEX_HTML
+    assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html"' in INDEX_HTML
+    assert '<details class="tag-help-section" open>' not in INDEX_HTML
     for endpoint in [
         "/api/campaign/tag/troupe",
         "/api/campaign/tag/store-treasure",
@@ -1872,6 +1873,6 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
 
 
 def test_docker_image_includes_docs_for_tag_guide_mount() -> None:
-    assert 'href="/docs/Checking/TAG_SECTION_GUIDE.md"' in INDEX_HTML
+    assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html"' in INDEX_HTML
     assert "app.mount(\"/docs\"" in Path("src/app/main.py").read_text(encoding="utf-8")
     assert "COPY docs ./docs" in DOCKERFILE

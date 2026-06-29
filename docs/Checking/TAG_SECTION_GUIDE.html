@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TAG Section Guide</title>
+    <style>
+      body {
+        margin: 0;
+        background: #151611;
+        color: #f4ead2;
+        font: 15px/1.55 "Segoe UI", system-ui, sans-serif;
+      }
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 28px 22px 48px;
+      }
+      h1, h2 {
+        line-height: 1.2;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      h2 {
+        margin-top: 30px;
+        border-top: 1px solid #3b3b31;
+        padding-top: 18px;
+      }
+      code {
+        background: #24251d;
+        border: 1px solid #3b3b31;
+        border-radius: 4px;
+        padding: 1px 4px;
+      }
+      a {
+        color: #f2c14e;
+      }
+      li {
+        margin: 6px 0;
+      }
+      .note {
+        color: #c9bea3;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>TAG Section Guide</h1>
+      <p>This guide explains the Tales from the Adventurers' Guild section in the app: settlement downtime, TAG banking, troupe management, travel, Streetwise, storage, adventure generation, route tracking, scene rewards, XP markers, Guild spells, and after-adventure cleanup.</p>
+      <p class="note">Use the TAG section from Home -&gt; Adventure -&gt; TAG Settlement. It is a town or village downtime surface, not the Camp Outside Dungeon panel.</p>
+
+      <h2>Before an Adventure</h2>
+      <ol>
+        <li>Enable <strong>Use Adventurers Guild banking</strong> if you want TAG banking rules instead of the legacy free home bank.</li>
+        <li>Open <strong>Settlement</strong> and set the town name, size modifier, and notes. Use <strong>Roll size</strong> when the settlement is random.</li>
+        <li>Open <strong>Troupe</strong> and choose the active party. Mark Guild membership and coffers if the troupe belongs to the Adventurers Guild.</li>
+        <li>Use <strong>Availability</strong> to check special TAG items or services. The app rolls d6 plus settlement size and logs normal price, 20% surcharge, or unavailable.</li>
+        <li>Use <strong>Buyer</strong>, <strong>Storage</strong>, <strong>Magic Lockers</strong>, and <strong>Services</strong> for purchases, storage, gambling, lockers, treasure maps, moneylenders, horns, oil, aspergillum, and similar downtime procedures.</li>
+        <li>Use <strong>Maps and Adventure Leads</strong> to create a Rumor Scene, Treasure Map, Thematic Dungeon, or Guild Job. The generated module appears in the normal Adventure section/dropdown.</li>
+      </ol>
+
+      <h2>TAG Banking</h2>
+      <p>TAG banking is separate from ordinary roster gold in the current implementation.</p>
+      <ul>
+        <li><strong>Bank deposit</strong>: choose a character, enter Amount gp, choose Finance -&gt; Bank deposit. The app deducts the deposit plus a 10% fee and stores the deposit in that character's TAG bank account.</li>
+        <li><strong>Bank withdraw</strong>: choose a character, enter Amount gp, choose Finance -&gt; Bank withdraw. The app moves that much from the TAG account back to the character.</li>
+        <li><strong>Inheritance note</strong>: choose the account owner, put the heir name in Note, choose Finance -&gt; Inheritance note.</li>
+        <li><strong>Inheritance transfer</strong>: choose the heir/recipient character and choose Finance -&gt; Inheritance transfer. The app finds a matching heir note, transfers the account after 20% tax, zeroes the donor account, and logs the result.</li>
+        <li><strong>Robbery risk/recovery</strong>: use Finance for hidden-storage robbery risk and recovery logging.</li>
+      </ul>
+      <p>The <strong>Route / XP / Bank summary</strong> under Services and Log shows recent bank balances and heirs.</p>
+
+      <h2>During a TAG Adventure</h2>
+      <p>Use the normal Adventure section to play the generated module. TAG-specific follow-up decisions are currently handled from Home -&gt; Adventure -&gt; TAG Settlement -&gt; TAG Actions. Moving the scene-branch controls into exploration mode is a planned UI improvement because those choices happen during the adventure.</p>
+      <ul>
+        <li><strong>Branch</strong> logs generic social choices, Clue spends, variable counts, capture-alive outcomes, and printed gp rewards.</li>
+        <li><strong>Route</strong> records the exact scene flow: parley success/failure, Clue-gated routes, peaceful/hostile branches, skipped or unlocked scenes, solo restrictions, and final routes. Route markers are app bookkeeping for PDF branches; "route marker" is not TAG PDF terminology.</li>
+        <li><strong>Scene result</strong> applies common printed rewards such as the Medusa pendant, gargoyle bounty, Gorungar rewards, bandit capture, Shaura reward, Daroc's cat, mutant-fish rations, Agaratha, Deoldyn training, and Dragon's Lair reveal.</li>
+        <li><strong>XP</strong> records pending scene XP, minor encounter counts, capture XP, training XP-roll markers, or immediate XP awards.</li>
+        <li><strong>Trinket</strong> consumes carried TAG trinkets when present and applies safe markers or healing.</li>
+        <li><strong>Guild spell</strong> consumes scrolls when present, logs known-spell casts, and applies safe markers. Speedy Recovery heals the selected character to full Life.</li>
+        <li><strong>Guild marker</strong> clears a Guild spell marker after you use that timing window.</li>
+      </ul>
+
+      <h2>After an Adventure</h2>
+      <ol>
+        <li>Resolve ordinary adventure closeout in the normal session flow.</li>
+        <li>Return to TAG Settlement and check <strong>Route / XP / Bank summary</strong>.</li>
+        <li>Use <strong>XP</strong> to award any pending printed scene XP that was marked during play.</li>
+        <li>Use <strong>Scene result</strong> for rewards that were deferred until the finale.</li>
+        <li>Use <strong>Finance</strong> for bank deposits, inheritance, guild upkeep, loan enforcement, or storage robbery procedures.</li>
+        <li>Update <strong>Settlement notes</strong> with rulings, unresolved route markers, and anything you need to check against the PDF.</li>
+      </ol>
+
+      <h2>Signoff Workflow</h2>
+      <p>For PDF checking, use <a href="RULEBOOK_CHECKING_GUIDE.md">Rulebook Checking Guide</a>. Spreadsheet signoff files are in <code>docs/Checking/Outputs/signoff_280626/</code>.</p>
+      <p>Internal compliance audits such as <code>EE_COMPLIANCE_AUDIT.md</code>, <code>ABYSS_COMPLIANCE_AUDIT.md</code>, and <code>REACTIONS_AUDIT.md</code> remain in <code>docs/</code> because they are engineering reference documents, not player action checklists.</p>
+    </main>
+  </body>
+</html>

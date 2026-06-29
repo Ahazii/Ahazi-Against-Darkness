@@ -2,7 +2,7 @@
 
 This guide explains the whole Tales from the Adventurers' Guild section in the app: settlement downtime, TAG banking, troupe management, travel, Streetwise, storage, adventure generation, route tracking, scene rewards, XP markers, Guild spells, and after-adventure cleanup.
 
-Use the TAG section from Home -> Adventure -> TAG Settlement. It is a town or village downtime surface, not the Camp Outside Dungeon panel.
+Use the TAG section from Home -> Adventure -> TAG Settlement. It is a town or village downtime surface, not the Camp Outside Dungeon panel. The in-app guide link opens `TAG_SECTION_GUIDE.html`; this markdown file is the source/checking copy.
 
 ## Before an Adventure
 
@@ -27,7 +27,7 @@ The **Route / XP / Bank summary** under Services and Log shows recent bank balan
 
 ## During a TAG Adventure
 
-Use the normal Adventure section to play the generated module. TAG-specific follow-up decisions are handled from Home -> Adventure -> TAG Settlement -> TAG Actions.
+Use the normal Adventure section to play the generated module. TAG-specific follow-up decisions are currently handled from Home -> Adventure -> TAG Settlement -> TAG Actions. Moving the scene-branch controls into exploration mode is a planned UI improvement because those choices happen during the adventure.
 
 - **Branch** logs generic social choices, Clue spends, variable counts, capture-alive outcomes, and printed gp rewards.
 - **Route** records the exact scene flow: parley success/failure, Clue-gated routes, peaceful/hostile branches, skipped or unlocked scenes, solo restrictions, and final routes. Route markers are saved in campaign state and also applied to the latest generated TAG module where safe.
