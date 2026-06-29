@@ -13,6 +13,8 @@ from app.engine.tag_campaign import (
     look_for_clues,
     purchase_tag_service,
     recover_hidden_treasure_trove,
+    reroll_guild_availability,
+    reset_guild_availability_reroll,
     roll_gambling_house,
     roll_hidden_treasure_trove_risk,
     roll_aspergillum_break_chance,
@@ -33,6 +35,7 @@ from app.engine.tag_campaign import (
     settlement_service_rows,
     store_tag_treasure,
     summon_magic_locker,
+    tag_guild_benefits_active,
     travel_to_new_settlement,
     use_tag_trinket,
     update_troupe,
@@ -348,6 +351,7 @@ def test_tag_bank_migration_can_include_legacy_bank_with_optional_fee() -> None:
 def test_tag_streetwise_gambling_and_treasure_map(monkeypatch) -> None:
     campaign = default_campaign()
     campaign.tag_guild_member = True
+    campaign.tag_guild_coffers_gp = 5000
     hero = _character(gold=100, current_life=4)
 
     rolls = iter([5, 5, 6])
@@ -577,6 +581,7 @@ def test_tag_scene_rewards_and_bank_ledgers(monkeypatch) -> None:
 def test_tag_guild_ledger_deposit_and_martial_training_are_free() -> None:
     campaign = default_campaign()
     campaign.tag_guild_member = True
+    campaign.tag_guild_coffers_gp = 5000
     hero = _character(gold=125, statuses=[])
 
     deposit = resolve_tag_finance_action(campaign, hero, finance_action="bank_deposit", amount_gp=100, note="Guild ledger")
@@ -588,6 +593,39 @@ def test_tag_guild_ledger_deposit_and_martial_training_are_free() -> None:
     assert hero.gold == 25
     assert "TAG martial arts training" in hero.statuses
     assert "train for free" in training.result_text
+
+    campaign.tag_guild_coffers_gp = 0
+    assert tag_guild_benefits_active(campaign) is False
+    suspended = resolve_tag_finance_action(campaign, hero, finance_action="bank_deposit", amount_gp=10)
+    assert "pays 1 gp fee" in suspended.result_text
+
+
+def test_tag_guild_loot_share_resurrection_and_availability_reroll(monkeypatch) -> None:
+    campaign = default_campaign()
+    campaign.tag_guild_member = True
+    campaign.tag_guild_coffers_gp = 1000
+    hero = _character(level=2, gold=0, clues=0, inventory=[], statuses=[])
+
+    share = resolve_tag_finance_action(campaign, finance_action="guild_loot_share", amount_gp=101)
+    assert campaign.tag_guild_coffers_gp == 1050
+    assert "50 gp to Guild coffers" in share.result_text
+    assert "51 gp remains" in share.result_text
+
+    resurrection = resolve_tag_finance_action(campaign, hero, finance_action="guild_resurrection_fund", amount_gp=200)
+    assert campaign.tag_guild_coffers_gp == 850
+    assert "pays 200 gp toward" in resurrection.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 6)
+    reroll = reroll_guild_availability(campaign, item_name="Guild bow", difficulty=6, base_price_gp=20)
+    assert campaign.tag_guild_availability_reroll_used is True
+    assert "Guild availability reroll used" in reroll.result_text
+
+    second = reroll_guild_availability(campaign, item_name="Guild shield", difficulty=6)
+    assert "already used" in second.result_text
+
+    reset = reset_guild_availability_reroll(campaign)
+    assert campaign.tag_guild_availability_reroll_used is False
+    assert "reset" in reset.result_text
 
 
 def test_tag_guild_mundane_equipment_discount() -> None:

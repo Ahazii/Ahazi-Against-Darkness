@@ -1936,6 +1936,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "/api/rules/equipment-shop",
         "/api/campaign/tag/bank-robbery-recovery",
         "/api/campaign/tag/hidden-trove-recovery",
+        "/api/campaign/tag/guild-availability-reroll",
         "/api/adventures/ai/prompt",
         "/api/adventures/import",
         "/api/sessions",
@@ -1944,6 +1945,14 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
     assert "openLegacyHomeAt(" not in MODERN_PAGES_JS
     assert "/static/tile-editor.html" in MODERN_PAGES_JS
     assert "/static/icon-editor.html" in MODERN_PAGES_JS
+    for label in [
+        "Apply 50% Loot Share",
+        "Pay Resurrection",
+        "Availability Reroll",
+        "Reset Reroll",
+        "availability reroll ${campaign.tag_guild_availability_reroll_used",
+    ]:
+        assert label in MODERN_PAGES_JS
 
 
 def test_legacy_dashboard_cards_link_to_modern_pages_not_old_home_actions() -> None:

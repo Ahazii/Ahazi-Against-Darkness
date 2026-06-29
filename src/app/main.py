@@ -486,6 +486,25 @@ async def campaign_tag_availability(payload: dict[str, Any]) -> dict[str, Any]:
     return {"campaign": campaign, "check": check}
 
 
+@app.post("/api/campaign/tag/guild-availability-reroll")
+async def campaign_tag_guild_availability_reroll(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, reroll_guild_availability, save_campaign
+
+    campaign = load_campaign(store)
+    item_name = str(payload.get("item_name") or "").strip()
+    if not item_name:
+        raise HTTPException(status_code=400, detail="Item name is required.")
+    base_price = payload.get("base_price_gp")
+    entry = reroll_guild_availability(
+        campaign,
+        item_name=item_name,
+        difficulty=int(payload.get("difficulty") or 6),
+        base_price_gp=None if base_price in (None, "") else int(base_price),
+    )
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
 @app.get("/api/campaign/tag/services")
 async def campaign_tag_services() -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, settlement_service_rows
@@ -1167,7 +1186,7 @@ async def enchanted_paint_options() -> dict:
 
 @app.get("/api/rules/equipment-shop")
 async def equipment_shop_catalog(class_id: str | None = None, character_id: str | None = None) -> dict:
-    from .engine.tag_campaign import load_campaign
+    from .engine.tag_campaign import load_campaign, tag_guild_benefits_active
 
     catalog = rules.equipment_shop()
     campaign = load_campaign(store)
@@ -1186,7 +1205,7 @@ async def equipment_shop_catalog(class_id: str | None = None, character_id: str 
                 class_id,
                 character=character,
                 potion_recipe_available=potion_recipe_available,
-                tag_guild_discount=campaign.tag_guild_member,
+                tag_guild_discount=tag_guild_benefits_active(campaign),
             ),
             "notes": (
                 "Buy before or between adventures (Expanded Edition pp.81-88). "
@@ -1516,6 +1535,8 @@ async def buy_character_equipment(character_id: str, payload: CharacterBuyEquipm
         raise HTTPException(status_code=404, detail="Character not found.")
     session, member, carried_gold = _prepare_roster_service_character(character, service_label="Equipment shopping")
     catalog = rules.equipment_shop()
+    from .engine.tag_campaign import tag_guild_benefits_active
+
     campaign = load_campaign(store)
     ok, message = buy_equipment(
         character,
@@ -1523,7 +1544,7 @@ async def buy_character_equipment(character_id: str, payload: CharacterBuyEquipm
         item_key=payload.item_key,
         quantity=payload.quantity,
         potion_recipe_available=_secret_available_for_character(character, "potion_recipe"),
-        tag_guild_discount=campaign.tag_guild_member,
+        tag_guild_discount=tag_guild_benefits_active(campaign),
         party_inventories=[member.inventory for member in session.party] if session else None,
         target_weapon=payload.target_weapon,
     )

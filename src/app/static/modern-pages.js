@@ -319,7 +319,10 @@ function renderGuild() {
   const active = input("checkbox", "modern-guild-active", "Enable Adventurers Guild membership for the troupe.");
   active.checked = Boolean(campaign.tag_guild_member);
   const coffers = input("number", "modern-guild-coffers-page", "Shared Guild coffers in gp.", String(campaign.tag_guild_coffers_gp || 0));
-  panel.append(field("Guild active", active), field("Guild coffers gp", coffers));
+  const actionCharacter = select("modern-guild-character", "Character receiving Guild resurrection funding or Guild spell handling.", characterOptions("Choose character"));
+  const amount = input("number", "modern-guild-amount", "Gold amount for Guild loot share, resurrection funding, or notes.", "0");
+  const itemName = input("text", "modern-guild-availability-item", "Item name for the once-per-adventure Guild availability reroll.");
+  panel.append(field("Guild active", active), field("Guild coffers gp", coffers), field("Character", actionCharacter), field("Amount gp", amount), field("Availability item", itemName));
   const row = actions();
   row.append(
     button("Save Guild", "Save Guild active state and coffer total. New Guild membership defaults to 5000 gp if no coffers are entered.", async () => {
@@ -342,6 +345,39 @@ function renderGuild() {
       setStatus(result.entry?.result_text || "Guild upkeep charged.");
       await refreshCoreAndRender();
     }),
+    button("Apply 50% Loot Share", "Enter total monetary loot; the Guild share is added to coffers and the party remainder is logged.", async () => {
+      const result = await api("/api/campaign/tag/finance-action", {
+        method: "POST",
+        body: JSON.stringify({ finance_action: "guild_loot_share", amount_gp: Number(amount.value || 0) }),
+      });
+      modernState.campaign = result.campaign;
+      setStatus(result.entry?.result_text || "Guild loot share recorded.");
+      await refreshCoreAndRender();
+    }),
+    button("Pay Resurrection", "Pay a Level 2+ member's resurrection attempt from active Guild coffers.", async () => {
+      const result = await api("/api/campaign/tag/finance-action", {
+        method: "POST",
+        body: JSON.stringify({ character_id: actionCharacter.value, finance_action: "guild_resurrection_fund", amount_gp: Number(amount.value || 0) }),
+      });
+      modernState.campaign = result.campaign;
+      setStatus(result.entry?.result_text || "Guild resurrection funding logged.");
+      await refreshCoreAndRender();
+    }),
+    button("Availability Reroll", "Use the Guild's once-per-adventure failed availability reroll for this item.", async () => {
+      const result = await api("/api/campaign/tag/guild-availability-reroll", {
+        method: "POST",
+        body: JSON.stringify({ item_name: itemName.value, difficulty: 6, base_price_gp: Number(amount.value || 0) || null }),
+      });
+      modernState.campaign = result.campaign;
+      setStatus(result.entry?.result_text || "Guild availability reroll used.");
+      await refreshCoreAndRender();
+    }),
+    button("Reset Reroll", "Reset the Guild availability reroll for the next adventure or monthly upkeep window.", async () => {
+      const result = await api("/api/campaign/tag/finance-action", { method: "POST", body: JSON.stringify({ finance_action: "guild_availability_reroll_reset" }) });
+      modernState.campaign = result.campaign;
+      setStatus(result.entry?.result_text || "Guild availability reroll reset.");
+      await refreshCoreAndRender();
+    }),
     button("Guild Job Lead", "Create a TAG Guild Job adventure lead.", async () => {
       const result = await api("/api/campaign/tag/create-adventure", { method: "POST", body: JSON.stringify({ lead_type: "guild_job", detail: "" }) });
       modernState.campaign = result.campaign;
@@ -357,10 +393,11 @@ function renderGuild() {
     "5000 gp starting coffers when Guild membership starts.",
     "10% upkeep after each month/adventure; benefits suspend at 0 gp.",
     "Free Guild ledger deposits; individual TAG bank accounts remain separate.",
-    "10% discount on mundane equipment and free martial arts training are already applied by backend rules.",
-    "Guild jobs, Guild spells, cartographer, resurrection funding, and 50% monetary loot share are exposed here for playtest tracking.",
-    "In progress: automatic 50% loot share, resurrection payout, reroll tracking, and leaving restriction enforcement.",
+    "10% discount on mundane equipment, free martial arts training, free ledger deposits, and cartographer bonus require active benefits and coffers above 0 gp.",
+    "Guild jobs, resurrection funding, 50% monetary loot share, and the once-per-adventure availability reroll are exposed here for playtest tracking.",
+    "In progress: exact closeout integration for automatic loot share prompts and leaving restriction enforcement.",
   ].forEach((text) => list.appendChild(el("li", "", text)));
+  benefits.appendChild(el("p", "modern-home-status", `Benefits ${campaign.tag_guild_member && campaign.tag_guild_coffers_gp > 0 ? "active" : "suspended/inactive"} · availability reroll ${campaign.tag_guild_availability_reroll_used ? "used" : "available"}.`));
   benefits.appendChild(list);
   rootEl.append(panel, benefits);
 }

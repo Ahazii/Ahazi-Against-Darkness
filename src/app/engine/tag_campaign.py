@@ -993,6 +993,10 @@ def trim_tag_logs(campaign: CampaignState) -> CampaignState:
     return campaign
 
 
+def tag_guild_benefits_active(campaign: CampaignState) -> bool:
+    return bool(campaign.tag_guild_member and campaign.tag_guild_coffers_gp > 0)
+
+
 def roll_3d6() -> tuple[int, list[int]]:
     rolls = [roll_d6(), roll_d6(), roll_d6()]
     return sum(rolls), rolls
@@ -1402,6 +1406,51 @@ def check_item_availability(
     return check
 
 
+def reroll_guild_availability(
+    campaign: CampaignState,
+    *,
+    item_name: str,
+    difficulty: int = 6,
+    base_price_gp: int | None = None,
+) -> TagDowntimeLogEntry:
+    if not tag_guild_benefits_active(campaign):
+        return append_tag_log(
+            campaign,
+            action="guild_availability_reroll",
+            result_text="Guild availability reroll unavailable: Guild benefits are inactive or coffers are empty.",
+        )
+    if campaign.tag_guild_availability_reroll_used:
+        return append_tag_log(
+            campaign,
+            action="guild_availability_reroll",
+            result_text="Guild availability reroll already used for this adventure/month. Reset it after the next closeout/upkeep window.",
+        )
+    check = check_item_availability(
+        campaign,
+        item_name=item_name,
+        difficulty=difficulty,
+        base_price_gp=base_price_gp,
+    )
+    campaign.tag_guild_availability_reroll_used = True
+    return append_tag_log(
+        campaign,
+        action="guild_availability_reroll",
+        roll=check.roll,
+        modifier=check.settlement_size,
+        total=check.total,
+        result_text=f"Guild availability reroll used for {check.item_name}: {check.result_text}",
+    )
+
+
+def reset_guild_availability_reroll(campaign: CampaignState) -> TagDowntimeLogEntry:
+    campaign.tag_guild_availability_reroll_used = False
+    return append_tag_log(
+        campaign,
+        action="guild_availability_reroll_reset",
+        result_text="Guild availability reroll reset for the next adventure/month window.",
+    )
+
+
 def streetwise_modifier(character: Character, *, action: str = "look_for_clues") -> int:
     class_id = (character.class_id or character.class_name or "").lower().replace(" ", "_").replace("-", "_")
     class_name = (character.class_name or "").lower()
@@ -1689,7 +1738,7 @@ def purchase_tag_service(
             result_text=f"Unknown TAG purchase service: {service_key}.",
         )
     unit_cost = int(service["cost_gp"])
-    free_guild_martial_arts = service_key == "martial_arts_training" and campaign.tag_guild_member
+    free_guild_martial_arts = service_key == "martial_arts_training" and tag_guild_benefits_active(campaign)
     if free_guild_martial_arts:
         unit_cost = 0
     cost = unit_cost * qty
@@ -2309,13 +2358,17 @@ def resolve_tag_finance_action(
         "robbery_recovery",
         "loan_enforcement",
         "guild_upkeep",
+        "guild_loot_share",
+        "guild_resurrection_fund",
+        "guild_availability_reroll_reset",
     } else "loan_enforcement"
     if action == "bank_deposit":
         if character is None:
             return append_tag_log(campaign, action="bank_deposit", result_text="Choose a character for TAG bank deposit.")
-        fee = 0 if campaign.tag_guild_member else (ceil(amount * 0.1) if amount else 0)
+        guild_ledger_active = tag_guild_benefits_active(campaign)
+        fee = 0 if guild_ledger_active else (ceil(amount * 0.1) if amount else 0)
         total_cost = amount + fee
-        ledger_label = "TAG Guild ledger account" if campaign.tag_guild_member else "TAG bank account"
+        ledger_label = "TAG Guild ledger account" if guild_ledger_active else "TAG bank account"
         if amount <= 0:
             result = "Enter a bank deposit amount above 0 gp."
         elif character.gold < total_cost:
@@ -2326,7 +2379,7 @@ def resolve_tag_finance_action(
             account.gold_gp += amount
             account.notes = clean_note or account.notes
             character.updated_at = now_utc()
-            fee_text = "for free under the TAG Guild ledger rule" if campaign.tag_guild_member else f"and pays {fee} gp fee"
+            fee_text = "for free under the TAG Guild ledger rule" if guild_ledger_active else f"and pays {fee} gp fee"
             result = f"{character.name} deposits {amount} gp into a {ledger_label} {fee_text}. Account balance {account.gold_gp} gp."
         return append_tag_log(campaign, action="bank_deposit", character=character, cost_gp=total_cost if amount else 0, result_text=result)
     if action == "bank_withdraw":
@@ -2391,10 +2444,50 @@ def resolve_tag_finance_action(
         upkeep = ceil(max(0, campaign.tag_guild_coffers_gp) * 0.1)
         paid = min(upkeep, campaign.tag_guild_coffers_gp)
         campaign.tag_guild_coffers_gp -= paid
+        campaign.tag_guild_availability_reroll_used = False
         result = f"Guild upkeep charged 10%: {paid} gp paid from coffers. Coffers now {campaign.tag_guild_coffers_gp} gp."
         if campaign.tag_guild_coffers_gp <= 0:
             result += " Guild benefits are suspended until coffers are restored."
+        else:
+            result += " Guild availability reroll reset for the next adventure/month window."
         return append_tag_log(campaign, action="guild_upkeep", character=character, cost_gp=paid, result_text=result)
+    if action == "guild_loot_share":
+        if not campaign.tag_guild_member:
+            result = "Guild loot share skipped: the troupe is not marked as Adventurers Guild members."
+        elif amount <= 0:
+            result = "Enter the total monetary loot above 0 gp before applying the Guild 50% share."
+        else:
+            share = amount // 2
+            party_keeps = amount - share
+            campaign.tag_guild_coffers_gp += share
+            result = (
+                f"Guild 50% monetary loot share recorded: {share} gp to Guild coffers, "
+                f"{party_keeps} gp remains for the party. Coffers now {campaign.tag_guild_coffers_gp} gp."
+            )
+        return append_tag_log(campaign, action="guild_loot_share", character=character, cost_gp=amount, result_text=result)
+    if action == "guild_resurrection_fund":
+        if character is None:
+            result = "Choose the character receiving Guild resurrection funding."
+        elif not tag_guild_benefits_active(campaign):
+            result = "Guild resurrection funding unavailable: Guild benefits are inactive or coffers are empty."
+        elif character.level < 2:
+            result = f"{character.name} is Level {character.level}; Guild resurrection funding is for Level 2+ members."
+        elif amount <= 0:
+            result = "Enter the resurrection attempt cost paid from Guild coffers."
+        else:
+            paid = min(amount, campaign.tag_guild_coffers_gp)
+            campaign.tag_guild_coffers_gp -= paid
+            result = (
+                f"Guild pays {paid} gp toward {character.name}'s resurrection attempt. "
+                f"Coffers now {campaign.tag_guild_coffers_gp} gp."
+            )
+            if paid < amount:
+                result += f" Shortfall {amount - paid} gp remains."
+            if campaign.tag_guild_coffers_gp <= 0:
+                result += " Guild benefits are suspended until coffers are restored."
+        return append_tag_log(campaign, action="guild_resurrection_fund", character=character, cost_gp=amount, result_text=result)
+    if action == "guild_availability_reroll_reset":
+        return reset_guild_availability_reroll(campaign)
     entry = roll_moneylender_follow_chance(campaign, debt_gp=amount)
     entry.action = "loan_enforcement"
     if clean_note:
@@ -2404,7 +2497,7 @@ def resolve_tag_finance_action(
 
 def follow_treasure_map(campaign: CampaignState, *, use_guild_cartographer: bool = False) -> TagDowntimeLogEntry:
     roll = roll_d6()
-    bonus = campaign.tag_map_bonus + (1 if use_guild_cartographer and campaign.tag_guild_member else 0)
+    bonus = campaign.tag_map_bonus + (1 if use_guild_cartographer and tag_guild_benefits_active(campaign) else 0)
     total = roll if roll == 1 else roll + bonus
     table_key = max(1, min(6, total))
     result = TAG_TREASURE_MAP_RESULTS[table_key]

@@ -704,6 +704,7 @@ class CampaignState(BaseModel):
     tag_troupe_active_character_ids: list[str] = Field(default_factory=list)
     tag_guild_member: bool = False
     tag_guild_coffers_gp: int = Field(default=0, ge=0)
+    tag_guild_availability_reroll_used: bool = False
     tag_storage_gold_gp: int = Field(default=0, ge=0)
     tag_platinum_pieces: int = Field(default=0, ge=0)
     tag_map_bonus: int = Field(default=0, ge=0)
