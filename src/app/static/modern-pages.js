@@ -435,6 +435,22 @@ function adventureOptions(kind = "all") {
   return rows;
 }
 
+function sessionRecencyKey(session) {
+  return String(session?.updated_at || session?.saved_at || session?.created_at || session?.id || "");
+}
+
+function latestSessionPerParty(sessions) {
+  const latest = new Map();
+  for (const session of sessions || []) {
+    const partyId = session?.party_id || session?.id || "";
+    const current = latest.get(partyId);
+    if (!current || sessionRecencyKey(session).localeCompare(sessionRecencyKey(current)) > 0) {
+      latest.set(partyId, session);
+    }
+  }
+  return Array.from(latest.values()).sort((a, b) => sessionRecencyKey(b).localeCompare(sessionRecencyKey(a)));
+}
+
 async function loadCore() {
   const [classes, characters, parties, adventures, sessions, campaign, profiles] = await Promise.all([
     api("/api/rules/classes"),
@@ -1250,8 +1266,13 @@ function renderGoAdventure() {
     });
     window.location.href = `/?session=${encodeURIComponent(session.id || "")}`;
   }, ""));
-  const sessions = card("Resume / Saved Games", "Resume active games, load saved games, or delete old sessions.");
-  for (const session of [...modernState.sessions].sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")))) {
+  const sessions = card("Resume / Saved Games", "Shows the latest resumable or saved session for each party. Older sessions remain in storage but are hidden here to keep the start page usable.");
+  const visibleSessions = latestSessionPerParty(modernState.sessions);
+  const hiddenSessionCount = Math.max(0, (modernState.sessions || []).length - visibleSessions.length);
+  if (hiddenSessionCount) {
+    sessions.appendChild(el("p", "muted", `${hiddenSessionCount} older session(s) hidden. Delete or load older sessions from the legacy home list if needed.`));
+  }
+  for (const session of visibleSessions) {
     const partyName = modernState.parties.find((item) => item.id === session.party_id)?.name || session.party_id;
     const row = el("div", "modern-row");
     row.append(el("strong", "", session.save_label || `${partyName} - ${session.mode}`));
@@ -1271,7 +1292,7 @@ function renderGoAdventure() {
     row.appendChild(rowActions);
     sessions.appendChild(row);
   }
-  if (!modernState.sessions.length) sessions.appendChild(el("p", "muted", "No active or saved sessions."));
+  if (!visibleSessions.length) sessions.appendChild(el("p", "muted", "No active or saved sessions."));
   rootEl.append(panel, tagLead, sessions);
 }
 
