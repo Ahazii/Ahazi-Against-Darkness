@@ -2911,15 +2911,26 @@ def resolve_tag_finance_action(
     if action == "robbery_risk":
         total, rolls = roll_3d6()
         robbed = total <= 5
+        account = _tag_bank_account(campaign, character) if character is not None else None
+        if robbed and account is not None:
+            account.robbed = True
         result = (
             f"Bank/hidden-storage robbery risk {total} ({'+'.join(str(roll) for roll in rolls)}): "
-            + ("robbery or theft occurs; use recovery action if pursuing it." if robbed else "storage remains safe.")
+            + (
+                "robbery or theft occurs; selected TAG bank account is marked robbed and recovery can create the Bandit Hideout lead."
+                if robbed and account is not None
+                else "robbery or theft occurs; use recovery action if pursuing it."
+                if robbed
+                else "storage remains safe."
+            )
         )
         return append_tag_log(campaign, action="bank_robbery_risk", character=character, roll=total, total=total, result_text=result)
     if action == "robbery_recovery":
         cost_clues = 3
         if character is not None and character.clues >= cost_clues:
             character.clues -= cost_clues
+            account = _tag_bank_account(campaign, character)
+            account.robbed = False
             character.updated_at = now_utc()
             result = f"{character.name} spends 3 Clues to learn who stole TAG bank funds. Play the Bandit Hideout lead and recover the stolen money as Final Boss treasure."
             resolve_tag_closeout_task(campaign, task_action="bank_robbery_recovery", log_missing=False)

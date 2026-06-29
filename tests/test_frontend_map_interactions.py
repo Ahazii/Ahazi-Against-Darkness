@@ -1911,6 +1911,14 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.openTroupeManager" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.tagRunBankTransfer" in APP_JS
     assert "function renderTagTroupeDialog" in APP_JS
+    assert "tag-action-guide" in INDEX_HTML
+    assert "Guild 50% loot share" in INDEX_HTML
+    assert "Guild resurrection fund" in INDEX_HTML
+    assert "await recoverTagBankRobbery();" in APP_JS
+    assert "tagBankAccountForCharacter" in MODERN_PAGES_JS
+    assert "TAG Bank Ledger" in MODERN_PAGES_JS
+    assert "Hidden Treasure Trove" in MODERN_PAGES_JS
+    assert "Guild Jobs and Members" in MODERN_PAGES_JS
 
 
 def test_modern_home_routes_and_pages_are_standalone() -> None:

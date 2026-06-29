@@ -509,6 +509,24 @@ def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None
     assert "100 gp paid" in upkeep.result_text
 
 
+def test_tag_bank_robbery_risk_marks_and_recovery_clears_account(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(clues=3, gold=40)
+    resolve_tag_finance_action(campaign, hero, finance_action="bank_deposit", amount_gp=10)
+
+    monkeypatch.setattr(tag_campaign, "roll_3d6", lambda: (5, [1, 2, 2]))
+    risk = resolve_tag_finance_action(campaign, hero, finance_action="robbery_risk")
+
+    account = next(item for item in campaign.tag_bank_accounts if item.owner_character_id == hero.id)
+    assert account.robbed is True
+    assert "marked robbed" in risk.result_text
+
+    recovery = resolve_tag_finance_action(campaign, hero, finance_action="robbery_recovery")
+    assert account.robbed is False
+    assert hero.clues == 0
+    assert "Bandit Hideout lead" in recovery.result_text
+
+
 def test_tag_look_tough_spell_bonus_is_consumed_on_next_streetwise(monkeypatch) -> None:
     campaign = default_campaign()
     hero = _character(class_id="rogue", class_name="Rogue", level=5, clues=0, statuses=[])

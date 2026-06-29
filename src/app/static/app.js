@@ -12431,6 +12431,10 @@ async function clearTagGuildMarkerAction() {
 }
 
 async function runTagFinanceAction() {
+  if (tagFinanceAction?.value === "robbery_recovery") {
+    await recoverTagBankRobbery();
+    return;
+  }
   const result = await api("/api/campaign/tag/finance-action", {
     method: "POST",
     body: JSON.stringify({

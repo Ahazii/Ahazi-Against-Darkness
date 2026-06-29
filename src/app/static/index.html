@@ -705,6 +705,12 @@
                     <h3>TAG Adventure Actions</h3>
                     <p class="muted">Resolve TAG scene branches, route choices, rewards, XP markers, Guild spell timing, and finance notes while playing the adventure.</p>
                   </div>
+                  <div class="tag-action-guide" title="Use these controls during exploration when a TAG generated adventure asks you to make a branch, route, Clue, reward, XP, Guild spell, or finance decision that the app cannot infer automatically.">
+                    <strong>Workflow</strong>
+                    <span>1. Pick the character who spends Clues, receives rewards, casts a spell, or owns the bank account.</span>
+                    <span>2. Enter the printed scene/page/result in Reference and the Clue/gp/XP/count value in Amount.</span>
+                    <span>3. Use Branch for bookkeeping, Route when the generated module path should change, Scene/XP for printed rewards, and Finance for TAG bank/Guild outcomes.</span>
+                  </div>
                   <div class="tag-settlement-grid">
                     <label for="tag-action-character">
                       <span>Character</span>
@@ -826,9 +832,12 @@
                         <option value="inheritance">Inheritance note</option>
                         <option value="inheritance_transfer">Inheritance transfer</option>
                         <option value="robbery_risk">Robbery risk</option>
-                        <option value="robbery_recovery">Robbery recovery</option>
+                        <option value="robbery_recovery" title="Spend 3 Clues and create/select the Bandit Hideout lead; stolen money is recovered as Final Boss treasure.">Robbery recovery</option>
                         <option value="loan_enforcement">Loan enforcement</option>
                         <option value="guild_upkeep">Guild upkeep</option>
+                        <option value="guild_loot_share" title="Enter total monetary loot in Amount; half goes to Guild coffers.">Guild 50% loot share</option>
+                        <option value="guild_resurrection_fund" title="Enter resurrection cost in Amount; selected character must be Level 2+ and Guild benefits active.">Guild resurrection fund</option>
+                        <option value="guild_availability_reroll_reset" title="Reset the once-per-adventure/month Guild availability reroll.">Guild reroll reset</option>
                       </select>
                     </label>
                     <label for="tag-finance-amount">

@@ -202,6 +202,34 @@ function tagBankForCharacter(characterId) {
   return account?.gold_gp || 0;
 }
 
+function tagBankAccountForCharacter(characterId) {
+  return (modernState.campaign?.tag_bank_accounts || []).find((item) => item.owner_character_id === characterId) || null;
+}
+
+function tagGuildBenefitsActive(campaign = modernState.campaign || {}) {
+  return Boolean(campaign.tag_guild_member) && Number(campaign.tag_guild_coffers_gp || 0) > 0;
+}
+
+function unresolvedCloseoutTasks(categories = []) {
+  const wanted = new Set(categories);
+  return (modernState.campaign?.tag_closeout_tasks || []).filter((task) => !task.resolved && (!wanted.size || wanted.has(task.category)));
+}
+
+function latestTagLogs(actions = []) {
+  const wanted = new Set(actions);
+  return (modernState.campaign?.tag_downtime_log || [])
+    .filter((entry) => !wanted.size || wanted.has(entry.action))
+    .slice(-6)
+    .reverse();
+}
+
+function modernStatusRow(title, body, hint = "") {
+  const row = el("div", "modern-row");
+  if (hint) row.title = hint;
+  row.append(el("strong", "", title), el("span", "muted", body));
+  return row;
+}
+
 function characterSearchText(character) {
   return [
     character.name,
@@ -530,16 +558,23 @@ function renderTroupes() {
 
 function renderGuild() {
   const campaign = modernState.campaign || {};
-  const panel = card("Adventurers Guild", "TAG currently models the printed Adventurers Guild, not multiple custom guilds. Guild membership is campaign/troupe state; benefits require coffers above 0 gp.");
+  const panel = card("Guild Membership", "TAG currently models the printed Adventurers Guild. This is separate from the troupe roster: the troupe is who exists; Guild membership is the rules organisation with coffers, obligations, and benefits.");
   const active = input("checkbox", "modern-guild-active", "Enable Adventurers Guild membership for the troupe.");
   active.checked = Boolean(campaign.tag_guild_member);
   const coffers = input("number", "modern-guild-coffers-page", "Shared Guild coffers in gp.", String(campaign.tag_guild_coffers_gp || 0));
-  const actionCharacter = select("modern-guild-character", "Character receiving Guild resurrection funding or Guild spell handling.", characterOptions("Choose character"));
+  const actionCharacter = select("modern-guild-character", "Guild member receiving resurrection funding or other character-specific Guild handling.", characterOptions("Choose character"));
   const amount = input("number", "modern-guild-amount", "Gold amount for Guild loot share, resurrection funding, or notes.", "0");
   const itemName = input("text", "modern-guild-availability-item", "Item name for the once-per-adventure Guild availability reroll.");
-  panel.append(field("Guild active", active), field("Guild coffers gp", coffers), field("Character", actionCharacter), field("Amount gp", amount), field("Availability item", itemName));
-  const row = actions();
-  row.append(
+  panel.append(field("Guild active", active), field("Guild coffers gp", coffers));
+  panel.appendChild(
+    modernStatusRow(
+      tagGuildBenefitsActive(campaign) ? "Benefits active" : "Benefits suspended/inactive",
+      `Coffers ${campaign.tag_guild_coffers_gp || 0} gp · availability reroll ${campaign.tag_guild_availability_reroll_used ? "used" : "available"} · ${unresolvedCloseoutTasks(["guild"]).length} unresolved Guild closeout task(s).`,
+      "Guild benefits require Adventurers Guild membership and coffers above 0 gp."
+    )
+  );
+  const saveRow = actions();
+  saveRow.append(
     button("Save Guild", "Save Guild active state and coffer total. New Guild membership defaults to 5000 gp if no coffers are entered.", async () => {
       modernState.campaign = (await api("/api/campaign/tag/troupe", {
         method: "POST",
@@ -553,7 +588,14 @@ function renderGuild() {
       })).campaign;
       setStatus("Guild saved.");
       await refreshCoreAndRender();
-    }, ""),
+    }, "")
+  );
+  panel.appendChild(saveRow);
+
+  const finance = card("Guild Finance", "Run the TAG Guild money obligations at closeout or when playtesting a Guild rule.");
+  finance.append(field("Amount gp", amount), field("Availability item", itemName));
+  const financeRow = actions();
+  financeRow.append(
     button("Run Upkeep", "Manual override for the closeout prompt: charge 10% upkeep from Guild coffers, reset the availability reroll, and suspend benefits at 0 gp.", async () => {
       const result = await api("/api/campaign/tag/finance-action", { method: "POST", body: JSON.stringify({ finance_action: "guild_upkeep" }) });
       modernState.campaign = result.campaign;
@@ -567,15 +609,6 @@ function renderGuild() {
       });
       modernState.campaign = result.campaign;
       setStatus(result.entry?.result_text || "Guild loot share recorded.");
-      await refreshCoreAndRender();
-    }),
-    button("Pay Resurrection", "Pay a Level 2+ member's resurrection attempt from active Guild coffers.", async () => {
-      const result = await api("/api/campaign/tag/finance-action", {
-        method: "POST",
-        body: JSON.stringify({ character_id: actionCharacter.value, finance_action: "guild_resurrection_fund", amount_gp: Number(amount.value || 0) }),
-      });
-      modernState.campaign = result.campaign;
-      setStatus(result.entry?.result_text || "Guild resurrection funding logged.");
       await refreshCoreAndRender();
     }),
     button("Availability Reroll", "Use the Guild's once-per-adventure failed availability reroll for this item.", async () => {
@@ -592,6 +625,22 @@ function renderGuild() {
       modernState.campaign = result.campaign;
       setStatus(result.entry?.result_text || "Guild availability reroll reset.");
       await refreshCoreAndRender();
+    })
+  );
+  finance.appendChild(financeRow);
+
+  const members = card("Guild Jobs and Members", "Use this for Guild-specific character funding and for generating TAG Adventurers Guild job leads.");
+  members.append(field("Character", actionCharacter));
+  const memberRow = actions();
+  memberRow.append(
+    button("Pay Resurrection", "Pay a Level 2+ member's resurrection attempt from active Guild coffers. Enter the cost in Amount gp.", async () => {
+      const result = await api("/api/campaign/tag/finance-action", {
+        method: "POST",
+        body: JSON.stringify({ character_id: actionCharacter.value, finance_action: "guild_resurrection_fund", amount_gp: Number(amount.value || 0) }),
+      });
+      modernState.campaign = result.campaign;
+      setStatus(result.entry?.result_text || "Guild resurrection funding logged.");
+      await refreshCoreAndRender();
     }),
     button("Guild Job Lead", "Roll/create a playable TAG Guild Job module and install it into the Adventure list. Use this when the party accepts work from the Adventurers Guild.", async () => {
       const result = await api("/api/campaign/tag/create-adventure", { method: "POST", body: JSON.stringify({ lead_type: "guild_job", detail: "" }) });
@@ -601,8 +650,24 @@ function renderGuild() {
       await refreshCoreAndRender();
     })
   );
-  panel.appendChild(row);
-  const benefits = card("Guild Benefits / Obligations", "What is automated now, and what still needs player signoff.");
+  members.appendChild(memberRow);
+  const memberList = el("div", "modern-list");
+  const memberIds = new Set(campaign.tag_troupe_member_character_ids || []);
+  const activeIds = new Set(campaign.tag_troupe_active_character_ids || []);
+  for (const character of modernState.characters.filter((item) => memberIds.has(item.id))) {
+    const account = tagBankAccountForCharacter(character.id);
+    memberList.appendChild(
+      modernStatusRow(
+        character.name,
+        `${character.class_name} L${character.level} · ${activeIds.has(character.id) ? "active party" : "home"} · ${character.gold || 0} gp carried · TAG bank ${account?.gold_gp || 0} gp${account?.robbed ? " · bank robbed" : ""}`,
+        "Guild member summary from the TAG troupe roster and TAG bank ledger."
+      )
+    );
+  }
+  if (!memberList.childElementCount) memberList.appendChild(el("p", "muted", "No troupe members are listed yet. Add members from Troupe Management before treating them as Guild members."));
+  members.appendChild(memberList);
+
+  const benefits = card("Guild Benefits / Obligations", "Printed Guild features currently exposed in the app.");
   const list = el("ul", "modern-check-list");
   [
     "5000 gp starting coffers when Guild membership starts.",
@@ -610,11 +675,15 @@ function renderGuild() {
     "Run Upkeep and Apply 50% Loot Share clear their matching closeout prompts automatically.",
     "Free Guild ledger deposits, equipment discount, martial arts training, cartographer bonus, resurrection funding, and availability reroll require active benefits and coffers above 0 gp.",
     "Guild Job Lead installs a playable Guild Job adventure module; Guild spell handling remains in TAG Actions during exploration.",
-    "Leaving restrictions are surfaced as a manual closeout signoff until the exact restriction workflow is modeled.",
+    "Leaving Guild membership is blocked while coffers are below 5000 gp; restore coffers first, then turn Guild active off.",
   ].forEach((text) => list.appendChild(el("li", "", text)));
-  benefits.appendChild(el("p", "modern-home-status", `Benefits ${campaign.tag_guild_member && campaign.tag_guild_coffers_gp > 0 ? "active" : "suspended/inactive"} · availability reroll ${campaign.tag_guild_availability_reroll_used ? "used" : "available"}.`));
   benefits.appendChild(list);
-  rootEl.append(panel, renderCloseoutTasks("Guild Closeout", ["guild", "xp"]), benefits);
+  const recent = card("Recent Guild Log", "Latest Guild finance, job, spell, and marker actions.");
+  for (const entry of latestTagLogs(["guild_upkeep", "guild_loot_share", "guild_resurrection_fund", "guild_availability_reroll_reset", "guild_leaving_restriction", "guild_spell", "guild_marker_clear"])) {
+    recent.appendChild(modernStatusRow(entry.action.replaceAll("_", " "), entry.result_text || "", "Recent TAG Guild log entry."));
+  }
+  if (recent.childElementCount <= 2) recent.appendChild(el("p", "muted", "No recent Guild log entries."));
+  rootEl.append(panel, finance, members, renderCloseoutTasks("Guild Closeout", ["guild", "xp"]), benefits, recent);
 }
 
 function renderParties() {
@@ -733,20 +802,25 @@ function renderBanking() {
   const filters = characterFilterControls("modern-finance", () => updateCharacterSelect(character, "Choose character", { search: filters.search.value, classId: filters.classFilter.value, sort: filters.sort.value }));
   const character = characterSelect("modern-finance-character", "Character used for TAG finance actions.", "Choose character");
   const amount = input("number", "modern-finance-amount", "Gold amount for banking or storage.", "0");
-  const item = input("text", "modern-finance-item", "Optional hidden trove item name.");
+  const item = input("text", "modern-finance-item", "Optional hidden trove item, inheritance heir, or finance note.");
   const party = select("modern-finance-party", "Party for party-level banking.", partyOptions("Choose party"));
   const balance = el("p", "modern-home-status", "Choose a character to show carried gold, TAG bank, party, and troupe status.");
   character.addEventListener("change", () => {
     const selected = modernState.characters.find((row) => row.id === character.value);
+    const account = selected ? tagBankAccountForCharacter(selected.id) : null;
     balance.textContent = selected
-      ? `${selected.name}: carried ${selected.gold || 0}gp · TAG bank ${tagBankForCharacter(selected.id)}gp · parties ${partyNamesForCharacter(selected.id).join(", ") || "none"} · ${(modernState.campaign?.tag_troupe_member_character_ids || []).includes(selected.id) ? "in TAG troupe" : "not in TAG troupe"}`
+      ? `${selected.name}: carried ${selected.gold || 0}gp · TAG bank ${account?.gold_gp || 0}gp${account?.robbed ? " · robbed" : ""} · parties ${partyNamesForCharacter(selected.id).join(", ") || "none"} · ${(modernState.campaign?.tag_troupe_member_character_ids || []).includes(selected.id) ? "in TAG troupe" : "not in TAG troupe"}`
       : "Choose a character to show carried gold, TAG bank, party, and troupe status.";
   });
-  panel.append(filters.panel, field("Character", character), balance, field("Amount gp", amount), field("Hidden trove item", item), field("Party", party));
+  panel.append(filters.panel, field("Character", character), balance, field("Amount gp", amount), field("Item / heir / note", item), field("Party", party));
   const row = actions();
   row.append(
-    button("Deposit TAG Bank", "Deposit gp into selected character's TAG bank account; Guild ledger deposits are free.", async () => tagFinance(character.value, "bank_deposit", amount.value), ""),
-    button("Withdraw TAG Bank", "Withdraw gp from selected character's TAG bank account.", async () => tagFinance(character.value, "bank_withdraw", amount.value)),
+    button("Deposit TAG Bank", "Deposit gp into selected character's TAG bank account; active Guild ledger deposits are free, otherwise the TAG bank fee applies.", async () => tagFinance(character.value, "bank_deposit", amount.value, item.value), ""),
+    button("Withdraw TAG Bank", "Withdraw gp from selected character's TAG bank account to carried roster gold.", async () => tagFinance(character.value, "bank_withdraw", amount.value, item.value)),
+    button("Bank Robbery Risk", "Roll bank robbery risk for the selected character and mark their TAG bank account robbed if the roll fails.", async () => tagFinance(character.value, "robbery_risk", amount.value, item.value)),
+    button("Inheritance Note", "Record the selected character's TAG bank heir name in the note field. Inheritance transfers apply the printed 20% tax.", async () => tagFinance(character.value, "inheritance", amount.value, item.value)),
+    button("Inheritance Transfer", "Transfer a matching inherited TAG bank account to this character after the 20% inheritance tax.", async () => tagFinance(character.value, "inheritance_transfer", amount.value, item.value)),
+    button("Loan Enforcement", "Roll/log moneylender pursuit or enforcement for the amount entered.", async () => tagFinance(character.value, "loan_enforcement", amount.value, item.value)),
     button("Hide Treasure", "Hide gold or item in the TAG hidden treasure trove.", async () => {
       await api("/api/campaign/tag/store-treasure", { method: "POST", body: JSON.stringify({ character_id: character.value, storage: "trove", gold_gp: Number(amount.value || 0), item_name: item.value, quantity: 1 }) });
       setStatus("Hidden trove updated.");
@@ -790,13 +864,43 @@ function renderBanking() {
     })
   );
   panel.appendChild(row);
-  const summary = card("Finance Summary", `TAG storage ${modernState.campaign?.tag_storage_gold_gp || 0} gp. Hidden trove robbed: ${modernState.campaign?.tag_hidden_trove_robbed ? "yes" : "no"}. Treasure trove risk is prompted at adventure closeout and can also be rolled manually here.`);
-  rootEl.append(panel, renderCloseoutTasks("Finance Closeout", ["finance", "storage"]), summary);
+  const ledger = card("TAG Bank Ledger", "Per-character TAG bank accounts. Robbed accounts can be recovered with 3 Clues, then the app creates the Bandit Hideout lead.");
+  const accounts = modernState.campaign?.tag_bank_accounts || [];
+  for (const account of accounts) {
+    ledger.appendChild(
+      modernStatusRow(
+        account.owner_name || "Account",
+        `${account.gold_gp || 0} gp${account.robbed ? " · robbed" : ""}${account.heir_name ? ` · heir ${account.heir_name}` : ""}${account.notes ? ` · ${account.notes}` : ""}`,
+        "TAG bank ledger entry. Use Recover Bank Robbery if this account is marked robbed."
+      )
+    );
+  }
+  if (!accounts.length) ledger.appendChild(el("p", "muted", "No TAG bank accounts yet. Deposit or bank roster gold to create accounts."));
+
+  const trove = card("Hidden Treasure Trove", "Hidden trove storage and theft recovery state.");
+  const stolenItems = modernState.campaign?.tag_hidden_trove_stolen_items || [];
+  trove.appendChild(
+    modernStatusRow(
+      modernState.campaign?.tag_hidden_trove_robbed ? "Stolen trove pending recovery" : "Trove currently safe",
+      `Stored ${modernState.campaign?.tag_storage_gold_gp || 0} gp · stolen ${modernState.campaign?.tag_hidden_trove_stolen_gold_gp || 0} gp · stolen item stack(s) ${stolenItems.length}`,
+      "Roll Trove Risk between adventures when prompted. Recover Trove spends 4 Clues and rolls Interrogation vs L6."
+    )
+  );
+  for (const stored of modernState.campaign?.tag_stored_items || []) {
+    trove.appendChild(modernStatusRow(stored.item_name || "Stored item", `${stored.quantity || 1} stored for ${stored.owner_name || "party"}`, "Hidden trove stored item."));
+  }
+
+  const recent = card("Recent Finance Log", "Latest TAG banking, robbery, storage, inheritance, loan, and Guild finance entries.");
+  for (const entry of latestTagLogs(["bank_deposit", "bank_withdraw", "bank_inheritance", "bank_inheritance_transfer", "bank_robbery_risk", "bank_robbery_recovery", "tag_bank_migration", "hidden_trove_risk", "hidden_trove_recovery", "loan_enforcement", "guild_loot_share", "guild_upkeep"])) {
+    recent.appendChild(modernStatusRow(entry.action.replaceAll("_", " "), entry.result_text || "", "Recent TAG finance log entry."));
+  }
+  if (recent.childElementCount <= 2) recent.appendChild(el("p", "muted", "No recent finance log entries."));
+  rootEl.append(panel, ledger, trove, renderCloseoutTasks("Finance Closeout", ["finance", "storage"]), recent);
 }
 
-async function tagFinance(characterId, action, amount) {
+async function tagFinance(characterId, action, amount, note = "") {
   if (!characterId) throw new Error("Choose a character.");
-  const result = await api("/api/campaign/tag/finance-action", { method: "POST", body: JSON.stringify({ character_id: characterId, finance_action: action, amount_gp: Number(amount || 0) }) });
+  const result = await api("/api/campaign/tag/finance-action", { method: "POST", body: JSON.stringify({ character_id: characterId, finance_action: action, amount_gp: Number(amount || 0), note }) });
   setStatus(result.entry?.result_text || "Finance action logged.");
   await refreshCoreAndRender();
 }

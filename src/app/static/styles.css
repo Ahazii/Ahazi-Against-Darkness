@@ -580,6 +580,21 @@ h2 {
   width: min(760px, calc(100vw - 32px));
 }
 
+.tag-action-guide {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #171814;
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.tag-action-guide strong {
+  color: var(--accent);
+}
+
 .tag-troupe-member-list {
   display: grid;
   gap: 6px;
