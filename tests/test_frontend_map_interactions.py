@@ -1822,6 +1822,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-create-adventure",
         "tag-action-character",
         "tag-branch-action",
+        "tag-branch-action-hint",
         "tag-resolve-branch",
         "tag-route-action",
         "tag-run-route-action",
@@ -1890,6 +1891,12 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.followMap" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.createAdventure" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.resolveBranch" in APP_JS
+    assert "TAG_BRANCH_ACTION_HINTS" in APP_JS
+    assert "updateTagBranchActionHint" in APP_JS
+    assert 'tagBranchAction?.addEventListener("change"' in APP_JS
+    assert ".tag-action-field-hint" in STYLES_CSS
+    assert "grid-column: 1 / -1;" in STYLES_CSS
+    assert "party=4 boss=1 cache" in APP_JS
     for action_value in [
         "ghastly_mine_minion_replacement",
         "ghastly_mine_major_replacement",

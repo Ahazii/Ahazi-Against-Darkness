@@ -299,6 +299,7 @@ const tagAdventureLeadDetail = document.getElementById("tag-adventure-lead-detai
 const tagCreateAdventure = document.getElementById("tag-create-adventure");
 const tagActionCharacter = document.getElementById("tag-action-character");
 const tagBranchAction = document.getElementById("tag-branch-action");
+const tagBranchActionHint = document.getElementById("tag-branch-action-hint");
 const tagBranchReference = document.getElementById("tag-branch-reference");
 const tagBranchNumber = document.getElementById("tag-branch-number");
 const tagResolveBranch = document.getElementById("tag-resolve-branch");
@@ -8536,6 +8537,37 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   aspergillumBreak: "Roll the aspergillum's 2-in-6 break chance after an Attack roll of natural 1.",
 };
 
+const TAG_BRANCH_ACTION_HINTS = {
+  social_choice: "Reference: printed choice/page. Amount: leave 0. Logs the selected social or branch outcome.",
+  spend_clues: "Reference: printed clue spend. Amount: Clues to spend from the selected character.",
+  roll_variable_count: "Reference: printed formula. Amount: modifier added to d6.",
+  ghastly_mine_minion_replacement: "Reference optional. Amount ignored. Rolls 4-in-6 replacement, then the Ghastly Mine Minions table.",
+  ghastly_mine_major_replacement: "Reference optional. Amount ignored. Rolls 4-in-6 replacement, then the Ghastly Mine Major Foe table.",
+  ghastly_mine_treasure_conversion: "Reference optional. Amount ignored. Rolls whether gp treasure becomes one gem or nugget.",
+  ghastly_mine_cave_in: "Reference optional. Amount: prior cave-ins before this trap.",
+  fiendish_abyss_prisoner: "Reference optional. Amount ignored. Rolls the Fiendish Abyss Prisoner Table after the final boss.",
+  minotaur_maze_lost_check: "Reference optional. Amount: 1 if a dungeon guide is present, otherwise 0.",
+  minotaur_maze_wandering: "Reference optional. Amount ignored. Rolls the Minotaur Maze wandering subtype.",
+  minotaur_maze_event: "Reference optional. Amount ignored. Rolls the Minotaur Maze Special Event Table.",
+  castle_cleanup_pay: "Reference: party=4 boss=1 cache if applicable. Amount: slain minion/vermin count.",
+  griffin_mountain_check: "Reference optional. Amount: 1 for reduced 1-in-6 encounter chance, otherwise 0.",
+  griffin_nest_search: "Reference optional. Amount ignored. Rolls one nest search check.",
+  griffin_egg_count: "Reference optional. Amount ignored. Rolls d3+1 eggs.",
+  griffin_egg_break: "Reference optional. Amount: number of eggs carried by the fallen character.",
+  portrait_outbound_check: "Reference: add elf if an elf leads the last two checks. Amount: journey leg 1-6.",
+  portrait_persuasion: "Reference: use mod=-1 for penalties. Amount: positive net persuasion modifier.",
+  portrait_return_snatch: "Reference optional. Amount ignored. Rolls painting snatch after surprised return encounter.",
+  sewers_vermin: "Reference optional. Amount ignored. Rolls the Sewers Vermin table.",
+  sewers_minions: "Reference optional. Amount ignored. Rolls the Sewers Minions table.",
+  sewers_disease: "Reference optional. Amount: Save modifier for the wounded character.",
+  monoceros_tracking: "Reference: use mod=-1 for penalties. Amount: positive tracker modifier.",
+  monoceros_clue_encounter: "Reference optional. Amount ignored. Rolls 2-in-6 Weird Monster risk before the 3-Clue shortcut.",
+  monoceros_hide: "Reference optional. Amount ignored. Rolls whether thick hide turns a non-magical hit.",
+  bandit_stolen_goods_check: "Reference optional. Amount ignored. Rolls 1-in-6 stolen goods, 8d6 gp, and trapdoor chance.",
+  capture_alive: "Reference: captured foe/result. Amount ignored. Awards the information Clue where applicable.",
+  claim_reward: "Reference: printed reward. Amount: gp to award to the selected character or settlement storage.",
+};
+
 const TAG_HELP_CONTENT = {
   overview: {
     title: "TAG Settlement Help",
@@ -10499,6 +10531,19 @@ function applyTagSettlementTooltips() {
   setButtonTooltip(tagRefreshServices, TAG_SETTLEMENT_TOOLTIPS.services);
   setTooltip(tagSettlementServices, TAG_SETTLEMENT_TOOLTIPS.services);
   setTooltip(tagRouteXpSummary, TAG_SETTLEMENT_TOOLTIPS.routeXpSummary);
+  updateTagBranchActionHint();
+}
+
+function updateTagBranchActionHint() {
+  if (!tagBranchActionHint || !tagBranchAction) return;
+  const value = tagBranchAction.value || "social_choice";
+  const selected = tagBranchAction.selectedOptions?.[0];
+  const hint =
+    TAG_BRANCH_ACTION_HINTS[value] ||
+    selected?.title ||
+    "Reference should name the printed scene/page/result. Amount is used only when the selected branch asks for a number.";
+  tagBranchActionHint.textContent = hint;
+  setTooltip(tagBranchActionHint, hint);
 }
 
 function wireTagHelpButtons() {
@@ -21608,6 +21653,7 @@ function openTagActionsWithDefaults(defaults = {}) {
   if (defaults.routeAction) setSelectValueIfOptionExists(tagRouteAction, defaults.routeAction);
   if (defaults.sceneAction) setSelectValueIfOptionExists(tagSceneAction, defaults.sceneAction);
   if (defaults.xpAction) setSelectValueIfOptionExists(tagXpAction, defaults.xpAction);
+  updateTagBranchActionHint();
   tagAdventureActionsDialog?.showModal();
 }
 
@@ -28385,6 +28431,7 @@ tagOpenTroupeManager?.addEventListener("click", () => openTagTroupeDialog());
 tagOpenBankTransfer?.addEventListener("click", () => openTagBankTransferDialog());
 tagOpenAdventureActions?.addEventListener("click", () => {
   renderTagCharacterOptions(state.campaign);
+  updateTagBranchActionHint();
   tagAdventureActionsDialog?.showModal();
 });
 tagCheckAvailability?.addEventListener("click", () => {
@@ -28421,6 +28468,7 @@ tagRunBankTransfer?.addEventListener("click", (event) => {
   event.preventDefault();
   runTagBankTransferAction().catch(handleError);
 });
+tagBranchAction?.addEventListener("change", () => updateTagBranchActionHint());
 tagStoreTreasure?.addEventListener("click", () => {
   storeTagTreasure().catch(handleError);
 });
