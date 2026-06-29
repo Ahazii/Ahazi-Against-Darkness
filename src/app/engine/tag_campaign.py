@@ -684,6 +684,8 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Young Dragon",
         "final_count": 1,
         "rewards": "Dragon lair treasure if pursued; spend 2 Clues to learn dragon type before the final room.",
+        "clue_gate_cost": 2,
+        "clue_gate_label": "Spend 2 Clues for the dragon route",
         "rules": ["Use the Dragon's Lair thematic notes in source.parameters for the full lair version."],
     },
     6: {
@@ -730,6 +732,8 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_count": 1,
         "final_extra_foes": [{"name": "Silent Scream Cultists", "count": 9}],
         "rewards": "150 gp and XP after the cult is defeated.",
+        "clue_gate_cost": 2,
+        "clue_gate_label": "Spend 2 Clues to find Shaura",
         "rules": ["Final encounter includes the priestess and nine Silent Scream cultists."],
     },
     9: {
@@ -745,6 +749,8 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Goblins",
         "final_count": 4,
         "rewards": "100 gp and 1 XP.",
+        "clue_gate_cost": 2,
+        "clue_gate_label": "Spend town Clues for Daroc's familiar",
         "rules": ["Installed combat represents trouble around the familiar, not a mandatory PDF fight."],
     },
     10: {
@@ -835,6 +841,8 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Young Dragon",
         "final_count": 1,
         "rewards": "Dragon treasure per the selected dragon profile.",
+        "clue_gate_cost": 2,
+        "clue_gate_label": "Spend 2 Clues to reveal dragon type",
         "rules": ["Four-room target.", "Use Young Red Dragon if the type roll selects that printed result."],
     },
     4: {
@@ -849,6 +857,8 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Wraith",
         "final_count": 1,
         "rewards": "Lair prisoner reward table: noble mission, merchant reward/rumor, or silver knife/holy water/map.",
+        "clue_gate_cost": 2,
+        "clue_gate_label": "Spend 2 Clues to learn the final boss",
         "rules": ["No normal Final Boss check; ends at HCL+5 rooms."],
     },
     5: {
@@ -3036,6 +3046,159 @@ def _tag_adventure_id(lead_type: str, label: str) -> str:
     return f"tag-{_slug_part(lead_type)}-{_slug_part(label)}-{uuid4().hex[:8]}"
 
 
+def _tag_prompt_action(
+    label: str,
+    tooltip: str,
+    *,
+    action_type: str = "dialog",
+    action_value: str = "",
+    reference: str = "",
+    amount: int = 0,
+) -> dict[str, object]:
+    return {
+        "label": label,
+        "tooltip": tooltip,
+        "action_type": action_type,
+        "action_value": action_value,
+        "reference": reference,
+        "amount": max(0, int(amount or 0)),
+    }
+
+
+def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object]) -> dict[str, object]:
+    profile_title = str(profile.get("title") or lead_detail)
+    base_ref = title or profile_title
+    clue_cost = max(0, int(profile.get("clue_gate_cost") or 0))
+    clue_label = str(profile.get("clue_gate_label") or "Unlock Clue route")
+    prompts: dict[str, object] = {
+        "tag-lead-entry": {
+            "title": "Lead entry choices",
+            "body": "Record the party's printed approach before moving deeper into the generated TAG lead.",
+            "actions": [
+                _tag_prompt_action("TAG Actions", "Open the full TAG Actions dialog without changing any values."),
+                _tag_prompt_action(
+                    "Record lead choice",
+                    "Prefill a social/choice branch marker for this TAG lead.",
+                    action_type="branch",
+                    action_value="social_choice",
+                    reference=f"{base_ref}: lead choice",
+                ),
+                _tag_prompt_action(
+                    "Skip side scene",
+                    "Prefill a route marker for choosing not to pursue the optional side clue.",
+                    action_type="route",
+                    action_value="skip_scene",
+                    reference=f"{base_ref}: skipped side scene",
+                ),
+            ],
+        },
+        "tag-side-clue": {
+            "title": "Side clue and reward",
+            "body": str(profile.get("side") or "Check the printed scene for reward, Clue, or XP handling before confirming an action."),
+            "actions": [
+                _tag_prompt_action(
+                    "Claim printed reward",
+                    "Prefill the printed reward action. Enter the exact gp/item amount from the TAG scene before applying.",
+                    action_type="branch",
+                    action_value="claim_reward",
+                    reference=f"{base_ref}: side clue reward",
+                ),
+                _tag_prompt_action(
+                    "Mark scene XP",
+                    "Prefill a pending scene XP marker for end-of-adventure closeout.",
+                    action_type="xp",
+                    action_value="mark_scene_xp",
+                    reference=f"{base_ref}: side clue XP",
+                ),
+            ],
+        },
+        "tag-complication": {
+            "title": "Complication route",
+            "body": str(profile.get("complication") or "Resolve the printed social, combat, Clue, or blocked-route branch."),
+            "actions": [
+                _tag_prompt_action(
+                    "Parley succeeds",
+                    "Prefill the route marker for a successful parley or peaceful branch.",
+                    action_type="route",
+                    action_value="parley_success",
+                    reference=f"{base_ref}: complication parley success",
+                ),
+                _tag_prompt_action(
+                    "Parley fails",
+                    "Prefill the route marker for a failed parley or hostile branch.",
+                    action_type="route",
+                    action_value="parley_failed",
+                    reference=f"{base_ref}: complication parley failed",
+                ),
+                _tag_prompt_action(
+                    clue_label,
+                    "Prefill the Clue-gate route marker with the known profile cost where one is available.",
+                    action_type="route",
+                    action_value="clue_gate_unlocked",
+                    reference=f"{base_ref}: {clue_label}",
+                    amount=clue_cost,
+                ),
+                _tag_prompt_action(
+                    "Clue route blocked",
+                    "Prefill the blocked Clue-gate route marker when the party cannot or will not pay the printed cost.",
+                    action_type="route",
+                    action_value="clue_gate_blocked",
+                    reference=f"{base_ref}: clue route blocked",
+                    amount=clue_cost,
+                ),
+            ],
+        },
+        "tag-final-scene": {
+            "title": "Final scene closeout",
+            "body": f"Check final foe, reward, and XP text before closing the generated TAG lead. Reward note: {profile.get('rewards') or 'see source scene.'}",
+            "actions": [
+                _tag_prompt_action(
+                    "Final route",
+                    "Prefill a final-route marker such as capture, kill, parley, escape, or solo restriction.",
+                    action_type="route",
+                    action_value="final_route",
+                    reference=f"{base_ref}: final route",
+                ),
+                _tag_prompt_action(
+                    "Apply reward",
+                    "Prefill the printed reward action. Enter the exact gp/item amount from the TAG scene before applying.",
+                    action_type="branch",
+                    action_value="claim_reward",
+                    reference=f"{base_ref}: final reward",
+                ),
+                _tag_prompt_action(
+                    "Mark final XP",
+                    "Prefill a TAG XP marker for completing the final generated scene.",
+                    action_type="xp",
+                    action_value="mark_scene_xp",
+                    reference=f"{base_ref}: final XP",
+                ),
+            ],
+        },
+        "tag-unlocked-scene": {
+            "title": "Unlocked scene",
+            "body": "This room was inserted by a TAG route rewrite. Record arrival, reward, and XP against the printed branch.",
+            "actions": [
+                _tag_prompt_action(
+                    "Mark unlocked scene",
+                    "Prefill the route marker showing the unlocked scene has been reached.",
+                    action_type="route",
+                    action_value="unlock_scene",
+                    reference=f"{base_ref}: unlocked scene",
+                ),
+                _tag_prompt_action(
+                    "Claim unlocked reward",
+                    "Prefill the printed reward action for the unlocked branch.",
+                    action_type="branch",
+                    action_value="claim_reward",
+                    reference=f"{base_ref}: unlocked reward",
+                ),
+            ],
+        },
+    }
+    return prompts
+
+
 def _tag_manifest(
     *,
     adventure_id: str,
@@ -3069,6 +3232,7 @@ def _tag_manifest(
             "final_foe_proxy": final_foe,
             "final_foe_count": final_count,
             "final_foes": final_foes,
+            "room_prompts": _tag_room_prompts(title=title, lead_detail=lead_detail, profile=profile),
         },
     }
     return {

@@ -8542,7 +8542,7 @@ const TAG_HELP_CONTENT = {
     lines: [
       "The TAG settlement panel is a town or village downtime layer, not the Camp Outside Dungeon. Use it to track the party's home settlement, troupe, guild state, services, storage, travel, Streetwise actions, and adventure leads.",
       "Most buttons write a dated result into the TAG log. Where the book requires a roll, the app logs the dice math so the result can be checked against the PDF.",
-      "The generated adventure controls create normal installed adventures in the Adventure section. They are currently lead templates; exact Rumor Scene and Thematic Dungeon branches are the next content phase.",
+      "The generated adventure controls create normal installed adventures in the Adventure section. Generated TAG modules now carry room-aware prompt metadata so exploration can prefill branch, route, reward, Clue, and XP actions for the current scene.",
     ],
   },
   settlement: {
@@ -8614,13 +8614,14 @@ const TAG_HELP_CONTENT = {
     lines: [
       "Follow map rolls the TAG treasure-map procedure and, on a real map, the Map Leads To result. Guild cartographer applies the guild map-adjustment option when enabled.",
       "Create adventure converts a TAG lead into a normal installed adventure module. Choose Rumor Scene, Treasure Map, Thematic Dungeon, or Guild Job, then add an optional result number if you want to force a particular branch.",
-      "The new module is added to the Adventure section and selected automatically. Use TAG Actions for follow-up branch choices, Clue spends, variable counts, capture-alive outcomes, and rewards.",
+      "The new module is added to the Adventure section and selected automatically. During exploration, generated TAG rooms show contextual prompt buttons that open TAG Actions with the relevant branch, route, reward, Clue cost, or XP marker prefilled.",
     ],
   },
   actions: {
     title: "TAG Actions",
     lines: [
       "TAG Actions cover follow-up decisions after a generated adventure exists: branch choices, Clue spends, variable counts, capture-alive outcomes, exact scene rewards, trinkets, Guild spells, and finance enforcement.",
+      "Generated TAG adventure rooms can open this dialog from their room detail prompt. Check the PDF text, adjust the prefilled amount/reference if needed, then apply the action.",
       "Route actions preserve scene-by-scene flow: parley success/failure, Clue gates, peaceful or hostile branches, skipped/unlocked scenes, solo restrictions, and finale path choices.",
       "Scene results apply printed outcomes such as Medusa pendant, gargoyle bounty, Gorungar bounty, bandit capture, Shaura reward, Daroc's cat, mutant-fish rations, Agaratha, Deoldyn training, and Dragon's Lair type reveal.",
       "XP actions record pending scene XP, minor encounter counts, capture-alive XP timing, training XP-roll markers, or immediate XP awards to the selected character.",
@@ -21618,6 +21619,37 @@ function appendTagContextualButton(parent, label, tooltip, defaults) {
   parent.appendChild(btn);
 }
 
+function tagPromptDefaultsFromAction(action = {}, fallbackReference = "") {
+  if (!action.action_type || action.action_type === "dialog") return {};
+  const defaults = {
+    reference: action.reference || fallbackReference || "",
+    amount: action.amount ?? 0,
+  };
+  const value = action.action_value || action.value || "";
+  if (action.action_type === "branch") defaults.branchAction = value;
+  if (action.action_type === "route") defaults.routeAction = value;
+  if (action.action_type === "scene") defaults.sceneAction = value;
+  if (action.action_type === "xp") defaults.xpAction = value;
+  return defaults;
+}
+
+function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
+  if (!promptData || !Array.isArray(promptData.actions)) return false;
+  const row = node("div", "tag-context-actions-row");
+  for (const action of promptData.actions) {
+    if (!action?.label) continue;
+    appendTagContextualButton(
+      row,
+      String(action.label),
+      String(action.tooltip || "Open the TAG Actions dialog with this generated-scene prompt prefilled."),
+      tagPromptDefaultsFromAction(action, fallbackReference)
+    );
+  }
+  if (!row.childElementCount) return false;
+  parent.appendChild(row);
+  return true;
+}
+
 function appendTagContextualActions(parent, session, tile) {
   const tagReference = tagReferenceForGeneratedAdventure(session);
   if (!tagReference || session?.mode !== "exploration") return;
@@ -21626,16 +21658,23 @@ function appendTagContextualActions(parent, session, tile) {
   const roomTitle = room?.title || tile?.title || "Current TAG scene";
   const referenceTitle = tagReference.title || tagReference.reference || "Generated TAG adventure";
   const pages = tagReference.pdf_pages ? ` · ${tagReference.pdf_pages}` : "";
+  const promptData = tagReference.room_prompts?.[roomId] || null;
+  const fallbackReference = `${referenceTitle}: ${roomTitle}`;
   const block = node("div", "tag-context-actions");
   const heading = node("div", "tag-context-actions-title");
-  heading.appendChild(node("strong", "", "TAG scene prompt"));
+  heading.appendChild(node("strong", "", promptData?.title || "TAG scene prompt"));
   heading.appendChild(subline(`${referenceTitle}${pages} · ${roomTitle}`));
   block.appendChild(heading);
   const prompt = subline(
-    "Use these room-aware shortcuts to prefill TAG Actions for the current generated scene, then confirm the exact branch, reward, Clue spend, or XP marker."
+    promptData?.body ||
+      "Use these room-aware shortcuts to prefill TAG Actions for the current generated scene, then confirm the exact branch, reward, Clue spend, or XP marker."
   );
   setTooltip(prompt, "Generated TAG modules can contain printed choices that the app cannot infer automatically from movement alone.");
   block.appendChild(prompt);
+  if (appendTagMetadataPromptActions(block, promptData, fallbackReference)) {
+    parent.appendChild(block);
+    return;
+  }
   const actionsRow = node("div", "tag-context-actions-row");
   appendTagContextualButton(
     actionsRow,

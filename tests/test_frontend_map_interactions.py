@@ -1922,6 +1922,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "function appendTagContextualActions" in APP_JS
     assert "TAG scene prompt" in APP_JS
     assert "openTagActionsWithDefaults" in APP_JS
+    assert "tagPromptDefaultsFromAction" in APP_JS
+    assert "appendTagMetadataPromptActions" in APP_JS
+    assert "room_prompts" in APP_JS
     assert "tag-lead-entry" in APP_JS
     assert "tag-complication" in APP_JS
     assert "tag-final-scene" in APP_JS

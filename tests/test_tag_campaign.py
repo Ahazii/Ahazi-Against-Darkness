@@ -399,6 +399,12 @@ def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
     assert reference["pdf_pages"] == "TAG pp.22, 25-26"
     assert reference["final_foe_proxy"] == "Medusa"
     assert "Pendant worth 260 gp" in reference["rewards"]
+    assert "room_prompts" in reference
+    assert reference["room_prompts"]["tag-complication"]["actions"][0]["action_value"] == "parley_success"
+    assert any(
+        action["action_type"] == "branch" and action["action_value"] == "claim_reward"
+        for action in reference["room_prompts"]["tag-final-scene"]["actions"]
+    )
     final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
     assert final_room["triggers"][0]["encounter"]["foes"] == [{"name": "Medusa", "count": 1}]
 
@@ -415,6 +421,11 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     assert dragon_ref["pdf_pages"] == "TAG pp.39-40"
     assert dragon_ref["final_foe_proxy"] == "Young Dragon"
     assert any("Four-room target" in rule for rule in dragon_ref["rules"])
+    dragon_actions = dragon_ref["room_prompts"]["tag-complication"]["actions"]
+    assert any(
+        action["action_value"] == "clue_gate_unlocked" and action["amount"] == 2 and "dragon type" in action["label"].lower()
+        for action in dragon_actions
+    )
 
     rolls = iter([2])
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
@@ -426,6 +437,7 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     assert job_ref["pdf_pages"] == "TAG p.55"
     assert job_ref["final_foe_proxy"] == "Gorungar the Mighty"
     assert "50 gp for his head" in job_ref["rewards"]
+    assert job_ref["room_prompts"]["tag-final-scene"]["title"] == "Final scene closeout"
     final_room = next(room for room in job["rooms"] if room["id"] == "tag-final-scene")
     assert final_room["triggers"][0]["encounter"]["foes"] == [
         {"name": "Gorungar the Mighty", "count": 1},
