@@ -146,6 +146,16 @@ Home screen character UI:
 - **Camp bank:** `deposit_bank_gold`, `withdraw_bank_gold`, and
   `deposit_party_bank_gold` session actions are available only while camped
   outside. The Camp panel and Home Screen Bank button open the same dialog.
+- **TAG bank:** `CampaignState.tag_bank_accounts` is a separate settlement
+  ledger for Tales from the Adventurers' Guild. TAG bank deposits/withdrawals,
+  inheritance notes/transfers, and migration from roster gold plus matching
+  session `bank_gold` are explicit player actions under `/api/campaign/tag/*`;
+  the app does not silently spend TAG bank funds from the equipment shop or camp
+  bank.
+- **TAG troupe:** `CampaignState.tag_troupe_member_character_ids` stores the
+  wider troupe roster, while `tag_troupe_active_character_ids` stores the current
+  active party subset. The Home troupe manager can add/remove/list members and
+  choose up to four active adventurers from troupe members only.
 - Shared logic lives in `src/app/engine/inventory.py` (carry limits, transfers).
 
 ## Session roster sync

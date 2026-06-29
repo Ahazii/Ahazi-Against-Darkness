@@ -1831,8 +1831,22 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-run-finance",
         "tag-route-xp-summary",
         "tag-guide-link",
+        "tag-open-troupe-manager",
+        "tag-open-bank-transfer",
+        "tag-troupe-dialog",
+        "tag-troupe-member-add",
+        "tag-add-troupe-member",
+        "tag-troupe-member-remove",
+        "tag-remove-troupe-member",
+        "tag-troupe-member-list",
+        "tag-bank-transfer-dialog",
+        "tag-bank-transfer-character",
+        "tag-run-bank-transfer",
+        "tag-open-adventure-actions",
+        "tag-adventure-actions-dialog",
     ]:
         assert f'id="{element_id}"' in INDEX_HTML
+    assert INDEX_HTML.index('id="tag-open-adventure-actions"') > INDEX_HTML.index('id="session-panel"')
     assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html"' in INDEX_HTML
     assert '<details class="tag-help-section" open>' not in INDEX_HTML
     for endpoint in [
@@ -1851,6 +1865,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "/api/campaign/tag/guild-spell",
         "/api/campaign/tag/guild-marker",
         "/api/campaign/tag/finance-action",
+        "/api/campaign/tag/bank-migration",
     ]:
         assert endpoint in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.storageKind" in APP_JS
@@ -1869,6 +1884,12 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.clearGuildMarker" in APP_JS
     assert "renderTagRouteXpSummary" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.runFinance" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.openAdventureActions" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.openTroupeManager" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.tagRunBankTransfer" in APP_JS
+    assert "function renderTagTroupeDialog" in APP_JS
+    assert "function runTagBankTransferAction" in APP_JS
+    assert "tag_troupe_member_character_ids" in APP_JS
     assert "Created ${result.title || result.adventure_id}. It is selected in the Adventure section." in APP_JS
 
 

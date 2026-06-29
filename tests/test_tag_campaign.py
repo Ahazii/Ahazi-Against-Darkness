@@ -22,6 +22,7 @@ from app.engine.tag_campaign import (
     run_streetwise_action,
     cast_tag_guild_spell,
     consume_tag_guild_marker,
+    convert_character_gold_to_tag_bank,
     resolve_tag_branch_action,
     resolve_tag_finance_action,
     resolve_tag_route_action,
@@ -255,11 +256,13 @@ def test_tag_troupe_storage_purchase_and_locker(monkeypatch) -> None:
     update_troupe(
         campaign,
         troupe_name="Varian Guild",
+        member_character_ids=["hero-1", "hero-2", "hero-1"],
         active_character_ids=["hero-1", "hero-2", "hero-1"],
         guild_member=True,
         guild_coffers_gp=5000,
     )
     assert campaign.tag_troupe_name == "Varian Guild"
+    assert campaign.tag_troupe_member_character_ids == ["hero-1", "hero-2"]
     assert campaign.tag_troupe_active_character_ids == ["hero-1", "hero-2"]
     assert campaign.tag_guild_member is True
 
@@ -289,6 +292,38 @@ def test_tag_troupe_storage_purchase_and_locker(monkeypatch) -> None:
     summon = summon_magic_locker(campaign, locker_id=campaign.tag_magic_lockers[0].id)
     assert campaign.tag_magic_lockers[0].mishap_locked is True
     assert "mishap" in summon.result_text
+
+
+def test_tag_troupe_active_party_is_limited_to_troupe_members() -> None:
+    campaign = default_campaign()
+
+    update_troupe(
+        campaign,
+        member_character_ids=["hero-1", "hero-2"],
+        active_character_ids=["hero-2", "hero-3", "hero-1"],
+    )
+
+    assert campaign.tag_troupe_member_character_ids == ["hero-1", "hero-2"]
+    assert campaign.tag_troupe_active_character_ids == ["hero-2", "hero-1"]
+
+
+def test_tag_bank_migration_can_include_legacy_bank_with_optional_fee() -> None:
+    campaign = default_campaign()
+    hero = _character(gold=120)
+
+    entry = convert_character_gold_to_tag_bank(
+        campaign,
+        hero,
+        include_legacy_bank=True,
+        legacy_bank_gold=80,
+        apply_deposit_fee=True,
+        note="migration",
+    )
+
+    assert hero.gold == 0
+    assert campaign.tag_bank_accounts[0].gold_gp == 180
+    assert campaign.tag_bank_accounts[0].notes == "migration"
+    assert "20 gp TAG deposit fee" in entry.result_text
 
 
 def test_tag_streetwise_gambling_and_treasure_map(monkeypatch) -> None:

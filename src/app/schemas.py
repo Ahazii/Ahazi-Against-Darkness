@@ -700,6 +700,7 @@ class CampaignState(BaseModel):
     id: str = "default"
     tag_banking_enabled: bool = False
     tag_troupe_name: str = "Adventuring Troupe"
+    tag_troupe_member_character_ids: list[str] = Field(default_factory=list)
     tag_troupe_active_character_ids: list[str] = Field(default_factory=list)
     tag_guild_member: bool = False
     tag_guild_coffers_gp: int = Field(default=0, ge=0)

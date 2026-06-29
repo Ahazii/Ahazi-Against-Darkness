@@ -1410,18 +1410,29 @@ def update_troupe(
     campaign: CampaignState,
     *,
     troupe_name: str | None = None,
+    member_character_ids: list[str] | None = None,
     active_character_ids: list[str] | None = None,
     guild_member: bool | None = None,
     guild_coffers_gp: int | None = None,
 ) -> CampaignState:
     if troupe_name is not None:
         campaign.tag_troupe_name = (troupe_name.strip() or "Adventuring Troupe")[:80]
+    if member_character_ids is not None:
+        seen_members: set[str] = set()
+        campaign.tag_troupe_member_character_ids = [
+            str(character_id)
+            for character_id in member_character_ids
+            if str(character_id) and not (str(character_id) in seen_members or seen_members.add(str(character_id)))
+        ]
     if active_character_ids is not None:
         seen: set[str] = set()
+        member_ids = set(campaign.tag_troupe_member_character_ids)
         campaign.tag_troupe_active_character_ids = [
             str(character_id)
             for character_id in active_character_ids
-            if str(character_id) and not (str(character_id) in seen or seen.add(str(character_id)))
+            if str(character_id)
+            and (not member_ids or str(character_id) in member_ids)
+            and not (str(character_id) in seen or seen.add(str(character_id)))
         ][:4]
     if guild_member is not None:
         campaign.tag_guild_member = bool(guild_member)
@@ -1996,6 +2007,48 @@ def _tag_bank_account(campaign: CampaignState, character: Character) -> TagBankA
         campaign.tag_bank_accounts.append(account)
     account.owner_name = character.name
     return account
+
+
+def convert_character_gold_to_tag_bank(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    include_legacy_bank: bool = False,
+    legacy_bank_gold: int = 0,
+    apply_deposit_fee: bool = False,
+    note: str = "",
+) -> TagDowntimeLogEntry:
+    carried = max(0, int(character.gold or 0))
+    legacy = max(0, int(legacy_bank_gold)) if include_legacy_bank else 0
+    gross = carried + legacy
+    if gross <= 0:
+        return append_tag_log(
+            campaign,
+            action="tag_bank_migration",
+            character=character,
+            result_text=f"{character.name} has no roster or selected legacy bank gold to move into TAG banking.",
+        )
+    fee = ceil(gross * 0.1) if apply_deposit_fee else 0
+    deposited = max(0, gross - fee)
+    account = _tag_bank_account(campaign, character)
+    account.gold_gp += deposited
+    account.notes = note.strip()[:120] or account.notes
+    character.gold = 0
+    if include_legacy_bank and hasattr(character, "bank_gold"):
+        character.bank_gold = 0
+    character.updated_at = now_utc()
+    fee_text = f" after {fee} gp TAG deposit fee" if fee else " with no migration fee"
+    legacy_text = "carried and legacy bank gold" if include_legacy_bank else "carried roster gold"
+    return append_tag_log(
+        campaign,
+        action="tag_bank_migration",
+        character=character,
+        cost_gp=fee,
+        result_text=(
+            f"{character.name} converts {gross} gp of {legacy_text} into TAG bank account credit"
+            f"{fee_text}. Account balance {account.gold_gp} gp."
+        ),
+    )
 
 
 def resolve_tag_scene_action(

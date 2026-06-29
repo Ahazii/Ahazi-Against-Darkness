@@ -52,27 +52,31 @@
 
       <h2>Before an Adventure</h2>
       <ol>
-        <li>Enable <strong>Use Adventurers Guild banking</strong> if you want TAG banking rules instead of the legacy free home bank.</li>
+        <li>Enable <strong>Use Adventurers Guild banking</strong> if you want the TAG settlement bank ledger available alongside the legacy camp bank.</li>
         <li>Open <strong>Settlement</strong> and set the town name, size modifier, and notes. Use <strong>Roll size</strong> when the settlement is random.</li>
-        <li>Open <strong>Troupe</strong> and choose the active party. Mark Guild membership and coffers if the troupe belongs to the Adventurers Guild.</li>
+        <li>Use <strong>Troupe manager</strong> to add roster heroes to the TAG troupe, remove members, list member status, and choose the active party. Mark Guild membership and coffers if the troupe belongs to the Adventurers Guild.</li>
         <li>Use <strong>Availability</strong> to check special TAG items or services. The app rolls d6 plus settlement size and logs normal price, 20% surcharge, or unavailable.</li>
-        <li>Use <strong>Buyer</strong>, <strong>Storage</strong>, <strong>Magic Lockers</strong>, and <strong>Services</strong> for purchases, storage, gambling, lockers, treasure maps, moneylenders, horns, oil, aspergillum, and similar downtime procedures.</li>
+        <li>Use <strong>Bank transfers</strong>, <strong>Buyer</strong>, <strong>Storage</strong>, <strong>Magic Lockers</strong>, and <strong>Services</strong> for explicit bank migration, purchases, storage, gambling, lockers, treasure maps, moneylenders, horns, oil, aspergillum, and similar downtime procedures.</li>
         <li>Use <strong>Maps and Adventure Leads</strong> to create a Rumor Scene, Treasure Map, Thematic Dungeon, or Guild Job. The generated module appears in the normal Adventure section/dropdown.</li>
       </ol>
 
       <h2>TAG Banking</h2>
-      <p>TAG banking is separate from ordinary roster gold in the current implementation.</p>
+      <p>TAG banking is separate from ordinary roster gold and the Camp Outside Dungeon bank.</p>
       <ul>
-        <li><strong>Bank deposit</strong>: choose a character, enter Amount gp, choose Finance -&gt; Bank deposit. The app deducts the deposit plus a 10% fee and stores the deposit in that character's TAG bank account.</li>
-        <li><strong>Bank withdraw</strong>: choose a character, enter Amount gp, choose Finance -&gt; Bank withdraw. The app moves that much from the TAG account back to the character.</li>
+        <li><strong>Legacy camp bank remains available at camp</strong>: the Camp Outside Dungeon Bank button still deposits and withdraws home-bank gold without TAG fees. This preserves old campaign workflows.</li>
+        <li><strong>TAG bank is a settlement ledger</strong>: TAG bank accounts are handled from the TAG settlement panel and TAG actions dialog. The local app references cite TAG banking and settlement services on TAG pp.9-15; the owned PDF should be checked before treating the TAG bank as available away from settlements.</li>
+        <li><strong>Bank transfers</strong>: open Bank transfers to convert one character or the whole roster into per-character TAG accounts. You can include legacy bank gold from matching active/saved session party members and choose whether the 10% deposit fee applies. The app logs the ruling either way.</li>
+        <li><strong>Bank deposit</strong>: in TAG Actions, choose a character, enter Amount gp, choose Finance -&gt; Bank deposit. The app deducts the deposit plus a 10% fee and stores the deposit in that character's TAG bank account.</li>
+        <li><strong>Bank withdraw</strong>: in TAG Actions, choose a character, enter Amount gp, choose Finance -&gt; Bank withdraw. The app moves that much from the TAG account back to the character.</li>
         <li><strong>Inheritance note</strong>: choose the account owner, put the heir name in Note, choose Finance -&gt; Inheritance note.</li>
         <li><strong>Inheritance transfer</strong>: choose the heir/recipient character and choose Finance -&gt; Inheritance transfer. The app finds a matching heir note, transfers the account after 20% tax, zeroes the donor account, and logs the result.</li>
         <li><strong>Robbery risk/recovery</strong>: use Finance for hidden-storage robbery risk and recovery logging.</li>
+        <li><strong>Purchases</strong>: the normal equipment shop and TAG Buyer section spend character gold. If a character wants to use TAG banked gold, withdraw or transfer it first so the spending step is explicit and auditable.</li>
       </ul>
       <p>The <strong>Route / XP / Bank summary</strong> under Services and Log shows recent bank balances and heirs.</p>
 
       <h2>During a TAG Adventure</h2>
-      <p>Use the normal Adventure section to play the generated module. TAG-specific follow-up decisions are currently handled from Home -&gt; Adventure -&gt; TAG Settlement -&gt; TAG Actions. Moving the scene-branch controls into exploration mode is a planned UI improvement because those choices happen during the adventure.</p>
+      <p>Use the normal Adventure section to play the generated module. TAG-specific follow-up decisions are handled from the <strong>TAG Actions</strong> button in the exploration side action bar, so the branch choice is made at the point of play without crowding the map/exits area.</p>
       <ul>
         <li><strong>Branch</strong> logs generic social choices, Clue spends, variable counts, capture-alive outcomes, and printed gp rewards.</li>
         <li><strong>Route</strong> records the exact scene flow: parley success/failure, Clue-gated routes, peaceful/hostile branches, skipped or unlocked scenes, solo restrictions, and final routes. Route markers are app bookkeeping for PDF branches; "route marker" is not TAG PDF terminology.</li>
@@ -92,6 +96,17 @@
         <li>Use <strong>Finance</strong> for bank deposits, inheritance, guild upkeep, loan enforcement, or storage robbery procedures.</li>
         <li>Update <strong>Settlement notes</strong> with rulings, unresolved route markers, and anything you need to check against the PDF.</li>
       </ol>
+
+      <h2>Troupe Management</h2>
+      <p>The TAG troupe is now a proper roster surface rather than only an active-party picker.</p>
+      <ul>
+        <li><strong>Add member</strong> adds a roster hero to the persistent troupe list.</li>
+        <li><strong>Remove member</strong> removes a hero from the TAG troupe list without deleting the character.</li>
+        <li><strong>List members</strong> shows each member's home/active/dead status, roster gold, current session legacy bank gold when available, and TAG bank balance.</li>
+        <li><strong>Active party</strong> is chosen from troupe members only and is capped at four selected adventurers.</li>
+        <li><strong>Guild membership and coffers</strong> remain troupe-level campaign state. Coffers are distinct from individual TAG bank accounts.</li>
+        <li><strong>Travel</strong> changes the troupe's home settlement focus and logs travel days/route math; it does not model separate locations for every roster member.</li>
+      </ul>
 
       <h2>Signoff Workflow</h2>
       <p>For PDF checking, use <a href="RULEBOOK_CHECKING_GUIDE.md">Rulebook Checking Guide</a>. Spreadsheet signoff files are in <code>docs/Checking/Outputs/signoff_280626/</code>.</p>

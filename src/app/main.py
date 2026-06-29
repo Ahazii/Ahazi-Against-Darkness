@@ -583,16 +583,63 @@ async def campaign_tag_troupe(payload: dict[str, Any]) -> dict[str, Any]:
 
     raw_ids = payload.get("active_character_ids")
     active_ids = raw_ids if isinstance(raw_ids, list) else []
+    raw_member_ids = payload.get("member_character_ids")
+    member_ids = raw_member_ids if isinstance(raw_member_ids, list) else None
     campaign = load_campaign(store)
     update_troupe(
         campaign,
         troupe_name=str(payload.get("troupe_name") or ""),
+        member_character_ids=[str(character_id) for character_id in member_ids] if member_ids is not None else None,
         active_character_ids=[str(character_id) for character_id in active_ids],
         guild_member=_parse_bool(payload.get("guild_member")),
         guild_coffers_gp=int(payload.get("guild_coffers_gp") or 0),
     )
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign}
+
+
+@app.post("/api/campaign/tag/bank-migration")
+async def campaign_tag_bank_migration(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import convert_character_gold_to_tag_bank, load_campaign, save_campaign
+
+    campaign = load_campaign(store)
+    include_legacy_bank = _parse_bool(payload.get("include_legacy_bank"))
+    apply_deposit_fee = _parse_bool(payload.get("apply_deposit_fee"))
+    character_id = str(payload.get("character_id") or "").strip()
+    character_ids = [character_id] if character_id else [item.id for item in store.list("characters", Character.model_validate)]
+    entries = []
+    characters = []
+    for current_id in character_ids:
+        character = store.get("characters", current_id, Character.model_validate)
+        if character is None:
+            continue
+        legacy_bank_gold = 0
+        changed_sessions: list[SessionState] = []
+        if include_legacy_bank:
+            for session in store.list("sessions", SessionState.model_validate):
+                changed = False
+                for member in session.party:
+                    if member.character_id == current_id and member.bank_gold > 0:
+                        legacy_bank_gold += member.bank_gold
+                        member.bank_gold = 0
+                        changed = True
+                if changed:
+                    changed_sessions.append(session)
+        entry = convert_character_gold_to_tag_bank(
+            campaign,
+            character,
+            include_legacy_bank=include_legacy_bank,
+            legacy_bank_gold=legacy_bank_gold,
+            apply_deposit_fee=apply_deposit_fee,
+            note=str(payload.get("note") or "TAG banking migration"),
+        )
+        store.save("characters", character)
+        for session in changed_sessions:
+            store.save("sessions", session)
+        entries.append(entry)
+        characters.append(character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "characters": characters, "entries": entries}
 
 
 @app.post("/api/campaign/tag/store-treasure")

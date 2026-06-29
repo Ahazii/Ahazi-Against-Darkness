@@ -267,6 +267,8 @@
                 </div>
                 <div class="tag-heading-actions">
                   <a id="tag-guide-link" class="link-button tag-guide-link" href="/docs/Checking/TAG_SECTION_GUIDE.html" target="_blank" rel="noopener" title="Open the full TAG section workflow guide, including TAG banking and before/during/after adventure steps.">TAG guide</a>
+                  <button id="tag-open-troupe-manager" type="button" class="secondary" title="Open full TAG troupe and guild roster management.">Troupe manager</button>
+                  <button id="tag-open-bank-transfer" type="button" class="secondary" title="Open explicit controls for moving roster or legacy-bank gold into TAG bank accounts.">Bank transfers</button>
                   <button type="button" class="tag-help-button" data-tag-help="overview" aria-label="TAG settlement help">?</button>
                 </div>
               </div>
@@ -313,10 +315,6 @@
                       <span>Troupe</span>
                       <input id="tag-troupe-name" type="text" maxlength="80" />
                     </label>
-                    <label for="tag-troupe-active">
-                      <span>Active party</span>
-                      <select id="tag-troupe-active" multiple size="4"></select>
-                    </label>
                     <label class="session-option compact-option" for="tag-guild-member">
                       <input type="checkbox" id="tag-guild-member" />
                       <span>Guild members</span>
@@ -327,6 +325,7 @@
                     </label>
                     <button id="tag-save-troupe" type="button" class="secondary">Save troupe</button>
                   </div>
+                  <div id="tag-troupe-summary" class="tag-mini-summary"></div>
                 </div>
               </details>
               <details class="tag-help-section">
@@ -565,12 +564,12 @@
                   </div>
                 </div>
               </details>
-              <details class="tag-help-section">
-                <summary>
-                  <span>TAG Actions</span>
-                  <button type="button" class="tag-help-button" data-tag-help="actions" aria-label="TAG actions help">?</button>
-                </summary>
-                <div class="tag-help-section-body">
+              <dialog id="tag-adventure-actions-dialog" class="help-dialog transfer-dialog tag-action-dialog">
+                <form method="dialog" id="tag-adventure-actions-form">
+                  <div class="transfer-dialog-header">
+                    <h3>TAG Adventure Actions</h3>
+                    <p class="muted">Resolve TAG scene branches, route choices, rewards, XP markers, Guild spell timing, and finance notes while playing the adventure.</p>
+                  </div>
                   <div class="tag-settlement-grid">
                     <label for="tag-action-character">
                       <span>Character</span>
@@ -699,8 +698,11 @@
                     </label>
                     <button id="tag-run-finance" type="button" class="secondary">Run finance</button>
                   </div>
-                </div>
-              </details>
+                  <div class="actions transfer-dialog-actions">
+                    <button type="submit" value="cancel" class="secondary">Close</button>
+                  </div>
+                </form>
+              </dialog>
               <details class="tag-help-section">
                 <summary>
                   <span>Services and Log</span>
@@ -1031,6 +1033,7 @@
                 <button id="resolve-trap" type="button" class="secondary exploration-only">Resolve Trap</button>
                 <button id="claim-treasure" type="button" class="secondary exploration-only">Claim Treasure</button>
                 <button id="rest" type="button" class="exploration-only">Rest</button>
+                <button id="tag-open-adventure-actions" type="button" class="secondary exploration-only hidden">TAG Actions</button>
               </div>
             </div>
             <div class="side-panel-body">
@@ -1072,6 +1075,69 @@
         </div>
       </section>
     </main>
+
+    <dialog id="tag-troupe-dialog" class="help-dialog transfer-dialog tag-troupe-dialog">
+      <form method="dialog" id="tag-troupe-dialog-form">
+        <div class="transfer-dialog-header">
+          <h3>TAG Troupe Manager</h3>
+          <p class="muted">Maintain the wider troupe roster, choose the active adventuring party, and record guild-level state.</p>
+        </div>
+        <div class="tag-dialog-grid">
+          <label for="tag-troupe-member-add">
+            <span>Add roster member</span>
+            <select id="tag-troupe-member-add"></select>
+          </label>
+          <button id="tag-add-troupe-member" type="button" class="secondary">Add member</button>
+          <label for="tag-troupe-member-remove">
+            <span>Remove troupe member</span>
+            <select id="tag-troupe-member-remove"></select>
+          </label>
+          <button id="tag-remove-troupe-member" type="button" class="secondary">Remove member</button>
+          <label for="tag-troupe-active">
+            <span>Active party</span>
+            <select id="tag-troupe-active" multiple size="6"></select>
+          </label>
+        </div>
+        <div id="tag-troupe-member-list" class="tag-troupe-member-list"></div>
+        <p class="muted">Guild coffers are tracked separately from individual TAG bank accounts. Travel changes the troupe home settlement focus; it does not move individual characters one by one.</p>
+        <div class="actions transfer-dialog-actions">
+          <button id="tag-save-troupe-dialog" type="button">Save troupe</button>
+          <button type="submit" value="cancel" class="secondary">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="tag-bank-transfer-dialog" class="help-dialog transfer-dialog tag-bank-transfer-dialog">
+      <form method="dialog" id="tag-bank-transfer-form">
+        <div class="transfer-dialog-header">
+          <h3>TAG Bank Transfers</h3>
+          <p id="tag-bank-transfer-note" class="muted">Move gold deliberately between roster/legacy holdings and TAG bank accounts. Camp Outside Dungeon still uses the legacy home bank.</p>
+        </div>
+        <div class="tag-dialog-grid">
+          <label for="tag-bank-transfer-character">
+            <span>Character</span>
+            <select id="tag-bank-transfer-character"></select>
+          </label>
+          <label class="session-option compact-option" for="tag-bank-transfer-all">
+            <input id="tag-bank-transfer-all" type="checkbox" />
+            <span>All roster characters</span>
+          </label>
+          <label class="session-option compact-option" for="tag-bank-transfer-legacy">
+            <input id="tag-bank-transfer-legacy" type="checkbox" />
+            <span>Include legacy bank gold</span>
+          </label>
+          <label class="session-option compact-option" for="tag-bank-transfer-fee">
+            <input id="tag-bank-transfer-fee" type="checkbox" />
+            <span>Apply 10% deposit fee</span>
+          </label>
+        </div>
+        <div id="tag-bank-transfer-summary" class="tag-troupe-member-list"></div>
+        <div class="actions transfer-dialog-actions">
+          <button id="tag-run-bank-transfer" type="button">Convert to TAG bank</button>
+          <button type="submit" value="cancel" class="secondary">Close</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="transfer-dialog" class="help-dialog transfer-dialog">
       <form method="dialog" id="transfer-dialog-form">

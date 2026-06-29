@@ -223,6 +223,8 @@ const tagBankingEnabled = document.getElementById("tag-banking-enabled");
 const tagBankingHint = document.getElementById("tag-banking-hint");
 const campaignDaysHint = document.getElementById("campaign-days-hint");
 const tagCampaignSettlementPanel = document.getElementById("tag-campaign-settlement-panel");
+const tagOpenTroupeManager = document.getElementById("tag-open-troupe-manager");
+const tagOpenBankTransfer = document.getElementById("tag-open-bank-transfer");
 const tagSettlementName = document.getElementById("tag-settlement-name");
 const tagSettlementSize = document.getElementById("tag-settlement-size");
 const tagSaveSettlement = document.getElementById("tag-save-settlement");
@@ -230,6 +232,14 @@ const tagRollSettlementSize = document.getElementById("tag-roll-settlement-size"
 const tagSettlementNotes = document.getElementById("tag-settlement-notes");
 const tagTroupeName = document.getElementById("tag-troupe-name");
 const tagTroupeActive = document.getElementById("tag-troupe-active");
+const tagTroupeSummary = document.getElementById("tag-troupe-summary");
+const tagTroupeDialog = document.getElementById("tag-troupe-dialog");
+const tagTroupeMemberAdd = document.getElementById("tag-troupe-member-add");
+const tagAddTroupeMember = document.getElementById("tag-add-troupe-member");
+const tagTroupeMemberRemove = document.getElementById("tag-troupe-member-remove");
+const tagRemoveTroupeMember = document.getElementById("tag-remove-troupe-member");
+const tagTroupeMemberList = document.getElementById("tag-troupe-member-list");
+const tagSaveTroupeDialog = document.getElementById("tag-save-troupe-dialog");
 const tagGuildMember = document.getElementById("tag-guild-member");
 const tagGuildCoffers = document.getElementById("tag-guild-coffers");
 const tagSaveTroupe = document.getElementById("tag-save-troupe");
@@ -294,6 +304,14 @@ const tagFinanceAction = document.getElementById("tag-finance-action");
 const tagFinanceAmount = document.getElementById("tag-finance-amount");
 const tagFinanceNote = document.getElementById("tag-finance-note");
 const tagRunFinance = document.getElementById("tag-run-finance");
+const tagAdventureActionsDialog = document.getElementById("tag-adventure-actions-dialog");
+const tagBankTransferDialog = document.getElementById("tag-bank-transfer-dialog");
+const tagBankTransferCharacter = document.getElementById("tag-bank-transfer-character");
+const tagBankTransferAll = document.getElementById("tag-bank-transfer-all");
+const tagBankTransferLegacy = document.getElementById("tag-bank-transfer-legacy");
+const tagBankTransferFee = document.getElementById("tag-bank-transfer-fee");
+const tagBankTransferSummary = document.getElementById("tag-bank-transfer-summary");
+const tagRunBankTransfer = document.getElementById("tag-run-bank-transfer");
 const tagMoneylenderDebt = document.getElementById("tag-moneylender-debt");
 const tagRefreshServices = document.getElementById("tag-refresh-services");
 const tagSettlementServices = document.getElementById("tag-settlement-services");
@@ -547,6 +565,7 @@ const withdrawBtn = document.getElementById("withdraw");
 const resolveTrapBtn = document.getElementById("resolve-trap");
 const claimTreasureBtn = document.getElementById("claim-treasure");
 const restBtn = document.getElementById("rest");
+const tagOpenAdventureActions = document.getElementById("tag-open-adventure-actions");
 const restChoicesEl = document.getElementById("rest-choices");
 const saveSessionBtn = document.getElementById("save-session");
 const logModeSummaryBtn = document.getElementById("log-mode-summary");
@@ -8408,11 +8427,23 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   save: "Save settlement name, size modifier, and notes to the persistent campaign record.",
   rollSize: "Roll d6 for a random TAG settlement size: 1=-2, 2=-1, 3=0, 4=+1, 5=+2, 6=+3.",
   notes: "Free notes for settlement details, known services, missing services, and rulings.",
+  openTroupeManager: "Open the full TAG troupe manager: add/remove members, list roster status, and choose the active party.",
+  openBankTransfer: "Open explicit TAG bank migration controls. Nothing moves from legacy banking unless you press Convert.",
   troupeName: "Persistent TAG troupe or adventuring company name.",
-  troupeActive: "Select up to four roster characters as the current TAG active party. Troupe members not selected stay home.",
+  troupeActive: "Select up to four troupe members as the current TAG active party. Troupe members not selected stay home.",
+  troupeMemberAdd: "Roster hero to add to the TAG troupe membership list.",
+  addTroupeMember: "Add the selected roster hero to this TAG troupe.",
+  troupeMemberRemove: "Current troupe member to remove from the TAG troupe list.",
+  removeTroupeMember: "Remove the selected hero from the TAG troupe. This does not delete the character.",
+  troupeMemberList: "TAG troupe list with home/active/dead/banked status and carried, legacy bank, and TAG bank gold.",
   guildMember: "Marks this troupe as Adventurers Guild members for guild benefits such as cartographer map adjustment.",
   guildCoffers: "Guild coffer total for TAG guild upkeep and benefits. This is campaign state, separate from individual gold.",
   saveTroupe: "Save troupe name, active party selection, guild membership, and guild coffers.",
+  tagBankTransferCharacter: "Character whose carried roster gold will be converted to a TAG bank account.",
+  tagBankTransferAll: "Convert every roster character instead of only the selected character.",
+  tagBankTransferLegacy: "Also move legacy home-bank gold into TAG bank accounts. Leave off to keep camp banking separate.",
+  tagBankTransferFee: "Apply the TAG 10% bank deposit fee during this transfer. Leave off for a one-time migration ruling.",
+  tagRunBankTransfer: "Convert selected carried/legacy gold into TAG per-character bank account credit and log the result.",
   travelDestination: "Name for the next TAG settlement. The destination becomes the new home settlement after travel.",
   travelMode: "Simple travel rolls 3d6-3 days, minimum 1. Hex map travel rolls direction, distance, road existence, and encounter-check cadence.",
   payRoadTithe: "When hex travel finds a road, record the 1 gp per 3 hexes tithe cost and use the safer road encounter cadence. Cost is logged, not deducted, because no travelling party purse is selected here.",
@@ -8474,6 +8505,7 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   financeAmount: "Gold amount for finance actions: deposit, withdraw, loan, reward, recovery, or storage handling.",
   financeNote: "Optional heir, debt, bank, robber, or ruling note stored in the TAG log.",
   runFinance: "Run the selected TAG finance action and log the result.",
+  openAdventureActions: "Open TAG adventure actions: scene branches, route markers, rewards, XP, Guild spells, and finance timing while exploring.",
   services: "Refresh TAG treasure/service rows for the current settlement size.",
   routeXpSummary: "Recent structured TAG signoff state: route decisions, XP markers, and per-character TAG bank account balances.",
   serviceAvailability: "Roll this service/item availability using d6 plus settlement size, then log the result.",
@@ -10362,9 +10394,16 @@ function applyTagSettlementTooltips() {
   setTooltip(tagSettlementSize, TAG_SETTLEMENT_TOOLTIPS.size);
   setButtonTooltip(tagSaveSettlement, TAG_SETTLEMENT_TOOLTIPS.save);
   setButtonTooltip(tagRollSettlementSize, TAG_SETTLEMENT_TOOLTIPS.rollSize);
+  setButtonTooltip(tagOpenTroupeManager, TAG_SETTLEMENT_TOOLTIPS.openTroupeManager);
+  setButtonTooltip(tagOpenBankTransfer, TAG_SETTLEMENT_TOOLTIPS.openBankTransfer);
   setTooltip(tagSettlementNotes, TAG_SETTLEMENT_TOOLTIPS.notes);
   setTooltip(tagTroupeName, TAG_SETTLEMENT_TOOLTIPS.troupeName);
   setTooltip(tagTroupeActive, TAG_SETTLEMENT_TOOLTIPS.troupeActive);
+  setTooltip(tagTroupeMemberAdd, TAG_SETTLEMENT_TOOLTIPS.troupeMemberAdd);
+  setButtonTooltip(tagAddTroupeMember, TAG_SETTLEMENT_TOOLTIPS.addTroupeMember);
+  setTooltip(tagTroupeMemberRemove, TAG_SETTLEMENT_TOOLTIPS.troupeMemberRemove);
+  setButtonTooltip(tagRemoveTroupeMember, TAG_SETTLEMENT_TOOLTIPS.removeTroupeMember);
+  setTooltip(tagTroupeMemberList, TAG_SETTLEMENT_TOOLTIPS.troupeMemberList);
   if (tagGuildMember?.closest("label")) setTooltip(tagGuildMember.closest("label"), TAG_SETTLEMENT_TOOLTIPS.guildMember);
   setTooltip(tagGuildCoffers, TAG_SETTLEMENT_TOOLTIPS.guildCoffers);
   setButtonTooltip(tagSaveTroupe, TAG_SETTLEMENT_TOOLTIPS.saveTroupe);
@@ -10429,6 +10468,12 @@ function applyTagSettlementTooltips() {
   setTooltip(tagFinanceAmount, TAG_SETTLEMENT_TOOLTIPS.financeAmount);
   setTooltip(tagFinanceNote, TAG_SETTLEMENT_TOOLTIPS.financeNote);
   setButtonTooltip(tagRunFinance, TAG_SETTLEMENT_TOOLTIPS.runFinance);
+  setButtonTooltip(tagOpenAdventureActions, TAG_SETTLEMENT_TOOLTIPS.openAdventureActions);
+  setTooltip(tagBankTransferCharacter, TAG_SETTLEMENT_TOOLTIPS.tagBankTransferCharacter);
+  if (tagBankTransferAll?.closest("label")) setTooltip(tagBankTransferAll.closest("label"), TAG_SETTLEMENT_TOOLTIPS.tagBankTransferAll);
+  if (tagBankTransferLegacy?.closest("label")) setTooltip(tagBankTransferLegacy.closest("label"), TAG_SETTLEMENT_TOOLTIPS.tagBankTransferLegacy);
+  if (tagBankTransferFee?.closest("label")) setTooltip(tagBankTransferFee.closest("label"), TAG_SETTLEMENT_TOOLTIPS.tagBankTransferFee);
+  setButtonTooltip(tagRunBankTransfer, TAG_SETTLEMENT_TOOLTIPS.tagRunBankTransfer);
   setTooltip(tagMoneylenderDebt, TAG_SETTLEMENT_TOOLTIPS.moneylenderDebt);
   setButtonTooltip(tagRefreshServices, TAG_SETTLEMENT_TOOLTIPS.services);
   setTooltip(tagSettlementServices, TAG_SETTLEMENT_TOOLTIPS.services);
@@ -11485,6 +11530,171 @@ function fillTagCharacterSelect(select, roster, currentValue) {
   if (currentValue) setSelectValueIfOptionExists(select, currentValue);
 }
 
+function tagAccountGoldForCharacter(campaign, characterId) {
+  const account = (campaign?.tag_bank_accounts || []).find((item) => item.owner_character_id === characterId);
+  return account?.gold_gp || 0;
+}
+
+function legacyBankGoldForCharacter(characterId) {
+  const member = (state.session?.party || []).find((item) => item.character_id === characterId);
+  return member?.bank_gold || 0;
+}
+
+function tagTroupeMemberIds(campaign = state.campaign) {
+  const explicit = Array.isArray(campaign?.tag_troupe_member_character_ids)
+    ? campaign.tag_troupe_member_character_ids.filter(Boolean)
+    : [];
+  if (explicit.length) return explicit;
+  return Array.isArray(campaign?.tag_troupe_active_character_ids)
+    ? campaign.tag_troupe_active_character_ids.filter(Boolean)
+    : [];
+}
+
+function renderTagTroupeSummary(campaign = state.campaign) {
+  if (!tagTroupeSummary || !campaign) return;
+  tagTroupeSummary.replaceChildren();
+  const memberIds = tagTroupeMemberIds(campaign);
+  const activeIds = new Set(campaign.tag_troupe_active_character_ids || []);
+  const roster = Array.isArray(state.characters) ? state.characters : [];
+  const members = memberIds.map((id) => roster.find((character) => character.id === id)).filter(Boolean);
+  const summary = members.length
+    ? `${members.length} troupe member(s), ${members.filter((character) => activeIds.has(character.id)).length} active.`
+    : "No TAG troupe members yet. Open Troupe manager to add roster heroes.";
+  const line = node("div", "campaign-status-line", summary);
+  setTooltip(line, TAG_SETTLEMENT_TOOLTIPS.troupeMemberList);
+  tagTroupeSummary.appendChild(line);
+  for (const character of members.slice(0, 4)) {
+    const status = activeIds.has(character.id) ? "active" : character.current_life <= 0 ? "dead/fallen" : "home";
+    const bank = tagAccountGoldForCharacter(campaign, character.id);
+    const legacyBank = legacyBankGoldForCharacter(character.id);
+    const item = node(
+      "div",
+      "campaign-status-line muted",
+      `${character.name}: ${status}, ${character.gold || 0}gp roster, ${legacyBank}gp legacy session bank, ${bank}gp TAG bank.`
+    );
+    setTooltip(item, "TAG troupe member status. Legacy bank remains camp-facing; TAG bank is the settlement ledger.");
+    tagTroupeSummary.appendChild(item);
+  }
+}
+
+function renderTagTroupeDialog(campaign = state.campaign) {
+  if (!campaign) return;
+  const roster = Array.isArray(state.characters) ? state.characters : [];
+  const memberIds = tagTroupeMemberIds(campaign);
+  const memberSet = new Set(memberIds);
+  const activeIds = new Set(campaign.tag_troupe_active_character_ids || []);
+  fillTagCharacterSelect(tagTroupeMemberAdd, roster.filter((character) => !memberSet.has(character.id)), tagTroupeMemberAdd?.value);
+  fillTagCharacterSelect(tagTroupeMemberRemove, roster.filter((character) => memberSet.has(character.id)), tagTroupeMemberRemove?.value);
+  if (tagTroupeActive) {
+    const currentActive = new Set(Array.from(tagTroupeActive.selectedOptions || []).map((option) => option.value));
+    tagTroupeActive.replaceChildren();
+    for (const characterId of memberIds) {
+      const character = roster.find((item) => item.id === characterId);
+      if (!character) continue;
+      const option = document.createElement("option");
+      option.value = character.id;
+      option.textContent = `${character.name} (${character.class_name}, L${character.level})`;
+      option.selected = currentActive.has(character.id) || activeIds.has(character.id);
+      tagTroupeActive.appendChild(option);
+    }
+  }
+  if (tagTroupeMemberList) {
+    tagTroupeMemberList.replaceChildren();
+    if (!memberIds.length) {
+      tagTroupeMemberList.appendChild(node("div", "campaign-status-line muted", "No troupe members yet."));
+    }
+    for (const characterId of memberIds) {
+      const character = roster.find((item) => item.id === characterId);
+      if (!character) continue;
+      const tagBank = tagAccountGoldForCharacter(campaign, character.id);
+      const legacyBank = legacyBankGoldForCharacter(character.id);
+      const status = activeIds.has(character.id) ? "active party" : character.current_life <= 0 ? "dead/fallen" : "home";
+      const row = node(
+        "div",
+        "tag-troupe-member-row",
+        `${character.name} - ${status} - ${character.gold || 0}gp roster, ${legacyBank}gp legacy session bank, ${tagBank}gp TAG bank`
+      );
+      setTooltip(row, "Troupe member status for TAG play. Active party is limited to four selected troupe members.");
+      tagTroupeMemberList.appendChild(row);
+    }
+  }
+}
+
+function openTagTroupeDialog() {
+  renderTagTroupeDialog(state.campaign);
+  tagTroupeDialog?.showModal();
+}
+
+async function mutateTagTroupeMembers(mutator) {
+  const campaign = state.campaign;
+  if (!campaign) return;
+  const ids = tagTroupeMemberIds(campaign).slice();
+  mutator(ids);
+  const activeIds = Array.from(tagTroupeActive?.selectedOptions || [])
+    .map((option) => option.value)
+    .filter((id) => ids.includes(id))
+    .slice(0, 4);
+  const result = await api("/api/campaign/tag/troupe", {
+    method: "POST",
+    body: JSON.stringify({
+      troupe_name: tagTroupeName?.value || "Adventuring Troupe",
+      member_character_ids: ids,
+      active_character_ids: activeIds,
+      guild_member: Boolean(tagGuildMember?.checked),
+      guild_coffers_gp: Number(tagGuildCoffers?.value || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  renderTagTroupeDialog(state.campaign);
+}
+
+function renderTagBankTransferDialog(campaign = state.campaign) {
+  const roster = Array.isArray(state.characters) ? state.characters : [];
+  fillTagCharacterSelect(tagBankTransferCharacter, roster, tagBankTransferCharacter?.value);
+  if (!tagBankTransferSummary) return;
+  tagBankTransferSummary.replaceChildren();
+  const selected = tagBankTransferAll?.checked
+    ? roster
+    : roster.filter((character) => character.id === tagBankTransferCharacter?.value);
+  const targets = selected.length ? selected : roster.slice(0, 1);
+  for (const character of targets) {
+    const legacy = tagBankTransferLegacy?.checked ? legacyBankGoldForCharacter(character.id) : 0;
+    const gross = (character.gold || 0) + legacy;
+    const fee = tagBankTransferFee?.checked ? Math.ceil(gross * 0.1) : 0;
+    const row = node(
+      "div",
+      "tag-troupe-member-row",
+      `${character.name}: ${gross}gp selected -> ${Math.max(0, gross - fee)}gp TAG bank${fee ? `, ${fee}gp fee` : ""}.`
+    );
+    setTooltip(row, "Preview only. Press Convert to TAG bank to write the transfer and log it.");
+    tagBankTransferSummary.appendChild(row);
+  }
+}
+
+function openTagBankTransferDialog() {
+  renderTagBankTransferDialog(state.campaign);
+  tagBankTransferDialog?.showModal();
+}
+
+async function runTagBankTransferAction() {
+  const result = await api("/api/campaign/tag/bank-migration", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagBankTransferAll?.checked ? "" : tagBankTransferCharacter?.value || "",
+      include_legacy_bank: Boolean(tagBankTransferLegacy?.checked),
+      apply_deposit_fee: Boolean(tagBankTransferFee?.checked),
+      note: "TAG bank transfer UI",
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  renderTagBankTransferDialog(state.campaign);
+  const changed = (result.entries || []).filter((entry) => !String(entry.result_text || "").includes("has no roster")).length;
+  setStatus(`TAG bank transfer complete: ${changed} account update(s).`);
+}
+
 function renderTagCharacterOptions(campaign = state.campaign) {
   const roster = Array.isArray(state.characters) ? state.characters : [];
   fillTagCharacterSelect(tagClueCharacter, roster, tagClueCharacter?.value);
@@ -11492,10 +11702,14 @@ function renderTagCharacterOptions(campaign = state.campaign) {
   fillTagCharacterSelect(tagPurchaseCharacter, roster, tagPurchaseCharacter?.value);
   fillTagCharacterSelect(tagLockerCharacter, roster, tagLockerCharacter?.value);
   fillTagCharacterSelect(tagActionCharacter, roster, tagActionCharacter?.value);
+  fillTagCharacterSelect(tagBankTransferCharacter, roster, tagBankTransferCharacter?.value);
   if (tagTroupeActive) {
+    const memberIds = tagTroupeMemberIds(campaign);
+    const memberSet = new Set(memberIds);
     const selected = new Set(campaign?.tag_troupe_active_character_ids || []);
     tagTroupeActive.replaceChildren();
     for (const character of roster) {
+      if (memberIds.length && !memberSet.has(character.id)) continue;
       const option = document.createElement("option");
       option.value = character.id;
       option.textContent = `${character.name} (${character.class_name}, L${character.level})`;
@@ -11518,6 +11732,8 @@ function renderTagCharacterOptions(campaign = state.campaign) {
     }
     if (current) setSelectValueIfOptionExists(tagLockerSelect, current);
   }
+  renderTagTroupeSummary(campaign);
+  renderTagTroupeDialog(campaign);
 }
 
 function renderTagClueCharacterOptions() {
@@ -11755,10 +11971,12 @@ async function runTagLookForClue() {
 
 async function saveTagTroupe() {
   const selectedIds = Array.from(tagTroupeActive?.selectedOptions || []).map((option) => option.value).filter(Boolean);
+  const memberIds = tagTroupeMemberIds(state.campaign);
   const result = await api("/api/campaign/tag/troupe", {
     method: "POST",
     body: JSON.stringify({
       troupe_name: tagTroupeName?.value || "Adventuring Troupe",
+      member_character_ids: memberIds,
       active_character_ids: selectedIds,
       guild_member: Boolean(tagGuildMember?.checked),
       guild_coffers_gp: Number(tagGuildCoffers?.value || 0),
@@ -16064,6 +16282,13 @@ function renderSession() {
   safeSessionRender("partyState", () => renderPartyState(session));
   cachedSessionRender("log", logRenderSignature(session), () => renderLog(session));
   safeSessionRender("explorationCommand", () => renderExplorationCommandBar(session));
+  if (tagOpenAdventureActions) {
+    const isTagGenerated =
+      Boolean(session.tag_banking_enabled) ||
+      Boolean(state.campaign?.tag_banking_enabled) ||
+      Boolean(session.adventure_id && (state.campaign?.tag_generated_adventure_ids || []).includes(session.adventure_id));
+    tagOpenAdventureActions.classList.toggle("hidden", session.mode !== "exploration" || !isTagGenerated);
+  }
 
   const tile = currentTile(session);
   const hasTrap = Boolean(tile?.trap_key && !tile.trap_resolved);
@@ -27668,6 +27893,12 @@ tagTravelSettlement?.addEventListener("click", () => {
 tagRefreshServices?.addEventListener("click", () => {
   refreshTagSettlementServices().catch(handleError);
 });
+tagOpenTroupeManager?.addEventListener("click", () => openTagTroupeDialog());
+tagOpenBankTransfer?.addEventListener("click", () => openTagBankTransferDialog());
+tagOpenAdventureActions?.addEventListener("click", () => {
+  renderTagCharacterOptions(state.campaign);
+  tagAdventureActionsDialog?.showModal();
+});
 tagCheckAvailability?.addEventListener("click", () => {
   checkTagAvailability().catch(handleError);
 });
@@ -27676,6 +27907,31 @@ tagLookForClue?.addEventListener("click", () => {
 });
 tagSaveTroupe?.addEventListener("click", () => {
   saveTagTroupe().catch(handleError);
+});
+tagAddTroupeMember?.addEventListener("click", () => {
+  mutateTagTroupeMembers((ids) => {
+    const id = tagTroupeMemberAdd?.value || "";
+    if (id && !ids.includes(id)) ids.push(id);
+  }).catch(handleError);
+});
+tagRemoveTroupeMember?.addEventListener("click", () => {
+  mutateTagTroupeMembers((ids) => {
+    const id = tagTroupeMemberRemove?.value || "";
+    const index = ids.indexOf(id);
+    if (index >= 0) ids.splice(index, 1);
+  }).catch(handleError);
+});
+tagSaveTroupeDialog?.addEventListener("click", (event) => {
+  event.preventDefault();
+  saveTagTroupe().catch(handleError);
+});
+tagBankTransferCharacter?.addEventListener("change", () => renderTagBankTransferDialog(state.campaign));
+tagBankTransferAll?.addEventListener("change", () => renderTagBankTransferDialog(state.campaign));
+tagBankTransferLegacy?.addEventListener("change", () => renderTagBankTransferDialog(state.campaign));
+tagBankTransferFee?.addEventListener("change", () => renderTagBankTransferDialog(state.campaign));
+tagRunBankTransfer?.addEventListener("click", (event) => {
+  event.preventDefault();
+  runTagBankTransferAction().catch(handleError);
 });
 tagStoreTreasure?.addEventListener("click", () => {
   storeTagTreasure().catch(handleError);
