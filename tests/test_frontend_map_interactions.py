@@ -1973,6 +1973,8 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "Load Saved Game",
         "sessionStorage.setItem(\"ahazi-modern-dev-unlocked\"",
         "availability reroll ${campaign.tag_guild_availability_reroll_used",
+        "modernTablePreview",
+        "matching rule reference",
     ]:
         assert label in MODERN_PAGES_JS
 

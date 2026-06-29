@@ -1195,6 +1195,51 @@ def _rules_tables_payload() -> dict:
     data["forsaken_depths_room_codes_table"] = room_codes_table_rows()
     data["hirelings_table"] = hirelings_table_rows(load_hirelings_catalog())
     data["milestones_table"] = milestones_table_rows()
+    monster_data = rules.monsters()
+    data["monster_bestiary_table"] = [
+        {
+            "category": table_key,
+            "name": row.get("name", ""),
+            "level": row.get("level", ""),
+            "life": row.get("life", ""),
+            "tags": ", ".join(row.get("tags", [])) if isinstance(row.get("tags"), list) else "",
+            "source_page": row.get("source_page", ""),
+        }
+        for table_key, rows in monster_data.items()
+        if table_key != "reaction_tables" and isinstance(rows, list)
+        for row in rows
+        if isinstance(row, dict)
+    ]
+    reaction_tables = monster_data.get("reaction_tables", {})
+    data["monster_reaction_tables"] = [
+        {"table": table_name, "roll": row.get("roll", ""), "result": row.get("result", "")}
+        for table_name, rows in reaction_tables.items()
+        if isinstance(rows, list)
+        for row in rows
+        if isinstance(row, dict)
+    ] if isinstance(reaction_tables, dict) else []
+    data["map_elements_table"] = [
+        {
+            "catalog": catalog,
+            "key": tile.key,
+            "name": tile.name,
+            "native_exits": ", ".join(exit_def.direction for exit_def in tile.exits),
+            "room_codes": ", ".join(tile.room_codes),
+            "implementation_status": tile.implementation_status,
+        }
+        for catalog in ("ee", "forsaken_depths", "forsaken_depths_rivers")
+        for tile in rules.tiles(catalog).values()
+    ]
+    data["icon_registry_table"] = [
+        {
+            "id": icon.id,
+            "label": icon.label,
+            "category": icon.category,
+            "file": icon.file,
+            "description": icon.description,
+        }
+        for icon in _icons_payload()
+    ]
     data["tier_training_costs_table"] = [
         {
             "tier": tier.title(),

@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 
 DEFAULT_CAMPAIGN_ID = "default"
 TAG_LOG_LIMIT = 20
+TAG_GUILD_STARTING_COFFERS_GP = 5000
 TAG_SETTLEMENT_SERVICES = [
     {
         "key": "bank_account",
@@ -1690,13 +1691,25 @@ def update_troupe(
         ][:4]
     if guild_member is not None:
         was_guild_member = campaign.tag_guild_member
-        campaign.tag_guild_member = bool(guild_member)
+        requested_guild_member = bool(guild_member)
+        if was_guild_member and not requested_guild_member and campaign.tag_guild_coffers_gp < TAG_GUILD_STARTING_COFFERS_GP:
+            campaign.tag_guild_member = True
+            append_tag_log(
+                campaign,
+                action="guild_leaving_restriction",
+                result_text=(
+                    f"Guild leaving blocked: coffers are {campaign.tag_guild_coffers_gp} gp; "
+                    f"restore coffers to at least {TAG_GUILD_STARTING_COFFERS_GP} gp before leaving the Adventurers Guild."
+                ),
+            )
+        else:
+            campaign.tag_guild_member = requested_guild_member
         if campaign.tag_guild_member and not was_guild_member and campaign.tag_guild_coffers_gp <= 0 and guild_coffers_gp in {None, 0}:
-            campaign.tag_guild_coffers_gp = 5000
+            campaign.tag_guild_coffers_gp = TAG_GUILD_STARTING_COFFERS_GP
     if guild_coffers_gp is not None:
         requested_coffers = max(0, int(guild_coffers_gp))
-        if campaign.tag_guild_member and requested_coffers <= 0 and campaign.tag_guild_coffers_gp == 5000:
-            campaign.tag_guild_coffers_gp = 5000
+        if campaign.tag_guild_member and requested_coffers <= 0 and campaign.tag_guild_coffers_gp == TAG_GUILD_STARTING_COFFERS_GP:
+            campaign.tag_guild_coffers_gp = TAG_GUILD_STARTING_COFFERS_GP
         else:
             campaign.tag_guild_coffers_gp = requested_coffers
     return campaign

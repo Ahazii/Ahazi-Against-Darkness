@@ -712,6 +712,22 @@ def test_tag_guild_loot_share_resurrection_and_availability_reroll(monkeypatch) 
     assert "reset" in reset.result_text
 
 
+def test_tag_guild_leaving_blocks_when_coffers_below_requirement() -> None:
+    campaign = default_campaign()
+    campaign.tag_guild_member = True
+    campaign.tag_guild_coffers_gp = 4999
+
+    update_troupe(campaign, guild_member=False, guild_coffers_gp=4999)
+
+    assert campaign.tag_guild_member is True
+    assert campaign.tag_downtime_log[-1].action == "guild_leaving_restriction"
+    assert "restore coffers to at least 5000 gp" in campaign.tag_downtime_log[-1].result_text
+
+    campaign.tag_guild_coffers_gp = 5000
+    update_troupe(campaign, guild_member=False, guild_coffers_gp=5000)
+    assert campaign.tag_guild_member is False
+
+
 def test_tag_adventure_closeout_tasks_are_created_and_resolved(monkeypatch) -> None:
     campaign = default_campaign()
     campaign.adventures_completed = 4

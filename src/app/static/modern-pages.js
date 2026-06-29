@@ -1050,11 +1050,16 @@ async function renderRulesReference() {
     const needle = search.value.toLowerCase();
     const rows = modernState.rulesReference
       .filter((entry) => !category.value || (entry.category || "rules") === category.value)
-      .filter((entry) => `${entry.title} ${entry.body} ${entry.category || ""} ${entry.status || ""}`.toLowerCase().includes(needle))
+      .filter((entry) => `${entry.title} ${entry.summary || ""} ${entry.body} ${entry.category || ""} ${entry.status || ""} ${entry.source_page || ""}`.toLowerCase().includes(needle))
       .sort((a, b) => String(a[sort.value] || "").localeCompare(String(b[sort.value] || "")) || String(a.title || "").localeCompare(String(b.title || "")));
-    for (const item of rows.slice(0, 80)) {
+    results.appendChild(el("p", "muted", `${rows.length} matching rule reference entr${rows.length === 1 ? "y" : "ies"}.`));
+    for (const item of rows) {
       const row = el("div", "modern-row");
-      row.append(el("strong", "", item.title), el("span", "muted", `${item.category || "rules"} · ${item.status || "reference"}`), el("p", "", item.body || ""));
+      row.append(
+        el("strong", "", item.title),
+        el("span", "muted", `${item.category || "rules"} · ${item.status || "reference"}${item.source_page ? ` · p.${item.source_page}` : ""}`),
+        el("p", "", item.summary || item.body || "")
+      );
       results.appendChild(row);
     }
   };
@@ -1063,6 +1068,34 @@ async function renderRulesReference() {
   sort.addEventListener("change", draw);
   draw();
   rootEl.appendChild(panel);
+}
+
+function modernTableRowCount(value) {
+  if (Array.isArray(value)) return value.length;
+  if (value && typeof value === "object") return Object.keys(value).length;
+  return 0;
+}
+
+function modernTablePreview(value) {
+  const rows = Array.isArray(value)
+    ? value
+    : Object.entries(value || {}).map(([key, row]) => ({ key, value: row }));
+  const box = el("div", "modern-list-tall");
+  for (const row of rows.slice(0, 250)) {
+    const line = el("div", "modern-row");
+    if (row && typeof row === "object") {
+      const title = row.name || row.title || row.roll || row.key || row.id || row.table || "row";
+      const detail = Object.entries(row)
+        .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(", ") : String(val)}`)
+        .join(" | ");
+      line.append(el("strong", "", String(title)), el("span", "muted", detail));
+    } else {
+      line.append(el("span", "", String(row)));
+    }
+    box.appendChild(line);
+  }
+  if (rows.length > 250) box.appendChild(el("p", "muted", `Showing first 250 of ${rows.length} rows. Use search to narrow this table.`));
+  return box;
 }
 
 async function renderTables() {
@@ -1081,17 +1114,21 @@ async function renderTables() {
     });
     keys.sort((a, b) => {
       if (sort.value === "rows") {
-        const rowsA = Array.isArray(modernState.tables[a]) ? modernState.tables[a].length : Object.keys(modernState.tables[a] || {}).length;
-        const rowsB = Array.isArray(modernState.tables[b]) ? modernState.tables[b].length : Object.keys(modernState.tables[b] || {}).length;
+        const rowsA = modernTableRowCount(modernState.tables[a]);
+        const rowsB = modernTableRowCount(modernState.tables[b]);
         return rowsB - rowsA || a.localeCompare(b);
       }
       return a.localeCompare(b);
     });
     for (const key of keys) {
-    const row = el("div", "modern-row");
-    const value = modernState.tables[key];
-    row.append(el("strong", "", key), el("span", "muted", Array.isArray(value) ? `${value.length} row(s)` : typeof value));
-      results.appendChild(row);
+      const value = modernState.tables[key];
+      const details = document.createElement("details");
+      details.className = "modern-row";
+      const summary = document.createElement("summary");
+      summary.append(el("strong", "", key), el("span", "muted", `${modernTableRowCount(value)} row(s)`));
+      details.appendChild(summary);
+      details.appendChild(modernTablePreview(value));
+      results.appendChild(details);
     }
   };
   search.addEventListener("input", draw);

@@ -149,6 +149,22 @@ def test_campaign_api_lists_tag_services(client: TestClient) -> None:
     assert services[18]["action"] == "horn_attract"
 
 
+def test_rules_tables_api_includes_modern_large_reference_groups(client: TestClient) -> None:
+    response = client.get("/api/rules/tables")
+    assert response.status_code == 200
+    payload = response.json()
+    for key in [
+        "monster_bestiary_table",
+        "monster_reaction_tables",
+        "map_elements_table",
+        "icon_registry_table",
+    ]:
+        assert key in payload
+        assert len(payload[key]) > 0
+    assert any(row["name"] for row in payload["monster_bestiary_table"])
+    assert any(row["catalog"] == "forsaken_depths" for row in payload["map_elements_table"])
+
+
 def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     character_ids: list[str] = []
     for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):

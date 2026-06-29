@@ -93,7 +93,7 @@ Use Home → Adventure → TAG Settlement → **Maps and Adventure Leads**. The 
 | TAG.12 | Trinkets and Guild spells | TAG pp.61-66 | TAG Actions → Trinket / Guild spell | Carried trinkets/scrolls are consumed where present; Speedy Recovery marks settlement healing at 2 Life/day; Look Tough is consumed on the next Streetwise roll; Wizard's Luck modifies Gambling House resolution; Temporary Weapon, Troupe Switch, and Silence use optional target fields and target-specific markers |
 | TAG.13 | Finance and bank ledgers | TAG pp.9-16, p.53 | TAG Actions → Finance | Bank deposit charges 10% and stores per-character gp; withdrawal restores gp; inheritance note records heir; inheritance transfer applies 20% tax; robbery risk/recovery, loan enforcement, and guild upkeep write TAG log entries; upkeep deducts coffers |
 
-**Current boundary:** TAG-specific foe names are now spawnable from `tag_monsters.json`, separate from the locked EE bestiary. Major printed rewards, route decisions, XP markers, bank ledgers, route rewrites, Look Tough, Speedy Recovery, Wizard's Luck, and target-specific Guild spell markers have UI actions. Remaining TAG work is broader playtest signoff and stricter Guild leaving-restriction enforcement.
+**Current boundary:** TAG-specific foe names are now spawnable from `tag_monsters.json`, separate from the locked EE bestiary. Major printed rewards, route decisions, XP markers, bank ledgers, route rewrites, Look Tough, Speedy Recovery, Wizard's Luck, and target-specific Guild spell markers have UI actions. Remaining TAG work is broader playtest signoff.
 
 **Pass/Fail notes:**
 

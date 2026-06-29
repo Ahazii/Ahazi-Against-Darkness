@@ -17359,6 +17359,8 @@ class RandomDungeonEngine:
                     )
                     if spawned and session.mode == "exploration":
                         self._announce_encounter(session, tile, show_rolls=show_rolls)
+            elif not lead_failed:
+                session.log.append("Trap cleared. Beast Cage avoided before the caged foe breaks loose.")
         self._resolve_environment_trap_wandering_follow_up(
             session,
             tile,
