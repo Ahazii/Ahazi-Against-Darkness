@@ -27,6 +27,7 @@ from ..schemas import (
 )
 from .abyss_tables import is_abyss_profile
 from .dice import roll_d6
+from .tier_advancement import level_tier_band
 
 if TYPE_CHECKING:
     from ..db import Store
@@ -569,36 +570,38 @@ TAG_TRINKET_EFFECTS: dict[str, dict[str, object]] = {
 TAG_GUILD_SPELL_EFFECTS: dict[str, dict[str, object]] = {
     "speedy_recovery": {
         "name": "Speedy Recovery",
-        "summary": "Heal the selected character to full Life and mark fast recovery for the current between-adventure or recovery window.",
-        "status": "TAG Speedy Recovery pending",
-        "heal_full": True,
+        "summary": "Target heals 2 Life per day instead of 1 while resting in a settlement; it does not affect dungeon rests or immediate adventure healing.",
+        "status": "TAG Speedy Recovery settlement healing 2/day",
     },
     "temporary_weapon_enchantment": {
         "name": "Temporary Weapon Enchantment",
-        "summary": "Mark the caster's chosen weapon as temporarily enchanted for this encounter/adventure window.",
-        "status": "TAG temporary weapon enchantment",
+        "summary": "Mark one weapon as temporarily magical for one week, or until it is used in an encounter against foes hit only by magic weapons. It gives no Attack bonus.",
+        "status": "TAG Temporary Weapon Enchantment: choose one weapon; magical no Attack bonus",
     },
     "troupe_switch": {
         "name": "Troupe Switch",
-        "summary": "Log that the troupe may switch an eligible active/home character according to the printed Guild spell.",
+        "summary": "Once per adventure with troupe rules: mark the pre-chosen recipient who can replace the caster like Escape; summoned character is stunned at -1 Attack/Defense/Save through the encounter.",
         "status": "TAG Troupe Switch pending",
     },
     "look_tough": {
         "name": "Look Tough",
-        "summary": "Mark the caster with the Look Tough reputation effect used by TAG Streetwise/riff-raff handling.",
-        "status": "TAG Look Tough spell",
+        "summary": "Next Streetwise roll adds +Level; if the roll already adds +Level, add the character tier number instead. The marker is consumed on that roll.",
+        "status": "TAG Look Tough next Streetwise bonus",
     },
     "silence_of_the_mouse": {
         "name": "Silence of the Mouse",
-        "summary": "Mark the caster/party for the printed stealth silence window; use this marker when resolving the next stealth or noise check.",
-        "status": "TAG Silence of the Mouse active",
+        "summary": "For the next hour or 6 rooms, switch Stealth skill/modifier between two characters and ignore negative Stealth modifiers from the adventure setting.",
+        "status": "TAG Silence of the Mouse: 6 rooms ignore setting Stealth penalties",
     },
     "wizards_luck": {
         "name": "Wizard's Luck",
-        "summary": "Mark the caster with the printed Wizard's Luck reroll/luck window.",
-        "status": "TAG Wizard's Luck pending",
+        "summary": "For Gambling House cheating: choose a table result and roll d6+Level against it; failure rolls the table at -2, natural 1 means jail/fine.",
+        "status": "TAG Wizard's Luck gambling cheat pending",
     },
 }
+
+TAG_LOOK_TOUGH_MARKER = "TAG Look Tough next Streetwise bonus"
+TAG_WIZARDS_LUCK_MARKER = "TAG Wizard's Luck gambling cheat pending"
 
 TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
     1: {
@@ -1598,6 +1601,18 @@ def streetwise_modifier(character: Character, *, action: str = "look_for_clues")
     return 0
 
 
+def _tag_look_tough_bonus(character: Character, base_modifier: int) -> tuple[int, str]:
+    if TAG_LOOK_TOUGH_MARKER not in character.statuses:
+        return 0, ""
+    bonus = level_tier_band(character.level) if base_modifier >= character.level else character.level
+    character.statuses.remove(TAG_LOOK_TOUGH_MARKER)
+    note = (
+        f" TAG Look Tough spell consumed: +{bonus} "
+        + ("tier-number bonus because this roll already added +Level." if base_modifier >= character.level else "Level bonus.")
+    )
+    return bonus, note
+
+
 def look_for_clues(
     campaign: CampaignState,
     character: Character,
@@ -1608,6 +1623,8 @@ def look_for_clues(
     character.gold = max(0, character.gold - bribe_cost)
     roll = roll_d6()
     modifier = streetwise_modifier(character, action="look_for_clues")
+    spell_bonus, spell_note = _tag_look_tough_bonus(character, modifier)
+    modifier += spell_bonus
     total = roll + modifier
     if roll == 1:
         if character.clues > 0:
@@ -1625,6 +1642,7 @@ def look_for_clues(
         result = f"{character.name} gained 1 Clue."
     else:
         result = f"{character.name} found no useful clue."
+    result = f"{result}{spell_note}"
     character.updated_at = now_utc()
     entry = TagDowntimeLogEntry(
         action="look_for_clues",
@@ -1910,10 +1928,33 @@ def roll_gambling_house(campaign: CampaignState, character: Character, *, stake_
             character=character,
             result_text=f"{character.name} needs {stake} gp to gamble that stake.",
         )
-    roll = roll_d10()
     class_id = (character.class_id or character.class_name or "").lower().replace(" ", "_").replace("-", "_")
     gambler_bonus = 1 if class_id in {"halfling", "rogue", "swashbuckler", "harlequin", "assassin"} else 0
+    if TAG_WIZARDS_LUCK_MARKER in character.statuses:
+        return _roll_gambling_house_wizards_luck(campaign, character, stake_gp=stake, gambler_bonus=gambler_bonus)
+    roll = roll_d10()
     total = roll + gambler_bonus
+    return _resolve_gambling_house_roll(
+        campaign,
+        character,
+        stake_gp=stake,
+        roll=roll,
+        modifier=gambler_bonus,
+        total=total,
+    )
+
+
+def _resolve_gambling_house_roll(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    stake_gp: int,
+    roll: int,
+    modifier: int,
+    total: int,
+    prefix: str = "",
+) -> TagDowntimeLogEntry:
+    stake = max(0, int(stake_gp))
     character.gold -= stake
     if total <= 4:
         result = f"{character.name} loses the {stake} gp stake at the gambling house."
@@ -1941,10 +1982,80 @@ def roll_gambling_house(campaign: CampaignState, character: Character, *, stake_
         action="gambling_house",
         character=character,
         roll=roll,
-        modifier=gambler_bonus,
+        modifier=modifier,
         total=total,
         cost_gp=stake,
-        result_text=result,
+        result_text=f"{prefix}{result}",
+    )
+
+
+def _roll_gambling_house_wizards_luck(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    stake_gp: int,
+    gambler_bonus: int,
+) -> TagDowntimeLogEntry:
+    desired = 10
+    spell_roll = roll_d6()
+    character.statuses.remove(TAG_WIZARDS_LUCK_MARKER)
+    if spell_roll == 1:
+        fine = 50 * max(1, character.level) + (3 * stake_gp)
+        paid = min(character.gold, fine)
+        character.gold -= paid
+        if paid < fine:
+            debt = fine - paid
+            debt_status = f"TAG Wizard's Luck jail fine debt {debt} gp"
+            if debt_status not in character.statuses:
+                character.statuses.append(debt_status)
+        character.updated_at = now_utc()
+        return append_tag_log(
+            campaign,
+            action="gambling_house",
+            character=character,
+            roll=spell_roll,
+            modifier=character.level,
+            total=spell_roll + character.level,
+            cost_gp=paid,
+            result_text=(
+                f"{character.name} uses Wizard's Luck to cheat at the Gambling House but rolls a natural 1. "
+                f"The caster is caught and owes a {fine} gp fine; {paid} gp paid now."
+            ),
+        )
+    spell_total = spell_roll + max(1, character.level)
+    if spell_total >= desired:
+        character.gold -= stake_gp
+        win = ceil(stake_gp * 1.5)
+        character.gold += win
+        character.updated_at = now_utc()
+        return append_tag_log(
+            campaign,
+            action="gambling_house",
+            character=character,
+            roll=spell_roll,
+            modifier=character.level,
+            total=spell_total,
+            cost_gp=stake_gp,
+            result_text=(
+                f"{character.name} uses Wizard's Luck to choose Gambling House result 10. "
+                f"Spellcasting d6={spell_roll}+L{character.level}={spell_total} succeeds; wins +50% and leaves with {win} gp from a {stake_gp} gp stake."
+            ),
+        )
+    fallback_roll = roll_d10()
+    fallback_modifier = gambler_bonus - 2
+    fallback_total = fallback_roll + fallback_modifier
+    prefix = (
+        f"{character.name} uses Wizard's Luck to choose Gambling House result 10, but spellcasting "
+        f"d6={spell_roll}+L{character.level}={spell_total} fails; rolling Gambling House at -2. "
+    )
+    return _resolve_gambling_house_roll(
+        campaign,
+        character,
+        stake_gp=stake_gp,
+        roll=fallback_roll,
+        modifier=fallback_modifier,
+        total=fallback_total,
+        prefix=prefix,
     )
 
 
@@ -1960,6 +2071,8 @@ def run_streetwise_action(
     target = max(1, int(target_level))
     roll = roll_d6()
     modifier = streetwise_modifier(character, action="interrogation" if clean_action == "interrogate" else clean_action)
+    spell_bonus, spell_note = _tag_look_tough_bonus(character, modifier)
+    modifier += spell_bonus
     total = roll + modifier
     if clean_action == "listen_rumors":
         target = 4
@@ -1991,6 +2104,7 @@ def run_streetwise_action(
             if character.id not in campaign.tag_look_tough_character_ids:
                 campaign.tag_look_tough_character_ids.append(character.id)
             result = f"{character.name} gains a tough reputation: Riff-Raff morale rolls take an extra -1 until the bonus is lost."
+    result = f"{result}{spell_note}"
     character.updated_at = now_utc()
     return append_tag_log(
         campaign,
@@ -2597,12 +2711,12 @@ def cast_tag_guild_spell(campaign: CampaignState, character: Character, *, spell
 
 
 TAG_GUILD_MARKERS: dict[str, str] = {
-    "temporary_weapon_enchantment": "TAG temporary weapon enchantment",
+    "temporary_weapon_enchantment": "TAG Temporary Weapon Enchantment: choose one weapon; magical no Attack bonus",
     "troupe_switch": "TAG Troupe Switch pending",
-    "look_tough": "TAG Look Tough spell",
-    "silence_of_the_mouse": "TAG Silence of the Mouse active",
-    "wizards_luck": "TAG Wizard's Luck pending",
-    "speedy_recovery": "TAG Speedy Recovery pending",
+    "look_tough": TAG_LOOK_TOUGH_MARKER,
+    "silence_of_the_mouse": "TAG Silence of the Mouse: 6 rooms ignore setting Stealth penalties",
+    "wizards_luck": TAG_WIZARDS_LUCK_MARKER,
+    "speedy_recovery": "TAG Speedy Recovery settlement healing 2/day",
 }
 
 

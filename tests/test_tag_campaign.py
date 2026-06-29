@@ -480,18 +480,19 @@ def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None
 
     spell = cast_tag_guild_spell(campaign, hero, spell_key="wizards_luck")
     assert "Scroll of Wizard's Luck" not in hero.inventory
-    assert "TAG Wizard's Luck pending" in hero.statuses
+    assert "TAG Wizard's Luck gambling cheat pending" in hero.statuses
     assert "scroll consumed" in spell.result_text
 
     hero.current_life = 1
     hero.inventory.append("Scroll of Speedy Recovery")
     recovery_spell = cast_tag_guild_spell(campaign, hero, spell_key="speedy_recovery")
-    assert hero.current_life == hero.max_life
-    assert "TAG Speedy Recovery pending" in hero.statuses
+    assert hero.current_life == 1
+    assert "TAG Speedy Recovery settlement healing 2/day" in hero.statuses
+    assert "2 Life per day" in recovery_spell.result_text
     assert "scroll consumed" in recovery_spell.result_text
 
     clear_marker = consume_tag_guild_marker(campaign, hero, marker_key="speedy_recovery")
-    assert "TAG Speedy Recovery pending" not in hero.statuses
+    assert "TAG Speedy Recovery settlement healing 2/day" not in hero.statuses
     assert "clears TAG Guild marker" in clear_marker.result_text
 
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
@@ -506,6 +507,45 @@ def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None
     upkeep = resolve_tag_finance_action(campaign, finance_action="guild_upkeep")
     assert campaign.tag_guild_coffers_gp == 900
     assert "100 gp paid" in upkeep.result_text
+
+
+def test_tag_look_tough_spell_bonus_is_consumed_on_next_streetwise(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(class_id="rogue", class_name="Rogue", level=5, clues=0, statuses=[])
+    cast_tag_guild_spell(campaign, hero, spell_key="look_tough")
+
+    rolls = iter([1, 3])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    entry = look_for_clues(campaign, hero)
+
+    assert "TAG Look Tough next Streetwise bonus" not in hero.statuses
+    assert entry.modifier == 7
+    assert entry.total == 10
+    assert hero.clues == 1
+    assert "tier-number bonus" in entry.result_text
+
+
+def test_tag_wizards_luck_resolves_gambling_success_and_natural_one(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(class_id="wizard", class_name="Wizard", level=5, gold=100, statuses=[])
+    cast_tag_guild_spell(campaign, hero, spell_key="wizards_luck")
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 5)
+    success = roll_gambling_house(campaign, hero, stake_gp=20)
+
+    assert "TAG Wizard's Luck gambling cheat pending" not in hero.statuses
+    assert hero.gold == 110
+    assert "choose Gambling House result 10" in success.result_text
+    assert "succeeds" in success.result_text
+
+    cast_tag_guild_spell(campaign, hero, spell_key="wizards_luck")
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
+    jailed = roll_gambling_house(campaign, hero, stake_gp=20)
+
+    assert hero.gold == 0
+    assert any(status.startswith("TAG Wizard's Luck jail fine debt") for status in hero.statuses)
+    assert "natural 1" in jailed.result_text
+    assert "fine" in jailed.result_text
 
 
 def test_tag_route_and_xp_actions_persist_structured_signoff_state() -> None:

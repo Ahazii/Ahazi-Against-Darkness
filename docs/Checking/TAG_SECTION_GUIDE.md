@@ -42,7 +42,7 @@ Use the normal Adventure section to play the generated module. TAG-specific foll
 - **Scene result** applies common printed rewards such as the Medusa pendant, gargoyle bounty, Gorungar rewards, bandit capture, Shaura reward, Daroc's cat, mutant-fish rations, Agaratha, Deoldyn training, and Dragon's Lair reveal.
 - **XP** records pending scene XP, minor encounter counts, capture XP, training XP-roll markers, or immediate XP awards.
 - **Trinket** consumes carried TAG trinkets when present and applies safe markers or healing.
-- **Guild spell** consumes scrolls when present, logs known-spell casts, and applies safe markers. Speedy Recovery heals the selected character to full Life.
+- **Guild spell** consumes scrolls when present, logs known-spell casts, and applies safe markers. Speedy Recovery marks settlement healing at 2 Life per day, Look Tough is consumed on the next Streetwise roll, and Wizard's Luck modifies the Gambling House workflow.
 - **Guild marker** clears a Guild spell marker after you use that timing window.
 
 Use **Reference** for the scene/page/result note. Use **Amount** for Clue costs, reward gp, gargoyle counts, XP, or training override values depending on the selected action.
