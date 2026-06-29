@@ -973,6 +973,21 @@ async def campaign_tag_finance_action(payload: dict[str, Any]) -> dict[str, Any]
     return {"campaign": campaign, "character": character, "entry": entry}
 
 
+@app.post("/api/campaign/tag/closeout-task")
+async def campaign_tag_closeout_task(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, resolve_tag_closeout_task, save_campaign
+
+    campaign = load_campaign(store)
+    entry = resolve_tag_closeout_task(
+        campaign,
+        task_id=str(payload.get("task_id") or "").strip() or None,
+        task_action=str(payload.get("task_action") or "").strip() or None,
+        note=str(payload.get("note") or "").strip(),
+    )
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
 @app.post("/api/campaign/tag/bank-robbery-recovery")
 async def campaign_tag_bank_robbery_recovery(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.adventure_import import import_adventure_manifest
@@ -2352,7 +2367,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     if session.mode == "complete":
         from .engine.tag_campaign import record_adventure_complete
 
-        record_adventure_complete(store)
+        record_adventure_complete(store, session)
         roster_notes = persist_session_to_roster(session, store)
         unlock_characters_for_session(session, store)
         session.saved_at = None

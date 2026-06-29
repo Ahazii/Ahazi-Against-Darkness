@@ -1937,6 +1937,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "/api/campaign/tag/bank-robbery-recovery",
         "/api/campaign/tag/hidden-trove-recovery",
         "/api/campaign/tag/guild-availability-reroll",
+        "/api/campaign/tag/closeout-task",
         "/api/adventures/ai/prompt",
         "/api/adventures/import",
         "/api/sessions",
@@ -1950,6 +1951,10 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "Pay Resurrection",
         "Availability Reroll",
         "Reset Reroll",
+        "Guild Closeout",
+        "Finance Closeout",
+        "Mark Done",
+        "tag_closeout_tasks",
         "availability reroll ${campaign.tag_guild_availability_reroll_used",
     ]:
         assert label in MODERN_PAGES_JS

@@ -176,6 +176,12 @@ Home screen character UI:
   wider troupe roster, while `tag_troupe_active_character_ids` stores the current
   active party subset. The Home troupe manager can add/remove/list members and
   choose up to four active adventurers from troupe members only.
+- **TAG closeout:** `CampaignState.tag_closeout_tasks` stores unresolved
+  between-adventure prompts created by `record_adventure_complete(store,
+  session)`. Real actions such as Guild loot share, Guild upkeep, Guild reroll
+  reset, hidden-trove risk/recovery, and bank-robbery recovery resolve their
+  matching task automatically; `/api/campaign/tag/closeout-task` can mark a
+  task done when the player handled it manually.
 - Shared logic lives in `src/app/engine/inventory.py` (carry limits, transfers).
 
 ## Session roster sync

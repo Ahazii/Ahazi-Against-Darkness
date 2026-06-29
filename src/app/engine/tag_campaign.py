@@ -17,6 +17,7 @@ from ..schemas import (
     TagAvailabilityCheckState,
     TagAdventureRouteState,
     TagBankAccountState,
+    TagCloseoutTaskState,
     TagDowntimeLogEntry,
     TagMagicLockerState,
     TagStoredItemState,
@@ -997,6 +998,72 @@ def tag_guild_benefits_active(campaign: CampaignState) -> bool:
     return bool(campaign.tag_guild_member and campaign.tag_guild_coffers_gp > 0)
 
 
+def _active_closeout_task_actions(campaign: CampaignState, adventure_number: int) -> set[str]:
+    return {
+        task.task_action
+        for task in campaign.tag_closeout_tasks
+        if task.adventure_number == adventure_number and not task.resolved
+    }
+
+
+def _add_closeout_task(
+    campaign: CampaignState,
+    *,
+    adventure_number: int,
+    category: str,
+    task_action: str,
+    title: str,
+    result_text: str,
+    reference: str = "",
+) -> TagCloseoutTaskState | None:
+    if task_action in _active_closeout_task_actions(campaign, adventure_number):
+        return None
+    task = TagCloseoutTaskState(
+        adventure_number=adventure_number,
+        category=category,
+        task_action=task_action,
+        title=title,
+        result_text=result_text,
+        reference=reference,
+        created_at=now_utc(),
+    )
+    campaign.tag_closeout_tasks.append(task)
+    return task
+
+
+def resolve_tag_closeout_task(
+    campaign: CampaignState,
+    *,
+    task_id: str | None = None,
+    task_action: str | None = None,
+    note: str = "",
+    log_missing: bool = True,
+) -> TagDowntimeLogEntry:
+    matched = [
+        task
+        for task in campaign.tag_closeout_tasks
+        if not task.resolved
+        and ((task_id and task.id == task_id) or (task_action and task.task_action == task_action))
+    ]
+    if not matched:
+        label = task_action or task_id or "closeout task"
+        if not log_missing:
+            return TagDowntimeLogEntry(
+                action="closeout_task",
+                result_text=f"No open TAG closeout task matched {label}.",
+                created_at=now_utc(),
+            )
+        return append_tag_log(campaign, action="closeout_task", result_text=f"No open TAG closeout task matched {label}.")
+    now = now_utc()
+    for task in matched:
+        task.resolved = True
+        task.resolved_at = now
+        if note:
+            task.result_text = f"{task.result_text} Resolved note: {note.strip()}"
+    title = matched[0].title if len(matched) == 1 else f"{len(matched)} tasks"
+    return append_tag_log(campaign, action="closeout_task", result_text=f"TAG closeout task resolved: {title}.")
+
+
 def roll_3d6() -> tuple[int, list[int]]:
     rolls = [roll_d6(), roll_d6(), roll_d6()]
     return sum(rolls), rolls
@@ -1118,6 +1185,7 @@ def roll_hidden_treasure_trove_risk(campaign: CampaignState) -> TagDowntimeLogEn
         created_at=now_utc(),
     )
     campaign.tag_downtime_log.append(entry)
+    resolve_tag_closeout_task(campaign, task_action="hidden_trove_risk", log_missing=False)
     trim_tag_logs(campaign)
     return entry
 
@@ -1154,6 +1222,7 @@ def recover_hidden_treasure_trove(campaign: CampaignState, character: Character)
             f"({roll} {modifier:+d} = {total}); hidden trove recovered: {recovered_gold} gp "
             f"and {len(recovered_items)} item stack(s)."
         )
+        resolve_tag_closeout_task(campaign, task_action="hidden_trove_recovery", log_missing=False)
     else:
         result = (
             f"{character.name} spends 4 Clues but fails Interrogation vs L6 "
@@ -1444,6 +1513,7 @@ def reroll_guild_availability(
 
 def reset_guild_availability_reroll(campaign: CampaignState) -> TagDowntimeLogEntry:
     campaign.tag_guild_availability_reroll_used = False
+    resolve_tag_closeout_task(campaign, task_action="guild_availability_reroll_reset", log_missing=False)
     return append_tag_log(
         campaign,
         action="guild_availability_reroll_reset",
@@ -2437,6 +2507,7 @@ def resolve_tag_finance_action(
             character.clues -= cost_clues
             character.updated_at = now_utc()
             result = f"{character.name} spends 3 Clues to learn who stole TAG bank funds. Play the Bandit Hideout lead and recover the stolen money as Final Boss treasure."
+            resolve_tag_closeout_task(campaign, task_action="bank_robbery_recovery", log_missing=False)
         else:
             result = "Bank robbery recovery requires 3 Clues on a chosen character, then the Bandit Hideout lead."
         return append_tag_log(campaign, action="bank_robbery_recovery", character=character, result_text=result)
@@ -2450,6 +2521,8 @@ def resolve_tag_finance_action(
             result += " Guild benefits are suspended until coffers are restored."
         else:
             result += " Guild availability reroll reset for the next adventure/month window."
+        resolve_tag_closeout_task(campaign, task_action="guild_upkeep", log_missing=False)
+        resolve_tag_closeout_task(campaign, task_action="guild_availability_reroll_reset", log_missing=False)
         return append_tag_log(campaign, action="guild_upkeep", character=character, cost_gp=paid, result_text=result)
     if action == "guild_loot_share":
         if not campaign.tag_guild_member:
@@ -2464,6 +2537,7 @@ def resolve_tag_finance_action(
                 f"Guild 50% monetary loot share recorded: {share} gp to Guild coffers, "
                 f"{party_keeps} gp remains for the party. Coffers now {campaign.tag_guild_coffers_gp} gp."
             )
+            resolve_tag_closeout_task(campaign, task_action="guild_loot_share", log_missing=False)
         return append_tag_log(campaign, action="guild_loot_share", character=character, cost_gp=amount, result_text=result)
     if action == "guild_resurrection_fund":
         if character is None:
@@ -2901,8 +2975,126 @@ def sync_abyss_campaign_from_session(store: Store, session: SessionState) -> Cam
     return save_campaign(store, campaign)
 
 
-def record_adventure_complete(store: Store) -> CampaignState:
+def _session_party_gold(session: SessionState | None) -> int:
+    if session is None:
+        return 0
+    return sum(max(0, int(member.gold)) for member in session.party)
+
+
+def add_adventure_closeout_tasks(campaign: CampaignState, session: SessionState | None = None) -> list[TagCloseoutTaskState]:
+    adventure_number = campaign.adventures_completed
+    created: list[TagCloseoutTaskState] = []
+    party_gold = _session_party_gold(session)
+    if campaign.tag_guild_member:
+        created_task = _add_closeout_task(
+            campaign,
+            adventure_number=adventure_number,
+            category="guild",
+            task_action="guild_loot_share",
+            title="Apply Guild 50% monetary loot share",
+            result_text=(
+                "If this was a Guild adventure or the troupe is under Guild obligations, enter the total monetary loot on the Guild page "
+                "and use Apply 50% Loot Share. The app records the Guild share in coffers and logs the party remainder."
+            ),
+            reference=f"TAG Guild closeout; current party carried gold estimate {party_gold} gp.",
+        )
+        if created_task is not None:
+            created.append(created_task)
+        created_task = _add_closeout_task(
+            campaign,
+            adventure_number=adventure_number,
+            category="guild",
+            task_action="guild_upkeep",
+            title="Run Guild upkeep",
+            result_text="Run Guild upkeep after the adventure/month window. This charges 10% of coffers, resets the availability reroll, and suspends benefits if coffers reach 0 gp.",
+            reference="TAG p.68 Guild coffers and benefits.",
+        )
+        if created_task is not None:
+            created.append(created_task)
+        created_task = _add_closeout_task(
+            campaign,
+            adventure_number=adventure_number,
+            category="guild",
+            task_action="guild_leaving_restriction",
+            title="Check Guild leaving restrictions",
+            result_text="Before removing a member from the Guild, check whether the Guild coffers meet the printed requirement. This is a manual signoff task for now.",
+            reference="TAG p.68 Guild membership restriction.",
+        )
+        if created_task is not None:
+            created.append(created_task)
+        if campaign.tag_guild_availability_reroll_used:
+            created_task = _add_closeout_task(
+                campaign,
+                adventure_number=adventure_number,
+                category="guild",
+                task_action="guild_availability_reroll_reset",
+                title="Reset Guild availability reroll",
+                result_text="The Guild availability reroll was used. Run Guild upkeep or press Reset Reroll before the next adventure/month window.",
+                reference="TAG p.68 Guild availability reroll.",
+            )
+            if created_task is not None:
+                created.append(created_task)
+    if any(not marker.applied for marker in campaign.tag_xp_markers):
+        created_task = _add_closeout_task(
+            campaign,
+            adventure_number=adventure_number,
+            category="xp",
+            task_action="tag_xp_closeout",
+            title="Resolve pending TAG XP markers",
+            result_text="One or more TAG XP markers are still pending. Use TAG Actions or the printed scene text to award, roll, or dismiss them before starting the next adventure.",
+            reference="TAG scene XP closeout.",
+        )
+        if created_task is not None:
+            created.append(created_task)
+    has_hidden_trove = campaign.tag_storage_gold_gp > 0 or any(item.storage == "trove" for item in campaign.tag_stored_items)
+    if has_hidden_trove and not campaign.tag_hidden_trove_robbed:
+        created_task = _add_closeout_task(
+            campaign,
+            adventure_number=adventure_number,
+            category="storage",
+            task_action="hidden_trove_risk",
+            title="Roll hidden treasure trove risk",
+            result_text="A hidden treasure trove has stored treasure. Roll the between-adventures trove risk on the Banking and Finance page.",
+            reference="TAG p.11 Hidden Treasure Trove.",
+        )
+        if created_task is not None:
+            created.append(created_task)
+    if campaign.tag_hidden_trove_robbed:
+        created_task = _add_closeout_task(
+            campaign,
+            adventure_number=adventure_number,
+            category="storage",
+            task_action="hidden_trove_recovery",
+            title="Recover stolen hidden treasure trove",
+            result_text="The hidden treasure trove is marked stolen. Choose a character with 4 Clues and use Recover Trove.",
+            reference="TAG p.11 Hidden Treasure Trove recovery.",
+        )
+        if created_task is not None:
+            created.append(created_task)
+    if any(account.robbed for account in campaign.tag_bank_accounts):
+        created_task = _add_closeout_task(
+            campaign,
+            adventure_number=adventure_number,
+            category="finance",
+            task_action="bank_robbery_recovery",
+            title="Recover TAG bank robbery",
+            result_text="A TAG bank account is marked robbed. Choose a character with 3 Clues and use Recover Bank Robbery to create the Bandit Hideout lead.",
+            reference="TAG bank robbery recovery.",
+        )
+        if created_task is not None:
+            created.append(created_task)
+    if created:
+        append_tag_log(
+            campaign,
+            action="adventure_closeout",
+            result_text=f"TAG closeout created {len(created)} task(s) for adventure {adventure_number}.",
+        )
+    return created
+
+
+def record_adventure_complete(store: Store, session: SessionState | None = None) -> CampaignState:
     campaign = load_campaign(store)
     campaign.adventures_completed += 1
     campaign.days_passed += 1
+    add_adventure_closeout_tasks(campaign, session)
     return save_campaign(store, campaign)

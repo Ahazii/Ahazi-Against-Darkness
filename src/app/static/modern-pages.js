@@ -141,6 +141,42 @@ function actions() {
   return el("div", "modern-actions");
 }
 
+function closeoutTasksFor(categories = []) {
+  const allowed = new Set(categories);
+  return (modernState.campaign?.tag_closeout_tasks || []).filter((task) => {
+    if (task.resolved) return false;
+    return !allowed.size || allowed.has(task.category);
+  });
+}
+
+function renderCloseoutTasks(title, categories) {
+  const tasks = closeoutTasksFor(categories);
+  const panel = card(title, "Outstanding TAG closeout prompts created when an adventure completes.");
+  if (!tasks.length) {
+    panel.appendChild(el("p", "muted", "No open TAG closeout tasks for this section."));
+    return panel;
+  }
+  for (const task of tasks) {
+    const row = el("div", "modern-row");
+    row.title = task.reference || task.result_text || task.title;
+    const copy = el("div", "modern-stack");
+    copy.append(el("strong", "", task.title), el("span", "muted", task.result_text || ""));
+    if (task.reference) copy.appendChild(el("span", "muted", task.reference));
+    row.appendChild(copy);
+    row.appendChild(button("Mark Done", "Mark this TAG closeout task as resolved if you handled it manually or with another control.", async () => {
+      const result = await api("/api/campaign/tag/closeout-task", {
+        method: "POST",
+        body: JSON.stringify({ task_id: task.id, note: "Resolved from modern closeout checklist" }),
+      });
+      modernState.campaign = result.campaign;
+      setStatus(result.entry?.result_text || "Closeout task resolved.");
+      await refreshCoreAndRender();
+    }));
+    panel.appendChild(row);
+  }
+  return panel;
+}
+
 function characterOptions(blank = "Choose character") {
   return [["", blank], ...modernState.characters.map((character) => [character.id, `${character.name} (${character.class_name}, L${character.level}, ${character.gold || 0}gp, ${character.clues || 0} Clues)`])];
 }
@@ -395,11 +431,11 @@ function renderGuild() {
     "Free Guild ledger deposits; individual TAG bank accounts remain separate.",
     "10% discount on mundane equipment, free martial arts training, free ledger deposits, and cartographer bonus require active benefits and coffers above 0 gp.",
     "Guild jobs, resurrection funding, 50% monetary loot share, and the once-per-adventure availability reroll are exposed here for playtest tracking.",
-    "In progress: exact closeout integration for automatic loot share prompts and leaving restriction enforcement.",
+    "Adventure completion creates Guild closeout prompts here; leaving restriction enforcement remains a manual signoff task.",
   ].forEach((text) => list.appendChild(el("li", "", text)));
   benefits.appendChild(el("p", "modern-home-status", `Benefits ${campaign.tag_guild_member && campaign.tag_guild_coffers_gp > 0 ? "active" : "suspended/inactive"} · availability reroll ${campaign.tag_guild_availability_reroll_used ? "used" : "available"}.`));
   benefits.appendChild(list);
-  rootEl.append(panel, benefits);
+  rootEl.append(panel, renderCloseoutTasks("Guild Closeout", ["guild", "xp"]), benefits);
 }
 
 function renderParties() {
@@ -510,7 +546,7 @@ function renderBanking() {
   );
   panel.appendChild(row);
   const summary = card("Finance Summary", `TAG storage ${modernState.campaign?.tag_storage_gold_gp || 0} gp. Hidden trove robbed: ${modernState.campaign?.tag_hidden_trove_robbed ? "yes" : "no"}.`);
-  rootEl.append(panel, summary);
+  rootEl.append(panel, renderCloseoutTasks("Finance Closeout", ["finance", "storage"]), summary);
 }
 
 async function tagFinance(characterId, action, amount) {

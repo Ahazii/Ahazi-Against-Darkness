@@ -50,11 +50,14 @@ Use **Reference** for the scene/page/result note. Use **Amount** for Clue costs,
 ## After an Adventure
 
 1. Resolve ordinary adventure closeout in the normal session flow.
-2. Return to TAG Settlement and check **Route / XP / Bank summary**.
-3. Use **XP** to award any pending printed scene XP that was marked during play.
-4. Use **Scene result** for rewards that were deferred until the finale.
-5. Use **Finance** for bank deposits, inheritance, guild upkeep, loan enforcement, or storage robbery procedures.
-6. Update **Settlement notes** with rulings, unresolved route markers, and anything you need to check against the PDF.
+2. Open the modern **Guild Management** and **Banking and Finance** pages. The app creates TAG closeout prompts when an adventure completes.
+3. In **Guild Closeout**, resolve 50% monetary loot share, Guild upkeep, used availability-reroll reset, and Guild leaving-restriction signoff. The real Guild buttons clear matching prompts automatically; use **Mark Done** only for manual signoff.
+4. In **Finance Closeout**, roll hidden-trove risk, recover stolen troves, or recover bank robbery leads where prompted.
+5. Return to TAG Settlement and check **Route / XP / Bank summary**.
+6. Use **XP** to award any pending printed scene XP that was marked during play, then mark the closeout prompt done.
+7. Use **Scene result** for rewards that were deferred until the finale.
+8. Use **Finance** for bank deposits, inheritance, loan enforcement, or storage robbery procedures not already handled by the closeout prompts.
+9. Update **Settlement notes** with rulings, unresolved route markers, and anything you need to check against the PDF.
 
 ## Troupe Management
 

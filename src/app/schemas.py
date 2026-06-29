@@ -696,6 +696,19 @@ class TagXpMarkerState(BaseModel):
     created_at: str
 
 
+class TagCloseoutTaskState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    adventure_number: int = Field(default=0, ge=0)
+    category: Literal["guild", "finance", "xp", "storage", "settlement"] = "settlement"
+    task_action: str
+    title: str
+    result_text: str
+    reference: str = ""
+    resolved: bool = False
+    created_at: str
+    resolved_at: str | None = None
+
+
 class CampaignState(BaseModel):
     id: str = "default"
     tag_banking_enabled: bool = False
@@ -719,6 +732,7 @@ class CampaignState(BaseModel):
     tag_bank_accounts: list[TagBankAccountState] = Field(default_factory=list)
     tag_adventure_routes: list[TagAdventureRouteState] = Field(default_factory=list)
     tag_xp_markers: list[TagXpMarkerState] = Field(default_factory=list)
+    tag_closeout_tasks: list[TagCloseoutTaskState] = Field(default_factory=list)
     settlement_name: str = "Home Settlement"
     settlement_size: int = Field(default=0, ge=-3, le=3)
     settlement_notes: str = ""

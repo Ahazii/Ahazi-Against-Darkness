@@ -5,6 +5,7 @@ from pathlib import Path
 from app.db import now_utc
 from app.engine import tag_campaign
 from app.engine.tag_campaign import (
+    add_adventure_closeout_tasks,
     build_tag_adventure_manifest,
     check_item_availability,
     create_magic_locker,
@@ -27,6 +28,7 @@ from app.engine.tag_campaign import (
     consume_tag_guild_marker,
     convert_character_gold_to_tag_bank,
     resolve_tag_branch_action,
+    resolve_tag_closeout_task,
     resolve_tag_finance_action,
     resolve_tag_route_action,
     resolve_tag_scene_action,
@@ -44,7 +46,7 @@ from app.engine.tag_campaign import (
 from app.engine.adventure_manifest import validate_adventure_manifest
 from app.engine.equipment_shop import buy_equipment
 from app.rules.repository import RulesRepository
-from app.schemas import Character
+from app.schemas import Character, TagXpMarkerState
 
 
 def _character(**overrides) -> Character:
@@ -626,6 +628,55 @@ def test_tag_guild_loot_share_resurrection_and_availability_reroll(monkeypatch) 
     reset = reset_guild_availability_reroll(campaign)
     assert campaign.tag_guild_availability_reroll_used is False
     assert "reset" in reset.result_text
+
+
+def test_tag_adventure_closeout_tasks_are_created_and_resolved(monkeypatch) -> None:
+    campaign = default_campaign()
+    campaign.adventures_completed = 4
+    campaign.tag_guild_member = True
+    campaign.tag_guild_coffers_gp = 1000
+    campaign.tag_guild_availability_reroll_used = True
+    campaign.tag_storage_gold_gp = 25
+    campaign.tag_xp_markers.append(
+        TagXpMarkerState(
+            xp_action="mark_scene_xp",
+            reference="Scene 4",
+            xp=1,
+            applied=False,
+            result_text="Scene XP marker recorded.",
+            created_at=now_utc(),
+        )
+    )
+
+    created = add_adventure_closeout_tasks(campaign)
+    actions = {task.task_action for task in created}
+
+    assert {
+        "guild_loot_share",
+        "guild_upkeep",
+        "guild_leaving_restriction",
+        "guild_availability_reroll_reset",
+        "tag_xp_closeout",
+        "hidden_trove_risk",
+    } <= actions
+
+    duplicate = add_adventure_closeout_tasks(campaign)
+    assert duplicate == []
+
+    resolve_tag_finance_action(campaign, finance_action="guild_loot_share", amount_gp=100)
+    assert next(task for task in campaign.tag_closeout_tasks if task.task_action == "guild_loot_share").resolved is True
+
+    resolve_tag_finance_action(campaign, finance_action="guild_upkeep")
+    assert next(task for task in campaign.tag_closeout_tasks if task.task_action == "guild_upkeep").resolved is True
+    assert next(task for task in campaign.tag_closeout_tasks if task.task_action == "guild_availability_reroll_reset").resolved is True
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 6)
+    roll_hidden_treasure_trove_risk(campaign)
+    assert next(task for task in campaign.tag_closeout_tasks if task.task_action == "hidden_trove_risk").resolved is True
+
+    manual = resolve_tag_closeout_task(campaign, task_action="guild_leaving_restriction", note="Checked")
+    assert "resolved" in manual.result_text
+    assert next(task for task in campaign.tag_closeout_tasks if task.task_action == "guild_leaving_restriction").resolved is True
 
 
 def test_tag_guild_mundane_equipment_discount() -> None:

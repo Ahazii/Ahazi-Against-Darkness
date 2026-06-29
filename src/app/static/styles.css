@@ -287,6 +287,12 @@ h2 {
   padding: 8px;
 }
 
+.modern-stack {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .modern-list {
   display: grid;
   gap: 8px;
