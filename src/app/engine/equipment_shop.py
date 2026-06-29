@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from math import ceil
 from typing import Any
 
 from app.schemas import Character
@@ -73,6 +74,7 @@ _CATEGORY_TO_RULE_KEY = {
 
 _GEM_KEYWORDS = ("jewel", "gem", "jewelry", "jewellery")
 POTION_RECIPE_PRICE_GP = 50
+TAG_GUILD_DISCOUNT_NOTE = "TAG Guild mundane equipment discount"
 
 
 def _class_rules(class_id: str) -> dict[str, Any]:
@@ -142,10 +144,14 @@ def _shop_price(
     shop_item: dict[str, Any],
     *,
     potion_recipe_available: bool = False,
+    tag_guild_discount: bool = False,
 ) -> tuple[int, str]:
     price = int(shop_item["price_gp"])
     if shop_item.get("key") == "potion" and _potion_recipe_available(character, potion_recipe_available):
         return POTION_RECIPE_PRICE_GP, "Recipe for a Potion Secret price"
+    category = str(shop_item.get("category") or "")
+    if tag_guild_discount and not shop_item.get("magic") and category not in {"service", "magic_scroll", "magic_potion", "magic_item", "holy_water"}:
+        return max(1, ceil(price * 0.9)), TAG_GUILD_DISCOUNT_NOTE
     return price, ""
 
 
@@ -175,6 +181,7 @@ def list_shop_for_class(
     *,
     character: Character | None = None,
     potion_recipe_available: bool = False,
+    tag_guild_discount: bool = False,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for item in _shop_items(catalog):
@@ -183,6 +190,7 @@ def list_shop_for_class(
             character,
             item,
             potion_recipe_available=potion_recipe_available,
+            tag_guild_discount=tag_guild_discount,
         )
         rows.append(
             {
@@ -206,6 +214,7 @@ def buy_equipment(
     item_key: str,
     quantity: int = 1,
     potion_recipe_available: bool = False,
+    tag_guild_discount: bool = False,
     party_inventories: list[list[str]] | None = None,
     target_weapon: str | None = None,
 ) -> tuple[bool, str]:
@@ -228,6 +237,7 @@ def buy_equipment(
             character,
             shop_item,
             potion_recipe_available=potion_recipe_available,
+            tag_guild_discount=tag_guild_discount,
         )
         if character.gold < price:
             return False, f"{character.name} needs {price}gp (has {character.gold}gp)."
@@ -254,6 +264,7 @@ def buy_equipment(
         character,
         shop_item,
         potion_recipe_available=potion_recipe_available,
+        tag_guild_discount=tag_guild_discount,
     )
     total_price = price * quantity
     if character.gold < total_price:

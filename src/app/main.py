@@ -1103,7 +1103,10 @@ async def enchanted_paint_options() -> dict:
 
 @app.get("/api/rules/equipment-shop")
 async def equipment_shop_catalog(class_id: str | None = None, character_id: str | None = None) -> dict:
+    from .engine.tag_campaign import load_campaign
+
     catalog = rules.equipment_shop()
+    campaign = load_campaign(store)
     character = None
     potion_recipe_available = False
     if character_id:
@@ -1119,11 +1122,13 @@ async def equipment_shop_catalog(class_id: str | None = None, character_id: str 
                 class_id,
                 character=character,
                 potion_recipe_available=potion_recipe_available,
+                tag_guild_discount=campaign.tag_guild_member,
             ),
             "notes": (
                 "Buy before or between adventures (Expanded Edition pp.81-88). "
                 "Sell equipment at half list price unless a fixed resale value is listed. "
-                "Roster gold is home bank gold; only dungeon-carried gold is limited to 200gp per hero."
+                "Roster gold is home bank gold; only dungeon-carried gold is limited to 200gp per hero. "
+                "TAG Guild members receive the TAG p.68 10% mundane equipment discount."
             ),
         }
     return catalog
@@ -1440,17 +1445,21 @@ async def set_character_weapon_defaults(character_id: str, payload: CharacterWea
 
 @app.post("/api/characters/{character_id}/buy-equipment")
 async def buy_character_equipment(character_id: str, payload: CharacterBuyEquipment) -> EquipmentTransactionResult:
+    from .engine.tag_campaign import load_campaign
+
     character = store.get("characters", character_id, Character.model_validate)
     if character is None:
         raise HTTPException(status_code=404, detail="Character not found.")
     session, member, carried_gold = _prepare_roster_service_character(character, service_label="Equipment shopping")
     catalog = rules.equipment_shop()
+    campaign = load_campaign(store)
     ok, message = buy_equipment(
         character,
         catalog,
         item_key=payload.item_key,
         quantity=payload.quantity,
         potion_recipe_available=_secret_available_for_character(character, "potion_recipe"),
+        tag_guild_discount=campaign.tag_guild_member,
         party_inventories=[member.inventory for member in session.party] if session else None,
         target_weapon=payload.target_weapon,
     )

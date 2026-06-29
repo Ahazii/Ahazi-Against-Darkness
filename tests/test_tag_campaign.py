@@ -38,6 +38,7 @@ from app.engine.tag_campaign import (
     withdraw_tag_stored_gold,
 )
 from app.engine.adventure_manifest import validate_adventure_manifest
+from app.engine.equipment_shop import buy_equipment
 from app.rules.repository import RulesRepository
 from app.schemas import Character
 
@@ -299,10 +300,13 @@ def test_tag_troupe_active_party_is_limited_to_troupe_members() -> None:
 
     update_troupe(
         campaign,
+        guild_member=True,
+        guild_coffers_gp=0,
         member_character_ids=["hero-1", "hero-2"],
         active_character_ids=["hero-2", "hero-3", "hero-1"],
     )
 
+    assert campaign.tag_guild_coffers_gp == 5000
     assert campaign.tag_troupe_member_character_ids == ["hero-1", "hero-2"]
     assert campaign.tag_troupe_active_character_ids == ["hero-2", "hero-1"]
 
@@ -475,7 +479,7 @@ def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None
     assert "robbery or theft occurs" in risk.result_text
 
     recovery = resolve_tag_finance_action(campaign, hero, finance_action="robbery_recovery")
-    assert "requires 4 Clues" in recovery.result_text
+    assert "spends 3 Clues" in recovery.result_text
 
     campaign.tag_guild_coffers_gp = 1000
     upkeep = resolve_tag_finance_action(campaign, finance_action="guild_upkeep")
@@ -553,3 +557,30 @@ def test_tag_scene_rewards_and_bank_ledgers(monkeypatch) -> None:
     assert heir.gold == 80
     assert campaign.tag_bank_accounts[0].gold_gp == 0
     assert "20 gp inheritance tax" in transfer.result_text
+
+
+def test_tag_guild_ledger_deposit_and_martial_training_are_free() -> None:
+    campaign = default_campaign()
+    campaign.tag_guild_member = True
+    hero = _character(gold=125, statuses=[])
+
+    deposit = resolve_tag_finance_action(campaign, hero, finance_action="bank_deposit", amount_gp=100, note="Guild ledger")
+    assert hero.gold == 25
+    assert campaign.tag_bank_accounts[0].gold_gp == 100
+    assert "for free under the TAG Guild ledger rule" in deposit.result_text
+
+    training = purchase_tag_service(campaign, hero, service_key="martial_arts_training")
+    assert hero.gold == 25
+    assert "TAG martial arts training" in hero.statuses
+    assert "train for free" in training.result_text
+
+
+def test_tag_guild_mundane_equipment_discount() -> None:
+    catalog = RulesRepository(Path("data/rules"), Path("data/rules/_override")).equipment_shop()
+    hero = _character(class_id="warrior", class_name="Warrior", gold=10)
+
+    ok, message = buy_equipment(hero, catalog, item_key="shield", tag_guild_discount=True)
+
+    assert ok, message
+    assert hero.gold == 5
+    assert "TAG Guild mundane equipment discount" in message

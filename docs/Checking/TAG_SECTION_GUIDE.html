@@ -48,7 +48,8 @@
     <main>
       <h1>TAG Section Guide</h1>
       <p>This guide explains the Tales from the Adventurers' Guild section in the app: settlement downtime, TAG banking, troupe management, travel, Streetwise, storage, adventure generation, route tracking, scene rewards, XP markers, Guild spells, and after-adventure cleanup.</p>
-      <p class="note">Use the TAG section from Home -&gt; Adventure -&gt; TAG Settlement. It is a town or village downtime surface, not the Camp Outside Dungeon panel.</p>
+      <p class="note">Source PDF: <code>Rules/Tales_from_the_adventurers_guild.pdf</code>. Page references use the printed book page and, where useful, the PDF page in parentheses.</p>
+      <p class="note">Use the TAG section from Home -&gt; Adventure -&gt; TAG Settlement. TAG p.1 says this supplement covers town/village activities between dungeon adventures and p.4 defines the party home base as a civilized settlement. This is separate from the app's Camp Outside Dungeon panel.</p>
 
       <h2>Before an Adventure</h2>
       <ol>
@@ -63,15 +64,17 @@
       <h2>TAG Banking</h2>
       <p>TAG banking is separate from ordinary roster gold and the Camp Outside Dungeon bank.</p>
       <ul>
-        <li><strong>Legacy camp bank remains available at camp</strong>: the Camp Outside Dungeon Bank button still deposits and withdraws home-bank gold without TAG fees. This preserves old campaign workflows.</li>
-        <li><strong>TAG bank is a settlement ledger</strong>: TAG bank accounts are handled from the TAG settlement panel and TAG actions dialog. The local app references cite TAG banking and settlement services on TAG pp.9-15; the owned PDF should be checked before treating the TAG bank as available away from settlements.</li>
+        <li><strong>Legacy camp bank remains available at camp</strong>: the Camp Outside Dungeon Bank button still deposits and withdraws home-bank gold without TAG fees. This preserves old campaign workflows outside TAG settlement accounting.</li>
+        <li><strong>TAG bank is available in any settlement size</strong>: TAG p.9 (PDF p.13) says banks are available in any settlement size, with villages using a merchant or elders/treasury. The app therefore exposes TAG bank controls in the TAG settlement surface.</li>
+        <li><strong>Banked money is available when needed</strong>: TAG p.9 says banked money is available when needed. The app still keeps purchase spending explicit: withdraw from TAG bank before a shop/B buyer spend so the audit trail shows where the money moved.</li>
         <li><strong>Bank transfers</strong>: open Bank transfers to convert one character or the whole roster into per-character TAG accounts. You can include legacy bank gold from matching active/saved session party members and choose whether the 10% deposit fee applies. The app logs the ruling either way.</li>
-        <li><strong>Bank deposit</strong>: in TAG Actions, choose a character, enter Amount gp, choose Finance -&gt; Bank deposit. The app deducts the deposit plus a 10% fee and stores the deposit in that character's TAG bank account.</li>
+        <li><strong>Bank deposit</strong>: in TAG Actions, choose a character, enter Amount gp, choose Finance -&gt; Bank deposit. Normal bank deposits deduct the TAG p.9 one-time 10% fee. If <strong>Guild members</strong> is enabled, the app uses the TAG p.68 Guild ledger rule instead and stores excess coins for free.</li>
         <li><strong>Bank withdraw</strong>: in TAG Actions, choose a character, enter Amount gp, choose Finance -&gt; Bank withdraw. The app moves that much from the TAG account back to the character.</li>
         <li><strong>Inheritance note</strong>: choose the account owner, put the heir name in Note, choose Finance -&gt; Inheritance note.</li>
         <li><strong>Inheritance transfer</strong>: choose the heir/recipient character and choose Finance -&gt; Inheritance transfer. The app finds a matching heir note, transfers the account after 20% tax, zeroes the donor account, and logs the result.</li>
-        <li><strong>Robbery risk/recovery</strong>: use Finance for hidden-storage robbery risk and recovery logging.</li>
+        <li><strong>Robbery risk/recovery</strong>: TAG p.9 bank robbery recovery costs 3 Clues and sends the party to the Bandit Hideout lead. Hidden treasure trove recovery on TAG p.11 costs 4 Clues plus Interrogation vs L6; the app keeps that wording on hidden-trove risk entries.</li>
         <li><strong>Purchases</strong>: the normal equipment shop and TAG Buyer section spend character gold. If a character wants to use TAG banked gold, withdraw or transfer it first so the spending step is explicit and auditable.</li>
+        <li><strong>Guild discount</strong>: TAG p.68 gives Guild members a 10% discount on mundane equipment. The app applies this to normal equipment-shop buys when the campaign is marked as Guild members.</li>
       </ul>
       <p>The <strong>Route / XP / Bank summary</strong> under Services and Log shows recent bank balances and heirs.</p>
 

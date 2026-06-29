@@ -151,7 +151,8 @@ Home screen character UI:
   inheritance notes/transfers, and migration from roster gold plus matching
   session `bank_gold` are explicit player actions under `/api/campaign/tag/*`;
   the app does not silently spend TAG bank funds from the equipment shop or camp
-  bank.
+  bank. Normal bank deposits pay TAG p.9's 10% fee; when Guild membership is
+  enabled the same ledger uses TAG p.68's free Guild storage rule instead.
 - **TAG troupe:** `CampaignState.tag_troupe_member_character_ids` stores the
   wider troupe roster, while `tag_troupe_active_character_ids` stores the current
   active party subset. The Home troupe manager can add/remove/list members and

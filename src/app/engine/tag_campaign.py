@@ -1435,9 +1435,16 @@ def update_troupe(
             and not (str(character_id) in seen or seen.add(str(character_id)))
         ][:4]
     if guild_member is not None:
+        was_guild_member = campaign.tag_guild_member
         campaign.tag_guild_member = bool(guild_member)
+        if campaign.tag_guild_member and not was_guild_member and campaign.tag_guild_coffers_gp <= 0 and guild_coffers_gp in {None, 0}:
+            campaign.tag_guild_coffers_gp = 5000
     if guild_coffers_gp is not None:
-        campaign.tag_guild_coffers_gp = max(0, int(guild_coffers_gp))
+        requested_coffers = max(0, int(guild_coffers_gp))
+        if campaign.tag_guild_member and requested_coffers <= 0 and campaign.tag_guild_coffers_gp == 5000:
+            campaign.tag_guild_coffers_gp = 5000
+        else:
+            campaign.tag_guild_coffers_gp = requested_coffers
     return campaign
 
 
@@ -1624,7 +1631,11 @@ def purchase_tag_service(
             character=character,
             result_text=f"Unknown TAG purchase service: {service_key}.",
         )
-    cost = int(service["cost_gp"]) * qty
+    unit_cost = int(service["cost_gp"])
+    free_guild_martial_arts = service_key == "martial_arts_training" and campaign.tag_guild_member
+    if free_guild_martial_arts:
+        unit_cost = 0
+    cost = unit_cost * qty
     if character.gold < cost:
         return append_tag_log(
             campaign,
@@ -1645,7 +1656,10 @@ def purchase_tag_service(
         action="purchase_service",
         character=character,
         cost_gp=cost,
-        result_text=f"{character.name} buys {qty}x {service['label']} for {cost} gp; {service['result']}.",
+        result_text=(
+            f"{character.name} buys {qty}x {service['label']} for {cost} gp; {service['result']}."
+            + (" TAG Guild members train for free; roll Tier die before the adventure for the injury risk." if free_guild_martial_arts else "")
+        ),
     )
 
 
@@ -2242,19 +2256,21 @@ def resolve_tag_finance_action(
     if action == "bank_deposit":
         if character is None:
             return append_tag_log(campaign, action="bank_deposit", result_text="Choose a character for TAG bank deposit.")
-        fee = ceil(amount * 0.1) if amount else 0
+        fee = 0 if campaign.tag_guild_member else (ceil(amount * 0.1) if amount else 0)
         total_cost = amount + fee
+        ledger_label = "TAG Guild ledger account" if campaign.tag_guild_member else "TAG bank account"
         if amount <= 0:
             result = "Enter a bank deposit amount above 0 gp."
         elif character.gold < total_cost:
-            result = f"{character.name} needs {total_cost} gp for a {amount} gp TAG bank deposit plus {fee} gp fee."
+            result = f"{character.name} needs {total_cost} gp for a {amount} gp {ledger_label} deposit plus {fee} gp fee."
         else:
             account = _tag_bank_account(campaign, character)
             character.gold -= total_cost
             account.gold_gp += amount
             account.notes = clean_note or account.notes
             character.updated_at = now_utc()
-            result = f"{character.name} deposits {amount} gp into a TAG bank account and pays {fee} gp fee. Account balance {account.gold_gp} gp."
+            fee_text = "for free under the TAG Guild ledger rule" if campaign.tag_guild_member else f"and pays {fee} gp fee"
+            result = f"{character.name} deposits {amount} gp into a {ledger_label} {fee_text}. Account balance {account.gold_gp} gp."
         return append_tag_log(campaign, action="bank_deposit", character=character, cost_gp=total_cost if amount else 0, result_text=result)
     if action == "bank_withdraw":
         if character is None:
@@ -2306,13 +2322,13 @@ def resolve_tag_finance_action(
         )
         return append_tag_log(campaign, action="bank_robbery_risk", character=character, roll=total, total=total, result_text=result)
     if action == "robbery_recovery":
-        cost_clues = 4
+        cost_clues = 3
         if character is not None and character.clues >= cost_clues:
             character.clues -= cost_clues
             character.updated_at = now_utc()
-            result = f"{character.name} spends 4 Clues to pursue stolen TAG funds. Resolve Interrogation vs L6 and restore recovered holdings on success."
+            result = f"{character.name} spends 3 Clues to learn who stole TAG bank funds. Play the Bandit Hideout lead and recover the stolen money as Final Boss treasure."
         else:
-            result = "Robbery recovery requires 4 Clues on a chosen character, then Interrogation vs L6."
+            result = "Bank robbery recovery requires 3 Clues on a chosen character, then the Bandit Hideout lead."
         return append_tag_log(campaign, action="bank_robbery_recovery", character=character, result_text=result)
     if action == "guild_upkeep":
         upkeep = ceil(max(0, campaign.tag_guild_coffers_gp) * 0.1)
