@@ -480,6 +480,50 @@ def test_tag_special_foes_are_allowlisted_and_used_in_generated_adventures() -> 
     assert any(action["action_value"] == "bandit_chieftain_capture" for action in theme_ref["room_prompts"]["tag-final-scene"]["actions"])
 
 
+def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+
+    expected = {
+        "1": ("Ghastly Mine", "9-room dungeon", "cave-ins"),
+        "2": ("Giant's Lair", "HCL+5 rooms", "boulder"),
+        "4": ("Fiendish Abyss", "HCL+5 rooms", "Prisoner Table"),
+        "5": ("Minotaur Maze", "d6+5 rooms", "lost"),
+    }
+    for detail, (title, target, keyword) in expected.items():
+        manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="thematic_dungeon", detail=detail)
+        assert validate_adventure_manifest(manifest, rules_repo=repo).valid
+        reference = manifest["source"]["parameters"]["tag_reference"]
+        assert reference["title"] == title
+        assert reference["module_profile"]["target_rooms"] == target
+        joined = " ".join(reference["module_profile"]["procedure"] + reference["module_profile"]["signoff_checks"])
+        assert keyword.lower() in joined.lower()
+
+
+def test_tag_remaining_guild_jobs_carry_pdf_module_profiles(monkeypatch) -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    expected = {
+        1: ("Clean Up My Castle", "exactly 10 rooms", "portrait cache", "clue_gate_unlocked"),
+        3: ("Griffin Omelets, Anyone?", "mountain approach and nest", "70 gp per intact egg", None),
+        4: ("A Portrait in Red", "outbound and return wilderness escort", "painting", None),
+        5: ("Sewers Search", "small sewer dungeon", "3 Clues", "clue_gate_unlocked"),
+        6: ("Monoceros Hunt", "wilderness hunt and capture encounter", "3 Clues", "capture_alive"),
+    }
+    for quest_roll, (title, target, keyword, action_value) in expected.items():
+        campaign = default_campaign()
+        monkeypatch.setattr(tag_campaign, "roll_d6", lambda roll=quest_roll: roll)
+        manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="guild_job", detail="1")
+        assert validate_adventure_manifest(manifest, rules_repo=repo).valid
+        reference = manifest["source"]["parameters"]["tag_reference"]
+        assert reference["title"] == title
+        assert reference["module_profile"]["target_rooms"] == target
+        joined = " ".join(reference["module_profile"]["procedure"] + reference["module_profile"]["signoff_checks"] + [reference["rewards"]])
+        assert keyword.lower() in joined.lower()
+        if action_value:
+            actions = reference["room_prompts"]["tag-complication"]["actions"] + reference["room_prompts"]["tag-final-scene"]["actions"]
+            assert any(action["action_value"] == action_value for action in actions)
+
+
 def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None:
     campaign = default_campaign()
     hero = _character(

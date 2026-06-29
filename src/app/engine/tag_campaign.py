@@ -835,6 +835,18 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Wraith",
         "final_count": 1,
         "rewards": "Normal treasure, with gp-to-gem/nugget conversion where the theme says so.",
+        "module_profile": {
+            "target_rooms": "9-room dungeon",
+            "procedure": [
+                "Use standard vermin, but replace minions with Ghastly Mine undead on 4-in-6.",
+                "Boss or Weird results have a 4-in-6 chance to become a Ghastly Mine major undead.",
+                "All traps are cave-ins; after more than three cave-ins, later cave-ins are harsher and the mine collapses after exit.",
+            ],
+            "signoff_checks": [
+                "For gp treasure, check the 3-in-6 gem/nugget conversion.",
+                "Track the number of cave-ins and any fallen/paralyzed/petrified characters left behind.",
+            ],
+        },
         "rules": ["Nine-room target.", "Cave-in traps affect all characters and become worse after repeated collapses."],
     },
     2: {
@@ -849,6 +861,18 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Hill Giant",
         "final_count": 1,
         "rewards": "Three treasure rolls and double gp in the final room.",
+        "module_profile": {
+            "target_rooms": "HCL+5 rooms",
+            "procedure": [
+                "Do not use the normal Final Boss check; the final room is automatically the hill giant room.",
+                "Final room must be at least nine squares and not a corridor.",
+                "The giant has a 4-in-6 boulder throw chance on its first turn; spells hit it at +2.",
+            ],
+            "signoff_checks": [
+                "Dead-end unvisited doors/openings when the final room is drawn.",
+                "Roll three treasure rolls and double all gp treasure.",
+            ],
+        },
         "rules": ["Hill Giant is now a TAG-specific foe profile.", "Spells hit the hill giant at +2."],
     },
     3: {
@@ -903,6 +927,18 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "rewards": "Lair prisoner reward table: noble mission, merchant reward/rumor, or silver knife/holy water/map.",
         "clue_gate_cost": 2,
         "clue_gate_label": "Spend 2 Clues to learn the final boss",
+        "module_profile": {
+            "target_rooms": "HCL+5 rooms",
+            "procedure": [
+                "Use Fiendish Foes or Abyss content; otherwise raise danger levels by 2 and minor counts by 2.",
+                "Spend 2 Clues if desired to reveal the Final Boss nature before the last room.",
+                "Final Boss is a Weird Monsters Around Town boss raised by +1 level, with a prisoner in the lair.",
+            ],
+            "signoff_checks": [
+                "Roll the Prisoner Table after the final boss is defeated.",
+                "If the prisoner gives a map, create/follow the resulting treasure-map or thematic-dungeon lead.",
+            ],
+        },
         "rules": ["No normal Final Boss check; ends at HCL+5 rooms."],
     },
     5: {
@@ -917,6 +953,18 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Minotaur Lord",
         "final_count": 1,
         "rewards": "Treasure +1 from the minotaur lord.",
+        "module_profile": {
+            "target_rooms": "d6+5 rooms",
+            "procedure": [
+                "All minions are young minotaurs; all major foes are adult minotaurs.",
+                "Backtracking has a 3-in-6 lost chance, reduced to 2-in-6 with a dungeon guide.",
+                "Successful searching in an empty room/corridor can create a shortcut to the minotaur lord chamber.",
+            ],
+            "signoff_checks": [
+                "Halflings cannot use Luck against minotaurs.",
+                "Apply the first-attack charge/Defense penalty and special Minotaur Maze event table.",
+            ],
+        },
         "rules": ["d6+5-room target.", "Young/adult minotaur replacement tables are indexed as TAG foes but not auto-rolled for room replacement yet."],
     },
     6: {
@@ -979,6 +1027,30 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Wraith",
         "final_count": 1,
         "rewards": "25 gp per character, 2 gp per minion/vermin, 20 gp per Boss/Weird, possible 100 gp portrait cache.",
+        "clue_gate_cost": 1,
+        "clue_gate_label": "Spend 1 Clue for portrait cache",
+        "module_profile": {
+            "target_rooms": "exactly 10 rooms",
+            "procedure": [
+                "Complete the cleanup in one session; leaving and re-entering forfeits the job pay.",
+                "Track slain minions, vermin, Bosses, and Weird Monsters for payment.",
+                "Spend 1 Clue to find the hidden ancestral portrait cache.",
+            ],
+            "signoff_checks": [
+                "Base pay is 25 gp per character plus foe-count payments.",
+                "Portrait cache adds 100 gp if found with the Clue spend.",
+            ],
+        },
+        "complication_prompt_actions": [
+            {
+                "label": "Find portrait cache",
+                "tooltip": "Prefill the 1-Clue hidden portrait cache route for Clean Up My Castle.",
+                "action_type": "route",
+                "action_value": "clue_gate_unlocked",
+                "reference": "Clean Up My Castle portrait cache",
+                "amount": 1,
+            }
+        ],
         "rules": ["Ten-room quest target."],
     },
     2: {
@@ -1028,59 +1100,151 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
     },
     3: {
         "title": "Griffin Omelets, Anyone?",
-        "pdf_pages": "TAG p.54+",
+        "pdf_pages": "TAG p.56",
         "objective": "Recover griffin eggs for the guild patron.",
         "entry": "Claw marks and feathers lead to a high nesting site.",
-        "side": "The nest approach should be treated as a dangerous climb or wilderness scene.",
-        "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
+        "side": "Roll five ascent encounter checks, then search repeatedly until the nest is found.",
+        "complication": "A search roll of 1 risks griffin attack unless the worst-Stealth character passes L7.",
         "final_title": "Griffin Nest",
-        "final_description": "The nest is guarded. Resolve the exact griffin/egg handling from the PDF during play.",
+        "final_description": "The black-feathered griffins defend d3+1 eggs. Fleeing requires teleportation such as Escape.",
         "final_foe": "Griffin",
         "final_count": 1,
-        "rewards": "Guild job reward per the printed quest.",
-        "rules": ["Griffin is a TAG-specific foe profile; resolve egg handling from the printed quest."],
+        "rewards": "70 gp per intact egg delivered; broken eggs are worth 2d6 gp.",
+        "module_profile": {
+            "target_rooms": "mountain approach and nest",
+            "procedure": [
+                "Roll five wandering-monster checks on the way up and five on the way down.",
+                "Search until a 6 finds the nest; each search roll of 1 risks two griffins unless L7 Stealth succeeds.",
+                "Nest contains d3+1 eggs; most characters carry two eggs, elves carry three, ogres carry none.",
+            ],
+            "signoff_checks": [
+                "If an egg carrier dies, each carried egg has a 2-in-6 break chance.",
+                "Pay 70 gp per intact egg; broken eggs pay 2d6 gp each.",
+            ],
+        },
+        "rules": ["Griffin is a TAG-specific foe profile; resolve egg carrying and mountain checks from the printed quest."],
     },
     4: {
         "title": "A Portrait in Red",
-        "pdf_pages": "TAG p.54+",
+        "pdf_pages": "TAG p.57",
         "objective": "Resolve the guild's bloody portrait commission.",
-        "entry": "A patron wants the party to recover or investigate a disturbing portrait.",
-        "side": "Use town clues and scene text to identify the patron's real need.",
-        "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
+        "entry": "The party escorts a famous artist to a remote hermitage through monster-infested wilderness.",
+        "side": "The nobleman must be persuaded with repeated L6 persuasion Saves and party composition modifiers.",
+        "complication": "On the return journey, a surprised painting snatcher must be stopped within one turn or the portrait is lost.",
         "final_title": "Red Gallery",
-        "final_description": "The portrait's secret is revealed in the gallery.",
+        "final_description": "The painted commission must survive the return trip for the party to be paid.",
         "final_foe": "Red Portrait Horror",
         "final_count": 1,
-        "rewards": "Guild job reward per the printed quest.",
-        "rules": ["Red Portrait Horror is a generated foe profile for the supernatural finale."],
+        "rewards": "200 gp to each surviving party member if the artist and portrait return.",
+        "module_profile": {
+            "target_rooms": "outbound and return wilderness escort",
+            "procedure": [
+                "Roll six outbound wilderness encounter checks before the hermitage.",
+                "Persuade the nobleman with repeated L6 persuasion Saves; natural 1 ejects a chosen character.",
+                "Roll five return checks; if surprised, check whether a foe snatches the painting.",
+            ],
+            "signoff_checks": [
+                "Track ejected characters and any 20 gp monk donation required to continue.",
+                "If the painting is snatched, the party has one turn to stop the thief without Fireball or Lightning.",
+            ],
+        },
+        "rules": ["Red Portrait Horror remains a proxy; the printed mission is primarily escort, persuasion, and painting-loss handling."],
     },
     5: {
         "title": "Sewers Search",
-        "pdf_pages": "TAG p.54+",
+        "pdf_pages": "TAG p.58",
         "objective": "Search the settlement sewers for the guild target.",
         "entry": "The trail drops below the street grates.",
-        "side": "The sewer route can be handled as a compact dungeon.",
-        "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
+        "side": "Ignore non-encounter/non-trap room content and treat special features as empty rooms.",
+        "complication": "All empty rooms may be searched for Clues; 3 Clues reveal the thief in the next room.",
         "final_title": "Sewer Sump",
-        "final_description": "The search ends in a foul sump chamber.",
+        "final_description": "The thief with the silk rolls is the Final Boss; capture alive for interrogation bonus.",
         "final_foe": "Skeletons/Zombies",
         "final_count": 6,
-        "rewards": "Guild job reward per the printed quest.",
-        "rules": ["Skeletons/Zombies are a sewer-danger proxy."],
+        "rewards": "50 gp per character for the silk rolls, plus 100 gp if the thief is brought back alive.",
+        "clue_gate_cost": 3,
+        "clue_gate_label": "Spend 3 Clues to find the thief",
+        "module_profile": {
+            "target_rooms": "small sewer dungeon",
+            "procedure": [
+                "Use sewer vermin/minion tables for vermin and minion encounters.",
+                "Bosses are HCL+2 thieves; Weird Monsters are two-headed huge rats.",
+                "Wounded heroes below half Life must check for disease after the adventure.",
+            ],
+            "signoff_checks": [
+                "Spend 3 Clues to place the thief with the silk rolls in the next room.",
+                "Apply 50 gp per character and 100 gp alive-capture bonus if achieved.",
+            ],
+        },
+        "complication_prompt_actions": [
+            {
+                "label": "Find thief with Clues",
+                "tooltip": "Prefill the 3-Clue route that finds the sewer thief in the next room.",
+                "action_type": "route",
+                "action_value": "clue_gate_unlocked",
+                "reference": "Sewers Search thief found",
+                "amount": 3,
+            }
+        ],
+        "final_prompt_actions": [
+            {
+                "label": "Capture thief alive",
+                "tooltip": "Prefill a capture-alive marker for the sewer thief bonus.",
+                "action_type": "branch",
+                "action_value": "capture_alive",
+                "reference": "Sewers Search thief captured alive",
+                "amount": 0,
+            }
+        ],
+        "rules": ["Skeletons/Zombies are a sewer-danger proxy until sewer-specific foe tables are fully generated."],
     },
     6: {
         "title": "Monoceros Hunt",
-        "pdf_pages": "TAG p.54+",
+        "pdf_pages": "TAG p.59",
         "objective": "Track and resolve the monoceros hunt.",
         "entry": "The quarry's tracks leave deep, single-horn gouges.",
-        "side": "Treat pursuit as wilderness tracking before the final confrontation.",
-        "complication": "Exact extended text still needs PDF signoff beyond the available extraction.",
+        "side": "Each hunter rolls a Tier die plus level modifiers to locate the monoceros.",
+        "complication": "A roll of 1 causes a hunting accident save; 6+ finds the monoceros. Three Clues can skip the hunt after a possible Weird Monster encounter.",
         "final_title": "Monoceros Glade",
         "final_description": "The hunt catches up with the monoceros in a secluded glade.",
         "final_foe": "Monoceros",
         "final_count": 1,
-        "rewards": "Guild job reward per the printed quest.",
-        "rules": ["Monoceros is a generated foe profile; resolve pursuit and reward from the printed quest."],
+        "rewards": "200 gp to the party if the monoceros is captured alive.",
+        "clue_gate_cost": 3,
+        "clue_gate_label": "Spend 3 Clues to find the monoceros",
+        "module_profile": {
+            "target_rooms": "wilderness hunt and capture encounter",
+            "procedure": [
+                "Roll one tracking die per character; successes find the monoceros, failures join after three turns.",
+                "Rolls of 1 cause hunting-accident Saves and remove that character from the hunt.",
+                "Capture requires Sleep or melee subdual at -1; Fireball and Lightning are forbidden.",
+            ],
+            "signoff_checks": [
+                "If 3 Clues are spent, roll the 2-in-6 Weird Monster Around Town encounter chance first.",
+                "Non-magical hits may be turned by the monoceros hide on d6 5-6.",
+            ],
+        },
+        "complication_prompt_actions": [
+            {
+                "label": "Find with 3 Clues",
+                "tooltip": "Prefill the 3-Clue shortcut to locate the monoceros before the capture encounter.",
+                "action_type": "route",
+                "action_value": "clue_gate_unlocked",
+                "reference": "Monoceros Hunt clue shortcut",
+                "amount": 3,
+            }
+        ],
+        "final_prompt_actions": [
+            {
+                "label": "Capture monoceros alive",
+                "tooltip": "Prefill a capture-alive marker for the Monoceros Hunt reward.",
+                "action_type": "branch",
+                "action_value": "capture_alive",
+                "reference": "Monoceros captured alive",
+                "amount": 0,
+            }
+        ],
+        "rules": ["Monoceros is a generated foe profile; resolve pursuit, hide turns, and capture reward from the printed quest."],
     },
 }
 
