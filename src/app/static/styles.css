@@ -2592,6 +2592,77 @@ button.secondary,
   flex-shrink: 0;
 }
 
+.log-colour-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.log-key-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 1px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: #171814;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.log-key-party-damage,
+.log-line-party-damage {
+  color: #ff8d8d;
+}
+
+.log-key-party-heal,
+.log-line-party-heal {
+  color: #8ee68e;
+}
+
+.log-key-foe-damage,
+.log-line-foe-damage {
+  color: #88bfff;
+}
+
+.log-key-foe-heal,
+.log-line-foe-heal {
+  color: #d6a0ff;
+}
+
+.log-line-party-damage,
+.log-line-party-heal,
+.log-line-foe-damage,
+.log-line-foe-heal {
+  padding-left: 7px;
+  border-left: 3px solid currentColor;
+}
+
+.log-line-roll {
+  color: #f2c879;
+}
+
+.log-line-math {
+  color: #aeb5a8;
+}
+
+.log-line-event {
+  color: #80d7e8;
+}
+
+.log-line-reward {
+  color: #f0d37a;
+}
+
+.log-line-round-summary,
+.combat-log-round-summary {
+  color: #f5ddb0;
+  font-weight: 700;
+}
+
 .log-heading-actions {
   display: flex;
   align-items: center;
@@ -6261,6 +6332,16 @@ input[type="radio"] {
   gap: 8px;
   margin-top: 0;
   margin-bottom: 4px;
+}
+
+.combat-rail-log-head .log-colour-key {
+  justify-content: flex-start;
+  flex: 1 1 auto;
+}
+
+.combat-rail-log-head .log-key-chip {
+  font-size: 9px;
+  padding-inline: 4px;
 }
 
 .combat-rail-log-body {

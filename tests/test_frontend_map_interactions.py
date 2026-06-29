@@ -1166,6 +1166,23 @@ def test_combat_log_tab_uses_log_mode_without_local_filters_or_expand() -> None:
     assert "setLogMode(\"verbose\")" in toggle
 
 
+def test_log_colour_key_and_semantic_classes_are_present() -> None:
+    assert "log-colour-key" in INDEX_HTML
+    assert "Party dmg" in INDEX_HTML
+    assert "Party heal" in INDEX_HTML
+    assert "Foe dmg" in INDEX_HTML
+    assert "Foe heal" in INDEX_HTML
+
+    assert "function logEntryToneClass(entry, session)" in APP_JS
+    assert "buildLogEntryLine(entry, session" in APP_JS
+    assert "buildLogColourKey()" in _function_body("renderCombatRailLog", APP_JS)
+    assert "regenerates?" in APP_JS
+    assert "log-line-party-damage" in STYLES_CSS
+    assert "log-line-party-heal" in STYLES_CSS
+    assert "log-line-foe-damage" in STYLES_CSS
+    assert "log-line-foe-heal" in STYLES_CSS
+
+
 def test_log_windows_keep_more_history_available() -> None:
     """
     Long fights and verbose exploration can exceed the old 80-line adventure log

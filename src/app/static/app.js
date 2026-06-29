@@ -4819,6 +4819,7 @@ function renderCombatRailLog(session) {
   combatRailLogEl.replaceChildren();
   const head = node("div", "combat-rail-log-head");
   head.appendChild(node("strong", "", "Log"));
+  head.appendChild(buildLogColourKey());
   head.appendChild(buildLogModeToggle());
   combatRailLogEl.appendChild(head);
   const body = node("div", "combat-rail-log-body");
@@ -4831,12 +4832,7 @@ function renderCombatRailLog(session) {
     body.appendChild(node("div", "combat-log-line muted", "No log entries yet."));
   } else {
     for (const entry of shown) {
-      const line = node(
-        "div",
-        entry.startsWith("Round summary:") ? "combat-log-line combat-log-round-summary" : "combat-log-line",
-        entry
-      );
-      body.appendChild(line);
+      body.appendChild(buildLogEntryLine(entry, session, "combat-log-line"));
     }
   }
   combatRailLogEl.appendChild(body);
@@ -28303,9 +28299,70 @@ function renderLog(session) {
   const notice = logLimitNotice(entries.length, filteredEntries.length);
   if (notice) sessionLog.appendChild(notice);
   for (const entry of entries) {
-    sessionLog.appendChild(node("div", "", entry));
+    sessionLog.appendChild(buildLogEntryLine(entry, session));
   }
   sessionLog.scrollTop = sessionLog.scrollHeight;
+}
+
+function buildLogColourKey() {
+  const key = node("div", "log-colour-key");
+  key.setAttribute("aria-label", "Log colour key");
+  const chips = [
+    ["log-key-party-damage", "Party dmg", "Red: damage or Life loss suffered by party members."],
+    ["log-key-party-heal", "Party heal", "Green: Life restored to party members."],
+    ["log-key-foe-damage", "Foe dmg", "Blue: damage dealt to foes."],
+    ["log-key-foe-heal", "Foe heal", "Purple: foe healing or regeneration."],
+  ];
+  for (const [className, label, tooltip] of chips) {
+    const chip = node("span", `log-key-chip ${className}`, label);
+    setTooltip(chip, tooltip);
+    key.appendChild(chip);
+  }
+  return key;
+}
+
+function buildLogEntryLine(entry, session, baseClass = "") {
+  const classes = [baseClass, logEntryToneClass(entry, session)].filter(Boolean).join(" ");
+  const line = node("div", classes, entry);
+  return line;
+}
+
+function logEntryToneClass(entry, session) {
+  const line = String(entry || "");
+  const lower = line.toLowerCase();
+  if (!line.trim()) return "";
+  const partyNames = new Set((session.party || []).map((member) => member.name).filter(Boolean));
+  const enemyNames = new Set();
+  for (const tile of session.map_state?.tiles || []) {
+    for (const enemy of [...(tile.enemies || []), ...(tile.defeated_enemies || [])]) {
+      if (enemy?.name) enemyNames.add(enemy.name);
+    }
+  }
+  const mentionsParty = [...partyNames].some((name) => line.includes(name));
+  const mentionsEnemy = [...enemyNames].some((name) => line.includes(name));
+
+  if (/regenerates?\b|cannot regenerate|foe .*restores?|enemy .*restores?|\b(?:heals?|restores?)\b.*\b(?:foe|enemy|troll|ogre|dragon|boss|minion|vermin|weird)\b/i.test(line)) {
+    return "log-line-foe-heal";
+  }
+  if ((mentionsParty && /\b(?:takes?|suffers?|loses?|lost)\b.*\b(?:damage|life|wound)|\bworsens\b.*\b(?:wound|life loss)\b/i.test(line)) || /round summary:.*\btook \d+ damage\b/i.test(line)) {
+    return "log-line-party-damage";
+  }
+  if (mentionsParty && /\b(?:restores?|heals?|recovers?|regains?)\b.*\bLife\b|\bLife restored\b/i.test(line)) {
+    return "log-line-party-heal";
+  }
+  if (
+    (mentionsEnemy && /\b(?:hits?|hit|inflicts?|deals?|takes?)\b.*\b\d+ damage\b/i.test(line)) ||
+    /\b(?:hit|hits) .+ for \d+ damage\b/i.test(line) ||
+    /\b(?:Fireball|Lightning|Water Jet|Infallible Missile|Holy Water|acid|oil)\b.*\b(?:damage|inflicts?)\b/i.test(line)
+  ) {
+    return "log-line-foe-damage";
+  }
+  if (/^Round summary:/i.test(line)) return "log-line-round-summary";
+  if (/^(Event|Effect|Feature):/i.test(line)) return "log-line-event";
+  if (/\b(?:Attack|Defense|Save|Search|Door|Reaction|Backtrack) roll:|\brolls?\b.*\bd\d+\b/i.test(line)) return "log-line-roll";
+  if (/\bmath:|\bneed total\b|\bmodifier breakdown\b|\blookup\b/i.test(lower)) return "log-line-math";
+  if (/\b(?:treasure|gold|gp|clue|secret|reward)\b/i.test(line)) return "log-line-reward";
+  return "";
 }
 
 function showGameView(options = {}) {
