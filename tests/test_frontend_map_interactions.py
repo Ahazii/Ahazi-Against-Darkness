@@ -1842,6 +1842,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-run-finance",
         "tag-route-xp-summary",
         "tag-guide-link",
+        "tag-test-guide-link",
         "tag-open-troupe-manager",
         "tag-open-bank-transfer",
         "tag-troupe-dialog",
@@ -1859,7 +1860,16 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         assert f'id="{element_id}"' in INDEX_HTML
     assert INDEX_HTML.index('id="tag-open-adventure-actions"') > INDEX_HTML.index('id="session-panel"')
     assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html"' in INDEX_HTML
+    assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html#manual-test-generated-tag-adventures"' in INDEX_HTML
+    assert "TAG Generated Test Checklist" in MODERN_PAGES_JS
+    assert "#manual-test-generated-tag-adventures" in MODERN_PAGES_JS
     assert '<details class="tag-help-section" open>' not in INDEX_HTML
+    tag_guide_html = Path("docs/Checking/TAG_SECTION_GUIDE.html").read_text(encoding="utf-8")
+    tag_guide_md = Path("docs/Checking/TAG_SECTION_GUIDE.md").read_text(encoding="utf-8")
+    for guide_text in [tag_guide_html, tag_guide_md]:
+        assert "Manual Test Generated TAG Adventures" in guide_text
+        assert "Hover every prompt button" in guide_text
+        assert "TAG scene prompt" in guide_text
     for endpoint in [
         "/api/campaign/tag/troupe",
         "/api/campaign/tag/store-treasure",

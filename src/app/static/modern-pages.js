@@ -1504,6 +1504,7 @@ function renderGuides() {
   const row = actions();
   row.append(
     link("TAG Section Guide", "/docs/Checking/TAG_SECTION_GUIDE.html", "Open the TAG workflow guide."),
+    link("TAG Generated Test Checklist", "/docs/Checking/TAG_SECTION_GUIDE.html#manual-test-generated-tag-adventures", "Open the manual test checklist for generated TAG adventures."),
     link("Checking Docs", "/docs/Checking/", "Open the Checking docs folder where the server can list files if enabled.")
   );
   panel.appendChild(row);

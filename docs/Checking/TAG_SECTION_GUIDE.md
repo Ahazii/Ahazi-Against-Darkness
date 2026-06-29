@@ -47,6 +47,36 @@ Use the normal Adventure section to play the generated module. TAG-specific foll
 
 Use **Reference** for the scene/page/result note. Use **Amount** for Clue costs, reward gp, gargoyle counts, XP, or training override values depending on the selected action.
 
+## Manual Test Generated TAG Adventures
+
+Use this workflow when playtesting the generated TAG modules against `Tales_from_the_adventurers_guild.pdf`.
+
+1. **Prepare a clean test party**: create or choose four living characters, enable TAG banking if you want finance prompts, and save the active party.
+2. **Create the lead**: Home -> Adventure -> TAG Settlement -> Maps and Adventure Leads. Choose one lead type and detail number, then press **Create adventure**. Use these detail ranges:
+   - Rumor Scene: 1-12.
+   - Thematic Dungeon: 1-6.
+   - Treasure Map destination: 1-6.
+   - Guild Job: 1-6 or blank to roll.
+3. **Confirm installation**: the generated module should appear in the normal Adventure dropdown and usually be selected automatically. The title should name the TAG lead.
+4. **Start the adventure**: choose your party and start the selected generated module.
+5. **Check every room prompt**: in exploration, inspect the room detail panel. For new generated modules you should see a **TAG scene prompt** with source pages, target/procedure/check notes, and shortcut buttons.
+6. **Hover every prompt button**: each shortcut should have a tooltip explaining what it will prefill. Buttons should open **TAG Actions** rather than changing state immediately.
+7. **Check TAG Actions prefill**: after clicking a prompt button, confirm Branch/Route/Scene/XP is set correctly, Reference is meaningful, Amount is correct when the PDF has a known cost/count, and the Branch helper row explains Reference/Amount.
+8. **Apply only when the PDF says so**: if the prompt is a bookkeeping roll, press the matching action and compare the log text to the PDF. If the prompt is a route marker, press it only after you choose that printed branch.
+9. **Check module rewrites**: for Route actions that should alter the generated module, confirm the log/status mentions the rewrite. Examples: Clue gates insert an unlocked scene, skipped side scene removes the optional room, peaceful routes suppress proxy combat, Dragon's Lair reveal updates the finale title/reference.
+10. **Finish and close out**: complete the adventure, then check modern Guild and Banking pages for closeout prompts. Resolve Guild loot share/upkeep, hidden-trove risk, robbed-account recovery, and pending XP markers as applicable.
+
+Suggested coverage order:
+
+| Group | What to generate | What to check |
+|---|---|---|
+| Rumors | Details 1-12 | Scene title/pages, final prompt, printed reward action, route/Clue prompt where present |
+| Thematic dungeons | Details 1-6 | Dragon reveal, Ghastly Mine rolls, Giant final profile, Fiendish prisoner table, Minotaur Maze rolls, Bandit stolen goods |
+| Guild Jobs | Details 1-6 | Castle pay, Gorungar rewards, Griffin eggs, Portrait persuasion/snatch, Sewers disease/Clues, Monoceros tracking/capture |
+| Treasure Maps | Details 1-6 | Map Leads To notes, generated target, TAG reference metadata, route prompt behavior |
+
+Record failures with four details: generated lead, room name, button/action used, and the mismatch against the PDF. If the UI has no button for a printed decision, record the exact PDF page and expected action.
+
 ## After an Adventure
 
 1. Resolve ordinary adventure closeout in the normal session flow.
