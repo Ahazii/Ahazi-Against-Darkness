@@ -927,7 +927,7 @@ async def campaign_tag_route_action(payload: dict[str, Any]) -> dict[str, Any]:
 
 @app.post("/api/campaign/tag/scene-action")
 async def campaign_tag_scene_action(payload: dict[str, Any]) -> dict[str, Any]:
-    from .engine.tag_campaign import load_campaign, resolve_tag_scene_action, save_campaign
+    from .engine.tag_campaign import apply_tag_dragon_reveal_to_latest_adventure, load_campaign, resolve_tag_scene_action, save_campaign
 
     character = _optional_campaign_character(payload)
     if character is None:
@@ -939,9 +939,23 @@ async def campaign_tag_scene_action(payload: dict[str, Any]) -> dict[str, Any]:
         scene_action=str(payload.get("scene_action") or ""),
         amount=int(payload.get("amount") or 0),
     )
+    module_update = ""
+    if str(payload.get("scene_action") or "") == "dragon_type_reveal" and entry.roll:
+        if entry.roll <= 3:
+            dragon_key = "small_dragon"
+        elif entry.roll <= 5:
+            dragon_key = "young_red_dragon"
+        else:
+            dragon_key = "darkness_or_ghoul_dragon"
+        module_update = apply_tag_dragon_reveal_to_latest_adventure(
+            settings.data_dir,
+            campaign,
+            dragon_key=dragon_key,
+            dragon_label=entry.result_text,
+        )
     store.save("characters", character)
     campaign = save_campaign(store, campaign)
-    return {"campaign": campaign, "character": character, "entry": entry}
+    return {"campaign": campaign, "character": character, "entry": entry, "module_update": module_update}
 
 
 @app.post("/api/campaign/tag/xp-action")

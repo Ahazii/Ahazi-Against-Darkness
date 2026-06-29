@@ -8501,7 +8501,7 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   adventureLeadDetail: "Optional result number: rumor 1-12, thematic dungeon 1-6, treasure-map destination 1-6, or guild job 1-6. Leave blank to roll where appropriate.",
   createAdventure: "Create a playable TAG adventure and add it to the normal Adventure section/dropdown with source-page notes for checking against the PDF.",
   actionCharacter: "Character used by TAG branch, trinket, Guild spell, or finance actions. Leave blank only where the action allows campaign-level logging.",
-  branchAction: "Resolve or log a TAG generated-adventure branch: social choice, Clue spend, variable count, capture-alive result, or reward claim.",
+  branchAction: "Resolve or log a TAG generated-adventure branch: social choice, Clue spend, variable count, Bandit stolen-goods check, capture-alive result, or reward claim.",
   branchReference: "Scene/page/result note saved into the TAG log so the branch can be checked against the PDF.",
   branchNumber: "Numeric field for branch, route, scene, and XP actions: Clue cost, variable-count modifier, reward gp, gargoyle count, XP, or training override.",
   resolveBranch: "Apply the selected TAG branch action and write a dated result into the campaign log.",
@@ -12380,7 +12380,7 @@ async function runTagSceneAction() {
   state.campaign = result.campaign;
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
-  setStatus(result.entry?.result_text || "TAG scene result applied.");
+  setStatus(`${result.entry?.result_text || "TAG scene result applied."} ${result.module_update || ""}`.trim());
 }
 
 async function runTagXpAction() {

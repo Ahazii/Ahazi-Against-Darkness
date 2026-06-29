@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from app.db import now_utc
 from app.engine import tag_campaign
+from app.engine.adventure_import import ADVENTURE_MANIFEST_FILENAME, installed_adventure_dir
 from app.engine.tag_campaign import (
     add_adventure_closeout_tasks,
+    apply_tag_dragon_reveal_to_latest_adventure,
     build_tag_adventure_manifest,
     check_item_availability,
     create_magic_locker,
@@ -430,6 +433,16 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     )
     assert any(action["action_value"] == "dragon_type_reveal" for action in dragon_actions)
 
+    bandit, _entry = build_tag_adventure_manifest(campaign, lead_type="thematic_dungeon", detail="6")
+    bandit_result = validate_adventure_manifest(bandit, rules_repo=repo)
+    assert bandit_result.valid, bandit_result.errors
+    bandit_ref = bandit["source"]["parameters"]["tag_reference"]
+    bandit_actions = bandit_ref["room_prompts"]["tag-complication"]["actions"]
+    assert any(
+        action["action_value"] == "bandit_stolen_goods_check" and "stolen-goods" in action["tooltip"]
+        for action in bandit_actions
+    )
+
     rolls = iter([2])
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
     job, _entry = build_tag_adventure_manifest(campaign, lead_type="guild_job", detail="1")
@@ -751,6 +764,60 @@ def test_tag_scene_rewards_and_bank_ledgers(monkeypatch) -> None:
     assert heir.gold == 80
     assert campaign.tag_bank_accounts[0].gold_gp == 0
     assert "20 gp inheritance tax" in transfer.result_text
+
+
+def test_tag_bandit_stolen_goods_branch_rolls_room_goods(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(clues=0)
+    starting_gold = hero.gold
+
+    rolls = iter([1, 2, 3, 4, 5, 6, 1, 2, 3, 2])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    found = resolve_tag_branch_action(
+        campaign,
+        hero,
+        branch_action="bandit_stolen_goods_check",
+        reference="Bandit Hideout room 2",
+    )
+    assert found.roll == 1
+    assert found.total == 26
+    assert "Stolen goods found: 8d6=26 gp" in found.result_text
+    assert "trapdoor protection is present" in found.result_text
+    assert hero.gold == starting_gold
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    missed = resolve_tag_branch_action(campaign, hero, branch_action="bandit_stolen_goods_check")
+    assert missed.roll == 4
+    assert missed.total is None
+    assert "no stolen goods" in missed.result_text
+
+
+def test_tag_dragon_reveal_updates_latest_installed_dragon_lair(tmp_path: Path) -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="thematic_dungeon", detail="3")
+    campaign.tag_generated_adventure_ids.append(manifest["id"])
+    install_dir = installed_adventure_dir(tmp_path, manifest["id"])
+    install_dir.mkdir(parents=True)
+    (install_dir / ADVENTURE_MANIFEST_FILENAME).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    result = apply_tag_dragon_reveal_to_latest_adventure(
+        tmp_path,
+        campaign,
+        dragon_key="young_red_dragon",
+        dragon_label="Hero spends 2 Clues and reveals Young Red Dragon.",
+    )
+
+    assert "Updated" in result
+    updated = json.loads((install_dir / ADVENTURE_MANIFEST_FILENAME).read_text(encoding="utf-8"))
+    validation = validate_adventure_manifest(updated, rules_repo=repo)
+    assert validation.valid, validation.errors
+    tag_ref = updated["source"]["parameters"]["tag_reference"]
+    assert tag_ref["dragon_type_revealed"] == "Hero spends 2 Clues and reveals Young Red Dragon."
+    assert tag_ref["final_foe_proxy"] == "Young Dragon"
+    final_room = next(room for room in updated["rooms"] if room["id"] == "tag-final-scene")
+    assert final_room["title"] == "Young Red Dragon"
+    assert final_room["triggers"][0]["encounter"]["foes"] == [{"name": "Young Dragon", "count": 1}]
 
 
 def test_tag_guild_ledger_deposit_and_martial_training_are_free() -> None:

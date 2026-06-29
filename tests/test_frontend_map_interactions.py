@@ -1890,6 +1890,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.followMap" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.createAdventure" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.resolveBranch" in APP_JS
+    assert 'value="bandit_stolen_goods_check"' in INDEX_HTML
+    assert "Bandit stolen goods" in INDEX_HTML
+    assert "stolen-goods room check" in INDEX_HTML
+    assert "Bandit stolen-goods check" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.routeAction" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.runRouteAction" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.sceneAction" in APP_JS
@@ -1923,6 +1927,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG scene prompt" in APP_JS
     assert "openTagActionsWithDefaults" in APP_JS
     assert "tagPromptDefaultsFromAction" in APP_JS
+    assert "result.module_update" in APP_JS
     assert "appendTagMetadataPromptActions" in APP_JS
     assert "appendTagModuleProfile" in APP_JS
     assert "room_prompts" in APP_JS

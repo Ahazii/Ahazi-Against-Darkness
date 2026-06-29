@@ -485,6 +485,7 @@ TAG_BRANCH_ACTIONS: dict[str, str] = {
     "social_choice": "Resolve social/choice branch",
     "spend_clues": "Spend Clues for branch",
     "roll_variable_count": "Roll variable count",
+    "bandit_stolen_goods_check": "Bandit stolen-goods check",
     "capture_alive": "Capture-alive outcome",
     "claim_reward": "Claim printed reward",
 }
@@ -603,6 +604,24 @@ TAG_GUILD_SPELL_EFFECTS: dict[str, dict[str, object]] = {
 
 TAG_LOOK_TOUGH_MARKER = "TAG Look Tough next Streetwise bonus"
 TAG_WIZARDS_LUCK_MARKER = "TAG Wizard's Luck gambling cheat pending"
+
+TAG_DRAGON_TYPE_FOES: dict[str, dict[str, object]] = {
+    "small_dragon": {
+        "name": "Small Dragon",
+        "description": "Small Dragon revealed by TAG Dragon's Lair type table.",
+        "foes": [{"name": "Young Dragon", "count": 1}],
+    },
+    "young_red_dragon": {
+        "name": "Young Red Dragon",
+        "description": "Young Red Dragon revealed by TAG Dragon's Lair type table. Use the printed fire-breath and reaction profile.",
+        "foes": [{"name": "Young Dragon", "count": 1}],
+    },
+    "darkness_or_ghoul_dragon": {
+        "name": "Darkness Dragon or Ghoul Dragon",
+        "description": "Dragon's Lair type roll 6: roll the printed follow-up d6 for Darkness Dragon or Ghoul Dragon before combat.",
+        "foes": [{"name": "Young Dragon", "count": 1}],
+    },
+}
 
 TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
     1: {
@@ -992,6 +1011,16 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
                 "Decide whether the chieftain is killed or captured alive before applying reward.",
             ],
         },
+        "complication_prompt_actions": [
+            {
+                "label": "Roll stolen goods",
+                "tooltip": "Roll the Bandit Hideout stolen-goods room check: 1-in-6 goods, then 8d6 gp and trapdoor chance if found.",
+                "action_type": "branch",
+                "action_value": "bandit_stolen_goods_check",
+                "reference": "Bandit Hideout stolen-goods room check",
+                "amount": 0,
+            }
+        ],
         "final_prompt_actions": [
             {
                 "label": "Capture chieftain alive",
@@ -2437,6 +2466,15 @@ def resolve_tag_branch_action(
         roll = roll_d6()
         total = roll + max(0, int(clue_cost))
         parts.append(f"Variable count roll d6={roll} plus modifier {max(0, int(clue_cost))} gives {total}. Apply the printed count formula.")
+    elif clean_action == "bandit_stolen_goods_check":
+        roll = roll_d6()
+        if roll == 1:
+            total = sum(roll_d6() for _ in range(8))
+            trap_roll = roll_d6()
+            trap_text = "trapdoor protection is present" if trap_roll <= 3 else "no trapdoor protection"
+            parts.append(f"Stolen goods found: 8d6={total} gp. Trapdoor roll d6={trap_roll}: {trap_text}. Claim the gp only after resolving the room.")
+        else:
+            parts.append(f"Stolen-goods roll d6={roll}: no stolen goods in this room.")
     elif clean_action == "capture_alive":
         if character is not None:
             character.clues += 1
@@ -2656,15 +2694,24 @@ def _remove_optional_side_scene(rooms: list[Any], entry: dict[str, Any] | None) 
     return len(rooms) != before
 
 
+def _latest_tag_manifest_path(data_dir: Path, campaign: CampaignState) -> tuple[str, Path] | tuple[str, None]:
+    adventure_id = next((item for item in reversed(campaign.tag_generated_adventure_ids) if item), "")
+    if not adventure_id:
+        return "", None
+    manifest_path = installed_adventure_dir(data_dir, adventure_id) / ADVENTURE_MANIFEST_FILENAME
+    if not manifest_path.exists():
+        return adventure_id, None
+    return adventure_id, manifest_path
+
+
 def apply_latest_tag_route_to_adventure(data_dir: Path, campaign: CampaignState) -> str:
     route = campaign.tag_adventure_routes[-1] if campaign.tag_adventure_routes else None
     if route is None:
         return "No TAG route marker is available to apply to a generated adventure."
-    adventure_id = next((item for item in reversed(campaign.tag_generated_adventure_ids) if item), "")
+    adventure_id, manifest_path = _latest_tag_manifest_path(data_dir, campaign)
     if not adventure_id:
         return "No generated TAG adventure is available for route rewrite."
-    manifest_path = installed_adventure_dir(data_dir, adventure_id) / ADVENTURE_MANIFEST_FILENAME
-    if not manifest_path.exists():
+    if manifest_path is None:
         return f"Generated TAG adventure {adventure_id} is not installed yet; route marker was saved only in campaign state."
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     source = manifest.setdefault("source", {})
@@ -2743,6 +2790,50 @@ def apply_latest_tag_route_to_adventure(data_dir: Path, campaign: CampaignState)
         route.result_text = f"{route.result_text} Module update: {changed_detail}."
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return f"Applied route marker to {adventure_id}: {changed_detail}."
+
+
+def apply_tag_dragon_reveal_to_latest_adventure(
+    data_dir: Path,
+    campaign: CampaignState,
+    *,
+    dragon_key: str,
+    dragon_label: str,
+) -> str:
+    adventure_id, manifest_path = _latest_tag_manifest_path(data_dir, campaign)
+    if not adventure_id:
+        return "No generated TAG adventure is available for Dragon's Lair update."
+    if manifest_path is None:
+        return f"Generated TAG adventure {adventure_id} is not installed yet; dragon reveal was logged only in campaign state."
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    source = manifest.setdefault("source", {})
+    parameters = source.setdefault("parameters", {})
+    tag_reference = parameters.setdefault("tag_reference", {})
+    if str(tag_reference.get("title") or "") != "Dragon's Lair":
+        return f"Latest generated TAG adventure {adventure_id} is not Dragon's Lair; dragon reveal was logged only in campaign state."
+    dragon_data = TAG_DRAGON_TYPE_FOES.get(dragon_key, TAG_DRAGON_TYPE_FOES["darkness_or_ghoul_dragon"])
+    final = _tag_room_by_id(manifest.get("rooms") if isinstance(manifest.get("rooms"), list) else [], "tag-final-scene")
+    if isinstance(final, dict):
+        final["title"] = str(dragon_data["name"])
+        final["description"] = f"{dragon_data['description']} TAG route update: {dragon_label}."
+        triggers = final.get("triggers")
+        if isinstance(triggers, list):
+            for trigger in triggers:
+                if isinstance(trigger, dict) and isinstance(trigger.get("encounter"), dict):
+                    trigger["encounter"]["foes"] = dragon_data["foes"]
+                    trigger["log"] = f"TAG Dragon's Lair reveal: {dragon_label}. Resolve the printed dragon profile before claiming treasure."
+    tag_reference["dragon_type_revealed"] = dragon_label
+    tag_reference["final_foe_proxy"] = dragon_data["foes"][0]["name"]
+    tag_reference["final_foes"] = dragon_data["foes"]
+    updates = tag_reference.setdefault("module_updates", [])
+    updates.append(
+        {
+            "action": "dragon_type_reveal",
+            "result": dragon_label,
+            "created_at": now_utc(),
+        }
+    )
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    return f"Updated {adventure_id} final scene for Dragon's Lair reveal: {dragon_label}."
 
 
 def resolve_tag_xp_action(
@@ -2923,14 +3014,15 @@ def resolve_tag_scene_action(
         else:
             character.clues -= 2
             roll = roll_d6()
-            dragon = {
-                1: "Small Dragon",
-                2: "Small Dragon",
-                3: "Small Dragon",
-                4: "Young Red Dragon",
-                5: "Young Red Dragon",
-                6: "Darkness Dragon or Ghoul Dragon; split by the printed d6 follow-up.",
-            }[roll]
+            if roll <= 3:
+                dragon_key = "small_dragon"
+            elif roll <= 5:
+                dragon_key = "young_red_dragon"
+            else:
+                dragon_key = "darkness_or_ghoul_dragon"
+            dragon = str(TAG_DRAGON_TYPE_FOES[dragon_key]["name"])
+            if dragon_key == "darkness_or_ghoul_dragon":
+                dragon = f"{dragon}; split by the printed d6 follow-up"
             result = f"{character.name} spends 2 Clues and reveals TAG Dragon's Lair type roll {roll}: {dragon}"
     character.updated_at = now_utc()
     return append_tag_log(
