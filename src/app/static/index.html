@@ -14,6 +14,7 @@
         <p>Character pool, party setup, and dungeon session engine</p>
       </div>
       <div class="topbar-actions">
+        <button id="show-modern-home" type="button" class="icon-button" aria-label="Open new home dashboard" title="Open the new organized home dashboard.">⌂</button>
         <button id="save-session" type="button" class="secondary hidden">Save Game</button>
         <button id="show-setup" type="button" class="secondary hidden">Home Screen</button>
         <div id="api-status" class="status">Connecting</div>
@@ -21,6 +22,169 @@
     </header>
 
     <main class="shell">
+      <section id="modern-home-panel" class="modern-home hidden" aria-label="New home dashboard">
+        <div class="modern-home-head">
+          <div>
+            <h2>Home Dashboard</h2>
+            <p class="muted">Organized campaign, party, TAG, rules, and adventure tools. Existing home remains the default screen.</p>
+          </div>
+          <button id="modern-home-back" type="button" class="secondary" title="Return to the existing default home screen.">Existing Home</button>
+        </div>
+        <div class="modern-home-grid">
+          <details class="modern-home-section" open>
+            <summary>Character Management</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="focus-character-create" title="Open the existing Create character section.">Create/Add</button>
+              <button type="button" data-modern-action="focus-character-list" class="secondary" title="Use the existing roster cards to select or delete characters.">List/Delete</button>
+              <button type="button" data-modern-action="focus-character-xp" class="secondary" title="Select a character from the roster and use their XP controls.">Spend XP</button>
+              <button type="button" data-modern-action="open-bank" class="secondary" title="Open the existing banking dialog for roster or camp banking.">Banking</button>
+              <button type="button" data-modern-action="open-equipment-shop" class="secondary" title="Open the existing equipment shop to buy or sell gear.">Equipment Shop</button>
+              <button type="button" data-modern-action="open-transfer-items" class="secondary" title="Open the existing item and gold transfer dialog.">Transfer Items</button>
+            </div>
+          </details>
+          <details class="modern-home-section" open>
+            <summary>Troupe Management</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="open-troupe-manager" title="Open TAG troupe manager to add, remove, and list troupe members.">Troupe Manager</button>
+              <button type="button" data-modern-action="open-bank-transfer" class="secondary" title="Move roster or legacy bank gold into TAG bank accounts.">Troupe Banking</button>
+              <button type="button" data-modern-action="focus-travel" class="secondary" title="Open TAG travel controls to move the troupe settlement focus.">Travel</button>
+              <button type="button" data-modern-action="focus-settlement" class="secondary" title="Open TAG settlement controls for home settlement name, size, and notes.">Set Home Settlement</button>
+            </div>
+          </details>
+          <details class="modern-home-section" open>
+            <summary>Guild Management</summary>
+            <div class="modern-home-actions">
+              <label class="modern-home-field" for="modern-guild-member">
+                <span>Guild active</span>
+                <input id="modern-guild-member" type="checkbox" title="Marks this TAG troupe as Adventurers Guild members and enables guild-facing benefits." />
+              </label>
+              <label class="modern-home-field" for="modern-guild-coffers">
+                <span>Guild bank gp</span>
+                <input id="modern-guild-coffers" type="number" min="0" step="1" inputmode="numeric" title="Shared Adventurers Guild coffers; separate from character accounts and TAG bank accounts." />
+              </label>
+              <button id="modern-save-guild" type="button" title="Save guild membership and coffer state.">Save Guild</button>
+              <button type="button" data-modern-action="open-troupe-manager" class="secondary" title="Use the troupe manager to add or remove the roster members covered by this guild state.">Add/Remove Members</button>
+              <button type="button" data-modern-action="run-guild-upkeep" class="secondary" title="Charge 10% guild upkeep from coffers and suspend benefits at 0 gp.">Run Upkeep</button>
+              <span class="modern-home-status in-progress" title="Guild loot share, resurrection funding, reroll tracking, and leaving restrictions are planned for the next guild pass.">In progress: full Guild obligations</span>
+            </div>
+          </details>
+          <details class="modern-home-section" open>
+            <summary>Party Management</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="focus-party-builder" title="Open the existing party builder to create or edit a party.">Create/Add Party</button>
+              <button type="button" data-modern-action="focus-party-list" class="secondary" title="Use existing party cards to edit or delete saved parties.">List/Delete Party</button>
+              <button type="button" data-modern-action="open-bank-transfer" class="secondary" title="Move all roster gold into TAG bank accounts when TAG banking is enabled.">Bank All Gold to TAG</button>
+              <button type="button" data-modern-action="focus-hidden-trove" class="secondary" title="Jump to hidden treasure trove hide and recover controls.">Treasure Trove Tasks</button>
+            </div>
+          </details>
+          <details class="modern-home-section" open>
+            <summary>Equipment Shop</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="open-equipment-shop" title="Open the existing shop dialog and select a buyer.">Buy/Sell Equipment</button>
+              <span class="modern-home-status" title="Guild mundane equipment discount is applied when Guild members is enabled.">Guild discount applies when active</span>
+            </div>
+          </details>
+          <details id="modern-finance-section" class="modern-home-section" open>
+            <summary>Banking and Finance</summary>
+            <div class="modern-home-actions">
+              <label class="modern-home-field" for="modern-tag-character">
+                <span>Character</span>
+                <select id="modern-tag-character" title="Character who spends Clues or moves treasure for TAG finance actions."></select>
+              </label>
+              <label class="modern-home-field" for="modern-trove-gold">
+                <span>Trove gp</span>
+                <input id="modern-trove-gold" type="number" min="0" step="1" inputmode="numeric" title="Gold to hide in the TAG hidden treasure trove." />
+              </label>
+              <label class="modern-home-field" for="modern-trove-item">
+                <span>Trove item</span>
+                <input id="modern-trove-item" type="text" maxlength="100" title="Optional item stack to hide in the TAG hidden treasure trove." />
+              </label>
+              <button id="modern-hide-trove" type="button" title="Hide the entered gold or item in the TAG hidden treasure trove.">Hide Treasure</button>
+              <button id="modern-roll-trove-risk" type="button" class="secondary" title="Roll the TAG hidden treasure trove 3d6 theft risk between adventures.">Roll Trove Risk</button>
+              <button id="modern-recover-trove" type="button" class="secondary" title="Spend 4 Clues and roll Interrogation vs L6 to recover a stolen hidden trove.">Recover Trove</button>
+              <button id="modern-recover-bank-robbery" type="button" class="secondary" title="Spend 3 Clues, create the Bandit Hideout lead, and select it in the Adventure list.">Recover Bank Robbery</button>
+              <button type="button" data-modern-action="open-bank-transfer" class="secondary" title="Open detailed TAG bank transfer controls.">Bank Transfers</button>
+              <div id="modern-finance-result" class="modern-home-result muted" role="status"></div>
+            </div>
+          </details>
+          <details class="modern-home-section">
+            <summary>Settlement Management</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="focus-settlement" title="Open settlement name, size, and notes controls.">Create/Update Settlement</button>
+              <button type="button" data-modern-action="focus-travel" class="secondary" title="Travel to a new TAG settlement and roll its size.">Travel to Settlement</button>
+            </div>
+          </details>
+          <details class="modern-home-section">
+            <summary>Campaign Management</summary>
+            <div class="modern-home-actions">
+              <span class="modern-home-status in-progress" title="World creation, hex map editor, and settlement placement are placeholders for a later campaign-map phase.">In progress: world, hex map, settlement placement</span>
+            </div>
+          </details>
+          <details class="modern-home-section">
+            <summary>Settings / Options</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="focus-ruleset" title="Jump to ruleset, campaign mode, map size, and TAG banking options.">Rules Selections</button>
+            </div>
+          </details>
+          <details class="modern-home-section">
+            <summary>AI Adventure Generation</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="focus-ai-adventure" title="Open AI adventure prompt, import, validation, and management controls.">AI Adventure Tools</button>
+              <span class="modern-home-status in-progress" title="Export, rename, and delete AI adventure management needs a later pass.">In progress: export/name/delete management</span>
+            </div>
+          </details>
+          <details class="modern-home-section" open>
+            <summary>Go Adventure!</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="focus-start-adventure" title="Select party/adventure and start a random, AI, or module adventure.">Choose and Start</button>
+              <button type="button" data-modern-action="start-selected-adventure" class="secondary" title="Start the currently selected party and adventure using the existing start controls.">Start Selected</button>
+            </div>
+          </details>
+          <details class="modern-home-section">
+            <summary>Rules Reference</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="focus-rules-reference" title="Open the searchable rules reference built from local rules data.">Open Rules Reference</button>
+              <a class="link-button secondary" href="/docs/Checking/TAG_SECTION_GUIDE.html" target="_blank" rel="noopener" title="Open the TAG workflow guide.">TAG Guide</a>
+            </div>
+          </details>
+          <details class="modern-home-section">
+            <summary>Tables List / Reference</summary>
+            <div class="modern-home-actions">
+              <button type="button" data-modern-action="focus-rules-tables" title="Open structured rules tables and catalogs.">Open Tables</button>
+            </div>
+          </details>
+          <details class="modern-home-section">
+            <summary>Credits / History / Background</summary>
+            <div class="modern-home-actions">
+              <a class="link-button secondary" href="/Rules/Four_Against_Darkness_Expanded_Edition.pdf" target="_blank" rel="noopener" title="Open the Expanded Edition PDF.">Expanded Edition PDF</a>
+              <a class="link-button secondary" href="/Rules/Four-Against-the-Abyss.pdf" target="_blank" rel="noopener" title="Open Four Against the Abyss PDF.">Abyss PDF</a>
+              <a class="link-button secondary" href="/Rules/Four_Against_the_Forsaken_Depths.pdf" target="_blank" rel="noopener" title="Open Forsaken Depths PDF.">Forsaken Depths PDF</a>
+              <a class="link-button secondary" href="/Rules/Tales_from_the_adventurers_guild.pdf" target="_blank" rel="noopener" title="Open Tales from the Adventurers Guild PDF.">TAG PDF</a>
+              <a class="link-button secondary" href="/Rules/Four Against_the_Netherworld.pdf" target="_blank" rel="noopener" title="Open Four Against the Netherworld PDF.">Netherworld PDF</a>
+              <a class="link-button secondary" href="/Rules/The_Courtship_of_Flower_Demons.pdf" target="_blank" rel="noopener" title="Open The Courtship of Flower Demons PDF.">Flower Demons PDF</a>
+              <span class="modern-home-status in-progress" title="Background summaries and artwork imports need a separate copyright/signoff-safe pass.">In progress: curated background/artwork</span>
+            </div>
+          </details>
+          <details class="modern-home-section">
+            <summary>Game Guides</summary>
+            <div class="modern-home-actions">
+              <a class="link-button secondary" href="/docs/Checking/TAG_SECTION_GUIDE.html" target="_blank" rel="noopener" title="Open the TAG section guide.">TAG Section Guide</a>
+              <span class="modern-home-status in-progress" title="Starter guide and Expanded Edition choosing-character guide are planned documentation tasks.">In progress: starter and character-choice guides</span>
+            </div>
+          </details>
+          <details class="modern-home-section">
+            <summary>Developer Section</summary>
+            <div class="modern-home-actions">
+              <label class="modern-home-field" for="modern-dev-password">
+                <span>Password</span>
+                <input id="modern-dev-password" type="password" value="7979" title="Developer section password. Default is 7979." />
+              </label>
+              <button type="button" data-modern-action="focus-map-editor" title="Open map element editor controls where available.">Map Elements Editor</button>
+              <span class="modern-home-status in-progress" title="Adventure PDF import, adventure editor, icon editor, and scratch adventure creation are planned developer tools.">In progress: import/editor tools</span>
+            </div>
+          </details>
+        </div>
+      </section>
       <section id="setup-panel" class="workspace">
         <div class="panel">
           <div class="panel-heading">

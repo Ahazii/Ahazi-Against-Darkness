@@ -353,6 +353,7 @@ app = FastAPI(title="Ahazi Against Darkness", version="0.26.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 app.mount("/docs", StaticFiles(directory=settings.root_dir / "docs"), name="docs")
+app.mount("/Rules", StaticFiles(directory=settings.root_dir / "Rules", check_dir=False), name="rules-pdfs")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -489,6 +490,21 @@ async def campaign_tag_hidden_trove_risk() -> dict[str, Any]:
     entry = roll_hidden_treasure_trove_risk(campaign)
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign, "entry": entry}
+
+
+@app.post("/api/campaign/tag/hidden-trove-recovery")
+async def campaign_tag_hidden_trove_recovery(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, recover_hidden_treasure_trove, save_campaign
+
+    character_id = str(payload.get("character_id") or "").strip()
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    campaign = load_campaign(store)
+    entry = recover_hidden_treasure_trove(campaign, character)
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
 
 
 @app.post("/api/campaign/tag/treasure-map-price")
@@ -924,6 +940,42 @@ async def campaign_tag_finance_action(payload: dict[str, Any]) -> dict[str, Any]
         store.save("characters", character)
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/bank-robbery-recovery")
+async def campaign_tag_bank_robbery_recovery(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.adventure_import import import_adventure_manifest
+    from .engine.tag_campaign import build_tag_adventure_manifest, load_campaign, resolve_tag_finance_action, save_campaign
+
+    character_id = str(payload.get("character_id") or "").strip()
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    campaign = load_campaign(store)
+    entry = resolve_tag_finance_action(campaign, character, finance_action="robbery_recovery")
+    adventure_payload: dict[str, Any] | None = None
+    if "spends 3 Clues" in entry.result_text:
+        manifest, adventure_entry = build_tag_adventure_manifest(campaign, lead_type="thematic_dungeon", detail="6")
+        path, result = import_adventure_manifest(
+            settings.root_dir,
+            settings.data_dir,
+            manifest,
+            rules_repo=rules,
+            overwrite=True,
+        )
+        if not result.valid or path is None:
+            raise HTTPException(status_code=400, detail="; ".join(result.errors) or "Bandit Hideout creation failed.")
+        adventure_payload = {
+            "entry": adventure_entry,
+            "adventure_id": manifest["id"],
+            "title": manifest["title"],
+            "room_count": len(manifest.get("rooms", [])),
+            "quest_objective": (manifest.get("quest") or {}).get("objective_text"),
+            "warnings": result.warnings,
+        }
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry, "adventure": adventure_payload}
 
 
 @app.post("/api/campaign/tag/create-adventure")

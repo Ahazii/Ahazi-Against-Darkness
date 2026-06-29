@@ -209,6 +209,20 @@ const exportPlayerDataBtn = document.getElementById("export-player-data");
 const importPlayerDataBtn = document.getElementById("import-player-data");
 const importPlayerFile = document.getElementById("import-player-file");
 const setupPanel = document.getElementById("setup-panel");
+const showModernHomeBtn = document.getElementById("show-modern-home");
+const modernHomePanel = document.getElementById("modern-home-panel");
+const modernHomeBack = document.getElementById("modern-home-back");
+const modernTagCharacter = document.getElementById("modern-tag-character");
+const modernTroveGold = document.getElementById("modern-trove-gold");
+const modernTroveItem = document.getElementById("modern-trove-item");
+const modernHideTrove = document.getElementById("modern-hide-trove");
+const modernRollTroveRisk = document.getElementById("modern-roll-trove-risk");
+const modernRecoverTrove = document.getElementById("modern-recover-trove");
+const modernRecoverBankRobbery = document.getElementById("modern-recover-bank-robbery");
+const modernFinanceResult = document.getElementById("modern-finance-result");
+const modernGuildMember = document.getElementById("modern-guild-member");
+const modernGuildCoffers = document.getElementById("modern-guild-coffers");
+const modernSaveGuild = document.getElementById("modern-save-guild");
 const saveCount = document.getElementById("save-count");
 const savedGamesEl = document.getElementById("saved-games");
 const activeGamesEl = document.getElementById("active-games");
@@ -10800,6 +10814,107 @@ function setupViewVisible() {
   return Boolean(setupPanel && !setupPanel.classList.contains("hidden"));
 }
 
+function modernHomeVisible() {
+  return Boolean(modernHomePanel && !modernHomePanel.classList.contains("hidden"));
+}
+
+function openLegacyHomeAt(element) {
+  showSetupView({ rememberView: false });
+  if (!element) return;
+  element.classList.remove("hidden");
+  if (element.tagName === "DETAILS") element.open = true;
+  element.scrollIntoView({ behavior: "smooth", block: "start" });
+  const focusTarget = element.matches("button, input, select, textarea, a") ? element : element.querySelector("button, input, select, textarea, a");
+  focusTarget?.focus?.({ preventScroll: true });
+}
+
+function showModernHomeView() {
+  modernHomePanel?.classList.remove("hidden");
+  setupPanel?.classList.add("hidden");
+  sessionPanel?.classList.add("hidden");
+  showSetupBtn?.classList.add("hidden");
+  saveSessionBtn?.classList.add("hidden");
+  renderModernHomePanel(state.campaign);
+  updateResumeSessionButtonVisibility();
+  setStatus("New home dashboard open.");
+}
+
+function runModernHomeAction(action) {
+  switch (action) {
+    case "focus-character-create":
+      openLegacyHomeAt(document.getElementById("character-create-section"));
+      break;
+    case "focus-character-list":
+    case "focus-character-xp":
+      openLegacyHomeAt(charactersEl);
+      break;
+    case "open-bank":
+      showSetupView({ rememberView: false });
+      bankSetupBtn?.click();
+      break;
+    case "open-equipment-shop":
+      showSetupView({ rememberView: false });
+      equipmentShopSetupBtn?.click();
+      break;
+    case "open-transfer-items":
+      showSetupView({ rememberView: false });
+      transferItemsSetupBtn?.click();
+      break;
+    case "open-troupe-manager":
+      showSetupView({ rememberView: false });
+      openTagTroupeDialog();
+      break;
+    case "open-bank-transfer":
+      showSetupView({ rememberView: false });
+      openTagBankTransferDialog();
+      break;
+    case "focus-travel":
+      openLegacyHomeAt(tagTravelSettlement?.closest("details"));
+      break;
+    case "focus-settlement":
+      openLegacyHomeAt(tagSettlementName?.closest("details"));
+      break;
+    case "focus-hidden-trove":
+      modernHomePanel?.classList.remove("hidden");
+      document.getElementById("modern-finance-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      modernTagCharacter?.focus();
+      break;
+    case "focus-party-builder":
+      openLegacyHomeAt(partyForm);
+      break;
+    case "focus-party-list":
+      openLegacyHomeAt(partiesEl);
+      break;
+    case "run-guild-upkeep":
+      runModernGuildUpkeep().catch(handleError);
+      break;
+    case "focus-ruleset":
+      openLegacyHomeAt(rulesetSelect?.closest("label"));
+      break;
+    case "focus-ai-adventure":
+      openLegacyHomeAt(aiAdventurePanel);
+      break;
+    case "focus-start-adventure":
+      openLegacyHomeAt(startSession);
+      break;
+    case "start-selected-adventure":
+      showSetupView({ rememberView: false });
+      startSession?.click();
+      break;
+    case "focus-rules-reference":
+      openLegacyHomeAt(document.getElementById("rules-reference-section"));
+      break;
+    case "focus-rules-tables":
+      openLegacyHomeAt(document.getElementById("rules-tables-section"));
+      break;
+    case "focus-map-editor":
+      setStatus("Developer map editor entry point is marked in progress on the new dashboard.");
+      break;
+    default:
+      setStatus("Dashboard action is not wired yet.");
+  }
+}
+
 function renderSetupSessionListsFromCache() {
   renderActiveGames();
   renderSavedGames();
@@ -11703,6 +11818,7 @@ function renderTagCharacterOptions(campaign = state.campaign) {
   fillTagCharacterSelect(tagLockerCharacter, roster, tagLockerCharacter?.value);
   fillTagCharacterSelect(tagActionCharacter, roster, tagActionCharacter?.value);
   fillTagCharacterSelect(tagBankTransferCharacter, roster, tagBankTransferCharacter?.value);
+  fillTagCharacterSelect(modernTagCharacter, roster, modernTagCharacter?.value);
   if (tagTroupeActive) {
     const memberIds = tagTroupeMemberIds(campaign);
     const memberSet = new Set(memberIds);
@@ -11734,10 +11850,25 @@ function renderTagCharacterOptions(campaign = state.campaign) {
   }
   renderTagTroupeSummary(campaign);
   renderTagTroupeDialog(campaign);
+  renderModernHomePanel(campaign);
 }
 
 function renderTagClueCharacterOptions() {
   renderTagCharacterOptions();
+}
+
+function renderModernHomePanel(campaign = state.campaign) {
+  if (!modernHomePanel || !campaign) return;
+  if (modernGuildMember) modernGuildMember.checked = Boolean(campaign.tag_guild_member);
+  if (modernGuildCoffers) modernGuildCoffers.value = String(campaign.tag_guild_coffers_gp ?? 0);
+  if (modernFinanceResult) {
+    const stolenGold = campaign.tag_hidden_trove_stolen_gold_gp || 0;
+    const stolenItems = (campaign.tag_hidden_trove_stolen_items || []).length;
+    const bankTotal = (campaign.tag_bank_accounts || []).reduce((total, account) => total + (account.gold_gp || 0), 0);
+    modernFinanceResult.textContent =
+      `TAG bank ${bankTotal} gp · hidden trove ${campaign.tag_storage_gold_gp || 0} gp` +
+      (campaign.tag_hidden_trove_robbed ? ` · stolen ${stolenGold} gp / ${stolenItems} item stack(s)` : "");
+  }
 }
 
 function renderTagSettlementLog(campaign) {
@@ -11902,6 +12033,19 @@ async function rollHiddenTroveRisk() {
   setStatus(result.entry?.result_text || "TAG hidden treasure trove risk rolled.");
 }
 
+async function recoverHiddenTrove() {
+  const characterId = modernTagCharacter?.value || tagStorageCharacter?.value || tagActionCharacter?.value || "";
+  if (!characterId) throw new Error("Choose a character to recover the hidden trove.");
+  const result = await api("/api/campaign/tag/hidden-trove-recovery", {
+    method: "POST",
+    body: JSON.stringify({ character_id: characterId }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG hidden trove recovery resolved.");
+}
+
 async function rollTreasureMapPrice() {
   const result = await api("/api/campaign/tag/treasure-map-price", { method: "POST" });
   state.campaign = result.campaign;
@@ -12003,6 +12147,26 @@ async function storeTagTreasure() {
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG treasure stored.");
+}
+
+async function modernHideTagTrove() {
+  if (!modernTagCharacter?.value) throw new Error("Choose a character for the hidden trove.");
+  const result = await api("/api/campaign/tag/store-treasure", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: modernTagCharacter.value,
+      storage: "trove",
+      gold_gp: Number(modernTroveGold?.value || 0),
+      item_name: modernTroveItem?.value || "",
+      quantity: 1,
+    }),
+  });
+  state.campaign = result.campaign;
+  if (modernTroveGold) modernTroveGold.value = "";
+  if (modernTroveItem) modernTroveItem.value = "";
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG hidden trove updated.");
 }
 
 async function withdrawTagStorage() {
@@ -12251,6 +12415,55 @@ async function runTagFinanceAction() {
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG finance action logged.");
+}
+
+async function recoverTagBankRobbery() {
+  const characterId = modernTagCharacter?.value || tagActionCharacter?.value || "";
+  if (!characterId) throw new Error("Choose a character with 3 Clues for bank robbery recovery.");
+  const result = await api("/api/campaign/tag/bank-robbery-recovery", {
+    method: "POST",
+    body: JSON.stringify({ character_id: characterId }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  if (result.adventure?.adventure_id) {
+    state.adventures = await api("/api/adventures");
+    renderAdventures();
+    if (adventureSelect) {
+      adventureSelect.value = result.adventure.adventure_id;
+      syncAdventureModeUi();
+    }
+    setStatus(`${result.entry?.result_text || "TAG bank robbery recovery resolved."} Created ${result.adventure.title}.`);
+  } else {
+    setStatus(result.entry?.result_text || "TAG bank robbery recovery resolved.");
+  }
+  renderTagCampaignSettlementPanel(state.campaign);
+}
+
+async function saveModernGuild() {
+  const result = await api("/api/campaign/tag/troupe", {
+    method: "POST",
+    body: JSON.stringify({
+      troupe_name: tagTroupeName?.value || state.campaign?.tag_troupe_name || "Adventuring Troupe",
+      member_character_ids: tagTroupeMemberIds(state.campaign),
+      active_character_ids: state.campaign?.tag_troupe_active_character_ids || [],
+      guild_member: Boolean(modernGuildMember?.checked),
+      guild_coffers_gp: Number(modernGuildCoffers?.value || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus("TAG guild state saved.");
+}
+
+async function runModernGuildUpkeep() {
+  const result = await api("/api/campaign/tag/finance-action", {
+    method: "POST",
+    body: JSON.stringify({ finance_action: "guild_upkeep", amount_gp: 0, note: "Modern home Guild Management" }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG guild upkeep charged.");
 }
 
 function isForsakenDepthsRulesetSelected() {
@@ -27713,6 +27926,7 @@ function renderLog(session) {
 function showGameView(options = {}) {
   const { rememberView = true } = options;
   setupPanel.classList.add("hidden");
+  modernHomePanel?.classList.add("hidden");
   sessionPanel.classList.remove("hidden");
   showSetupBtn.classList.remove("hidden");
   saveSessionBtn.classList.remove("hidden");
@@ -27722,6 +27936,7 @@ function showGameView(options = {}) {
 
 function showSetupView(options = {}) {
   const { rememberView = true } = options;
+  modernHomePanel?.classList.add("hidden");
   setupPanel.classList.remove("hidden");
   sessionPanel.classList.add("hidden");
   showSetupBtn.classList.add("hidden");
@@ -27732,6 +27947,19 @@ function showSetupView(options = {}) {
   updateSetupBankButton();
   if (rememberView) writeActiveView("setup");
 }
+
+showModernHomeBtn?.addEventListener("click", showModernHomeView);
+modernHomeBack?.addEventListener("click", () => showSetupView({ rememberView: false }));
+modernHomePanel?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-modern-action]");
+  if (!button) return;
+  runModernHomeAction(button.dataset.modernAction || "");
+});
+modernHideTrove?.addEventListener("click", () => modernHideTagTrove().catch(handleError));
+modernRollTroveRisk?.addEventListener("click", () => rollHiddenTroveRisk().catch(handleError));
+modernRecoverTrove?.addEventListener("click", () => recoverHiddenTrove().catch(handleError));
+modernRecoverBankRobbery?.addEventListener("click", () => recoverTagBankRobbery().catch(handleError));
+modernSaveGuild?.addEventListener("click", () => saveModernGuild().catch(handleError));
 
 characterForm.addEventListener("submit", async (event) => {
   event.preventDefault();

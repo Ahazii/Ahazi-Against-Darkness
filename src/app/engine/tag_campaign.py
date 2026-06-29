@@ -1092,9 +1092,17 @@ def tag_service_status_text(key: str, status: str, size: int) -> str:
 def roll_hidden_treasure_trove_risk(campaign: CampaignState) -> TagDowntimeLogEntry:
     total, rolls = roll_3d6()
     if total <= 5:
+        stolen_items = [item for item in campaign.tag_stored_items if item.storage == "trove"]
+        campaign.tag_hidden_trove_robbed = True
+        campaign.tag_hidden_trove_stolen_gold_gp += campaign.tag_storage_gold_gp
+        campaign.tag_hidden_trove_stolen_items.extend(stolen_items)
+        campaign.tag_storage_gold_gp = 0
+        campaign.tag_stored_items = [item for item in campaign.tag_stored_items if item.storage != "trove"]
+        item_text = f" and {len(stolen_items)} stored item stack(s)" if stolen_items else ""
         result = (
             f"Hidden treasure trove risk roll {total} ({'+'.join(str(roll) for roll in rolls)}): "
-            "the cache is discovered and stolen. Spend 4 Clues and pass Interrogation vs L6 to recover it."
+            f"the cache is discovered and stolen. {campaign.tag_hidden_trove_stolen_gold_gp} gp{item_text} are marked stolen. "
+            "Spend 4 Clues and pass Interrogation vs L6 to recover it."
         )
     else:
         result = f"Hidden treasure trove risk roll {total} ({'+'.join(str(roll) for roll in rolls)}): the cache remains safe."
@@ -1108,6 +1116,55 @@ def roll_hidden_treasure_trove_risk(campaign: CampaignState) -> TagDowntimeLogEn
     campaign.tag_downtime_log.append(entry)
     trim_tag_logs(campaign)
     return entry
+
+
+def recover_hidden_treasure_trove(campaign: CampaignState, character: Character) -> TagDowntimeLogEntry:
+    if not campaign.tag_hidden_trove_robbed:
+        return append_tag_log(
+            campaign,
+            action="hidden_trove_recovery",
+            character=character,
+            result_text="No stolen hidden treasure trove is currently marked for recovery.",
+        )
+    if character.clues < 4:
+        return append_tag_log(
+            campaign,
+            action="hidden_trove_recovery",
+            character=character,
+            result_text=f"{character.name} needs 4 Clues to recover the hidden treasure trove; current Clues {character.clues}.",
+        )
+    character.clues -= 4
+    roll = roll_d6()
+    modifier = streetwise_modifier(character, action="interrogation")
+    total = roll + modifier
+    if total >= 6:
+        recovered_gold = campaign.tag_hidden_trove_stolen_gold_gp
+        recovered_items = campaign.tag_hidden_trove_stolen_items
+        campaign.tag_storage_gold_gp += recovered_gold
+        campaign.tag_stored_items.extend(recovered_items)
+        campaign.tag_hidden_trove_stolen_gold_gp = 0
+        campaign.tag_hidden_trove_stolen_items = []
+        campaign.tag_hidden_trove_robbed = False
+        result = (
+            f"{character.name} spends 4 Clues and passes Interrogation vs L6 "
+            f"({roll} {modifier:+d} = {total}); hidden trove recovered: {recovered_gold} gp "
+            f"and {len(recovered_items)} item stack(s)."
+        )
+    else:
+        result = (
+            f"{character.name} spends 4 Clues but fails Interrogation vs L6 "
+            f"({roll} {modifier:+d} = {total}); the trove remains stolen and the next Riff-Raff encounter hates the interrogator."
+        )
+    character.updated_at = now_utc()
+    return append_tag_log(
+        campaign,
+        action="hidden_trove_recovery",
+        character=character,
+        roll=roll,
+        modifier=modifier,
+        total=total,
+        result_text=result,
+    )
 
 
 def roll_treasure_map_price(campaign: CampaignState) -> TagDowntimeLogEntry:

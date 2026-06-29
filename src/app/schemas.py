@@ -711,6 +711,9 @@ class CampaignState(BaseModel):
     tag_used_rumor_numbers: list[int] = Field(default_factory=list)
     tag_generated_adventure_ids: list[str] = Field(default_factory=list)
     tag_stored_items: list[TagStoredItemState] = Field(default_factory=list)
+    tag_hidden_trove_robbed: bool = False
+    tag_hidden_trove_stolen_gold_gp: int = Field(default=0, ge=0)
+    tag_hidden_trove_stolen_items: list[TagStoredItemState] = Field(default_factory=list)
     tag_magic_lockers: list[TagMagicLockerState] = Field(default_factory=list)
     tag_bank_accounts: list[TagBankAccountState] = Field(default_factory=list)
     tag_adventure_routes: list[TagAdventureRouteState] = Field(default_factory=list)

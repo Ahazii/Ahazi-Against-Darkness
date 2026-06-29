@@ -51,6 +51,28 @@ body.combat-focus-active {
   gap: 10px;
 }
 
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #171814;
+  color: var(--text);
+  padding: 0;
+  font: 700 16px/1 "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  border-color: var(--accent);
+  background: #2b2c24;
+  outline: none;
+}
+
 h1,
 h2,
 p {
@@ -83,6 +105,80 @@ h2 {
   display: grid;
   grid-template-columns: repeat(3, minmax(260px, 1fr));
   gap: 18px;
+}
+
+.modern-home {
+  display: grid;
+  gap: 14px;
+}
+
+.modern-home-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 14px;
+}
+
+.modern-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 12px;
+}
+
+.modern-home-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: clip;
+}
+
+.modern-home-section > summary {
+  min-height: 38px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-weight: 700;
+  background: #202118;
+  border-bottom: 1px solid transparent;
+}
+
+.modern-home-section[open] > summary {
+  border-bottom-color: var(--line);
+}
+
+.modern-home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px;
+}
+
+.modern-home-field {
+  display: grid;
+  gap: 4px;
+  min-width: 130px;
+  flex: 1 1 150px;
+}
+
+.modern-home-status,
+.modern-home-result {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid #3c3a30;
+  border-radius: 6px;
+  background: #171814;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.modern-home-status.in-progress {
+  border-color: #6a5a32;
+  color: #dfc176;
 }
 
 .panel {

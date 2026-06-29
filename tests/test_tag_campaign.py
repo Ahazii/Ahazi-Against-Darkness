@@ -12,6 +12,7 @@ from app.engine.tag_campaign import (
     follow_treasure_map,
     look_for_clues,
     purchase_tag_service,
+    recover_hidden_treasure_trove,
     roll_gambling_house,
     roll_hidden_treasure_trove_risk,
     roll_aspergillum_break_chance,
@@ -204,6 +205,8 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
 
 def test_tag_hidden_treasure_trove_risk_roll(monkeypatch) -> None:
     campaign = default_campaign()
+    hero = _character(gold=100, clues=4, save_bonus=1)
+    store_tag_treasure(campaign, hero, storage="trove", gold_gp=50, item_name="Ruby", quantity=1)
     rolls = iter([1, 2, 2])
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
 
@@ -211,7 +214,19 @@ def test_tag_hidden_treasure_trove_risk_roll(monkeypatch) -> None:
 
     assert entry.action == "hidden_treasure_trove_risk"
     assert entry.total == 5
+    assert campaign.tag_hidden_trove_robbed is True
+    assert campaign.tag_hidden_trove_stolen_gold_gp == 50
+    assert campaign.tag_storage_gold_gp == 0
     assert "discovered and stolen" in entry.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 5)
+    recovered = recover_hidden_treasure_trove(campaign, hero)
+
+    assert hero.clues == 0
+    assert campaign.tag_hidden_trove_robbed is False
+    assert campaign.tag_storage_gold_gp == 50
+    assert campaign.tag_hidden_trove_stolen_gold_gp == 0
+    assert "hidden trove recovered" in recovered.result_text
 
 
 def test_tag_treasure_map_price_uses_exploding_sixes(monkeypatch) -> None:

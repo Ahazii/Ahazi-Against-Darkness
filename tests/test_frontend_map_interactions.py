@@ -1796,6 +1796,17 @@ def test_tag_settlement_apothecary_panel_is_separate_from_camp_panel() -> None:
 
 def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     for element_id in [
+        "show-modern-home",
+        "modern-home-panel",
+        "modern-home-back",
+        "modern-tag-character",
+        "modern-hide-trove",
+        "modern-roll-trove-risk",
+        "modern-recover-trove",
+        "modern-recover-bank-robbery",
+        "modern-guild-member",
+        "modern-guild-coffers",
+        "modern-save-guild",
         "tag-troupe-name",
         "tag-troupe-active",
         "tag-save-troupe",
@@ -1866,8 +1877,16 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "/api/campaign/tag/guild-marker",
         "/api/campaign/tag/finance-action",
         "/api/campaign/tag/bank-migration",
+        "/api/campaign/tag/hidden-trove-recovery",
+        "/api/campaign/tag/bank-robbery-recovery",
     ]:
         assert endpoint in APP_JS
+    assert 'app.mount("/Rules"' in Path("src/app/main.py").read_text(encoding="utf-8")
+    assert "function showModernHomeView" in APP_JS
+    assert "function recoverTagBankRobbery" in APP_JS
+    assert "function recoverHiddenTrove" in APP_JS
+    assert "function saveModernGuild" in APP_JS
+    assert 'href="/Rules/Tales_from_the_adventurers_guild.pdf"' in INDEX_HTML
     assert "TAG_SETTLEMENT_TOOLTIPS.storageKind" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.followMap" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.createAdventure" in APP_JS
