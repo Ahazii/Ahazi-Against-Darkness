@@ -167,6 +167,32 @@ function formatCharacter(character) {
   return `${character.name} (${character.class_name}, L${character.level}, ${character.gold || 0}gp, ${character.clues || 0} Clues)`;
 }
 
+function modernTitleFromKey(key) {
+  return String(key || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function modernStatusLabel(status) {
+  const labels = {
+    full: "Full",
+    implemented: "Implemented",
+    partial: "Partial",
+    planned: "Planned",
+    validated: "Validated",
+    not_in_app: "Not in app",
+  };
+  return labels[status] || modernTitleFromKey(status || "reference");
+}
+
+function modernSearchText(value) {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map((item) => modernSearchText(item)).join(" ");
+  if (typeof value === "object") return Object.values(value).map((item) => modernSearchText(item)).join(" ");
+  return "";
+}
+
 function partyNamesForCharacter(characterId) {
   return modernState.parties.filter((party) => (party.character_ids || []).includes(characterId)).map((party) => party.name);
 }
@@ -1038,33 +1064,91 @@ async function renderRulesReference() {
     const payload = await api("/api/rules/reference");
     modernState.rulesReference = Array.isArray(payload) ? payload : (payload.entries || []);
   }
-  const panel = card("Rules Reference", "Search curated implementation reference entries.");
+  const panel = card("Rules Reference", "Search every curated implementation reference entry from the app reference index.");
   const search = input("search", "modern-rules-search", "Filter rules reference entries.");
   const categories = [...new Set(modernState.rulesReference.map((entry) => entry.category || "rules"))].sort();
   const category = select("modern-rules-category", "Filter by rules category.", [["", "All categories"], ...categories.map((item) => [item, item])]);
-  const sort = select("modern-rules-sort", "Sort rules reference entries.", [["title", "Title"], ["category", "Category"], ["status", "Status"]]);
+  const statuses = [...new Set(modernState.rulesReference.map((entry) => entry.implementation_status || "reference"))].sort();
+  const status = select("modern-rules-status", "Filter by implementation status.", [["", "All statuses"], ...statuses.map((item) => [item, modernStatusLabel(item)])]);
+  const source = select("modern-rules-source", "Filter entries by whether they cite a printed source page.", [["", "All source refs"], ["with", "With source page"], ["app", "App-only / no source page"]]);
+  const sort = select("modern-rules-sort", "Sort rules reference entries.", [["category", "Category"], ["title", "Title"], ["implementation_status", "Status"], ["source_page", "Source page"]]);
   const results = el("div", "modern-list");
-  panel.append(field("Search", search), field("Category", category), field("Sort", sort), results);
+  const controls = el("div", "modern-filterbar");
+  controls.append(field("Search", search), field("Category", category), field("Status", status), field("Source", source), field("Sort", sort));
+  const rowActions = actions();
+  rowActions.append(
+    button("Expand All", "Open every visible rules reference card.", async () => {
+      results.querySelectorAll("details").forEach((item) => { item.open = true; });
+    }),
+    button("Collapse All", "Close every visible rules reference card.", async () => {
+      results.querySelectorAll("details").forEach((item) => { item.open = false; });
+    })
+  );
+  panel.append(controls, rowActions, results);
   const draw = () => {
     results.replaceChildren();
     const needle = search.value.toLowerCase();
     const rows = modernState.rulesReference
       .filter((entry) => !category.value || (entry.category || "rules") === category.value)
-      .filter((entry) => `${entry.title} ${entry.summary || ""} ${entry.body} ${entry.category || ""} ${entry.status || ""} ${entry.source_page || ""}`.toLowerCase().includes(needle))
-      .sort((a, b) => String(a[sort.value] || "").localeCompare(String(b[sort.value] || "")) || String(a.title || "").localeCompare(String(b.title || "")));
-    results.appendChild(el("p", "muted", `${rows.length} matching rule reference entr${rows.length === 1 ? "y" : "ies"}.`));
-    for (const item of rows) {
-      const row = el("div", "modern-row");
-      row.append(
-        el("strong", "", item.title),
-        el("span", "muted", `${item.category || "rules"} · ${item.status || "reference"}${item.source_page ? ` · p.${item.source_page}` : ""}`),
-        el("p", "", item.summary || item.body || "")
+      .filter((entry) => !status.value || (entry.implementation_status || "reference") === status.value)
+      .filter((entry) => source.value !== "with" || Boolean(entry.source_page))
+      .filter((entry) => source.value !== "app" || !entry.source_page)
+      .filter((entry) => `${entry.title} ${entry.summary || ""} ${entry.body} ${entry.category || ""} ${entry.implementation_status || ""} ${entry.source_page || ""} ${(entry.keywords || []).join(" ")}`.toLowerCase().includes(needle))
+      .sort((a, b) => String(a[sort.value] || "").localeCompare(String(b[sort.value] || ""), undefined, { numeric: true }) || String(a.title || "").localeCompare(String(b.title || "")));
+    const byCategory = rows.reduce((groups, entry) => {
+      const key = entry.category || "rules";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(entry);
+      return groups;
+    }, {});
+    const summary = el("p", "muted", `${rows.length} matching rule reference entr${rows.length === 1 ? "y" : "ies"} across ${Object.keys(byCategory).length} categor${Object.keys(byCategory).length === 1 ? "y" : "ies"}.`);
+    results.appendChild(summary);
+    for (const [groupName, items] of Object.entries(byCategory).sort(([a], [b]) => a.localeCompare(b))) {
+      const group = document.createElement("details");
+      group.className = "modern-row modern-reference-group";
+      group.open = rows.length <= 25 || Boolean(search.value);
+      const groupSummary = document.createElement("summary");
+      groupSummary.title = `Show or hide ${items.length} ${groupName} reference entries.`;
+      groupSummary.append(el("strong", "", modernTitleFromKey(groupName)), el("span", "muted", `${items.length} entr${items.length === 1 ? "y" : "ies"}`));
+      group.appendChild(groupSummary);
+      const groupBody = el("div", "modern-reference-group-body");
+      for (const item of items) {
+        const row = document.createElement("details");
+        row.className = "modern-row modern-reference-card";
+        row.open = rows.length <= 8;
+        const rowSummary = document.createElement("summary");
+        rowSummary.title = "Show or hide the full implementation note for this rule reference.";
+        rowSummary.append(
+          el("strong", "", item.title || item.id),
+          el("span", "muted", `${modernStatusLabel(item.implementation_status)}${item.source_page ? ` · p.${item.source_page}` : ""}`)
+        );
+        row.appendChild(rowSummary);
+        if (item.summary) row.appendChild(el("p", "modern-home-status", item.summary));
+        if (item.keywords?.length) row.appendChild(el("span", "muted", item.keywords.join(" · ")));
+        if (item.body) {
+          const body = el("div", "modern-reference-body");
+          item.body.split("\n").filter((line) => line.trim()).forEach((line) => body.appendChild(el("p", "", line)));
+          row.appendChild(body);
+        }
+        groupBody.appendChild(row);
+      }
+      group.appendChild(groupBody);
+      results.appendChild(group);
+    }
+    if (!rows.length) {
+      results.appendChild(
+        el(
+          "p",
+          "modern-home-status in-progress",
+          "No matching rules reference entries. Clear filters or search by rule name, implementation status, keyword, source page, or body text."
+        )
       );
-      results.appendChild(row);
     }
   };
   search.addEventListener("input", draw);
   category.addEventListener("change", draw);
+  status.addEventListener("change", draw);
+  source.addEventListener("change", draw);
   sort.addEventListener("change", draw);
   draw();
   rootEl.appendChild(panel);
@@ -1076,12 +1160,40 @@ function modernTableRowCount(value) {
   return 0;
 }
 
-function modernTablePreview(value) {
+function modernTableRows(value) {
+  return Array.isArray(value)
+    ? value
+    : Object.entries(value || {}).map(([key, row]) => (row && typeof row === "object" && !Array.isArray(row) ? { key, ...row } : { key, value: row }));
+}
+
+function modernTableFamily(key) {
+  if (key.startsWith("abyss_")) return "Four Against the Abyss";
+  if (key.startsWith("fd_") || key.startsWith("forsaken_depths_")) return "Forsaken Depths";
+  if (key.startsWith("courtship_")) return "Courtship of Flower Demons";
+  if (key.startsWith("fungal_")) return "Fungal Grottoes";
+  if (key.startsWith("caverns_")) return "Caverns";
+  if (key.startsWith("fiendish_")) return "Fiendish Foes";
+  if (key.includes("spell")) return "Spells";
+  if (key.includes("skill") || key.includes("class")) return "Classes and advancement";
+  if (key.includes("monster") || key.includes("reaction") || key.includes("vermin") || key.includes("minion") || key.includes("boss") || key.includes("weird") || key.includes("horde")) return "Monsters and reactions";
+  if (key.includes("map") || key.includes("room") || key.includes("door") || key.includes("trap") || key.includes("treasure") || key.includes("search") || key.includes("quest")) return "Dungeon and exploration";
+  if (key.includes("equipment") || key.includes("hireling") || key.includes("economy") || key.includes("hidden") || key.includes("icon")) return "Equipment, economy, and app registries";
+  return "Expanded Edition and app tables";
+}
+
+function modernTablePreview(value, needle = "") {
   const rows = Array.isArray(value)
     ? value
-    : Object.entries(value || {}).map(([key, row]) => ({ key, value: row }));
+    : modernTableRows(value);
+  const visibleRows = needle
+    ? rows.filter((row) => modernSearchText(row).toLowerCase().includes(needle))
+    : rows;
   const box = el("div", "modern-list-tall");
-  for (const row of rows.slice(0, 250)) {
+  if (!visibleRows.length) {
+    box.appendChild(el("p", "muted", "No rows in this table match the current search."));
+    return box;
+  }
+  for (const row of visibleRows.slice(0, 250)) {
     const line = el("div", "modern-row");
     if (row && typeof row === "object") {
       const title = row.name || row.title || row.roll || row.key || row.id || row.table || "row";
@@ -1094,23 +1206,37 @@ function modernTablePreview(value) {
     }
     box.appendChild(line);
   }
-  if (rows.length > 250) box.appendChild(el("p", "muted", `Showing first 250 of ${rows.length} rows. Use search to narrow this table.`));
+  if (visibleRows.length > 250) box.appendChild(el("p", "muted", `Showing first 250 of ${visibleRows.length} matching rows. Use search to narrow this table.`));
   return box;
 }
 
 async function renderTables() {
   if (!Object.keys(modernState.tables).length) modernState.tables = await api("/api/rules/tables");
-  const panel = card("Tables List", "Search table names and table entries used by the game.");
+  const panel = card("Tables List", "Search every structured rules and app table exposed by the game.");
   const search = input("search", "modern-table-search", "Search by table name or entry text.");
+  const families = [...new Set(Object.keys(modernState.tables).map(modernTableFamily))].sort();
+  const family = select("modern-table-family", "Filter by table family.", [["", "All table families"], ...families.map((item) => [item, item])]);
   const sort = select("modern-table-sort", "Sort table groups.", [["name", "Name"], ["rows", "Row count"]]);
   const results = el("div", "modern-list");
-  panel.append(field("Search", search), field("Sort", sort), results);
+  const controls = el("div", "modern-filterbar");
+  controls.append(field("Search", search), field("Family", family), field("Sort", sort));
+  const rowActions = actions();
+  rowActions.append(
+    button("Expand All", "Open every visible table group and table.", async () => {
+      results.querySelectorAll("details").forEach((item) => { item.open = true; });
+    }),
+    button("Collapse All", "Close every visible table group and table.", async () => {
+      results.querySelectorAll("details").forEach((item) => { item.open = false; });
+    })
+  );
+  panel.append(controls, rowActions, results);
   const draw = () => {
     results.replaceChildren();
     const needle = search.value.toLowerCase();
     const keys = Object.keys(modernState.tables).filter((key) => {
+      if (family.value && modernTableFamily(key) !== family.value) return false;
       if (!needle) return true;
-      return key.toLowerCase().includes(needle) || JSON.stringify(modernState.tables[key]).toLowerCase().includes(needle);
+      return key.toLowerCase().includes(needle) || modernSearchText(modernState.tables[key]).toLowerCase().includes(needle);
     });
     keys.sort((a, b) => {
       if (sort.value === "rows") {
@@ -1120,18 +1246,55 @@ async function renderTables() {
       }
       return a.localeCompare(b);
     });
-    for (const key of keys) {
-      const value = modernState.tables[key];
-      const details = document.createElement("details");
-      details.className = "modern-row";
-      const summary = document.createElement("summary");
-      summary.append(el("strong", "", key), el("span", "muted", `${modernTableRowCount(value)} row(s)`));
-      details.appendChild(summary);
-      details.appendChild(modernTablePreview(value));
-      results.appendChild(details);
+    const byFamily = keys.reduce((groups, key) => {
+      const groupName = modernTableFamily(key);
+      if (!groups[groupName]) groups[groupName] = [];
+      groups[groupName].push(key);
+      return groups;
+    }, {});
+    results.appendChild(el("p", "muted", `${keys.length} matching table${keys.length === 1 ? "" : "s"} across ${Object.keys(byFamily).length} famil${Object.keys(byFamily).length === 1 ? "y" : "ies"}.`));
+    for (const [groupName, groupKeys] of Object.entries(byFamily).sort(([a], [b]) => a.localeCompare(b))) {
+      const group = document.createElement("details");
+      group.className = "modern-row modern-table-group";
+      group.open = keys.length <= 30 || Boolean(search.value);
+      const groupSummary = document.createElement("summary");
+      groupSummary.title = `Show or hide ${groupKeys.length} ${groupName} tables.`;
+      const rowsInGroup = groupKeys.reduce((total, key) => total + modernTableRowCount(modernState.tables[key]), 0);
+      groupSummary.append(el("strong", "", groupName), el("span", "muted", `${groupKeys.length} table${groupKeys.length === 1 ? "" : "s"} · ${rowsInGroup} row(s)`));
+      group.appendChild(groupSummary);
+      const groupBody = el("div", "modern-reference-group-body");
+      for (const key of groupKeys) {
+        const value = modernState.tables[key];
+        const details = document.createElement("details");
+        details.className = "modern-row modern-table-card";
+        details.open = groupKeys.length <= 4 && keys.length <= 12;
+        const summary = document.createElement("summary");
+        summary.title = "Show or hide this table's rows.";
+        summary.append(el("strong", "", modernTitleFromKey(key)), el("span", "muted", `${key} · ${modernTableRowCount(value)} row(s)`));
+        details.appendChild(summary);
+        const previewMount = el("div", "modern-table-preview-mount");
+        const renderPreview = () => {
+          if (previewMount.dataset.loaded === "1" && previewMount.dataset.needle === needle) return;
+          previewMount.replaceChildren(modernTablePreview(value, needle));
+          previewMount.dataset.loaded = "1";
+          previewMount.dataset.needle = needle;
+        };
+        details.addEventListener("toggle", () => {
+          if (details.open) renderPreview();
+        });
+        if (details.open) renderPreview();
+        details.appendChild(previewMount);
+        groupBody.appendChild(details);
+      }
+      group.appendChild(groupBody);
+      results.appendChild(group);
+    }
+    if (!keys.length) {
+      results.appendChild(el("p", "modern-home-status in-progress", "No matching tables. Clear filters or search by table name, row text, roll result, monster, item, tile, icon, or source term."));
     }
   };
   search.addEventListener("input", draw);
+  family.addEventListener("change", draw);
   sort.addEventListener("change", draw);
   draw();
   rootEl.appendChild(panel);

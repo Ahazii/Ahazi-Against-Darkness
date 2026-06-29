@@ -1975,6 +1975,10 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "availability reroll ${campaign.tag_guild_availability_reroll_used",
         "modernTablePreview",
         "matching rule reference",
+        "modern-rules-status",
+        "modern-table-family",
+        "modernTableFamily",
+        "modern-table-preview-mount",
     ]:
         assert label in MODERN_PAGES_JS
 

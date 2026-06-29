@@ -301,6 +301,61 @@ h2 {
   padding: 8px;
 }
 
+.modern-row > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.modern-row > summary::-webkit-details-marker {
+  display: none;
+}
+
+.modern-row > summary::before {
+  content: "▸";
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.modern-row[open] > summary::before {
+  content: "▾";
+}
+
+.modern-row > summary strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.modern-reference-group,
+.modern-table-group {
+  background: #11130f;
+}
+
+.modern-reference-card,
+.modern-table-card {
+  background: #171814;
+}
+
+.modern-reference-group-body {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.modern-reference-body {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.modern-reference-body p {
+  margin: 0;
+}
+
 .modern-stack {
   display: grid;
   gap: 4px;
