@@ -10725,11 +10725,12 @@ async function loadAll(options = {}) {
   const { restoreSession = true } = options;
   try {
     const requestedView = readRequestedView();
+    const requestedSessionId = readRequestedSessionId();
     if (requestedView === "setup" || requestedView === "game") {
       writeActiveView(requestedView);
       clearRequestedView();
     }
-    const preferredView = requestedView || readActiveView();
+    const preferredView = requestedSessionId ? "game" : requestedView || readActiveView();
     const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, forsakenDepthsMapElements, forsakenDepthsRiversMapElements, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions, rulesetProfiles, campaign] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
@@ -10788,7 +10789,17 @@ async function loadAll(options = {}) {
       renderRulesReference([]);
     });
     await repairMissingSessionsFromCharacterLocks();
-    if (restoreSession && preferredView === "game") await restoreActiveSession();
+    if (requestedSessionId) {
+      try {
+        await loadSession(requestedSessionId, { quiet: true });
+      } catch (error) {
+        handleError(error);
+        clearActiveSessionId();
+        showSetupView({ rememberView: false });
+      }
+    } else if (restoreSession && preferredView === "game") {
+      await restoreActiveSession();
+    }
   } catch (error) {
     apiStatus.textContent = error.message;
   }
@@ -16363,6 +16374,11 @@ function readActiveView() {
 function readRequestedView() {
   const value = new URLSearchParams(window.location.search).get("view");
   return value === "game" || value === "setup" ? value : "";
+}
+
+function readRequestedSessionId() {
+  const value = new URLSearchParams(window.location.search).get("session");
+  return value ? value.trim() : "";
 }
 
 function clearRequestedView() {

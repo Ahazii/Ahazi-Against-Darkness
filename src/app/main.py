@@ -2190,13 +2190,19 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
 
     campaign = load_campaign(store)
     tag_banking_enabled = campaign.tag_banking_enabled
-    profile = resolve_profile_for_adventure(
-        adventure_id,
-        profile_id=ruleset_profile_id,
-        ruleset=ruleset if adventure_id == "random" else None,
-        courtship_enabled=courtship_enabled if adventure_id == "random" else None,
-    )
+    profile = None
+    if adventure_id in {"random", "courtship-demesne"}:
+        try:
+            profile = resolve_profile_for_adventure(
+                adventure_id,
+                profile_id=ruleset_profile_id,
+                ruleset=ruleset if adventure_id == "random" else None,
+                courtship_enabled=courtship_enabled if adventure_id == "random" else None,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     if "fiendish_foes_enabled" not in payload and adventure_id == "random":
+        assert profile is not None
         fiendish_foes_enabled = profile.fiendish_foes_default
     members = [_member_state(character) for character in characters]
 
@@ -2218,20 +2224,26 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
             manifest = load_installed_manifest(settings.root_dir, settings.data_dir, adventure_id)
         except FileNotFoundError as exc:
             raise HTTPException(status_code=400, detail="Imported adventure not found. Import it first.") from exc
-        session = create_session_from_manifest(
-            random_engine,
-            new_id(),
-            party.id,
-            members,
-            manifest,
-            adventure_id=adventure_id,
-            xp_system=xp_system,
-            map_bounds_mode=map_bounds_mode,
-            unlimited_map_element_cap=unlimited_map_element_cap,
-            fiendish_foes_enabled=fiendish_foes_enabled,
-            start_camped_outside=start_camped_outside,
-        )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        try:
+            session = create_session_from_manifest(
+                random_engine,
+                new_id(),
+                party.id,
+                members,
+                manifest,
+                adventure_id=adventure_id,
+                xp_system=xp_system,
+                map_bounds_mode=map_bounds_mode,
+                unlimited_map_element_cap=unlimited_map_element_cap,
+                fiendish_foes_enabled=fiendish_foes_enabled,
+                start_camped_outside=start_camped_outside,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     else:
+        assert profile is not None
         try:
             session = random_engine.create_session(
                 new_id(),

@@ -1258,7 +1258,7 @@ function renderGoAdventure() {
       body: JSON.stringify({
         party_id: party.value,
         adventure_id: adventureId,
-        ruleset_profile_id: type.value === "random" ? profile.value : "ee_random",
+        ruleset_profile_id: type.value === "random" ? profile.value : undefined,
         xp_system: xp.value,
         map_bounds_mode: mapMode.value,
         unlimited_map_element_cap: Number(mapLimit.value || 60),
