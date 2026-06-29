@@ -493,6 +493,20 @@ TAG_BRANCH_ACTIONS: dict[str, str] = {
     "minotaur_maze_lost_check": "Minotaur Maze lost check",
     "minotaur_maze_wandering": "Minotaur Maze wandering monsters",
     "minotaur_maze_event": "Minotaur Maze special event",
+    "castle_cleanup_pay": "Clean Up My Castle pay tally",
+    "griffin_mountain_check": "Griffin mountain check",
+    "griffin_nest_search": "Griffin nest search",
+    "griffin_egg_count": "Griffin egg count",
+    "griffin_egg_break": "Griffin egg break check",
+    "portrait_outbound_check": "Portrait outbound travel check",
+    "portrait_persuasion": "Portrait persuasion save",
+    "portrait_return_snatch": "Portrait return snatch check",
+    "sewers_vermin": "Sewers vermin table",
+    "sewers_minions": "Sewers minions table",
+    "sewers_disease": "Sewers disease check",
+    "monoceros_tracking": "Monoceros tracking roll",
+    "monoceros_clue_encounter": "Monoceros Clue shortcut encounter",
+    "monoceros_hide": "Monoceros hide check",
     "bandit_stolen_goods_check": "Bandit stolen-goods check",
     "capture_alive": "Capture-alive outcome",
     "claim_reward": "Claim printed reward",
@@ -1166,6 +1180,16 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
                 "amount": 1,
             }
         ],
+        "final_prompt_actions": [
+            {
+                "label": "Tally cleanup pay",
+                "tooltip": "Calculate Clean Up My Castle job pay. Put slain minion/vermin count in Amount and Boss/Weird count in Reference as boss=number.",
+                "action_type": "branch",
+                "action_value": "castle_cleanup_pay",
+                "reference": "Clean Up My Castle boss=0",
+                "amount": 0,
+            }
+        ],
         "rules": ["Ten-room quest target."],
     },
     2: {
@@ -1237,6 +1261,42 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
                 "Pay 70 gp per intact egg; broken eggs pay 2d6 gp each.",
             ],
         },
+        "complication_prompt_actions": [
+            {
+                "label": "Mountain check",
+                "tooltip": "Roll one Griffin Omelets ascent/descent wandering-monster check. Set Amount to 1 for the reduced 1-in-6 chance.",
+                "action_type": "branch",
+                "action_value": "griffin_mountain_check",
+                "reference": "Griffin Omelets mountain check",
+                "amount": 0,
+            },
+            {
+                "label": "Search nest",
+                "tooltip": "Roll one Griffin Omelets nest-search check; 6 finds nest, 1 risks griffin attack unless L7 Stealth succeeds.",
+                "action_type": "branch",
+                "action_value": "griffin_nest_search",
+                "reference": "Griffin Omelets nest search",
+                "amount": 0,
+            },
+        ],
+        "final_prompt_actions": [
+            {
+                "label": "Roll eggs",
+                "tooltip": "Roll d3+1 black-feathered griffin eggs in the nest.",
+                "action_type": "branch",
+                "action_value": "griffin_egg_count",
+                "reference": "Griffin Omelets egg count",
+                "amount": 0,
+            },
+            {
+                "label": "Egg break",
+                "tooltip": "Roll break checks for carried griffin eggs after an egg carrier dies. Put carried egg count in Amount.",
+                "action_type": "branch",
+                "action_value": "griffin_egg_break",
+                "reference": "Griffin Omelets egg break check",
+                "amount": 1,
+            },
+        ],
         "rules": ["Griffin is a TAG-specific foe profile; resolve egg carrying and mountain checks from the printed quest."],
     },
     4: {
@@ -1263,6 +1323,32 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
                 "If the painting is snatched, the party has one turn to stop the thief without Fireball or Lightning.",
             ],
         },
+        "complication_prompt_actions": [
+            {
+                "label": "Outbound check",
+                "tooltip": "Roll one A Portrait in Red outbound wilderness check. Put 1-6 in Amount for leg number; 5-6 use Weird Monster rules.",
+                "action_type": "branch",
+                "action_value": "portrait_outbound_check",
+                "reference": "A Portrait in Red outbound check",
+                "amount": 1,
+            },
+            {
+                "label": "Persuade noble",
+                "tooltip": "Roll the L6 persuasion attempt. Put positive modifier in Amount or write mod=-1 in Reference for penalties; natural 1 ejects a chosen character.",
+                "action_type": "branch",
+                "action_value": "portrait_persuasion",
+                "reference": "A Portrait in Red persuasion",
+                "amount": 0,
+            },
+            {
+                "label": "Painting snatch",
+                "tooltip": "Roll the 1-in-6 painting snatch check after a surprised return encounter.",
+                "action_type": "branch",
+                "action_value": "portrait_return_snatch",
+                "reference": "A Portrait in Red painting snatch",
+                "amount": 0,
+            },
+        ],
         "rules": ["Red Portrait Horror remains a proxy; the printed mission is primarily escort, persuasion, and painting-loss handling."],
     },
     5: {
@@ -1293,13 +1379,37 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         },
         "complication_prompt_actions": [
             {
+                "label": "Sewer vermin",
+                "tooltip": "Roll the Sewers Search Vermin Table for a vermin encounter.",
+                "action_type": "branch",
+                "action_value": "sewers_vermin",
+                "reference": "Sewers Search vermin",
+                "amount": 0,
+            },
+            {
+                "label": "Sewer minions",
+                "tooltip": "Roll the Sewers Search Minions Table for a minion encounter.",
+                "action_type": "branch",
+                "action_value": "sewers_minions",
+                "reference": "Sewers Search minions",
+                "amount": 0,
+            },
+            {
                 "label": "Find thief with Clues",
                 "tooltip": "Prefill the 3-Clue route that finds the sewer thief in the next room.",
                 "action_type": "route",
                 "action_value": "clue_gate_unlocked",
                 "reference": "Sewers Search thief found",
                 "amount": 3,
-            }
+            },
+            {
+                "label": "Disease save",
+                "tooltip": "Roll the post-adventure Sewers Search disease check for a hero wounded below half Life.",
+                "action_type": "branch",
+                "action_value": "sewers_disease",
+                "reference": "Sewers Search post-adventure disease",
+                "amount": 0,
+            },
         ],
         "final_prompt_actions": [
             {
@@ -1341,13 +1451,29 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         },
         "complication_prompt_actions": [
             {
+                "label": "Track hunt",
+                "tooltip": "Roll one Monoceros Hunt tracker result. Put positive modifier in Amount or write mod=-1 in Reference for penalties.",
+                "action_type": "branch",
+                "action_value": "monoceros_tracking",
+                "reference": "Monoceros Hunt tracking",
+                "amount": 0,
+            },
+            {
                 "label": "Find with 3 Clues",
                 "tooltip": "Prefill the 3-Clue shortcut to locate the monoceros before the capture encounter.",
                 "action_type": "route",
                 "action_value": "clue_gate_unlocked",
                 "reference": "Monoceros Hunt clue shortcut",
                 "amount": 3,
-            }
+            },
+            {
+                "label": "Clue encounter",
+                "tooltip": "Roll the 2-in-6 Weird Monster Around Town encounter chance before using the 3-Clue shortcut.",
+                "action_type": "branch",
+                "action_value": "monoceros_clue_encounter",
+                "reference": "Monoceros Hunt clue shortcut encounter",
+                "amount": 0,
+            },
         ],
         "final_prompt_actions": [
             {
@@ -1356,6 +1482,14 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
                 "action_type": "branch",
                 "action_value": "capture_alive",
                 "reference": "Monoceros captured alive",
+                "amount": 0,
+            },
+            {
+                "label": "Hide turns blow",
+                "tooltip": "Roll the monoceros thick-hide check after a non-magical hit.",
+                "action_type": "branch",
+                "action_value": "monoceros_hide",
+                "reference": "Monoceros hide check",
                 "amount": 0,
             }
         ],
@@ -2523,6 +2657,33 @@ def run_streetwise_action(
     )
 
 
+def _tag_reference_int(reference: str, key: str, default: int = 0) -> int:
+    clean_key = key.lower().strip()
+    for raw_part in reference.replace(",", " ").replace(";", " ").split():
+        if "=" not in raw_part:
+            continue
+        left, right = raw_part.split("=", 1)
+        if left.lower().strip() != clean_key:
+            continue
+        try:
+            return int(right.strip())
+        except ValueError:
+            return default
+    return default
+
+
+def _tag_reference_flag(reference: str, key: str) -> bool:
+    clean_key = key.lower().strip()
+    for raw_part in reference.replace(",", " ").replace(";", " ").split():
+        if raw_part.lower().strip() == clean_key:
+            return True
+        if "=" in raw_part:
+            left, right = raw_part.split("=", 1)
+            if left.lower().strip() == clean_key and right.lower().strip() in {"1", "true", "yes", "y"}:
+                return True
+    return False
+
+
 def resolve_tag_branch_action(
     campaign: CampaignState,
     character: Character | None = None,
@@ -2669,6 +2830,126 @@ def resolve_tag_branch_action(
                 parts.append(f"Special Event d6=2: wandering monsters attack; subtype d6={subtype}: one adult minotaur.")
         else:
             parts.append(f"Special Event d6={roll}: {result[roll]}")
+    elif clean_action == "castle_cleanup_pay":
+        minion_vermin = cost
+        party_count = _tag_reference_int(reference, "party", 4)
+        boss_weird = _tag_reference_int(reference, "boss", _tag_reference_int(reference, "major", 0))
+        cache = 100 if _tag_reference_flag(reference, "cache") else 0
+        total = (25 * max(0, party_count)) + (2 * minion_vermin) + (20 * max(0, boss_weird)) + cache
+        parts.append(
+            f"Castle pay tally: party {party_count} x25 gp + minion/vermin {minion_vermin} x2 gp + Boss/Weird {boss_weird} x20 gp"
+            f"{' + portrait cache 100 gp' if cache else ''} = {total} gp. Job pays only if completed in one session without leaving and returning."
+        )
+    elif clean_action == "griffin_mountain_check":
+        reduced = cost > 0
+        target = 1 if reduced else 2
+        roll = roll_d6()
+        result = "wandering monster" if roll <= target else "no encounter"
+        parts.append(f"Griffin mountain check d6={roll} vs {target}-in-6: {result}. Roll five checks up and five down.")
+    elif clean_action == "griffin_nest_search":
+        roll = roll_d6()
+        if roll == 6:
+            parts.append("Nest search d6=6: the griffin nest is found.")
+        elif roll == 1:
+            parts.append("Nest search d6=1: griffins attack unless the worst-Stealth character passes a L7 Stealth roll.")
+        else:
+            parts.append(f"Nest search d6={roll}: nest not found; continue searching.")
+    elif clean_action == "griffin_egg_count":
+        roll = roll_d3()
+        total = roll + 1
+        parts.append(f"Griffin eggs d3={roll}+1: {total} eggs in the nest. Most characters carry 2 eggs; elves carry 3; ogres carry none.")
+    elif clean_action == "griffin_egg_break":
+        eggs = max(1, cost)
+        broken = 0
+        rolls: list[int] = []
+        value = 0
+        for _ in range(eggs):
+            egg_roll = roll_d6()
+            rolls.append(egg_roll)
+            if egg_roll <= 2:
+                broken += 1
+                value += roll_d6() + roll_d6()
+        total = value
+        parts.append(
+            f"Egg break checks for {eggs} egg(s): rolls {rolls}; {broken} broken. Broken egg salvage value is {value} gp total from 2d6 each."
+        )
+    elif clean_action == "portrait_outbound_check":
+        leg = max(1, min(6, cost or 1))
+        roll = roll_d6()
+        if leg <= 4:
+            result = "Outside of Town Ambush Table encounter" if roll <= 2 else "no encounter"
+            parts.append(f"Portrait outbound leg {leg} d6={roll}: {result}. First four checks use Outside of Town Ambush on 1-2.")
+        else:
+            elf_lead = _tag_reference_flag(reference, "elf")
+            target = 1 if elf_lead else 2
+            result = "Weird Monsters Around Town encounter" if roll <= target else "no encounter"
+            parts.append(f"Portrait outbound leg {leg} d6={roll} vs {target}-in-6: {result}. Last two checks use Weird Monsters Around Town.")
+    elif clean_action == "portrait_persuasion":
+        modifier = _tag_reference_int(reference, "mod", cost)
+        roll = roll_d6()
+        total = roll + modifier
+        if roll == 1:
+            parts.append(f"Persuasion roll natural 1 with modifier {modifier}: chosen character is kicked out of the hermitage.")
+        elif total >= 6:
+            parts.append(f"Persuasion roll d6={roll}+{modifier}={total}: nobleman agrees to pose.")
+        else:
+            parts.append(f"Persuasion roll d6={roll}+{modifier}={total}: failed; may try again. If all characters are ejected, donate 20 gp or mission fails.")
+    elif clean_action == "portrait_return_snatch":
+        roll = roll_d6()
+        if roll == 1:
+            parts.append("Painting snatch d6=1: a foe grabs the painting. The party has one turn to stop the snatcher with ranged weapon or Sleep; Fireball/Lightning forbidden.")
+        else:
+            parts.append(f"Painting snatch d6={roll}: painting is not snatched in this surprised return encounter.")
+    elif clean_action == "sewers_vermin":
+        roll = roll_d6()
+        if roll <= 3:
+            count = roll_d6() + roll_d6()
+            total = count
+            parts.append(f"Sewers Vermin d6={roll}: {count} rats, HCL animal vermin, morale -1, no treasure; bribe 2 food for all rats on reaction 2-4.")
+        else:
+            parts.append(f"Sewers Vermin d6={roll}: Horde of sewer rats, L4 animal horde, 4 Life, no treasure; fire-based spell destroys it automatically.")
+    elif clean_action == "sewers_minions":
+        roll = roll_d6()
+        if roll <= 3:
+            count = roll_d6() + roll_d6()
+            total = count
+            parts.append(f"Sewers Minions d6={roll}: {count} ratmen, HCL+1 minions, morale -1, treasure -1; bribe 5 gp each on reaction 2-3.")
+        else:
+            count = roll_d6()
+            total = count
+            parts.append(f"Sewers Minions d6={roll}: {count} crocodile men, HCL+2 minions, no treasure; bribe 6 gp each on reaction 1-2.")
+    elif clean_action == "sewers_disease":
+        roll = roll_d6()
+        modifier = cost
+        total = roll + modifier
+        if total >= 4:
+            parts.append(f"Disease Save d6={roll}+{modifier}={total} vs L4: success; no post-adventure sewer infection.")
+        else:
+            parts.append(f"Disease Save d6={roll}+{modifier}={total} vs L4: infection; -1 Defense until Blessing or end of adventure.")
+    elif clean_action == "monoceros_tracking":
+        modifier = _tag_reference_int(reference, "mod", cost)
+        roll = roll_d6()
+        total = roll + modifier
+        if roll == 1:
+            parts.append(
+                f"Tracking roll natural 1 with modifier {modifier}: hunting accident. Character must Save vs L5 danger or lose Tier Life and is out of the hunt."
+            )
+        elif total >= 6:
+            parts.append(f"Tracking roll d6={roll}+{modifier}={total}: hunter finds the monoceros. Multiple successes cooperate; failures arrive after three turns.")
+        else:
+            parts.append(f"Tracking roll d6={roll}+{modifier}={total}: hunter does not find it yet and joins successful hunters after three turns.")
+    elif clean_action == "monoceros_clue_encounter":
+        roll = roll_d6()
+        if roll <= 2:
+            parts.append(f"3-Clue shortcut risk d6={roll}: roll a random Weird Monster Around Town encounter before meeting the monoceros.")
+        else:
+            parts.append(f"3-Clue shortcut risk d6={roll}: no Weird Monster encounter before the monoceros.")
+    elif clean_action == "monoceros_hide":
+        roll = roll_d6()
+        if roll <= 4:
+            parts.append(f"Monoceros hide d6={roll}: non-magical hit lands normally.")
+        else:
+            parts.append(f"Monoceros hide d6={roll}: thick hide turns the blow; ignore the wound.")
     elif clean_action == "bandit_stolen_goods_check":
         roll = roll_d6()
         if roll == 1:

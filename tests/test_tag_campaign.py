@@ -540,9 +540,20 @@ def test_tag_remaining_guild_jobs_carry_pdf_module_profiles(monkeypatch) -> None
         assert reference["module_profile"]["target_rooms"] == target
         joined = " ".join(reference["module_profile"]["procedure"] + reference["module_profile"]["signoff_checks"] + [reference["rewards"]])
         assert keyword.lower() in joined.lower()
+        actions = reference["room_prompts"]["tag-complication"]["actions"] + reference["room_prompts"]["tag-final-scene"]["actions"]
+        action_values = {action["action_value"] for action in actions}
         if action_value:
-            actions = reference["room_prompts"]["tag-complication"]["actions"] + reference["room_prompts"]["tag-final-scene"]["actions"]
             assert any(action["action_value"] == action_value for action in actions)
+        if quest_roll == 1:
+            assert {"castle_cleanup_pay", "clue_gate_unlocked"} <= action_values
+        if quest_roll == 3:
+            assert {"griffin_mountain_check", "griffin_nest_search", "griffin_egg_count", "griffin_egg_break"} <= action_values
+        if quest_roll == 4:
+            assert {"portrait_outbound_check", "portrait_persuasion", "portrait_return_snatch"} <= action_values
+        if quest_roll == 5:
+            assert {"sewers_vermin", "sewers_minions", "sewers_disease", "clue_gate_unlocked", "capture_alive"} <= action_values
+        if quest_roll == 6:
+            assert {"monoceros_tracking", "monoceros_clue_encounter", "monoceros_hide", "capture_alive"} <= action_values
 
 
 def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None:
@@ -853,6 +864,85 @@ def test_tag_theme_procedure_branch_actions_roll_exact_tables(monkeypatch) -> No
     assert event.roll == 2
     assert event.total == 5
     assert "5 young minotaurs" in event.result_text
+
+
+def test_tag_guild_job_branch_actions_roll_exact_workflows(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(clues=0)
+
+    castle = resolve_tag_branch_action(
+        campaign,
+        hero,
+        branch_action="castle_cleanup_pay",
+        reference="party=4 boss=2 cache",
+        clue_cost=10,
+    )
+    assert castle.total == 260
+    assert "party 4 x25 gp" in castle.result_text
+    assert "portrait cache 100 gp" in castle.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    mountain = resolve_tag_branch_action(campaign, hero, branch_action="griffin_mountain_check")
+    assert mountain.roll == 2
+    assert "wandering monster" in mountain.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
+    search = resolve_tag_branch_action(campaign, hero, branch_action="griffin_nest_search")
+    assert "L7 Stealth" in search.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d3", lambda: 2)
+    eggs = resolve_tag_branch_action(campaign, hero, branch_action="griffin_egg_count")
+    assert eggs.total == 3
+    assert "3 eggs" in eggs.result_text
+
+    rolls = iter([1, 3, 4, 5])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    broken = resolve_tag_branch_action(campaign, hero, branch_action="griffin_egg_break", clue_cost=2)
+    assert broken.total == 7
+    assert "1 broken" in broken.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    outbound = resolve_tag_branch_action(campaign, hero, branch_action="portrait_outbound_check", clue_cost=5)
+    assert "Weird Monsters Around Town encounter" in outbound.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    persuade = resolve_tag_branch_action(campaign, hero, branch_action="portrait_persuasion", reference="mod=-1")
+    assert persuade.total == 3
+    assert "failed" in persuade.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
+    snatch = resolve_tag_branch_action(campaign, hero, branch_action="portrait_return_snatch")
+    assert "one turn to stop" in snatch.result_text
+
+    rolls = iter([2, 4, 5])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    vermin = resolve_tag_branch_action(campaign, hero, branch_action="sewers_vermin")
+    assert vermin.total == 9
+    assert "rats" in vermin.result_text
+
+    rolls = iter([5, 3])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    minions = resolve_tag_branch_action(campaign, hero, branch_action="sewers_minions")
+    assert minions.total == 3
+    assert "crocodile men" in minions.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    disease = resolve_tag_branch_action(campaign, hero, branch_action="sewers_disease", clue_cost=1)
+    assert disease.total == 3
+    assert "infection" in disease.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 6)
+    track = resolve_tag_branch_action(campaign, hero, branch_action="monoceros_tracking", reference="mod=-1")
+    assert track.total == 5
+    assert "does not find" in track.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    shortcut = resolve_tag_branch_action(campaign, hero, branch_action="monoceros_clue_encounter")
+    assert "Weird Monster Around Town" in shortcut.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 5)
+    hide = resolve_tag_branch_action(campaign, hero, branch_action="monoceros_hide")
+    assert "turns the blow" in hide.result_text
 
 
 def test_tag_dragon_reveal_updates_latest_installed_dragon_lair(tmp_path: Path) -> None:

@@ -1899,11 +1899,30 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "minotaur_maze_lost_check",
         "minotaur_maze_wandering",
         "minotaur_maze_event",
+        "castle_cleanup_pay",
+        "griffin_mountain_check",
+        "griffin_nest_search",
+        "griffin_egg_count",
+        "griffin_egg_break",
+        "portrait_outbound_check",
+        "portrait_persuasion",
+        "portrait_return_snatch",
+        "sewers_vermin",
+        "sewers_minions",
+        "sewers_disease",
+        "monoceros_tracking",
+        "monoceros_clue_encounter",
+        "monoceros_hide",
     ]:
         assert f'value="{action_value}"' in INDEX_HTML
     assert "Minotaur Maze Special Event Table" in INDEX_HTML
     assert "Fiendish Abyss Prisoner Table" in INDEX_HTML
     assert "Ghastly Mine cave-in trap" in INDEX_HTML
+    assert "Clean Up My Castle pay" in INDEX_HTML
+    assert "Griffin Omelets nest search" in INDEX_HTML
+    assert "A Portrait in Red L6 persuasion" in INDEX_HTML
+    assert "Sewers Search post-adventure disease" in INDEX_HTML
+    assert "Monoceros Hunt tracking die" in INDEX_HTML
     assert 'value="bandit_stolen_goods_check"' in INDEX_HTML
     assert "Bandit stolen goods" in INDEX_HTML
     assert "stolen-goods room check" in INDEX_HTML
