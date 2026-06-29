@@ -511,6 +511,14 @@ def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
         assert reference["module_profile"]["target_rooms"] == target
         joined = " ".join(reference["module_profile"]["procedure"] + reference["module_profile"]["signoff_checks"])
         assert keyword.lower() in joined.lower()
+        actions = reference["room_prompts"]["tag-complication"]["actions"] + reference["room_prompts"]["tag-final-scene"]["actions"]
+        action_values = {action["action_value"] for action in actions}
+        if detail == "1":
+            assert {"ghastly_mine_minion_replacement", "ghastly_mine_major_replacement", "ghastly_mine_cave_in", "ghastly_mine_treasure_conversion"} <= action_values
+        if detail == "4":
+            assert "fiendish_abyss_prisoner" in action_values
+        if detail == "5":
+            assert {"minotaur_maze_lost_check", "minotaur_maze_wandering", "minotaur_maze_event", "unlock_scene"} <= action_values
 
 
 def test_tag_remaining_guild_jobs_carry_pdf_module_profiles(monkeypatch) -> None:
@@ -790,6 +798,61 @@ def test_tag_bandit_stolen_goods_branch_rolls_room_goods(monkeypatch) -> None:
     assert missed.roll == 4
     assert missed.total is None
     assert "no stolen goods" in missed.result_text
+
+
+def test_tag_theme_procedure_branch_actions_roll_exact_tables(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(clues=0)
+
+    rolls = iter([4, 6])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    minions = resolve_tag_branch_action(campaign, hero, branch_action="ghastly_mine_minion_replacement")
+    assert minions.roll == 4
+    assert minions.total == 6
+    assert "2d6+1 minor ghouls" in minions.result_text
+
+    rolls = iter([2, 4])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    major = resolve_tag_branch_action(campaign, hero, branch_action="ghastly_mine_major_replacement")
+    assert major.roll == 2
+    assert major.total == 4
+    assert "Minor Wraith" in major.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 3)
+    treasure = resolve_tag_branch_action(campaign, hero, branch_action="ghastly_mine_treasure_conversion")
+    assert "gem or nugget" in treasure.result_text
+
+    cave = resolve_tag_branch_action(campaign, hero, branch_action="ghastly_mine_cave_in", clue_cost=3)
+    assert cave.total == 4
+    assert "L6 and deals 2 damage" in cave.result_text
+
+    rolls = iter([5, 2])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    prisoner = resolve_tag_branch_action(campaign, hero, branch_action="fiendish_abyss_prisoner")
+    assert prisoner.roll == 5
+    assert prisoner.total == 50
+    assert "merchant pays 50 gp" in prisoner.result_text
+    assert "Riff-Raff encounter occurs" in prisoner.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    lost = resolve_tag_branch_action(campaign, hero, branch_action="minotaur_maze_lost_check", clue_cost=1)
+    assert lost.roll == 2
+    assert "with dungeon guide" in lost.result_text
+    assert "party is lost" in lost.result_text
+
+    rolls = iter([6, 2, 5, 1, 4, 3, 2, 1])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    wandering = resolve_tag_branch_action(campaign, hero, branch_action="minotaur_maze_wandering")
+    assert wandering.roll == 6
+    assert wandering.total == 10
+    assert "gem worth 4d6=10 gp" in wandering.result_text
+
+    rolls = iter([2, 4, 5])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    event = resolve_tag_branch_action(campaign, hero, branch_action="minotaur_maze_event")
+    assert event.roll == 2
+    assert event.total == 5
+    assert "5 young minotaurs" in event.result_text
 
 
 def test_tag_dragon_reveal_updates_latest_installed_dragon_lair(tmp_path: Path) -> None:

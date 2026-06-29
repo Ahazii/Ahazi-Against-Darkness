@@ -485,6 +485,14 @@ TAG_BRANCH_ACTIONS: dict[str, str] = {
     "social_choice": "Resolve social/choice branch",
     "spend_clues": "Spend Clues for branch",
     "roll_variable_count": "Roll variable count",
+    "ghastly_mine_minion_replacement": "Ghastly Mine minion replacement",
+    "ghastly_mine_major_replacement": "Ghastly Mine major-foe replacement",
+    "ghastly_mine_treasure_conversion": "Ghastly Mine treasure conversion",
+    "ghastly_mine_cave_in": "Ghastly Mine cave-in trap",
+    "fiendish_abyss_prisoner": "Fiendish Abyss prisoner table",
+    "minotaur_maze_lost_check": "Minotaur Maze lost check",
+    "minotaur_maze_wandering": "Minotaur Maze wandering monsters",
+    "minotaur_maze_event": "Minotaur Maze special event",
     "bandit_stolen_goods_check": "Bandit stolen-goods check",
     "capture_alive": "Capture-alive outcome",
     "claim_reward": "Claim printed reward",
@@ -866,6 +874,40 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
                 "Track the number of cave-ins and any fallen/paralyzed/petrified characters left behind.",
             ],
         },
+        "complication_prompt_actions": [
+            {
+                "label": "Mine minions",
+                "tooltip": "Roll the Ghastly Mine 4-in-6 minion replacement check, then the undead minion table if it replaces the normal result.",
+                "action_type": "branch",
+                "action_value": "ghastly_mine_minion_replacement",
+                "reference": "Ghastly Mine minion replacement",
+                "amount": 0,
+            },
+            {
+                "label": "Mine major foe",
+                "tooltip": "Roll the Ghastly Mine 4-in-6 Boss/Weird replacement check, then the major undead table if it replaces the normal result.",
+                "action_type": "branch",
+                "action_value": "ghastly_mine_major_replacement",
+                "reference": "Ghastly Mine major-foe replacement",
+                "amount": 0,
+            },
+            {
+                "label": "Mine cave-in",
+                "tooltip": "Log a Ghastly Mine cave-in trap. Put prior cave-ins in Amount so the app notes when later cave-ins become L6/2 damage.",
+                "action_type": "branch",
+                "action_value": "ghastly_mine_cave_in",
+                "reference": "Ghastly Mine cave-in trap",
+                "amount": 0,
+            },
+            {
+                "label": "Mine treasure",
+                "tooltip": "Roll the Ghastly Mine 3-in-6 check that gp treasure becomes one gem or nugget of the same value.",
+                "action_type": "branch",
+                "action_value": "ghastly_mine_treasure_conversion",
+                "reference": "Ghastly Mine gp treasure conversion",
+                "amount": 0,
+            },
+        ],
         "rules": ["Nine-room target.", "Cave-in traps affect all characters and become worse after repeated collapses."],
     },
     2: {
@@ -958,6 +1000,16 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
                 "If the prisoner gives a map, create/follow the resulting treasure-map or thematic-dungeon lead.",
             ],
         },
+        "final_prompt_actions": [
+            {
+                "label": "Prisoner table",
+                "tooltip": "Roll the Fiendish Abyss Prisoner Table after defeating the final boss.",
+                "action_type": "branch",
+                "action_value": "fiendish_abyss_prisoner",
+                "reference": "Fiendish Abyss Prisoner Table",
+                "amount": 0,
+            }
+        ],
         "rules": ["No normal Final Boss check; ends at HCL+5 rooms."],
     },
     5: {
@@ -984,6 +1036,40 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
                 "Apply the first-attack charge/Defense penalty and special Minotaur Maze event table.",
             ],
         },
+        "complication_prompt_actions": [
+            {
+                "label": "Maze lost",
+                "tooltip": "Roll the Minotaur Maze backtracking lost check. Set Amount to 1 if a dungeon guide is present.",
+                "action_type": "branch",
+                "action_value": "minotaur_maze_lost_check",
+                "reference": "Minotaur Maze backtracking lost check",
+                "amount": 0,
+            },
+            {
+                "label": "Maze wandering",
+                "tooltip": "Roll the Minotaur Maze wandering monster subtype table.",
+                "action_type": "branch",
+                "action_value": "minotaur_maze_wandering",
+                "reference": "Minotaur Maze wandering monster",
+                "amount": 0,
+            },
+            {
+                "label": "Maze event",
+                "tooltip": "Roll the Minotaur Maze Special Event Table for a Special Event room result.",
+                "action_type": "branch",
+                "action_value": "minotaur_maze_event",
+                "reference": "Minotaur Maze Special Event Table",
+                "amount": 0,
+            },
+            {
+                "label": "Open shortcut",
+                "tooltip": "Prefill the route marker for a successful empty-room/corridor search that opens a shortcut to the minotaur lord chamber.",
+                "action_type": "route",
+                "action_value": "unlock_scene",
+                "reference": "Minotaur Maze shortcut to lord chamber",
+                "amount": 0,
+            },
+        ],
         "rules": ["d6+5-room target.", "Young/adult minotaur replacement tables are indexed as TAG foes but not auto-rolled for room replacement yet."],
     },
     6: {
@@ -2466,6 +2552,123 @@ def resolve_tag_branch_action(
         roll = roll_d6()
         total = roll + max(0, int(clue_cost))
         parts.append(f"Variable count roll d6={roll} plus modifier {max(0, int(clue_cost))} gives {total}. Apply the printed count formula.")
+    elif clean_action == "ghastly_mine_minion_replacement":
+        roll = roll_d6()
+        if roll <= 4:
+            table_roll = roll_d6()
+            total = table_roll
+            result = {
+                1: "d6+1 Skeletons, HCL+2 undead minions; no treasure; crushing +1, arrows -1, no morale.",
+                2: "d6+1 Skeletons, HCL+2 undead minions; no treasure; crushing +1, arrows -1, no morale.",
+                3: "d6+1 Skeletons, HCL+2 undead minions; no treasure; crushing +1, arrows -1, no morale.",
+                4: "d6+2 Zombies, HCL+2 undead minions; no treasure; arrows -1, no morale.",
+                5: "d6+2 Zombies, HCL+2 undead minions; no treasure; arrows -1, no morale.",
+                6: "2d6+1 minor ghouls, HCL+3 undead; normal treasure; wounds force HCL+1 poison save or paralysis.",
+            }[table_roll]
+            parts.append(f"Replacement roll d6={roll}: replace normal minions. Ghastly Mine Minions d6={table_roll}: {result}")
+        else:
+            parts.append(f"Replacement roll d6={roll}: keep the normal minion result.")
+    elif clean_action == "ghastly_mine_major_replacement":
+        roll = roll_d6()
+        if roll <= 4:
+            table_roll = roll_d6()
+            total = table_roll
+            result = {
+                1: "Minor Mummy, HCL+3 undead Boss, 4 Life, 2 attacks, treasure +2; fire spells +2.",
+                2: "Minor Mummy, HCL+3 undead Boss, 4 Life, 2 attacks, treasure +2; fire spells +2.",
+                3: "Minor Skeletal Demon, HCL+5 undead, 7 Life, 2 attacks, 3 treasure rolls; blood spawns armored skeletons.",
+                4: "Minor Wraith, HCL+5 undead, 6 Life, 2 treasure rolls; possible lantern extinction and level drain.",
+                5: "Minor Vampire, HCL+6 undead, 6 Life; level drain save and Abyss vampirism handling where used.",
+                6: "Minor Ghoul King, HCL+4 undead, 7 Life, 4 attacks, treasure +1 or secret document worth 3 Clues.",
+            }[table_roll]
+            parts.append(f"Replacement roll d6={roll}: replace Boss/Weird result. Ghastly Mine Major Foe d6={table_roll}: {result}")
+        else:
+            parts.append(f"Replacement roll d6={roll}: keep the normal Boss/Weird result.")
+    elif clean_action == "ghastly_mine_treasure_conversion":
+        roll = roll_d6()
+        if roll <= 3:
+            parts.append(f"Treasure conversion d6={roll}: gp treasure becomes one gem or nugget of the same gp value.")
+        else:
+            parts.append(f"Treasure conversion d6={roll}: keep gp treasure as normal.")
+    elif clean_action == "ghastly_mine_cave_in":
+        prior = max(0, int(clue_cost))
+        total = prior + 1
+        if prior >= 3:
+            parts.append(
+                f"Cave-in count becomes {total}. This cave-in is L6 and deals 2 damage on a failed Save; after the party exits, the mine collapses and traps any character left dead, paralyzed, or petrified."
+            )
+        else:
+            parts.append(f"Cave-in count becomes {total}. All characters Save vs L5 trap or take 1 wound; dwarves and rogues add +L, gnomes add +1/2 L.")
+    elif clean_action == "fiendish_abyss_prisoner":
+        roll = roll_d6()
+        if roll <= 3:
+            parts.append(f"Prisoner Table d6={roll}: noble prisoner offers a mission; roll on the Minor Unique Quest Table if accepted.")
+        elif roll <= 5:
+            encounter_roll = roll_d6()
+            total = 50
+            encounter_text = "Riff-Raff encounter occurs on the escort home" if encounter_roll <= 2 else "no Riff-Raff encounter on the escort home"
+            parts.append(
+                f"Prisoner Table d6={roll}: merchant pays 50 gp if escorted home and then shares information. Escort risk d6={encounter_roll}: {encounter_text}. Roll Rumors, or Minor Unique Quest if all rumors are used."
+            )
+        else:
+            parts.append(
+                "Prisoner Table d6=6: prisoner gives a silver knife, one vial of holy water, and a treasure map. Follow it now or after resting; create a standard/thematic dungeon and roll Map Leads To."
+            )
+    elif clean_action == "minotaur_maze_lost_check":
+        guide = cost > 0
+        target = 2 if guide else 3
+        roll = roll_d6()
+        result = "lost" if roll <= target else "not lost"
+        guide_note = " with dungeon guide" if guide else ""
+        parts.append(f"Backtracking lost check{guide_note}: d6={roll} vs {target}-in-6, party is {result}.")
+        if roll <= target:
+            parts.append("Move into another connected room; if the room has only one exit, remain there and test for wandering monsters.")
+    elif clean_action == "minotaur_maze_wandering":
+        roll = roll_d6()
+        if roll <= 3:
+            count = roll_d6()
+            total = count
+            parts.append(f"Wandering subtype d6={roll}: {count} immature goatmen, HCL+2 minions max L5, morale +1, first attack as HCL+3.")
+        elif roll <= 5:
+            count = roll_d6()
+            total = count
+            parts.append(f"Wandering subtype d6={roll}: {count} immature minotaurs, HCL+3 minions max L6, morale +1, treasure -1, charge first attack as HCL+4.")
+        else:
+            gold_a = roll_d6()
+            gold_b = roll_d6()
+            total = gold_a * gold_b
+            gem_roll = roll_d6()
+            if gem_roll == 1:
+                gem_value = sum(roll_d6() for _ in range(4))
+                parts.append(
+                    f"Wandering subtype d6=6: one greedy adult minotaur with {gold_a}x{gold_b}={total} gp and gem chance d6=1: gem worth 4d6={gem_value} gp. May be bribed with any gem worth 150 gp or more."
+                )
+            else:
+                parts.append(
+                    f"Wandering subtype d6=6: one greedy adult minotaur with {gold_a}x{gold_b}={total} gp. Gem chance d6={gem_roll}: no gem. May be bribed with any gem worth 150 gp or more."
+                )
+    elif clean_action == "minotaur_maze_event":
+        roll = roll_d6()
+        result = {
+            1: "Ghost passes through the party; all characters Save vs L4 fear or lose 1 Life, clerics add +L.",
+            3: "Lady in Orange offers a quest; accept and roll Quest Table, refuse to ignore later appearances, or gain never-lost benefit after completing her quest.",
+            4: "Trap; roll on a traps table appropriate to the party's experience tier.",
+            5: "Choose alchemist/healer special event or hire a dungeon guide for HCL x 5 gp.",
+            6: "Choose alchemist/healer special event or hire a dungeon guide for HCL x 5 gp.",
+        }
+        if roll == 2:
+            subtype = roll_d6()
+            total = subtype
+            if subtype <= 2:
+                parts.append(f"Special Event d6=2: wandering monsters attack; subtype d6={subtype}: roll on the 4AD Vermin Table.")
+            elif subtype <= 4:
+                count = roll_d6()
+                total = count
+                parts.append(f"Special Event d6=2: wandering monsters attack; subtype d6={subtype}: {count} young minotaurs.")
+            else:
+                parts.append(f"Special Event d6=2: wandering monsters attack; subtype d6={subtype}: one adult minotaur.")
+        else:
+            parts.append(f"Special Event d6={roll}: {result[roll]}")
     elif clean_action == "bandit_stolen_goods_check":
         roll = roll_d6()
         if roll == 1:

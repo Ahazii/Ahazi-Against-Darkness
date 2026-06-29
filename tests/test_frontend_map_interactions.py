@@ -1890,6 +1890,20 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.followMap" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.createAdventure" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.resolveBranch" in APP_JS
+    for action_value in [
+        "ghastly_mine_minion_replacement",
+        "ghastly_mine_major_replacement",
+        "ghastly_mine_treasure_conversion",
+        "ghastly_mine_cave_in",
+        "fiendish_abyss_prisoner",
+        "minotaur_maze_lost_check",
+        "minotaur_maze_wandering",
+        "minotaur_maze_event",
+    ]:
+        assert f'value="{action_value}"' in INDEX_HTML
+    assert "Minotaur Maze Special Event Table" in INDEX_HTML
+    assert "Fiendish Abyss Prisoner Table" in INDEX_HTML
+    assert "Ghastly Mine cave-in trap" in INDEX_HTML
     assert 'value="bandit_stolen_goods_check"' in INDEX_HTML
     assert "Bandit stolen goods" in INDEX_HTML
     assert "stolen-goods room check" in INDEX_HTML
