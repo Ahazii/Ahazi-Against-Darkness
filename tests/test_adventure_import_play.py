@@ -13,6 +13,7 @@ from app.engine.adventure_import import (
     remove_installed_adventure,
     seed_bundled_adventures,
 )
+from app.engine.adventure_manifest import validate_adventure_manifest
 from app.engine.adventure_session import create_session_from_manifest, repair_imported_map_layout
 from app.engine.tag_campaign import (
     apply_latest_tag_route_to_adventure,
@@ -103,6 +104,53 @@ def test_tag_route_marker_rewrites_latest_generated_adventure(repo: RulesReposit
     assert "complication proxy combat suppressed" in rewrite
     assert reference["route_markers"][-1]["action"] == "parley_success"
     assert not any("encounter" in trigger for trigger in complication["triggers"])
+
+
+def test_tag_clue_gate_inserts_follow_up_scene(repo: RulesRepository, tmp_path: Path) -> None:
+    data_dir = tmp_path / "appdata"
+    data_dir.mkdir()
+    campaign = default_campaign()
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="8")
+    path, result = import_adventure_manifest(ROOT, data_dir, manifest, rules_repo=repo, overwrite=True)
+    assert result.valid, result.errors
+    assert path is not None
+
+    resolve_tag_route_action(campaign, route_action="clue_gate_unlocked", reference="Scene 16 cult hideout", clue_cost=0)
+    rewrite = apply_latest_tag_route_to_adventure(data_dir, campaign)
+
+    updated = json.loads(path.read_text(encoding="utf-8"))
+    validation = validate_adventure_manifest(updated, rules_repo=repo)
+    assert validation.valid, validation.errors
+    room_ids = {room["id"] for room in updated["rooms"]}
+    complication = next(room for room in updated["rooms"] if room["id"] == "tag-complication")
+    reference = updated["source"]["parameters"]["tag_reference"]
+    assert "follow-up scene inserted" in rewrite
+    assert "tag-unlocked-scene" in room_ids
+    assert any(exit_def["to"] == "tag-unlocked-scene" and exit_def["status"] == "open" for exit_def in complication["exits"])
+    assert reference["latest_route_rewrite"] == "follow-up scene inserted and route opened"
+    assert reference["route_rewrites"][-1]["action"] == "clue_gate_unlocked"
+
+
+def test_tag_skip_scene_removes_optional_side_room(repo: RulesRepository, tmp_path: Path) -> None:
+    data_dir = tmp_path / "appdata"
+    data_dir.mkdir()
+    campaign = default_campaign()
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="2")
+    path, result = import_adventure_manifest(ROOT, data_dir, manifest, rules_repo=repo, overwrite=True)
+    assert result.valid, result.errors
+    assert path is not None
+
+    resolve_tag_route_action(campaign, route_action="skip_scene", reference="Optional clue scene")
+    rewrite = apply_latest_tag_route_to_adventure(data_dir, campaign)
+
+    updated = json.loads(path.read_text(encoding="utf-8"))
+    validation = validate_adventure_manifest(updated, rules_repo=repo)
+    assert validation.valid, validation.errors
+    room_ids = {room["id"] for room in updated["rooms"]}
+    entry = next(room for room in updated["rooms"] if room["id"] == "tag-lead-entry")
+    assert "optional side scene removed" in rewrite
+    assert "tag-side-clue" not in room_ids
+    assert not any(exit_def["to"] == "tag-side-clue" for exit_def in entry["exits"])
 
 
 def test_seed_bundled_adventures_copies_shipped_modules(tmp_path: Path) -> None:

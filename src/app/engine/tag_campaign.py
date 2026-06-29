@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from math import ceil
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from ..db import now_utc
@@ -2125,6 +2125,132 @@ def resolve_tag_route_action(
     )
 
 
+def _tag_room_by_id(rooms: list[Any], room_id: str) -> dict[str, Any] | None:
+    return next((room for room in rooms if isinstance(room, dict) and room.get("id") == room_id), None)
+
+
+def _append_room_note(room: dict[str, Any], note: str) -> None:
+    description = str(room.get("description") or "")
+    if note not in description:
+        room["description"] = f"{description} {note}".strip()
+
+
+def _remove_encounter_triggers(room: dict[str, Any]) -> int:
+    triggers = room.get("triggers")
+    if not isinstance(triggers, list):
+        return 0
+    kept = [trigger for trigger in triggers if not isinstance(trigger, dict) or "encounter" not in trigger]
+    removed = len(triggers) - len(kept)
+    room["triggers"] = kept
+    return removed
+
+
+def _ensure_complication_encounter(room: dict[str, Any], tag_reference: dict[str, Any]) -> bool:
+    triggers = room.setdefault("triggers", [])
+    if not isinstance(triggers, list):
+        room["triggers"] = []
+        triggers = room["triggers"]
+    if any(isinstance(trigger, dict) and "encounter" in trigger for trigger in triggers):
+        return False
+    pages = tag_reference.get("pdf_pages") or "TAG scene"
+    triggers.append(
+        {
+            "when": "on_enter",
+            "once": True,
+            "log": f"TAG hostile branch {pages}: resolve the lead complication or proxy fight.",
+            "encounter": {"foes": [{"name": "Goblins", "count": 4}]},
+        }
+    )
+    return True
+
+
+def _set_exit_status(room: dict[str, Any], to_room: str, status: str) -> int:
+    changed = 0
+    for exit_data in room.get("exits") or []:
+        if isinstance(exit_data, dict) and exit_data.get("to") == to_room and exit_data.get("status") != status:
+            exit_data["status"] = status
+            changed += 1
+    return changed
+
+
+def _retarget_exit(room: dict[str, Any], from_room: str, to_room: str, *, status: str = "open") -> bool:
+    for exit_data in room.get("exits") or []:
+        if isinstance(exit_data, dict) and exit_data.get("to") == from_room:
+            exit_data["to"] = to_room
+            exit_data["status"] = status
+            return True
+    return False
+
+
+def _remove_exits_to(room: dict[str, Any], to_room: str) -> int:
+    exits = room.get("exits")
+    if not isinstance(exits, list):
+        return 0
+    kept = [exit_data for exit_data in exits if not isinstance(exit_data, dict) or exit_data.get("to") != to_room]
+    removed = len(exits) - len(kept)
+    room["exits"] = kept
+    return removed
+
+
+def _ensure_unlocked_scene_room(
+    rooms: list[Any],
+    route: TagAdventureRouteState,
+    tag_reference: dict[str, Any],
+) -> bool:
+    if _tag_room_by_id(rooms, "tag-unlocked-scene") is not None:
+        room = _tag_room_by_id(rooms, "tag-unlocked-scene")
+        if room is not None:
+            _append_room_note(room, f"TAG route update: {route.result_text}")
+        return False
+    rooms.append(
+        {
+            "id": "tag-unlocked-scene",
+            "tile_key": "13",
+            "title": "Unlocked TAG Scene",
+            "description": (
+                "A follow-up scene is now available because of a TAG branch choice. "
+                f"{route.result_text}"
+            ),
+            "environment": "dungeon",
+            "exits": [
+                {
+                    "id": "tag-unlocked-scene-south",
+                    "direction": "south",
+                    "to": "tag-complication",
+                    "kind": "door",
+                    "status": "open",
+                },
+                {
+                    "id": "tag-unlocked-scene-north",
+                    "direction": "north",
+                    "to": "tag-final-scene",
+                    "kind": "passage",
+                    "status": "open",
+                },
+            ],
+            "triggers": [
+                {
+                    "when": "on_enter",
+                    "once": True,
+                    "log": (
+                        "TAG unlocked scene: resolve the printed follow-up, clue gate, or branch before the finale. "
+                        f"Source: {tag_reference.get('pdf_pages') or route.reference}."
+                    ),
+                }
+            ],
+        }
+    )
+    return True
+
+
+def _remove_optional_side_scene(rooms: list[Any], entry: dict[str, Any] | None) -> bool:
+    before = len(rooms)
+    rooms[:] = [room for room in rooms if not isinstance(room, dict) or room.get("id") != "tag-side-clue"]
+    if entry is not None:
+        _remove_exits_to(entry, "tag-side-clue")
+    return len(rooms) != before
+
+
 def apply_latest_tag_route_to_adventure(data_dir: Path, campaign: CampaignState) -> str:
     route = campaign.tag_adventure_routes[-1] if campaign.tag_adventure_routes else None
     if route is None:
@@ -2152,40 +2278,64 @@ def apply_latest_tag_route_to_adventure(data_dir: Path, campaign: CampaignState)
         }
     )
     tag_reference["route_status"] = route.result_text
+    rewrite_log = tag_reference.setdefault("route_rewrites", [])
     rooms = manifest.get("rooms") if isinstance(manifest.get("rooms"), list) else []
-    complication = next((room for room in rooms if room.get("id") == "tag-complication"), None)
-    final = next((room for room in rooms if room.get("id") == "tag-final-scene"), None)
+    entry = _tag_room_by_id(rooms, "tag-lead-entry")
+    complication = _tag_room_by_id(rooms, "tag-complication")
+    final = _tag_room_by_id(rooms, "tag-final-scene")
     changed_detail = "source reference"
     if isinstance(complication, dict):
-        description = str(complication.get("description") or "")
-        suffix = f" TAG route marker: {route.result_text}"
-        if suffix not in description:
-            complication["description"] = (description + suffix).strip()
+        suffix = f"TAG route marker: {route.result_text}"
+        _append_room_note(complication, suffix)
         if route.route_action in {"parley_success", "peaceful_branch"}:
-            triggers = complication.get("triggers")
-            if isinstance(triggers, list):
-                complication["triggers"] = [trigger for trigger in triggers if not isinstance(trigger, dict) or "encounter" not in trigger]
+            removed = _remove_encounter_triggers(complication)
+            _set_exit_status(complication, "tag-final-scene", "open")
             changed_detail = "complication proxy combat suppressed"
+            if removed:
+                changed_detail += f"; {removed} hostile trigger(s) removed"
         elif route.route_action in {"clue_gate_unlocked", "unlock_scene"}:
-            for exit_data in complication.get("exits") or []:
-                if isinstance(exit_data, dict) and exit_data.get("to") == "tag-final-scene":
-                    exit_data["status"] = "open"
-            changed_detail = "follow-up/finale route opened"
+            inserted = _ensure_unlocked_scene_room(rooms, route, tag_reference)
+            retargeted = _retarget_exit(complication, "tag-final-scene", "tag-unlocked-scene", status="open")
+            if not retargeted:
+                _set_exit_status(complication, "tag-unlocked-scene", "open")
+            changed_detail = "follow-up scene inserted and route opened" if inserted else "follow-up scene route opened"
         elif route.route_action == "clue_gate_blocked":
-            for exit_data in complication.get("exits") or []:
-                if isinstance(exit_data, dict) and exit_data.get("to") == "tag-final-scene":
-                    exit_data["status"] = "closed"
+            _set_exit_status(complication, "tag-final-scene", "closed")
+            _set_exit_status(complication, "tag-unlocked-scene", "closed")
             changed_detail = "Clue-gated route kept closed"
         elif route.route_action in {"parley_failed", "hostile_branch"}:
+            restored = _ensure_complication_encounter(complication, tag_reference)
+            _set_exit_status(complication, "tag-final-scene", "closed")
+            _set_exit_status(complication, "tag-unlocked-scene", "closed")
             changed_detail = "hostile route preserved"
+            if restored:
+                changed_detail += "; hostile trigger restored"
     if route.route_action == "skip_scene":
+        removed = _remove_optional_side_scene(rooms, entry if isinstance(entry, dict) else None)
         for room in rooms:
             if isinstance(room, dict):
-                room["description"] = f"{room.get('description', '')} TAG route marker: scene skipped/crossed off.".strip()
-        changed_detail = "scene skip marker added to generated rooms"
+                _append_room_note(room, "TAG route marker: optional side scene skipped/crossed off.")
+        changed_detail = "optional side scene removed" if removed else "scene skip marker added to generated rooms"
     if route.route_action in {"final_route", "solo_restriction"} and isinstance(final, dict):
-        final["description"] = f"{final.get('description', '')} TAG route marker: {route.result_text}".strip()
+        _append_room_note(final, f"TAG route marker: {route.result_text}")
+        if route.route_action == "final_route" and isinstance(complication, dict):
+            _set_exit_status(complication, "tag-final-scene", "open")
         changed_detail = "finale/solo route marker added"
+    rewrite_log.append(
+        {
+            "route_id": route.id,
+            "action": route.route_action,
+            "reference": route.reference,
+            "resolved": route.resolved,
+            "change": changed_detail,
+            "created_at": now_utc(),
+        }
+    )
+    tag_reference["latest_route_rewrite"] = changed_detail
+    if markers and isinstance(markers[-1], dict):
+        markers[-1]["rewrite"] = changed_detail
+    if "Module update:" not in route.result_text:
+        route.result_text = f"{route.result_text} Module update: {changed_detail}."
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return f"Applied route marker to {adventure_id}: {changed_detail}."
 
