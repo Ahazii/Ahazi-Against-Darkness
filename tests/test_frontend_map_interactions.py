@@ -1938,6 +1938,8 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "/api/campaign/tag/hidden-trove-recovery",
         "/api/campaign/tag/guild-availability-reroll",
         "/api/campaign/tag/closeout-task",
+        "/api/campaign/tag/settlement",
+        "/api/sessions/summaries",
         "/api/adventures/ai/prompt",
         "/api/adventures/import",
         "/api/sessions",
@@ -1955,6 +1957,14 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "Finance Closeout",
         "Mark Done",
         "tag_closeout_tasks",
+        "characterFilterControls",
+        "modern-filterbar",
+        "Saved Parties",
+        "Bank Party Gold",
+        "Known Settlements",
+        "Save Preferences",
+        "Load Saved Game",
+        "sessionStorage.setItem(\"ahazi-modern-dev-unlocked\"",
         "availability reroll ${campaign.tag_guild_availability_reroll_used",
     ]:
         assert label in MODERN_PAGES_JS

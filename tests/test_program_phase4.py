@@ -78,6 +78,38 @@ def test_campaign_api_travels_to_new_tag_settlement(client: TestClient, monkeypa
     assert payload["entry"]["days"] == 12
 
 
+def test_campaign_api_creates_selects_and_deletes_tag_settlements(client: TestClient) -> None:
+    created = client.post(
+        "/api/campaign/tag/settlement",
+        json={"action": "create", "name": "Blue Ford", "size": 1, "notes": "River market."},
+    )
+    assert created.status_code == 200
+    payload = created.json()
+    settlement_id = payload["settlement"]["id"]
+    assert payload["campaign"]["settlement_name"] == "Blue Ford"
+    assert payload["campaign"]["settlement_size"] == 1
+    assert any(item["name"] == "Blue Ford" for item in payload["campaign"]["tag_settlements"])
+
+    client.post(
+        "/api/campaign/tag/settlement",
+        json={"action": "create", "name": "Red Mill", "size": -1, "notes": "Small road stop."},
+    )
+    selected = client.post(
+        "/api/campaign/tag/settlement",
+        json={"action": "select", "settlement_id": settlement_id},
+    )
+    assert selected.status_code == 200
+    assert selected.json()["campaign"]["settlement_name"] == "Blue Ford"
+
+    deleted = client.post(
+        "/api/campaign/tag/settlement",
+        json={"action": "delete", "settlement_id": settlement_id},
+    )
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+    assert all(item["name"] != "Blue Ford" for item in deleted.json()["campaign"]["tag_settlements"])
+
+
 def test_campaign_api_lists_tag_services(client: TestClient) -> None:
     client.put("/api/campaign", json={"settlement_size": 0})
     response = client.get("/api/campaign/tag/services")

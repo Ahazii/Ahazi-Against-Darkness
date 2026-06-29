@@ -261,6 +261,12 @@ h2 {
   font-size: 15px;
 }
 
+.modern-card-compact {
+  align-content: start;
+  max-height: 360px;
+  overflow: auto;
+}
+
 .modern-field {
   display: grid;
   gap: 4px;
@@ -276,6 +282,14 @@ h2 {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.modern-filterbar,
+.modern-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+  align-items: end;
 }
 
 .modern-row {
@@ -298,6 +312,10 @@ h2 {
   gap: 8px;
   max-height: 62vh;
   overflow: auto;
+}
+
+.modern-list-tall {
+  max-height: 72vh;
 }
 
 .modern-check-list {

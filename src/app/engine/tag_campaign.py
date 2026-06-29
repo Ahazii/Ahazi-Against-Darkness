@@ -20,6 +20,7 @@ from ..schemas import (
     TagCloseoutTaskState,
     TagDowntimeLogEntry,
     TagMagicLockerState,
+    TagSettlementState,
     TagStoredItemState,
     TagTravelLogEntry,
     TagXpMarkerState,
@@ -971,6 +972,9 @@ def default_campaign() -> CampaignState:
     return CampaignState(
         id=DEFAULT_CAMPAIGN_ID,
         tag_banking_enabled=False,
+        tag_settlements=[
+            TagSettlementState(name="Home Settlement", size=0, notes="", created_at=timestamp),
+        ],
         days_passed=0,
         adventures_completed=0,
         created_at=timestamp,
@@ -1352,7 +1356,62 @@ def update_settlement(
         campaign.settlement_size = max(-3, min(3, int(size)))
     if notes is not None:
         campaign.settlement_notes = notes.strip()[:1000]
+    upsert_tag_settlement(campaign, name=campaign.settlement_name, size=campaign.settlement_size, notes=campaign.settlement_notes)
     return campaign
+
+
+def upsert_tag_settlement(
+    campaign: CampaignState,
+    *,
+    name: str,
+    size: int = 0,
+    notes: str = "",
+) -> TagSettlementState:
+    clean_name = (name or "").strip()[:80] or "Home Settlement"
+    clean_size = max(-3, min(3, int(size)))
+    clean_notes = (notes or "").strip()[:1000]
+    existing = next((item for item in campaign.tag_settlements if item.name.lower() == clean_name.lower()), None)
+    if existing is None:
+        existing = TagSettlementState(name=clean_name, size=clean_size, notes=clean_notes, created_at=now_utc())
+        campaign.tag_settlements.append(existing)
+    else:
+        existing.name = clean_name
+        existing.size = clean_size
+        existing.notes = clean_notes
+    return existing
+
+
+def select_tag_settlement(campaign: CampaignState, *, settlement_id: str = "", name: str = "") -> TagSettlementState | None:
+    clean_id = (settlement_id or "").strip()
+    clean_name = (name or "").strip().lower()
+    settlement = next(
+        (
+            item
+            for item in campaign.tag_settlements
+            if (clean_id and item.id == clean_id) or (clean_name and item.name.lower() == clean_name)
+        ),
+        None,
+    )
+    if settlement is None:
+        return None
+    campaign.settlement_name = settlement.name
+    campaign.settlement_size = settlement.size
+    campaign.settlement_notes = settlement.notes
+    return settlement
+
+
+def delete_tag_settlement(campaign: CampaignState, *, settlement_id: str = "", name: str = "") -> bool:
+    before = len(campaign.tag_settlements)
+    clean_id = (settlement_id or "").strip()
+    clean_name = (name or "").strip().lower()
+    campaign.tag_settlements = [
+        item
+        for item in campaign.tag_settlements
+        if not ((clean_id and item.id == clean_id) or (clean_name and item.name.lower() == clean_name))
+    ]
+    if not campaign.tag_settlements:
+        upsert_tag_settlement(campaign, name=campaign.settlement_name, size=campaign.settlement_size, notes=campaign.settlement_notes)
+    return len(campaign.tag_settlements) != before
 
 
 def roll_settlement_size(campaign: CampaignState) -> tuple[CampaignState, int]:
@@ -1411,6 +1470,7 @@ def travel_to_new_settlement(
         result = f"Moved from {from_name} to {to_name}: {days} day(s) travel. New settlement size {new_size:+d}."
     campaign.settlement_name = to_name
     campaign.settlement_size = new_size
+    upsert_tag_settlement(campaign, name=to_name, size=new_size)
     campaign.days_passed += days
     entry = TagTravelLogEntry(
         from_settlement=from_name,

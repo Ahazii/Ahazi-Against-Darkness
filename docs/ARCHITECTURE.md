@@ -106,6 +106,11 @@ New routed home:
   parties, equipment, banking/finance, settlement, campaign placeholders,
   settings, AI adventure import, adventure start, rules reference, tables,
   PDF library, guides, and password-gated developer links.
+- Modern pages share client-side filter/sort helpers for characters,
+  equipment/services, rules, tables, and adventure/session lists. Preferences
+  for enabled rulesets, default random ruleset, XP system, map mode, map limit,
+  and last selected party are kept in browser local storage; developer unlock is
+  kept in browser session storage.
 - `modern-pages.js` is the first split from the monolithic `app.js`; it calls
   existing backend APIs directly and should be expanded into smaller modules as
   each page matures.
@@ -176,6 +181,11 @@ Home screen character UI:
   wider troupe roster, while `tag_troupe_active_character_ids` stores the current
   active party subset. The Home troupe manager can add/remove/list members and
   choose up to four active adventurers from troupe members only.
+- **TAG settlements:** `CampaignState.tag_settlements` stores named TAG
+  settlements with size modifier and notes. The current `settlement_name`,
+  `settlement_size`, and `settlement_notes` remain the selected settlement used
+  by availability/travel/service rules; `/api/campaign/tag/settlement` creates,
+  selects, and deletes tracked settlements.
 - **TAG closeout:** `CampaignState.tag_closeout_tasks` stores unresolved
   between-adventure prompts created by `record_adventure_complete(store,
   session)`. Real actions such as Guild loot share, Guild upkeep, Guild reroll

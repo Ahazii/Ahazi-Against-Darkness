@@ -603,6 +603,43 @@ async def campaign_tag_travel_settlement(payload: dict[str, Any]) -> dict[str, A
     return {"campaign": campaign, "entry": entry}
 
 
+@app.post("/api/campaign/tag/settlement")
+async def campaign_tag_settlement(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import delete_tag_settlement, load_campaign, save_campaign, select_tag_settlement, upsert_tag_settlement
+
+    campaign = load_campaign(store)
+    action = str(payload.get("action") or "create")
+    if action == "delete":
+        deleted = delete_tag_settlement(
+            campaign,
+            settlement_id=str(payload.get("settlement_id") or ""),
+            name=str(payload.get("name") or ""),
+        )
+        campaign = save_campaign(store, campaign)
+        return {"campaign": campaign, "deleted": deleted}
+    if action == "select":
+        settlement = select_tag_settlement(
+            campaign,
+            settlement_id=str(payload.get("settlement_id") or ""),
+            name=str(payload.get("name") or ""),
+        )
+        if settlement is None:
+            raise HTTPException(status_code=404, detail="Settlement not found.")
+        campaign = save_campaign(store, campaign)
+        return {"campaign": campaign, "settlement": settlement}
+    settlement = upsert_tag_settlement(
+        campaign,
+        name=str(payload.get("name") or ""),
+        size=int(payload.get("size") or 0),
+        notes=str(payload.get("notes") or ""),
+    )
+    campaign.settlement_name = settlement.name
+    campaign.settlement_size = settlement.size
+    campaign.settlement_notes = settlement.notes
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "settlement": settlement}
+
+
 @app.post("/api/campaign/tag/look-for-clues")
 async def campaign_tag_look_for_clues(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, look_for_clues, save_campaign

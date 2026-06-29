@@ -639,6 +639,14 @@ class TagTravelLogEntry(BaseModel):
     created_at: str
 
 
+class TagSettlementState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    name: str
+    size: int = Field(default=0, ge=-3, le=3)
+    notes: str = ""
+    created_at: str
+
+
 class TagStoredItemState(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     owner_character_id: str | None = None
@@ -736,6 +744,7 @@ class CampaignState(BaseModel):
     settlement_name: str = "Home Settlement"
     settlement_size: int = Field(default=0, ge=-3, le=3)
     settlement_notes: str = ""
+    tag_settlements: list[TagSettlementState] = Field(default_factory=list)
     tag_availability_checks: list[TagAvailabilityCheckState] = Field(default_factory=list)
     tag_downtime_log: list[TagDowntimeLogEntry] = Field(default_factory=list)
     tag_travel_log: list[TagTravelLogEntry] = Field(default_factory=list)
