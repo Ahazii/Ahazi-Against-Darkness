@@ -1832,6 +1832,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-trinket",
         "tag-use-trinket",
         "tag-guild-spell",
+        "tag-guild-target-character",
+        "tag-guild-target-weapon",
         "tag-cast-guild-spell",
         "tag-guild-marker",
         "tag-clear-guild-marker",
@@ -1897,6 +1899,11 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.useTrinket" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.castGuildSpell" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.guildMarker" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.guildTargetCharacter" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.guildTargetWeapon" in APP_JS
+    assert "target_character_id" in APP_JS
+    assert "target_weapon" in APP_JS
+    assert "updateTagGuildTargetWeapon" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.clearGuildMarker" in APP_JS
     assert "renderTagRouteXpSummary" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.runFinance" in APP_JS

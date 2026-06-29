@@ -311,6 +311,8 @@ const tagRunXpAction = document.getElementById("tag-run-xp-action");
 const tagTrinket = document.getElementById("tag-trinket");
 const tagUseTrinket = document.getElementById("tag-use-trinket");
 const tagGuildSpell = document.getElementById("tag-guild-spell");
+const tagGuildTargetCharacter = document.getElementById("tag-guild-target-character");
+const tagGuildTargetWeapon = document.getElementById("tag-guild-target-weapon");
 const tagCastGuildSpell = document.getElementById("tag-cast-guild-spell");
 const tagGuildMarker = document.getElementById("tag-guild-marker");
 const tagClearGuildMarker = document.getElementById("tag-clear-guild-marker");
@@ -8512,6 +8514,8 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   trinket: "TAG trinket to use. If the selected character carries the item, the app consumes it; otherwise it logs the manual use.",
   useTrinket: "Use the selected TAG trinket for the chosen character and apply any safe status/healing effect.",
   guildSpell: "TAG Guild spell to cast or log. Scrolls are consumed when present; known spells are logged for slot tracking. Speedy Recovery marks settlement healing at 2 Life/day, Look Tough is consumed on the next Streetwise roll, and Wizard's Luck can modify Gambling House rolls.",
+  guildTargetCharacter: "Optional target for Troupe Switch or Silence of the Mouse. Troupe Switch marks the pre-chosen recipient; Silence marks the paired Stealth-swap character.",
+  guildTargetWeapon: "Weapon for Temporary Weapon Enchantment. Choose a weapon carried by the caster; the marker makes it magical with no Attack bonus.",
   castGuildSpell: "Cast or log the selected TAG Guild spell and apply the exact safe marker where applicable.",
   guildMarker: "TAG Guild spell marker to clear after its timing window has been used or manually resolved.",
   clearGuildMarker: "Clear the selected TAG Guild spell marker from the chosen character and log the consumption.",
@@ -10475,6 +10479,8 @@ function applyTagSettlementTooltips() {
   setTooltip(tagTrinket, TAG_SETTLEMENT_TOOLTIPS.trinket);
   setButtonTooltip(tagUseTrinket, TAG_SETTLEMENT_TOOLTIPS.useTrinket);
   setTooltip(tagGuildSpell, TAG_SETTLEMENT_TOOLTIPS.guildSpell);
+  setTooltip(tagGuildTargetCharacter, TAG_SETTLEMENT_TOOLTIPS.guildTargetCharacter);
+  setTooltip(tagGuildTargetWeapon, TAG_SETTLEMENT_TOOLTIPS.guildTargetWeapon);
   setButtonTooltip(tagCastGuildSpell, TAG_SETTLEMENT_TOOLTIPS.castGuildSpell);
   setTooltip(tagGuildMarker, TAG_SETTLEMENT_TOOLTIPS.guildMarker);
   setButtonTooltip(tagClearGuildMarker, TAG_SETTLEMENT_TOOLTIPS.clearGuildMarker);
@@ -11817,6 +11823,8 @@ function renderTagCharacterOptions(campaign = state.campaign) {
   fillTagCharacterSelect(tagPurchaseCharacter, roster, tagPurchaseCharacter?.value);
   fillTagCharacterSelect(tagLockerCharacter, roster, tagLockerCharacter?.value);
   fillTagCharacterSelect(tagActionCharacter, roster, tagActionCharacter?.value);
+  fillTagCharacterSelect(tagGuildTargetCharacter, roster, tagGuildTargetCharacter?.value);
+  updateTagGuildTargetWeapon();
   fillTagCharacterSelect(tagBankTransferCharacter, roster, tagBankTransferCharacter?.value);
   fillTagCharacterSelect(modernTagCharacter, roster, modernTagCharacter?.value);
   if (tagTroupeActive) {
@@ -11855,6 +11863,25 @@ function renderTagCharacterOptions(campaign = state.campaign) {
 
 function renderTagClueCharacterOptions() {
   renderTagCharacterOptions();
+}
+
+function selectedTagActionCharacter() {
+  const id = tagActionCharacter?.value || "";
+  return (state.characters || []).find((character) => character.id === id) || null;
+}
+
+function updateTagGuildTargetWeapon() {
+  if (!tagGuildTargetWeapon) return;
+  const spell = tagGuildSpell?.value || "";
+  const caster = selectedTagActionCharacter();
+  const weapons = caster ? inventoryWeaponCandidates(caster.inventory || []) : [];
+  tagGuildTargetWeapon.disabled = spell !== "temporary_weapon_enchantment";
+  tagGuildTargetWeapon.placeholder = spell === "temporary_weapon_enchantment"
+    ? (weapons[0] || "Weapon carried by caster")
+    : "Only used for Temporary Weapon";
+  if (spell === "temporary_weapon_enchantment" && !tagGuildTargetWeapon.value && weapons[0]) {
+    tagGuildTargetWeapon.value = weapons[0];
+  }
 }
 
 function renderModernHomePanel(campaign = state.campaign) {
@@ -12378,6 +12405,8 @@ async function castTagGuildSpellAction() {
     body: JSON.stringify({
       character_id: tagActionCharacter.value,
       spell_key: tagGuildSpell?.value || "",
+      target_character_id: tagGuildTargetCharacter?.value || "",
+      target_weapon: tagGuildTargetWeapon?.value || "",
     }),
   });
   state.campaign = result.campaign;
@@ -28202,6 +28231,12 @@ tagRunXpAction?.addEventListener("click", () => {
 });
 tagUseTrinket?.addEventListener("click", () => {
   useTagTrinketAction().catch(handleError);
+});
+tagActionCharacter?.addEventListener("change", () => {
+  updateTagGuildTargetWeapon();
+});
+tagGuildSpell?.addEventListener("change", () => {
+  updateTagGuildTargetWeapon();
 });
 tagCastGuildSpell?.addEventListener("click", () => {
   castTagGuildSpellAction().catch(handleError);

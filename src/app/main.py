@@ -970,11 +970,25 @@ async def campaign_tag_guild_spell(payload: dict[str, Any]) -> dict[str, Any]:
     character = _optional_campaign_character(payload)
     if character is None:
         raise HTTPException(status_code=400, detail="Character is required.")
+    target_character = None
+    target_character_id = str(payload.get("target_character_id") or "").strip()
+    if target_character_id and target_character_id != character.id:
+        target_character = store.get("characters", target_character_id, Character.model_validate)
+        if target_character is None:
+            raise HTTPException(status_code=404, detail="Target character not found.")
     campaign = load_campaign(store)
-    entry = cast_tag_guild_spell(campaign, character, spell_key=str(payload.get("spell_key") or ""))
+    entry = cast_tag_guild_spell(
+        campaign,
+        character,
+        spell_key=str(payload.get("spell_key") or ""),
+        target_character=target_character,
+        target_weapon=str(payload.get("target_weapon") or ""),
+    )
     store.save("characters", character)
+    if target_character is not None:
+        store.save("characters", target_character)
     campaign = save_campaign(store, campaign)
-    return {"campaign": campaign, "character": character, "entry": entry}
+    return {"campaign": campaign, "character": character, "target_character": target_character, "entry": entry}
 
 
 @app.post("/api/campaign/tag/guild-marker")

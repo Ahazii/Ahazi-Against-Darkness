@@ -2682,7 +2682,33 @@ def use_tag_trinket(campaign: CampaignState, character: Character, *, trinket_ke
     )
 
 
-def cast_tag_guild_spell(campaign: CampaignState, character: Character, *, spell_key: str) -> TagDowntimeLogEntry:
+TAG_GUILD_MARKERS: dict[str, str] = {
+    "temporary_weapon_enchantment": "TAG Temporary Weapon Enchantment: choose one weapon; magical no Attack bonus",
+    "troupe_switch": "TAG Troupe Switch pending",
+    "look_tough": TAG_LOOK_TOUGH_MARKER,
+    "silence_of_the_mouse": "TAG Silence of the Mouse: 6 rooms ignore setting Stealth penalties",
+    "wizards_luck": TAG_WIZARDS_LUCK_MARKER,
+    "speedy_recovery": "TAG Speedy Recovery settlement healing 2/day",
+}
+
+
+def _weapon_candidates(character: Character) -> list[str]:
+    tokens = ("weapon", "bow", "crossbow", "sling", "stake", "crowbar", "handgun", "rifle", "throwing star", "flail-axe", "axe", "sword", "dagger", "mace", "spear")
+    return [item for item in character.inventory if any(token in item.lower() for token in tokens)]
+
+
+def _target_name(character: Character | None) -> str:
+    return character.name if character is not None else "chosen target"
+
+
+def cast_tag_guild_spell(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    spell_key: str,
+    target_character: Character | None = None,
+    target_weapon: str = "",
+) -> TagDowntimeLogEntry:
     effect = TAG_GUILD_SPELL_EFFECTS.get(spell_key)
     if effect is None:
         return append_tag_log(campaign, action="guild_spell", character=character, result_text=f"Unknown TAG Guild spell: {spell_key}.")
@@ -2695,8 +2721,44 @@ def cast_tag_guild_spell(campaign: CampaignState, character: Character, *, spell
     else:
         availability = "known spell cast; mark the spell slot manually if needed"
     status = effect.get("status")
-    if effect.get("heal_full"):
-        character.current_life = character.max_life
+    result_extra = ""
+    if spell_key == "temporary_weapon_enchantment":
+        weapon = target_weapon.strip()
+        if not weapon:
+            candidates = _weapon_candidates(character)
+            weapon = candidates[0] if candidates else ""
+        if weapon and weapon in character.inventory:
+            status = f"TAG Temporary Weapon Enchantment: {weapon} is magical, no Attack bonus"
+            result_extra = f" Target weapon: {weapon}."
+        elif weapon:
+            status = str(status)
+            result_extra = f" Target weapon '{weapon}' is not in {character.name}'s inventory; choose the weapon manually."
+        else:
+            status = str(status)
+            result_extra = " No carried weapon was selected; choose the weapon manually."
+    elif spell_key == "troupe_switch":
+        target = _target_name(target_character)
+        status = f"TAG Troupe Switch caster: may swap with {target} once this adventure"
+        if target_character is not None:
+            target_status = (
+                f"TAG Troupe Switch recipient for {character.name}: if summoned in combat, -1 Attack/Defense/Save until encounter ends; "
+                "roll 2-in-6 for no armor and 2-in-6 for one missing spell slot if applicable"
+            )
+            if target_status not in target_character.statuses:
+                target_character.statuses.append(target_status)
+            target_character.updated_at = now_utc()
+        result_extra = f" Recipient: {target}. This spell may be used only once per adventure."
+    elif spell_key == "silence_of_the_mouse":
+        target = _target_name(target_character)
+        status = f"TAG Silence of the Mouse: Stealth switched with {target}; ignore setting Stealth penalties for 6 rooms"
+        if target_character is not None:
+            target_status = (
+                f"TAG Silence of the Mouse: Stealth switched with {character.name}; ignore setting Stealth penalties for 6 rooms"
+            )
+            if target_status not in target_character.statuses:
+                target_character.statuses.append(target_status)
+            target_character.updated_at = now_utc()
+        result_extra = f" Paired character: {target}."
     if isinstance(status, str) and status not in character.statuses:
         character.statuses.append(status)
     if spell_key == "look_tough" and character.id not in campaign.tag_look_tough_character_ids:
@@ -2706,27 +2768,43 @@ def cast_tag_guild_spell(campaign: CampaignState, character: Character, *, spell
         campaign,
         action="guild_spell",
         character=character,
-        result_text=f"{character.name} casts {spell_name}: {availability}. {effect['summary']}",
+        result_text=f"{character.name} casts {spell_name}: {availability}. {effect['summary']}{result_extra}",
     )
 
 
-TAG_GUILD_MARKERS: dict[str, str] = {
-    "temporary_weapon_enchantment": "TAG Temporary Weapon Enchantment: choose one weapon; magical no Attack bonus",
-    "troupe_switch": "TAG Troupe Switch pending",
-    "look_tough": TAG_LOOK_TOUGH_MARKER,
-    "silence_of_the_mouse": "TAG Silence of the Mouse: 6 rooms ignore setting Stealth penalties",
-    "wizards_luck": TAG_WIZARDS_LUCK_MARKER,
-    "speedy_recovery": "TAG Speedy Recovery settlement healing 2/day",
-}
+def _remove_tag_guild_markers(character: Character, marker_key: str, marker: str) -> list[str]:
+    if marker_key == "temporary_weapon_enchantment":
+        prefixes = ("TAG Temporary Weapon Enchantment:",)
+    elif marker_key == "troupe_switch":
+        prefixes = ("TAG Troupe Switch",)
+    elif marker_key == "silence_of_the_mouse":
+        prefixes = ("TAG Silence of the Mouse:",)
+    elif marker_key == "wizards_luck":
+        prefixes = (TAG_WIZARDS_LUCK_MARKER,)
+    elif marker_key == "look_tough":
+        prefixes = (TAG_LOOK_TOUGH_MARKER,)
+    elif marker_key == "speedy_recovery":
+        prefixes = ("TAG Speedy Recovery settlement healing 2/day",)
+    else:
+        prefixes = (marker,)
+    removed: list[str] = []
+    kept: list[str] = []
+    for status in character.statuses:
+        if any(status.startswith(prefix) for prefix in prefixes):
+            removed.append(status)
+        else:
+            kept.append(status)
+    character.statuses = kept
+    return removed
 
 
 def consume_tag_guild_marker(campaign: CampaignState, character: Character, *, marker_key: str) -> TagDowntimeLogEntry:
     marker = TAG_GUILD_MARKERS.get(marker_key, marker_key)
-    if marker in character.statuses:
-        character.statuses.remove(marker)
+    removed = _remove_tag_guild_markers(character, marker_key, marker)
+    if removed:
         if marker_key == "look_tough" and character.id in campaign.tag_look_tough_character_ids:
             campaign.tag_look_tough_character_ids.remove(character.id)
-        result = f"{character.name} clears TAG Guild marker: {marker}."
+        result = f"{character.name} clears TAG Guild marker: {', '.join(removed)}."
     else:
         result = f"{character.name} does not currently have TAG Guild marker: {marker}."
     character.updated_at = now_utc()

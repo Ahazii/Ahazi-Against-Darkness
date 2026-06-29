@@ -548,6 +548,48 @@ def test_tag_wizards_luck_resolves_gambling_success_and_natural_one(monkeypatch)
     assert "fine" in jailed.result_text
 
 
+def test_tag_guild_spell_target_workflows() -> None:
+    campaign = default_campaign()
+    caster = _character(
+        id="caster-1",
+        name="Merga",
+        class_id="wizard",
+        class_name="Wizard",
+        inventory=["Hand weapon", "Scroll of Temporary Weapon Enchantment"],
+        spells=["Troupe Switch", "Silence of the Mouse"],
+        statuses=[],
+    )
+    target = _character(id="target-1", name="Dargo", class_id="rogue", class_name="Rogue", statuses=[])
+
+    weapon = cast_tag_guild_spell(
+        campaign,
+        caster,
+        spell_key="temporary_weapon_enchantment",
+        target_weapon="Hand weapon",
+    )
+    assert "Scroll of Temporary Weapon Enchantment" not in caster.inventory
+    assert any(status == "TAG Temporary Weapon Enchantment: Hand weapon is magical, no Attack bonus" for status in caster.statuses)
+    assert "Target weapon: Hand weapon" in weapon.result_text
+
+    troupe = cast_tag_guild_spell(campaign, caster, spell_key="troupe_switch", target_character=target)
+    assert any(status.startswith("TAG Troupe Switch caster: may swap with Dargo") for status in caster.statuses)
+    assert any(status.startswith("TAG Troupe Switch recipient for Merga") for status in target.statuses)
+    assert "Recipient: Dargo" in troupe.result_text
+
+    silence = cast_tag_guild_spell(campaign, caster, spell_key="silence_of_the_mouse", target_character=target)
+    assert any(status.startswith("TAG Silence of the Mouse: Stealth switched with Dargo") for status in caster.statuses)
+    assert any(status.startswith("TAG Silence of the Mouse: Stealth switched with Merga") for status in target.statuses)
+    assert "Paired character: Dargo" in silence.result_text
+
+    clear_weapon = consume_tag_guild_marker(campaign, caster, marker_key="temporary_weapon_enchantment")
+    assert not any(status.startswith("TAG Temporary Weapon Enchantment:") for status in caster.statuses)
+    assert "Hand weapon is magical" in clear_weapon.result_text
+
+    clear_silence = consume_tag_guild_marker(campaign, target, marker_key="silence_of_the_mouse")
+    assert not any(status.startswith("TAG Silence of the Mouse:") for status in target.statuses)
+    assert "clears TAG Guild marker" in clear_silence.result_text
+
+
 def test_tag_route_and_xp_actions_persist_structured_signoff_state() -> None:
     campaign = default_campaign()
     hero = _character(clues=3, xp=2, statuses=[])
