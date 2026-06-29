@@ -81,7 +81,7 @@ Top priority:
   **`dungeon monster tables` (EE p.167–170):** rows verified; vermin/minions/weird/boss
   stat, reaction, immunity, and special-effect fields locked in
   `tests/test_pdf_table_compliance.py` (four detail tests + name-order test).
-  Next target: **Phase 3B PDF-authored adventures** or rulebook scan snippets beside structured tables.
+  Next target: **TAG generated-adventure playtest signoff**, especially contextual scene prompts, branch/reward accuracy against the PDF, and module-import groundwork for PDF-authored adventures.
 
 Completed or starter-complete:
 

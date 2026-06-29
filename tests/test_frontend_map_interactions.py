@@ -1919,6 +1919,16 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG Bank Ledger" in MODERN_PAGES_JS
     assert "Hidden Treasure Trove" in MODERN_PAGES_JS
     assert "Guild Jobs and Members" in MODERN_PAGES_JS
+    assert "function appendTagContextualActions" in APP_JS
+    assert "TAG scene prompt" in APP_JS
+    assert "openTagActionsWithDefaults" in APP_JS
+    assert "tag-lead-entry" in APP_JS
+    assert "tag-complication" in APP_JS
+    assert "tag-final-scene" in APP_JS
+    assert "tag-context-actions" in STYLES_CSS
+    assert "Class dossier" in MODERN_PAGES_JS
+    assert "modern-class-info" in MODERN_PAGES_JS
+    assert "Create / Save Troupe" in MODERN_PAGES_JS
 
 
 def test_modern_home_routes_and_pages_are_standalone() -> None:

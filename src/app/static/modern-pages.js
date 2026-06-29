@@ -167,6 +167,75 @@ function formatCharacter(character) {
   return `${character.name} (${character.class_name}, L${character.level}, ${character.gold || 0}gp, ${character.clues || 0} Clues)`;
 }
 
+function classProfileById(classId) {
+  return modernState.classes.find((item) => item.id === classId) || modernState.classes[0] || null;
+}
+
+function classImageSrc(profile) {
+  if (!profile?.image) return "";
+  if (/^(https?:|\/)/.test(profile.image)) return profile.image;
+  return `/assets/${profile.image}`;
+}
+
+function renderClassDossier(profile) {
+  const wrap = el("div", "modern-class-info");
+  wrap.title = "Class dossier from the structured class rules data: artwork, core stats, starting kit, spells, abilities, and implementation status.";
+  if (!profile) {
+    wrap.appendChild(el("p", "muted", "Choose a class to inspect its rules profile before creating the character."));
+    return wrap;
+  }
+  const hero = el("div", "modern-class-hero");
+  const src = classImageSrc(profile);
+  if (src) {
+    const image = document.createElement("img");
+    image.src = src;
+    image.alt = `${profile.name} class artwork`;
+    image.title = `${profile.name} class artwork from the project assets.`;
+    hero.appendChild(image);
+  }
+  const summary = el("div", "modern-stack");
+  summary.appendChild(el("strong", "", `${profile.name} class dossier`));
+  summary.appendChild(
+    el(
+      "span",
+      "muted",
+      `Life ${profile.base_life ?? "?"} · Attack ${profile.attack_bonus ?? 0} · Defense ${profile.defense_bonus ?? 0} · Save ${profile.save_bonus ?? 0} · Wealth ${profile.starting_wealth_roll || `${profile.starting_gold || 0}gp`}`
+    )
+  );
+  summary.appendChild(el("span", "muted", `Status: ${profile.implementation_status || "review"}`));
+  hero.appendChild(summary);
+  wrap.appendChild(hero);
+  const details = el("div", "modern-class-grid");
+  details.appendChild(
+    modernStatusRow(
+      "Starting equipment",
+      (profile.starting_inventory || []).join(", ") || "No starting equipment listed.",
+      "Items added or referenced when this class is created."
+    )
+  );
+  details.appendChild(
+    modernStatusRow(
+      "Starting spells",
+      (profile.starting_spells || []).join(", ") || "No starting spells.",
+      "Spells or prayers granted at character creation."
+    )
+  );
+  details.appendChild(
+    modernStatusRow(
+      "Abilities",
+      (profile.abilities || []).join(", ") || "No separate ability summary listed.",
+      "Rules abilities implemented or tracked for this class."
+    )
+  );
+  wrap.appendChild(details);
+  if (profile.description) {
+    const desc = el("p", "modern-class-description", profile.description);
+    desc.title = "Full class rules text from data/rules/classes.json.";
+    wrap.appendChild(desc);
+  }
+  return wrap;
+}
+
 function modernTitleFromKey(key) {
   return String(key || "")
     .replace(/_/g, " ")
@@ -442,10 +511,15 @@ function renderCharacters() {
   layout.appendChild(list);
 
   const create = card("Create / Add Character", "Choose a class, enter a name, and create a roster hero.");
-  create.classList.add("modern-card-compact");
   const name = input("text", "modern-character-name", "Name for the new character.");
   const classSelect = select("modern-character-class", "Class for the new character.", modernState.classes.map((item) => [item.id, item.name]));
-  create.append(field("Name", name), field("Class", classSelect));
+  const classDossierMount = el("div", "modern-class-dossier-mount");
+  function drawClassDossier() {
+    classDossierMount.replaceChildren(renderClassDossier(classProfileById(classSelect.value)));
+  }
+  classSelect.addEventListener("change", drawClassDossier);
+  create.append(field("Name", name), field("Class", classSelect), classDossierMount);
+  drawClassDossier();
   create.appendChild(button("Create", "Create this character in the roster.", async () => {
     await api("/api/characters", { method: "POST", body: JSON.stringify({ name: name.value, class_id: classSelect.value }) });
     setStatus("Character created.");
@@ -473,7 +547,7 @@ function knownSettlements() {
 
 function renderTroupes() {
   const campaign = modernState.campaign || {};
-  const panel = card("Troupe Roster", "The troupe is the wider TAG character company; the active party is selected from these members.");
+  const panel = card("Create / Select Troupe", "The troupe is the wider TAG character company; the active party is selected from these members. This page currently manages the campaign's active troupe record.");
   const name = input("text", "modern-troupe-name", "Name of the TAG troupe.", campaign.tag_troupe_name || "Adventuring Troupe");
   const addFilters = characterFilterControls("modern-troupe-add", () => updateCharacterSelect(add, "Choose member to add", { search: addFilters.search.value, classId: addFilters.classFilter.value, sort: addFilters.sort.value }));
   const add = characterSelect("modern-troupe-add-select", "Roster character to add to the troupe.", "Choose member to add");
@@ -488,6 +562,13 @@ function renderTroupes() {
   active.multiple = true;
   active.size = Math.max(4, Math.min(8, troupeMemberIds().length || 4));
   for (const option of active.options) option.selected = (campaign.tag_troupe_active_character_ids || []).includes(option.value);
+  panel.appendChild(
+    modernStatusRow(
+      campaign.tag_troupe_name || "Adventuring Troupe",
+      `${troupeMemberIds().length} member(s) · ${(campaign.tag_troupe_active_character_ids || []).length} active · home ${campaign.settlement_name || "Home Settlement"}`,
+      "Current TAG troupe summary. Save changes here before using the troupe for travel or adventure setup."
+    )
+  );
   panel.append(field("Troupe name", name), addFilters.panel, field("Add member", add), field("Remove member", remove), field("Active members", active));
   const save = async (memberIds = troupeMemberIds()) => {
     const activeIds = Array.from(active.selectedOptions).map((option) => option.value).filter((id) => memberIds.includes(id)).slice(0, 4);
@@ -506,7 +587,7 @@ function renderTroupes() {
   };
   const row = actions();
   row.append(
-    button("Save Troupe", "Save the troupe name and active member selection.", () => save(), ""),
+    button("Create / Save Troupe", "Create or update the current TAG troupe name and active member selection.", () => save(), ""),
     button("Add Member", "Add selected roster character to this troupe.", () => {
       const ids = Array.from(new Set([...troupeMemberIds(), add.value].filter(Boolean)));
       return save(ids);
@@ -518,14 +599,18 @@ function renderTroupes() {
     button("Delete Troupe", "Clear troupe members, active party selection, and reset the troupe name.", () => save([]))
   );
   panel.appendChild(row);
-  const memberList = card("Troupe Members", "Current troupe members with party, bank, and activity status.");
+  const memberList = card("List Members", "Current troupe members with party, bank, activity, TAG bank, and carried-gold status.");
   for (const id of troupeMemberIds()) {
     const character = modernState.characters.find((item) => item.id === id);
     if (!character) continue;
     const activeText = (campaign.tag_troupe_active_character_ids || []).includes(id) ? "active party" : "home/available";
     const memberRow = el("div", "modern-row");
     memberRow.append(el("strong", "", character.name), el("span", "muted", `${character.class_name} L${character.level} · ${activeText} · carried ${character.gold || 0}gp · TAG bank ${tagBankForCharacter(id)}gp · parties: ${partyNamesForCharacter(id).join(", ") || "none"}`));
+    memberRow.title = "Troupe member status. Use Add Member or Remove Member on this page to change the roster.";
     memberList.appendChild(memberRow);
+  }
+  if (!memberList.childElementCount) {
+    memberList.appendChild(el("p", "muted", "No troupe members yet. Add roster characters above, then choose up to four active members."));
   }
 
   const travel = card("Travel / Home Settlement", "The size modifier belongs to the selected TAG settlement and affects availability rolls. Travel changes the troupe home settlement focus.");

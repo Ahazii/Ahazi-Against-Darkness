@@ -21570,6 +21570,174 @@ function appendAbyssCampaignActions(parent, session, tile) {
   parent.appendChild(block);
 }
 
+function tagReferenceForGeneratedAdventure(session) {
+  const manifest = session?.imported_manifest || {};
+  const source = manifest.source || {};
+  const params = source.parameters || {};
+  const adventureIds = new Set(state.campaign?.tag_generated_adventure_ids || []);
+  if (params.tag_reference) return params.tag_reference;
+  if (params.origin === "Tales from the Adventurers' Guild") return params;
+  if (session?.adventure_id && adventureIds.has(session.adventure_id)) return params.tag_reference || params || {};
+  return null;
+}
+
+function tagCurrentImportedRoomId(session, tile) {
+  const contentKey = tile?.content_key || "";
+  if (contentKey.startsWith("imported:")) return contentKey.slice("imported:".length);
+  if (contentKey === "entrance") return session?.imported_manifest?.entrance_room_id || "";
+  return "";
+}
+
+function tagRoomForCurrentTile(session, tile) {
+  const roomId = tagCurrentImportedRoomId(session, tile);
+  if (!roomId) return null;
+  const rooms = session?.imported_manifest?.rooms || [];
+  if (Array.isArray(rooms)) return rooms.find((room) => room.id === roomId) || { id: roomId };
+  return rooms[roomId] ? { id: roomId, ...rooms[roomId] } : { id: roomId };
+}
+
+function openTagActionsWithDefaults(defaults = {}) {
+  const firstPartyMember = (state.session?.party || []).find((member) => member.current_life > 0) || state.session?.party?.[0];
+  if (!tagActionCharacter?.value && firstPartyMember?.character_id) {
+    setSelectValueIfOptionExists(tagActionCharacter, firstPartyMember.character_id);
+  }
+  if (defaults.reference !== undefined && tagBranchReference) tagBranchReference.value = defaults.reference || "";
+  if (defaults.amount !== undefined && tagBranchNumber) tagBranchNumber.value = String(defaults.amount ?? 0);
+  if (defaults.branchAction) setSelectValueIfOptionExists(tagBranchAction, defaults.branchAction);
+  if (defaults.routeAction) setSelectValueIfOptionExists(tagRouteAction, defaults.routeAction);
+  if (defaults.sceneAction) setSelectValueIfOptionExists(tagSceneAction, defaults.sceneAction);
+  if (defaults.xpAction) setSelectValueIfOptionExists(tagXpAction, defaults.xpAction);
+  tagAdventureActionsDialog?.showModal();
+}
+
+function appendTagContextualButton(parent, label, tooltip, defaults) {
+  const btn = node("button", "secondary", label);
+  btn.type = "button";
+  setButtonTooltip(btn, tooltip);
+  btn.addEventListener("click", () => openTagActionsWithDefaults(defaults));
+  parent.appendChild(btn);
+}
+
+function appendTagContextualActions(parent, session, tile) {
+  const tagReference = tagReferenceForGeneratedAdventure(session);
+  if (!tagReference || session?.mode !== "exploration") return;
+  const room = tagRoomForCurrentTile(session, tile);
+  const roomId = room?.id || "";
+  const roomTitle = room?.title || tile?.title || "Current TAG scene";
+  const referenceTitle = tagReference.title || tagReference.reference || "Generated TAG adventure";
+  const pages = tagReference.pdf_pages ? ` · ${tagReference.pdf_pages}` : "";
+  const block = node("div", "tag-context-actions");
+  const heading = node("div", "tag-context-actions-title");
+  heading.appendChild(node("strong", "", "TAG scene prompt"));
+  heading.appendChild(subline(`${referenceTitle}${pages} · ${roomTitle}`));
+  block.appendChild(heading);
+  const prompt = subline(
+    "Use these room-aware shortcuts to prefill TAG Actions for the current generated scene, then confirm the exact branch, reward, Clue spend, or XP marker."
+  );
+  setTooltip(prompt, "Generated TAG modules can contain printed choices that the app cannot infer automatically from movement alone.");
+  block.appendChild(prompt);
+  const actionsRow = node("div", "tag-context-actions-row");
+  appendTagContextualButton(
+    actionsRow,
+    "TAG Actions",
+    "Open the full TAG Actions dialog without changing any values.",
+    {}
+  );
+  if (roomId === "tag-lead-entry") {
+    appendTagContextualButton(
+      actionsRow,
+      "Record lead choice",
+      "Prefill a social/approach branch marker for this TAG lead scene.",
+      { branchAction: "social_choice", reference: `${referenceTitle}: lead entry`, amount: 0 }
+    );
+    appendTagContextualButton(
+      actionsRow,
+      "Skip side scene",
+      "Prefill a route marker for choosing not to pursue an optional TAG side scene.",
+      { routeAction: "skip_scene", reference: `${referenceTitle}: skipped side scene`, amount: 0 }
+    );
+  } else if (roomId === "tag-side-clue") {
+    appendTagContextualButton(
+      actionsRow,
+      "Claim printed reward",
+      "Prefill a TAG scene reward action. Edit the amount and character before confirming.",
+      { branchAction: "claim_reward", reference: `${referenceTitle}: side clue reward`, amount: 0 }
+    );
+    appendTagContextualButton(
+      actionsRow,
+      "Mark scene XP",
+      "Prefill a TAG scene XP marker for this optional scene.",
+      { xpAction: "mark_scene_xp", reference: `${referenceTitle}: side clue XP`, amount: 0 }
+    );
+  } else if (roomId === "tag-complication") {
+    appendTagContextualButton(
+      actionsRow,
+      "Parley succeeds",
+      "Prefill the TAG route result for a successful parley or negotiated outcome.",
+      { routeAction: "parley_success", reference: `${referenceTitle}: complication parley success`, amount: 0 }
+    );
+    appendTagContextualButton(
+      actionsRow,
+      "Parley fails",
+      "Prefill the TAG route result for a failed parley or hostile outcome.",
+      { routeAction: "parley_failed", reference: `${referenceTitle}: complication parley failed`, amount: 0 }
+    );
+    appendTagContextualButton(
+      actionsRow,
+      "Unlock Clue route",
+      "Prefill the TAG route action for spending Clues to unlock a branch. Enter the printed Clue cost before confirming.",
+      { routeAction: "clue_gate_unlocked", reference: `${referenceTitle}: clue route`, amount: 0 }
+    );
+    appendTagContextualButton(
+      actionsRow,
+      "Route blocked",
+      "Prefill the TAG route result for a blocked or declined branch.",
+      { routeAction: "clue_gate_blocked", reference: `${referenceTitle}: route blocked`, amount: 0 }
+    );
+  } else if (roomId === "tag-final-scene") {
+    appendTagContextualButton(
+      actionsRow,
+      "Final route",
+      "Prefill a final-scene route marker such as capture, kill, parley, or escape.",
+      { routeAction: "final_route", reference: `${referenceTitle}: final scene`, amount: 0 }
+    );
+    appendTagContextualButton(
+      actionsRow,
+      "Apply reward",
+      "Prefill the TAG printed reward action for the final scene. Edit amount and character before confirming.",
+      { branchAction: "claim_reward", reference: `${referenceTitle}: final reward`, amount: 0 }
+    );
+    appendTagContextualButton(
+      actionsRow,
+      "Mark final XP",
+      "Prefill a TAG XP marker for completing the final generated scene.",
+      { xpAction: "mark_scene_xp", reference: `${referenceTitle}: final XP`, amount: 0 }
+    );
+  } else if (roomId === "tag-unlocked-scene") {
+    appendTagContextualButton(
+      actionsRow,
+      "Mark unlocked scene",
+      "Prefill a TAG branch marker showing the unlocked scene has been reached.",
+      { routeAction: "unlock_scene", reference: `${referenceTitle}: unlocked scene`, amount: 0 }
+    );
+    appendTagContextualButton(
+      actionsRow,
+      "Claim unlocked reward",
+      "Prefill a TAG scene reward action for the unlocked branch.",
+      { branchAction: "claim_reward", reference: `${referenceTitle}: unlocked reward`, amount: 0 }
+    );
+  } else {
+    appendTagContextualButton(
+      actionsRow,
+      "Record branch",
+      "Prefill a generic TAG branch marker for this generated adventure room.",
+      { branchAction: "social_choice", reference: `${referenceTitle}: ${roomTitle}`, amount: 0 }
+    );
+  }
+  block.appendChild(actionsRow);
+  parent.appendChild(block);
+}
+
 function renderTileDetail(session) {
   const tile = currentTile(session);
   tileDetail.replaceChildren();
@@ -21839,6 +22007,7 @@ function renderTileDetail(session) {
     appendFdCitadelSideSheetActions(info, session);
   }
   appendAbyssCampaignActions(info, session, tile);
+  appendTagContextualActions(info, session, tile);
   appendCourtshipDemesneActions(info, session);
   appendFdCyclopeanIdolActions(info, session, tile);
   if (
