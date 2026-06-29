@@ -18,6 +18,8 @@ import pytest
 APP_JS = Path("src/app/static/app.js").read_text(encoding="utf-8")
 STYLES_CSS = Path("src/app/static/styles.css").read_text(encoding="utf-8")
 INDEX_HTML = Path("src/app/static/index.html").read_text(encoding="utf-8")
+MODERN_HTML = Path("src/app/static/modern.html").read_text(encoding="utf-8")
+MODERN_PAGES_JS = Path("src/app/static/modern-pages.js").read_text(encoding="utf-8")
 ICON_EDITOR_JS = Path("src/app/static/icon-editor.js").read_text(encoding="utf-8")
 DOCKERFILE = Path("Dockerfile").read_text(encoding="utf-8")
 
@@ -1800,13 +1802,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "modern-home-panel",
         "modern-home-back",
         "modern-tag-character",
-        "modern-hide-trove",
-        "modern-roll-trove-risk",
-        "modern-recover-trove",
-        "modern-recover-bank-robbery",
         "modern-guild-member",
         "modern-guild-coffers",
-        "modern-save-guild",
         "tag-troupe-name",
         "tag-troupe-active",
         "tag-save-troupe",
@@ -1886,7 +1883,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "function recoverTagBankRobbery" in APP_JS
     assert "function recoverHiddenTrove" in APP_JS
     assert "function saveModernGuild" in APP_JS
-    assert 'href="/Rules/Tales_from_the_adventurers_guild.pdf"' in INDEX_HTML
+    assert "/Rules/Tales_from_the_adventurers_guild.pdf" in MODERN_PAGES_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.storageKind" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.followMap" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.createAdventure" in APP_JS
@@ -1907,6 +1904,52 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.openTroupeManager" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.tagRunBankTransfer" in APP_JS
     assert "function renderTagTroupeDialog" in APP_JS
+
+
+def test_modern_home_routes_and_pages_are_standalone() -> None:
+    main_py = Path("src/app/main.py").read_text(encoding="utf-8")
+    assert '@app.get("/modern"' in main_py
+    assert '@app.get("/modern/{page_name}"' in main_py
+    assert 'src="/static/modern-pages.js?v=0.1.0"' in MODERN_HTML
+    for page in [
+        "characters",
+        "troupes",
+        "guild",
+        "parties",
+        "equipment",
+        "banking",
+        "settlement",
+        "campaign",
+        "settings",
+        "ai-adventures",
+        "go-adventure",
+        "rules-reference",
+        "tables",
+        "library",
+        "guides",
+        "developer",
+    ]:
+        assert f'href="/modern/{page}"' in MODERN_HTML
+    for path in [
+        "/api/characters",
+        "/api/parties",
+        "/api/rules/equipment-shop",
+        "/api/campaign/tag/bank-robbery-recovery",
+        "/api/campaign/tag/hidden-trove-recovery",
+        "/api/adventures/ai/prompt",
+        "/api/adventures/import",
+        "/api/sessions",
+    ]:
+        assert path in MODERN_PAGES_JS
+    assert "openLegacyHomeAt(" not in MODERN_PAGES_JS
+    assert "/static/tile-editor.html" in MODERN_PAGES_JS
+    assert "/static/icon-editor.html" in MODERN_PAGES_JS
+
+
+def test_legacy_dashboard_cards_link_to_modern_pages_not_old_home_actions() -> None:
+    assert 'id="show-modern-home" class="icon-button" href="/modern"' in INDEX_HTML
+    for page in ["characters", "troupes", "guild", "parties", "equipment", "banking", "settlement", "campaign", "settings", "ai-adventures", "go-adventure", "rules-reference", "tables", "library", "guides", "developer"]:
+        assert f'href="/modern/{page}"' in INDEX_HTML
     assert "function runTagBankTransferAction" in APP_JS
     assert "tag_troupe_member_character_ids" in APP_JS
     assert "Created ${result.title || result.adventure_id}. It is selected in the Adventure section." in APP_JS

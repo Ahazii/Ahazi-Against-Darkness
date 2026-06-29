@@ -181,6 +181,137 @@ h2 {
   color: #dfc176;
 }
 
+.modern-page-body {
+  min-height: 100vh;
+}
+
+.modern-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+.modern-nav {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 8px;
+}
+
+.modern-nav a {
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 8px 9px;
+  font-size: 13px;
+}
+
+.modern-nav a:hover,
+.modern-nav a:focus-visible,
+.modern-nav a.active {
+  border-color: var(--accent);
+  background: #171814;
+  outline: none;
+}
+
+.modern-content {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.modern-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 14px;
+}
+
+#modern-page-root {
+  display: grid;
+  gap: 12px;
+}
+
+.modern-two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.modern-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px;
+}
+
+.modern-card h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.modern-field {
+  display: grid;
+  gap: 4px;
+}
+
+.modern-field span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.modern-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.modern-row {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #3c3a30;
+  border-radius: 6px;
+  background: #171814;
+  padding: 8px;
+}
+
+.modern-list {
+  display: grid;
+  gap: 8px;
+  max-height: 62vh;
+  overflow: auto;
+}
+
+.modern-check-list {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+@media (max-width: 860px) {
+  .modern-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .modern-nav {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
 .panel {
   border: 1px solid var(--line);
   background: var(--panel);

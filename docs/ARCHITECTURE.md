@@ -91,9 +91,24 @@ The UI is a static browser app:
 - `src/app/static/index.html`
 - `src/app/static/app.js`
 - `src/app/static/styles.css`
+- `src/app/static/modern.html`
+- `src/app/static/modern-pages.js`
 
 The frontend does not implement game rules. It renders state returned by the API
 and sends action requests to the backend.
+
+New routed home:
+
+- `/modern` and `/modern/{page_name}` serve `modern.html`, backed by
+  `modern-pages.js`.
+- The new home is a section router, not a shortcut panel back into the legacy
+  home screen. Current routed pages cover characters, troupes, Guild,
+  parties, equipment, banking/finance, settlement, campaign placeholders,
+  settings, AI adventure import, adventure start, rules reference, tables,
+  PDF library, guides, and password-gated developer links.
+- `modern-pages.js` is the first split from the monolithic `app.js`; it calls
+  existing backend APIs directly and should be expanded into smaller modules as
+  each page matures.
 
 Home screen rule browsing:
 

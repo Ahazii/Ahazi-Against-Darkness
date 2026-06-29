@@ -367,6 +367,18 @@ async def index() -> HTMLResponse:
     )
 
 
+@app.get("/modern", response_class=HTMLResponse)
+@app.get("/modern/{page_name}", response_class=HTMLResponse)
+async def modern_home(page_name: str = "home") -> HTMLResponse:
+    return HTMLResponse(
+        (settings.static_dir / "modern.html").read_text(encoding="utf-8"),
+        headers={
+            "Cache-Control": "no-store, max-age=0",
+            "Pragma": "no-cache",
+        },
+    )
+
+
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
