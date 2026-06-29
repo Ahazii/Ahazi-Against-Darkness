@@ -408,6 +408,18 @@ def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
         action["action_type"] == "branch" and action["action_value"] == "claim_reward"
         for action in reference["room_prompts"]["tag-final-scene"]["actions"]
     )
+    assert any(
+        action["action_value"] == "medusa_assassin_ambush"
+        for action in reference["room_prompts"]["tag-complication"]["actions"]
+    )
+    assert any(
+        action["action_value"] == "medusa_stealth_approach"
+        for action in reference["room_prompts"]["tag-final-scene"]["actions"]
+    )
+    assert any(
+        action["action_value"] == "medusa_reaction"
+        for action in reference["room_prompts"]["tag-final-scene"]["actions"]
+    )
     final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
     assert final_room["triggers"][0]["encounter"]["foes"] == [{"name": "Medusa", "count": 1}]
 
@@ -493,6 +505,71 @@ def test_tag_special_foes_are_allowlisted_and_used_in_generated_adventures() -> 
     assert any(action["action_value"] == "bandit_chieftain_capture" for action in theme_ref["room_prompts"]["tag-final-scene"]["actions"])
 
 
+def test_tag_rumor_manifests_include_contextual_scene_procedure_prompts() -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+    expected_actions = {
+        "1": {"bofto_scene_choice", "bofto_theft_save", "star_object_will_save", "star_slayer_check"},
+        "3": {"tag_ambush_chance"},
+        "4": {"mutant_fish_hypnosis", "mutant_fish_rations", "mark_minor_encounters"},
+        "5": {"dragon_type_reveal"},
+        "6": {"leprechaun_shoes", "leprechaun_illusion_spell"},
+        "9": {"daroc_cat"},
+        "10": {"gargoyle_count", "gargoyle_surprise", "gargoyle_skin", "gargoyle_bounty"},
+        "11": {"deoldyn_training", "mark_training_xp_roll"},
+        "12": {"solo_restriction", "agaratha"},
+    }
+    for detail, expected in expected_actions.items():
+        manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail=detail)
+        assert validate_adventure_manifest(manifest, rules_repo=repo).valid
+        prompts = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]
+        found = {
+            str(action.get("action_value"))
+            for prompt in prompts.values()
+            for action in prompt.get("actions", [])
+            if action.get("action_value")
+        }
+        assert expected <= found
+
+    temple, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="7")
+    reference = temple["source"]["parameters"]["tag_reference"]
+    assert reference["module_profile"]["target_rooms"] == "seven-room temple dungeon"
+
+
+def test_tag_treasure_map_manifests_include_destination_procedure_prompts() -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+    expected_actions = {
+        "1": {"treasure_map_follow", "map_cave_room_count"},
+        "2": {"treasure_map_follow", "map_temple_idol", "map_temple_scroll"},
+        "3": {"treasure_map_follow", "map_humanoid_report", "map_humanoid_stealth", "map_humanoid_forces"},
+        "4": {"treasure_map_follow", "map_structure_rooms"},
+        "5": {"treasure_map_follow", "map_structure_rooms"},
+        "6": {"treasure_map_follow", "map_lich_death_magic", "map_lich_life", "map_lich_treasure"},
+    }
+    expected_targets = {
+        "1": "d6+3-room standard dungeon",
+        "2": "forgotten wilderness temple",
+        "3": "hostile humanoid camp",
+        "4": "2d6-room underground structure",
+        "5": "2d6-room boss-only underground structure",
+        "6": "one-room lich sepulchral chamber",
+    }
+    for detail, expected in expected_actions.items():
+        manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="treasure_map", detail=detail)
+        assert validate_adventure_manifest(manifest, rules_repo=repo).valid
+        reference = manifest["source"]["parameters"]["tag_reference"]
+        assert reference["pdf_pages"] == "TAG pp.32-33"
+        assert reference["module_profile"]["target_rooms"] == expected_targets[detail]
+        found = {
+            str(action.get("action_value"))
+            for prompt in reference["room_prompts"].values()
+            for action in prompt.get("actions", [])
+            if action.get("action_value")
+        }
+        assert expected <= found
+
+
 def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
     repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
     campaign = default_campaign()
@@ -515,6 +592,8 @@ def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
         action_values = {action["action_value"] for action in actions}
         if detail == "1":
             assert {"ghastly_mine_minion_replacement", "ghastly_mine_major_replacement", "ghastly_mine_cave_in", "ghastly_mine_treasure_conversion"} <= action_values
+        if detail == "2":
+            assert {"giant_lair_boulder", "giant_lair_treasure"} <= action_values
         if detail == "4":
             assert "fiendish_abyss_prisoner" in action_values
         if detail == "5":
@@ -809,6 +888,145 @@ def test_tag_bandit_stolen_goods_branch_rolls_room_goods(monkeypatch) -> None:
     assert missed.roll == 4
     assert missed.total is None
     assert "no stolen goods" in missed.result_text
+
+
+def test_tag_rumor_branch_actions_roll_scene_procedures(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(gold=500, clues=0, inventory=[], statuses=[])
+
+    bofto = resolve_tag_branch_action(campaign, hero, branch_action="bofto_scene_choice", reference="talk to family")
+    assert "Scene 9 choice recorded" in bofto.result_text
+    assert "Scene 17" in bofto.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    ambush = resolve_tag_branch_action(campaign, hero, branch_action="tag_ambush_chance", clue_cost=2)
+    assert ambush.roll == 2
+    assert "encounter occurs" in ambush.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d3", lambda: 2)
+    assassins = resolve_tag_branch_action(campaign, hero, branch_action="medusa_assassin_ambush", clue_cost=1)
+    assert assassins.roll == 2
+    assert assassins.total == 4
+    assert "4 assassin agents" in assassins.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 5)
+    stealth = resolve_tag_branch_action(campaign, hero, branch_action="medusa_stealth_approach", reference="mod=1")
+    assert stealth.total == 6
+    assert "attacks once before Xasartha" in stealth.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
+    reaction = resolve_tag_branch_action(campaign, hero, branch_action="medusa_reaction")
+    assert "6d6 gp" in reaction.result_text
+
+    shoes = resolve_tag_branch_action(campaign, hero, branch_action="leprechaun_shoes", clue_cost=2)
+    assert hero.gold == 100
+    assert hero.inventory.count("Shoes of Fast Walk") == 2
+    assert "400 gp" in shoes.result_text
+
+    spell = resolve_tag_branch_action(campaign, hero, branch_action="leprechaun_illusion_spell", reference="free silent image")
+    assert any("silent image" in status for status in hero.statuses)
+    assert hero.gold == 100
+
+    fish = resolve_tag_branch_action(campaign, hero, branch_action="mutant_fish_hypnosis", reference="chaos")
+    assert "fails automatically" in fish.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    count = resolve_tag_branch_action(campaign, hero, branch_action="gargoyle_count")
+    assert count.total == 6
+    assert "6 gargoyles" in count.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 3)
+    surprise = resolve_tag_branch_action(campaign, hero, branch_action="gargoyle_surprise")
+    assert "surprise the party" in surprise.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    skin = resolve_tag_branch_action(campaign, hero, branch_action="gargoyle_skin")
+    assert "bounces off" in skin.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 5)
+    theft = resolve_tag_branch_action(campaign, hero, branch_action="bofto_theft_save", reference="mod=1")
+    assert theft.total == 6
+    assert "Go to Scene 19" in theft.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    will = resolve_tag_branch_action(campaign, hero, branch_action="star_object_will_save", reference="mod=3")
+    assert will.total == 5
+    assert "TAG star-shaped object curse carrier" in hero.statuses
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
+    slayer = resolve_tag_branch_action(campaign, hero, branch_action="star_slayer_check")
+    assert "Star-Slayer from Beyond" in slayer.result_text
+
+
+def test_tag_treasure_map_branch_actions_roll_destination_procedures(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(gold=500, clues=0)
+
+    rolls = iter([4])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    follow = resolve_tag_branch_action(campaign, hero, branch_action="treasure_map_follow")
+    assert "Accurate but incomplete" in follow.result_text
+    assert campaign.tag_map_bonus == 1
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 3)
+    cave = resolve_tag_branch_action(campaign, hero, branch_action="map_cave_room_count")
+    assert cave.total == 6
+    assert "6 rooms" in cave.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d3", lambda: 2)
+    idol = resolve_tag_branch_action(campaign, hero, branch_action="map_temple_idol")
+    assert idol.total == 200
+    assert "200 gp" in idol.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 3)
+    scroll = resolve_tag_branch_action(campaign, hero, branch_action="map_temple_scroll")
+    assert "random scroll" in scroll.result_text
+
+    rolls = iter([1, 2, 3, 4])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    report = resolve_tag_branch_action(campaign, hero, branch_action="map_humanoid_report")
+    assert report.total == 10
+    assert "no XP" in report.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    stealth = resolve_tag_branch_action(campaign, hero, branch_action="map_humanoid_stealth")
+    assert "Steal camp loot" in stealth.result_text
+
+    rolls = iter([2, 3, 2, 1])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    monkeypatch.setattr(tag_campaign, "roll_d3", lambda: 2)
+    forces = resolve_tag_branch_action(campaign, hero, branch_action="map_humanoid_forces")
+    assert forces.total == 8
+    assert "2 Orc Boss" in forces.result_text
+    assert "black ogre present" in forces.result_text
+
+    rolls = iter([5, 4])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    structure = resolve_tag_branch_action(campaign, hero, branch_action="map_structure_rooms")
+    assert structure.total == 9
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 5)
+    death = resolve_tag_branch_action(campaign, hero, branch_action="map_lich_death_magic", reference="mod=2")
+    assert death.total == 7
+    assert "success" in death.result_text
+
+    life = resolve_tag_branch_action(campaign, hero, branch_action="map_lich_life", clue_cost=3)
+    assert life.total == 7
+    assert "3+4 = 7" in life.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    treasure = resolve_tag_branch_action(campaign, hero, branch_action="map_lich_treasure")
+    assert treasure.total == 40
+    assert "3 random scrolls" in treasure.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    boulder = resolve_tag_branch_action(campaign, hero, branch_action="giant_lair_boulder")
+    assert boulder.roll == 4
+    assert "throws a boulder" in boulder.result_text
+
+    giant_treasure = resolve_tag_branch_action(campaign, hero, branch_action="giant_lair_treasure")
+    assert "three treasure rolls" in giant_treasure.result_text
+    assert "nine squares" in giant_treasure.result_text
 
 
 def test_tag_theme_procedure_branch_actions_roll_exact_tables(monkeypatch) -> None:

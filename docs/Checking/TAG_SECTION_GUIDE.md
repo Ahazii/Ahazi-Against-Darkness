@@ -47,6 +47,8 @@ Use the normal Adventure section to play the generated module. TAG-specific foll
 
 Use **Reference** for the scene/page/result note. Use **Amount** for Clue costs, reward gp, gargoyle counts, XP, or training override values depending on the selected action.
 
+Current generated TAG prompt coverage includes specific buttons for Rumor scene procedures, Treasure Map destinations, Thematic Dungeon procedures, and Guild Job procedures. Examples include Bofto theft/curse checks, Medusa approach/reaction, mutant fish hypnosis, white gargoyle count/surprise/skin, Treasure Map cave/temple/camp/structure/lich rolls, Giant's Lair boulder/treasure handling, Ghastly Mine tables, Fiendish Abyss prisoner table, Minotaur Maze checks, Bandit Hideout stolen goods, Castle pay, Griffin eggs, Portrait persuasion/snatch, Sewers disease/Clues, and Monoceros tracking/capture.
+
 ## Manual Test Generated TAG Adventures
 
 Use this workflow when playtesting the generated TAG modules against `Tales_from_the_adventurers_guild.pdf`.
@@ -71,9 +73,9 @@ Suggested coverage order:
 | Group | What to generate | What to check |
 |---|---|---|
 | Rumors | Details 1-12 | Scene title/pages, final prompt, printed reward action, route/Clue prompt where present |
-| Thematic dungeons | Details 1-6 | Dragon reveal, Ghastly Mine rolls, Giant final profile, Fiendish prisoner table, Minotaur Maze rolls, Bandit stolen goods |
+| Thematic dungeons | Details 1-6 | Dragon reveal, Ghastly Mine rolls, Giant boulder/treasure handling, Fiendish prisoner table, Minotaur Maze rolls, Bandit stolen goods |
 | Guild Jobs | Details 1-6 | Castle pay, Gorungar rewards, Griffin eggs, Portrait persuasion/snatch, Sewers disease/Clues, Monoceros tracking/capture |
-| Treasure Maps | Details 1-6 | Map Leads To notes, generated target, TAG reference metadata, route prompt behavior |
+| Treasure Maps | Details 1-6 | Map Leads To notes, generated target, cave/temple/camp/structure/lich prompt behavior, TAG reference metadata |
 
 Record failures with four details: generated lead, room name, button/action used, and the mismatch against the PDF. If the UI has no button for a printed decision, record the exact PDF page and expected action.
 

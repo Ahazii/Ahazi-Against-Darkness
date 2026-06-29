@@ -1930,6 +1930,33 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "monoceros_tracking",
         "monoceros_clue_encounter",
         "monoceros_hide",
+        "bofto_scene_choice",
+        "tag_ambush_chance",
+        "medusa_assassin_ambush",
+        "medusa_stealth_approach",
+        "medusa_reaction",
+        "leprechaun_shoes",
+        "leprechaun_illusion_spell",
+        "mutant_fish_hypnosis",
+        "gargoyle_count",
+        "gargoyle_surprise",
+        "gargoyle_skin",
+        "bofto_theft_save",
+        "star_object_will_save",
+        "star_slayer_check",
+        "treasure_map_follow",
+        "map_cave_room_count",
+        "map_temple_idol",
+        "map_temple_scroll",
+        "map_humanoid_report",
+        "map_humanoid_stealth",
+        "map_humanoid_forces",
+        "map_structure_rooms",
+        "map_lich_death_magic",
+        "map_lich_life",
+        "map_lich_treasure",
+        "giant_lair_boulder",
+        "giant_lair_treasure",
     ]:
         assert f'value="{action_value}"' in INDEX_HTML
     assert "Minotaur Maze Special Event Table" in INDEX_HTML
@@ -1944,6 +1971,21 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Bandit stolen goods" in INDEX_HTML
     assert "stolen-goods room check" in INDEX_HTML
     assert "Bandit stolen-goods check" in APP_JS
+    assert "Bofto Scene 9 choice" in INDEX_HTML
+    assert "Xasartha's medusa reaction" in INDEX_HTML
+    assert "Shoes of Fast Walk" in INDEX_HTML
+    assert "mutant fish hypnosis" in INDEX_HTML
+    assert "white gargoyle count" in INDEX_HTML
+    assert "medusa_assassin_ambush" in APP_JS
+    assert "gargoyle_skin" in APP_JS
+    assert "star-shaped object curse" in INDEX_HTML
+    assert "Following Treasure Map table" in INDEX_HTML
+    assert "golden idol value" in INDEX_HTML
+    assert "hostile camp forces" in INDEX_HTML
+    assert "death-magic entry Save" in INDEX_HTML
+    assert "map_lich_treasure" in APP_JS
+    assert "hill giant boulder throw" in INDEX_HTML
+    assert "giant_lair_boulder" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.routeAction" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.runRouteAction" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.sceneAction" in APP_JS

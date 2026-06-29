@@ -508,6 +508,33 @@ TAG_BRANCH_ACTIONS: dict[str, str] = {
     "monoceros_clue_encounter": "Monoceros Clue shortcut encounter",
     "monoceros_hide": "Monoceros hide check",
     "bandit_stolen_goods_check": "Bandit stolen-goods check",
+    "bofto_scene_choice": "Bofto scene choice",
+    "tag_ambush_chance": "TAG ambush chance",
+    "medusa_assassin_ambush": "Medusa assassin ambush",
+    "medusa_stealth_approach": "Medusa stealth approach",
+    "medusa_reaction": "Medusa reaction roll",
+    "leprechaun_shoes": "Leprechaun shoes purchase",
+    "leprechaun_illusion_spell": "Leprechaun illusion spell",
+    "mutant_fish_hypnosis": "Mutant fish hypnosis save",
+    "gargoyle_count": "White gargoyle count",
+    "gargoyle_surprise": "White gargoyle surprise",
+    "gargoyle_skin": "White gargoyle stone skin",
+    "bofto_theft_save": "Bofto theft save",
+    "star_object_will_save": "Star object Will save",
+    "star_slayer_check": "Star-Slayer replacement check",
+    "treasure_map_follow": "Following Treasure Map roll",
+    "map_cave_room_count": "Treasure cave room count",
+    "map_temple_idol": "Treasure temple idol value",
+    "map_temple_scroll": "Treasure temple scroll chance",
+    "map_humanoid_report": "Humanoid camp report reward",
+    "map_humanoid_stealth": "Humanoid camp stealth entry",
+    "map_humanoid_forces": "Humanoid camp forces",
+    "map_structure_rooms": "Underground structure rooms",
+    "map_lich_death_magic": "Lich chamber death magic",
+    "map_lich_life": "Lich Life total",
+    "map_lich_treasure": "Lich treasure roll",
+    "giant_lair_boulder": "Giant's Lair boulder throw",
+    "giant_lair_treasure": "Giant's Lair treasure reminder",
     "capture_alive": "Capture-alive outcome",
     "claim_reward": "Claim printed reward",
 }
@@ -659,6 +686,36 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Goblins",
         "final_count": 4,
         "rewards": "Depends on the chosen Scene 9 resolution.",
+        "final_prompt_actions": [
+            {
+                "label": "Record Bofto choice",
+                "tooltip": "Prefill the Scene 9 choice: steal the object, talk to the family, or leave.",
+                "action_type": "branch",
+                "action_value": "bofto_scene_choice",
+                "reference": "Bofto Scene 9 choice",
+            },
+            {
+                "label": "Steal star object",
+                "tooltip": "Prefill Scene 14 thievery Save vs L6 for stealing the star-shaped object.",
+                "action_type": "branch",
+                "action_value": "bofto_theft_save",
+                "reference": "Scene 14 star-object theft",
+            },
+            {
+                "label": "Star Will save",
+                "tooltip": "Prefill Scene 19 Will Save vs L8 after taking the star-shaped object.",
+                "action_type": "branch",
+                "action_value": "star_object_will_save",
+                "reference": "Scene 19 star-shaped object Will Save",
+            },
+            {
+                "label": "Star-Slayer check",
+                "tooltip": "Prefill the cursed object's 2-in-6 Boss/Weird replacement check.",
+                "action_type": "branch",
+                "action_value": "star_slayer_check",
+                "reference": "Scene 19 Star-Slayer replacement check",
+            }
+        ],
         "rules": [
             "Rumor is crossed off once played.",
             "This is primarily a choice scene; the installed encounter is a proxy if the table result turns hostile.",
@@ -677,6 +734,38 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Medusa",
         "final_count": 1,
         "rewards": "Pendant worth 260 gp and necros; trying it can grant Luck as described in Scene 1.",
+        "complication_prompt_actions": [
+            {
+                "label": "Resolve assassin approach",
+                "tooltip": "Prefill Scene 10 assassin approach; set Amount 1 if any L6 Stealth Save failed.",
+                "action_type": "branch",
+                "action_value": "medusa_assassin_ambush",
+                "reference": "Scene 10 assassin approach",
+            }
+        ],
+        "final_prompt_actions": [
+            {
+                "label": "Medusa stealth approach",
+                "tooltip": "Prefill the L6 Stealth roll to surprise Xasartha before her gaze.",
+                "action_type": "branch",
+                "action_value": "medusa_stealth_approach",
+                "reference": "Scene 1 medusa stealth approach",
+            },
+            {
+                "label": "Medusa reaction",
+                "tooltip": "Prefill Xasartha's reaction roll if the party shouts from outside.",
+                "action_type": "branch",
+                "action_value": "medusa_reaction",
+                "reference": "Scene 1 Xasartha reaction",
+            },
+            {
+                "label": "Medusa pendant",
+                "tooltip": "Prefill the Medusa pendant reward action after the pendant is taken.",
+                "action_type": "scene",
+                "action_value": "medusa_pendant",
+                "reference": "Scene 1 Medusa pendant",
+            },
+        ],
         "rules": [
             "Assassin count and parley are not auto-rolled inside the module.",
             "Use the Medusa combat profile for the final encounter.",
@@ -695,6 +784,16 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Goblins",
         "final_count": 4,
         "rewards": "No sword; possible ambush rewards only.",
+        "final_prompt_actions": [
+            {
+                "label": "Roll red-herring ambush",
+                "tooltip": "Prefill Scene 11's 2-in-6 Riff-Raff or Outside of Town ambush chance.",
+                "action_type": "branch",
+                "action_value": "tag_ambush_chance",
+                "reference": "Scene 11 Riff-Raff or Outside of Town Ambush Table",
+                "amount": 2,
+            }
+        ],
         "rules": ["Installed combat is a proxy for the optional ambush."],
     },
     4: {
@@ -710,6 +809,30 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Mutant Fish",
         "final_count": 1,
         "rewards": "If the party survives, d6+3 food rations; counts as two minion encounters for XP.",
+        "final_prompt_actions": [
+            {
+                "label": "Fish hypnosis save",
+                "tooltip": "Prefill one L5 mutant fish hypnosis Save; repeat for each character as needed.",
+                "action_type": "branch",
+                "action_value": "mutant_fish_hypnosis",
+                "reference": "Scene 12 mutant fish hypnosis",
+            },
+            {
+                "label": "Fish rations",
+                "tooltip": "Prefill the d6+3 mutant fish food-ration reward.",
+                "action_type": "scene",
+                "action_value": "mutant_fish_rations",
+                "reference": "Scene 12 fish rations",
+            },
+            {
+                "label": "Mark two minion XP",
+                "tooltip": "Prefill the printed two-minion-encounter XP marker.",
+                "action_type": "xp",
+                "action_value": "mark_minor_encounters",
+                "reference": "Scene 12 counts as two minion encounters",
+                "amount": 2,
+            },
+        ],
         "rules": ["Resolve the printed hypnosis sequence before ordinary combat if the table calls for it."],
     },
     5: {
@@ -727,6 +850,16 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "rewards": "Dragon lair treasure if pursued; spend 2 Clues to learn dragon type before the final room.",
         "clue_gate_cost": 2,
         "clue_gate_label": "Spend 2 Clues for the dragon route",
+        "complication_prompt_actions": [
+            {
+                "label": "Reveal dragon type",
+                "tooltip": "Prefill the Dragon's Lair type reveal after the 2-Clue spend.",
+                "action_type": "scene",
+                "action_value": "dragon_type_reveal",
+                "reference": "Scene 13 dragon type reveal",
+                "amount": 2,
+            }
+        ],
         "rules": ["Use the Dragon's Lair thematic notes in source.parameters for the full lair version."],
     },
     6: {
@@ -742,6 +875,23 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Goblins",
         "final_count": 4,
         "rewards": "Shoes of Fast Walk for 200 gp; illusion spell instruction per Scene 2.",
+        "final_prompt_actions": [
+            {
+                "label": "Buy shoes",
+                "tooltip": "Prefill purchase of Shoes of Fast Walk; Amount is number of pairs.",
+                "action_type": "branch",
+                "action_value": "leprechaun_shoes",
+                "reference": "Scene 2 Shoes of Fast Walk",
+                "amount": 1,
+            },
+            {
+                "label": "Learn illusion spell",
+                "tooltip": "Prefill leprechaun illusion spell lesson; Reference can include free if three shoe pairs were bought.",
+                "action_type": "branch",
+                "action_value": "leprechaun_illusion_spell",
+                "reference": "Scene 2 illusion spell",
+            },
+        ],
         "rules": ["Installed combat is only a hostile-scene proxy."],
     },
     7: {
@@ -757,6 +907,17 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Mummy",
         "final_count": 1,
         "rewards": "Temple treasure per the generated rooms.",
+        "module_profile": {
+            "target_rooms": "seven-room temple dungeon",
+            "procedure": [
+                "Scene 15 is a dungeon handoff, not a single room.",
+                "Use the generated module as a compact play aid or expand it to seven rooms if playing the PDF literally.",
+            ],
+            "signoff_checks": [
+                "Confirm whether your table used 4AD or Lost Temples support rules.",
+                "Record any temple-specific treasure or finale changes manually.",
+            ],
+        },
         "rules": ["This module is a compact handoff; expand to seven rooms if playing the PDF literally."],
     },
     8: {
@@ -814,6 +975,16 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "rewards": "100 gp and 1 XP.",
         "clue_gate_cost": 2,
         "clue_gate_label": "Spend town Clues for Daroc's familiar",
+        "final_prompt_actions": [
+            {
+                "label": "Apply Daroc reward",
+                "tooltip": "Prefill Daroc's cat reward and pending XP marker.",
+                "action_type": "scene",
+                "action_value": "daroc_cat",
+                "reference": "Scene 5 Daroc cat reward",
+                "amount": 100,
+            }
+        ],
         "rules": ["Installed combat represents trouble around the familiar, not a mandatory PDF fight."],
     },
     10: {
@@ -829,6 +1000,38 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "White Gargoyles",
         "final_count": 8,
         "rewards": "15 gp per gargoyle head.",
+        "complication_prompt_actions": [
+            {
+                "label": "Roll gargoyle count",
+                "tooltip": "Prefill Scene 8 d6+2 white gargoyle count.",
+                "action_type": "branch",
+                "action_value": "gargoyle_count",
+                "reference": "Scene 8 gargoyle count",
+            },
+            {
+                "label": "Roll gargoyle surprise",
+                "tooltip": "Prefill the 3-in-6 white gargoyle camouflage surprise chance.",
+                "action_type": "branch",
+                "action_value": "gargoyle_surprise",
+                "reference": "Scene 8 gargoyle surprise",
+            },
+        ],
+        "final_prompt_actions": [
+            {
+                "label": "Stone skin check",
+                "tooltip": "Prefill the 2-in-6 mundane-weapon bounce check.",
+                "action_type": "branch",
+                "action_value": "gargoyle_skin",
+                "reference": "Scene 8 gargoyle stone skin",
+            },
+            {
+                "label": "Gargoyle bounty",
+                "tooltip": "Prefill the 15 gp per gargoyle head reward; Amount is head count.",
+                "action_type": "scene",
+                "action_value": "gargoyle_bounty",
+                "reference": "Scene 8 gargoyle bounty",
+            },
+        ],
         "rules": ["Use d6+2 gargoyles at the table if you want to roll the exact count instead of the generated count."],
     },
     11: {
@@ -844,6 +1047,22 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Goblins",
         "final_count": 4,
         "rewards": "One qualifying XP roll for the listed archery benefits.",
+        "final_prompt_actions": [
+            {
+                "label": "Pay Deoldyn training",
+                "tooltip": "Prefill Deoldyn's 60 gp x level training payment and XP-roll marker.",
+                "action_type": "scene",
+                "action_value": "deoldyn_training",
+                "reference": "Scene 3 Deoldyn training",
+            },
+            {
+                "label": "Mark training XP roll",
+                "tooltip": "Prefill the training XP-roll marker if payment was handled separately.",
+                "action_type": "xp",
+                "action_value": "mark_training_xp_roll",
+                "reference": "Scene 3 archery training XP roll",
+            },
+        ],
         "rules": ["Installed combat is a proxy interruption, not required by the training scene."],
     },
     12: {
@@ -859,6 +1078,24 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Goblins",
         "final_count": 6,
         "rewards": "Agaratha, a magic masterwork sword with the printed Luck-on-major-kill rule.",
+        "complication_prompt_actions": [
+            {
+                "label": "Record solo quest",
+                "tooltip": "Prefill the printed solo restriction for Scene 7.",
+                "action_type": "route",
+                "action_value": "solo_restriction",
+                "reference": "Scene 7 Agaratha solo quest",
+            }
+        ],
+        "final_prompt_actions": [
+            {
+                "label": "Apply Agaratha",
+                "tooltip": "Prefill Agaratha reward and Luck-on-major-kill marker.",
+                "action_type": "scene",
+                "action_value": "agaratha",
+                "reference": "Scene 7 Agaratha reward",
+            }
+        ],
         "rules": ["This generated module supports normal party play; enforce solo restrictions manually if desired."],
     },
 }
@@ -948,6 +1185,22 @@ TAG_THEMATIC_DUNGEON_PROFILES: dict[int, dict[str, object]] = {
                 "Roll three treasure rolls and double all gp treasure.",
             ],
         },
+        "final_prompt_actions": [
+            {
+                "label": "Giant boulder",
+                "tooltip": "Prefill the Giant's Lair 4-in-6 first-turn hill giant boulder throw.",
+                "action_type": "branch",
+                "action_value": "giant_lair_boulder",
+                "reference": "Giant's Lair boulder throw",
+            },
+            {
+                "label": "Giant treasure",
+                "tooltip": "Prefill the Giant's Lair final-room treasure and size reminder.",
+                "action_type": "branch",
+                "action_value": "giant_lair_treasure",
+                "reference": "Giant's Lair final treasure",
+            },
+        ],
         "rules": ["Hill Giant is now a TAG-specific foe profile.", "Spells hit the hill giant at +2."],
     },
     3: {
@@ -2959,6 +3212,208 @@ def resolve_tag_branch_action(
             parts.append(f"Stolen goods found: 8d6={total} gp. Trapdoor roll d6={trap_roll}: {trap_text}. Claim the gp only after resolving the room.")
         else:
             parts.append(f"Stolen-goods roll d6={roll}: no stolen goods in this room.")
+    elif clean_action == "bofto_scene_choice":
+        choice = (reference.strip()[:80] or "steal object / talk to family / leave").lower()
+        parts.append(
+            f"Scene 9 choice recorded: {choice}. If stealing the star-shaped object, resolve Scene 14; if talking to Bofto's family, resolve Scene 17; if leaving, return to normal TAG settlement activity."
+        )
+    elif clean_action == "tag_ambush_chance":
+        target = max(1, min(6, cost or 2))
+        roll = roll_d6()
+        table = reference.strip()[:80] or "Riff-Raff or Outside of Town Ambush Table"
+        if roll <= target:
+            parts.append(f"Ambush chance d6={roll} vs {target}-in-6: encounter occurs. Roll on {table}.")
+        else:
+            parts.append(f"Ambush chance d6={roll} vs {target}-in-6: no encounter.")
+    elif clean_action == "medusa_assassin_ambush":
+        failed = cost > 0
+        if failed:
+            count = roll_d3() + 2
+            roll = count - 2
+            total = count
+            parts.append(
+                f"At least one L6 Stealth Save failed on the way to the hunter's cabin: d3+2={count} assassin agents ambush the party. Convince them with L5 Streetwise or fight HCL+2 dagger minions with 4d6 gp total treasure."
+            )
+        else:
+            parts.append("All characters passed L6 Stealth on the way to the hunter's cabin; the party reaches the cabin undisturbed.")
+    elif clean_action == "medusa_stealth_approach":
+        modifier = _tag_reference_int(reference, "mod", cost)
+        roll = roll_d6()
+        total = roll + modifier
+        if total >= 6:
+            parts.append(f"Medusa cabin stealth d6={roll}+{modifier}={total} vs L6: success. Party attacks once before Xasartha uses her gaze.")
+        else:
+            parts.append(
+                f"Medusa cabin stealth d6={roll}+{modifier}={total} vs L6: failed. The scouting character is turned to stone with no Save; remaining party fights normally and must Save vs gaze."
+            )
+    elif clean_action == "medusa_reaction":
+        roll = roll_d6()
+        if roll == 1:
+            parts.append("Xasartha reaction d6=1: bribe, 6d6 gp or one jewel/gem worth at least 15 gp.")
+        elif roll == 2:
+            parts.append("Xasartha reaction d6=2: quest branch. Resolve the printed medusa quest text before deciding combat/reward.")
+        elif roll <= 5:
+            parts.append(f"Xasartha reaction d6={roll}: fight.")
+        else:
+            parts.append("Xasartha reaction d6=6: fight to the death.")
+    elif clean_action == "leprechaun_shoes":
+        pairs = max(1, cost or 1)
+        total = pairs * 200
+        if character is not None and character.gold >= total:
+            character.gold -= total
+            for _ in range(pairs):
+                character.inventory.append("Shoes of Fast Walk")
+            character.updated_at = now_utc()
+            parts.append(f"{character.name} buys {pairs} pair(s) of Shoes of Fast Walk for {total} gp; add +Tier to Defense when withdrawing or fleeing melee.")
+        elif character is not None:
+            parts.append(f"{character.name} needs {total} gp for {pairs} pair(s) of Shoes of Fast Walk but has {character.gold}.")
+        else:
+            parts.append(f"Record purchase of {pairs} pair(s) of Shoes of Fast Walk at {total} gp total; assign only to eligible characters or hirelings.")
+    elif clean_action == "leprechaun_illusion_spell":
+        free = _tag_reference_flag(reference, "free")
+        total = 0 if free else 100
+        spell_note = reference.strip()[:80] or "chosen illusion spell"
+        if character is not None and character.gold >= total:
+            character.gold -= total
+            marker = f"TAG leprechaun illusion spell pending: {spell_note}"
+            if marker not in character.statuses:
+                character.statuses.append(marker)
+            character.updated_at = now_utc()
+            price = "free after buying at least three pairs of magical shoes" if free else "100 gp"
+            parts.append(f"{character.name} learns or records {spell_note} from the leprechauns for {price}.")
+        elif character is not None:
+            parts.append(f"{character.name} needs {total} gp to learn the leprechaun illusion spell but has {character.gold}.")
+        else:
+            parts.append("Record one eligible character learning an illusion spell from the leprechauns; cost is 100 gp or free after buying at least three pairs of magical shoes.")
+    elif clean_action == "mutant_fish_hypnosis":
+        modifier = _tag_reference_int(reference, "mod", cost)
+        chaos = _tag_reference_flag(reference, "chaos")
+        if chaos:
+            parts.append("Mutant fish hypnosis: chaos-tainted character fails automatically per Scene 12.")
+        else:
+            roll = roll_d6()
+            total = roll + modifier
+            result = "resists the chanting" if total >= 5 else "fails and is drawn toward the water"
+            parts.append(f"Mutant fish hypnosis Save d6={roll}+{modifier}={total} vs L5: character {result}. Resolve rescue timing from Scene 12.")
+    elif clean_action == "gargoyle_count":
+        roll = roll_d6()
+        total = roll + 2
+        parts.append(f"White gargoyle count d6={roll}+2: {total} gargoyles in the lair.")
+    elif clean_action == "gargoyle_surprise":
+        roll = roll_d6()
+        if roll <= 3:
+            parts.append(f"White gargoyle camouflage d6={roll}: gargoyles surprise the party; roll reactions before combat.")
+        else:
+            parts.append(f"White gargoyle camouflage d6={roll}: no surprise.")
+    elif clean_action == "gargoyle_skin":
+        roll = roll_d6()
+        if roll <= 2:
+            parts.append(f"White gargoyle stone-hard skin d6={roll}: this mundane-weapon hit bounces off with no effect.")
+        else:
+            parts.append(f"White gargoyle stone-hard skin d6={roll}: hit affects the gargoyle normally. Magic and masterwork weapons ignore this check.")
+    elif clean_action == "bofto_theft_save":
+        modifier = _tag_reference_int(reference, "mod", cost)
+        roll = roll_d6()
+        total = roll + modifier
+        if total >= 6:
+            parts.append(f"Scene 14 thievery Save d6={roll}+{modifier}={total} vs L6: success. Go to Scene 19 and resolve the star-shaped object Will Save.")
+        else:
+            parts.append(f"Scene 14 thievery Save d6={roll}+{modifier}={total} vs L6: failed. Go to Scene 18; delete Rumor 1 from the Rumors Table.")
+    elif clean_action == "star_object_will_save":
+        modifier = _tag_reference_int(reference, "mod", cost)
+        roll = roll_d6()
+        total = roll + modifier
+        if total >= 8:
+            parts.append(f"Scene 19 Will Save d6={roll}+{modifier}={total} vs L8: success; no Madness from picking up the star-shaped object.")
+        else:
+            if character is not None and "TAG star-shaped object curse carrier" not in character.statuses:
+                character.statuses.append("TAG star-shaped object curse carrier")
+                character.updated_at = now_utc()
+            parts.append(
+                f"Scene 19 Will Save d6={roll}+{modifier}={total} vs L8: failed. Character gains 1 Madness and carries the star-shaped object curse; add the Madness/status effect manually if not already tracked."
+            )
+    elif clean_action == "star_slayer_check":
+        roll = roll_d6()
+        if roll <= 2:
+            parts.append("Star-shaped object curse d6={}: replace this Boss/Weird Monster with a Star-Slayer from Beyond; it always fights to the death.".format(roll))
+        else:
+            parts.append(f"Star-shaped object curse d6={roll}: no Star-Slayer replacement for this major foe.")
+    elif clean_action == "treasure_map_follow":
+        bonus = cost
+        roll = roll_d6()
+        total = roll + bonus
+        natural_note = " Natural 1 remains a Deathtrap even with bonuses." if roll == 1 and bonus else ""
+        if roll <= 2:
+            result = "Deathtrap: roll Riff-Raff, foes go first, no withdrawal unless they flee."
+        elif total == 3:
+            result = "Waste of time: roll 3-in-6 Outside of Town Opposition chance."
+        elif total == 4:
+            result = "Accurate but incomplete: add one stored +1 bonus for a future treasure-map roll."
+            campaign.tag_map_bonus += 1
+        else:
+            lead_roll = roll_d6()
+            result = f"The Real Deal: Map Leads To d6={lead_roll}: {TAG_MAP_LEADS_TO[lead_roll]}"
+        parts.append(f"Following Treasure Map d6={roll}{format_bonus(bonus)}={total}: {result}{natural_note}")
+    elif clean_action == "map_cave_room_count":
+        roll = roll_d6()
+        total = roll + 3
+        parts.append(f"Map cave complex room count d6={roll}+3: dungeon ends after {total} rooms. Last room has a Boss with +2 Life and double maximum treasure.")
+    elif clean_action == "map_temple_idol":
+        roll = roll_d3()
+        total = roll * 100
+        parts.append(f"Forgotten temple idol value d3={roll} x100 gp: golden idol is worth {total} gp after the chaos cultists are defeated.")
+    elif clean_action == "map_temple_scroll":
+        roll = roll_d6()
+        if roll <= 3:
+            parts.append(f"Forgotten temple leader scroll chance d6={roll}: leader carries one random scroll. Roll on any spell list you choose.")
+        else:
+            parts.append(f"Forgotten temple leader scroll chance d6={roll}: no scroll.")
+    elif clean_action == "map_humanoid_report":
+        total = sum(roll_d6() for _ in range(4))
+        parts.append(f"Humanoid camp report reward 4d6={total} gp. Adventure ends here and the party gains no XP rolls for the camp.")
+    elif clean_action == "map_humanoid_stealth":
+        modifier = _tag_reference_int(reference, "mod", cost)
+        roll = roll_d6()
+        total = roll + modifier
+        if total >= 4:
+            parts.append(f"Humanoid camp group Stealth d6={roll}+{modifier}={total} vs L4: success. Steal camp loot; roll 4AD Treasure with minimum 25 gp and avoid the fight.")
+        else:
+            parts.append(f"Humanoid camp group Stealth d6={roll}+{modifier}={total} vs L4: failed. Camp detects intruders and attacks the entering characters with initiative.")
+    elif clean_action == "map_humanoid_forces":
+        orcs = roll_d6() + roll_d6() + 3
+        bosses = roll_d3()
+        ogre_roll = roll_d6()
+        total = orcs
+        ogre_text = "black ogre present" if ogre_roll <= 2 else "no black ogre"
+        parts.append(f"Humanoid camp forces: 2d6+3={orcs} orcs, 1d3={bosses} Orc Boss(es), black ogre chance d6={ogre_roll}: {ogre_text}.")
+    elif clean_action == "map_structure_rooms":
+        total = roll_d6() + roll_d6()
+        parts.append(f"Underground structure room count 2d6={total}. Roll content in the first room; all treasure is tracked and moved to the final Boss.")
+    elif clean_action == "map_lich_death_magic":
+        modifier = _tag_reference_int(reference, "mod", cost)
+        roll = roll_d6()
+        total = roll + modifier
+        if total >= 7:
+            parts.append(f"Lich chamber death-magic Save d6={roll}+{modifier}={total} vs L7: success; no Life lost at entry.")
+        else:
+            parts.append(f"Lich chamber death-magic Save d6={roll}+{modifier}={total} vs L7: failed; character loses 1 Life. Necromancers add +L; undead/artificial characters are immune.")
+    elif clean_action == "map_lich_life":
+        lost_life = max(0, cost)
+        total = lost_life + 4
+        parts.append(f"Lich Life total: party Life lost to entry death magic {lost_life}+4 = {total} Life.")
+    elif clean_action == "map_lich_treasure":
+        total = sum(roll_d6() for _ in range(10))
+        parts.append(f"Lich treasure: 10d6={total} gp, 1 treasure map, and 3 random scrolls from spell lists you choose.")
+    elif clean_action == "giant_lair_boulder":
+        roll = roll_d6()
+        if roll <= 4:
+            parts.append(
+                f"Giant's Lair first-turn boulder d6={roll}: the hill giant throws a boulder before melee. Resolve the printed boulder attack before normal combat; spells hit the giant at +2."
+            )
+        else:
+            parts.append(f"Giant's Lair first-turn boulder d6={roll}: no boulder throw before melee. Spells still hit the giant at +2.")
+    elif clean_action == "giant_lair_treasure":
+        parts.append("Giant's Lair finale: roll three treasure rolls and double all gp treasure. The final room must be at least nine squares and not a corridor.")
     elif clean_action == "capture_alive":
         if character is not None:
             character.clues += 1
@@ -4282,6 +4737,78 @@ def _profile_synopsis(campaign: CampaignState, lead_detail: str, profile: dict[s
     return f"Generated from TAG campaign downtime in {campaign.settlement_name}: {lead_detail}.{page_text}"
 
 
+def _treasure_map_prompt_actions(map_roll: int) -> list[dict[str, object]]:
+    base = [
+        {
+            "label": "Roll follow map",
+            "tooltip": "Prefill the Following Treasure Map table; Amount can hold stored/Guild map bonus.",
+            "action_type": "branch",
+            "action_value": "treasure_map_follow",
+            "reference": "TAG p.32 Following Treasure Map",
+        }
+    ]
+    if map_roll == 1:
+        return [*base, {"label": "Cave room count", "tooltip": "Prefill d6+3 room count for the underground caves.", "action_type": "branch", "action_value": "map_cave_room_count", "reference": "Map Leads To 1 cave complex"}]
+    if map_roll == 2:
+        return [
+            *base,
+            {"label": "Idol value", "tooltip": "Prefill 1d3 x 100 gp golden idol value.", "action_type": "branch", "action_value": "map_temple_idol", "reference": "Map Leads To 2 golden idol"},
+            {"label": "Leader scroll chance", "tooltip": "Prefill the chaos cult leader's 3-in-6 random scroll chance.", "action_type": "branch", "action_value": "map_temple_scroll", "reference": "Map Leads To 2 leader scroll"},
+        ]
+    if map_roll == 3:
+        return [
+            *base,
+            {"label": "Report reward", "tooltip": "Prefill 4d6 gp reward for reporting the hostile humanoid camp.", "action_type": "branch", "action_value": "map_humanoid_report", "reference": "Map Leads To 3 report to authorities"},
+            {"label": "Camp stealth", "tooltip": "Prefill L4 worst-Stealth group check for stealing camp loot.", "action_type": "branch", "action_value": "map_humanoid_stealth", "reference": "Map Leads To 3 camp stealth"},
+            {"label": "Camp forces", "tooltip": "Prefill hostile camp force rolls: orcs, bosses, black ogre chance.", "action_type": "branch", "action_value": "map_humanoid_forces", "reference": "Map Leads To 3 hostile camp forces"},
+        ]
+    if map_roll in {4, 5}:
+        label = "Map Leads To 5 boss-only structure" if map_roll == 5 else "Map Leads To 4 underground structure"
+        return [*base, {"label": "Structure rooms", "tooltip": "Prefill 2d6 underground structure room count.", "action_type": "branch", "action_value": "map_structure_rooms", "reference": label}]
+    return [
+        *base,
+        {"label": "Death magic save", "tooltip": "Prefill one L7 death-magic entry Save for the lich chamber.", "action_type": "branch", "action_value": "map_lich_death_magic", "reference": "Map Leads To 6 death magic"},
+        {"label": "Lich Life", "tooltip": "Prefill lich Life calculation from total party Life lost plus 4.", "action_type": "branch", "action_value": "map_lich_life", "reference": "Map Leads To 6 lich Life"},
+        {"label": "Lich treasure", "tooltip": "Prefill 10d6 gp lich treasure and reminder for map/scroll rewards.", "action_type": "branch", "action_value": "map_lich_treasure", "reference": "Map Leads To 6 lich treasure"},
+    ]
+
+
+def _treasure_map_module_profile(map_roll: int) -> dict[str, object]:
+    profiles = {
+        1: {
+            "target_rooms": "d6+3-room standard dungeon",
+            "procedure": ["Do not roll content in the entrance room.", "After d6+3 rooms, unopened doors/passages become dead ends.", "Last room has a Boss with +2 Life and double maximum treasure."],
+            "signoff_checks": ["Roll cave room count before play and check the finale Boss treasure boost."],
+        },
+        2: {
+            "target_rooms": "forgotten wilderness temple",
+            "procedure": ["No withdrawal from the chaos-cultist fight.", "Roll the Chaos Cult Table for cultist abilities.", "Leader is L4 Boss, 4 Life, 2 attacks, 3d6 gp, and 3-in-6 scroll chance."],
+            "signoff_checks": ["Roll idol value and leader scroll chance after victory."],
+        },
+        3: {
+            "target_rooms": "hostile humanoid camp",
+            "procedure": ["Choose report-to-authorities for 4d6 gp and no XP, or try a daytime stealth theft.", "Stealth theft uses the worst modifier among entering characters against L4.", "On failure, entering characters are attacked with initiative; outside PCs join two turns later."],
+            "signoff_checks": ["Choose report or stealth before rolling; if combat starts, roll camp forces."],
+        },
+        4: {
+            "target_rooms": "2d6-room underground structure",
+            "procedure": ["Roll content in the first room too.", "Track all generated treasure instead of taking it.", "Final Boss has all tracked treasure plus its own treasure."],
+            "signoff_checks": ["Keep a running treasure total and move it to the final Boss."],
+        },
+        5: {
+            "target_rooms": "2d6-room boss-only underground structure",
+            "procedure": ["As Map Leads To 4, but every monster is a Boss.", "No Vermin/minions; reroll dragons.", "Final treasure has minimum 200 gp and 2 random magic items."],
+            "signoff_checks": ["Confirm every monster result was converted to Boss and final treasure minimum was applied."],
+        },
+        6: {
+            "target_rooms": "one-room lich sepulchral chamber",
+            "procedure": ["All PCs Save vs L7 death magic or lose 1 Life.", "Lich Life equals total Life lost to death magic plus 4.", "Lich is defended by 7 dark skeletons; phylactery can be destroyed with a ranged attack vs L6."],
+            "signoff_checks": ["Track entry Life loss, lich Life, phylactery attempts, and 10d6 gp plus map/scroll treasure."],
+        },
+    }
+    return profiles.get(map_roll, profiles[1])
+
+
 def _guild_job_profile(campaign: CampaignState, detail: str) -> tuple[str, str, dict[str, object]]:
     job_roll = int(detail) if detail.isdigit() else roll_d6()
     job_roll = max(1, min(6, job_roll))
@@ -4327,16 +4854,19 @@ def build_tag_adventure_manifest(
         lead_detail = TAG_MAP_LEADS_TO[map_roll]
         profile = {
             "title": lead_detail.split(":", 1)[0],
-            "pdf_pages": "TAG p.16",
+            "pdf_pages": "TAG pp.32-33",
             "objective": "Follow the purchased TAG treasure map and resolve the destination.",
             "entry": "The map marks a route away from the settlement.",
             "side": "Old notes in the margin hint at danger and possible false trails.",
-            "complication": "Following the map can reveal a deathtrap, a waste of time, a partial clue, or a real destination.",
+            "complication": "Following the map can reveal a deathtrap, a waste of time, a partial clue, or a real destination; this generated adventure represents the Map Leads To destination.",
             "final_title": "Mapped Treasure Site",
             "final_description": lead_detail,
             "final_foe": "Wraith" if map_roll in {4, 5, 6} else "Goblins",
             "final_count": 1 if map_roll in {4, 5, 6} else 4,
             "rewards": "Apply The Map Leads To reward text for the rolled destination.",
+            "module_profile": _treasure_map_module_profile(map_roll),
+            "complication_prompt_actions": _treasure_map_prompt_actions(map_roll),
+            "final_prompt_actions": _treasure_map_prompt_actions(map_roll),
             "rules": ["This generator uses The Map Leads To destinations, not the preliminary fake-map outcomes."],
         }
         title = f"TAG Treasure Map: {lead_detail.split(':', 1)[0]}"
