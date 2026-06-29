@@ -265,7 +265,10 @@
                   <div class="campaign-status-title">TAG settlement</div>
                   <p class="muted">Town and guild downtime tools, separate from Camp Outside Dungeon.</p>
                 </div>
-                <button type="button" class="tag-help-button" data-tag-help="overview" aria-label="TAG settlement help">?</button>
+                <div class="tag-heading-actions">
+                  <a id="tag-guide-link" class="link-button tag-guide-link" href="/docs/Checking/TAG_SECTION_GUIDE.md" target="_blank" rel="noopener" title="Open the full TAG section workflow guide, including TAG banking and before/during/after adventure steps.">TAG guide</a>
+                  <button type="button" class="tag-help-button" data-tag-help="overview" aria-label="TAG settlement help">?</button>
+                </div>
               </div>
               <details class="tag-help-section" open>
                 <summary>
@@ -661,6 +664,18 @@
                       </select>
                     </label>
                     <button id="tag-cast-guild-spell" type="button" class="secondary">Cast spell</button>
+                    <label for="tag-guild-marker">
+                      <span>Guild marker</span>
+                      <select id="tag-guild-marker">
+                        <option value="temporary_weapon_enchantment" title="Clear the temporary weapon enchantment marker when the enchanted attack/window has been used.">Weapon enchantment</option>
+                        <option value="troupe_switch" title="Clear the Troupe Switch marker after the active/home character switch has been resolved.">Troupe Switch</option>
+                        <option value="look_tough" title="Clear the Look Tough spell marker and remove the character from the TAG tough-reputation list.">Look Tough</option>
+                        <option value="silence_of_the_mouse" title="Clear the Silence of the Mouse marker after the stealth/noise check window has been used.">Silence</option>
+                        <option value="wizards_luck" title="Clear the Wizard's Luck marker after the luck/reroll window has been used.">Wizard's Luck</option>
+                        <option value="speedy_recovery" title="Clear the Speedy Recovery marker after the recovery window has been accounted for.">Speedy Recovery</option>
+                      </select>
+                    </label>
+                    <button id="tag-clear-guild-marker" type="button" class="secondary">Clear marker</button>
                     <label for="tag-finance-action">
                       <span>Finance</span>
                       <select id="tag-finance-action">
@@ -702,6 +717,7 @@
                   </div>
                   <div id="tag-settlement-services" class="tag-settlement-services"></div>
                   <div id="tag-settlement-result" class="campaign-status-line muted" role="status"></div>
+                  <div id="tag-route-xp-summary" class="tag-settlement-log" aria-label="TAG route and XP summary"></div>
                   <div id="tag-settlement-log" class="tag-settlement-log"></div>
                 </div>
               </details>
@@ -1229,6 +1245,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.69.15"></script>
+    <script src="/static/app.js?v=0.69.16"></script>
   </body>
 </html>

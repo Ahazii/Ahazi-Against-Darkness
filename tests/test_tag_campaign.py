@@ -21,6 +21,7 @@ from app.engine.tag_campaign import (
     roll_treasure_map_price,
     run_streetwise_action,
     cast_tag_guild_spell,
+    consume_tag_guild_marker,
     resolve_tag_branch_action,
     resolve_tag_finance_action,
     resolve_tag_route_action,
@@ -428,6 +429,10 @@ def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None
     assert hero.current_life == hero.max_life
     assert "TAG Speedy Recovery pending" in hero.statuses
     assert "scroll consumed" in recovery_spell.result_text
+
+    clear_marker = consume_tag_guild_marker(campaign, hero, marker_key="speedy_recovery")
+    assert "TAG Speedy Recovery pending" not in hero.statuses
+    assert "clears TAG Guild marker" in clear_marker.result_text
 
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
     risk = resolve_tag_finance_action(campaign, hero, finance_action="robbery_risk")

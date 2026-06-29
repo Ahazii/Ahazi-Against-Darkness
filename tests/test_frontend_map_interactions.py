@@ -1013,7 +1013,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.15"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.16"></script>' in INDEX_HTML
 
 
 def test_trial_of_champions_reaction_has_champion_picker_buttons() -> None:
@@ -1824,10 +1824,15 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-use-trinket",
         "tag-guild-spell",
         "tag-cast-guild-spell",
+        "tag-guild-marker",
+        "tag-clear-guild-marker",
         "tag-finance-action",
         "tag-run-finance",
+        "tag-route-xp-summary",
+        "tag-guide-link",
     ]:
         assert f'id="{element_id}"' in INDEX_HTML
+    assert 'href="/docs/Checking/TAG_SECTION_GUIDE.md"' in INDEX_HTML
     for endpoint in [
         "/api/campaign/tag/troupe",
         "/api/campaign/tag/store-treasure",
@@ -1842,6 +1847,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "/api/campaign/tag/xp-action",
         "/api/campaign/tag/use-trinket",
         "/api/campaign/tag/guild-spell",
+        "/api/campaign/tag/guild-marker",
         "/api/campaign/tag/finance-action",
     ]:
         assert endpoint in APP_JS
@@ -1857,5 +1863,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.runXpAction" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.useTrinket" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.castGuildSpell" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.guildMarker" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.clearGuildMarker" in APP_JS
+    assert "renderTagRouteXpSummary" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.runFinance" in APP_JS
     assert "Created ${result.title || result.adventure_id}. It is selected in the Adventure section." in APP_JS

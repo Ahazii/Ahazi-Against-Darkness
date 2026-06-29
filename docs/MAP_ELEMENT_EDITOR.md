@@ -119,7 +119,7 @@ Shape letters rotate with tile placement (90° / 180° / 270°) so blocked art s
 - **Dungeon Exit** — starting tiles `01`–`06` only.
 - **Delete Exit** — click an existing marker to remove it.
 
-Inset exits keep their authored square; gameplay may overlap one blocked padding cell on the connected tile (see §13 in [MANUAL_VALIDATION_CHECKLIST.md](MANUAL_VALIDATION_CHECKLIST.md)).
+Inset exits keep their authored square; gameplay may overlap one blocked padding cell on the connected tile (see §13 in [RULEBOOK_CHECKING_GUIDE.md](Checking/RULEBOOK_CHECKING_GUIDE.md)).
 
 ## Forsaken Depths room codes
 

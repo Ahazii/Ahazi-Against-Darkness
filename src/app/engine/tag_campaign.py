@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from math import ceil
+from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from ..db import now_utc
+from .adventure_import import ADVENTURE_MANIFEST_FILENAME, installed_adventure_dir
 from ..schemas import (
     CampaignState,
     Character,
@@ -1861,6 +1864,71 @@ def resolve_tag_route_action(
     )
 
 
+def apply_latest_tag_route_to_adventure(data_dir: Path, campaign: CampaignState) -> str:
+    route = campaign.tag_adventure_routes[-1] if campaign.tag_adventure_routes else None
+    if route is None:
+        return "No TAG route marker is available to apply to a generated adventure."
+    adventure_id = next((item for item in reversed(campaign.tag_generated_adventure_ids) if item), "")
+    if not adventure_id:
+        return "No generated TAG adventure is available for route rewrite."
+    manifest_path = installed_adventure_dir(data_dir, adventure_id) / ADVENTURE_MANIFEST_FILENAME
+    if not manifest_path.exists():
+        return f"Generated TAG adventure {adventure_id} is not installed yet; route marker was saved only in campaign state."
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    source = manifest.setdefault("source", {})
+    parameters = source.setdefault("parameters", {})
+    tag_reference = parameters.setdefault("tag_reference", {})
+    markers = tag_reference.setdefault("route_markers", [])
+    markers.append(
+        {
+            "action": route.route_action,
+            "reference": route.reference,
+            "character": route.character_name,
+            "clue_cost": route.clue_cost,
+            "resolved": route.resolved,
+            "result": route.result_text,
+            "created_at": route.created_at,
+        }
+    )
+    tag_reference["route_status"] = route.result_text
+    rooms = manifest.get("rooms") if isinstance(manifest.get("rooms"), list) else []
+    complication = next((room for room in rooms if room.get("id") == "tag-complication"), None)
+    final = next((room for room in rooms if room.get("id") == "tag-final-scene"), None)
+    changed_detail = "source reference"
+    if isinstance(complication, dict):
+        description = str(complication.get("description") or "")
+        suffix = f" TAG route marker: {route.result_text}"
+        if suffix not in description:
+            complication["description"] = (description + suffix).strip()
+        if route.route_action in {"parley_success", "peaceful_branch"}:
+            triggers = complication.get("triggers")
+            if isinstance(triggers, list):
+                complication["triggers"] = [trigger for trigger in triggers if not isinstance(trigger, dict) or "encounter" not in trigger]
+            changed_detail = "complication proxy combat suppressed"
+        elif route.route_action in {"clue_gate_unlocked", "unlock_scene"}:
+            for exit_data in complication.get("exits") or []:
+                if isinstance(exit_data, dict) and exit_data.get("to") == "tag-final-scene":
+                    exit_data["status"] = "open"
+            changed_detail = "follow-up/finale route opened"
+        elif route.route_action == "clue_gate_blocked":
+            for exit_data in complication.get("exits") or []:
+                if isinstance(exit_data, dict) and exit_data.get("to") == "tag-final-scene":
+                    exit_data["status"] = "closed"
+            changed_detail = "Clue-gated route kept closed"
+        elif route.route_action in {"parley_failed", "hostile_branch"}:
+            changed_detail = "hostile route preserved"
+    if route.route_action == "skip_scene":
+        for room in rooms:
+            if isinstance(room, dict):
+                room["description"] = f"{room.get('description', '')} TAG route marker: scene skipped/crossed off.".strip()
+        changed_detail = "scene skip marker added to generated rooms"
+    if route.route_action in {"final_route", "solo_restriction"} and isinstance(final, dict):
+        final["description"] = f"{final.get('description', '')} TAG route marker: {route.result_text}".strip()
+        changed_detail = "finale/solo route marker added"
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    return f"Applied route marker to {adventure_id}: {changed_detail}."
+
+
 def resolve_tag_xp_action(
     campaign: CampaignState,
     character: Character | None = None,
@@ -2073,6 +2141,29 @@ def cast_tag_guild_spell(campaign: CampaignState, character: Character, *, spell
         character=character,
         result_text=f"{character.name} casts {spell_name}: {availability}. {effect['summary']}",
     )
+
+
+TAG_GUILD_MARKERS: dict[str, str] = {
+    "temporary_weapon_enchantment": "TAG temporary weapon enchantment",
+    "troupe_switch": "TAG Troupe Switch pending",
+    "look_tough": "TAG Look Tough spell",
+    "silence_of_the_mouse": "TAG Silence of the Mouse active",
+    "wizards_luck": "TAG Wizard's Luck pending",
+    "speedy_recovery": "TAG Speedy Recovery pending",
+}
+
+
+def consume_tag_guild_marker(campaign: CampaignState, character: Character, *, marker_key: str) -> TagDowntimeLogEntry:
+    marker = TAG_GUILD_MARKERS.get(marker_key, marker_key)
+    if marker in character.statuses:
+        character.statuses.remove(marker)
+        if marker_key == "look_tough" and character.id in campaign.tag_look_tough_character_ids:
+            campaign.tag_look_tough_character_ids.remove(character.id)
+        result = f"{character.name} clears TAG Guild marker: {marker}."
+    else:
+        result = f"{character.name} does not currently have TAG Guild marker: {marker}."
+    character.updated_at = now_utc()
+    return append_tag_log(campaign, action="guild_marker_clear", character=character, result_text=result)
 
 
 def resolve_tag_finance_action(

@@ -288,6 +288,8 @@ const tagTrinket = document.getElementById("tag-trinket");
 const tagUseTrinket = document.getElementById("tag-use-trinket");
 const tagGuildSpell = document.getElementById("tag-guild-spell");
 const tagCastGuildSpell = document.getElementById("tag-cast-guild-spell");
+const tagGuildMarker = document.getElementById("tag-guild-marker");
+const tagClearGuildMarker = document.getElementById("tag-clear-guild-marker");
 const tagFinanceAction = document.getElementById("tag-finance-action");
 const tagFinanceAmount = document.getElementById("tag-finance-amount");
 const tagFinanceNote = document.getElementById("tag-finance-note");
@@ -296,6 +298,7 @@ const tagMoneylenderDebt = document.getElementById("tag-moneylender-debt");
 const tagRefreshServices = document.getElementById("tag-refresh-services");
 const tagSettlementServices = document.getElementById("tag-settlement-services");
 const tagSettlementResult = document.getElementById("tag-settlement-result");
+const tagRouteXpSummary = document.getElementById("tag-route-xp-summary");
 const tagSettlementLog = document.getElementById("tag-settlement-log");
 const abyssCampaignStatus = document.getElementById("abyss-campaign-status");
 const startCampedOutside = document.getElementById("start-camped-outside");
@@ -8465,11 +8468,14 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   useTrinket: "Use the selected TAG trinket for the chosen character and apply any safe status/healing effect.",
   guildSpell: "TAG Guild spell to cast or log. Scrolls are consumed when present; known spells are logged for slot tracking.",
   castGuildSpell: "Cast or log the selected TAG Guild spell and apply the safe status marker where applicable.",
+  guildMarker: "TAG Guild spell marker to clear after its timing window has been used or manually resolved.",
+  clearGuildMarker: "Clear the selected TAG Guild spell marker from the chosen character and log the consumption.",
   financeAction: "TAG banking/loan action: bank deposit, bank withdraw, inheritance note or transfer, robbery risk, robbery recovery, loan enforcement, or guild upkeep.",
   financeAmount: "Gold amount for finance actions: deposit, withdraw, loan, reward, recovery, or storage handling.",
   financeNote: "Optional heir, debt, bank, robber, or ruling note stored in the TAG log.",
   runFinance: "Run the selected TAG finance action and log the result.",
   services: "Refresh TAG treasure/service rows for the current settlement size.",
+  routeXpSummary: "Recent structured TAG signoff state: route decisions, XP markers, and per-character TAG bank account balances.",
   serviceAvailability: "Roll this service/item availability using d6 plus settlement size, then log the result.",
   hiddenTroveRisk: "Roll 3d6 for a hidden treasure trove between-adventure risk; on 3-5 the cache is stolen.",
   moneylenderDebt: "Debt amount for the moneylender pursuit check after moving to another settlement.",
@@ -10417,6 +10423,8 @@ function applyTagSettlementTooltips() {
   setButtonTooltip(tagUseTrinket, TAG_SETTLEMENT_TOOLTIPS.useTrinket);
   setTooltip(tagGuildSpell, TAG_SETTLEMENT_TOOLTIPS.guildSpell);
   setButtonTooltip(tagCastGuildSpell, TAG_SETTLEMENT_TOOLTIPS.castGuildSpell);
+  setTooltip(tagGuildMarker, TAG_SETTLEMENT_TOOLTIPS.guildMarker);
+  setButtonTooltip(tagClearGuildMarker, TAG_SETTLEMENT_TOOLTIPS.clearGuildMarker);
   setTooltip(tagFinanceAction, TAG_SETTLEMENT_TOOLTIPS.financeAction);
   setTooltip(tagFinanceAmount, TAG_SETTLEMENT_TOOLTIPS.financeAmount);
   setTooltip(tagFinanceNote, TAG_SETTLEMENT_TOOLTIPS.financeNote);
@@ -10424,6 +10432,7 @@ function applyTagSettlementTooltips() {
   setTooltip(tagMoneylenderDebt, TAG_SETTLEMENT_TOOLTIPS.moneylenderDebt);
   setButtonTooltip(tagRefreshServices, TAG_SETTLEMENT_TOOLTIPS.services);
   setTooltip(tagSettlementServices, TAG_SETTLEMENT_TOOLTIPS.services);
+  setTooltip(tagRouteXpSummary, TAG_SETTLEMENT_TOOLTIPS.routeXpSummary);
 }
 
 function wireTagHelpButtons() {
@@ -11426,8 +11435,38 @@ function renderTagCampaignSettlementPanel(campaign = state.campaign) {
     if (latestDowntime) parts.push(latestDowntime.result_text);
     tagSettlementResult.textContent = parts.join(" ");
   }
+  renderTagRouteXpSummary(campaign);
   renderTagSettlementLog(campaign);
   refreshTagSettlementServices({ silent: true }).catch(() => {});
+}
+
+function renderTagRouteXpSummary(campaign) {
+  if (!tagRouteXpSummary) return;
+  tagRouteXpSummary.replaceChildren();
+  const routeItems = (campaign.tag_adventure_routes || []).slice(-3).map((item) => ({
+    text: `Route ${item.resolved ? "applied" : "pending"}: ${item.result_text}`,
+    hint: "Structured TAG route marker. These markers can update generated TAG module notes and route state.",
+  }));
+  const xpItems = (campaign.tag_xp_markers || []).slice(-3).map((item) => ({
+    text: `XP ${item.applied ? "awarded" : "marked"}: ${item.result_text}`,
+    hint: "Structured TAG XP marker for scene XP, minor encounters, capture XP, or training XP checks.",
+  }));
+  const bankItems = (campaign.tag_bank_accounts || []).slice(-3).map((item) => ({
+    text: `Bank: ${item.owner_name} ${item.gold_gp || 0} gp${item.heir_name ? `, heir ${item.heir_name}` : ""}.`,
+    hint: "TAG per-character bank account: deposits pay 10%, inheritance transfer applies 20% tax.",
+  }));
+  const entries = [...routeItems, ...xpItems, ...bankItems].slice(-6).reverse();
+  if (!entries.length) {
+    const line = node("div", "campaign-status-line muted", "No TAG route, XP, or bank ledger entries yet.");
+    setTooltip(line, TAG_SETTLEMENT_TOOLTIPS.routeXpSummary);
+    tagRouteXpSummary.appendChild(line);
+    return;
+  }
+  for (const entry of entries) {
+    const line = node("div", "campaign-status-line", entry.text);
+    setTooltip(line, entry.hint);
+    tagRouteXpSummary.appendChild(line);
+  }
 }
 
 function fillTagCharacterSelect(select, roster, currentValue) {
@@ -11915,7 +11954,7 @@ async function runTagRouteAction() {
   state.campaign = result.campaign;
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
-  setStatus(result.entry?.result_text || "TAG route action logged.");
+  setStatus(`${result.entry?.result_text || "TAG route action logged."} ${result.rewrite_result || ""}`.trim());
 }
 
 async function runTagSceneAction() {
@@ -11963,6 +12002,21 @@ async function castTagGuildSpellAction() {
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG Guild spell logged.");
+}
+
+async function clearTagGuildMarkerAction() {
+  if (!tagActionCharacter?.value) throw new Error("Choose a character for the TAG Guild marker.");
+  const result = await api("/api/campaign/tag/guild-marker", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagActionCharacter.value,
+      marker_key: tagGuildMarker?.value || "",
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG Guild marker cleared.");
 }
 
 async function runTagFinanceAction() {
@@ -27667,6 +27721,9 @@ tagUseTrinket?.addEventListener("click", () => {
 });
 tagCastGuildSpell?.addEventListener("click", () => {
   castTagGuildSpellAction().catch(handleError);
+});
+tagClearGuildMarker?.addEventListener("click", () => {
+  clearTagGuildMarkerAction().catch(handleError);
 });
 tagRunFinance?.addEventListener("click", () => {
   runTagFinanceAction().catch(handleError);

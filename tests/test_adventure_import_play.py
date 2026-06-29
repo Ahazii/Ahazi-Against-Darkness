@@ -14,7 +14,12 @@ from app.engine.adventure_import import (
     seed_bundled_adventures,
 )
 from app.engine.adventure_session import create_session_from_manifest, repair_imported_map_layout
-from app.engine.tag_campaign import build_tag_adventure_manifest, default_campaign
+from app.engine.tag_campaign import (
+    apply_latest_tag_route_to_adventure,
+    build_tag_adventure_manifest,
+    default_campaign,
+    resolve_tag_route_action,
+)
 from app.engine.random_dungeon import OPPOSITE, RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import PartyMemberState
@@ -78,6 +83,26 @@ def test_tag_generated_adventure_installs_under_adventure_section(repo: RulesRep
     assert manifest["id"] in list_installed_adventure_ids(ROOT, data_dir)
     assert manifest["id"] in campaign.tag_generated_adventure_ids
     assert "Adventure section" in entry.result_text
+
+
+def test_tag_route_marker_rewrites_latest_generated_adventure(repo: RulesRepository, tmp_path: Path) -> None:
+    data_dir = tmp_path / "appdata"
+    data_dir.mkdir()
+    campaign = default_campaign()
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="2")
+    path, result = import_adventure_manifest(ROOT, data_dir, manifest, rules_repo=repo, overwrite=True)
+    assert result.valid, result.errors
+    assert path is not None
+
+    resolve_tag_route_action(campaign, route_action="parley_success", reference="Scene 10 parley")
+    rewrite = apply_latest_tag_route_to_adventure(data_dir, campaign)
+
+    updated = json.loads(path.read_text(encoding="utf-8"))
+    reference = updated["source"]["parameters"]["tag_reference"]
+    complication = next(room for room in updated["rooms"] if room["id"] == "tag-complication")
+    assert "complication proxy combat suppressed" in rewrite
+    assert reference["route_markers"][-1]["action"] == "parley_success"
+    assert not any("encounter" in trigger for trigger in complication["triggers"])
 
 
 def test_seed_bundled_adventures_copies_shipped_modules(tmp_path: Path) -> None:

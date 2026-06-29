@@ -136,6 +136,18 @@ h2 {
   gap: 10px;
 }
 
+.tag-heading-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-guide-link {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
 .tag-help-section {
   border: 1px solid #3c3a30;
   border-radius: 6px;

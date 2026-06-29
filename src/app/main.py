@@ -352,6 +352,7 @@ ICON_FILE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
 app = FastAPI(title="Ahazi Against Darkness", version="0.26.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
+app.mount("/docs", StaticFiles(directory=settings.root_dir / "docs"), name="docs")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -775,7 +776,7 @@ async def campaign_tag_use_trinket(payload: dict[str, Any]) -> dict[str, Any]:
 
 @app.post("/api/campaign/tag/route-action")
 async def campaign_tag_route_action(payload: dict[str, Any]) -> dict[str, Any]:
-    from .engine.tag_campaign import load_campaign, resolve_tag_route_action, save_campaign
+    from .engine.tag_campaign import apply_latest_tag_route_to_adventure, load_campaign, resolve_tag_route_action, save_campaign
 
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
@@ -786,10 +787,11 @@ async def campaign_tag_route_action(payload: dict[str, Any]) -> dict[str, Any]:
         reference=str(payload.get("reference") or ""),
         clue_cost=int(payload.get("clue_cost") or 0),
     )
+    rewrite_result = apply_latest_tag_route_to_adventure(settings.data_dir, campaign)
     if character is not None:
         store.save("characters", character)
     campaign = save_campaign(store, campaign)
-    return {"campaign": campaign, "character": character, "entry": entry}
+    return {"campaign": campaign, "character": character, "entry": entry, "rewrite_result": rewrite_result}
 
 
 @app.post("/api/campaign/tag/scene-action")
@@ -839,6 +841,20 @@ async def campaign_tag_guild_spell(payload: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="Character is required.")
     campaign = load_campaign(store)
     entry = cast_tag_guild_spell(campaign, character, spell_key=str(payload.get("spell_key") or ""))
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/guild-marker")
+async def campaign_tag_guild_marker(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import consume_tag_guild_marker, load_campaign, save_campaign
+
+    character = _optional_campaign_character(payload)
+    if character is None:
+        raise HTTPException(status_code=400, detail="Character is required.")
+    campaign = load_campaign(store)
+    entry = consume_tag_guild_marker(campaign, character, marker_key=str(payload.get("marker_key") or ""))
     store.save("characters", character)
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign, "character": character, "entry": entry}
