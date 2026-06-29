@@ -291,6 +291,14 @@ def suppress_enemy_regeneration(enemy: EnemyState) -> None:
 REGEN_SUPPRESSING_DAMAGE_KINDS = frozenset({"fire", "acid", "lightning", "oil"})
 
 
+def enemy_life_change_text(enemy: EnemyState, before: int) -> str:
+    return f"({before}->{enemy.life}/{enemy.max_life} HP)"
+
+
+def party_life_change_text(member: PartyMemberState, before: int) -> str:
+    return f"({before}->{member.current_life}/{member.max_life} HP)"
+
+
 def apply_enemy_damage(
     enemy: EnemyState,
     amount: int,
@@ -323,10 +331,14 @@ def tick_enemy_regeneration(enemy: EnemyState, log: list[str], *, show_rolls: bo
         enemy.regen_suppressed = False
         return
     if enemy.regen_suppressed:
-        log.append(f"Effect: {enemy.name} cannot regenerate (fire, acid, lightning, or oil wound).")
+        log.append(
+            f"Effect: {enemy.name} cannot regenerate (fire, acid, lightning, or oil wound) "
+            f"({enemy.life}/{enemy.max_life} HP)."
+        )
     else:
+        before = enemy.life
         enemy.life += 1
-        log.append(f"Effect: {enemy.name} regenerates 1 Life.")
+        log.append(f"Effect: {enemy.name} regenerates 1 Life {enemy_life_change_text(enemy, before)}.")
     enemy.regen_suppressed = False
 
 
@@ -1056,8 +1068,12 @@ def _apply_pc_hit(
         else:
             log.append(f"{pc.name} hits {target.name} for {damage} subdual damage with {attack_label}.")
         return [enemy for enemy in living_enemies if enemy.life > 0]
+    target_life_before = target.life
     apply_enemy_damage(target, damage, damage_kind="normal")
-    log.append(f"{pc.name} hits {target.name} for {damage} damage with {attack_label}.")
+    log.append(
+        f"{pc.name} hits {target.name} for {damage} damage with {attack_label} "
+        f"{enemy_life_change_text(target, target_life_before)}."
+    )
     if apply_major_foe_level_drop(target):
         log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
     if target.life <= 0:
@@ -1877,10 +1893,20 @@ def _resolve_attacks(
                 continue
             from .party_life import apply_party_life_loss
 
-            apply_party_life_loss(context.session, target, 1)
+            target_life_before = target.current_life
+            applied = apply_party_life_loss(context.session, target, 1)
+            if applied:
+                log.append(
+                    f"{target.name} takes {applied} damage from {enemy.name} "
+                    f"{party_life_change_text(target, target_life_before)}."
+                )
             if any(status.lower() == "slime disease" for status in target.statuses) and target.current_life > 0:
+                target_life_before = target.current_life
                 apply_party_life_loss(context.session, target, 1)
-                log.append(f"Slime disease worsens {target.name}'s wound for +1 Life loss.")
+                log.append(
+                    f"Slime disease worsens {target.name}'s wound for +1 Life loss "
+                    f"{party_life_change_text(target, target_life_before)}."
+                )
             if target.current_life == 0:
                 log.append(f"{target.name} falls.")
             elif enemy_has_poison(enemy) or enemy.on_hit_effects:
@@ -2218,8 +2244,12 @@ def _resolve_attacks(
                 damage, pain_log = adjust_incoming_damage(context.session, damage_target, damage)
                 log.extend(pain_log)
             if damage:
+                damage_target_life_before = damage_target.current_life
                 damage_target.current_life = max(0, damage_target.current_life - damage)
-                log.append(f"{damage_target.name} takes {damage} damage from {enemy.name}.")
+                log.append(
+                    f"{damage_target.name} takes {damage} damage from {enemy.name} "
+                    f"{party_life_change_text(damage_target, damage_target_life_before)}."
+                )
                 from .monster_combat_hooks import queue_skeleton_spawns_from_damage, record_pc_damage
 
                 record_pc_damage(context, damage, member=damage_target)
@@ -2227,8 +2257,12 @@ def _resolve_attacks(
                 if any(status.lower() == "slime disease" for status in damage_target.statuses) and damage_target.current_life > 0:
                     from .party_life import apply_party_life_loss
 
+                    damage_target_life_before = damage_target.current_life
                     apply_party_life_loss(context.session, damage_target, 1)
-                    log.append(f"Slime disease worsens {damage_target.name}'s wound for +1 Life loss.")
+                    log.append(
+                        f"Slime disease worsens {damage_target.name}'s wound for +1 Life loss "
+                        f"{party_life_change_text(damage_target, damage_target_life_before)}."
+                    )
             else:
                 log.append(f"{damage_target.name} avoids damage from {enemy.name}.")
             if damage_target.current_life == 0 and context.session is not None:

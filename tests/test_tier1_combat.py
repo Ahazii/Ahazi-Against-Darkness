@@ -165,7 +165,7 @@ def test_troll_regeneration_logs_in_summary_mode() -> None:
     combat.tick_enemy_regeneration(beast, log, show_rolls=False)
 
     assert beast.life == 4
-    assert "Effect: Troll regenerates 1 Life." in log
+    assert "Effect: Troll regenerates 1 Life (3->4/7 HP)." in log
 
 
 def test_troll_regeneration_block_logs_in_summary_mode() -> None:
@@ -176,7 +176,7 @@ def test_troll_regeneration_block_logs_in_summary_mode() -> None:
     combat.tick_enemy_regeneration(beast, log, show_rolls=False)
 
     assert beast.life == 3
-    assert "Effect: Troll cannot regenerate (fire, acid, lightning, or oil wound)." in log
+    assert "Effect: Troll cannot regenerate (fire, acid, lightning, or oil wound) (3/7 HP)." in log
 
 
 def test_troll_regen_suppressed_by_acid_damage() -> None:

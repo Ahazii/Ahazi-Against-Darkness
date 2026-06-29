@@ -897,8 +897,12 @@ def _cast_healing_prayer(
         log.append(
             f"Healing prayer: {' + '.join(str(value) for value in rolls)} + {modifier}{bonus_text} = {healed} Life restored."
         )
+    target_life_before = target.current_life
     target.current_life = min(target.max_life, target.current_life + max(1, healed))
-    log.append(f"Healing prayer restores {max(1, healed)} Life to {target.name}.")
+    log.append(
+        f"Healing prayer restores {max(1, healed)} Life to {target.name} "
+        f"({target_life_before}->{target.current_life}/{target.max_life} HP)."
+    )
     from .fungal_traps import clear_cordyceps_infection
 
     if clear_cordyceps_infection(target):

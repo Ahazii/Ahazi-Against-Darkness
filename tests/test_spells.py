@@ -114,6 +114,7 @@ def test_holy_symbol_of_healing_adds_two_life(monkeypatch) -> None:
     assert outcome.party[1].current_life == 8
     assert any("Holy symbol of healing adds +2 Life" in entry for entry in outcome.log)
     assert any("+ 2 holy symbol" in entry for entry in outcome.log)
+    assert any("Healing prayer restores 8 Life to Ally (1->8/8 HP)." in entry for entry in outcome.log)
 
 
 def test_summon_beast_log_keeps_pdf_flavor_text() -> None:
