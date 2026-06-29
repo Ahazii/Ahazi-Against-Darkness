@@ -773,6 +773,25 @@ async def campaign_tag_use_trinket(payload: dict[str, Any]) -> dict[str, Any]:
     return {"campaign": campaign, "character": character, "entry": entry}
 
 
+@app.post("/api/campaign/tag/route-action")
+async def campaign_tag_route_action(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, resolve_tag_route_action, save_campaign
+
+    campaign = load_campaign(store)
+    character = _optional_campaign_character(payload)
+    entry = resolve_tag_route_action(
+        campaign,
+        character,
+        route_action=str(payload.get("route_action") or "parley_success"),
+        reference=str(payload.get("reference") or ""),
+        clue_cost=int(payload.get("clue_cost") or 0),
+    )
+    if character is not None:
+        store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
 @app.post("/api/campaign/tag/scene-action")
 async def campaign_tag_scene_action(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, resolve_tag_scene_action, save_campaign
@@ -788,6 +807,25 @@ async def campaign_tag_scene_action(payload: dict[str, Any]) -> dict[str, Any]:
         amount=int(payload.get("amount") or 0),
     )
     store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
+
+
+@app.post("/api/campaign/tag/xp-action")
+async def campaign_tag_xp_action(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, resolve_tag_xp_action, save_campaign
+
+    campaign = load_campaign(store)
+    character = _optional_campaign_character(payload)
+    entry = resolve_tag_xp_action(
+        campaign,
+        character,
+        xp_action=str(payload.get("xp_action") or "mark_scene_xp"),
+        reference=str(payload.get("reference") or ""),
+        xp=int(payload.get("xp") or 0),
+    )
+    if character is not None:
+        store.save("characters", character)
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign, "character": character, "entry": entry}
 

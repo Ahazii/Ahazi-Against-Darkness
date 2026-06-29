@@ -278,8 +278,12 @@ const tagBranchAction = document.getElementById("tag-branch-action");
 const tagBranchReference = document.getElementById("tag-branch-reference");
 const tagBranchNumber = document.getElementById("tag-branch-number");
 const tagResolveBranch = document.getElementById("tag-resolve-branch");
+const tagRouteAction = document.getElementById("tag-route-action");
+const tagRunRouteAction = document.getElementById("tag-run-route-action");
 const tagSceneAction = document.getElementById("tag-scene-action");
 const tagRunSceneAction = document.getElementById("tag-run-scene-action");
+const tagXpAction = document.getElementById("tag-xp-action");
+const tagRunXpAction = document.getElementById("tag-run-xp-action");
 const tagTrinket = document.getElementById("tag-trinket");
 const tagUseTrinket = document.getElementById("tag-use-trinket");
 const tagGuildSpell = document.getElementById("tag-guild-spell");
@@ -8449,10 +8453,14 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   actionCharacter: "Character used by TAG branch, trinket, Guild spell, or finance actions. Leave blank only where the action allows campaign-level logging.",
   branchAction: "Resolve or log a TAG generated-adventure branch: social choice, Clue spend, variable count, capture-alive result, or reward claim.",
   branchReference: "Scene/page/result note saved into the TAG log so the branch can be checked against the PDF.",
-  branchNumber: "Numeric field for branch and scene actions: Clue cost, variable-count modifier, reward gp, gargoyle count, or training override.",
+  branchNumber: "Numeric field for branch, route, scene, and XP actions: Clue cost, variable-count modifier, reward gp, gargoyle count, XP, or training override.",
   resolveBranch: "Apply the selected TAG branch action and write a dated result into the campaign log.",
+  routeAction: "Track exact TAG scene routing: parley success/failure, Clue gates, peaceful/hostile branches, skipped/unlocked scenes, solo restrictions, and finale route.",
+  runRouteAction: "Apply the selected TAG route marker, spend Clues where required, and preserve the result in campaign state and the TAG log.",
   sceneAction: "Apply exact TAG scene rewards and outcomes such as Medusa pendant, gargoyle bounty, Gorungar bounty, Shaura reward, Agaratha, Deoldyn training, or dragon reveal.",
   runSceneAction: "Apply the selected TAG scene result to the chosen character and write the exact reward or outcome into the campaign log.",
+  xpAction: "Track TAG XP edge cases: pending scene XP, immediate XP awards, minor encounter counts, capture XP, and training XP-roll markers.",
+  runXpAction: "Apply the selected TAG XP action, awarding XP immediately only when that option and an amount are chosen.",
   trinket: "TAG trinket to use. If the selected character carries the item, the app consumes it; otherwise it logs the manual use.",
   useTrinket: "Use the selected TAG trinket for the chosen character and apply any safe status/healing effect.",
   guildSpell: "TAG Guild spell to cast or log. Scrolls are consumed when present; known spells are logged for slot tracking.",
@@ -8557,9 +8565,11 @@ const TAG_HELP_CONTENT = {
     title: "TAG Actions",
     lines: [
       "TAG Actions cover follow-up decisions after a generated adventure exists: branch choices, Clue spends, variable counts, capture-alive outcomes, exact scene rewards, trinkets, Guild spells, and finance enforcement.",
+      "Route actions preserve scene-by-scene flow: parley success/failure, Clue gates, peaceful or hostile branches, skipped/unlocked scenes, solo restrictions, and finale path choices.",
       "Scene results apply printed outcomes such as Medusa pendant, gargoyle bounty, Gorungar bounty, bandit capture, Shaura reward, Daroc's cat, mutant-fish rations, Agaratha, Deoldyn training, and Dragon's Lair type reveal.",
+      "XP actions record pending scene XP, minor encounter counts, capture-alive XP timing, training XP-roll markers, or immediate XP awards to the selected character.",
       "Finance actions now include per-character bank deposit and withdrawal, inheritance notes, and inheritance transfer with the TAG 20% tax. Branch and finance entries remain audit-friendly in the TAG log.",
-      "Trinkets and Guild spells consume carried items or scrolls when present and add status markers for effects that need to be remembered during play.",
+      "Trinkets and Guild spells consume carried items or scrolls when present. Guild spell actions now apply safe state changes such as Speedy Recovery healing and Look Tough reputation markers.",
     ],
   },
   services: {
@@ -10397,8 +10407,12 @@ function applyTagSettlementTooltips() {
   setTooltip(tagBranchReference, TAG_SETTLEMENT_TOOLTIPS.branchReference);
   setTooltip(tagBranchNumber, TAG_SETTLEMENT_TOOLTIPS.branchNumber);
   setButtonTooltip(tagResolveBranch, TAG_SETTLEMENT_TOOLTIPS.resolveBranch);
+  setTooltip(tagRouteAction, TAG_SETTLEMENT_TOOLTIPS.routeAction);
+  setButtonTooltip(tagRunRouteAction, TAG_SETTLEMENT_TOOLTIPS.runRouteAction);
   setTooltip(tagSceneAction, TAG_SETTLEMENT_TOOLTIPS.sceneAction);
   setButtonTooltip(tagRunSceneAction, TAG_SETTLEMENT_TOOLTIPS.runSceneAction);
+  setTooltip(tagXpAction, TAG_SETTLEMENT_TOOLTIPS.xpAction);
+  setButtonTooltip(tagRunXpAction, TAG_SETTLEMENT_TOOLTIPS.runXpAction);
   setTooltip(tagTrinket, TAG_SETTLEMENT_TOOLTIPS.trinket);
   setButtonTooltip(tagUseTrinket, TAG_SETTLEMENT_TOOLTIPS.useTrinket);
   setTooltip(tagGuildSpell, TAG_SETTLEMENT_TOOLTIPS.guildSpell);
@@ -11887,6 +11901,23 @@ async function useTagTrinketAction() {
   setStatus(result.entry?.result_text || "TAG trinket used.");
 }
 
+async function runTagRouteAction() {
+  const numeric = Number(tagBranchNumber?.value || 0);
+  const result = await api("/api/campaign/tag/route-action", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagActionCharacter?.value || "",
+      route_action: tagRouteAction?.value || "parley_success",
+      reference: tagBranchReference?.value || "",
+      clue_cost: numeric,
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG route action logged.");
+}
+
 async function runTagSceneAction() {
   if (!tagActionCharacter?.value) throw new Error("Choose a character for the TAG scene result.");
   const result = await api("/api/campaign/tag/scene-action", {
@@ -11901,6 +11932,22 @@ async function runTagSceneAction() {
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG scene result applied.");
+}
+
+async function runTagXpAction() {
+  const result = await api("/api/campaign/tag/xp-action", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagActionCharacter?.value || "",
+      xp_action: tagXpAction?.value || "mark_scene_xp",
+      reference: tagBranchReference?.value || "",
+      xp: Number(tagBranchNumber?.value || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG XP action logged.");
 }
 
 async function castTagGuildSpellAction() {
@@ -27606,8 +27653,14 @@ tagCreateAdventure?.addEventListener("click", () => {
 tagResolveBranch?.addEventListener("click", () => {
   resolveTagBranchAction().catch(handleError);
 });
+tagRunRouteAction?.addEventListener("click", () => {
+  runTagRouteAction().catch(handleError);
+});
 tagRunSceneAction?.addEventListener("click", () => {
   runTagSceneAction().catch(handleError);
+});
+tagRunXpAction?.addEventListener("click", () => {
+  runTagXpAction().catch(handleError);
 });
 tagUseTrinket?.addEventListener("click", () => {
   useTagTrinketAction().catch(handleError);

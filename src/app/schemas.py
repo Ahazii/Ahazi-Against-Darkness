@@ -672,6 +672,30 @@ class TagBankAccountState(BaseModel):
     created_at: str
 
 
+class TagAdventureRouteState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    route_action: str
+    reference: str
+    character_id: str | None = None
+    character_name: str | None = None
+    clue_cost: int = Field(default=0, ge=0)
+    resolved: bool = False
+    result_text: str
+    created_at: str
+
+
+class TagXpMarkerState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    xp_action: str
+    reference: str
+    character_id: str | None = None
+    character_name: str | None = None
+    xp: int = Field(default=0, ge=0)
+    applied: bool = False
+    result_text: str
+    created_at: str
+
+
 class CampaignState(BaseModel):
     id: str = "default"
     tag_banking_enabled: bool = False
@@ -688,6 +712,8 @@ class CampaignState(BaseModel):
     tag_stored_items: list[TagStoredItemState] = Field(default_factory=list)
     tag_magic_lockers: list[TagMagicLockerState] = Field(default_factory=list)
     tag_bank_accounts: list[TagBankAccountState] = Field(default_factory=list)
+    tag_adventure_routes: list[TagAdventureRouteState] = Field(default_factory=list)
+    tag_xp_markers: list[TagXpMarkerState] = Field(default_factory=list)
     settlement_name: str = "Home Settlement"
     settlement_size: int = Field(default=0, ge=-3, le=3)
     settlement_notes: str = ""

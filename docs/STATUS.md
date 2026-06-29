@@ -38,6 +38,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 - **TAG special foe phase (2026-06-28):** TAG generated adventures now have a separate TAG monster supplement and can spawn named TAG foes without altering the locked EE monster tables: White Gargoyles, Mutant Fish, Silent Scream Priestess/Cultists, Hill Giant, Minotaur Lord, Bandit Chieftain/TAG Bandits, Gorungar and archers, Griffin, Red Portrait Horror, Monoceros, and related maze minotaurs. Mixed finale encounters are now written into the generated adventure manifests.
 - **TAG action automation phase (2026-06-28):** The TAG settlement panel now has a TAG Actions section with hover-hinted controls for generated-adventure branch resolution, Clue spends, variable counts, capture-alive outcomes, reward claims, trinket use, Guild spell use, inheritance notes, bank/hidden-storage robbery risk and recovery, moneylender enforcement, and guild upkeep. Safe state changes such as Clue spend, gp reward, potion healing, scroll/trinket consumption, status markers, and coffer upkeep are applied and logged.
 - **TAG scene rewards and bank ledger phase (2026-06-28):** TAG Actions now includes a Scene result selector for printed outcomes such as Medusa pendant, gargoyle bounty, Gorungar bounty, bandit capture, Shaura reward, Daroc's cat, mutant-fish rations, Agaratha, Deoldyn training, and Dragon's Lair type reveal. TAG bank accounts are tracked per character with deposit/withdrawal, 10% deposit fee, heir notes, inheritance transfer, and 20% inheritance tax logging.
+- **TAG route/XP/Guild spell phase (2026-06-29):** TAG Actions now has route controls for parley success/failure, Clue gates, peaceful/hostile branches, skipped/unlocked scenes, solo restrictions, and finale route selection, all persisted as structured campaign signoff state. XP controls track pending scene XP, minor encounter counts, capture XP, training XP-roll markers, and immediate XP awards. Guild spell automation now applies safe state changes such as Speedy Recovery healing, Troupe Switch markers, Look Tough reputation, and stealth/luck/enchantment markers.
 - **FD playtest stabilization (2026-06-28):** Forsaken Depths random delves continue to start from the FD tile catalog per FD p.27; start tiles that lack a printed outside exit now receive one open Dungeon Exit and existing saves are repaired on load. The Passage event logs Citadel entry, room count, and the Tier-in-6 trap chance, and FD trap resolution logs the named FD trap row before saves.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
@@ -71,7 +72,7 @@ Recent deeper-rule work:
 Defer to later releases:
 
 - Abyss optional extended-campaign chaining playtest sign-off;
-- TAG remaining full adventure content expansion for deeper scene-by-scene branch routing, exact XP edge cases, and full Guild spell combat/exploration math;
+- TAG remaining full adventure content expansion for automated scene-to-scene module rewrites, exact PDF combat modifiers for Guild spell markers, and broader playtest sign-off;
 - large `app.js` / `random_dungeon.py` decomposition.
 
 ### Home screen layout (June 2026)

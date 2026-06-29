@@ -12,11 +12,13 @@ from ..schemas import (
     Character,
     SessionState,
     TagAvailabilityCheckState,
+    TagAdventureRouteState,
     TagBankAccountState,
     TagDowntimeLogEntry,
     TagMagicLockerState,
     TagStoredItemState,
     TagTravelLogEntry,
+    TagXpMarkerState,
 )
 from .abyss_tables import is_abyss_profile
 from .dice import roll_d6
@@ -480,6 +482,19 @@ TAG_BRANCH_ACTIONS: dict[str, str] = {
     "claim_reward": "Claim printed reward",
 }
 
+TAG_ROUTE_ACTIONS: dict[str, str] = {
+    "parley_success": "Parley/social branch succeeds",
+    "parley_failed": "Parley/social branch fails",
+    "clue_gate_unlocked": "Clue gate unlocked",
+    "clue_gate_blocked": "Clue gate blocked",
+    "hostile_branch": "Hostile branch chosen",
+    "peaceful_branch": "Peaceful branch chosen",
+    "skip_scene": "Scene skipped",
+    "unlock_scene": "Scene unlocked",
+    "solo_restriction": "Solo restriction noted",
+    "final_route": "Finale route selected",
+}
+
 TAG_SCENE_ACTIONS: dict[str, str] = {
     "medusa_pendant": "Medusa pendant",
     "gargoyle_bounty": "Gargoyle bounty",
@@ -492,6 +507,14 @@ TAG_SCENE_ACTIONS: dict[str, str] = {
     "agaratha": "Agaratha recovered",
     "deoldyn_training": "Deoldyn training",
     "dragon_type_reveal": "Dragon type reveal",
+}
+
+TAG_XP_ACTIONS: dict[str, str] = {
+    "mark_scene_xp": "Mark scene XP pending",
+    "award_scene_xp": "Award scene XP",
+    "mark_minor_encounters": "Mark minor encounter XP count",
+    "mark_capture_xp": "Mark capture-alive XP",
+    "mark_training_xp_roll": "Mark training XP roll",
 }
 
 TAG_TRINKET_EFFECTS: dict[str, dict[str, object]] = {
@@ -541,8 +564,9 @@ TAG_TRINKET_EFFECTS: dict[str, dict[str, object]] = {
 TAG_GUILD_SPELL_EFFECTS: dict[str, dict[str, object]] = {
     "speedy_recovery": {
         "name": "Speedy Recovery",
-        "summary": "Mark one character for fast recovery in the current between-adventure or recovery window.",
+        "summary": "Heal the selected character to full Life and mark fast recovery for the current between-adventure or recovery window.",
         "status": "TAG Speedy Recovery pending",
+        "heal_full": True,
     },
     "temporary_weapon_enchantment": {
         "name": "Temporary Weapon Enchantment",
@@ -552,6 +576,7 @@ TAG_GUILD_SPELL_EFFECTS: dict[str, dict[str, object]] = {
     "troupe_switch": {
         "name": "Troupe Switch",
         "summary": "Log that the troupe may switch an eligible active/home character according to the printed Guild spell.",
+        "status": "TAG Troupe Switch pending",
     },
     "look_tough": {
         "name": "Look Tough",
@@ -560,7 +585,7 @@ TAG_GUILD_SPELL_EFFECTS: dict[str, dict[str, object]] = {
     },
     "silence_of_the_mouse": {
         "name": "Silence of the Mouse",
-        "summary": "Mark the caster/party for the printed stealth silence window.",
+        "summary": "Mark the caster/party for the printed stealth silence window; use this marker when resolving the next stealth or noise check.",
         "status": "TAG Silence of the Mouse active",
     },
     "wizards_luck": {
@@ -1773,6 +1798,125 @@ def resolve_tag_branch_action(
     )
 
 
+def resolve_tag_route_action(
+    campaign: CampaignState,
+    character: Character | None = None,
+    *,
+    route_action: str,
+    reference: str = "",
+    clue_cost: int = 0,
+) -> TagDowntimeLogEntry:
+    action = route_action if route_action in TAG_ROUTE_ACTIONS else "parley_success"
+    cost = max(0, int(clue_cost))
+    label = reference.strip()[:120] or TAG_ROUTE_ACTIONS[action]
+    resolved = action != "clue_gate_blocked"
+    parts = [f"{TAG_ROUTE_ACTIONS[action]}: {label}."]
+    if action == "clue_gate_unlocked":
+        if character is None:
+            resolved = False
+            parts.append("Choose the character spending Clues before unlocking this route.")
+        elif character.clues < cost:
+            resolved = False
+            parts.append(f"{character.name} needs {cost} Clue(s) but has {character.clues}; route remains blocked.")
+        else:
+            character.clues -= cost
+            character.updated_at = now_utc()
+            parts.append(f"{character.name} spends {cost} Clue(s); route is unlocked and remaining Clues are {character.clues}.")
+    elif action == "clue_gate_blocked":
+        parts.append(f"Route remains blocked until {cost} Clue(s) are available.")
+    elif action == "parley_success":
+        parts.append("Peaceful/social path recorded; suppress hostile proxy combat unless a later printed scene calls for it.")
+    elif action == "parley_failed":
+        parts.append("Failed social path recorded; use the hostile scene or encounter proxy named in the TAG reference.")
+    elif action == "hostile_branch":
+        parts.append("Hostile path selected; keep final foe, escape limits, and no-withdrawal notes from the TAG reference visible.")
+    elif action == "peaceful_branch":
+        parts.append("Peaceful path selected; apply printed reward, information, or bypass notes without forcing combat.")
+    elif action == "skip_scene":
+        parts.append("Scene is skipped/crossed off for this TAG adventure.")
+    elif action == "unlock_scene":
+        parts.append("Follow-up scene is now unlocked for this TAG adventure.")
+    elif action == "solo_restriction":
+        parts.append("Printed solo restriction recorded; enforce it before starting or continuing the generated module if desired.")
+    else:
+        parts.append("Finale route selected; use the final foe/reward profile in the generated adventure reference.")
+    result = " ".join(parts)
+    campaign.tag_adventure_routes.append(
+        TagAdventureRouteState(
+            route_action=action,
+            reference=label,
+            character_id=character.id if character else None,
+            character_name=character.name if character else None,
+            clue_cost=cost,
+            resolved=resolved,
+            result_text=result,
+            created_at=now_utc(),
+        )
+    )
+    return append_tag_log(
+        campaign,
+        action=f"route_{action}",
+        character=character,
+        result_text=result,
+    )
+
+
+def resolve_tag_xp_action(
+    campaign: CampaignState,
+    character: Character | None = None,
+    *,
+    xp_action: str,
+    reference: str = "",
+    xp: int = 0,
+) -> TagDowntimeLogEntry:
+    action = xp_action if xp_action in TAG_XP_ACTIONS else "mark_scene_xp"
+    amount = max(0, int(xp))
+    label = reference.strip()[:120] or TAG_XP_ACTIONS[action]
+    applied = False
+    parts = [f"{TAG_XP_ACTIONS[action]}: {label}."]
+    if action == "award_scene_xp":
+        if character is None:
+            parts.append("Choose a character before awarding XP.")
+        elif amount <= 0:
+            parts.append("Enter an XP amount above 0 before awarding XP.")
+        else:
+            character.xp += amount
+            character.updated_at = now_utc()
+            applied = True
+            parts.append(f"{character.name} gains {amount} XP; total XP is {character.xp}.")
+    elif action == "mark_minor_encounters":
+        parts.append(f"Mark {amount or 1} minor encounter(s) for end-of-adventure XP accounting.")
+    elif action == "mark_capture_xp":
+        parts.append("Capture-alive XP/consequence marker recorded; apply the printed XP timing at closeout.")
+    elif action == "mark_training_xp_roll":
+        if character is not None and "TAG Deoldyn archery XP roll pending" not in character.statuses:
+            character.statuses.append("TAG Deoldyn archery XP roll pending")
+            character.updated_at = now_utc()
+        parts.append("Training XP roll marker recorded for the printed archery advancement check.")
+    else:
+        parts.append("Scene XP marker recorded for end-of-adventure closeout.")
+    result = " ".join(parts)
+    campaign.tag_xp_markers.append(
+        TagXpMarkerState(
+            xp_action=action,
+            reference=label,
+            character_id=character.id if character else None,
+            character_name=character.name if character else None,
+            xp=amount,
+            applied=applied,
+            result_text=result,
+            created_at=now_utc(),
+        )
+    )
+    return append_tag_log(
+        campaign,
+        action=f"xp_{action}",
+        character=character,
+        total=amount if amount else None,
+        result_text=result,
+    )
+
+
 def _tag_bank_account(campaign: CampaignState, character: Character) -> TagBankAccountState:
     account = next((item for item in campaign.tag_bank_accounts if item.owner_character_id == character.id), None)
     if account is None:
@@ -1916,6 +2060,8 @@ def cast_tag_guild_spell(campaign: CampaignState, character: Character, *, spell
     else:
         availability = "known spell cast; mark the spell slot manually if needed"
     status = effect.get("status")
+    if effect.get("heal_full"):
+        character.current_life = character.max_life
     if isinstance(status, str) and status not in character.statuses:
         character.statuses.append(status)
     if spell_key == "look_tough" and character.id not in campaign.tag_look_tough_character_ids:

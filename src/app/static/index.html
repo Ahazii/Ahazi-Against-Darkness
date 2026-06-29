@@ -592,6 +592,22 @@
                       <input id="tag-branch-number" type="number" min="0" step="1" inputmode="numeric" value="0" />
                     </label>
                     <button id="tag-resolve-branch" type="button" class="secondary">Resolve branch</button>
+                    <label for="tag-route-action">
+                      <span>Route</span>
+                      <select id="tag-route-action">
+                        <option value="parley_success" title="Record that a printed social/parley branch succeeded and suppress hostile proxy combat unless later required.">Parley succeeds</option>
+                        <option value="parley_failed" title="Record that a printed social/parley branch failed and the hostile branch should be used.">Parley fails</option>
+                        <option value="clue_gate_unlocked" title="Spend Amount Clues from the selected character and unlock the printed route or scene.">Clue gate unlock</option>
+                        <option value="clue_gate_blocked" title="Record that the route remains blocked until Amount Clues are available.">Clue gate blocked</option>
+                        <option value="hostile_branch" title="Record the hostile branch, including no-withdrawal or escape limits from the TAG reference.">Hostile branch</option>
+                        <option value="peaceful_branch" title="Record the peaceful branch and avoid forcing combat when the PDF allows bypass.">Peaceful branch</option>
+                        <option value="skip_scene" title="Cross off or skip the referenced scene for this TAG adventure.">Skip scene</option>
+                        <option value="unlock_scene" title="Unlock the referenced follow-up scene for this TAG adventure.">Unlock scene</option>
+                        <option value="solo_restriction" title="Record a printed solo-only restriction before continuing the adventure.">Solo restriction</option>
+                        <option value="final_route" title="Record the selected finale route and use the generated adventure final foe/reward reference.">Final route</option>
+                      </select>
+                    </label>
+                    <button id="tag-run-route-action" type="button" class="secondary">Apply route</button>
                     <label for="tag-scene-action">
                       <span>Scene result</span>
                       <select id="tag-scene-action">
@@ -609,6 +625,17 @@
                       </select>
                     </label>
                     <button id="tag-run-scene-action" type="button" class="secondary">Apply scene</button>
+                    <label for="tag-xp-action">
+                      <span>XP</span>
+                      <select id="tag-xp-action">
+                        <option value="mark_scene_xp" title="Record a pending scene XP note for end-of-adventure closeout.">Mark scene XP</option>
+                        <option value="award_scene_xp" title="Award Amount XP immediately to the selected character.">Award XP</option>
+                        <option value="mark_minor_encounters" title="Record Amount minor encounters for printed TAG XP accounting.">Minor encounters</option>
+                        <option value="mark_capture_xp" title="Record capture-alive XP or consequence timing.">Capture XP</option>
+                        <option value="mark_training_xp_roll" title="Record the Deoldyn or similar printed training XP roll marker.">Training XP roll</option>
+                      </select>
+                    </label>
+                    <button id="tag-run-xp-action" type="button" class="secondary">Apply XP</button>
                     <label for="tag-trinket">
                       <span>Trinket</span>
                       <select id="tag-trinket">
@@ -1202,6 +1229,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.69.14"></script>
+    <script src="/static/app.js?v=0.69.15"></script>
   </body>
 </html>

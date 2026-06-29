@@ -23,7 +23,9 @@ from app.engine.tag_campaign import (
     cast_tag_guild_spell,
     resolve_tag_branch_action,
     resolve_tag_finance_action,
+    resolve_tag_route_action,
     resolve_tag_scene_action,
+    resolve_tag_xp_action,
     settlement_size_from_roll,
     settlement_service_rows,
     store_tag_treasure,
@@ -420,6 +422,13 @@ def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None
     assert "TAG Wizard's Luck pending" in hero.statuses
     assert "scroll consumed" in spell.result_text
 
+    hero.current_life = 1
+    hero.inventory.append("Scroll of Speedy Recovery")
+    recovery_spell = cast_tag_guild_spell(campaign, hero, spell_key="speedy_recovery")
+    assert hero.current_life == hero.max_life
+    assert "TAG Speedy Recovery pending" in hero.statuses
+    assert "scroll consumed" in recovery_spell.result_text
+
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
     risk = resolve_tag_finance_action(campaign, hero, finance_action="robbery_risk")
     assert risk.total == 3
@@ -432,6 +441,43 @@ def test_tag_branch_trinket_guild_spell_and_finance_actions(monkeypatch) -> None
     upkeep = resolve_tag_finance_action(campaign, finance_action="guild_upkeep")
     assert campaign.tag_guild_coffers_gp == 900
     assert "100 gp paid" in upkeep.result_text
+
+
+def test_tag_route_and_xp_actions_persist_structured_signoff_state() -> None:
+    campaign = default_campaign()
+    hero = _character(clues=3, xp=2, statuses=[])
+
+    route = resolve_tag_route_action(
+        campaign,
+        hero,
+        route_action="clue_gate_unlocked",
+        reference="Scene 16 cult hideout",
+        clue_cost=2,
+    )
+    assert hero.clues == 1
+    assert campaign.tag_adventure_routes[-1].route_action == "clue_gate_unlocked"
+    assert campaign.tag_adventure_routes[-1].resolved is True
+    assert "route is unlocked" in route.result_text
+
+    blocked = resolve_tag_route_action(
+        campaign,
+        hero,
+        route_action="clue_gate_blocked",
+        reference="Dragon lair reveal",
+        clue_cost=2,
+    )
+    assert campaign.tag_adventure_routes[-1].resolved is False
+    assert "Route remains blocked" in blocked.result_text
+
+    xp = resolve_tag_xp_action(campaign, hero, xp_action="award_scene_xp", reference="Daroc's cat", xp=1)
+    assert hero.xp == 3
+    assert campaign.tag_xp_markers[-1].applied is True
+    assert "gains 1 XP" in xp.result_text
+
+    training = resolve_tag_xp_action(campaign, hero, xp_action="mark_training_xp_roll", reference="Deoldyn", xp=0)
+    assert "TAG Deoldyn archery XP roll pending" in hero.statuses
+    assert campaign.tag_xp_markers[-1].xp_action == "mark_training_xp_roll"
+    assert "Training XP roll marker" in training.result_text
 
 
 def test_tag_scene_rewards_and_bank_ledgers(monkeypatch) -> None:
