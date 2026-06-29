@@ -19,6 +19,7 @@ APP_JS = Path("src/app/static/app.js").read_text(encoding="utf-8")
 STYLES_CSS = Path("src/app/static/styles.css").read_text(encoding="utf-8")
 INDEX_HTML = Path("src/app/static/index.html").read_text(encoding="utf-8")
 ICON_EDITOR_JS = Path("src/app/static/icon-editor.js").read_text(encoding="utf-8")
+DOCKERFILE = Path("Dockerfile").read_text(encoding="utf-8")
 
 
 # ── Helper ─────────────────────────────────────────────────────────────────────
@@ -1868,3 +1869,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "renderTagRouteXpSummary" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.runFinance" in APP_JS
     assert "Created ${result.title || result.adventure_id}. It is selected in the Adventure section." in APP_JS
+
+
+def test_docker_image_includes_docs_for_tag_guide_mount() -> None:
+    assert 'href="/docs/Checking/TAG_SECTION_GUIDE.md"' in INDEX_HTML
+    assert "app.mount(\"/docs\"" in Path("src/app/main.py").read_text(encoding="utf-8")
+    assert "COPY docs ./docs" in DOCKERFILE

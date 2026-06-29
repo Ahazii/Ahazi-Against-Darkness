@@ -29,6 +29,7 @@ RUN apt-get update \
 
 COPY src ./src
 COPY data ./data
+COPY docs ./docs
 COPY assets ./assets
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
