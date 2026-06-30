@@ -724,6 +724,39 @@ class TagCloseoutTaskState(BaseModel):
     resolved_at: str | None = None
 
 
+class CampaignChronicleEntry(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    event_type: str
+    title: str
+    body: str = ""
+    campaign_id: str | None = None
+    party_id: str | None = None
+    party_name: str | None = None
+    character_id: str | None = None
+    character_name: str | None = None
+    guild_id: str | None = None
+    troupe_id: str | None = None
+    settlement_id: str | None = None
+    reference: str = ""
+    created_at: str
+
+
+class GuidanceTaskState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    status: Literal["open", "completed", "deferred", "dismissed"] = "open"
+    priority: Literal["required", "recommended", "optional"] = "recommended"
+    category: Literal["closeout", "campaign", "character", "finance", "guild", "settlement", "adventure"] = "campaign"
+    title: str
+    body: str = ""
+    reference: str = ""
+    rules_reference_id: str = ""
+    affected_entity_type: str = ""
+    affected_entity_id: str = ""
+    closeout_task_id: str | None = None
+    created_at: str
+    resolved_at: str | None = None
+
+
 class WorldCampaignRecord(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     name: str
@@ -772,6 +805,8 @@ class CampaignState(BaseModel):
     world_settlements: list[WorldSettlementRecord] = Field(default_factory=list)
     world_troublesome_towns: list[WorldSettlementRecord] = Field(default_factory=list)
     world_map_notes: str = ""
+    campaign_chronicle: list[CampaignChronicleEntry] = Field(default_factory=list)
+    guidance_tasks: list[GuidanceTaskState] = Field(default_factory=list)
     tag_banking_enabled: bool = False
     tag_troupe_name: str = "Adventuring Troupe"
     tag_troupe_member_character_ids: list[str] = Field(default_factory=list)

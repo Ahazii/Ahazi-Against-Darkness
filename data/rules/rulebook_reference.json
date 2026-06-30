@@ -2339,7 +2339,7 @@
         "source of truth"
       ],
       "summary": "Home Rules tables are verified either as exact PDF rows, generated from locked PDF catalogs, or app validation tables.",
-      "body": "The Home Rules tables panel is guarded by tests so every exposed table is explicitly classified for compliance. Tables either match exact rows from PDFs in Rules/, are generated from locked PDF-backed catalogs, or are app validation/help tables.\n\nExact/generated table keys currently exposed: abyss_boss_table, abyss_dragon_table, abyss_enchanted_banquet_table, abyss_magic_treasure_table, abyss_magical_defense_table, abyss_minions_table, abyss_room_content_table, abyss_scroll_table, abyss_special_feature_table, abyss_trap_table, abyss_treasure_table, abyss_unique_event_table, abyss_useful_stuff_table, abyss_vermin_table, abyss_weird_table, basic_spells_table, caverns_special_events_table, caverns_special_features_table, caverns_special_item_table, caverns_trap_table, caverns_water_pool_table, class_profiles_table, class_tricks_implementation_table, clue_spends_table, combat_modifiers_table, combat_notes, default_reaction_table, door_table, druid_spells_table, dungeon_magic_treasure_table, dungeon_special_events_table, dungeon_special_features_table, economy_services_table, ee_class_trick_flags_table, epic_rewards_table, equipment_shop_table, experience_classical_table, experience_old_school_table, experience_slow_sure_table, experience_slower_table, expert_skill_implementation_table, expert_skills_table, expert_spells_table, fd_boss_table, fd_citadel_table, fd_citadel_weird_table, fd_cyclopean_idol_table, fd_event_table, fd_hallucination_table, fd_heroic_magic_item_table, fd_horde_table, fd_legendary_magic_item_table, fd_legendary_spell_table, fd_minions_table, fd_quest_table, fd_river_encounter_table, fd_river_hazard_table, fd_river_type_table, fd_room_content_table, fd_ruins_content_table, fd_trap_table, fd_treasure_table, fd_wandering_monsters_table, fd_vermin_table, fd_weird_table, courtship_book_of_secrets_table, courtship_apothecary_recipes_table, courtship_blossoms_magic_item_table, courtship_blossoms_spell_scrolls_table, courtship_lex_shop_table, courtship_meadows_encounter_table, courtship_mountain_encounter_table, courtship_palace_encounter_table, courtship_riverside_encounter_table, courtship_seaside_encounter_table, courtship_woods_encounter_table, fiendish_foes_magic_treasure_table, fiendish_foes_treasure_table, forsaken_depths_map_elements_validation_table, forsaken_depths_rivers_map_elements_validation_table, forsaken_depths_room_codes_table, fungal_grottoes_rare_item_table, fungal_grottoes_rare_mushroom_table, fungal_grottoes_special_events_table, fungal_grottoes_trap_table, heroic_skills_table, hidden_treasure_table, hirelings_table, illusionist_spells_table, legendary_skills_table, major_reaction_table, map_elements_validation_table, milestones_table, minion_reaction_table, play_context_table, quest_table, room_content_table, scrolls_table, search_table, secrets_table, special_event_wandering_table, swashbuckler_traits_table, tier_training_costs_table, trap_table, treasure_table, vermin_reaction_table, wandering_monsters_table.\n\nThe table registry test fails any new table key until it is added to the verified table allowlist and this reference index. Modern expandable reference groups: artwork_registry_table, campaign_assignment_integrity_table, campaign_worldbuilder_schema_table, character_management_readiness_table, go_adventure_setup_readiness_table, icon_registry_table, map_elements_table, modern_dashboard_management_table, monster_bestiary_table, monster_reaction_tables.",
+      "body": "The Home Rules tables panel is guarded by tests so every exposed table is explicitly classified for compliance. Tables either match exact rows from PDFs in Rules/, are generated from locked PDF-backed catalogs, or are app validation/help tables.\n\nExact/generated table keys currently exposed: abyss_boss_table, abyss_dragon_table, abyss_enchanted_banquet_table, abyss_magic_treasure_table, abyss_magical_defense_table, abyss_minions_table, abyss_room_content_table, abyss_scroll_table, abyss_special_feature_table, abyss_trap_table, abyss_treasure_table, abyss_unique_event_table, abyss_useful_stuff_table, abyss_vermin_table, abyss_weird_table, basic_spells_table, caverns_special_events_table, caverns_special_features_table, caverns_special_item_table, caverns_trap_table, caverns_water_pool_table, class_profiles_table, class_tricks_implementation_table, clue_spends_table, combat_modifiers_table, combat_notes, default_reaction_table, door_table, druid_spells_table, dungeon_magic_treasure_table, dungeon_special_events_table, dungeon_special_features_table, economy_services_table, ee_class_trick_flags_table, epic_rewards_table, equipment_shop_table, experience_classical_table, experience_old_school_table, experience_slow_sure_table, experience_slower_table, expert_skill_implementation_table, expert_skills_table, expert_spells_table, fd_boss_table, fd_citadel_table, fd_citadel_weird_table, fd_cyclopean_idol_table, fd_event_table, fd_hallucination_table, fd_heroic_magic_item_table, fd_horde_table, fd_legendary_magic_item_table, fd_legendary_spell_table, fd_minions_table, fd_quest_table, fd_river_encounter_table, fd_river_hazard_table, fd_river_type_table, fd_room_content_table, fd_ruins_content_table, fd_trap_table, fd_treasure_table, fd_wandering_monsters_table, fd_vermin_table, fd_weird_table, courtship_book_of_secrets_table, courtship_apothecary_recipes_table, courtship_blossoms_magic_item_table, courtship_blossoms_spell_scrolls_table, courtship_lex_shop_table, courtship_meadows_encounter_table, courtship_mountain_encounter_table, courtship_palace_encounter_table, courtship_riverside_encounter_table, courtship_seaside_encounter_table, courtship_woods_encounter_table, fiendish_foes_magic_treasure_table, fiendish_foes_treasure_table, forsaken_depths_map_elements_validation_table, forsaken_depths_rivers_map_elements_validation_table, forsaken_depths_room_codes_table, fungal_grottoes_rare_item_table, fungal_grottoes_rare_mushroom_table, fungal_grottoes_special_events_table, fungal_grottoes_trap_table, heroic_skills_table, hidden_treasure_table, hirelings_table, illusionist_spells_table, legendary_skills_table, major_reaction_table, map_elements_validation_table, milestones_table, minion_reaction_table, play_context_table, quest_table, room_content_table, scrolls_table, search_table, secrets_table, special_event_wandering_table, swashbuckler_traits_table, tier_training_costs_table, trap_table, treasure_table, vermin_reaction_table, wandering_monsters_table.\n\nThe table registry test fails any new table key until it is added to the verified table allowlist and this reference index. Modern expandable reference groups: adventure_closeout_workflow_table, artwork_registry_table, campaign_assignment_integrity_table, campaign_chronicle_event_table, campaign_worldbuilder_schema_table, character_management_readiness_table, go_adventure_setup_readiness_table, guidance_task_status_table, icon_registry_table, map_elements_table, modern_dashboard_management_table, monster_bestiary_table, monster_reaction_tables.",
       "implementation_status": "validated"
     },
     {
@@ -2589,6 +2589,100 @@
       ],
       "summary": "Six TCOTFD classes with Courtship hooks: woo modifiers, saves, peaceful spell gate, hidden pathway, and Madness bonus.",
       "body": "**Wandering Alchemist (TCOTFD p.7-9)** — Life 3+L; saves as halfling; innate **Flower Portal once per adventure** (scroll reads unlimited — reader is not casting the class spell); re-roll Common/Uncommon ingredient harvest once; brew Apothecary Charts between Demesne encounters. **Expert L6+:** may learn **Surgeon**, **Herbalist**, or **Poison Expert** hireling training (1 XP each; free party services per 4AA rules; poison requires arsenic).\n\n**Satyr (p.10-12)** — Life 7+L; +L Defense; +2×L Giving/Withholding; auto-fails mesmerize vs Maidens/Ladies/Matrons in the Demesne. **Outdoor pheromones:** eligible female humanoids only (medusa/she-orc/ogress/salamandrine oracle always female; vampire and others 1–3 on d6; whole group must qualify); d6+L vs foe level → seduce reaction and outdoor woo; pleased foes grant **treasure** (not Demesne gifts); failed Withholding outside Demesne costs **1 Life** not Melancholy; former lovers stay peaceful while the satyr remains. **Innate Blossoms spell** once per level (+L on roll, any Blossoms spell, no spellbook).\n\n**Conservationist (p.13-14)** — Wizard variant L+3 slots; peaceful/Blossoms magic only; **forbidden offensive cast** (scroll or item) → **Curse of Tamas Zeya** (BoS entry 16, permanent loss). **Expert L6+:** may learn **Surgeon** or **Herbalist** (not Poison Expert).\n\n**Halfling Lucky Wooers (p.31)** — spend Luck on failed Giving/Withholding rolls (Demesne woo panel checkbox).\n\n**Demonologist (cross-book p.31)** — +½L Demesne wooing; +L on Blossoms scroll casts.\n\n**Cambion / Succubus (BoS 14 & 49)** — hidden Riverside shortcut; +L Madness saves in queen's vault.\n\n**Deferred:** Apothecary broad scope outside Demesne; wandering alchemist L1 expert skill list and halfling-skill expansion.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "adventure_closeout_workflow",
+      "title": "Adventure Closeout Workflow",
+      "category": "campaign",
+      "source_page": 0,
+      "keywords": [
+        "adventure",
+        "closeout",
+        "dashboard",
+        "guidance",
+        "campaign",
+        "chronicle"
+      ],
+      "summary": "App-owned workflow for reviewing completed adventures before the next start.",
+      "body": "When an adventure completes, the app records a campaign chronicle entry and creates structured guidance for closeout review. Supported TAG tasks still cite their specific TAG reference text, but this closeout workflow is app bookkeeping: review rewards, fallen or injured characters, XP markers, banking, storage, Guild finance, and other campaign consequences before starting another adventure.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "campaign_chronicle",
+      "title": "Campaign Chronicle",
+      "category": "campaign",
+      "source_page": 0,
+      "keywords": [
+        "campaign",
+        "chronicle",
+        "log",
+        "history",
+        "adventure"
+      ],
+      "summary": "Persistent campaign history for completed adventures, TAG actions, closeout signoffs, and guidance updates.",
+      "body": "The Campaign Chronicle stores app-level history entries separately from active guidance. Completing, deferring, or dismissing guidance hides prompts from the active list but does not remove chronicle history. The dashboard shows recent chronicle entries in Guidance / Log and Campaign Management shows a longer campaign chronicle.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "guidance_task_statuses",
+      "title": "Guidance Task Statuses",
+      "category": "campaign",
+      "source_page": 0,
+      "keywords": [
+        "guidance",
+        "task",
+        "complete",
+        "defer",
+        "dismiss"
+      ],
+      "summary": "Structured guidance can be open, completed, deferred, or dismissed without deleting the chronicle.",
+      "body": "Guidance tasks are app prompts with priority and status. Open tasks appear in Needs Attention and Guidance / Log. Completed, deferred, and dismissed tasks leave active guidance but remain represented by campaign chronicle/log history. Use Complete for handled work, Defer for later campaign bookkeeping, and Dismiss only when the prompt does not apply.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "adventure_closeout_workflow_table",
+      "title": "Adventure Closeout Workflow Table",
+      "category": "campaign",
+      "source_page": 0,
+      "keywords": [
+        "tables",
+        "adventure",
+        "closeout",
+        "workflow"
+      ],
+      "summary": "Tables exposes the app-owned closeout stages created after adventure completion.",
+      "body": "The modern Tables page includes adventure_closeout_workflow_table. It documents completion, TAG task creation, task resolution, and closeout-complete behavior.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "campaign_chronicle_event_table",
+      "title": "Campaign Chronicle Event Table",
+      "category": "campaign",
+      "source_page": 0,
+      "keywords": [
+        "tables",
+        "chronicle",
+        "campaign",
+        "events"
+      ],
+      "summary": "Tables exposes the campaign chronicle event families and retention behavior.",
+      "body": "The modern Tables page includes campaign_chronicle_event_table. It documents adventure completion entries, TAG log-derived entries, guidance-task entries, and the chronicle retention limit.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "guidance_task_status_table",
+      "title": "Guidance Task Status Table",
+      "category": "campaign",
+      "source_page": 0,
+      "keywords": [
+        "tables",
+        "guidance",
+        "status",
+        "tasks"
+      ],
+      "summary": "Tables exposes the active/completed/deferred/dismissed guidance statuses.",
+      "body": "The modern Tables page includes guidance_task_status_table. It explains what each status means and when it should be used.",
       "implementation_status": "implemented"
     },
     {

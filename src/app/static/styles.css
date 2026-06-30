@@ -131,13 +131,13 @@ h2 {
 
 .modern-home-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
   gap: 12px;
 }
 
 .modern-world-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 12px;
   align-items: start;
 }
@@ -203,6 +203,7 @@ h2 {
   grid-template-columns: 260px minmax(0, 1fr);
   gap: 16px;
   padding: 16px;
+  min-width: 0;
 }
 
 .modern-nav {
@@ -247,6 +248,7 @@ h2 {
   border-radius: 8px;
   background: var(--panel);
   padding: 14px;
+  min-width: 0;
 }
 
 #modern-page-help {
@@ -256,11 +258,12 @@ h2 {
 #modern-page-root {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .modern-two-col {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 12px;
 }
 
@@ -272,6 +275,7 @@ h2 {
   background: var(--panel);
   padding: 12px;
   text-align: left;
+  min-width: 0;
 }
 
 .modern-card h3 {

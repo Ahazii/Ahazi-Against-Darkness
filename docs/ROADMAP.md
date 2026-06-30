@@ -10,8 +10,9 @@ Status: foundation implemented; feature growth planned.
 - Assignment integrity is enforced in the backend: one guild per campaign, one campaign/guild/home per troupe, one troupe per party, one party/troupe/guild per character, and automatic propagation when guilds or troupes move.
 - Troupe, Guild, Party, and Settlement Management now reuse the same world-context model, with filtered management lists, assignment warnings, richer hover text, and Rules/Tables links back to the documented dashboard workflow.
 - Character Management now exposes full-sheet readiness and Go Adventure setup blocks critical party/member/module/map-cap errors before creating a new session.
+- Adventure completion now feeds a campaign chronicle and structured guidance tasks. Dashboard Needs Attention summarizes open tasks, closeout prompts, active sessions, roster health, and context warnings; Campaign Management shows recent chronicle entries.
 - Characters are constrained to one party, one troupe, and one guild. Parties are assigned to one troupe. Assigning a character to an incompatible troupe removes them from the previous party with a user-facing alert/message.
-- Next campaign work: build the hex-map editor, connect settlement placement to travel, add campaign-level chronology/log views, and decide how troublesome towns differ mechanically once the add-on supplements are implemented.
+- Next campaign work: build the hex-map editor, connect settlement placement to travel, add chronicle filters/export, and decide how troublesome towns differ mechanically once the add-on supplements are implemented.
 
 ## Dashboard Artwork And Help
 

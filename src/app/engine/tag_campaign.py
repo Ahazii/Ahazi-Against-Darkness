@@ -12,7 +12,9 @@ from ..db import now_utc
 from .adventure_import import ADVENTURE_MANIFEST_FILENAME, installed_adventure_dir
 from ..schemas import (
     CampaignState,
+    CampaignChronicleEntry,
     Character,
+    GuidanceTaskState,
     Party,
     SessionState,
     TagAvailabilityCheckState,
@@ -47,6 +49,8 @@ DEFAULT_WORLD_GUILD_NAME = "Adventurers Guild"
 DEFAULT_WORLD_TROUPE_NAME = "Troupe1"
 DEFAULT_WORLD_SETTLEMENT_NAME = "Hearthmere"
 TAG_LOG_LIMIT = 20
+CAMPAIGN_CHRONICLE_LIMIT = 120
+GUIDANCE_TASK_LIMIT = 80
 TAG_GUILD_STARTING_COFFERS_GP = 5000
 TAG_SETTLEMENT_SERVICES = [
     {
@@ -1836,7 +1840,92 @@ def trim_tag_logs(campaign: CampaignState) -> CampaignState:
     campaign.tag_availability_checks = campaign.tag_availability_checks[-TAG_LOG_LIMIT:]
     campaign.tag_downtime_log = campaign.tag_downtime_log[-TAG_LOG_LIMIT:]
     campaign.tag_travel_log = campaign.tag_travel_log[-TAG_LOG_LIMIT:]
+    campaign.campaign_chronicle = campaign.campaign_chronicle[-CAMPAIGN_CHRONICLE_LIMIT:]
+    campaign.guidance_tasks = campaign.guidance_tasks[-GUIDANCE_TASK_LIMIT:]
     return campaign
+
+
+def append_campaign_chronicle(
+    campaign: CampaignState,
+    *,
+    event_type: str,
+    title: str,
+    body: str = "",
+    campaign_id: str | None = None,
+    party_id: str | None = None,
+    party_name: str | None = None,
+    character: Character | None = None,
+    guild_id: str | None = None,
+    troupe_id: str | None = None,
+    settlement_id: str | None = None,
+    reference: str = "",
+) -> CampaignChronicleEntry:
+    entry = CampaignChronicleEntry(
+        event_type=event_type[:80],
+        title=title[:160],
+        body=body[:1200],
+        campaign_id=campaign_id or campaign.active_world_campaign_id,
+        party_id=party_id,
+        party_name=party_name,
+        character_id=character.id if character is not None else None,
+        character_name=character.name if character is not None else None,
+        guild_id=guild_id,
+        troupe_id=troupe_id,
+        settlement_id=settlement_id,
+        reference=reference[:300],
+        created_at=now_utc(),
+    )
+    campaign.campaign_chronicle.append(entry)
+    trim_tag_logs(campaign)
+    return entry
+
+
+def add_guidance_task(
+    campaign: CampaignState,
+    *,
+    title: str,
+    body: str,
+    category: str = "campaign",
+    priority: str = "recommended",
+    reference: str = "",
+    rules_reference_id: str = "",
+    affected_entity_type: str = "",
+    affected_entity_id: str = "",
+    closeout_task_id: str | None = None,
+) -> GuidanceTaskState | None:
+    if closeout_task_id and any(task.closeout_task_id == closeout_task_id for task in campaign.guidance_tasks):
+        return None
+    task = GuidanceTaskState(
+        title=title[:160],
+        body=body[:1200],
+        category=category if category in {"closeout", "campaign", "character", "finance", "guild", "settlement", "adventure"} else "campaign",
+        priority=priority if priority in {"required", "recommended", "optional"} else "recommended",
+        reference=reference[:300],
+        rules_reference_id=rules_reference_id[:120],
+        affected_entity_type=affected_entity_type[:80],
+        affected_entity_id=affected_entity_id[:120],
+        closeout_task_id=closeout_task_id,
+        created_at=now_utc(),
+    )
+    campaign.guidance_tasks.append(task)
+    trim_tag_logs(campaign)
+    return task
+
+
+def modern_title_from_action(action: str) -> str:
+    return " ".join(part.capitalize() for part in str(action or "campaign_log").replace("-", "_").split("_") if part)
+
+
+def update_guidance_task(campaign: CampaignState, *, task_id: str, status: str, note: str = "") -> TagDowntimeLogEntry:
+    task = next((item for item in campaign.guidance_tasks if item.id == task_id), None)
+    if task is None:
+        return append_tag_log(campaign, action="guidance_task", result_text=f"No guidance task matched {task_id}.")
+    if status not in {"open", "completed", "deferred", "dismissed"}:
+        status = "completed"
+    task.status = status
+    task.resolved_at = None if status == "open" else now_utc()
+    suffix = f" Note: {note.strip()}" if note.strip() else ""
+    return append_tag_log(campaign, action="guidance_task", result_text=f"Guidance task {status}: {task.title}.{suffix}")
 
 
 def ensure_worldbuilder_defaults(campaign: CampaignState, store: Store | None = None) -> tuple[CampaignState, bool]:
@@ -2053,6 +2142,18 @@ def _add_closeout_task(
         created_at=now_utc(),
     )
     campaign.tag_closeout_tasks.append(task)
+    priority = "required" if category in {"guild", "xp", "finance"} else "recommended"
+    add_guidance_task(
+        campaign,
+        title=title,
+        body=result_text,
+        category="closeout",
+        priority=priority,
+        reference=reference,
+        rules_reference_id="adventure_closeout_workflow",
+        closeout_task_id=task.id,
+        affected_entity_type=category,
+    )
     return task
 
 
@@ -2085,6 +2186,10 @@ def resolve_tag_closeout_task(
         task.resolved_at = now
         if note:
             task.result_text = f"{task.result_text} Resolved note: {note.strip()}"
+        for guidance in campaign.guidance_tasks:
+            if guidance.closeout_task_id == task.id and guidance.status == "open":
+                guidance.status = "completed"
+                guidance.resolved_at = now
     title = matched[0].title if len(matched) == 1 else f"{len(matched)} tasks"
     return append_tag_log(campaign, action="closeout_task", result_text=f"TAG closeout task resolved: {title}.")
 
@@ -2146,6 +2251,14 @@ def append_tag_log(
         created_at=now_utc(),
     )
     campaign.tag_downtime_log.append(entry)
+    append_campaign_chronicle(
+        campaign,
+        event_type=f"tag_{action}"[:80],
+        title=modern_title_from_action(action),
+        body=result_text,
+        character=character,
+        reference="TAG campaign log.",
+    )
     trim_tag_logs(campaign)
     return entry
 
@@ -5333,5 +5446,37 @@ def record_adventure_complete(store: Store, session: SessionState | None = None)
     campaign = load_campaign(store)
     campaign.adventures_completed += 1
     campaign.days_passed += 1
-    add_adventure_closeout_tasks(campaign, session)
+    party_name = None
+    party_id = None
+    if session is not None:
+        party_id = session.party_id
+        party = store.get("parties", session.party_id, Party.model_validate)
+        party_name = party.name if party is not None else session.party_id
+    append_campaign_chronicle(
+        campaign,
+        event_type="adventure_completed",
+        title=f"Adventure {campaign.adventures_completed} completed",
+        body=(
+            f"{party_name or 'A party'} completed {session.adventure_id if session is not None else 'an adventure'}. "
+            f"Review rewards, injuries, banking, storage, Guild obligations, and XP before the next start."
+        ),
+        party_id=party_id,
+        party_name=party_name,
+        reference="Adventure closeout app workflow.",
+    )
+    created = add_adventure_closeout_tasks(campaign, session)
+    add_guidance_task(
+        campaign,
+        title=f"Review adventure {campaign.adventures_completed} closeout",
+        body=(
+            f"Adventure completion created {len(created)} specific closeout task(s). "
+            "Review party rewards, fallen/injured members, TAG bank/storage, Guild finance, and XP markers before starting the next adventure."
+        ),
+        category="closeout",
+        priority="required" if created else "recommended",
+        reference="App closeout checklist.",
+        rules_reference_id="adventure_closeout_workflow",
+        affected_entity_type="party",
+        affected_entity_id=party_id or "",
+    )
     return save_campaign(store, campaign)

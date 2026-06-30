@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from app import main
 from app.engine.abyss_tables import abyss_table_roll_keys, abyss_table_rows
+from app.engine.tag_campaign import record_adventure_complete
 from app.engine.forsaken_depths_heroic_spells import heroic_spell_names, is_fd_heroic_spell
 from app.engine.ruleset_profiles import (
     class_allowed_for_profile,
@@ -264,6 +266,42 @@ def test_campaign_world_assignment_propagates_to_parties_and_characters(client: 
     assert party_after["campaign_id"] == "norindaal"
     characters_after = client.get("/api/characters").json()
     assert {row["campaign_id"] for row in characters_after if row["id"] in character_ids} == {"norindaal"}
+
+
+def test_adventure_completion_creates_chronicle_and_guidance(client: TestClient) -> None:
+    character_ids: list[str] = []
+    for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
+        response = client.post("/api/characters", json={"name": f"Closeout Hero {index}", "class_id": class_id})
+        assert response.status_code == 200
+        character_ids.append(response.json()["id"])
+    party_response = client.post("/api/parties", json={"name": "Closeout Party", "character_ids": character_ids})
+    assert party_response.status_code == 200
+    party_id = party_response.json()["id"]
+
+    session = SessionState.model_validate(
+        {
+            "id": "closeout-session",
+            "party_id": party_id,
+            "adventure_id": "random",
+            "adventure_type": "random",
+            "mode": "complete",
+            "party": [],
+            "map_state": {"width": 1, "height": 1, "tiles": [], "current_tile_id": "t0"},
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        }
+    )
+    campaign = record_adventure_complete(main.store, session)
+    assert any(entry.event_type == "adventure_completed" for entry in campaign.campaign_chronicle)
+    open_tasks = [task for task in campaign.guidance_tasks if task.status == "open"]
+    assert any(task.title.startswith("Review adventure") for task in open_tasks)
+
+    task = open_tasks[0]
+    update = client.post("/api/campaign/guidance-task", json={"task_id": task.id, "status": "dismissed"})
+    assert update.status_code == 200
+    payload = update.json()["campaign"]
+    assert any(item["id"] == task.id and item["status"] == "dismissed" for item in payload["guidance_tasks"])
+    assert any(item["event_type"] == "adventure_completed" for item in payload["campaign_chronicle"])
 
 
 def test_heroic_spell_catalog_matches_fd_table() -> None:

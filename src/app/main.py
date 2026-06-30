@@ -1463,6 +1463,21 @@ async def campaign_tag_closeout_task(payload: dict[str, Any]) -> dict[str, Any]:
     return {"campaign": campaign, "entry": entry}
 
 
+@app.post("/api/campaign/guidance-task")
+async def campaign_guidance_task(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, save_campaign, update_guidance_task
+
+    campaign = load_campaign(store)
+    entry = update_guidance_task(
+        campaign,
+        task_id=str(payload.get("task_id") or "").strip(),
+        status=str(payload.get("status") or "completed").strip(),
+        note=str(payload.get("note") or "").strip(),
+    )
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
 @app.post("/api/campaign/tag/bank-robbery-recovery")
 async def campaign_tag_bank_robbery_recovery(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.adventure_import import import_adventure_manifest
@@ -1731,6 +1746,74 @@ def _rules_tables_payload() -> dict:
             "limit": "Each settlement record belongs to one campaign; friendly settlements can be troupe homes.",
             "automatic_update": "Moving a home settlement refreshes affected troupe, party, and character context.",
             "user_warning": "Troublesome-town records remain placeholders until supplement mechanics are implemented.",
+        },
+    ]
+    data["adventure_closeout_workflow_table"] = [
+        {
+            "stage": "Adventure completion",
+            "created_records": "Campaign chronicle entry plus closeout guidance task.",
+            "required_review": "Party rewards, fallen/injured members, XP, banking, storage, Guild obligations.",
+            "rules_boundary": "App workflow; specific TAG tasks cite TAG references where automated.",
+        },
+        {
+            "stage": "TAG closeout task creation",
+            "created_records": "Guild loot share/upkeep/leaving/reroll, XP markers, storage risk/recovery, bank robbery recovery.",
+            "required_review": "Open tasks remain visible on Dashboard, Guild, Banking, and closeout panels.",
+            "rules_boundary": "TAG references are linked in task reference text; full PDF text is not copied.",
+        },
+        {
+            "stage": "Task resolution",
+            "created_records": "Resolved closeout task, completed guidance task, and campaign log entry.",
+            "required_review": "Use real controls where available; Mark Done is for manual signoff.",
+            "rules_boundary": "Manual signoff records player decision rather than resolving hidden mechanics.",
+        },
+        {
+            "stage": "Closeout complete",
+            "created_records": "No open required closeout guidance for the completed adventure.",
+            "required_review": "Optional/deferred tasks may remain in the campaign log and guidance list.",
+            "rules_boundary": "Starting another adventure remains allowed when user intentionally accepts remaining optional tasks.",
+        },
+    ]
+    data["campaign_chronicle_event_table"] = [
+        {
+            "event_type": "adventure_completed",
+            "source": "Session completion hook.",
+            "shown_in": "Dashboard Guidance / Log and Campaign Management chronicle.",
+            "retention": "Latest 120 campaign chronicle entries.",
+        },
+        {
+            "event_type": "tag_*",
+            "source": "TAG downtime, Guild, banking, settlement, storage, route, and closeout logs.",
+            "shown_in": "Campaign chronicle filters and dashboard recent log.",
+            "retention": "Latest 120 campaign chronicle entries; TAG compact log still keeps its shorter existing limit.",
+        },
+        {
+            "event_type": "guidance_task",
+            "source": "Completing, deferring, dismissing, or reopening a guidance task.",
+            "shown_in": "Campaign chronicle and guidance task history.",
+            "retention": "Chronicle entry remains even when the guidance task leaves the active list.",
+        },
+    ]
+    data["guidance_task_status_table"] = [
+        {
+            "status": "open",
+            "meaning": "Needs attention and appears in Dashboard guidance.",
+            "safe_use": "Use for required or recommended work before the next adventure.",
+        },
+        {
+            "status": "completed",
+            "meaning": "Handled through a real control or manual signoff.",
+            "safe_use": "Completion does not delete the campaign chronicle entry.",
+        },
+        {
+            "status": "deferred",
+            "meaning": "Acknowledged but intentionally left for later.",
+            "safe_use": "Useful for optional campaign bookkeeping that should not block play.",
+        },
+        {
+            "status": "dismissed",
+            "meaning": "Hidden from active guidance without erasing history.",
+            "safe_use": "Use only for prompts that are irrelevant to this campaign.",
         },
     ]
     data["character_management_readiness_table"] = [
