@@ -1130,7 +1130,7 @@ function renderWorldContextPanel(title = "World Context") {
     modernStatusRow(
       "Default links",
       `Guild ${defaultGuild?.name || "none"} · Troupe ${defaultTroupe?.name || "none"} · Home ${defaultSettlement?.name || "none"}`,
-      "Protected default records seeded by the app. They can be assigned and described, but their default names remain stable."
+      "Protected default records seeded by the app. Norindaal, Adventurers Guild, Troupe1, and Hearthmere keep stable default names while their notes and assignments can be edited."
     )
   );
   const row = actions();
@@ -1780,7 +1780,7 @@ async function renderSettlement() {
       setStatus(`Settlement ${result.settlement?.name || name.value} saved.`);
       await refreshCoreAndRender();
     }),
-    button("Assign Campaign", "Assign Brightwater Gate to the selected campaign.", () => worldAction({ action: "assign", entity: "settlement", settlement_id: "brightwater-gate", campaign_id: settlementCampaign.value })),
+    button("Assign Campaign", "Assign Hearthmere, the protected default friendly settlement, to the selected campaign.", () => worldAction({ action: "assign", entity: "settlement", settlement_id: "brightwater-gate", campaign_id: settlementCampaign.value })),
     button("Roll Size", "Roll a random TAG settlement size and apply its modifier to availability checks.", async () => {
       const result = await api("/api/campaign/settlement/roll-size", { method: "POST" });
       setStatus(`Settlement size rolled ${result.roll}.`);
@@ -2039,7 +2039,7 @@ function renderCampaign() {
       const rowActions = actions();
       rowActions.append(
         button("Save", "Save this troupe's campaign, guild, home settlement, and notes. Existing assigned characters keep their current context until reassigned or party/troupe sync runs.", () => worldAction({ action: "update", entity: "troupe", id: troupe.id, name: nameEdit.value, description: descriptionEdit.value, campaign_id: assign.value, guild_id: guildEdit.value, home_settlement_id: settlementEdit.value })),
-        button("Delete", "Delete this troupe, clear party/character troupe links, and move home-settlement links back to Brightwater Gate. Troupe1 cannot be deleted.", async () => {
+        button("Delete", "Delete this troupe, clear party/character troupe links, and move home-settlement links back to Hearthmere. Troupe1 cannot be deleted.", async () => {
           if (!window.confirm(`Delete troupe ${troupe.name}? Assigned parties and characters will lose this troupe assignment.`)) return;
           await worldAction({ action: "delete", entity: "troupe", id: troupe.id });
         })
@@ -2055,7 +2055,7 @@ function renderCampaign() {
     const rows = filteredWorldRows(worldSettlements(kind), filters);
     if (!rows.length) mount.appendChild(el("p", "muted", isTroublesome ? "No troublesome town placeholders match the current filters." : "No friendly settlements match the current filters."));
     for (const settlement of rows) {
-      const nameEdit = input("text", `modern-world-${kind}-name-${settlement.id}`, settlement.id === "brightwater-gate" ? "Default friendly settlement name is kept as Brightwater Gate. Edit size and notes here." : "Settlement name shown in campaign, troupe, travel, and character home context.", settlement.name);
+      const nameEdit = input("text", `modern-world-${kind}-name-${settlement.id}`, settlement.id === "brightwater-gate" ? "Default friendly settlement name is kept as Hearthmere. Edit size and notes here." : "Settlement name shown in campaign, troupe, travel, and character home context.", settlement.name);
       const assign = select(`modern-world-${kind}-${settlement.id}-campaign`, "Move this settlement to another campaign. A settlement can only belong to one campaign.", worldCampaignOptions());
       assign.value = settlement.campaign_id || "";
       const sizeEdit = select(`modern-world-${kind}-${settlement.id}-size`, "Settlement size modifier. This affects TAG item/service availability checks where those rules are used.", [["-3", "-3"], ["-2", "-2"], ["-1", "-1"], ["0", "0"], ["1", "+1"], ["2", "+2"], ["3", "+3"]]);
@@ -2074,8 +2074,8 @@ function renderCampaign() {
       const rowActions = actions();
       rowActions.append(
         button("Save", isTroublesome ? "Save this troublesome-town placeholder. Supplement-specific rules are still planned." : "Save this friendly settlement's assignment, size modifier, and notes.", () => worldAction({ action: "update", entity: isTroublesome ? "troublesome_town" : "settlement", id: settlement.id, name: nameEdit.value, campaign_id: assign.value, size: Number(sizeEdit.value), notes: notesEdit.value })),
-        button("Delete", "Delete this settlement record. Brightwater Gate cannot be deleted; troupe home links move back to Brightwater Gate when another settlement is deleted.", async () => {
-          if (!window.confirm(`Delete settlement ${settlement.name}? Linked troupe home settlements will fall back to Brightwater Gate.`)) return;
+        button("Delete", "Delete this settlement record. Hearthmere cannot be deleted; troupe home links move back to Hearthmere when another settlement is deleted.", async () => {
+          if (!window.confirm(`Delete settlement ${settlement.name}? Linked troupe home settlements will fall back to Hearthmere.`)) return;
           await worldAction({ action: "delete", entity: isTroublesome ? "troublesome_town" : "settlement", id: settlement.id });
         })
       );
@@ -2524,6 +2524,9 @@ async function renderTables() {
   await loadArtwork();
   const panel = card("Tables List", "Search every structured rules and app table exposed by the game.");
   const search = input("search", "modern-table-search", "Search by table name or entry text.");
+  const params = new URLSearchParams(window.location.search);
+  const helpQuery = params.get("help");
+  if (helpQuery) search.value = helpQuery;
   const families = [...new Set(Object.keys(modernState.tables).map(modernTableFamily))].sort();
   const family = select("modern-table-family", "Filter by table family.", [["", "All table families"], ...families.map((item) => [item, item])]);
   const artworkFilter = select("modern-table-artwork", "Filter tables by whether they have local artwork slots.", [["", "All artwork states"], ["with", "With artwork slot"], ["without", "Without artwork slot"]]);
@@ -2592,10 +2595,11 @@ async function renderTables() {
         if (tableArt.length) details.appendChild(renderArtworkRows(tableArt.slice(0, 4), { compact: true }));
         const previewMount = el("div", "modern-table-preview-mount");
         const renderPreview = () => {
-          if (previewMount.dataset.loaded === "1" && previewMount.dataset.needle === needle) return;
-          previewMount.replaceChildren(modernTablePreview(value, needle));
+          const rowNeedle = key.toLowerCase().includes(needle) ? "" : needle;
+          if (previewMount.dataset.loaded === "1" && previewMount.dataset.needle === rowNeedle) return;
+          previewMount.replaceChildren(modernTablePreview(value, rowNeedle));
           previewMount.dataset.loaded = "1";
-          previewMount.dataset.needle = needle;
+          previewMount.dataset.needle = rowNeedle;
         };
         details.addEventListener("toggle", () => {
           if (details.open) renderPreview();

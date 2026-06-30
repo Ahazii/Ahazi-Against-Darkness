@@ -190,6 +190,82 @@ def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     assert payload["courtship_enabled"] is False
 
 
+def test_campaign_world_assignment_propagates_to_parties_and_characters(client: TestClient) -> None:
+    created = client.post(
+        "/api/campaign/world",
+        json={"action": "create", "entity": "campaign", "name": "Second World", "description": "Assignment test."},
+    )
+    assert created.status_code == 200
+    second_campaign_id = created.json()["campaign"]["active_world_campaign_id"]
+
+    settlement = client.post(
+        "/api/campaign/world",
+        json={"action": "create", "entity": "settlement", "name": "Riverhome", "campaign_id": second_campaign_id, "size": 1},
+    )
+    assert settlement.status_code == 200
+    settlement_id = settlement.json()["campaign"]["world_settlements"][-1]["id"]
+
+    guild = client.post(
+        "/api/campaign/world",
+        json={"action": "create", "entity": "guild", "name": "River Guild", "campaign_id": second_campaign_id},
+    )
+    assert guild.status_code == 200
+    guild_id = guild.json()["campaign"]["world_guilds"][-1]["id"]
+
+    troupe = client.post(
+        "/api/campaign/world",
+        json={
+            "action": "create",
+            "entity": "troupe",
+            "name": "River Troupe",
+            "campaign_id": second_campaign_id,
+            "guild_id": guild_id,
+            "home_settlement_id": settlement_id,
+        },
+    )
+    assert troupe.status_code == 200
+    troupe_id = troupe.json()["campaign"]["world_troupes"][-1]["id"]
+
+    character_ids: list[str] = []
+    for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
+        response = client.post("/api/characters", json={"name": f"World Hero {index}", "class_id": class_id})
+        assert response.status_code == 200
+        character_id = response.json()["id"]
+        character_ids.append(character_id)
+        assigned = client.post(
+            "/api/campaign/world",
+            json={"action": "assign_character_troupe", "character_id": character_id, "troupe_id": troupe_id},
+        )
+        assert assigned.status_code == 200
+
+    party_response = client.post(
+        "/api/parties",
+        json={"name": "World Party", "character_ids": character_ids, "troupe_id": troupe_id},
+    )
+    assert party_response.status_code == 200
+    party = party_response.json()
+    assert party["campaign_id"] == second_campaign_id
+    assert party["troupe_id"] == troupe_id
+
+    for character_id in character_ids:
+        character = client.get("/api/characters").json()
+        row = next(item for item in character if item["id"] == character_id)
+        assert row["campaign_id"] == second_campaign_id
+        assert row["guild_id"] == guild_id
+        assert row["troupe_id"] == troupe_id
+        assert row["party_id"] == party["id"]
+
+    moved = client.post(
+        "/api/campaign/world",
+        json={"action": "assign", "entity": "troupe", "troupe_id": troupe_id, "campaign_id": "norindaal"},
+    )
+    assert moved.status_code == 200
+    party_after = next(item for item in client.get("/api/parties").json() if item["id"] == party["id"])
+    assert party_after["campaign_id"] == "norindaal"
+    characters_after = client.get("/api/characters").json()
+    assert {row["campaign_id"] for row in characters_after if row["id"] in character_ids} == {"norindaal"}
+
+
 def test_heroic_spell_catalog_matches_fd_table() -> None:
     names = heroic_spell_names()
     assert len(names) == 6

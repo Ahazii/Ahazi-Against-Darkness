@@ -5,8 +5,9 @@
 Status: foundation implemented; feature growth planned.
 
 - The campaign layer is app-owned and is not a TAG PDF rule. TAG content can attach to it, but campaign/world ownership rules should be documented separately from printed mechanics.
-- Default world records are seeded and migrated once: campaign `Norindaal`, guild `Adventurers Guild`, troupe `Troupe1`, and friendly settlement `Brightwater Gate`.
+- Default world records are seeded and migrated once: campaign `Norindaal`, guild `Adventurers Guild`, troupe `Troupe1`, and friendly settlement `Hearthmere`.
 - Campaign Management now supports create/edit/delete campaign records, selected-campaign summaries, searchable/sortable/filterable world lists, one guild assignment per campaign, multiple troupes per campaign, multiple friendly settlements per campaign, and placeholder troublesome town records for the future Troublesome Towns supplements.
+- Assignment integrity is enforced in the backend: one guild per campaign, one campaign/guild/home per troupe, one troupe per party, one party/troupe/guild per character, and automatic propagation when guilds or troupes move.
 - Troupe, Guild, Party, and Settlement Management now reuse the same world-context model, with filtered management lists, assignment warnings, richer hover text, and Rules/Tables links back to the documented dashboard workflow.
 - Character Management now exposes full-sheet readiness and Go Adventure setup blocks critical party/member/module/map-cap errors before creating a new session.
 - Characters are constrained to one party, one troupe, and one guild. Parties are assigned to one troupe. Assigning a character to an incompatible troupe removes them from the previous party with a user-facing alert/message.

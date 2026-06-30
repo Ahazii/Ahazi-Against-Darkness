@@ -19,6 +19,8 @@ APP_ONLY_REFERENCE_IDS = {
     "troublesome_towns_placeholder",
     "campaign_hex_map_placeholder",
     "campaign_management_editing",
+    "campaign_assignment_integrity",
+    "campaign_assignment_integrity_table",
     "campaign_worldbuilder_schema_table",
     "modern_dashboard_management_polish",
     "modern_dashboard_management_table",

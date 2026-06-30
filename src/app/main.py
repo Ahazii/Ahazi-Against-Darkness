@@ -504,6 +504,48 @@ def _remove_character_from_party(character: Character, *, reason: str) -> str:
     return f"{character.name} was removed from {old_name}: {reason}"
 
 
+def _world_record_exists(rows: list[Any], record_id: str) -> bool:
+    return bool(record_id and any(item.id == record_id for item in rows))
+
+
+def _world_troupe(campaign: CampaignState, troupe_id: str) -> WorldTroupeRecord | None:
+    return next((item for item in campaign.world_troupes if item.id == troupe_id), None)
+
+
+def _world_guild(campaign: CampaignState, guild_id: str) -> WorldGuildRecord | None:
+    return next((item for item in campaign.world_guilds if item.id == guild_id), None)
+
+
+def _world_settlement(campaign: CampaignState, settlement_id: str) -> WorldSettlementRecord | None:
+    return next((item for item in campaign.world_settlements if item.id == settlement_id), None)
+
+
+def _sync_troupe_assignments(campaign: CampaignState, troupe: WorldTroupeRecord, *, timestamp: str) -> None:
+    for party in store.list("parties", Party.model_validate):
+        if party.troupe_id != troupe.id:
+            continue
+        party.campaign_id = troupe.campaign_id
+        party.updated_at = timestamp
+        store.save("parties", party)
+        for character_id in party.character_ids:
+            if character_id not in troupe.member_character_ids:
+                troupe.member_character_ids.append(character_id)
+    for character in store.list("characters", Character.model_validate):
+        if character.troupe_id != troupe.id:
+            continue
+        character.campaign_id = troupe.campaign_id
+        character.guild_id = troupe.guild_id
+        character.updated_at = timestamp
+        store.save("characters", character)
+
+
+def _sync_guild_assignments(campaign: CampaignState, guild: WorldGuildRecord, *, timestamp: str) -> None:
+    for troupe in campaign.world_troupes:
+        if troupe.guild_id == guild.id:
+            troupe.campaign_id = guild.campaign_id
+            _sync_troupe_assignments(campaign, troupe, timestamp=timestamp)
+
+
 @app.post("/api/campaign/world")
 async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import (
@@ -556,6 +598,8 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
         campaign.active_world_campaign_id = record_id
     elif action == "create" and entity == "guild":
         campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        if not _world_record_exists(campaign.world_campaigns, campaign_id):
+            raise HTTPException(status_code=404, detail="Campaign not found.")
         if any(item.campaign_id == campaign_id for item in campaign.world_guilds):
             raise HTTPException(status_code=400, detail="A campaign may have only one assigned guild.")
         record = WorldGuildRecord(name=_world_name(payload, "New Guild"), campaign_id=campaign_id, description=_world_description(payload), created_at=timestamp)
@@ -566,6 +610,8 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
     elif action == "update" and entity == "guild":
         guild_id = str(payload.get("guild_id") or payload.get("id") or "")
         campaign_id = str(payload.get("campaign_id") or "")
+        if campaign_id and not _world_record_exists(campaign.world_campaigns, campaign_id):
+            raise HTTPException(status_code=404, detail="Campaign not found.")
         if campaign_id and any(item.id != guild_id and item.campaign_id == campaign_id for item in campaign.world_guilds):
             raise HTTPException(status_code=400, detail="A campaign may have only one assigned guild.")
         for guild in campaign.world_guilds:
@@ -579,6 +625,7 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
                         world.guild_id = guild.id
                     elif world.guild_id == guild.id:
                         world.guild_id = None
+                _sync_guild_assignments(campaign, guild, timestamp=timestamp)
                 break
         else:
             raise HTTPException(status_code=404, detail="Guild not found.")
@@ -596,22 +643,37 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
     elif action == "assign" and entity == "guild":
         guild_id = str(payload.get("guild_id") or payload.get("id") or "")
         campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        if not _world_record_exists(campaign.world_campaigns, campaign_id):
+            raise HTTPException(status_code=404, detail="Campaign not found.")
         if any(item.id != guild_id and item.campaign_id == campaign_id for item in campaign.world_guilds):
             raise HTTPException(status_code=400, detail="A campaign may have only one assigned guild.")
         for guild in campaign.world_guilds:
             if guild.id == guild_id:
                 guild.campaign_id = campaign_id
+                _sync_guild_assignments(campaign, guild, timestamp=timestamp)
+                break
+        else:
+            raise HTTPException(status_code=404, detail="Guild not found.")
         for world in campaign.world_campaigns:
             if world.id == campaign_id:
                 world.guild_id = guild_id
             elif world.guild_id == guild_id:
                 world.guild_id = None
     elif action == "create" and entity == "troupe":
+        campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        guild_id = str(payload.get("guild_id") or DEFAULT_WORLD_GUILD_ID)
+        home_settlement_id = str(payload.get("home_settlement_id") or DEFAULT_WORLD_SETTLEMENT_ID)
+        if not _world_record_exists(campaign.world_campaigns, campaign_id):
+            raise HTTPException(status_code=404, detail="Campaign not found.")
+        if not _world_record_exists(campaign.world_guilds, guild_id):
+            raise HTTPException(status_code=404, detail="Guild not found.")
+        if not _world_record_exists(campaign.world_settlements, home_settlement_id):
+            raise HTTPException(status_code=404, detail="Settlement not found.")
         record = WorldTroupeRecord(
             name=_world_name(payload, "New Troupe"),
-            campaign_id=str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID),
-            guild_id=str(payload.get("guild_id") or DEFAULT_WORLD_GUILD_ID),
-            home_settlement_id=str(payload.get("home_settlement_id") or DEFAULT_WORLD_SETTLEMENT_ID),
+            campaign_id=campaign_id,
+            guild_id=guild_id,
+            home_settlement_id=home_settlement_id,
             description=_world_description(payload),
             created_at=timestamp,
         )
@@ -623,11 +685,27 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
                 troupe.name = DEFAULT_WORLD_TROUPE_NAME if troupe.id == DEFAULT_WORLD_TROUPE_ID else _world_name(payload, troupe.name)
                 troupe.description = _world_description(payload)
                 if payload.get("campaign_id"):
-                    troupe.campaign_id = str(payload.get("campaign_id"))
+                    campaign_id = str(payload.get("campaign_id"))
+                    if not _world_record_exists(campaign.world_campaigns, campaign_id):
+                        raise HTTPException(status_code=404, detail="Campaign not found.")
+                    troupe.campaign_id = campaign_id
                 if payload.get("guild_id"):
-                    troupe.guild_id = str(payload.get("guild_id"))
+                    guild_id = str(payload.get("guild_id"))
+                    guild = _world_guild(campaign, guild_id)
+                    if guild is None:
+                        raise HTTPException(status_code=404, detail="Guild not found.")
+                    if guild.campaign_id and troupe.campaign_id and guild.campaign_id != troupe.campaign_id:
+                        raise HTTPException(status_code=400, detail="Troupe guild must belong to the same campaign.")
+                    troupe.guild_id = guild_id
                 if payload.get("home_settlement_id"):
-                    troupe.home_settlement_id = str(payload.get("home_settlement_id"))
+                    settlement_id = str(payload.get("home_settlement_id"))
+                    settlement = _world_settlement(campaign, settlement_id)
+                    if settlement is None:
+                        raise HTTPException(status_code=404, detail="Settlement not found.")
+                    if settlement.campaign_id and troupe.campaign_id and settlement.campaign_id != troupe.campaign_id:
+                        raise HTTPException(status_code=400, detail="Troupe home settlement must belong to the same campaign.")
+                    troupe.home_settlement_id = settlement_id
+                _sync_troupe_assignments(campaign, troupe, timestamp=timestamp)
                 break
         else:
             raise HTTPException(status_code=404, detail="Troupe not found.")
@@ -649,9 +727,15 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
     elif action == "assign" and entity == "troupe":
         troupe_id = str(payload.get("troupe_id") or payload.get("id") or "")
         campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        if not _world_record_exists(campaign.world_campaigns, campaign_id):
+            raise HTTPException(status_code=404, detail="Campaign not found.")
         for troupe in campaign.world_troupes:
             if troupe.id == troupe_id:
                 troupe.campaign_id = campaign_id
+                _sync_troupe_assignments(campaign, troupe, timestamp=timestamp)
+                break
+        else:
+            raise HTTPException(status_code=404, detail="Troupe not found.")
     elif action == "create" and entity in {"settlement", "troublesome_town"}:
         record = WorldSettlementRecord(
             name=_world_name(payload, "New Settlement"),
@@ -661,6 +745,8 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
             notes=_world_description(payload),
             created_at=timestamp,
         )
+        if record.campaign_id and not _world_record_exists(campaign.world_campaigns, record.campaign_id):
+            raise HTTPException(status_code=404, detail="Campaign not found.")
         if record.kind == "troublesome":
             campaign.world_troublesome_towns.append(record)
         else:
@@ -673,9 +759,15 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
                 if record.id == record_id:
                     record.name = DEFAULT_WORLD_SETTLEMENT_NAME if record.id == DEFAULT_WORLD_SETTLEMENT_ID else _world_name(payload, record.name)
                     if payload.get("campaign_id"):
-                        record.campaign_id = str(payload.get("campaign_id"))
+                        campaign_id = str(payload.get("campaign_id"))
+                        if not _world_record_exists(campaign.world_campaigns, campaign_id):
+                            raise HTTPException(status_code=404, detail="Campaign not found.")
+                        record.campaign_id = campaign_id
                     record.size = int(payload.get("size") or 0)
                     record.notes = _world_description(payload)
+                    for troupe in campaign.world_troupes:
+                        if troupe.home_settlement_id == record.id:
+                            _sync_troupe_assignments(campaign, troupe, timestamp=timestamp)
                     break
             else:
                 continue
@@ -685,7 +777,7 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
     elif action == "delete" and entity in {"settlement", "troublesome_town"}:
         record_id = str(payload.get("id") or "")
         if record_id == DEFAULT_WORLD_SETTLEMENT_ID:
-            raise HTTPException(status_code=400, detail="The default Brightwater Gate settlement cannot be deleted.")
+            raise HTTPException(status_code=400, detail="The default Hearthmere settlement cannot be deleted.")
         campaign.world_settlements = [item for item in campaign.world_settlements if item.id != record_id]
         campaign.world_troublesome_towns = [item for item in campaign.world_troublesome_towns if item.id != record_id]
         for troupe in campaign.world_troupes:
@@ -694,22 +786,36 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
     elif action == "assign" and entity in {"settlement", "troublesome_town"}:
         record_id = str(payload.get("settlement_id") or payload.get("id") or "")
         campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        if not _world_record_exists(campaign.world_campaigns, campaign_id):
+            raise HTTPException(status_code=404, detail="Campaign not found.")
         for collection in [campaign.world_settlements, campaign.world_troublesome_towns]:
             for record in collection:
                 if record.id == record_id:
                     record.campaign_id = campaign_id
+                    for troupe in campaign.world_troupes:
+                        if troupe.home_settlement_id == record.id:
+                            _sync_troupe_assignments(campaign, troupe, timestamp=timestamp)
+                    break
+            else:
+                continue
+            break
+        else:
+            raise HTTPException(status_code=404, detail="Settlement not found.")
     elif action == "assign_party_troupe":
         party_id = str(payload.get("party_id") or "")
         troupe_id = str(payload.get("troupe_id") or DEFAULT_WORLD_TROUPE_ID)
         party = store.get("parties", party_id, Party.model_validate)
         if party is None:
             raise HTTPException(status_code=404, detail="Party not found.")
+        troupe = _world_troupe(campaign, troupe_id)
+        if troupe is None:
+            raise HTTPException(status_code=404, detail="Troupe not found.")
         party.troupe_id = troupe_id
-        party.campaign_id = next((item.campaign_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_CAMPAIGN_ID)
+        party.campaign_id = troupe.campaign_id or DEFAULT_WORLD_CAMPAIGN_ID
         party.updated_at = timestamp
         store.save("parties", party)
         troupe_campaign_id = party.campaign_id
-        troupe_guild_id = next((item.guild_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_GUILD_ID)
+        troupe_guild_id = troupe.guild_id or DEFAULT_WORLD_GUILD_ID
         for character_id in party.character_ids:
             character = store.get("characters", character_id, Character.model_validate)
             if character is None:
@@ -735,15 +841,18 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
         character = store.get("characters", character_id, Character.model_validate)
         if character is None:
             raise HTTPException(status_code=404, detail="Character not found.")
+        troupe = _world_troupe(campaign, troupe_id)
+        if troupe is None:
+            raise HTTPException(status_code=404, detail="Troupe not found.")
         if character.party_id:
             party = store.get("parties", character.party_id, Party.model_validate)
             if party is not None and party.troupe_id and party.troupe_id != troupe_id:
-                note = _remove_character_from_party(character, reason=f"assignment to troupe {troupe_id}")
+                note = _remove_character_from_party(character, reason=f"assignment to troupe {troupe.name}")
                 if note:
                     messages.append(note)
         character.troupe_id = troupe_id
-        character.guild_id = next((item.guild_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_GUILD_ID)
-        character.campaign_id = next((item.campaign_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_CAMPAIGN_ID)
+        character.guild_id = troupe.guild_id or DEFAULT_WORLD_GUILD_ID
+        character.campaign_id = troupe.campaign_id or DEFAULT_WORLD_CAMPAIGN_ID
         character.updated_at = timestamp
         store.save("characters", character)
         for troupe in campaign.world_troupes:
@@ -1544,7 +1653,7 @@ def _rules_tables_payload() -> dict:
             "entity": "Friendly Settlement",
             "allowed_per_campaign": "Multiple settlements",
             "assignment_rule": "A friendly settlement belongs to one campaign and may be used as a troupe home settlement.",
-            "default_record": "Brightwater Gate",
+            "default_record": "Hearthmere",
             "rules_boundary": "App world record; TAG size modifiers affect supported availability/service checks.",
         },
         {
@@ -1590,6 +1699,38 @@ def _rules_tables_payload() -> dict:
             "assignment_model": "Friendly settlements are campaign records; tracked TAG settlements drive current downtime, services, travel, and availability.",
             "hover_focus": "Explains settlement size modifier, friendly/troublesome boundary, travel logging, and active settlement selection.",
             "rules_reference": "settlement_management_workflow",
+        },
+    ]
+    data["campaign_assignment_integrity_table"] = [
+        {
+            "assignment": "Guild -> Campaign",
+            "limit": "A campaign may have one assigned guild; a guild may belong to one campaign.",
+            "automatic_update": "Moving a guild updates linked troupes, parties, and characters that inherit that guild context.",
+            "user_warning": "The API blocks a second guild from being assigned to the same campaign.",
+        },
+        {
+            "assignment": "Troupe -> Campaign/Guild/Home",
+            "limit": "A troupe belongs to one campaign, one guild, and one friendly home settlement.",
+            "automatic_update": "Moving a troupe updates assigned parties and characters to the troupe campaign/guild context.",
+            "user_warning": "The API rejects guild or home-settlement choices from a different campaign.",
+        },
+        {
+            "assignment": "Party -> Troupe",
+            "limit": "A party belongs to one troupe and has exactly four character members.",
+            "automatic_update": "Assigning a party to a troupe syncs all party characters to that troupe, campaign, and guild.",
+            "user_warning": "Party Management shows mismatch warnings before resyncing.",
+        },
+        {
+            "assignment": "Character -> Party/Troupe/Guild",
+            "limit": "A character belongs to one party, one troupe, and one guild.",
+            "automatic_update": "Assigning a character to another troupe removes incompatible party membership and returns a guidance message.",
+            "user_warning": "Troupe Management asks for confirmation before triggering party removal.",
+        },
+        {
+            "assignment": "Friendly/Troublesome Settlement -> Campaign",
+            "limit": "Each settlement record belongs to one campaign; friendly settlements can be troupe homes.",
+            "automatic_update": "Moving a home settlement refreshes affected troupe, party, and character context.",
+            "user_warning": "Troublesome-town records remain placeholders until supplement mechanics are implemented.",
         },
     ]
     data["character_management_readiness_table"] = [
