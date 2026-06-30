@@ -1562,6 +1562,36 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "App roster consistency rule.",
         },
     ]
+    data["modern_dashboard_management_table"] = [
+        {
+            "page": "Troupe Management",
+            "primary_controls": "World context, member filters, add/remove member, active members, assigned party filter, settlement travel.",
+            "assignment_model": "Troupe1 remains the TAG-focused default; world troupes are edited in Campaign Management. Characters belong to one troupe.",
+            "hover_focus": "Explains party removal risk, active member meaning, home settlement use, and travel logging.",
+            "rules_reference": "campaign_membership_boundaries",
+        },
+        {
+            "page": "Guild Management",
+            "primary_controls": "World context, Guild active/coffers, member filters, Guild finance, Guild jobs, benefits, closeout.",
+            "assignment_model": "One guild per campaign in the world-builder layer; TAG benefits require active membership and coffers above 0 gp.",
+            "hover_focus": "Explains coffers, loot share, upkeep, availability reroll, resurrection funding, and Guild Job creation.",
+            "rules_reference": "tag_guild_closeout_guidance",
+        },
+        {
+            "page": "Party Management",
+            "primary_controls": "World context, create party, party search, troupe filter, assignment warning, heal, bank, delete.",
+            "assignment_model": "A party belongs to one troupe. Assigning a party syncs party characters to the selected troupe context.",
+            "hover_focus": "Explains one-party/one-troupe boundaries, character sync, TAG banking migration, and delete behavior.",
+            "rules_reference": "party_troupe_management",
+        },
+        {
+            "page": "Settlement Management",
+            "primary_controls": "World context, settlement fields, availability picker, campaign settlement filters, tracked settlement list.",
+            "assignment_model": "Friendly settlements are campaign records; tracked TAG settlements drive current downtime, services, travel, and availability.",
+            "hover_focus": "Explains settlement size modifier, friendly/troublesome boundary, travel logging, and active settlement selection.",
+            "rules_reference": "settlement_management_workflow",
+        },
+    ]
     data["map_elements_validation_table"] = map_elements_validation_table_rows(rules.tiles())
     data["forsaken_depths_map_elements_validation_table"] = map_elements_validation_table_rows(
         rules.tiles("forsaken_depths"), catalog="forsaken_depths"

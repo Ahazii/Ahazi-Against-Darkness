@@ -940,6 +940,76 @@ function worldCampaignCounts(campaignId) {
   };
 }
 
+function worldTroupeForCharacter(character) {
+  return worldTroupes().find((item) => item.id === character?.troupe_id);
+}
+
+function renderWorldContextPanel(title = "World Context") {
+  const selected = selectedWorldCampaign();
+  const counts = selected ? worldCampaignCounts(selected.id) : { guilds: 0, troupes: 0, settlements: 0, troublesome: 0 };
+  const defaultGuild = worldGuilds().find((item) => item.id === "adventurers-guild") || worldGuilds()[0];
+  const defaultTroupe = worldTroupes().find((item) => item.id === "troupe1") || worldTroupes()[0];
+  const defaultSettlement = worldSettlements().find((item) => item.id === "brightwater-gate") || worldSettlements()[0];
+  const panel = card(title, "Current campaign/world assignments used by this management page. Open Campaign Management for full editing.");
+  panel.classList.add("modern-card-compact");
+  panel.append(
+    modernStatusRow(
+      selected?.name || "No campaign selected",
+      selected ? `${counts.guilds} guild(s) · ${counts.troupes} troupe(s) · ${counts.settlements} friendly settlement(s) · ${counts.troublesome} troublesome town(s)` : "Create a campaign from Campaign Management.",
+      "Selected campaign defaults new world-builder records and shows where this page writes campaign context."
+    ),
+    modernStatusRow(
+      "Default links",
+      `Guild ${defaultGuild?.name || "none"} · Troupe ${defaultTroupe?.name || "none"} · Home ${defaultSettlement?.name || "none"}`,
+      "Protected default records seeded by the app. They can be assigned and described, but their default names remain stable."
+    )
+  );
+  const row = actions();
+  row.append(
+    link("Campaign", "/modern/campaign", "Open Campaign Management to edit campaigns, guilds, troupes, settlements, and troublesome-town placeholders.", "link-button secondary"),
+    link("Rules", ruleReferenceHref("modern_dashboard_management_polish", "dashboard management polish"), "Open the Rules Reference entry for this dashboard management polish pass.", "link-button secondary"),
+    link("Tables", "/modern/tables?help=modern_dashboard_management_table", "Open Tables filtered toward the dashboard management workflow table.", "link-button secondary")
+  );
+  panel.appendChild(row);
+  return panel;
+}
+
+function partySearchText(party) {
+  const members = (party.character_ids || []).map((id) => modernState.characters.find((character) => character.id === id)).filter(Boolean);
+  return [
+    party.name,
+    worldName(worldCampaigns(), party.campaign_id, ""),
+    worldName(worldTroupes(), party.troupe_id, ""),
+    ...members.map((member) => `${member.name} ${member.class_name} ${member.level}`),
+  ].join(" ").toLowerCase();
+}
+
+function filteredParties({ search = "", troupeId = "", sort = "name" } = {}) {
+  const needle = String(search || "").toLowerCase();
+  const rows = modernState.parties.filter((party) => {
+    if (troupeId && party.troupe_id !== troupeId) return false;
+    return !needle || partySearchText(party).includes(needle);
+  });
+  rows.sort((left, right) => {
+    if (sort === "troupe") return worldName(worldTroupes(), left.troupe_id, "").localeCompare(worldName(worldTroupes(), right.troupe_id, "")) || left.name.localeCompare(right.name);
+    if (sort === "members") return (right.character_ids || []).length - (left.character_ids || []).length || left.name.localeCompare(right.name);
+    return left.name.localeCompare(right.name);
+  });
+  return rows;
+}
+
+function partyFilterControls(prefix, onChange) {
+  const panel = el("div", "modern-filterbar");
+  const search = input("search", `${prefix}-party-search`, "Search saved parties by party name, member name, member class, campaign, or troupe.");
+  const troupeFilter = select(`${prefix}-party-troupe-filter`, "Filter saved parties by assigned troupe.", [["", "All troupes"], ...worldTroupes().map((item) => [item.id, item.name])]);
+  const sort = select(`${prefix}-party-sort`, "Sort saved parties by name, troupe, or member count.", [["name", "Name"], ["troupe", "Troupe"], ["members", "Members"]]);
+  search.addEventListener("input", onChange);
+  troupeFilter.addEventListener("change", onChange);
+  sort.addEventListener("change", onChange);
+  panel.append(field("Search", search), field("Troupe", troupeFilter), field("Sort", sort));
+  return { panel, search, troupeFilter, sort };
+}
+
 async function worldAction(payload) {
   const result = await api("/api/campaign/world", { method: "POST", body: JSON.stringify(payload) });
   modernState.campaign = result.campaign;
@@ -962,6 +1032,7 @@ function knownSettlements() {
 
 function renderTroupes() {
   const campaign = modernState.campaign || {};
+  rootEl.appendChild(renderWorldContextPanel("Troupe World Context"));
   rootEl.appendChild(renderGuide("Troupe Workflow", [
     "Pick the campaign first, then keep roster membership and active adventurers in sync.",
     "A character can belong to one troupe; assigning across troupes may remove incompatible party membership.",
@@ -1028,24 +1099,45 @@ function renderTroupes() {
   );
   panel.appendChild(row);
   const memberList = card("List Members", "Current troupe members with party, bank, activity, TAG bank, and carried-gold status.");
-  for (const id of troupeMemberIds()) {
-    const character = modernState.characters.find((item) => item.id === id);
-    if (!character) continue;
-    const activeText = (campaign.tag_troupe_active_character_ids || []).includes(id) ? "active party" : "home/available";
-    const memberRow = el("div", "modern-row");
-    memberRow.append(el("strong", "", character.name), el("span", "muted", `${character.class_name} L${character.level} · ${activeText} · carried ${character.gold || 0}gp · TAG bank ${tagBankForCharacter(id)}gp · parties: ${partyNamesForCharacter(id).join(", ") || "none"}`));
-    memberRow.title = "Troupe member status. Use Add Member or Remove Member on this page to change the roster.";
-    memberList.appendChild(memberRow);
+  const memberFilters = characterFilterControls("modern-troupe-members", drawTroupeMembers);
+  const memberRows = el("div", "modern-list");
+  memberList.append(memberFilters.panel, memberRows);
+  function drawTroupeMembers() {
+    memberRows.replaceChildren();
+    const ids = new Set(troupeMemberIds());
+    const rows = filteredCharacters({ search: memberFilters.search.value, classId: memberFilters.classFilter.value, sort: memberFilters.sort.value }).filter((item) => ids.has(item.id));
+    for (const character of rows) {
+      const activeText = (campaign.tag_troupe_active_character_ids || []).includes(character.id) ? "active party" : "home/available";
+      const worldTroupe = worldTroupeForCharacter(character);
+      const memberRow = el("div", "modern-row");
+      memberRow.append(
+        el("strong", "", character.name),
+        el("span", "muted", `${character.class_name} L${character.level} · ${activeText} · carried ${character.gold || 0}gp · TAG bank ${tagBankForCharacter(character.id)}gp · parties: ${partyNamesForCharacter(character.id).join(", ") || "none"}`),
+        el("span", "muted", `Campaign ${worldName(worldCampaigns(), character.campaign_id)} · Guild ${worldName(worldGuilds(), character.guild_id)} · Troupe ${worldName(worldTroupes(), character.troupe_id)} · Home ${worldTroupe?.home_settlement_id ? worldName(worldSettlements(), worldTroupe.home_settlement_id) : "Unassigned"}`)
+      );
+      memberRow.title = "Troupe member status. Assigning a character to another troupe can remove incompatible party membership; the backend enforces one troupe per character.";
+      memberRows.appendChild(memberRow);
+    }
+    if (!memberRows.childElementCount) {
+      memberRows.appendChild(el("p", "muted", "No troupe members match the current filters. Add roster characters above, then choose up to four active members."));
+    }
   }
-  if (!memberList.childElementCount) {
-    memberList.appendChild(el("p", "muted", "No troupe members yet. Add roster characters above, then choose up to four active members."));
-  }
+  drawTroupeMembers();
 
   const troupeParties = card("Assigned Parties", "Saved parties assigned to Troupe1. A party belongs to one troupe, and its characters must belong to the same troupe.");
-  for (const party of modernState.parties.filter((item) => item.troupe_id === "troupe1")) {
-    troupeParties.appendChild(modernStatusRow(party.name, `${(party.character_ids || []).length} member(s) · campaign ${worldName(worldCampaigns(), party.campaign_id)}`, "Party assigned to this troupe."));
+  const partyFilters = partyFilterControls("modern-troupe-parties", drawTroupeParties);
+  const partyRows = el("div", "modern-list");
+  troupeParties.append(partyFilters.panel, partyRows);
+  function drawTroupeParties() {
+    partyRows.replaceChildren();
+    const rows = filteredParties({ search: partyFilters.search.value, troupeId: partyFilters.troupeFilter.value || "troupe1", sort: partyFilters.sort.value });
+    for (const party of rows) {
+      const memberNames = (party.character_ids || []).map((id) => modernState.characters.find((item) => item.id === id)?.name || id).join(", ") || "empty";
+      partyRows.appendChild(modernStatusRow(party.name, `${(party.character_ids || []).length} member(s) · campaign ${worldName(worldCampaigns(), party.campaign_id)} · ${memberNames}`, "Party assigned to this troupe. Use Party Management to move a party to another troupe."));
+    }
+    if (!partyRows.childElementCount) partyRows.appendChild(el("p", "muted", "No saved parties assigned to Troupe1 match the current filters."));
   }
-  if (!troupeParties.childElementCount) troupeParties.appendChild(el("p", "muted", "No saved parties are assigned to Troupe1 yet."));
+  drawTroupeParties();
 
   const travel = card("Settlement Details and Travel", "The settlement is the troupe's downtime base. Size modifies availability checks; travel changes which settlement the troupe is focused on.");
   const settlement = input("text", "modern-settlement-name", "Current home settlement name used by TAG travel, services, availability checks, and downtime logs.", campaign.settlement_name || "Home Settlement");
@@ -1077,6 +1169,7 @@ function renderTroupes() {
 
 function renderGuild() {
   const campaign = modernState.campaign || {};
+  rootEl.appendChild(renderWorldContextPanel("Guild World Context"));
   rootEl.appendChild(renderGuide("Guild Workflow", [
     "Guild benefits need active membership and coffers above 0 gp.",
     "Adventure closeout creates Guild prompts for loot share, upkeep, reroll reset, and leaving-restriction signoff.",
@@ -1156,8 +1249,9 @@ function renderGuild() {
   );
   finance.appendChild(financeRow);
 
-  const members = card("Member List and Guild Jobs", "Troupe members are treated as Guild members while Guild membership is active. Search and sorting are inherited from Character/Troupe pages; this summary shows the Guild-relevant state.");
-  members.append(field("Character", actionCharacter));
+  const members = card("Member List and Guild Jobs", "Troupe members are treated as Guild members while Guild membership is active. Search and sort this list to check member state before using Guild finance or jobs.");
+  const guildMemberFilters = characterFilterControls("modern-guild-members", drawGuildMembers);
+  members.append(guildMemberFilters.panel, field("Character", actionCharacter));
   const memberRow = actions();
   memberRow.append(
     button("Pay Resurrection", "Pay a Level 2+ member's resurrection attempt from active Guild coffers. Enter the cost in Amount gp.", async () => {
@@ -1181,17 +1275,23 @@ function renderGuild() {
   const memberList = el("div", "modern-list");
   const memberIds = new Set(campaign.tag_troupe_member_character_ids || []);
   const activeIds = new Set(campaign.tag_troupe_active_character_ids || []);
-  for (const character of modernState.characters.filter((item) => memberIds.has(item.id))) {
-    const account = tagBankAccountForCharacter(character.id);
-    memberList.appendChild(
-      modernStatusRow(
-        character.name,
-        `${character.class_name} L${character.level} · ${activeIds.has(character.id) ? "active party" : "home"} · ${character.gold || 0} gp carried · TAG bank ${account?.gold_gp || 0} gp${account?.robbed ? " · bank robbed" : ""}`,
-        "Guild member summary from the TAG troupe roster and TAG bank ledger."
-      )
-    );
+  function drawGuildMembers() {
+    memberList.replaceChildren();
+    const rows = filteredCharacters({ search: guildMemberFilters.search.value, classId: guildMemberFilters.classFilter.value, sort: guildMemberFilters.sort.value }).filter((item) => memberIds.has(item.id));
+    for (const character of rows) {
+      const account = tagBankAccountForCharacter(character.id);
+      const worldTroupe = worldTroupeForCharacter(character);
+      memberList.appendChild(
+        modernStatusRow(
+          character.name,
+          `${character.class_name} L${character.level} · ${activeIds.has(character.id) ? "active party" : "home"} · ${character.gold || 0} gp carried · TAG bank ${account?.gold_gp || 0} gp${account?.robbed ? " · bank robbed" : ""} · ${worldTroupe?.name || "no world troupe"}`,
+          "Guild member summary from the TAG troupe roster and TAG bank ledger. Use this before resurrection funding, Guild jobs, or availability rerolls."
+        )
+      );
+    }
+    if (!memberList.childElementCount) memberList.appendChild(el("p", "muted", "No Guild members match the current filters. Add members from Troupe Management before treating them as Guild members."));
   }
-  if (!memberList.childElementCount) memberList.appendChild(el("p", "muted", "No troupe members are listed yet. Add members from Troupe Management before treating them as Guild members."));
+  drawGuildMembers();
   members.appendChild(memberList);
 
   const benefits = card("Guild Benefits / Obligations", "Printed Guild features currently exposed in the app.");
@@ -1214,6 +1314,7 @@ function renderGuild() {
 }
 
 function renderParties() {
+  rootEl.appendChild(renderWorldContextPanel("Party World Context"));
   rootEl.appendChild(renderGuide("Party Workflow", [
     "Create parties from four different roster characters.",
     "A party belongs to one troupe; all party characters should belong to that same troupe.",
@@ -1235,7 +1336,8 @@ function renderParties() {
     setStatus("Party saved.");
     await refreshCoreAndRender();
   }, ""));
-  const list = card("Saved Parties", "Review, heal, bank, or delete saved parties.");
+  const list = card("Saved Parties", "Review, filter, assign, heal, bank, or delete saved parties. Text is left aligned so party composition is easy to scan.");
+  const partyFilters = partyFilterControls("modern-saved-parties", drawPartyRows);
   const listActions = actions();
   listActions.append(
     button("Expand All", "Expand all saved party details.", async () => {
@@ -1245,49 +1347,62 @@ function renderParties() {
       list.querySelectorAll("details").forEach((item) => { item.open = false; });
     })
   );
-  list.appendChild(listActions);
-  for (const party of modernState.parties) {
-    const row = document.createElement("details");
-    row.className = "modern-row";
-    row.classList.add("party-list-row");
-    const summary = document.createElement("summary");
-    const members = (party.character_ids || []).map((id) => modernState.characters.find((c) => c.id === id)).filter(Boolean);
-    summary.textContent = `${party.name} - ${members.map((member) => member.name).join(", ") || "empty"}`;
-    row.appendChild(summary);
-    const detail = el("div", "modern-stack");
-    detail.appendChild(el("span", "muted", `Campaign ${worldName(worldCampaigns(), party.campaign_id)} · Troupe ${worldName(worldTroupes(), party.troupe_id)}`));
-    for (const member of members) {
-      detail.appendChild(el("span", "muted", `${member.name}: ${member.class_name} L${member.level}, HP ${member.current_life}/${member.max_life}, XP ${member.xp || 0}, carried ${member.gold || 0}gp, TAG bank ${tagBankForCharacter(member.id)}gp, ${member.clues || 0} Clues`));
+  const partyRows = el("div", "modern-list");
+  list.append(partyFilters.panel, listActions, partyRows);
+  function drawPartyRows() {
+    partyRows.replaceChildren();
+    const rows = filteredParties({ search: partyFilters.search.value, troupeId: partyFilters.troupeFilter.value, sort: partyFilters.sort.value });
+    for (const party of rows) {
+      const row = document.createElement("details");
+      row.className = "modern-row";
+      row.classList.add("party-list-row");
+      const summary = document.createElement("summary");
+      const members = (party.character_ids || []).map((id) => modernState.characters.find((c) => c.id === id)).filter(Boolean);
+      const assignedTroupe = worldTroupes().find((item) => item.id === party.troupe_id);
+      const mismatched = members.filter((member) => member.troupe_id && party.troupe_id && member.troupe_id !== party.troupe_id);
+      summary.textContent = `${party.name} - ${members.map((member) => member.name).join(", ") || "empty"}`;
+      summary.title = "Expand this saved party to review campaign, troupe, member, bank, and assignment details.";
+      row.appendChild(summary);
+      const detail = el("div", "modern-stack");
+      detail.appendChild(el("span", "muted", `Campaign ${worldName(worldCampaigns(), party.campaign_id)} · Troupe ${assignedTroupe?.name || "Unassigned"} · Home ${assignedTroupe?.home_settlement_id ? worldName(worldSettlements(), assignedTroupe.home_settlement_id) : "Unassigned"}`));
+      if (mismatched.length) {
+        detail.appendChild(el("span", "muted", `Assignment warning: ${mismatched.map((member) => member.name).join(", ")} currently point to a different troupe. Assign Troupe will resync party characters to the selected troupe.`));
+      }
+      for (const member of members) {
+        detail.appendChild(el("span", "muted", `${member.name}: ${member.class_name} L${member.level}, HP ${member.current_life}/${member.max_life}, XP ${member.xp || 0}, carried ${member.gold || 0}gp, TAG bank ${tagBankForCharacter(member.id)}gp, ${member.clues || 0} Clues · ${characterWorldSummary(member)}`));
+      }
+      const moveTroupe = select(`modern-party-${party.id}-troupe`, "Move this saved party to another troupe. The party can belong to only one troupe; assigned characters are synced to that troupe.", worldTroupeOptions());
+      moveTroupe.value = party.troupe_id || "troupe1";
+      detail.appendChild(field("Assigned troupe", moveTroupe));
+      row.appendChild(detail);
+      const rowActions = actions();
+      rowActions.append(
+        button("Assign Troupe", "Assign this party to the selected troupe and update party characters to the troupe's campaign/guild context.", () => worldAction({ action: "assign_party_troupe", party_id: party.id, troupe_id: moveTroupe.value })),
+        button("Heal Party", "Restore every party member to full Life.", async () => {
+          await api(`/api/parties/${party.id}/heal`, { method: "POST" });
+          setStatus("Party healed.");
+          await refreshCoreAndRender();
+        }),
+        button("Bank Party Gold", "Move each party member's roster gold into TAG bank accounts without a deposit fee. Use only when TAG banking is enabled for your campaign.", async () => {
+          for (const memberId of party.character_ids || []) {
+            await api("/api/campaign/tag/bank-migration", { method: "POST", body: JSON.stringify({ character_id: memberId, include_legacy_bank: false, apply_deposit_fee: false, note: `Modern party banking: ${party.name}` }) });
+          }
+          setStatus("Party roster gold moved to TAG bank accounts.");
+          await refreshCoreAndRender();
+        }),
+        button("Delete", "Delete this saved party. Characters remain in the roster and keep their campaign/troupe fields until reassigned.", async () => {
+          if (!window.confirm(`Delete ${party.name}? Characters stay in the roster.`)) return;
+          await api(`/api/parties/${party.id}`, { method: "DELETE" });
+          setStatus("Party deleted.");
+          await refreshCoreAndRender();
+        })
+      );
+      row.appendChild(rowActions);
+      partyRows.appendChild(row);
     }
-    const moveTroupe = select(`modern-party-${party.id}-troupe`, "Move this saved party to another troupe. The party can belong to only one troupe.", worldTroupeOptions());
-    moveTroupe.value = party.troupe_id || "troupe1";
-    detail.appendChild(field("Assigned troupe", moveTroupe));
-    row.appendChild(detail);
-    const rowActions = actions();
-    rowActions.append(
-      button("Assign Troupe", "Assign this party to the selected troupe.", () => worldAction({ action: "assign_party_troupe", party_id: party.id, troupe_id: moveTroupe.value })),
-      button("Heal Party", "Restore every party member to full Life.", async () => {
-        await api(`/api/parties/${party.id}/heal`, { method: "POST" });
-        setStatus("Party healed.");
-        await refreshCoreAndRender();
-      }),
-      button("Bank Party Gold", "Move each party member's roster gold into TAG bank accounts without a deposit fee. Use only when TAG banking is enabled for your campaign.", async () => {
-        for (const memberId of party.character_ids || []) {
-          await api("/api/campaign/tag/bank-migration", { method: "POST", body: JSON.stringify({ character_id: memberId, include_legacy_bank: false, apply_deposit_fee: false, note: `Modern party banking: ${party.name}` }) });
-        }
-        setStatus("Party roster gold moved to TAG bank accounts.");
-        await refreshCoreAndRender();
-      }),
-      button("Delete", "Delete this saved party.", async () => {
-        if (!window.confirm(`Delete ${party.name}?`)) return;
-        await api(`/api/parties/${party.id}`, { method: "DELETE" });
-        setStatus("Party deleted.");
-        await refreshCoreAndRender();
-      })
-    );
-    row.appendChild(rowActions);
-    list.appendChild(row);
+    if (!partyRows.childElementCount) partyRows.appendChild(el("p", "muted", "No saved parties match the current filters."));
   }
+  drawPartyRows();
   rootEl.append(create, list);
 }
 
@@ -1455,6 +1570,7 @@ async function renderSettlement() {
     const payload = await api("/api/rules/equipment-shop");
     modernState.equipmentRows = payload.items || Object.values(payload).flat().filter((item) => item && item.key && item.name);
   }
+  rootEl.appendChild(renderWorldContextPanel("Settlement World Context"));
   rootEl.appendChild(renderGuide("Settlement Workflow", [
     "Friendly settlements are campaign world records; TAG settlement fields drive services, availability, travel, and logs.",
     "Size modifies availability checks and should be saved before rolling item or service availability.",
@@ -1509,40 +1625,79 @@ async function renderSettlement() {
     })
   );
   panel.appendChild(row);
-  const list = card("Known Settlements", "Create, select, travel to, or delete TAG settlements tracked in this campaign.");
-  for (const worldSettlement of worldSettlements()) {
-    list.appendChild(modernStatusRow(worldSettlement.name, `Campaign ${worldName(worldCampaigns(), worldSettlement.campaign_id)} · size ${worldSettlement.size >= 0 ? "+" : ""}${worldSettlement.size} · ${worldSettlement.notes || "No notes"}`, "Friendly world settlement assignment."));
+  const worldList = card("Campaign Settlement Records", "Friendly settlements are active campaign world records; troublesome towns are placeholders for later supplement support. Use Campaign Management for inline editing.");
+  const worldFilters = worldFilterControls("modern-settlement-world", drawWorldSettlements);
+  const worldRows = el("div", "modern-list");
+  worldList.append(worldFilters.panel, worldRows);
+  function drawWorldSettlements() {
+    worldRows.replaceChildren();
+    const friendly = filteredWorldRows(worldSettlements(), worldFilters);
+    const troublesome = filteredWorldRows(worldSettlements("troublesome"), worldFilters);
+    for (const worldSettlement of friendly) {
+      const homeTroupes = worldTroupes().filter((item) => item.home_settlement_id === worldSettlement.id).map((item) => item.name).join(", ") || "no troupe home";
+      worldRows.appendChild(modernStatusRow(worldSettlement.name, `Friendly · Campaign ${worldName(worldCampaigns(), worldSettlement.campaign_id)} · size ${worldSettlement.size >= 0 ? "+" : ""}${worldSettlement.size} · ${homeTroupes} · ${worldSettlement.notes || "No notes"}`, "Friendly world settlement assignment. Size can affect TAG availability checks when this settlement is active."));
+    }
+    for (const worldSettlement of troublesome) {
+      worldRows.appendChild(modernStatusRow(worldSettlement.name, `Troublesome placeholder · Campaign ${worldName(worldCampaigns(), worldSettlement.campaign_id)} · size ${worldSettlement.size >= 0 ? "+" : ""}${worldSettlement.size} · ${worldSettlement.notes || "No notes"}`, "Troublesome-town placeholder only. No supplement-specific mechanics are implemented yet."));
+    }
+    if (!worldRows.childElementCount) worldRows.appendChild(el("p", "muted", "No campaign settlement records match the current filters."));
   }
-  for (const settlement of campaign.tag_settlements || []) {
-    const item = el("div", "modern-row");
-    const troupeHere = settlement.name === campaign.settlement_name ? campaign.tag_troupe_name || "Current troupe" : "No troupe currently focused here";
-    item.append(el("strong", "", `${settlement.name} (${settlement.size >= 0 ? "+" : ""}${settlement.size})`), el("span", "muted", `${troupeHere} · ${settlement.notes || "No notes"}`));
-    const itemActions = actions();
-    itemActions.append(
-      button("Select", "Make this the current TAG settlement.", async () => {
-        const result = await api("/api/campaign/tag/settlement", { method: "POST", body: JSON.stringify({ action: "select", settlement_id: settlement.id }) });
-        modernState.campaign = result.campaign;
-        setStatus(`${settlement.name} selected.`);
-        await refreshCoreAndRender();
-      }),
-      button("Travel To", "Travel to this settlement and roll TAG travel days/size.", async () => {
-        const result = await api("/api/campaign/tag/travel-settlement", { method: "POST", body: JSON.stringify({ destination_name: settlement.name, use_hex_map: false, pay_road_tithe: false }) });
-        modernState.campaign = result.campaign;
-        setStatus(result.entry?.result_text || "Travel logged.");
-        await refreshCoreAndRender();
-      }),
-      button("Delete", "Delete this settlement from the tracked settlement list. Current settlement state is preserved if this is the last settlement.", async () => {
-        if (!window.confirm(`Delete settlement ${settlement.name}?`)) return;
-        const result = await api("/api/campaign/tag/settlement", { method: "POST", body: JSON.stringify({ action: "delete", settlement_id: settlement.id }) });
-        modernState.campaign = result.campaign;
-        setStatus(result.deleted ? "Settlement deleted." : "Settlement not found.");
-        await refreshCoreAndRender();
-      })
-    );
-    item.appendChild(itemActions);
-    list.appendChild(item);
+  drawWorldSettlements();
+
+  const list = card("Tracked TAG Settlements", "Create, select, travel to, or delete TAG settlements tracked in this campaign. These are the settlement-state records used by TAG service and travel tools.");
+  const trackedPicker = searchablePicker(
+    "modern-tag-settlements",
+    "Tracked settlement",
+    "Tracked TAG settlement to review.",
+    campaign.tag_settlements || [],
+    (row) => `${row.name} (${row.size >= 0 ? "+" : ""}${row.size})`,
+    (row) => `${row.name} ${row.notes || ""} ${row.size}`,
+    null,
+    { sortOptions: [["name", "Name"], ["class", "Size"]], blank: "Choose tracked settlement" }
+  );
+  const trackedRows = el("div", "modern-list");
+  list.append(trackedPicker.wrap, trackedRows);
+  function drawTrackedSettlements() {
+    trackedRows.replaceChildren();
+    const needle = trackedPicker.search.value.trim().toLowerCase();
+    const rows = (campaign.tag_settlements || []).filter((settlement) => !needle || `${settlement.name} ${settlement.notes || ""} ${settlement.size}`.toLowerCase().includes(needle));
+    rows.sort((left, right) => trackedPicker.sort.value === "class" ? (left.size || 0) - (right.size || 0) || left.name.localeCompare(right.name) : left.name.localeCompare(right.name));
+    for (const settlement of rows) {
+      const item = el("div", "modern-row");
+      const troupeHere = settlement.name === campaign.settlement_name ? campaign.tag_troupe_name || "Current troupe" : "No troupe currently focused here";
+      item.append(el("strong", "", `${settlement.name} (${settlement.size >= 0 ? "+" : ""}${settlement.size})`), el("span", "muted", `${troupeHere} · ${settlement.notes || "No notes"}`));
+      item.title = "Tracked TAG settlement state. Select makes it the active downtime settlement; Travel To logs travel and changes the current settlement.";
+      const itemActions = actions();
+      itemActions.append(
+        button("Select", "Make this the current TAG settlement without rolling travel.", async () => {
+          const result = await api("/api/campaign/tag/settlement", { method: "POST", body: JSON.stringify({ action: "select", settlement_id: settlement.id }) });
+          modernState.campaign = result.campaign;
+          setStatus(`${settlement.name} selected.`);
+          await refreshCoreAndRender();
+        }),
+        button("Travel To", "Travel to this settlement and roll TAG travel days/size. Use when the troupe physically moves between settlements.", async () => {
+          const result = await api("/api/campaign/tag/travel-settlement", { method: "POST", body: JSON.stringify({ destination_name: settlement.name, use_hex_map: false, pay_road_tithe: false }) });
+          modernState.campaign = result.campaign;
+          setStatus(result.entry?.result_text || "Travel logged.");
+          await refreshCoreAndRender();
+        }),
+        button("Delete", "Delete this tracked settlement from the TAG settlement list. Current settlement state is preserved if this is the last settlement.", async () => {
+          if (!window.confirm(`Delete settlement ${settlement.name}?`)) return;
+          const result = await api("/api/campaign/tag/settlement", { method: "POST", body: JSON.stringify({ action: "delete", settlement_id: settlement.id }) });
+          modernState.campaign = result.campaign;
+          setStatus(result.deleted ? "Settlement deleted." : "Settlement not found.");
+          await refreshCoreAndRender();
+        })
+      );
+      item.appendChild(itemActions);
+      trackedRows.appendChild(item);
+    }
+    if (!trackedRows.childElementCount) trackedRows.appendChild(el("p", "muted", "No tracked TAG settlements match the current search."));
   }
-  rootEl.append(panel, list);
+  trackedPicker.search.addEventListener("input", drawTrackedSettlements);
+  trackedPicker.sort.addEventListener("change", drawTrackedSettlements);
+  drawTrackedSettlements();
+  rootEl.append(panel, worldList, list);
 }
 
 function renderCampaign() {

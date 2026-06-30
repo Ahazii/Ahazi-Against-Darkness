@@ -20,6 +20,10 @@ APP_ONLY_REFERENCE_IDS = {
     "campaign_hex_map_placeholder",
     "campaign_management_editing",
     "campaign_worldbuilder_schema_table",
+    "modern_dashboard_management_polish",
+    "modern_dashboard_management_table",
+    "party_troupe_management",
+    "settlement_management_workflow",
     "rules_artwork_registry",
     "pdf_artwork_boundary",
 }
