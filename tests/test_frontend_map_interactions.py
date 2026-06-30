@@ -2076,6 +2076,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Advanced TAG controls" in APP_JS
     assert "tag-repair" in APP_JS
     assert "tag-repair-guidance" in APP_JS
+    assert "function tagCaveTargetProgress" in APP_JS
+    assert "function appendTagCaveProgressPanel" in APP_JS
+    assert "Underground caves target reached" in APP_JS
+    assert "Do not click the room-target button again" in APP_JS
     assert "1. Objective" in APP_JS
     assert "4. Guild / banking / guidance" in APP_JS
     assert "Generated TAG closeout" in APP_JS
@@ -2085,6 +2089,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert ".tag-relevant-actions" in STYLES_CSS
     assert ".tag-lifecycle-strip" in STYLES_CSS
     assert ".tag-generated-closeout-panel" in STYLES_CSS
+    assert ".tag-cave-progress-panel" in STYLES_CSS
     assert ".tag-director-panel" in STYLES_CSS
     assert ".tag-closeout-wizard" in STYLES_CSS
     assert ".tag-director-links" in STYLES_CSS

@@ -3164,6 +3164,33 @@ button.secondary,
   opacity: 0.78;
 }
 
+.tag-cave-progress-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 3px;
+  max-width: 780px;
+  padding: 8px 9px;
+  border: 1px solid rgba(201, 162, 39, 0.36);
+  border-radius: 6px;
+  background: rgba(201, 162, 39, 0.1);
+  font-size: 12px;
+  line-height: 1.38;
+  text-align: left;
+}
+
+.tag-cave-progress-panel.reached {
+  border-color: rgba(139, 207, 139, 0.48);
+  background: rgba(30, 64, 34, 0.28);
+}
+
+.tag-cave-progress-panel strong {
+  color: var(--accent);
+}
+
+.tag-cave-progress-panel span {
+  color: var(--muted);
+}
+
 .exploration-command-bar {
   flex: 0 0 auto;
   flex-shrink: 0;

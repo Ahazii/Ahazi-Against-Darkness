@@ -3685,7 +3685,7 @@ TAG_TREASURE_MAP_DESTINATIONS: dict[str, dict[str, Any]] = {
     "map_cave_room_count": {
         "destination": 1,
         "label": "Underground caves room target",
-        "next_action": "Explore the cave complex until the rolled room target is reached. Use Claim Treasure for ordinary room treasure; treat the target room as the final Boss closeout.",
+        "next_action": "Target recorded. Do not click the room-target button again. Explore the cave complex until the rolled room target is reached; use Claim Treasure for ordinary room treasure; treat the target room as the final Boss closeout with +2 Life and double maximum treasure.",
     },
     "map_temple_idol": {
         "destination": 2,
@@ -3785,6 +3785,11 @@ def _update_session_tag_procedure_state(session: SessionState, branch_action: st
         state["latest_total"] = total
     if branch_action in {"map_cave_room_count", "map_structure_rooms"} and total is not None:
         state["room_target"] = total
+    if branch_action == "map_cave_room_count" and total is not None:
+        state["next_action"] = (
+            f"Underground caves target recorded as room {total}. Do not click the room-target button again. "
+            "Keep exploring until that room, then resolve the final Boss with +2 Life and double maximum treasure before XP, Guild share, banking/storage, and signoff."
+        )
     quest.tag_treasure_map_destination = int(procedure["destination"])
     quest.tag_procedure_state = state
     temple_complete = all(
@@ -3840,6 +3845,11 @@ def _update_generated_tag_procedure_state(session: SessionState, branch_action: 
     if total is not None:
         state["room_target"] = total
         state["route_recorded"] = True
+    if branch_action == "map_cave_room_count" and total is not None:
+        state["next_action"] = (
+            f"Underground caves target recorded as room {total}. Do not click the room-target button again. "
+            "Keep exploring until that room, then resolve the final Boss with +2 Life and double maximum treasure before XP, Guild share, banking/storage, and signoff."
+        )
     quest.tag_generated_lead_state = state
 
 
@@ -4004,6 +4014,18 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     _update_generated_tag_procedure_state(session, branch_action, entry)
     if entry.result_text and entry.result_text not in session.log:
         session.log.append(f"TAG procedure: {entry.result_text}")
+    if branch_action == "map_cave_room_count":
+        next_action = (
+            session.active_quest.tag_generated_lead_state.get("next_action")
+            if session.active_quest is not None
+            else ""
+        ) or (
+            session.active_quest.tag_procedure_state.get("next_action")
+            if session.active_quest is not None
+            else ""
+        )
+        if next_action:
+            session.log.append(f"TAG next: {next_action}")
     store.save("sessions", session)
     return {"campaign": campaign, "character": character, "entry": entry, "session": enrich_session(session)}
 

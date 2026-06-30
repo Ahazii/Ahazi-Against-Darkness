@@ -186,6 +186,8 @@ def test_generated_tag_direct_procedure_is_single_run(client, monkeypatch) -> No
     assert first_payload["entry"]["total"] == 5
     procedure_state = first_payload["session"]["active_quest"]["tag_generated_lead_state"]["procedures"]
     assert procedure_state["map_cave_room_count"]["total"] == 5
+    assert "Do not click the room-target button again" in first_payload["session"]["active_quest"]["tag_generated_lead_state"]["next_action"]
+    assert any("TAG next:" in line and "room 5" in line for line in first_payload["session"]["log"])
 
     second = client.post(
         "/api/sessions/tag-procedure-session/tag-branch-action",

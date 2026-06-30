@@ -17602,6 +17602,62 @@ function tagTreasureMapQuestForSession(session) {
   return text.includes("treasure map") ? quest : null;
 }
 
+function tagTreasureMapProcedureRecord(session, branchAction) {
+  const quest = session?.active_quest || {};
+  return (
+    quest.tag_procedure_state?.[branchAction] ||
+    quest.tag_generated_lead_state?.procedures?.[branchAction] ||
+    null
+  );
+}
+
+function tagCaveTargetProgress(session) {
+  const record = tagTreasureMapProcedureRecord(session, "map_cave_room_count");
+  const target = Number(record?.total || 0);
+  if (!target) return null;
+  const currentId = session?.map_state?.current_tile_id || "";
+  const visited = new Set(session?.visited_tile_ids || []);
+  if (currentId) visited.add(currentId);
+  const tiles = Array.isArray(session?.map_state?.tiles) ? session.map_state.tiles : [];
+  const counted = tiles.filter((tile) => {
+    if (!visited.has(tile.id)) return false;
+    if (tile.content_key === "entrance" || tile.content_key === "imported:tag-lead-entry") return false;
+    return tile.tile_type === "room" || String(tile.content_key || "").startsWith("imported:");
+  });
+  const progress = Math.max(0, counted.length);
+  const reached = progress >= target;
+  return {
+    record,
+    target,
+    progress,
+    reached,
+    remaining: Math.max(0, target - progress),
+    label: `Underground caves target: room ${Math.min(progress, target)} of ${target}`,
+  };
+}
+
+function appendTagCaveProgressPanel(parent, session) {
+  const progress = tagCaveTargetProgress(session);
+  if (!progress) return false;
+  const panel = node("div", `tag-cave-progress-panel ${progress.reached ? "reached" : ""}`);
+  setTooltip(
+    panel,
+    "Underground caves target tracker: app guidance from the recorded Map Leads To 1 d6+3 room target. It counts visited/current generated map rooms and does not replace PDF/player signoff."
+  );
+  panel.appendChild(node("strong", "", progress.label));
+  panel.appendChild(
+    node(
+      "span",
+      "",
+      progress.reached
+        ? "Target appears reached. Treat this destination room as the final Boss closeout: final Boss +2 Life and double maximum treasure, then review XP, Guild share, banking/storage, and signoff."
+        : `Keep exploring the cave complex. ${progress.remaining} room(s) remain before the destination-room closeout. Do not click the room-target button again; the target is already recorded.`
+    )
+  );
+  parent.appendChild(panel);
+  return true;
+}
+
 function currentObjectiveForSession(session) {
   const tile = currentTile(session);
   if (!tile) return null;
@@ -17622,6 +17678,17 @@ function currentObjectiveForSession(session) {
       body: "Resolve the trap before searching, claiming treasure, or pushing deeper. The app blocks treasure claiming while the trap is still live.",
       tone: "warn",
       action: { label: "Resolve Trap", kind: "advance", advanceAction: "resolve_trap" },
+    };
+  }
+  const caveProgress = tagCaveTargetProgress(session);
+  if (caveProgress?.reached && !session.active_quest?.tag_generated_lead_signoff) {
+    return {
+      title: "Current objective: Underground caves target reached",
+      body:
+        "This looks like the destination room for the recorded Map Leads To 1 target. Resolve the final Boss with +2 Life and double maximum treasure, then close out reward, XP, Guild share, banking/storage, and signoff. If this room still has ordinary treasure after the fight, use Claim Treasure.",
+      tone: "tag",
+      action: { label: "Open TAG Actions", kind: "tag-actions" },
+      secondaryAction: { label: "Sign off TAG lead", kind: "tag-lead-signoff" },
     };
   }
   const hasTreasure = !tile.treasure_claimed && (Boolean(tile.treasure_gold) || (tile.treasure_items || []).length > 0);
@@ -17817,6 +17884,7 @@ function renderCurrentObjectiveBanner(session) {
   if (actions.childElementCount) currentObjectiveBanner.appendChild(actions);
   const lifecycle = renderGeneratedTagLifecycleStrip(session);
   if (lifecycle) currentObjectiveBanner.appendChild(lifecycle);
+  appendTagCaveProgressPanel(currentObjectiveBanner, session);
 }
 
 function questObjectiveRows(session, quest) {
@@ -17916,6 +17984,7 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
   );
   const lifecycle = renderGeneratedTagLifecycleStrip(session);
   if (lifecycle) panel.appendChild(lifecycle);
+  appendTagCaveProgressPanel(panel, session);
   const wizard = node("div", "tag-closeout-wizard");
   const wizardSteps = [
     {
