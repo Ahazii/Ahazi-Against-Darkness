@@ -9565,11 +9565,13 @@ class RandomDungeonEngine:
             return
         pause = session.combat_bodyguard_pause
         initial_minor_count = tile.initial_enemy_count or len(tile.enemies)
-        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        known_defeated_ids = {enemy.id for enemy in tile.defeated_enemies}
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.id not in known_defeated_ids}
         party_here = combat_party(session, tile.id)
         standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         missile_used = set(session.missile_used_character_ids)
         combat_context = self._combat_context(session, tile)
+        session.log.append("Bodyguard choice resolved; continuing the same paused combat round.")
         result = resolve_combat_round(
             party_here,
             tile.enemies,

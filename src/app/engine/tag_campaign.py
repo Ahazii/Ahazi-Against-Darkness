@@ -4475,7 +4475,11 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         },
         "tag-final-scene": {
             "title": "Final scene closeout",
-            "body": f"Check final foe, reward, and XP text before closing the generated TAG lead. Reward note: {profile.get('rewards') or 'see source scene.'}",
+            "body": (
+                "Check final foe, route, reward, and XP text before closing the generated TAG lead. "
+                "If the scene offers capture alive, tick Subdual damage before Resolve Round; then record Capture alive and any special reward in TAG Actions. "
+                f"Reward note: {profile.get('rewards') or 'see source scene.'}"
+            ),
             "actions": [
                 _tag_prompt_action(
                     "Final route",

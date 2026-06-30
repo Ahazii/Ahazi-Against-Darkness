@@ -817,6 +817,64 @@ def test_quest_giver_return_and_resolution(engine: RandomDungeonEngine) -> None:
     assert any('Brother Cade says: "The Wraith took them all' in line for line in session.log)
 
 
+def test_imported_boss_quest_accepts_subdued_capture(engine: RandomDungeonEngine) -> None:
+    from app.engine.adventure_runtime import update_imported_quest_on_combat_end
+    from app.schemas import EnemyState
+
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "capture-boss-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    throne = next(tile for tile in session.map_state.tiles if tile.title == "Throne of Bones")
+    session.map_state.current_tile_id = throne.id
+    wraith = EnemyState(
+        id="wraith-1",
+        name="Wraith",
+        category="boss",
+        level=5,
+        life=0,
+        max_life=10,
+        attacks=2,
+        subdued=True,
+    )
+    update_imported_quest_on_combat_end(session, [wraith], throne)
+
+    assert session.active_quest is not None
+    assert session.active_quest.completed
+    assert session.active_quest.captured_boss_name == "Wraith"
+    assert any("subdued alive" in line for line in session.log)
+
+
+def test_imported_boss_quest_repairs_resolved_boss_room(engine: RandomDungeonEngine) -> None:
+    from app.engine.adventure_runtime import imported_trigger_key, update_imported_quest_on_enter
+
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "repair-boss-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    throne = next(tile for tile in session.map_state.tiles if tile.title == "Throne of Bones")
+    throne.resolved = True
+    throne.enemies = []
+    session.imported_fired_triggers.append(imported_trigger_key("ossuary-throne", "on_enter", 0))
+    chapel = next(tile for tile in session.map_state.tiles if tile.title == "Ruined Chapel")
+
+    update_imported_quest_on_enter(session, chapel)
+
+    assert session.active_quest is not None
+    assert session.active_quest.completed
+    assert any("objective repaired from the resolved boss room" in line for line in session.log)
+
+
 def test_imported_adventure_can_exit_without_quest_complete(engine: RandomDungeonEngine) -> None:
     manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
     session = create_session_from_manifest(

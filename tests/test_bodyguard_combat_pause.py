@@ -1,7 +1,19 @@
 from __future__ import annotations
 
-from app.engine.combat import CombatContext, resolve_combat_round
-from app.schemas import EnemyState, HirelingState, MapState, PartyMemberState, SessionState, TileState
+from pathlib import Path
+
+from app.engine.combat import CombatContext, CombatRound, resolve_combat_round
+from app.engine.random_dungeon import RandomDungeonEngine
+from app.schemas import (
+    ActiveQuestState,
+    CombatBodyguardPauseState,
+    EnemyState,
+    HirelingState,
+    MapState,
+    PartyMemberState,
+    SessionState,
+    TileState,
+)
 
 
 def _session_with_bodyguard() -> SessionState:
@@ -157,6 +169,59 @@ def test_bodyguard_resume_legacy_empty_phases() -> None:
         resume_after_bodyguard=pause,
     )
     assert not result.combat_paused
+
+
+def test_bodyguard_resume_counts_boss_defeated_before_pause(monkeypatch) -> None:
+    session = _session_with_bodyguard()
+    boss = EnemyState(
+        id="boss",
+        name="Bandit Chieftain",
+        category="boss",
+        level=6,
+        life=0,
+        max_life=6,
+    )
+    guard = EnemyState(
+        id="guard",
+        name="TAG Bandits",
+        category="minion",
+        level=4,
+        life=1,
+        max_life=1,
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "imported:tag-final-scene"
+    tile.enemies = [boss, guard]
+    session.adventure_type = "imported"
+    session.imported_manifest = {"rooms": [{"id": "tag-final-scene", "title": "Bandit Chieftain's Den"}]}
+    session.imported_quest_complete_when = {
+        "type": "boss_defeated",
+        "boss_name": "Bandit Chieftain",
+        "room_id": "tag-final-scene",
+    }
+    session.active_quest = ActiveQuestState(
+        tile_id=tile.id,
+        key="imported_boss",
+        description="Clear the hideout and decide whether to capture the chieftain alive.",
+        boss_slay_pending=True,
+        boss_target_name="Bandit Chieftain",
+    )
+    session.combat_bodyguard_pause = CombatBodyguardPauseState(
+        phase_index=0,
+        phases=["foe_melee"],
+        remaining_attacks=[],
+    )
+
+    def fake_resolve(*args, **kwargs):
+        guard.life = 0
+        return CombatRound(party=session.party, enemies=[boss, guard], log=["Resume fake."], combat_over=True)
+
+    monkeypatch.setattr("app.engine.random_dungeon.resolve_combat_round", fake_resolve)
+    RandomDungeonEngine(rules=None, asset_dir=Path())._resume_bodyguard_paused_combat(session, show_rolls=False)
+
+    assert session.active_quest is not None
+    assert session.active_quest.completed
+    assert any("Bandit Chieftain has been destroyed" in line for line in session.log)
 
 
 def test_final_boss_check_logged_in_summary_mode(monkeypatch) -> None:

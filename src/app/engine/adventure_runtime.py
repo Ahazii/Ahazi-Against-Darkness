@@ -227,12 +227,22 @@ def update_imported_quest_on_combat_end(session: SessionState, defeated: list, t
             if required_room and room_id != required_room:
                 continue
             if enemy.category == "boss" or (target and enemy.name == target):
-                if not enemy.subdued:
-                    quest.boss_slay_pending = False
+                quest.boss_slay_pending = False
+                quest.completed = True
+                if enemy.subdued:
+                    quest.boss_capture_pending = False
+                    quest.captured_boss_name = enemy.name
+                    session.log.append(f"Quest complete: {enemy.name} has been subdued alive.")
+                    session.log.append(
+                        "TAG guidance: if the printed scene has a capture-alive reward, open TAG Actions and use the capture/reward prompt before leaving."
+                    )
+                else:
                     quest.boss_head_acquired = True
-                    quest.completed = True
                     session.log.append(f"Quest complete: {enemy.name} has been destroyed.")
-                    log_imported_quest_return_hint(session)
+                    session.log.append(
+                        "TAG guidance: if this generated TAG scene offered a kill/capture choice, record the final route in TAG Actions before applying rewards."
+                    )
+                log_imported_quest_return_hint(session)
     elif quest.key == "imported_item":
         for enemy in defeated:
             if enemy.category in {"weird", "boss"} and quest.item_name:
@@ -242,9 +252,65 @@ def update_imported_quest_on_combat_end(session: SessionState, defeated: list, t
                 log_imported_quest_return_hint(session)
 
 
+def _room_encounter_contains_target(room: dict[str, Any], target: str | None) -> bool:
+    if not target:
+        return False
+    for trigger in room.get("triggers") or []:
+        if not isinstance(trigger, dict):
+            continue
+        encounter = trigger.get("encounter")
+        foes = encounter.get("foes") if isinstance(encounter, dict) else []
+        for foe in foes or []:
+            if isinstance(foe, dict) and foe.get("name") == target:
+                return True
+    return False
+
+
+def repair_imported_boss_quest_from_resolved_room(session: SessionState) -> None:
+    quest = session.active_quest
+    if quest is None or quest.completed or quest.key != "imported_boss":
+        return
+    complete_when = session.imported_quest_complete_when or {}
+    room_id = complete_when.get("room_id")
+    if not isinstance(room_id, str) or not room_id:
+        return
+    manifest = session.imported_manifest or {}
+    room = next(
+        (item for item in manifest.get("rooms", []) if isinstance(item, dict) and item.get("id") == room_id),
+        None,
+    )
+    if room is None or not _room_encounter_contains_target(room, quest.boss_target_name):
+        return
+    if imported_trigger_key(room_id, "on_enter", 0) not in session.imported_fired_triggers:
+        return
+    tile = next(
+        (
+            item
+            for item in session.map_state.tiles
+            if manifest_room_id(item, manifest) == room_id
+        ),
+        None,
+    )
+    if tile is None or not tile.resolved or any(enemy.life > 0 for enemy in tile.enemies):
+        return
+    quest.boss_slay_pending = False
+    quest.boss_head_acquired = True
+    quest.completed = True
+    session.log.append(
+        f"Quest complete: {quest.boss_target_name or 'the imported boss'} has been defeated; objective repaired from the resolved boss room."
+    )
+    session.log.append(
+        "TAG guidance: record the final route and printed reward in TAG Actions before applying closeout rewards."
+    )
+    log_imported_quest_return_hint(session)
+
+
 def update_imported_quest_on_enter(session: SessionState, tile: TileState) -> None:
     quest = session.active_quest
-    if quest is None or quest.completed or quest.key != "imported_room":
+    if quest is None or quest.completed:
+        return
+    repair_imported_boss_quest_from_resolved_room(session)
+    if quest.completed or quest.key != "imported_room":
         return
     complete_when = session.imported_quest_complete_when or {}
     target_room = complete_when.get("room_id")
@@ -265,6 +331,47 @@ def _normalize_trigger_treasure(treasure: dict[str, Any]) -> tuple[int, list[str
     if isinstance(single_item, str) and single_item.strip():
         items.append(single_item.strip())
     return gold, items
+
+
+def _tag_reference_from_session(session: SessionState) -> dict[str, Any]:
+    manifest = session.imported_manifest or {}
+    source = manifest.get("source") if isinstance(manifest.get("source"), dict) else {}
+    parameters = source.get("parameters") if isinstance(source.get("parameters"), dict) else {}
+    tag_reference = parameters.get("tag_reference")
+    return tag_reference if isinstance(tag_reference, dict) else {}
+
+
+def _log_tag_room_action_guidance(session: SessionState, room_id: str) -> None:
+    tag_reference = _tag_reference_from_session(session)
+    if not tag_reference:
+        return
+    key = f"tag_guidance:{room_id}"
+    if key in session.imported_fired_triggers:
+        return
+    prompts = tag_reference.get("room_prompts") if isinstance(tag_reference.get("room_prompts"), dict) else {}
+    prompt = prompts.get(room_id) if isinstance(prompts.get(room_id), dict) else {}
+    title = str(prompt.get("title") or "TAG scene").strip()
+    body = str(prompt.get("body") or "").strip()
+    actions = prompt.get("actions") if isinstance(prompt.get("actions"), list) else []
+    labels = [
+        str(action.get("label") or "").strip()
+        for action in actions
+        if isinstance(action, dict) and str(action.get("label") or "").strip()
+    ]
+    if body:
+        session.log.append(f"TAG guidance — {title}: {body}")
+    if labels:
+        session.log.append(
+            "TAG Actions available here: "
+            + ", ".join(labels[:5])
+            + ". Use these when the printed scene asks for that branch, Clue spend, route change, capture result, reward, or XP marker."
+        )
+    if room_id == "tag-final-scene":
+        session.log.append(
+            "TAG final-scene reminder: decide kill, capture, parley, escape, rewards, and XP before leaving. "
+            "To capture a foe alive, tick Subdual damage before Resolve Round."
+        )
+    session.imported_fired_triggers.append(key)
 
 
 def fire_imported_triggers(
@@ -333,6 +440,7 @@ def fire_imported_triggers(
             session.imported_fired_triggers.append(key)
 
     if when == "on_enter":
+        _log_tag_room_action_guidance(session, room_id)
         announce_imported_npcs_on_enter(session, tile, manifest)
         update_imported_quest_on_enter(session, tile)
         maybe_imported_quest_giver_resolution(session, tile, manifest)

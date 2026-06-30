@@ -5585,9 +5585,13 @@ function renderCombatDeckSlim(session) {
       });
       actionRow.appendChild(doorSelect);
     }
-    const wantsCapture = session.active_quest?.key === "bring_alive" && !session.active_quest?.completed;
+    const wantsCapture = sessionHasCaptureAliveObjective(session);
     if (wantsCapture) {
       const subdual = node("label", "combat-deck-subdual inline-check");
+      setTooltip(
+        subdual,
+        "Tick this before Resolve Round when a TAG scene or quest asks you to capture a foe alive. The foe is knocked out at 0 Life instead of slain."
+      );
       const input = document.createElement("input");
       input.type = "checkbox";
       input.checked = Boolean(subdualInput?.checked ?? true);
@@ -8291,7 +8295,7 @@ function renderCombatPanel(session) {
   }
 
   if (subdualLabel) {
-    const wantsCapture = session.active_quest?.key === "bring_alive" && !session.active_quest?.completed;
+    const wantsCapture = sessionHasCaptureAliveObjective(session);
     subdualLabel.classList.toggle("hidden", !inCombat);
     if (subdualInput && wantsCapture && inCombat) {
       subdualInput.checked = true;
@@ -8353,6 +8357,13 @@ function renderCombatStatus(session) {
       `Necrogaunt rescue: ${names} swept away — slay Necrogaunts with bow, sling, or spell` +
       (deadline != null ? ` before round ${deadline} (now ${round})` : "") +
       "; attack 1 hits them (TCOTFD p.66).";
+    combatStatusEl.classList.remove("hidden");
+    return;
+  }
+
+  if (sessionHasCaptureAliveObjective(session)) {
+    combatStatusEl.textContent =
+      "Capture-alive objective: tick Subdual damage before Resolve Round to knock the target out at 0 Life, then record the capture/reward in TAG Actions.";
     combatStatusEl.classList.remove("hidden");
     return;
   }
@@ -10379,7 +10390,7 @@ function applySessionActionTooltips(session, sessionUi = {}) {
   setButtonTooltip(combatResolveBtn, immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound));
   setTooltip(
     subdualLabel,
-    "Subdual attacks deal normal damage but knock foes out at 0 Life instead of slaying them. Required to complete bring-alive Boss quests."
+    "Subdual attacks deal normal damage but knock foes out at 0 Life instead of slaying them. Use for bring-alive Boss quests and TAG capture-alive outcomes."
   );
   setButtonTooltip(
     fleeBtn,
@@ -21787,6 +21798,19 @@ function appendTagModuleProfile(parent, moduleProfile) {
     profile.appendChild(subline(`Check: ${item}`));
   }
   parent.appendChild(profile);
+}
+
+function sessionHasCaptureAliveObjective(session) {
+  const quest = session?.active_quest;
+  if (!quest || quest.completed) return false;
+  if (quest.key === "bring_alive") return true;
+  if (quest.key !== "imported_boss") return false;
+  const text = `${quest.description || ""} ${quest.boss_target_name || ""}`.toLowerCase();
+  const tagReference = tagReferenceForGeneratedAdventure(session);
+  const prompts = tagReference?.room_prompts || {};
+  const finalPrompt = prompts["tag-final-scene"] || {};
+  const finalText = `${finalPrompt.body || ""} ${tagReference?.rewards || ""}`.toLowerCase();
+  return text.includes("capture") || text.includes("alive") || finalText.includes("capture");
 }
 
 function appendTagContextualActions(parent, session, tile) {
