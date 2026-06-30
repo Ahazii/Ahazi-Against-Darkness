@@ -2313,7 +2313,13 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Active quest procedure tracker",
             "shown_in": "Ongoing Quests during Lady in White Treasure Map play.",
-            "player_use": "Shows the selected Map Leads To procedure as a guided checklist, explains why the player is pressing the action, records the result on the active quest, marks completed procedure rows, displays any room target, and separates ordinary Claim Treasure from the destination procedure.",
+            "player_use": "Shows the selected Map Leads To procedure as a guided checklist, explains why the player is pressing the action, records the result on the active quest, marks completed procedure rows, displays any room target, separates ordinary Claim Treasure from the destination procedure, and provides manual destination signoff for PDF/player-confirmed branches.",
+            "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
+        },
+        {
+            "surface": "Current objective banner",
+            "shown_in": "Exploration log/command area.",
+            "player_use": "Puts the next useful action beside the log: resolve combat/traps first, claim ordinary room treasure with Claim Treasure, run or review the current Treasure Map procedure, sign off destination choices, or claim the Lady in White reward once the procedure is complete.",
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]
@@ -3702,12 +3708,22 @@ TAG_TREASURE_MAP_DESTINATIONS: dict[str, dict[str, Any]] = {
 }
 
 
+TAG_TREASURE_MAP_AUTO_COMPLETE_ACTIONS = {
+    "map_humanoid_report",
+    "map_lich_treasure",
+}
+
+
+def _is_tag_treasure_map_quest(quest: Any) -> bool:
+    if quest is None:
+        return False
+    quest_text = f"{getattr(quest, 'key', '')} {getattr(quest, 'description', '')}".lower()
+    return "treasure map" in quest_text
+
+
 def _update_session_tag_procedure_state(session: SessionState, branch_action: str, entry: Any) -> None:
     quest = session.active_quest
-    if quest is None:
-        return
-    quest_text = f"{quest.key} {quest.description}".lower()
-    if "treasure map" not in quest_text:
+    if not _is_tag_treasure_map_quest(quest):
         return
     procedure = TAG_TREASURE_MAP_DESTINATIONS.get(branch_action)
     if procedure is None:
@@ -3731,6 +3747,45 @@ def _update_session_tag_procedure_state(session: SessionState, branch_action: st
         state["room_target"] = total
     quest.tag_treasure_map_destination = int(procedure["destination"])
     quest.tag_procedure_state = state
+    temple_complete = all(
+        dict(state.get(action) or {}).get("completed")
+        for action in ("map_temple_idol", "map_temple_scroll")
+    )
+    if branch_action in TAG_TREASURE_MAP_AUTO_COMPLETE_ACTIONS or temple_complete:
+        quest.completed = True
+        quest.tag_procedure_signoff = True
+        if not any("TAG Treasure Map objective complete" in line for line in session.log):
+            session.log.append(
+                "TAG Treasure Map objective complete: destination procedure logged. Claim the Lady in White reward when ready, after any treasure, Guild share, banking, and XP signoff."
+            )
+
+
+@app.post("/api/sessions/{session_id}/tag-treasure-map-signoff")
+async def session_tag_treasure_map_signoff(session_id: str, payload: dict[str, Any]) -> SessionState:
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    quest = session.active_quest
+    if not _is_tag_treasure_map_quest(quest):
+        raise HTTPException(status_code=400, detail="No active TAG Treasure Map quest is available for signoff.")
+    state = dict(quest.tag_procedure_state or {})
+    note = str(payload.get("note") or "").strip()[:240]
+    state["manual_signoff"] = {
+        "completed": True,
+        "label": "Player procedure signoff",
+        "result": note or "Player confirmed the destination procedure, treasure handling, and closeout checks.",
+        "updated_at": now_utc(),
+    }
+    state["latest"] = "manual_signoff"
+    state["next_action"] = "Destination procedure signed off. Claim the Lady in White reward when the party is ready, then finish Guild share, banking/storage, XP, and closeout review."
+    quest.tag_procedure_state = state
+    quest.tag_procedure_signoff = True
+    quest.completed = True
+    session.log.append(
+        f"TAG Treasure Map signoff: {state['manual_signoff']['result']}"
+    )
+    store.save("sessions", session)
+    return enrich_session(session)
 
 
 @app.post("/api/sessions/{session_id}/tag-branch-action")

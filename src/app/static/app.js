@@ -86,6 +86,7 @@ const state = {
   sessionRenderCache: {},
   hirelingsCatalog: null,
   campaign: null,
+  tagActionContextNote: "",
 };
 
 let combatRoundToastTimer = null;
@@ -504,6 +505,7 @@ const inventoryPickerNote = document.getElementById("inventory-picker-note");
 const inventoryPickerSelect = document.getElementById("inventory-picker-select");
 const inventoryPickerConfirmBtn = document.getElementById("inventory-picker-confirm");
 const sessionLog = document.getElementById("session-log");
+const currentObjectiveBanner = document.getElementById("current-objective-banner");
 const explorationCommandBar = document.getElementById("exploration-command-bar");
 const explorationCommandForm = document.getElementById("exploration-command-form");
 const explorationCommandInput = document.getElementById("exploration-command-input");
@@ -4110,6 +4112,17 @@ function questClaimStatus(session, quest) {
   const tile = currentTile(session);
   const onQuestTile = tile?.id === quest.tile_id;
   const partyGold = partyGoldTotal(session);
+  const isTagTreasureMap =
+    `${quest.key || ""} ${quest.description || ""}`.toLowerCase().includes("treasure map");
+  if (isTagTreasureMap) {
+    if (tagTreasureMapQuestSignedOff(quest) || quest.completed) {
+      return { ok: true, reason: "Treasure Map destination signed off." };
+    }
+    return {
+      ok: false,
+      reason: "Resolve or sign off the Treasure Map destination procedure before claiming the Epic reward.",
+    };
+  }
   switch (quest.key) {
     case "peaceful_way":
       if ((quest.peaceful_count || 0) >= (quest.peaceful_required || 3)) {
@@ -10572,12 +10585,22 @@ function updateTagBranchActionHint() {
   if (!tagBranchActionHint || !tagBranchAction) return;
   const value = tagBranchAction.value || "social_choice";
   const selected = tagBranchAction.selectedOptions?.[0];
-  const hint =
+  const baseHint =
     TAG_BRANCH_ACTION_HINTS[value] ||
     selected?.title ||
     "Reference is optional unless the selected action asks for a scene, page, result, or map note. Amount is used only when the selected branch asks for a number.";
+  const hint = state.tagActionContextNote ? `${state.tagActionContextNote} ${baseHint}` : baseHint;
   tagBranchActionHint.textContent = hint;
   setTooltip(tagBranchActionHint, hint);
+  const amountLabel = tagBranchNumber?.closest("label")?.querySelector("span");
+  if (amountLabel) {
+    if (value === "spend_clues") amountLabel.textContent = "Clues";
+    else if (value === "claim_reward" || value.includes("reward")) amountLabel.textContent = "Gold / amount";
+    else if (value.includes("life")) amountLabel.textContent = "Life lost";
+    else if (value.includes("save") || value.includes("stealth") || value.includes("tracking") || value.includes("persuasion")) amountLabel.textContent = "Modifier";
+    else if (value.includes("count") || value.includes("egg") || value.includes("pay")) amountLabel.textContent = "Count";
+    else amountLabel.textContent = "Amount";
+  }
 }
 
 function wireTagHelpButtons() {
@@ -11177,6 +11200,7 @@ function openTagAdventureActions() {
   }
   enableTagActionDialogDrag();
   renderTagCharacterOptions(state.campaign);
+  state.tagActionContextNote = "";
   updateTagBranchActionHint();
   try {
     if (!tagAdventureActionsDialog.open) {
@@ -16773,6 +16797,7 @@ function renderSession() {
   safeSessionRender("combatPanel", () => renderCombatPanel(session));
   safeSessionRender("partyState", () => renderPartyState(session));
   cachedSessionRender("log", logRenderSignature(session), () => renderLog(session));
+  safeSessionRender("currentObjective", () => renderCurrentObjectiveBanner(session));
   safeSessionRender("explorationCommand", () => renderExplorationCommandBar(session));
   if (tagOpenAdventureActions) {
     const isTagGenerated =
@@ -17301,6 +17326,11 @@ function tagTreasureMapProcedureDone(quest, branchAction) {
   return Boolean(tagTreasureMapQuestState(quest)?.[branchAction]?.completed);
 }
 
+function tagTreasureMapQuestSignedOff(quest) {
+  const state = tagTreasureMapQuestState(quest);
+  return Boolean(quest?.tag_procedure_signoff || state?.manual_signoff?.completed);
+}
+
 function tagTreasureMapQuestProcedures(quest) {
   const text = `${quest?.description || ""} ${quest?.key || ""}`.toLowerCase();
   if (!text.includes("tag treasure map") && !text.includes("treasure map")) return [];
@@ -17436,6 +17466,39 @@ function tagTreasureMapQuestProcedure(quest) {
   return tagTreasureMapQuestProcedures(quest)[0] || null;
 }
 
+function tagTreasureMapQuestHasProcedureProgress(quest) {
+  return tagTreasureMapQuestProcedures(quest).some((procedure) =>
+    tagTreasureMapProcedureDone(quest, procedure.branchAction)
+  );
+}
+
+function nextTagTreasureMapProcedure(quest) {
+  const procedures = tagTreasureMapQuestProcedures(quest);
+  return procedures.find((procedure) => !tagTreasureMapProcedureDone(quest, procedure.branchAction)) || procedures[0] || null;
+}
+
+function tagTreasureMapQuestNextText(quest) {
+  const state = tagTreasureMapQuestState(quest);
+  if (tagTreasureMapQuestSignedOff(quest) || quest?.completed) {
+    return state.next_action || "Destination procedure is signed off. Claim the Lady in White reward when the party is ready, then finish Guild share, banking/storage, XP, and closeout review.";
+  }
+  const next = nextTagTreasureMapProcedure(quest);
+  if (next) return next.guidance;
+  return "Resolve and sign off the Treasure Map destination procedure before claiming the quest reward.";
+}
+
+async function signOffTagTreasureMapQuest(note = "") {
+  if (!state.session?.id) return;
+  const result = await api(`/api/sessions/${encodeURIComponent(state.session.id)}/tag-treasure-map-signoff`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+  state.session = result;
+  renderSession();
+  syncSessionListFromSession(state.session);
+  setStatus("TAG Treasure Map destination signed off.");
+}
+
 function appendTagTreasureMapQuestActions(actions, quest) {
   const procedures = tagTreasureMapQuestProcedures(quest);
   if (!procedures.length) return false;
@@ -17502,8 +17565,178 @@ function appendTagTreasureMapQuestActions(actions, quest) {
     row.appendChild(edit);
     panel.appendChild(row);
   }
+  if (!tagTreasureMapQuestSignedOff(quest)) {
+    const signoff = node("button", tagTreasureMapQuestHasProcedureProgress(quest) ? "primary" : "secondary", "Sign off destination");
+    signoff.type = "button";
+    setButtonTooltip(
+      signoff,
+      "Mark this Treasure Map destination procedure as resolved after you have checked the PDF/player choices, treasure handling, XP, Guild share, banking, and storage. This enables the Lady in White reward claim."
+    );
+    signoff.addEventListener("click", () =>
+      signOffTagTreasureMapQuest("Player confirmed the Treasure Map destination procedure and closeout checks.").catch(handleError)
+    );
+    panel.appendChild(signoff);
+  } else {
+    panel.appendChild(node("div", "tag-map-procedure-status", "Destination signed off. Quest reward claim is now available when other quest conditions allow it."));
+  }
   actions.appendChild(panel);
   return true;
+}
+
+function tagTreasureMapQuestForSession(session) {
+  const quest = session?.active_quest;
+  const text = `${quest?.key || ""} ${quest?.description || ""}`.toLowerCase();
+  return text.includes("treasure map") ? quest : null;
+}
+
+function currentObjectiveForSession(session) {
+  const tile = currentTile(session);
+  if (!tile) return null;
+  const livingFoes = livingFoesOnTile(session);
+  if (session.mode === "combat") {
+    return {
+      title: "Current objective: survive the encounter",
+      body: livingFoes.length
+        ? `Resolve the fight with ${livingFoes.map((foe) => foe.name).slice(0, 2).join(", ")}${livingFoes.length > 2 ? " and more" : ""}. Use reactions, spells, subdual, or combat actions before touching quest rewards.`
+        : "Combat mode is active but no living foe is shown; resolve or exit the encounter state.",
+      tone: "danger",
+    };
+  }
+  const hasTrap = Boolean(tile.trap_key && !tile.trap_resolved);
+  if (hasTrap) {
+    return {
+      title: "Current objective: deal with the trap",
+      body: "Resolve the trap before searching, claiming treasure, or pushing deeper. The app blocks treasure claiming while the trap is still live.",
+      tone: "warn",
+      action: { label: "Resolve Trap", kind: "advance", advanceAction: "resolve_trap" },
+    };
+  }
+  const hasTreasure = !tile.treasure_claimed && (Boolean(tile.treasure_gold) || (tile.treasure_items || []).length > 0);
+  if (hasTreasure) {
+    return {
+      title: "Current objective: claim this room's treasure",
+      body: "This is ordinary room treasure in the current map element. Use Claim Treasure for it; do not hunt through TAG Actions for a Map Leads To procedure unless the Treasure Map quest panel asks for one separately.",
+      tone: "gold",
+      action: { label: "Claim Treasure", kind: "advance", advanceAction: "claim_treasure" },
+    };
+  }
+  const mapQuest = tagTreasureMapQuestForSession(session);
+  if (mapQuest && !mapQuest.reward_claimed) {
+    const claimStatus = questClaimStatus(session, mapQuest);
+    if (claimStatus.ok) {
+      return {
+        title: "Current objective: claim the Lady in White reward",
+        body: "The Treasure Map destination is signed off. Claim the Epic Reward when you are ready, then review Guild share, banking/storage, XP, and adventure closeout.",
+        tone: "success",
+        action: { label: "Claim Quest Reward", kind: "advance", advanceAction: "claim_quest_reward" },
+      };
+    }
+    const next = nextTagTreasureMapProcedure(mapQuest);
+    return {
+      title: "Current objective: resolve the Treasure Map destination",
+      body: tagTreasureMapQuestNextText(mapQuest),
+      tone: "tag",
+      action: next
+        ? {
+            label: next.requiresReview ? next.runLabel : next.runLabel,
+            kind: next.requiresReview ? "tag-review" : "tag-run",
+            procedure: next,
+          }
+        : { label: "Sign off destination", kind: "tag-signoff" },
+      secondaryAction: tagTreasureMapQuestHasProcedureProgress(mapQuest)
+        ? { label: "Sign off destination", kind: "tag-signoff" }
+        : null,
+    };
+  }
+  const quest = session.active_quest && !session.active_quest.reward_claimed ? session.active_quest : null;
+  if (quest) {
+    const claimStatus = questClaimStatus(session, quest);
+    return {
+      title: claimStatus.ok ? "Current objective: claim quest reward" : "Current objective: quest progress",
+      body: claimStatus.ok ? claimStatus.reason : questGuidance(session, quest),
+      tone: claimStatus.ok ? "success" : "quest",
+      action: claimStatus.ok
+        ? { label: "Claim Quest Reward", kind: "advance", advanceAction: "claim_quest_reward" }
+        : null,
+    };
+  }
+  if (session.mode === "complete") {
+    return {
+      title: "Current objective: review closeout",
+      body: "The adventure is complete. Review rewards, storage, Guild obligations, XP markers, and guidance tasks from the Dashboard before starting the next lead.",
+      tone: "success",
+    };
+  }
+  return {
+    title: "Current objective: explore",
+    body: "Choose an exit, search a fresh room, rest if the rules allow it, or open TAG Actions only when a TAG lead/procedure explicitly asks for a branch, reward, XP, Guild, or finance decision.",
+    tone: "neutral",
+  };
+}
+
+function appendCurrentObjectiveButton(parent, action) {
+  if (!action) return;
+  const btn = node("button", action.kind === "tag-run" || action.kind === "advance" ? "primary" : "secondary", action.label);
+  btn.type = "button";
+  switch (action.kind) {
+    case "advance":
+      setButtonTooltip(btn, `Run the session action: ${action.label}.`);
+      btn.addEventListener("click", () => advance(action.advanceAction));
+      break;
+    case "tag-run":
+      setButtonTooltip(btn, `${action.procedure?.guidance || "Run the next TAG procedure."} Records the result and updates the active quest tracker.`);
+      btn.addEventListener("click", () =>
+        runTagBranchActionWithDefaults({
+          branchAction: action.procedure.branchAction,
+          reference: action.procedure.reference,
+          amount: 0,
+        }).catch(handleError)
+      );
+      break;
+    case "tag-review":
+      setButtonTooltip(btn, `${action.procedure?.guidance || "Review this TAG procedure."} Opens TAG Actions with the relevant branch and reference prefilled.`);
+      btn.addEventListener("click", () =>
+        openTagActionsWithDefaults({
+          branchAction: action.procedure.branchAction,
+          reference: action.procedure.reference,
+          amount: 0,
+          contextNote: "Treasure Map context: adjust Amount only when the selected branch hint asks for a modifier, Life lost, Clue cost, gp, XP, or count.",
+        })
+      );
+      break;
+    case "tag-signoff":
+      setButtonTooltip(btn, "Sign off the active Treasure Map destination after PDF/player confirmation and closeout checks.");
+      btn.addEventListener("click", () =>
+        signOffTagTreasureMapQuest("Player confirmed the Treasure Map destination procedure and closeout checks.").catch(handleError)
+      );
+      break;
+    default:
+      return;
+  }
+  parent.appendChild(btn);
+}
+
+function renderCurrentObjectiveBanner(session) {
+  if (!currentObjectiveBanner) return;
+  currentObjectiveBanner.replaceChildren();
+  if (!session || session.camped_outside) {
+    currentObjectiveBanner.classList.add("hidden");
+    return;
+  }
+  const objective = currentObjectiveForSession(session);
+  if (!objective) {
+    currentObjectiveBanner.classList.add("hidden");
+    return;
+  }
+  currentObjectiveBanner.className = `current-objective-banner ${objective.tone || "neutral"}`;
+  const copy = node("div", "current-objective-copy");
+  copy.appendChild(node("strong", "", objective.title));
+  copy.appendChild(node("span", "", objective.body));
+  currentObjectiveBanner.appendChild(copy);
+  const actions = node("div", "current-objective-actions");
+  appendCurrentObjectiveButton(actions, objective.action);
+  appendCurrentObjectiveButton(actions, objective.secondaryAction);
+  if (actions.childElementCount) currentObjectiveBanner.appendChild(actions);
 }
 
 function questObjectiveRows(session, quest) {
@@ -22069,6 +22302,7 @@ function openTagActionsWithDefaults(defaults = {}) {
   if (defaults.routeAction) setSelectValueIfOptionExists(tagRouteAction, defaults.routeAction);
   if (defaults.sceneAction) setSelectValueIfOptionExists(tagSceneAction, defaults.sceneAction);
   if (defaults.xpAction) setSelectValueIfOptionExists(tagXpAction, defaults.xpAction);
+  state.tagActionContextNote = defaults.contextNote || "";
   updateTagBranchActionHint();
   tagAdventureActionsDialog?.showModal();
 }

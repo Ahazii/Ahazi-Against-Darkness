@@ -5449,7 +5449,7 @@ def _tag_manifest(
                 "id": "tag-return-road",
                 "tile_key": "06",
                 "title": "Return Road",
-                "description": "The road back to the settlement waits here.",
+                "description": "The road back to the settlement is quiet in the wrong way: every coin, clue, and promise from this lead now has to survive the journey home and the accounting that follows.",
                 "exits": [
                     {
                         "id": "tag-return-road-east",

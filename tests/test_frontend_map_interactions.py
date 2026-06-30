@@ -626,16 +626,25 @@ def test_quest_panel_shows_disabled_turn_in_reason() -> None:
     assert "function tagTreasureMapQuestProcedures" in APP_JS
     assert "function tagTreasureMapQuestProcedure" in APP_JS
     assert "tag_procedure_state" in APP_JS
+    assert "tag_procedure_signoff" in APP_JS
     assert "Treasure Map procedure" in APP_JS
     assert "Room target recorded" in APP_JS
+    assert "Sign off destination" in APP_JS
+    assert "function renderCurrentObjectiveBanner" in APP_JS
+    assert "Current objective: resolve the Treasure Map destination" in APP_JS
+    assert "state.tagActionContextNote" in APP_JS
+    assert "amountLabel.textContent" in APP_JS
+    assert "current-objective-banner" in INDEX_HTML
     assert "Run Underground caves room target" in APP_JS
     assert "map_cave_room_count" in APP_JS
     assert "map_temple_idol" in APP_JS
     assert "map_humanoid_stealth" in APP_JS
     assert "map_lich_death_magic" in APP_JS
     assert "/tag-branch-action" in APP_JS
+    assert "/tag-treasure-map-signoff" in APP_JS
     assert ".ongoing-quest-actions .primary" in STYLES_CSS
     assert ".tag-map-procedure-panel" in STYLES_CSS
+    assert ".current-objective-banner" in STYLES_CSS
 
 
 def test_epic_reward_statuses_have_ui_actions_and_hints() -> None:
