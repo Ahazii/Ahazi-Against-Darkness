@@ -13,6 +13,7 @@ from .adventure_import import ADVENTURE_MANIFEST_FILENAME, installed_adventure_d
 from ..schemas import (
     CampaignState,
     Character,
+    Party,
     SessionState,
     TagAvailabilityCheckState,
     TagAdventureRouteState,
@@ -24,6 +25,10 @@ from ..schemas import (
     TagStoredItemState,
     TagTravelLogEntry,
     TagXpMarkerState,
+    WorldCampaignRecord,
+    WorldGuildRecord,
+    WorldSettlementRecord,
+    WorldTroupeRecord,
 )
 from .abyss_tables import is_abyss_profile
 from .dice import roll_d6
@@ -33,6 +38,14 @@ if TYPE_CHECKING:
     from ..db import Store
 
 DEFAULT_CAMPAIGN_ID = "default"
+DEFAULT_WORLD_CAMPAIGN_ID = "norindaal"
+DEFAULT_WORLD_GUILD_ID = "adventurers-guild"
+DEFAULT_WORLD_TROUPE_ID = "troupe1"
+DEFAULT_WORLD_SETTLEMENT_ID = "brightwater-gate"
+DEFAULT_WORLD_CAMPAIGN_NAME = "Norindaal"
+DEFAULT_WORLD_GUILD_NAME = "Adventurers Guild"
+DEFAULT_WORLD_TROUPE_NAME = "Troupe1"
+DEFAULT_WORLD_SETTLEMENT_NAME = "Brightwater Gate"
 TAG_LOG_LIMIT = 20
 TAG_GUILD_STARTING_COFFERS_GP = 5000
 TAG_SETTLEMENT_SERVICES = [
@@ -1755,9 +1768,53 @@ def default_campaign() -> CampaignState:
     timestamp = now_utc()
     return CampaignState(
         id=DEFAULT_CAMPAIGN_ID,
+        active_world_campaign_id=DEFAULT_WORLD_CAMPAIGN_ID,
+        world_campaigns=[
+            WorldCampaignRecord(
+                id=DEFAULT_WORLD_CAMPAIGN_ID,
+                name=DEFAULT_WORLD_CAMPAIGN_NAME,
+                description="Default campaign world for existing characters, parties, troupe, guild, and friendly settlements.",
+                guild_id=DEFAULT_WORLD_GUILD_ID,
+                is_default=True,
+                created_at=timestamp,
+            )
+        ],
+        world_guilds=[
+            WorldGuildRecord(
+                id=DEFAULT_WORLD_GUILD_ID,
+                name=DEFAULT_WORLD_GUILD_NAME,
+                campaign_id=DEFAULT_WORLD_CAMPAIGN_ID,
+                description="Default campaign Adventurers Guild.",
+                created_at=timestamp,
+            )
+        ],
+        world_troupes=[
+            WorldTroupeRecord(
+                id=DEFAULT_WORLD_TROUPE_ID,
+                name=DEFAULT_WORLD_TROUPE_NAME,
+                campaign_id=DEFAULT_WORLD_CAMPAIGN_ID,
+                guild_id=DEFAULT_WORLD_GUILD_ID,
+                home_settlement_id=DEFAULT_WORLD_SETTLEMENT_ID,
+                description="Default troupe for existing roster characters and saved parties.",
+                created_at=timestamp,
+            )
+        ],
+        world_settlements=[
+            WorldSettlementRecord(
+                id=DEFAULT_WORLD_SETTLEMENT_ID,
+                name=DEFAULT_WORLD_SETTLEMENT_NAME,
+                campaign_id=DEFAULT_WORLD_CAMPAIGN_ID,
+                kind="friendly",
+                size=0,
+                notes="Default friendly home settlement.",
+                created_at=timestamp,
+            )
+        ],
         tag_banking_enabled=False,
+        tag_troupe_name=DEFAULT_WORLD_TROUPE_NAME,
+        settlement_name=DEFAULT_WORLD_SETTLEMENT_NAME,
         tag_settlements=[
-            TagSettlementState(name="Home Settlement", size=0, notes="", created_at=timestamp),
+            TagSettlementState(name=DEFAULT_WORLD_SETTLEMENT_NAME, size=0, notes="", created_at=timestamp),
         ],
         days_passed=0,
         adventures_completed=0,
@@ -1780,6 +1837,186 @@ def trim_tag_logs(campaign: CampaignState) -> CampaignState:
     campaign.tag_downtime_log = campaign.tag_downtime_log[-TAG_LOG_LIMIT:]
     campaign.tag_travel_log = campaign.tag_travel_log[-TAG_LOG_LIMIT:]
     return campaign
+
+
+def ensure_worldbuilder_defaults(campaign: CampaignState, store: Store | None = None) -> tuple[CampaignState, bool]:
+    timestamp = now_utc()
+    changed = False
+
+    if not any(item.id == DEFAULT_WORLD_CAMPAIGN_ID for item in campaign.world_campaigns):
+        campaign.world_campaigns.append(
+            WorldCampaignRecord(
+                id=DEFAULT_WORLD_CAMPAIGN_ID,
+                name=DEFAULT_WORLD_CAMPAIGN_NAME,
+                description="Default campaign world for existing characters, parties, troupe, guild, and friendly settlements.",
+                guild_id=DEFAULT_WORLD_GUILD_ID,
+                is_default=True,
+                created_at=timestamp,
+            )
+        )
+        changed = True
+    if not campaign.active_world_campaign_id:
+        campaign.active_world_campaign_id = DEFAULT_WORLD_CAMPAIGN_ID
+        changed = True
+    for record in campaign.world_campaigns:
+        if record.id == DEFAULT_WORLD_CAMPAIGN_ID:
+            if record.name != DEFAULT_WORLD_CAMPAIGN_NAME:
+                record.name = DEFAULT_WORLD_CAMPAIGN_NAME
+                changed = True
+            if not record.guild_id:
+                record.guild_id = DEFAULT_WORLD_GUILD_ID
+                changed = True
+            if not record.is_default:
+                record.is_default = True
+                changed = True
+
+    if not any(item.id == DEFAULT_WORLD_GUILD_ID for item in campaign.world_guilds):
+        campaign.world_guilds.append(
+            WorldGuildRecord(
+                id=DEFAULT_WORLD_GUILD_ID,
+                name=DEFAULT_WORLD_GUILD_NAME,
+                campaign_id=DEFAULT_WORLD_CAMPAIGN_ID,
+                description="Default campaign Adventurers Guild.",
+                created_at=timestamp,
+            )
+        )
+        changed = True
+    for record in campaign.world_guilds:
+        if record.id == DEFAULT_WORLD_GUILD_ID:
+            if record.name != DEFAULT_WORLD_GUILD_NAME:
+                record.name = DEFAULT_WORLD_GUILD_NAME
+                changed = True
+            if not record.campaign_id:
+                record.campaign_id = DEFAULT_WORLD_CAMPAIGN_ID
+                changed = True
+
+    if not any(item.id == DEFAULT_WORLD_SETTLEMENT_ID for item in campaign.world_settlements):
+        campaign.world_settlements.append(
+            WorldSettlementRecord(
+                id=DEFAULT_WORLD_SETTLEMENT_ID,
+                name=DEFAULT_WORLD_SETTLEMENT_NAME,
+                campaign_id=DEFAULT_WORLD_CAMPAIGN_ID,
+                kind="friendly",
+                size=campaign.settlement_size,
+                notes=campaign.settlement_notes or "Default friendly home settlement.",
+                created_at=timestamp,
+            )
+        )
+        changed = True
+    for record in campaign.world_settlements:
+        if record.id == DEFAULT_WORLD_SETTLEMENT_ID:
+            if record.name != DEFAULT_WORLD_SETTLEMENT_NAME:
+                record.name = DEFAULT_WORLD_SETTLEMENT_NAME
+                changed = True
+            if not record.campaign_id:
+                record.campaign_id = DEFAULT_WORLD_CAMPAIGN_ID
+                changed = True
+
+    if not any(item.id == DEFAULT_WORLD_TROUPE_ID for item in campaign.world_troupes):
+        campaign.world_troupes.append(
+            WorldTroupeRecord(
+                id=DEFAULT_WORLD_TROUPE_ID,
+                name=DEFAULT_WORLD_TROUPE_NAME,
+                campaign_id=DEFAULT_WORLD_CAMPAIGN_ID,
+                guild_id=DEFAULT_WORLD_GUILD_ID,
+                home_settlement_id=DEFAULT_WORLD_SETTLEMENT_ID,
+                description="Default troupe for existing roster characters and saved parties.",
+                created_at=timestamp,
+            )
+        )
+        changed = True
+    for record in campaign.world_troupes:
+        if record.id == DEFAULT_WORLD_TROUPE_ID:
+            if record.name != DEFAULT_WORLD_TROUPE_NAME:
+                record.name = DEFAULT_WORLD_TROUPE_NAME
+                changed = True
+            defaults = {
+                "campaign_id": DEFAULT_WORLD_CAMPAIGN_ID,
+                "guild_id": DEFAULT_WORLD_GUILD_ID,
+                "home_settlement_id": DEFAULT_WORLD_SETTLEMENT_ID,
+            }
+            for field, value in defaults.items():
+                if not getattr(record, field):
+                    setattr(record, field, value)
+                    changed = True
+
+    if campaign.settlement_name in {"", "Home Settlement"}:
+        campaign.settlement_name = DEFAULT_WORLD_SETTLEMENT_NAME
+        changed = True
+    if campaign.tag_troupe_name in {"", "Adventuring Troupe"}:
+        campaign.tag_troupe_name = DEFAULT_WORLD_TROUPE_NAME
+        changed = True
+    if not any(item.name.lower() == DEFAULT_WORLD_SETTLEMENT_NAME.lower() for item in campaign.tag_settlements):
+        campaign.tag_settlements.append(
+            TagSettlementState(name=DEFAULT_WORLD_SETTLEMENT_NAME, size=campaign.settlement_size, notes=campaign.settlement_notes, created_at=timestamp)
+        )
+        changed = True
+    for tag_settlement in campaign.tag_settlements:
+        if tag_settlement.name == "Home Settlement":
+            tag_settlement.name = DEFAULT_WORLD_SETTLEMENT_NAME
+            changed = True
+        if not any(row.name.lower() == tag_settlement.name.lower() for row in campaign.world_settlements):
+            campaign.world_settlements.append(
+                WorldSettlementRecord(
+                    name=tag_settlement.name,
+                    campaign_id=DEFAULT_WORLD_CAMPAIGN_ID,
+                    kind="friendly",
+                    size=tag_settlement.size,
+                    notes=tag_settlement.notes,
+                    created_at=tag_settlement.created_at,
+                )
+            )
+            changed = True
+
+    if store is not None:
+        characters = store.list("characters", Character.model_validate)
+        parties = store.list("parties", Party.model_validate)
+        character_party: dict[str, str] = {}
+        for party in parties:
+            party_changed = False
+            if not party.campaign_id:
+                party.campaign_id = DEFAULT_WORLD_CAMPAIGN_ID
+                party_changed = True
+            if not party.troupe_id:
+                party.troupe_id = DEFAULT_WORLD_TROUPE_ID
+                party_changed = True
+            if party_changed:
+                party.updated_at = timestamp
+                store.save("parties", party)
+                changed = True
+            for character_id in party.character_ids:
+                character_party.setdefault(character_id, party.id)
+        for character in characters:
+            character_changed = False
+            defaults = {
+                "campaign_id": DEFAULT_WORLD_CAMPAIGN_ID,
+                "guild_id": DEFAULT_WORLD_GUILD_ID,
+                "troupe_id": DEFAULT_WORLD_TROUPE_ID,
+            }
+            for field, value in defaults.items():
+                if not getattr(character, field):
+                    setattr(character, field, value)
+                    character_changed = True
+            party_id = character_party.get(character.id)
+            if party_id and character.party_id != party_id:
+                character.party_id = party_id
+                character_changed = True
+            if character_changed:
+                character.updated_at = timestamp
+                store.save("characters", character)
+                changed = True
+        default_troupe = next((item for item in campaign.world_troupes if item.id == DEFAULT_WORLD_TROUPE_ID), None)
+        if default_troupe is not None:
+            member_ids = [character.id for character in characters]
+            party_ids = [party.id for party in parties]
+            if not default_troupe.member_character_ids:
+                default_troupe.member_character_ids = member_ids
+                changed = True
+            if not default_troupe.party_ids:
+                default_troupe.party_ids = party_ids
+                changed = True
+
+    return campaign, changed
 
 
 def tag_guild_benefits_active(campaign: CampaignState) -> bool:
@@ -4918,6 +5155,9 @@ def load_campaign(store: Store) -> CampaignState:
     campaign = store.get("campaigns", DEFAULT_CAMPAIGN_ID, CampaignState.model_validate)
     if campaign is None:
         campaign = default_campaign()
+        store.save("campaigns", campaign)
+    campaign, changed = ensure_worldbuilder_defaults(campaign, store)
+    if changed:
         store.save("campaigns", campaign)
     return campaign
 

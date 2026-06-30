@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
 ## Summary
 
@@ -10,6 +10,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 
 ### Validation status (June 2026)
 
+- **Modern dashboard default / campaign world-builder pass (2026-06-30):** `/` now opens the modern dashboard by default and `/legacy` preserves the old homepage. Modern sections return to the dashboard after completion flows. Campaign Management now owns app-level world-builder records for campaigns, guilds, troupes, friendly settlements, future troublesome towns, and hex-map planning notes. Existing characters, parties, guild, troupe, and settlements are normalized to the default campaign `Norindaal`, guild `Adventurers Guild`, troupe `Troupe1`, and friendly settlement `Brightwater Gate`. This is an app-level campaign feature, not a TAG PDF rule boundary.
 - Full automated test suite: courtship + class pass regression green (`tests/test_courtship_classes.py`, 76 courtship tests); broader suite may include pre-existing failures unrelated to this pass — re-run before release tagging.
 - Forsaken Depths river editing now uses Water as a persistent surface toggle:
   Walk/Block, Half, Slope, Long Slope, Curve, and Half Curve can paint the same

@@ -8413,7 +8413,7 @@ const SETUP_TOOLTIPS = {
     "Try loading the adventure referenced by these heroes. Use Clear stale lock if the save is gone.",
   exportPlayerData: "Download all heroes and parties as a JSON backup file.",
   importPlayerData: "Import heroes and parties from a previously exported JSON file.",
-  showSetup: "Return to the home screen. Your current session stays in memory until you save or start fresh.",
+  showSetup: "Return to the dashboard. Your current session stays in memory and can be resumed from Go Adventure.",
   loadSave: "Load this saved game and resume the adventure.",
   deleteSave: "Permanently delete this saved game from the server.",
   campaignMode:
@@ -16619,7 +16619,7 @@ function appendLastAdventurePanel(parent, party) {
 function showAdventureCloseoutModal(report) {
   if (!adventureCloseoutDialog || !adventureCloseoutBody) return;
   adventureCloseoutNote.textContent =
-    "Roster sheets now show gold, loot, levels, and healed Life. Review closeout rewards before starting the next adventure.";
+    "Roster sheets now show gold, loot, levels, and healed Life. Review closeout rewards, then return to the dashboard for TAG guidance and the next adventure.";
   const tabApi = renderAdventureReportTabs(adventureCloseoutBody, report, { activeTab: "summary" });
   if (adventureCloseoutCopyBtn) {
     adventureCloseoutCopyBtn.onclick = async () => {
@@ -16633,6 +16633,14 @@ function showAdventureCloseoutModal(report) {
   }
   if (typeof adventureCloseoutDialog.showModal === "function") {
     adventureCloseoutDialog.showModal();
+  }
+  if (adventureCloseoutDoneBtn) {
+    adventureCloseoutDoneBtn.textContent = "Return dashboard";
+    adventureCloseoutDoneBtn.onclick = (event) => {
+      event.preventDefault();
+      adventureCloseoutDialog.close();
+      window.location.href = "/modern";
+    };
   }
 }
 
@@ -28771,7 +28779,7 @@ resumeSessionBtn.addEventListener("click", async () => {
 });
 
 showSetupBtn.addEventListener("click", () => {
-  showSetupView();
+  window.location.href = "/modern";
 });
 
 logModeSummaryBtn?.addEventListener("click", () => setLogMode("summary"));

@@ -206,6 +206,10 @@ class Character(BaseModel):
     default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
     active_session_id: str | None = None
+    campaign_id: str | None = None
+    guild_id: str | None = None
+    troupe_id: str | None = None
+    party_id: str | None = None
     companion_kind: str | None = None
     minor_encounters_cleared: int = 0
     expert_trained: bool = False
@@ -247,6 +251,7 @@ class CharacterTransferResult(BaseModel):
 class PartyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     character_ids: list[str] = Field(min_length=4, max_length=4)
+    troupe_id: str | None = None
 
 
 class SessionPartyUpdate(BaseModel):
@@ -257,6 +262,8 @@ class Party(BaseModel):
     id: str
     name: str
     character_ids: list[str]
+    campaign_id: str | None = None
+    troupe_id: str | None = None
     created_at: str
     updated_at: str
 
@@ -717,8 +724,54 @@ class TagCloseoutTaskState(BaseModel):
     resolved_at: str | None = None
 
 
+class WorldCampaignRecord(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    name: str
+    description: str = ""
+    guild_id: str | None = None
+    is_default: bool = False
+    created_at: str
+
+
+class WorldGuildRecord(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    name: str
+    campaign_id: str | None = None
+    description: str = ""
+    created_at: str
+
+
+class WorldTroupeRecord(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    name: str
+    campaign_id: str | None = None
+    guild_id: str | None = None
+    home_settlement_id: str | None = None
+    description: str = ""
+    member_character_ids: list[str] = Field(default_factory=list)
+    party_ids: list[str] = Field(default_factory=list)
+    created_at: str
+
+
+class WorldSettlementRecord(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    name: str
+    campaign_id: str | None = None
+    kind: Literal["friendly", "troublesome"] = "friendly"
+    size: int = Field(default=0, ge=-3, le=3)
+    notes: str = ""
+    created_at: str
+
+
 class CampaignState(BaseModel):
     id: str = "default"
+    active_world_campaign_id: str = "norindaal"
+    world_campaigns: list[WorldCampaignRecord] = Field(default_factory=list)
+    world_guilds: list[WorldGuildRecord] = Field(default_factory=list)
+    world_troupes: list[WorldTroupeRecord] = Field(default_factory=list)
+    world_settlements: list[WorldSettlementRecord] = Field(default_factory=list)
+    world_troublesome_towns: list[WorldSettlementRecord] = Field(default_factory=list)
+    world_map_notes: str = ""
     tag_banking_enabled: bool = False
     tag_troupe_name: str = "Adventuring Troupe"
     tag_troupe_member_character_ids: list[str] = Field(default_factory=list)

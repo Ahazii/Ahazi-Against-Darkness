@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, Response
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
@@ -98,6 +98,10 @@ from .schemas import (
     SessionState,
     TileState,
     TileDefinition,
+    WorldCampaignRecord,
+    WorldGuildRecord,
+    WorldSettlementRecord,
+    WorldTroupeRecord,
 )
 
 
@@ -357,7 +361,20 @@ app.mount("/Rules", StaticFiles(directory=settings.root_dir / "Rules", check_dir
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index() -> HTMLResponse:
+async def index(request: Request) -> Response:
+    if not request.query_params.get("session") and request.query_params.get("view") != "game":
+        return RedirectResponse(url="/modern", status_code=307)
+    return HTMLResponse(
+        (settings.static_dir / "index.html").read_text(encoding="utf-8"),
+        headers={
+            "Cache-Control": "no-store, max-age=0",
+            "Pragma": "no-cache",
+        },
+    )
+
+
+@app.get("/legacy", response_class=HTMLResponse)
+async def legacy_index() -> HTMLResponse:
     return HTMLResponse(
         (settings.static_dir / "index.html").read_text(encoding="utf-8"),
         headers={
@@ -448,6 +465,8 @@ async def update_campaign(payload: dict[str, Any]) -> CampaignState:
     campaign = load_campaign(store)
     if "tag_banking_enabled" in payload:
         campaign.tag_banking_enabled = _parse_bool(payload.get("tag_banking_enabled"))
+    if "world_map_notes" in payload:
+        campaign.world_map_notes = str(payload.get("world_map_notes") or "").strip()[:4000]
     update_settlement(
         campaign,
         name=payload.get("settlement_name") if "settlement_name" in payload else None,
@@ -455,6 +474,224 @@ async def update_campaign(payload: dict[str, Any]) -> CampaignState:
         notes=payload.get("settlement_notes") if "settlement_notes" in payload else None,
     )
     return save_campaign(store, campaign)
+
+
+def _world_name(payload: dict[str, Any], default: str = "") -> str:
+    return str(payload.get("name") or default).strip()[:100]
+
+
+def _world_description(payload: dict[str, Any]) -> str:
+    return str(payload.get("description") or payload.get("notes") or "").strip()[:2000]
+
+
+def _party_name(party_id: str) -> str:
+    party = store.get("parties", party_id, Party.model_validate)
+    return party.name if party else party_id
+
+
+def _remove_character_from_party(character: Character, *, reason: str) -> str:
+    if not character.party_id:
+        return ""
+    party = store.get("parties", character.party_id, Party.model_validate)
+    if party is None or character.id not in party.character_ids:
+        character.party_id = None
+        return ""
+    old_name = party.name
+    party.character_ids = [item for item in party.character_ids if item != character.id]
+    party.updated_at = now_utc()
+    store.save("parties", party)
+    character.party_id = None
+    return f"{character.name} was removed from {old_name}: {reason}"
+
+
+@app.post("/api/campaign/world")
+async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import (
+        DEFAULT_WORLD_CAMPAIGN_ID,
+        DEFAULT_WORLD_GUILD_ID,
+        DEFAULT_WORLD_SETTLEMENT_ID,
+        DEFAULT_WORLD_TROUPE_ID,
+        load_campaign,
+        save_campaign,
+    )
+
+    campaign = load_campaign(store)
+    action = str(payload.get("action") or "").strip()
+    entity = str(payload.get("entity") or "").strip()
+    timestamp = now_utc()
+    messages: list[str] = []
+
+    if action == "create" and entity == "campaign":
+        record = WorldCampaignRecord(name=_world_name(payload, "New Campaign"), description=_world_description(payload), created_at=timestamp)
+        campaign.world_campaigns.append(record)
+        campaign.active_world_campaign_id = record.id
+    elif action == "delete" and entity == "campaign":
+        record_id = str(payload.get("id") or "")
+        if record_id == DEFAULT_WORLD_CAMPAIGN_ID:
+            raise HTTPException(status_code=400, detail="The default Norindaal campaign cannot be deleted.")
+        campaign.world_campaigns = [item for item in campaign.world_campaigns if item.id != record_id]
+        for collection in [campaign.world_guilds, campaign.world_troupes, campaign.world_settlements, campaign.world_troublesome_towns]:
+            for item in collection:
+                if item.campaign_id == record_id:
+                    item.campaign_id = None
+        if campaign.active_world_campaign_id == record_id:
+            campaign.active_world_campaign_id = DEFAULT_WORLD_CAMPAIGN_ID
+    elif action == "select" and entity == "campaign":
+        record_id = str(payload.get("id") or "")
+        if not any(item.id == record_id for item in campaign.world_campaigns):
+            raise HTTPException(status_code=404, detail="Campaign not found.")
+        campaign.active_world_campaign_id = record_id
+    elif action == "create" and entity == "guild":
+        campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        if any(item.campaign_id == campaign_id for item in campaign.world_guilds):
+            raise HTTPException(status_code=400, detail="A campaign may have only one assigned guild.")
+        record = WorldGuildRecord(name=_world_name(payload, "New Guild"), campaign_id=campaign_id, description=_world_description(payload), created_at=timestamp)
+        campaign.world_guilds.append(record)
+        for world in campaign.world_campaigns:
+            if world.id == campaign_id:
+                world.guild_id = record.id
+    elif action == "delete" and entity == "guild":
+        record_id = str(payload.get("id") or "")
+        if record_id == DEFAULT_WORLD_GUILD_ID:
+            raise HTTPException(status_code=400, detail="The default Adventurers Guild cannot be deleted.")
+        campaign.world_guilds = [item for item in campaign.world_guilds if item.id != record_id]
+        for world in campaign.world_campaigns:
+            if world.guild_id == record_id:
+                world.guild_id = None
+        for troupe in campaign.world_troupes:
+            if troupe.guild_id == record_id:
+                troupe.guild_id = None
+    elif action == "assign" and entity == "guild":
+        guild_id = str(payload.get("guild_id") or payload.get("id") or "")
+        campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        if any(item.id != guild_id and item.campaign_id == campaign_id for item in campaign.world_guilds):
+            raise HTTPException(status_code=400, detail="A campaign may have only one assigned guild.")
+        for guild in campaign.world_guilds:
+            if guild.id == guild_id:
+                guild.campaign_id = campaign_id
+        for world in campaign.world_campaigns:
+            if world.id == campaign_id:
+                world.guild_id = guild_id
+            elif world.guild_id == guild_id:
+                world.guild_id = None
+    elif action == "create" and entity == "troupe":
+        record = WorldTroupeRecord(
+            name=_world_name(payload, "New Troupe"),
+            campaign_id=str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID),
+            guild_id=str(payload.get("guild_id") or DEFAULT_WORLD_GUILD_ID),
+            home_settlement_id=str(payload.get("home_settlement_id") or DEFAULT_WORLD_SETTLEMENT_ID),
+            description=_world_description(payload),
+            created_at=timestamp,
+        )
+        campaign.world_troupes.append(record)
+    elif action == "delete" and entity == "troupe":
+        record_id = str(payload.get("id") or "")
+        if record_id == DEFAULT_WORLD_TROUPE_ID:
+            raise HTTPException(status_code=400, detail="The default Troupe1 cannot be deleted.")
+        campaign.world_troupes = [item for item in campaign.world_troupes if item.id != record_id]
+        for party in store.list("parties", Party.model_validate):
+            if party.troupe_id == record_id:
+                party.troupe_id = None
+                party.updated_at = timestamp
+                store.save("parties", party)
+        for character in store.list("characters", Character.model_validate):
+            if character.troupe_id == record_id:
+                character.troupe_id = None
+                character.updated_at = timestamp
+                store.save("characters", character)
+    elif action == "assign" and entity == "troupe":
+        troupe_id = str(payload.get("troupe_id") or payload.get("id") or "")
+        campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        for troupe in campaign.world_troupes:
+            if troupe.id == troupe_id:
+                troupe.campaign_id = campaign_id
+    elif action == "create" and entity in {"settlement", "troublesome_town"}:
+        record = WorldSettlementRecord(
+            name=_world_name(payload, "New Settlement"),
+            campaign_id=str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID),
+            kind="troublesome" if entity == "troublesome_town" else "friendly",
+            size=int(payload.get("size") or 0),
+            notes=_world_description(payload),
+            created_at=timestamp,
+        )
+        if record.kind == "troublesome":
+            campaign.world_troublesome_towns.append(record)
+        else:
+            campaign.world_settlements.append(record)
+    elif action == "delete" and entity in {"settlement", "troublesome_town"}:
+        record_id = str(payload.get("id") or "")
+        if record_id == DEFAULT_WORLD_SETTLEMENT_ID:
+            raise HTTPException(status_code=400, detail="The default Brightwater Gate settlement cannot be deleted.")
+        campaign.world_settlements = [item for item in campaign.world_settlements if item.id != record_id]
+        campaign.world_troublesome_towns = [item for item in campaign.world_troublesome_towns if item.id != record_id]
+        for troupe in campaign.world_troupes:
+            if troupe.home_settlement_id == record_id:
+                troupe.home_settlement_id = DEFAULT_WORLD_SETTLEMENT_ID
+    elif action == "assign" and entity in {"settlement", "troublesome_town"}:
+        record_id = str(payload.get("settlement_id") or payload.get("id") or "")
+        campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        for collection in [campaign.world_settlements, campaign.world_troublesome_towns]:
+            for record in collection:
+                if record.id == record_id:
+                    record.campaign_id = campaign_id
+    elif action == "assign_party_troupe":
+        party_id = str(payload.get("party_id") or "")
+        troupe_id = str(payload.get("troupe_id") or DEFAULT_WORLD_TROUPE_ID)
+        party = store.get("parties", party_id, Party.model_validate)
+        if party is None:
+            raise HTTPException(status_code=404, detail="Party not found.")
+        party.troupe_id = troupe_id
+        party.campaign_id = next((item.campaign_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_CAMPAIGN_ID)
+        party.updated_at = timestamp
+        store.save("parties", party)
+        troupe_campaign_id = party.campaign_id
+        troupe_guild_id = next((item.guild_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_GUILD_ID)
+        for character_id in party.character_ids:
+            character = store.get("characters", character_id, Character.model_validate)
+            if character is None:
+                continue
+            character.troupe_id = troupe_id
+            character.campaign_id = troupe_campaign_id
+            character.guild_id = troupe_guild_id
+            character.updated_at = timestamp
+            store.save("characters", character)
+        for troupe in campaign.world_troupes:
+            if troupe.id == troupe_id and party.id not in troupe.party_ids:
+                troupe.party_ids.append(party.id)
+            if troupe.id == troupe_id:
+                for character_id in party.character_ids:
+                    if character_id not in troupe.member_character_ids:
+                        troupe.member_character_ids.append(character_id)
+            elif troupe.id != troupe_id and party.id in troupe.party_ids:
+                troupe.party_ids = [item for item in troupe.party_ids if item != party.id]
+                troupe.member_character_ids = [item for item in troupe.member_character_ids if item not in party.character_ids]
+    elif action == "assign_character_troupe":
+        character_id = str(payload.get("character_id") or "")
+        troupe_id = str(payload.get("troupe_id") or DEFAULT_WORLD_TROUPE_ID)
+        character = store.get("characters", character_id, Character.model_validate)
+        if character is None:
+            raise HTTPException(status_code=404, detail="Character not found.")
+        if character.party_id:
+            party = store.get("parties", character.party_id, Party.model_validate)
+            if party is not None and party.troupe_id and party.troupe_id != troupe_id:
+                note = _remove_character_from_party(character, reason=f"assignment to troupe {troupe_id}")
+                if note:
+                    messages.append(note)
+        character.troupe_id = troupe_id
+        character.guild_id = next((item.guild_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_GUILD_ID)
+        character.campaign_id = next((item.campaign_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_CAMPAIGN_ID)
+        character.updated_at = timestamp
+        store.save("characters", character)
+        for troupe in campaign.world_troupes:
+            if troupe.id == troupe_id and character.id not in troupe.member_character_ids:
+                troupe.member_character_ids.append(character.id)
+            elif troupe.id != troupe_id and character.id in troupe.member_character_ids:
+                troupe.member_character_ids = [item for item in troupe.member_character_ids if item != character.id]
+    else:
+        raise HTTPException(status_code=400, detail="Unknown campaign world action.")
+
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "messages": messages}
 
 
 @app.post("/api/campaign/settlement/roll-size")
@@ -1465,6 +1702,9 @@ async def list_characters() -> list[Character]:
 
 @app.post("/api/characters")
 async def create_character(payload: CharacterCreate) -> Character:
+    from .engine.tag_campaign import DEFAULT_WORLD_CAMPAIGN_ID, DEFAULT_WORLD_GUILD_ID, DEFAULT_WORLD_TROUPE_ID, load_campaign
+
+    load_campaign(store)
     profile = rules.class_by_id(payload.class_id)
     if profile is None:
         raise HTTPException(status_code=400, detail="Unknown class.")
@@ -1491,6 +1731,9 @@ async def create_character(payload: CharacterCreate) -> Character:
         abilities=list(profile.abilities),
         class_traits=class_traits,
         statuses=[],
+        campaign_id=DEFAULT_WORLD_CAMPAIGN_ID,
+        guild_id=DEFAULT_WORLD_GUILD_ID,
+        troupe_id=DEFAULT_WORLD_TROUPE_ID,
         created_at=timestamp,
         updated_at=timestamp,
     )
@@ -1894,6 +2137,10 @@ async def list_parties() -> list[Party]:
 
 @app.post("/api/parties")
 async def create_party(payload: PartyCreate) -> Party:
+    from .engine.tag_campaign import DEFAULT_WORLD_CAMPAIGN_ID, DEFAULT_WORLD_GUILD_ID, DEFAULT_WORLD_TROUPE_ID, load_campaign, save_campaign
+
+    campaign = load_campaign(store)
+    troupe_id = payload.troupe_id or DEFAULT_WORLD_TROUPE_ID
     characters = _load_characters(payload.character_ids)
     if len({character.id for character in characters}) != 4:
         raise HTTPException(status_code=400, detail="Choose four different characters.")
@@ -1902,6 +2149,10 @@ async def create_party(payload: PartyCreate) -> Party:
         busy_session_id = character_busy_session_id(character, store)
         if busy_session_id:
             busy.append(f"{character.name} is already in an active adventure.")
+        if character.party_id:
+            busy.append(f"{character.name} is already in party {_party_name(character.party_id)}. Remove them from that party first.")
+        if character.troupe_id and character.troupe_id != troupe_id:
+            busy.append(f"{character.name} belongs to another troupe. Assign them to this troupe first; the app will warn before removing them from any party.")
     if busy:
         raise HTTPException(status_code=409, detail=" ".join(busy))
     timestamp = now_utc()
@@ -1909,18 +2160,40 @@ async def create_party(payload: PartyCreate) -> Party:
         id=new_id(),
         name=payload.name.strip(),
         character_ids=payload.character_ids,
+        campaign_id=next((item.campaign_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_CAMPAIGN_ID),
+        troupe_id=troupe_id,
         created_at=timestamp,
         updated_at=timestamp,
     )
     store.save("parties", party)
+    troupe_guild_id = next((item.guild_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_GUILD_ID)
+    for character in characters:
+        character.party_id = party.id
+        character.campaign_id = party.campaign_id
+        character.guild_id = troupe_guild_id
+        character.troupe_id = troupe_id
+        character.updated_at = timestamp
+        store.save("characters", character)
+    for troupe in campaign.world_troupes:
+        if troupe.id == troupe_id and party.id not in troupe.party_ids:
+            troupe.party_ids.append(party.id)
+        if troupe.id == troupe_id:
+            for character in characters:
+                if character.id not in troupe.member_character_ids:
+                    troupe.member_character_ids.append(character.id)
+    save_campaign(store, campaign)
     return party
 
 
 @app.put("/api/parties/{party_id}")
 async def update_party(party_id: str, payload: PartyCreate) -> Party:
+    from .engine.tag_campaign import DEFAULT_WORLD_CAMPAIGN_ID, DEFAULT_WORLD_GUILD_ID, DEFAULT_WORLD_TROUPE_ID, load_campaign, save_campaign
+
+    campaign = load_campaign(store)
     existing = store.get("parties", party_id, Party.model_validate)
     if existing is None:
         raise HTTPException(status_code=404, detail="Party not found.")
+    troupe_id = payload.troupe_id or existing.troupe_id or DEFAULT_WORLD_TROUPE_ID
     characters = _load_characters(payload.character_ids)
     if len({character.id for character in characters}) != 4:
         raise HTTPException(status_code=400, detail="Choose four different characters.")
@@ -1929,17 +2202,64 @@ async def update_party(party_id: str, payload: PartyCreate) -> Party:
         busy_session_id = character_busy_session_id(character, store)
         if busy_session_id:
             busy.append(f"{character.name} is already in an active adventure.")
+        if character.party_id and character.party_id != party_id:
+            busy.append(f"{character.name} is already in party {_party_name(character.party_id)}. Remove them from that party first.")
+        if character.troupe_id and character.troupe_id != troupe_id:
+            busy.append(f"{character.name} belongs to another troupe. Assign them to this troupe first; the app will warn before removing them from any party.")
     if busy:
         raise HTTPException(status_code=409, detail=" ".join(busy))
+    previous_ids = set(existing.character_ids)
     existing.name = payload.name.strip()
     existing.character_ids = payload.character_ids
+    existing.campaign_id = next((item.campaign_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_CAMPAIGN_ID)
+    existing.troupe_id = troupe_id
     existing.updated_at = now_utc()
     store.save("parties", existing)
+    troupe_guild_id = next((item.guild_id for item in campaign.world_troupes if item.id == troupe_id), DEFAULT_WORLD_GUILD_ID)
+    for old_id in previous_ids - set(payload.character_ids):
+        old = store.get("characters", old_id, Character.model_validate)
+        if old is not None and old.party_id == existing.id:
+            old.party_id = None
+            old.updated_at = existing.updated_at
+            store.save("characters", old)
+    for character in characters:
+        character.party_id = existing.id
+        character.campaign_id = existing.campaign_id
+        character.guild_id = troupe_guild_id
+        character.troupe_id = troupe_id
+        character.updated_at = existing.updated_at
+        store.save("characters", character)
+    for troupe in campaign.world_troupes:
+        if troupe.id == troupe_id and existing.id not in troupe.party_ids:
+            troupe.party_ids.append(existing.id)
+        if troupe.id == troupe_id:
+            for character in characters:
+                if character.id not in troupe.member_character_ids:
+                    troupe.member_character_ids.append(character.id)
+        elif troupe.id != troupe_id and existing.id in troupe.party_ids:
+            troupe.party_ids = [item for item in troupe.party_ids if item != existing.id]
+            troupe.member_character_ids = [item for item in troupe.member_character_ids if item not in payload.character_ids]
+    save_campaign(store, campaign)
     return existing
 
 
 @app.delete("/api/parties/{party_id}")
 async def delete_party(party_id: str) -> dict[str, bool]:
+    from .engine.tag_campaign import load_campaign, save_campaign
+
+    party = store.get("parties", party_id, Party.model_validate)
+    if party is not None:
+        for character_id in party.character_ids:
+            character = store.get("characters", character_id, Character.model_validate)
+            if character is not None and character.party_id == party_id:
+                character.party_id = None
+                character.updated_at = now_utc()
+                store.save("characters", character)
+        campaign = load_campaign(store)
+        for troupe in campaign.world_troupes:
+            if party_id in troupe.party_ids:
+                troupe.party_ids = [item for item in troupe.party_ids if item != party_id]
+        save_campaign(store, campaign)
     return {"deleted": store.delete("parties", party_id)}
 
 

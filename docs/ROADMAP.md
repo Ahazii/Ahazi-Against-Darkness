@@ -1,5 +1,15 @@
 # Roadmap
 
+## Campaign / World Builder
+
+Status: foundation implemented; feature growth planned.
+
+- The campaign layer is app-owned and is not a TAG PDF rule. TAG content can attach to it, but campaign/world ownership rules should be documented separately from printed mechanics.
+- Default world records are seeded and migrated once: campaign `Norindaal`, guild `Adventurers Guild`, troupe `Troupe1`, and friendly settlement `Brightwater Gate`.
+- Campaign Management now supports create/delete campaign records, one guild assignment per campaign, multiple troupes per campaign, multiple friendly settlements per campaign, and placeholder troublesome town records for the future Troublesome Towns supplements.
+- Characters are constrained to one party, one troupe, and one guild. Parties are assigned to one troupe. Assigning a character to an incompatible troupe removes them from the previous party with a user-facing alert/message.
+- Next campaign work: complete richer campaign detail editing, add sortable/searchable world lists, build the hex-map editor, connect settlement placement to travel, and decide how troublesome towns differ mechanically once the add-on supplements are implemented.
+
 ## Phase 1 - Clean Foundation
 
 Status: substantially complete; retained for foundation maintenance.

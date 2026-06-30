@@ -51,6 +51,12 @@ body.combat-focus-active {
   gap: 10px;
 }
 
+.topbar-link {
+  min-height: 32px;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
 .icon-button {
   display: inline-grid;
   place-items: center;
@@ -127,6 +133,13 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
   gap: 12px;
+}
+
+.modern-world-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  align-items: start;
 }
 
 .modern-home-section {
@@ -270,6 +283,7 @@ h2 {
 .modern-field {
   display: grid;
   gap: 4px;
+  justify-items: start;
 }
 
 .modern-field span {
@@ -282,6 +296,7 @@ h2 {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-start;
 }
 
 .modern-filterbar,
@@ -299,6 +314,7 @@ h2 {
   border-radius: 6px;
   background: #171814;
   padding: 8px;
+  text-align: left;
 }
 
 .modern-row > summary {
@@ -367,6 +383,89 @@ h2 {
   gap: 8px;
   max-height: 62vh;
   overflow: auto;
+}
+
+.modern-card input:not([type="checkbox"]):not([type="radio"]),
+.modern-card select {
+  width: min(100%, 22rem);
+}
+
+.modern-card textarea {
+  width: min(100%, 42rem);
+}
+
+.modern-card button,
+.modern-card .link-button {
+  width: auto;
+  max-width: 100%;
+  justify-self: start;
+  text-align: left;
+}
+
+.modern-primary-card {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(198, 143, 59, 0.28);
+}
+
+.modern-primary-card > h3 {
+  font-size: 18px;
+}
+
+.modern-check-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  justify-content: start;
+  gap: 8px;
+  max-width: 44rem;
+  color: var(--text);
+  text-align: left;
+}
+
+.modern-check-row input {
+  margin-top: 2px;
+}
+
+.modern-character-details {
+  margin-top: 3px;
+  background: #11130f;
+}
+
+.modern-equipment-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 16rem));
+  gap: 8px;
+  align-items: end;
+}
+
+.modern-equipment-editor button {
+  align-self: end;
+}
+
+.party-list-row,
+.party-list-row summary,
+.party-list-row .modern-stack {
+  text-align: left;
+}
+
+.help-ref-link {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #171814;
+  color: var(--text);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.help-ref-link:hover,
+.help-ref-link:focus-visible {
+  border-color: var(--accent);
+  outline: none;
 }
 
 .modern-list-tall {
