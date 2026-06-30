@@ -1239,6 +1239,89 @@ function renderRumorSignoffChecklist() {
   return panel;
 }
 
+function tagTreasureMapDestination(adventure) {
+  const text = `${adventure.tag_lead_detail || ""} ${adventure.name || ""} ${adventure.id || ""}`;
+  const explicit = text.match(/treasure map\s+(\d{1,2})/i) || text.match(/map leads to\s+(\d{1,2})/i);
+  if (explicit) return Number(explicit[1]);
+  const tagId = String(adventure.id || "");
+  const suffix = tagId.match(/tag-treasure-map-(\d{1,2})/i);
+  return suffix ? Number(suffix[1]) : 0;
+}
+
+function tagTreasureMapAuditRows(adventure) {
+  const number = tagTreasureMapDestination(adventure);
+  return [
+    ["Destination", number ? `Map Leads To ${number}` : "Generated Treasure Map destination", "Confirm this is the intended destination before Start Adventure; Follow Map and Map Leads To are separate signoff steps."],
+    ["Procedure", adventure.tag_scene || adventure.tag_lead_detail || "Check generated module metadata", "Destination metadata comes from the generated manifest. Exact room count, reward, and procedure values remain with the PDF/player signoff."],
+    ["Play focus", "Follow-map result -> destination procedure -> deferred/reward treasure -> closeout", "Treasure Map leads are about proving the map, choosing risk, and making reward accounting visible."],
+    ["Signoff", "Route, procedure rolls, treasure transfer, XP, Guild/finance, and storage review", "Use TAG Actions during exploration, then review TAG Action Log and banking/storage before starting another lead."],
+  ];
+}
+
+function renderTreasureMapLeadAuditPanel(adventureSelect = null) {
+  const panel = card("TAG Treasure Map Leads", "Audit installed Treasure Map destination modules before play. Each row helps confirm destination, procedure, reward, treasure storage, XP, and closeout signoff.");
+  const maps = tagGeneratedAdventures().filter((adventure) => String(adventure.tag_lead_type || "").toLowerCase() === "treasure_map");
+  if (!maps.length) {
+    panel.appendChild(el("p", "muted", "No Treasure Map destination modules are installed yet. Create a Treasure Map lead in Go Adventure, then use this panel to review it before Start Adventure."));
+    const emptyActions = actions();
+    emptyActions.append(
+      link("Map Rules", ruleReferenceHref("tag_treasure_map_playthrough_audit", "TAG treasure map playthrough audit"), "Open the Rules Reference entry for the app-owned Treasure Map playthrough audit workflow.", "link-button secondary"),
+      link("Map Table", "/modern/tables?help=tag_treasure_map_playthrough_audit_table", "Open the modern Tables entry for Treasure Map audit surfaces and PDF boundaries.", "link-button secondary")
+    );
+    panel.appendChild(emptyActions);
+    return panel;
+  }
+  for (const adventure of maps.slice(0, 12)) {
+    const row = el("div", "modern-row");
+    row.title = "Treasure Map audit row: confirms which map destination this is and which procedure, reward, XP, Guild, banking, and storage checks should be reviewed.";
+    row.append(
+      el("strong", "", adventure.name || adventure.id),
+      el("span", "muted", `${adventure.tag_lead_detail || "Treasure Map destination"}${adventure.tag_pdf_pages ? ` · ${adventure.tag_pdf_pages}` : ""}`)
+    );
+    for (const [title, body, hint] of tagTreasureMapAuditRows(adventure)) {
+      row.appendChild(modernStatusRow(title, body, hint));
+    }
+    const rowActions = actions();
+    rowActions.append(
+      button("Select Map", "Switch Start New Adventure to Imported Adventure Module and select this Treasure Map lead.", async () => {
+        const type = document.getElementById("modern-adventure-type");
+        if (type) type.value = "imported";
+        if (adventureSelect) {
+          adventureSelect.replaceChildren(...optionRows(adventureOptions("imported")));
+          adventureSelect.value = adventure.id;
+        }
+        writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: adventure.id || "" });
+        setStatus(`Selected Treasure Map lead ${adventure.name || adventure.id}. Review setup and closeout gates before starting.`);
+      }),
+      link("Rules", ruleReferenceHref("tag_treasure_map_playthrough_audit", "TAG treasure map playthrough audit"), "Open the Rules Reference entry for Treasure Map playthrough audit guidance.", "link-button secondary"),
+      link("Table", "/modern/tables?help=tag_treasure_map_playthrough_audit_table", "Open the modern Tables row documenting this Treasure Map audit surface.", "link-button secondary")
+    );
+    row.appendChild(rowActions);
+    panel.appendChild(row);
+  }
+  return panel;
+}
+
+function renderTreasureMapSignoffChecklist() {
+  const panel = card("Treasure Map Signoff Checklist", "Use this app-owned checklist after a TAG Treasure Map destination. It focuses on map verification, destination procedure, reward accounting, and closeout.");
+  const checks = [
+    ["Map result", "Confirm the Follow Treasure Map result, stored/Guild cartographer bonus, and Map Leads To destination.", "The purchased map roll and the generated destination are related but should both be visible in the log."],
+    ["Destination procedure", "Resolve destination-specific room count, report/stealth choice, deferred treasure, boss-only conversion, or death-magic setup.", "Use TAG Actions so the procedure is recorded before final reward handling."],
+    ["Treasure", "Move deferred treasure, idol value, report reward, lich treasure, magic items, or Boss treasure into the correct party/Guild/bank/storage workflow.", "Treasure Maps often need accounting after the fight, not just a combat victory."],
+    ["Closeout", "Review pending XP, Guild share, banking/storage, guidance tasks, and the TAG Action Log before creating another map lead.", "This avoids losing map bonuses, deferred treasure, or unpaid Guild obligations."],
+  ];
+  for (const [title, body, hint] of checks) {
+    panel.appendChild(modernStatusRow(title, body, hint));
+  }
+  const panelActions = actions();
+  panelActions.append(
+    link("Map Rules", ruleReferenceHref("tag_treasure_map_playthrough_audit", "TAG treasure map playthrough audit"), "Open the Rules Reference entry for Treasure Map signoff guidance.", "link-button secondary"),
+    link("Banking", "/modern/banking", "Open Banking and Finance to handle bank deposits, hidden troves, Guild share follow-up, and storage consequences.", "link-button secondary")
+  );
+  panel.appendChild(panelActions);
+  return panel;
+}
+
 function sessionRecencyKey(session) {
   return String(session?.updated_at || session?.saved_at || session?.created_at || session?.id || "");
 }
@@ -2922,7 +3005,7 @@ async function renderGoAdventure() {
     saved.appendChild(row);
   }
   if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
-  rootEl.append(panel, readiness, gate, tagLead, renderTagLeadSelectorPanel(adventure), renderRumorLeadAuditPanel(adventure), renderRumorSignoffChecklist(), renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), renderTagActionLogExplorer(), sessions, saved);
+  rootEl.append(panel, readiness, gate, tagLead, renderTagLeadSelectorPanel(adventure), renderRumorLeadAuditPanel(adventure), renderRumorSignoffChecklist(), renderTreasureMapLeadAuditPanel(adventure), renderTreasureMapSignoffChecklist(), renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), renderTagActionLogExplorer(), sessions, saved);
 }
 
 async function renderRulesReference() {

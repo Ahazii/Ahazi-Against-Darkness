@@ -2281,6 +2281,32 @@ def _rules_tables_payload() -> dict:
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]
+    data["tag_treasure_map_playthrough_audit_table"] = [
+        {
+            "surface": "Treasure Map audit metadata",
+            "shown_in": "Generated TAG Treasure Map manifests and exploration prompt panels.",
+            "player_use": "Carries destination number, play focus, entry guidance, complication guidance, finale guidance, destination procedure reminders, and closeout checks for all six Map Leads To results.",
+            "pdf_boundary": "App-authored atmosphere and workflow notes only; exact map results, room counts, rewards, and special procedures remain with the PDF/player signoff.",
+        },
+        {
+            "surface": "TAG Treasure Map Leads panel",
+            "shown_in": "Go Adventure.",
+            "player_use": "Lists installed Treasure Map modules with destination metadata, prompt counts, procedure/reward/XP signoff reminders, and quick Select Map/Rules/Table actions.",
+            "pdf_boundary": "Displays generated manifest metadata and app checklist text, not copied table prose.",
+        },
+        {
+            "surface": "Treasure Map Signoff Checklist",
+            "shown_in": "Go Adventure.",
+            "player_use": "Guides review of Follow Map result, Map Leads To destination, destination procedure, treasure transfer, XP, Guild share, banking/storage, and closeout tasks.",
+            "pdf_boundary": "Checklist points to what the player should verify; it does not quote or replace the printed TAG tables.",
+        },
+        {
+            "surface": "Destination prompt checklist",
+            "shown_in": "Exploration room detail panel.",
+            "player_use": "Shows room-specific reminders beside TAG Action buttons for cave count, temple reward, camp approach, deferred structure treasure, boss-only conversion, or lich setup.",
+            "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
+        },
+    ]
     data["character_management_readiness_table"] = [
         {
             "area": "Roster filters",

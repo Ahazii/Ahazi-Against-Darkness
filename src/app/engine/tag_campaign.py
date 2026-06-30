@@ -4865,6 +4865,90 @@ def _tag_enrich_rumor_profile(profile: dict[str, object], lead_detail: str) -> d
     }
 
 
+TAG_TREASURE_MAP_AUDIT_GUIDANCE: dict[int, dict[str, str]] = {
+    1: {
+        "title": "Underground caves",
+        "focus": "Classic treasure promise: make the map feel accurate enough to trust, then make the cave count and final Boss payoff matter.",
+        "entry": "Open with cold air from a split in the earth, scraped stone, and a route that matches the map too well for comfort.",
+        "side": "Use side clues as old camp marks, broken tools, or a half-buried waymarker that confirms the map is not a tavern fraud.",
+        "complication": "Roll the cave room count before the party settles into ordinary exploration; the deadline changes how much they risk before the Boss room.",
+        "finale": "Close with the boosted Boss and treasure signoff: room count, dead-ended passages, maximum treasure, XP, and any storage/banking choice.",
+    },
+    2: {
+        "title": "Forgotten temple",
+        "focus": "Dangerous relic hunt: make the temple feel holy, abandoned, and occupied by people who know exactly what the idol is worth.",
+        "entry": "The map points to moss-choked stone, a cracked lintel, and old offerings gone black with weather.",
+        "side": "Use side clues to foreshadow the cultists' discipline, the idol's value, or why withdrawal will not be simple once blades are drawn.",
+        "complication": "Resolve cult ability/leader scroll checks deliberately so the fight does not become a generic temple brawl.",
+        "finale": "Sign off idol value, leader scroll chance, cultist treasure, XP, and how the heavy prize is carried or stored.",
+    },
+    3: {
+        "title": "Hostile humanoid camp",
+        "focus": "Choice lead: the map reveals a camp, but the important decision is report, steal, or fight.",
+        "entry": "Let the party see smoke between trees, patrol paths, and loot stacked carelessly enough to invite bad decisions.",
+        "side": "Use side clues to show camp strength and give the players a fair reason to report it instead of rushing the tents.",
+        "complication": "Record report/stealth/fight before rolling camp forces; this lead is about the chosen approach.",
+        "finale": "Close with report reward or theft/fight consequences, delayed reinforcements, loot, XP, and any unresolved camp threat.",
+    },
+    4: {
+        "title": "Underground structure",
+        "focus": "Treasure escrow lead: the party can see wealth accumulating, but the final Boss holds the purse until the end.",
+        "entry": "The map ends at worked stone under wild ground: squared blocks, stale dust, and a silence that feels built rather than natural.",
+        "side": "Use side clues as tally marks for treasure already found but not yet claimable.",
+        "complication": "Track every treasure result as deferred state; the map destination changes accounting as much as monsters.",
+        "finale": "Move the running treasure total to the final Boss, then sign off XP, storage, Guild share, and banking.",
+    },
+    5: {
+        "title": "Boss-only underground structure",
+        "focus": "Escalated treasure escrow: every monster result is serious, and the final reward floor must be checked.",
+        "entry": "The mapped entrance feels deliberately sealed, as if every room beyond it was built to hold one dangerous guardian.",
+        "side": "Use side clues to remind the player that ordinary vermin/minion habits do not apply here.",
+        "complication": "Convert monster results before resolving rooms and keep treasure deferred for the final Boss.",
+        "finale": "Confirm boss-only conversion, final treasure minimum, magic-item minimum, XP, Guild share, and storage/banking closeout.",
+    },
+    6: {
+        "title": "Lich sepulchral chamber",
+        "focus": "One-room high-risk lead: make the entrance feel like a bad bargain before the death-magic save is rolled.",
+        "entry": "The map does not lead to a dungeon so much as a sealed answer: stone dust, cold script, and a door no one local admits exists.",
+        "side": "Use side clues to warn that the chamber is short, lethal, and decided by preparation rather than exploration depth.",
+        "complication": "Resolve entry death magic and lich Life calculation before the final fight starts.",
+        "finale": "Sign off Life loss, lich Life, phylactery attempts, skeleton defenders, treasure, XP, and any follow-up map/scroll reward.",
+    },
+}
+
+
+def _tag_enrich_treasure_map_profile(profile: dict[str, object], lead_detail: str) -> dict[str, object]:
+    map_roll = max(1, min(6, int(profile.get("map_roll") or 1)))
+    guidance = TAG_TREASURE_MAP_AUDIT_GUIDANCE.get(map_roll, TAG_TREASURE_MAP_AUDIT_GUIDANCE[1])
+    signoff_checks = [
+        "Confirm the Follow Treasure Map result and destination number were checked before using the generated module.",
+        "Record destination procedure rolls, deferred treasure, report/stealth choices, or death-magic setup in TAG Actions.",
+        "Review reward, XP, Guild share, banking/storage, and closeout tasks before creating another map lead.",
+    ]
+    module_profile = dict(profile.get("module_profile") or {})
+    module_signoff = list(module_profile.get("signoff_checks") or [])
+    module_profile["signoff_checks"] = [*module_signoff, *[item for item in signoff_checks if item not in module_signoff]]
+    module_procedure = list(module_profile.get("procedure") or [])
+    module_profile["procedure"] = [
+        *module_procedure,
+        f"Treasure Map audit focus: {guidance['focus']}",
+    ]
+    return {
+        **profile,
+        "title": profile.get("title") or guidance["title"],
+        "audit_family": "treasure_map_playthrough",
+        "treasure_map_destination": map_roll,
+        "playthrough_focus": guidance["focus"],
+        "entry_guidance": guidance["entry"],
+        "side_guidance": guidance["side"],
+        "complication_guidance": guidance["complication"],
+        "finale_guidance": guidance["finale"],
+        "lead_result_label": "printed treasure-map destination",
+        "signoff_checks": signoff_checks,
+        "module_profile": module_profile,
+    }
+
+
 def _tag_prompt_action_from_profile(action: object) -> dict[str, object] | None:
     if not isinstance(action, dict) or not action.get("label"):
         return None
@@ -4902,6 +4986,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     complication_guidance = str(profile.get("complication_guidance") or "")
     finale_guidance = str(profile.get("finale_guidance") or "")
     signoff_checks = list(profile.get("signoff_checks") or [])
+    lead_result_label = str(profile.get("lead_result_label") or "printed rumor/result")
     clue_cost = max(0, int(profile.get("clue_gate_cost") or 0))
     clue_label = str(profile.get("clue_gate_label") or "Unlock Clue route")
     prompts: dict[str, object] = {
@@ -4909,7 +4994,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             "title": "Lead entry choices",
             "body": f"{mood} {how_to} {entry_guidance} Record the party's printed approach before moving deeper into the generated TAG lead.",
             "checklist": [
-                "Confirm which printed rumor/result produced this module.",
+                f"Confirm which {lead_result_label} produced this module.",
                 "Record the party's first approach or refusal in TAG Actions.",
                 "Check whether a side scene or Clue route should be pursued before the complication.",
             ],
@@ -5086,6 +5171,8 @@ def _tag_manifest(
     profile = {**profile, "lead_type": lead_type}
     if lead_type == "rumor":
         profile = _tag_enrich_rumor_profile(profile, lead_detail)
+    if lead_type == "treasure_map":
+        profile = _tag_enrich_treasure_map_profile(profile, lead_detail)
     final_foe = str(profile.get("final_foe") or "Wraith")
     final_count = max(1, int(profile.get("final_count") or 1))
     final_extra_foes = [
@@ -5108,6 +5195,7 @@ def _tag_manifest(
                 "mood": profile.get("mood") or _tag_scene_mood(lead_type, profile, lead_detail),
                 "audit_family": profile.get("audit_family", ""),
                 "rumor_number": profile.get("rumor_number", 0),
+                "treasure_map_destination": profile.get("treasure_map_destination", 0),
                 "playthrough_focus": profile.get("playthrough_focus", ""),
                 "signoff_checks": profile.get("signoff_checks", []),
                 "rules": profile.get("rules", []),
@@ -5408,24 +5496,27 @@ def build_tag_adventure_manifest(
         map_roll = max(1, min(6, map_roll))
         label = f"Treasure Map {map_roll}"
         lead_detail = TAG_MAP_LEADS_TO[map_roll]
+        guidance = TAG_TREASURE_MAP_AUDIT_GUIDANCE[map_roll]
+        destination_title = guidance["title"]
         profile = {
-            "title": lead_detail.split(":", 1)[0],
+            "title": destination_title,
+            "map_roll": map_roll,
             "pdf_pages": "TAG pp.32-33",
-            "objective": "Follow the purchased TAG treasure map and resolve the destination.",
-            "entry": "The map marks a route away from the settlement.",
-            "side": "Old notes in the margin hint at danger and possible false trails.",
-            "complication": "Following the map can reveal a deathtrap, a waste of time, a partial clue, or a real destination; this generated adventure represents the Map Leads To destination.",
-            "final_title": "Mapped Treasure Site",
-            "final_description": lead_detail,
+            "objective": f"Follow the purchased TAG treasure map to the {destination_title.lower()} and resolve its destination procedure.",
+            "entry": guidance["entry"],
+            "side": guidance["side"],
+            "complication": guidance["complication"],
+            "final_title": f"{destination_title} closeout",
+            "final_description": guidance["finale"],
             "final_foe": "Wraith" if map_roll in {4, 5, 6} else "Goblins",
             "final_count": 1 if map_roll in {4, 5, 6} else 4,
-            "rewards": "Apply The Map Leads To reward text for the rolled destination.",
+            "rewards": f"Apply The Map Leads To {map_roll} reward/procedure text for {destination_title}; confirm exact amounts and treasure handling from the PDF/player signoff.",
             "module_profile": _treasure_map_module_profile(map_roll),
             "complication_prompt_actions": _treasure_map_prompt_actions(map_roll),
             "final_prompt_actions": _treasure_map_prompt_actions(map_roll),
             "rules": ["This generator uses The Map Leads To destinations, not the preliminary fake-map outcomes."],
         }
-        title = f"TAG Treasure Map: {lead_detail.split(':', 1)[0]}"
+        title = f"TAG Treasure Map {map_roll}: {destination_title}"
         objective = str(profile["objective"])
         final_title = str(profile["final_title"])
         final_description = str(profile["final_description"])

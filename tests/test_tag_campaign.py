@@ -591,7 +591,18 @@ def test_tag_treasure_map_manifests_include_destination_procedure_prompts() -> N
         assert validate_adventure_manifest(manifest, rules_repo=repo).valid
         reference = manifest["source"]["parameters"]["tag_reference"]
         assert reference["pdf_pages"] == "TAG pp.32-33"
+        assert reference["audit_family"] == "treasure_map_playthrough"
+        assert reference["treasure_map_destination"] == int(detail)
+        assert reference["playthrough_focus"]
+        assert reference["signoff_checks"]
         assert reference["module_profile"]["target_rooms"] == expected_targets[detail]
+        assert "Treasure Map audit focus" in reference["module_profile"]["procedure"][-1]
+        assert "Confirm the Follow Treasure Map result" in reference["module_profile"]["signoff_checks"][-3]
+        assert reference["room_prompts"]["tag-lead-entry"]["checklist"]
+        assert reference["room_prompts"]["tag-final-scene"]["checklist"]
+        assert any("Guild" in item or "banking" in item for item in reference["room_prompts"]["tag-final-scene"]["checklist"])
+        assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in reference["room_prompts"].values())
+        assert "Apply The Map Leads To" in reference["rewards"]
         found = {
             str(action.get("action_value"))
             for prompt in reference["room_prompts"].values()

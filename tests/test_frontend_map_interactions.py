@@ -2058,6 +2058,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG Rumor Leads" in MODERN_PAGES_JS
     assert "Rumor Signoff Checklist" in MODERN_PAGES_JS
     assert "tag_rumor_playthrough_audit" in MODERN_PAGES_JS
+    assert "renderTreasureMapLeadAuditPanel" in MODERN_PAGES_JS
+    assert "TAG Treasure Map Leads" in MODERN_PAGES_JS
+    assert "Treasure Map Signoff Checklist" in MODERN_PAGES_JS
+    assert "tag_treasure_map_playthrough_audit" in MODERN_PAGES_JS
     assert "TAG Action Log" in MODERN_PAGES_JS
     assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
     assert "Class dossier" in MODERN_PAGES_JS
