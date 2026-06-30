@@ -153,6 +153,51 @@ def test_generated_tag_guidance_repair_endpoint_rebuilds_prompt_metadata(client)
     assert payload["active_quest"]["tag_generated_lead_state"]["guidance_repaired"] is True
 
 
+def test_generated_tag_direct_procedure_is_single_run(client, monkeypatch) -> None:
+    rolls = iter([2, 6])
+    monkeypatch.setattr("app.engine.tag_campaign.roll_d6", lambda: next(rolls))
+    session = base_session(
+        id="tag-procedure-session",
+        adventure_id="tag-treasure-map-1",
+        adventure_type="imported",
+        imported_manifest={
+            "title": "TAG Treasure Map 1",
+            "source": {
+                "parameters": {
+                    "tag_reference": {
+                        "lead_type": "treasure_map",
+                        "title": "Underground caves",
+                        "room_prompts": {},
+                    }
+                }
+            },
+            "rooms": [{"id": "tag-complication", "triggers": []}],
+        },
+        active_quest=ActiveQuestState(tile_id="t", key="imported_boss", description="Resolve TAG Treasure Map 1."),
+    )
+    main.store.save("sessions", session)
+
+    first = client.post(
+        "/api/sessions/tag-procedure-session/tag-branch-action",
+        json={"branch_action": "map_cave_room_count", "reference": "Map Leads To 1"},
+    )
+    assert first.status_code == 200
+    first_payload = first.json()
+    assert first_payload["entry"]["total"] == 5
+    procedure_state = first_payload["session"]["active_quest"]["tag_generated_lead_state"]["procedures"]
+    assert procedure_state["map_cave_room_count"]["total"] == 5
+
+    second = client.post(
+        "/api/sessions/tag-procedure-session/tag-branch-action",
+        json={"branch_action": "map_cave_room_count", "reference": "Map Leads To 1"},
+    )
+    assert second.status_code == 200
+    second_payload = second.json()
+    assert second_payload["entry"]["total"] == 5
+    assert "already recorded" in second_payload["entry"]["result_text"]
+    assert second_payload["session"]["active_quest"]["tag_generated_lead_state"]["procedures"]["map_cave_room_count"]["total"] == 5
+
+
 def test_kerrak_dar_reward_spends_one_clue_for_hoard(monkeypatch) -> None:
     eng = engine()
     session = base_session()

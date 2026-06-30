@@ -22524,10 +22524,46 @@ function appendTagContextualButton(parent, label, tooltip, defaults) {
   return btn;
 }
 
+function tagStoredProcedureRecord(branchAction) {
+  if (!branchAction) return null;
+  const quest = state.session?.active_quest || {};
+  const treasureMapRecord = quest.tag_procedure_state?.[branchAction];
+  if (treasureMapRecord?.completed) return treasureMapRecord;
+  const generatedRecord = quest.tag_generated_lead_state?.procedures?.[branchAction];
+  if (generatedRecord?.completed) return generatedRecord;
+  return null;
+}
+
 function appendTagDirectProcedureButton(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
   if (!directTagBranchAllowed(defaults)) return false;
   const label = String(action.label || "TAG procedure");
+  const stored = tagStoredProcedureRecord(defaults.branchAction);
+  if (stored) {
+    const btn = node("button", "secondary", `Recorded ${label}`);
+    btn.type = "button";
+    btn.disabled = true;
+    const total = stored.total !== undefined && stored.total !== null ? ` Target: ${stored.total}.` : "";
+    setButtonTooltip(
+      btn,
+      `${stored.result || "This TAG procedure has already been recorded."}${total} Next: ${stored.next_action || state.session?.active_quest?.tag_generated_lead_state?.next_action || state.session?.active_quest?.tag_procedure_state?.next_action || "continue from the stored result."}`
+    );
+    parent.appendChild(btn);
+    parent.appendChild(
+      subline(
+        `Recorded: ${stored.result || stored.label || label}${total} ${
+          stored.next_action || state.session?.active_quest?.tag_generated_lead_state?.next_action || state.session?.active_quest?.tag_procedure_state?.next_action || ""
+        }`
+      )
+    );
+    appendTagContextualButton(
+      parent,
+      `Review ${label}`,
+      "Open TAG Actions with this recorded procedure prefilled if you need to inspect the Reference/Amount fields. The run button will not reroll the stored target.",
+      defaults
+    );
+    return true;
+  }
   const btn = node("button", "primary", `Run ${label}`);
   btn.type = "button";
   setButtonTooltip(

@@ -3740,6 +3740,11 @@ TAG_TREASURE_MAP_AUTO_COMPLETE_ACTIONS = {
     "map_lich_treasure",
 }
 
+TAG_SINGLE_RUN_BRANCH_ACTIONS = {
+    "map_cave_room_count",
+    "map_structure_rooms",
+}
+
 
 def _is_tag_treasure_map_quest(quest: Any) -> bool:
     if quest is None:
@@ -3793,6 +3798,49 @@ def _update_session_tag_procedure_state(session: SessionState, branch_action: st
             session.log.append(
                 "TAG Treasure Map objective complete: destination procedure logged. Claim the Lady in White reward when ready, after any treasure, Guild share, banking, and XP signoff."
             )
+
+
+def _generated_tag_stored_procedure(session: SessionState, branch_action: str) -> dict[str, Any] | None:
+    quest = session.active_quest
+    if quest is None or branch_action not in TAG_SINGLE_RUN_BRANCH_ACTIONS:
+        return None
+    state = dict(quest.tag_generated_lead_state or {})
+    procedures = state.get("procedures")
+    if not isinstance(procedures, dict):
+        return None
+    stored = procedures.get(branch_action)
+    if isinstance(stored, dict) and stored.get("completed"):
+        return stored
+    return None
+
+
+def _update_generated_tag_procedure_state(session: SessionState, branch_action: str, entry: Any) -> None:
+    quest = session.active_quest
+    if quest is None or not _is_generated_tag_session(session):
+        return
+    if branch_action not in TAG_TREASURE_MAP_DESTINATIONS:
+        return
+    procedure = TAG_TREASURE_MAP_DESTINATIONS[branch_action]
+    state = dict(quest.tag_generated_lead_state or {})
+    procedures = dict(state.get("procedures") or {})
+    total = getattr(entry, "total", None)
+    result_text = str(getattr(entry, "result_text", "") or "")
+    procedures[branch_action] = {
+        "completed": True,
+        "label": procedure["label"],
+        "result": result_text,
+        "roll": getattr(entry, "roll", None),
+        "total": total,
+        "next_action": procedure["next_action"],
+        "updated_at": now_utc(),
+    }
+    state["procedures"] = procedures
+    state["latest_procedure"] = branch_action
+    state["next_action"] = procedure["next_action"]
+    if total is not None:
+        state["room_target"] = total
+        state["route_recorded"] = True
+    quest.tag_generated_lead_state = state
 
 
 @app.post("/api/sessions/{session_id}/tag-treasure-map-signoff")
@@ -3920,10 +3968,31 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         raise HTTPException(status_code=404, detail="Session not found.")
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
+    branch_action = str(payload.get("branch_action") or "social_choice")
+    stored = _generated_tag_stored_procedure(session, branch_action)
+    if stored is not None and not payload.get("force_reroll"):
+        result_text = (
+            f"{stored.get('label') or 'TAG procedure'} already recorded: {stored.get('result') or 'result stored'}. "
+            f"Next: {stored.get('next_action') or 'continue from the stored procedure result.'}"
+        )
+        if result_text not in session.log:
+            session.log.append(result_text)
+            store.save("sessions", session)
+        return {
+            "campaign": campaign,
+            "character": character,
+            "entry": {
+                "action": branch_action,
+                "result_text": result_text,
+                "total": stored.get("total"),
+                "roll": stored.get("roll"),
+            },
+            "session": enrich_session(session),
+        }
     entry = resolve_tag_branch_action(
         campaign,
         character,
-        branch_action=str(payload.get("branch_action") or "social_choice"),
+        branch_action=branch_action,
         reference=str(payload.get("reference") or ""),
         clue_cost=int(payload.get("clue_cost") or 0),
         reward_gp=int(payload.get("reward_gp") or 0),
@@ -3931,8 +4000,8 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     if character is not None:
         store.save("characters", character)
     campaign = save_campaign(store, campaign)
-    branch_action = str(payload.get("branch_action") or "social_choice")
     _update_session_tag_procedure_state(session, branch_action, entry)
+    _update_generated_tag_procedure_state(session, branch_action, entry)
     if entry.result_text and entry.result_text not in session.log:
         session.log.append(f"TAG procedure: {entry.result_text}")
     store.save("sessions", session)

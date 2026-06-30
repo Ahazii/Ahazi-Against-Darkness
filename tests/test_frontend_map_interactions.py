@@ -2102,6 +2102,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "runTagBranchActionWithDefaults" in APP_JS
     assert "DIRECT_TAG_BRANCH_ACTIONS" in APP_JS
     assert "Run ${label}" in APP_JS
+    assert "tagStoredProcedureRecord" in APP_JS
+    assert "Recorded ${label}" in APP_JS
+    assert "will not reroll the stored target" in APP_JS
     assert "Edit ${label}" in APP_JS
     assert "map_cave_room_count" in APP_JS
     assert "tagPromptDefaultsFromAction" in APP_JS
