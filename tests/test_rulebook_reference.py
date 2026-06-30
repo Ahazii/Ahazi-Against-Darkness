@@ -13,6 +13,15 @@ APP_ONLY_REFERENCE_IDS = {
     "icon_registry",
     "rules_tables_index",
     "play_context",
+    "campaign_world_builder",
+    "campaign_membership_boundaries",
+    "friendly_settlements",
+    "troublesome_towns_placeholder",
+    "campaign_hex_map_placeholder",
+    "campaign_management_editing",
+    "campaign_worldbuilder_schema_table",
+    "rules_artwork_registry",
+    "pdf_artwork_boundary",
 }
 
 
@@ -36,8 +45,8 @@ def test_rulebook_reference_source_integrity() -> None:
     assert len(ids) == len(set(ids))
     assert {entry["id"] for entry in entries if entry.get("source_page") == 0} == APP_ONLY_REFERENCE_IDS
 
-    allowed_categories = {"classes", "combat", "economy", "equipment", "exploration", "quests", "spells"}
-    allowed_statuses = {"implemented", "validated", "full", "partial"}
+    allowed_categories = {"app_assets", "campaign", "classes", "combat", "economy", "equipment", "exploration", "quests", "spells", "tag"}
+    allowed_statuses = {"implemented", "validated", "full", "partial", "planned"}
     for entry in entries:
         assert entry.get("title"), entry["id"]
         assert entry.get("summary"), entry["id"]

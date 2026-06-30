@@ -190,7 +190,9 @@ Equipment Shop UI (`docs/ARCHITECTURE.md`).
 To show PDF scans or artwork beside each dashboard section/table, add an entry
 to `data/rules/artwork_registry.json`. Asset paths should normally point under
 `assets/rules_art/local/`, which is ignored by git. This lets a local personal
-copy use PDF-derived artwork without pushing extracted art to GitHub.
+copy use PDF-derived artwork without pushing extracted art to GitHub. Use `.png`
+paths for extractor-rendered PDF pages unless a separate image conversion step is
+added.
 
 Generate a configured local artwork slot with:
 

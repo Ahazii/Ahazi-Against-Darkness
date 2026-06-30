@@ -796,6 +796,14 @@ function renderCharacters() {
       row.appendChild(el("span", "muted", `Party: ${parties.join(", ") || "none"} · ${troupe}`));
       row.appendChild(el("span", "muted", characterWorldSummary(character)));
       row.appendChild(el("span", "muted", characterEquipmentSummary(character)));
+      const worldLinks = actions();
+      worldLinks.append(
+        link("Campaign", "/modern/campaign", "Open Campaign Management for this character's campaign, guild, troupe, party, and home-settlement context.", "link-button secondary"),
+        link("Guild", "/modern/guild", "Open Guild Management for membership, coffers, jobs, and Guild closeout prompts.", "link-button secondary"),
+        link("Troupe", "/modern/troupes", "Open Troupe Management for membership, active adventurers, assigned parties, and travel base.", "link-button secondary"),
+        link("Party", "/modern/parties", "Open Party Membership to change this character's saved party assignment.", "link-button secondary")
+      );
+      row.appendChild(worldLinks);
       row.appendChild(renderCharacterInventoryDetails(character));
       const rowActions = actions();
       rowActions.append(
@@ -883,7 +891,53 @@ function worldSettlementOptions(blank = "Choose settlement") {
 }
 
 function characterWorldSummary(character) {
-  return `Campaign ${worldName(worldCampaigns(), character.campaign_id)} · Guild ${worldName(worldGuilds(), character.guild_id)} · Troupe ${worldName(worldTroupes(), character.troupe_id)} · Party ${worldName(modernState.parties, character.party_id, "none")}`;
+  const troupe = worldTroupes().find((item) => item.id === character.troupe_id);
+  const homeSettlement = troupe?.home_settlement_id ? worldName(worldSettlements(), troupe.home_settlement_id) : "Unassigned";
+  return `Campaign ${worldName(worldCampaigns(), character.campaign_id)} · Guild ${worldName(worldGuilds(), character.guild_id)} · Troupe ${worldName(worldTroupes(), character.troupe_id)} · Party ${worldName(modernState.parties, character.party_id, "none")} · Home ${homeSettlement}`;
+}
+
+function selectedWorldCampaign() {
+  return worldCampaigns().find((item) => item.id === modernState.campaign?.active_world_campaign_id) || worldCampaigns()[0] || null;
+}
+
+function worldRecordSearchText(row, extra = "") {
+  return `${row.name || ""} ${row.description || ""} ${row.notes || ""} ${worldName(worldCampaigns(), row.campaign_id, "")} ${extra}`.toLowerCase();
+}
+
+function filteredWorldRows(rows, filters, extraText = () => "") {
+  const search = (filters.search.value || "").trim().toLowerCase();
+  const campaignId = filters.campaign.value || "";
+  const sorted = rows
+    .filter((row) => (!campaignId || row.id === campaignId || row.campaign_id === campaignId))
+    .filter((row) => !search || worldRecordSearchText(row, extraText(row)).includes(search));
+  sorted.sort((a, b) => {
+    if (filters.sort.value === "campaign") return worldName(worldCampaigns(), a.campaign_id, "").localeCompare(worldName(worldCampaigns(), b.campaign_id, ""));
+    if (filters.sort.value === "created") return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+  return sorted;
+}
+
+function worldFilterControls(prefix, onChange) {
+  const panel = card("World List Filters", "Search, sort, and narrow campaign-management lists. These filters only affect what is shown on this page.");
+  panel.classList.add("modern-card-compact");
+  const search = input("search", `${prefix}-search`, "Search campaign, guild, troupe, settlement, troublesome town, description, notes, and assigned campaign names.");
+  const campaign = select(`${prefix}-campaign-filter`, "Show records assigned to this campaign, or show all world-builder records.", [["", "All campaigns"], ...worldCampaigns().map((item) => [item.id, item.name])]);
+  const sort = select(`${prefix}-sort`, "Sort campaign-management lists by name, assigned campaign, or newest created record.", [["name", "Name"], ["campaign", "Campaign"], ["created", "Newest"]]);
+  search.addEventListener("input", onChange);
+  campaign.addEventListener("change", onChange);
+  sort.addEventListener("change", onChange);
+  panel.append(field("Search", search), field("Campaign filter", campaign), field("Sort", sort));
+  return { panel, search, campaign, sort };
+}
+
+function worldCampaignCounts(campaignId) {
+  return {
+    guilds: worldGuilds().filter((item) => item.campaign_id === campaignId).length,
+    troupes: worldTroupes().filter((item) => item.campaign_id === campaignId).length,
+    settlements: worldSettlements().filter((item) => item.campaign_id === campaignId).length,
+    troublesome: worldSettlements("troublesome").filter((item) => item.campaign_id === campaignId).length,
+  };
 }
 
 async function worldAction(payload) {
@@ -1499,49 +1553,34 @@ function renderCampaign() {
     "Use map notes for hex-map planning until the dedicated campaign map editor is built."
   ], "campaign_world_builder", "campaign world builder"));
   const layout = el("div", "modern-world-grid");
+  const filters = worldFilterControls("modern-world", drawLists);
+
+  const selected = selectedWorldCampaign();
+  const selectedCounts = selected ? worldCampaignCounts(selected.id) : { guilds: 0, troupes: 0, settlements: 0, troublesome: 0 };
+  const selectedCard = card("Selected Campaign", "The selected campaign is the default assignment for new guilds, troupes, settlements, parties, and character world context.");
+  selectedCard.appendChild(modernStatusRow(
+    selected?.name || "No campaign selected",
+    selected ? `${selected.description || "No description"} · ${selectedCounts.guilds} guild(s) · ${selectedCounts.troupes} troupe(s) · ${selectedCounts.settlements} friendly settlement(s) · ${selectedCounts.troublesome} troublesome town(s)` : "Create a campaign below.",
+    "Selected campaign summary. Use Select on a campaign row to change where new world-builder records default."
+  ));
 
   const campaignsCard = card("Campaign Details", "Campaigns are the world-builder layer. A guild, troupes, settlements, parties, and characters point into this layer without changing printed TAG rules.");
   const campaignName = input("text", "modern-campaign-name", "Name for a new campaign/world.", "New Campaign");
   const campaignDescription = textarea("modern-campaign-description", "Campaign description, premise, geography, or house notes.", 4);
+  const campaignRows = el("div", "modern-list");
   campaignsCard.append(field("Name", campaignName), field("Description", campaignDescription));
   campaignsCard.appendChild(button("Create Campaign", "Create a new campaign/world record.", () => worldAction({ action: "create", entity: "campaign", name: campaignName.value, description: campaignDescription.value }), ""));
-  for (const item of worldCampaigns()) {
-    const row = el("div", "modern-row");
-    row.append(el("strong", "", `${item.name}${item.id === campaign.active_world_campaign_id ? " (selected)" : ""}`), el("span", "muted", `${item.description || "No description"} · guild ${worldName(worldGuilds(), item.guild_id)}`));
-    const rowActions = actions();
-    rowActions.append(
-      button("Select", "Make this the selected campaign for new world-builder records.", () => worldAction({ action: "select", entity: "campaign", id: item.id })),
-      button("Delete", "Remove this campaign and unassign its world records. Norindaal cannot be deleted.", async () => {
-        if (!window.confirm(`Delete campaign ${item.name}?`)) return;
-        await worldAction({ action: "delete", entity: "campaign", id: item.id });
-      })
-    );
-    row.appendChild(rowActions);
-    campaignsCard.appendChild(row);
-  }
+  campaignsCard.appendChild(campaignRows);
 
   const guildsCard = card("Guilds", "Create guild records and assign one guild to each campaign. The default Adventurers Guild stays available for Norindaal.");
   const guildName = input("text", "modern-world-guild-name", "Name for a new guild record.", "New Guild");
   const guildCampaign = select("modern-world-guild-campaign", "Campaign that receives this guild. A campaign may have only one assigned guild.", worldCampaignOptions());
   guildCampaign.value = campaign.active_world_campaign_id || "norindaal";
-  guildsCard.append(field("Guild name", guildName), field("Campaign", guildCampaign));
-  guildsCard.appendChild(button("Create Guild", "Create a guild and assign it to the selected campaign.", () => worldAction({ action: "create", entity: "guild", name: guildName.value, campaign_id: guildCampaign.value }), ""));
-  for (const guild of worldGuilds()) {
-    const assign = select(`modern-world-guild-${guild.id}-campaign`, "Move this guild to another campaign. Each guild can be assigned to only one campaign.", worldCampaignOptions());
-    assign.value = guild.campaign_id || "";
-    const row = el("div", "modern-row");
-    row.append(el("strong", "", guild.name), el("span", "muted", `Campaign ${worldName(worldCampaigns(), guild.campaign_id)}`), field("Assign", assign));
-    const rowActions = actions();
-    rowActions.append(
-      button("Assign", "Assign this guild to the selected campaign.", () => worldAction({ action: "assign", entity: "guild", guild_id: guild.id, campaign_id: assign.value })),
-      button("Delete", "Delete this guild. The default Adventurers Guild cannot be deleted.", async () => {
-        if (!window.confirm(`Delete guild ${guild.name}?`)) return;
-        await worldAction({ action: "delete", entity: "guild", id: guild.id });
-      })
-    );
-    row.appendChild(rowActions);
-    guildsCard.appendChild(row);
-  }
+  const guildDescription = textarea("modern-world-guild-description", "Purpose, membership notes, benefits, local politics, or finance reminders for the new guild.", 3);
+  const guildRows = el("div", "modern-list");
+  guildsCard.append(field("Guild name", guildName), field("Campaign", guildCampaign), field("Description", guildDescription));
+  guildsCard.appendChild(button("Create Guild", "Create a guild and assign it to the selected campaign. The app blocks assigning two guilds to one campaign.", () => worldAction({ action: "create", entity: "guild", name: guildName.value, campaign_id: guildCampaign.value, description: guildDescription.value }), ""));
+  guildsCard.appendChild(guildRows);
 
   const troupesCard = card("Troupes", "Create troupes, assign them to one campaign, and connect them to a guild and home settlement. Parties are then assigned to a troupe.");
   const troupeName = input("text", "modern-world-troupe-name", "Name for a new troupe.", "New Troupe");
@@ -1551,24 +1590,11 @@ function renderCampaign() {
   troupeGuild.value = "adventurers-guild";
   const troupeSettlement = select("modern-world-troupe-settlement", "Friendly home settlement for this troupe.", worldSettlementOptions());
   troupeSettlement.value = "brightwater-gate";
-  troupesCard.append(field("Troupe name", troupeName), field("Campaign", troupeCampaign), field("Guild", troupeGuild), field("Home settlement", troupeSettlement));
-  troupesCard.appendChild(button("Create Troupe", "Create a troupe assigned to the selected campaign, guild, and home settlement.", () => worldAction({ action: "create", entity: "troupe", name: troupeName.value, campaign_id: troupeCampaign.value, guild_id: troupeGuild.value, home_settlement_id: troupeSettlement.value }), ""));
-  for (const troupe of worldTroupes()) {
-    const assign = select(`modern-world-troupe-${troupe.id}-campaign`, "Move this troupe to another campaign. A troupe can only belong to one campaign.", worldCampaignOptions());
-    assign.value = troupe.campaign_id || "";
-    const row = el("div", "modern-row");
-    row.append(el("strong", "", troupe.name), el("span", "muted", `Campaign ${worldName(worldCampaigns(), troupe.campaign_id)} · guild ${worldName(worldGuilds(), troupe.guild_id)} · home ${worldName(worldSettlements(), troupe.home_settlement_id)} · ${(troupe.party_ids || []).length} party(s)`), field("Assign", assign));
-    const rowActions = actions();
-    rowActions.append(
-      button("Assign", "Assign this troupe to the selected campaign.", () => worldAction({ action: "assign", entity: "troupe", troupe_id: troupe.id, campaign_id: assign.value })),
-      button("Delete", "Delete this troupe. Troupe1 cannot be deleted.", async () => {
-        if (!window.confirm(`Delete troupe ${troupe.name}?`)) return;
-        await worldAction({ action: "delete", entity: "troupe", id: troupe.id });
-      })
-    );
-    row.appendChild(rowActions);
-    troupesCard.appendChild(row);
-  }
+  const troupeDescription = textarea("modern-world-troupe-description", "Travel style, party notes, roster theme, obligations, or campaign role for the new troupe.", 3);
+  const troupeRows = el("div", "modern-list");
+  troupesCard.append(field("Troupe name", troupeName), field("Campaign", troupeCampaign), field("Guild", troupeGuild), field("Home settlement", troupeSettlement), field("Description", troupeDescription));
+  troupesCard.appendChild(button("Create Troupe", "Create a troupe assigned to the selected campaign, guild, and home settlement. Parties and characters can then point to this troupe.", () => worldAction({ action: "create", entity: "troupe", name: troupeName.value, campaign_id: troupeCampaign.value, guild_id: troupeGuild.value, home_settlement_id: troupeSettlement.value, description: troupeDescription.value }), ""));
+  troupesCard.appendChild(troupeRows);
 
   function settlementCard(kind) {
     const isTroublesome = kind === "troublesome";
@@ -1578,26 +1604,16 @@ function renderCampaign() {
     assignCampaign.value = campaign.active_world_campaign_id || "norindaal";
     const size = select(`modern-world-${kind}-size`, "Settlement size modifier. It affects service and item availability checks where those rules are used.", [["-3", "-3"], ["-2", "-2"], ["-1", "-1"], ["0", "0"], ["1", "+1"], ["2", "+2"], ["3", "+3"]]);
     const notes = textarea(`modern-world-${kind}-notes`, "Notes, services, hazards, hooks, or supplement-specific reminders.", 3);
+    const rows = el("div", "modern-list");
     section.append(field("Name", name), field("Campaign", assignCampaign), field("Size", size), field("Notes", notes));
-    section.appendChild(button(isTroublesome ? "Create Troublesome Town" : "Create Settlement", "Create this settlement record and assign it to the selected campaign.", () => worldAction({ action: "create", entity: isTroublesome ? "troublesome_town" : "settlement", name: name.value, campaign_id: assignCampaign.value, size: Number(size.value), notes: notes.value }), ""));
-    for (const settlement of worldSettlements(kind)) {
-      const move = select(`modern-world-${kind}-${settlement.id}-campaign`, "Move this settlement to another campaign. A settlement can only belong to one campaign.", worldCampaignOptions());
-      move.value = settlement.campaign_id || "";
-      const row = el("div", "modern-row");
-      row.append(el("strong", "", settlement.name), el("span", "muted", `Campaign ${worldName(worldCampaigns(), settlement.campaign_id)} · size ${settlement.size >= 0 ? "+" : ""}${settlement.size} · ${settlement.notes || "No notes"}`), field("Assign", move));
-      const rowActions = actions();
-      rowActions.append(
-        button("Assign", "Assign this settlement to the selected campaign.", () => worldAction({ action: "assign", entity: isTroublesome ? "troublesome_town" : "settlement", settlement_id: settlement.id, campaign_id: move.value })),
-        button("Delete", "Delete this settlement record. Brightwater Gate cannot be deleted.", async () => {
-          if (!window.confirm(`Delete settlement ${settlement.name}?`)) return;
-          await worldAction({ action: "delete", entity: isTroublesome ? "troublesome_town" : "settlement", id: settlement.id });
-        })
-      );
-      row.appendChild(rowActions);
-      section.appendChild(row);
-    }
+    section.appendChild(button(isTroublesome ? "Create Troublesome Town" : "Create Settlement", isTroublesome ? "Create a future troublesome-town placeholder. This does not implement supplement mechanics yet." : "Create this friendly settlement record and assign it to one campaign for services, travel, and home-base context.", () => worldAction({ action: "create", entity: isTroublesome ? "troublesome_town" : "settlement", name: name.value, campaign_id: assignCampaign.value, size: Number(size.value), notes: notes.value }), ""));
+    section.appendChild(rows);
+    section._worldRows = rows;
     return section;
   }
+
+  const friendlyCard = settlementCard("friendly");
+  const troublesomeCard = settlementCard("troublesome");
 
   const mapCard = card("Campaign / World Hex Map", "Placeholder for the future hex-map editor. Save map planning notes here until the map tool is implemented.");
   const mapNotes = textarea("modern-world-map-notes", "Hex-map planning notes, region list, settlement placement ideas, or travel assumptions.", 5);
@@ -1608,7 +1624,152 @@ function renderCampaign() {
     setStatus("World map notes saved.");
     await refreshCoreAndRender();
   }, ""));
-  layout.append(campaignsCard, guildsCard, troupesCard, settlementCard("friendly"), settlementCard("troublesome"), mapCard);
+
+  function renderCampaignRows() {
+    campaignRows.replaceChildren();
+    const rows = filteredWorldRows(worldCampaigns(), filters, (row) => worldName(worldGuilds(), row.guild_id, ""));
+    if (!rows.length) campaignRows.appendChild(el("p", "muted", "No campaigns match the current filters."));
+    for (const item of rows) {
+      const counts = worldCampaignCounts(item.id);
+      const row = el("div", "modern-row");
+      const nameEdit = input("text", `modern-campaign-edit-${item.id}`, item.id === "norindaal" ? "Default campaign name is kept as Norindaal by the migration/defaulting layer." : "Campaign name shown in world-builder lists and assignment selectors.", item.name);
+      const descriptionEdit = textarea(`modern-campaign-description-${item.id}`, "Campaign description shown in dashboard summaries and search results.", 3);
+      descriptionEdit.value = item.description || "";
+      row.append(
+        el("strong", "", `${item.name}${item.id === campaign.active_world_campaign_id ? " (selected)" : ""}`),
+        el("span", "muted", `Guild ${worldName(worldGuilds(), item.guild_id)} · ${counts.troupes} troupe(s) · ${counts.settlements} settlement(s) · ${counts.troublesome} troublesome town(s)`),
+        field("Name", nameEdit),
+        field("Description", descriptionEdit)
+      );
+      const rowActions = actions();
+      rowActions.append(
+        button("Select", "Make this the selected campaign for new world-builder records and dashboard defaults.", () => worldAction({ action: "select", entity: "campaign", id: item.id })),
+        button("Save", "Save this campaign description and, for non-default campaigns, its display name.", () => worldAction({ action: "update", entity: "campaign", id: item.id, name: nameEdit.value, description: descriptionEdit.value })),
+        button("Delete", "Remove this campaign and unassign its world records. Norindaal cannot be deleted.", async () => {
+          const warning = `Delete campaign ${item.name}? This will unassign ${counts.guilds} guild(s), ${counts.troupes} troupe(s), ${counts.settlements} friendly settlement(s), and ${counts.troublesome} troublesome town(s).`;
+          if (!window.confirm(warning)) return;
+          await worldAction({ action: "delete", entity: "campaign", id: item.id });
+        })
+      );
+      row.appendChild(rowActions);
+      campaignRows.appendChild(row);
+    }
+  }
+
+  function renderGuildRows() {
+    guildRows.replaceChildren();
+    const rows = filteredWorldRows(worldGuilds(), filters);
+    if (!rows.length) guildRows.appendChild(el("p", "muted", "No guilds match the current filters."));
+    for (const guild of rows) {
+      const nameEdit = input("text", `modern-world-guild-name-${guild.id}`, guild.id === "adventurers-guild" ? "Default guild name is kept as Adventurers Guild. Use the description for campaign-specific notes." : "Guild name shown in campaign assignment and character context.", guild.name);
+      const descriptionEdit = textarea(`modern-world-guild-description-${guild.id}`, "Guild notes, scope, obligations, finance context, or membership policy.", 3);
+      descriptionEdit.value = guild.description || "";
+      const assign = select(`modern-world-guild-${guild.id}-campaign`, "Move this guild to another campaign. The app blocks two guilds on one campaign.", worldCampaignOptions());
+      assign.value = guild.campaign_id || "";
+      const conflict = worldGuilds().find((item) => item.id !== guild.id && item.campaign_id === assign.value);
+      const row = el("div", "modern-row");
+      row.append(
+        el("strong", "", guild.name),
+        el("span", "muted", `Campaign ${worldName(worldCampaigns(), guild.campaign_id)}${conflict ? ` · conflict if moved: ${conflict.name}` : ""}`),
+        field("Name", nameEdit),
+        field("Campaign", assign),
+        field("Description", descriptionEdit)
+      );
+      const rowActions = actions();
+      rowActions.append(
+        button("Save", "Save this guild name/description and campaign assignment. Each campaign may have only one guild.", () => worldAction({ action: "update", entity: "guild", id: guild.id, name: nameEdit.value, description: descriptionEdit.value, campaign_id: assign.value })),
+        button("Delete", "Delete this guild and clear troupe links to it. The default Adventurers Guild cannot be deleted.", async () => {
+          if (!window.confirm(`Delete guild ${guild.name}? Linked troupes keep their campaign but lose this guild link.`)) return;
+          await worldAction({ action: "delete", entity: "guild", id: guild.id });
+        })
+      );
+      row.appendChild(rowActions);
+      guildRows.appendChild(row);
+    }
+  }
+
+  function renderTroupeRows() {
+    troupeRows.replaceChildren();
+    const rows = filteredWorldRows(worldTroupes(), filters, (row) => `${worldName(worldGuilds(), row.guild_id, "")} ${worldName(worldSettlements(), row.home_settlement_id, "")}`);
+    if (!rows.length) troupeRows.appendChild(el("p", "muted", "No troupes match the current filters."));
+    for (const troupe of rows) {
+      const nameEdit = input("text", `modern-world-troupe-name-${troupe.id}`, troupe.id === "troupe1" ? "Default troupe name is kept as Troupe1. Use the description for campaign-specific notes." : "Troupe name shown in party, character, and campaign context.", troupe.name);
+      const descriptionEdit = textarea(`modern-world-troupe-description-${troupe.id}`, "Troupe travel notes, roster theme, obligations, or current campaign purpose.", 3);
+      descriptionEdit.value = troupe.description || "";
+      const assign = select(`modern-world-troupe-${troupe.id}-campaign`, "Move this troupe to another campaign. A troupe can only belong to one campaign.", worldCampaignOptions());
+      assign.value = troupe.campaign_id || "";
+      const guildEdit = select(`modern-world-troupe-${troupe.id}-guild`, "Guild linked to this troupe. Characters assigned through this troupe inherit this guild context.", worldGuildOptions());
+      guildEdit.value = troupe.guild_id || "";
+      const settlementEdit = select(`modern-world-troupe-${troupe.id}-home`, "Friendly home settlement for this troupe. Character sheets show this as home settlement context.", worldSettlementOptions());
+      settlementEdit.value = troupe.home_settlement_id || "";
+      const row = el("div", "modern-row");
+      row.append(
+        el("strong", "", troupe.name),
+        el("span", "muted", `Campaign ${worldName(worldCampaigns(), troupe.campaign_id)} · guild ${worldName(worldGuilds(), troupe.guild_id)} · home ${worldName(worldSettlements(), troupe.home_settlement_id)} · ${(troupe.party_ids || []).length} party(s)`),
+        field("Name", nameEdit),
+        field("Campaign", assign),
+        field("Guild", guildEdit),
+        field("Home settlement", settlementEdit),
+        field("Description", descriptionEdit)
+      );
+      const rowActions = actions();
+      rowActions.append(
+        button("Save", "Save this troupe's campaign, guild, home settlement, and notes. Existing assigned characters keep their current context until reassigned or party/troupe sync runs.", () => worldAction({ action: "update", entity: "troupe", id: troupe.id, name: nameEdit.value, description: descriptionEdit.value, campaign_id: assign.value, guild_id: guildEdit.value, home_settlement_id: settlementEdit.value })),
+        button("Delete", "Delete this troupe, clear party/character troupe links, and move home-settlement links back to Brightwater Gate. Troupe1 cannot be deleted.", async () => {
+          if (!window.confirm(`Delete troupe ${troupe.name}? Assigned parties and characters will lose this troupe assignment.`)) return;
+          await worldAction({ action: "delete", entity: "troupe", id: troupe.id });
+        })
+      );
+      row.appendChild(rowActions);
+      troupeRows.appendChild(row);
+    }
+  }
+
+  function renderSettlementRows(kind, mount) {
+    mount.replaceChildren();
+    const isTroublesome = kind === "troublesome";
+    const rows = filteredWorldRows(worldSettlements(kind), filters);
+    if (!rows.length) mount.appendChild(el("p", "muted", isTroublesome ? "No troublesome town placeholders match the current filters." : "No friendly settlements match the current filters."));
+    for (const settlement of rows) {
+      const nameEdit = input("text", `modern-world-${kind}-name-${settlement.id}`, settlement.id === "brightwater-gate" ? "Default friendly settlement name is kept as Brightwater Gate. Edit size and notes here." : "Settlement name shown in campaign, troupe, travel, and character home context.", settlement.name);
+      const assign = select(`modern-world-${kind}-${settlement.id}-campaign`, "Move this settlement to another campaign. A settlement can only belong to one campaign.", worldCampaignOptions());
+      assign.value = settlement.campaign_id || "";
+      const sizeEdit = select(`modern-world-${kind}-${settlement.id}-size`, "Settlement size modifier. This affects TAG item/service availability checks where those rules are used.", [["-3", "-3"], ["-2", "-2"], ["-1", "-1"], ["0", "0"], ["1", "+1"], ["2", "+2"], ["3", "+3"]]);
+      sizeEdit.value = String(settlement.size ?? 0);
+      const notesEdit = textarea(`modern-world-${kind}-${settlement.id}-notes`, "Notes, services, hazards, hooks, or supplement-specific reminders shown in search and summaries.", 3);
+      notesEdit.value = settlement.notes || "";
+      const row = el("div", "modern-row");
+      row.append(
+        el("strong", "", settlement.name),
+        el("span", "muted", `Campaign ${worldName(worldCampaigns(), settlement.campaign_id)} · size ${settlement.size >= 0 ? "+" : ""}${settlement.size} · ${settlement.notes || "No notes"}`),
+        field("Name", nameEdit),
+        field("Campaign", assign),
+        field("Size", sizeEdit),
+        field("Notes", notesEdit)
+      );
+      const rowActions = actions();
+      rowActions.append(
+        button("Save", isTroublesome ? "Save this troublesome-town placeholder. Supplement-specific rules are still planned." : "Save this friendly settlement's assignment, size modifier, and notes.", () => worldAction({ action: "update", entity: isTroublesome ? "troublesome_town" : "settlement", id: settlement.id, name: nameEdit.value, campaign_id: assign.value, size: Number(sizeEdit.value), notes: notesEdit.value })),
+        button("Delete", "Delete this settlement record. Brightwater Gate cannot be deleted; troupe home links move back to Brightwater Gate when another settlement is deleted.", async () => {
+          if (!window.confirm(`Delete settlement ${settlement.name}? Linked troupe home settlements will fall back to Brightwater Gate.`)) return;
+          await worldAction({ action: "delete", entity: isTroublesome ? "troublesome_town" : "settlement", id: settlement.id });
+        })
+      );
+      row.appendChild(rowActions);
+      mount.appendChild(row);
+    }
+  }
+
+  function drawLists() {
+    renderCampaignRows();
+    renderGuildRows();
+    renderTroupeRows();
+    renderSettlementRows("friendly", friendlyCard._worldRows);
+    renderSettlementRows("troublesome", troublesomeCard._worldRows);
+  }
+
+  layout.append(selectedCard, filters.panel, campaignsCard, guildsCard, troupesCard, friendlyCard, troublesomeCard, mapCard);
+  drawLists();
   rootEl.appendChild(layout);
 }
 

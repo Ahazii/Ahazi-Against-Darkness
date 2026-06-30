@@ -12,6 +12,17 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "data" / "rules" / "artwork_registry.json"
 
 
+def find_pdftoppm() -> str | None:
+    resolved = shutil.which("pdftoppm")
+    if resolved and Path(resolved).suffix.lower() == ".exe":
+        return resolved
+    home = Path.home()
+    for candidate in home.glob(".cache/codex-runtimes/*/dependencies/native/poppler/Library/bin/pdftoppm.exe"):
+        if candidate.exists():
+            return str(candidate)
+    return resolved
+
+
 def load_entries() -> list[dict]:
     payload = json.loads(REGISTRY.read_text(encoding="utf-8"))
     return payload.get("entries", [])
@@ -25,10 +36,11 @@ def find_entry(entry_id: str) -> dict:
 
 
 def render_page(pdf_path: Path, page: int, output_prefix: Path) -> Path:
-    if shutil.which("pdftoppm") is None:
+    pdftoppm = find_pdftoppm()
+    if pdftoppm is None:
         raise SystemExit("pdftoppm was not found. Install Poppler or use the bundled runtime that includes it.")
     subprocess.run(
-        ["pdftoppm", "-png", "-f", str(page), "-singlefile", str(pdf_path), str(output_prefix)],
+        [pdftoppm, "-png", "-f", str(page), "-singlefile", str(pdf_path), str(output_prefix)],
         check=True,
     )
     rendered = output_prefix.with_suffix(".png")

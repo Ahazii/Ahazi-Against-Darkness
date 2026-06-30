@@ -508,9 +508,13 @@ def _remove_character_from_party(character: Character, *, reason: str) -> str:
 async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import (
         DEFAULT_WORLD_CAMPAIGN_ID,
+        DEFAULT_WORLD_CAMPAIGN_NAME,
         DEFAULT_WORLD_GUILD_ID,
+        DEFAULT_WORLD_GUILD_NAME,
         DEFAULT_WORLD_SETTLEMENT_ID,
+        DEFAULT_WORLD_SETTLEMENT_NAME,
         DEFAULT_WORLD_TROUPE_ID,
+        DEFAULT_WORLD_TROUPE_NAME,
         load_campaign,
         save_campaign,
     )
@@ -525,6 +529,15 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
         record = WorldCampaignRecord(name=_world_name(payload, "New Campaign"), description=_world_description(payload), created_at=timestamp)
         campaign.world_campaigns.append(record)
         campaign.active_world_campaign_id = record.id
+    elif action == "update" and entity == "campaign":
+        record_id = str(payload.get("id") or "")
+        for record in campaign.world_campaigns:
+            if record.id == record_id:
+                record.name = DEFAULT_WORLD_CAMPAIGN_NAME if record.id == DEFAULT_WORLD_CAMPAIGN_ID else _world_name(payload, record.name)
+                record.description = _world_description(payload)
+                break
+        else:
+            raise HTTPException(status_code=404, detail="Campaign not found.")
     elif action == "delete" and entity == "campaign":
         record_id = str(payload.get("id") or "")
         if record_id == DEFAULT_WORLD_CAMPAIGN_ID:
@@ -550,6 +563,25 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
         for world in campaign.world_campaigns:
             if world.id == campaign_id:
                 world.guild_id = record.id
+    elif action == "update" and entity == "guild":
+        guild_id = str(payload.get("guild_id") or payload.get("id") or "")
+        campaign_id = str(payload.get("campaign_id") or "")
+        if campaign_id and any(item.id != guild_id and item.campaign_id == campaign_id for item in campaign.world_guilds):
+            raise HTTPException(status_code=400, detail="A campaign may have only one assigned guild.")
+        for guild in campaign.world_guilds:
+            if guild.id == guild_id:
+                guild.name = DEFAULT_WORLD_GUILD_NAME if guild.id == DEFAULT_WORLD_GUILD_ID else _world_name(payload, guild.name)
+                guild.description = _world_description(payload)
+                if campaign_id:
+                    guild.campaign_id = campaign_id
+                for world in campaign.world_campaigns:
+                    if world.id == guild.campaign_id:
+                        world.guild_id = guild.id
+                    elif world.guild_id == guild.id:
+                        world.guild_id = None
+                break
+        else:
+            raise HTTPException(status_code=404, detail="Guild not found.")
     elif action == "delete" and entity == "guild":
         record_id = str(payload.get("id") or "")
         if record_id == DEFAULT_WORLD_GUILD_ID:
@@ -584,6 +616,21 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
             created_at=timestamp,
         )
         campaign.world_troupes.append(record)
+    elif action == "update" and entity == "troupe":
+        troupe_id = str(payload.get("troupe_id") or payload.get("id") or "")
+        for troupe in campaign.world_troupes:
+            if troupe.id == troupe_id:
+                troupe.name = DEFAULT_WORLD_TROUPE_NAME if troupe.id == DEFAULT_WORLD_TROUPE_ID else _world_name(payload, troupe.name)
+                troupe.description = _world_description(payload)
+                if payload.get("campaign_id"):
+                    troupe.campaign_id = str(payload.get("campaign_id"))
+                if payload.get("guild_id"):
+                    troupe.guild_id = str(payload.get("guild_id"))
+                if payload.get("home_settlement_id"):
+                    troupe.home_settlement_id = str(payload.get("home_settlement_id"))
+                break
+        else:
+            raise HTTPException(status_code=404, detail="Troupe not found.")
     elif action == "delete" and entity == "troupe":
         record_id = str(payload.get("id") or "")
         if record_id == DEFAULT_WORLD_TROUPE_ID:
@@ -618,6 +665,23 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
             campaign.world_troublesome_towns.append(record)
         else:
             campaign.world_settlements.append(record)
+    elif action == "update" and entity in {"settlement", "troublesome_town"}:
+        record_id = str(payload.get("settlement_id") or payload.get("id") or "")
+        collections = [campaign.world_troublesome_towns] if entity == "troublesome_town" else [campaign.world_settlements]
+        for collection in collections:
+            for record in collection:
+                if record.id == record_id:
+                    record.name = DEFAULT_WORLD_SETTLEMENT_NAME if record.id == DEFAULT_WORLD_SETTLEMENT_ID else _world_name(payload, record.name)
+                    if payload.get("campaign_id"):
+                        record.campaign_id = str(payload.get("campaign_id"))
+                    record.size = int(payload.get("size") or 0)
+                    record.notes = _world_description(payload)
+                    break
+            else:
+                continue
+            break
+        else:
+            raise HTTPException(status_code=404, detail="Settlement not found.")
     elif action == "delete" and entity in {"settlement", "troublesome_town"}:
         record_id = str(payload.get("id") or "")
         if record_id == DEFAULT_WORLD_SETTLEMENT_ID:
@@ -1453,6 +1517,50 @@ def _rules_tables_payload() -> dict:
             "summary": row.get("summary", ""),
         }
         for row in rules.artwork_registry()
+    ]
+    data["campaign_worldbuilder_schema_table"] = [
+        {
+            "entity": "Campaign",
+            "allowed_per_campaign": "1 selected world record",
+            "assignment_rule": "Owns one guild, multiple troupes, multiple friendly settlements, and multiple troublesome-town placeholders.",
+            "default_record": "Norindaal",
+            "rules_boundary": "App world-builder bookkeeping, not a TAG PDF rule.",
+        },
+        {
+            "entity": "Guild",
+            "allowed_per_campaign": "1 guild assigned to each campaign",
+            "assignment_rule": "A guild can belong to only one campaign. The backend blocks assigning two guilds to the same campaign.",
+            "default_record": "Adventurers Guild",
+            "rules_boundary": "App assignment layer; TAG Guild mechanics remain separate and linked through Guild Management.",
+        },
+        {
+            "entity": "Troupe",
+            "allowed_per_campaign": "Multiple troupes",
+            "assignment_rule": "A troupe belongs to one campaign, can point to one guild, and has one friendly home settlement.",
+            "default_record": "Troupe1",
+            "rules_boundary": "App assignment layer; TAG troupe activity uses this context where relevant.",
+        },
+        {
+            "entity": "Friendly Settlement",
+            "allowed_per_campaign": "Multiple settlements",
+            "assignment_rule": "A friendly settlement belongs to one campaign and may be used as a troupe home settlement.",
+            "default_record": "Brightwater Gate",
+            "rules_boundary": "App world record; TAG size modifiers affect supported availability/service checks.",
+        },
+        {
+            "entity": "Troublesome Town",
+            "allowed_per_campaign": "Multiple placeholders",
+            "assignment_rule": "Reserved for future Treacheries of the Troublesome Town supplements. Current records are campaign placeholders only.",
+            "default_record": "None",
+            "rules_boundary": "No supplement mechanics are claimed as implemented yet.",
+        },
+        {
+            "entity": "Character",
+            "allowed_per_campaign": "One campaign, one guild, one troupe, one party",
+            "assignment_rule": "Assigning a character to a conflicting troupe warns in the UI and removes incompatible party membership in the backend.",
+            "default_record": "Defaults through Troupe1 / Adventurers Guild / Norindaal",
+            "rules_boundary": "App roster consistency rule.",
+        },
     ]
     data["map_elements_validation_table"] = map_elements_validation_table_rows(rules.tiles())
     data["forsaken_depths_map_elements_validation_table"] = map_elements_validation_table_rows(
