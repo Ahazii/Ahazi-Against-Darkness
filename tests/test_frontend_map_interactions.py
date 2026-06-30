@@ -2070,6 +2070,12 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Treasure Map playbook" in APP_JS
     assert "tag-director-panel" in APP_JS
     assert "tag-closeout-wizard" in APP_JS
+    assert "function repairGeneratedTagGuidance" in APP_JS
+    assert "tag-repair-guidance" in APP_JS
+    assert "I think you are here" in APP_JS
+    assert "Advanced TAG controls" in APP_JS
+    assert "tag-repair" in APP_JS
+    assert "tag-repair-guidance" in APP_JS
     assert "1. Objective" in APP_JS
     assert "4. Guild / banking / guidance" in APP_JS
     assert "Generated TAG closeout" in APP_JS
@@ -2081,6 +2087,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert ".tag-generated-closeout-panel" in STYLES_CSS
     assert ".tag-director-panel" in STYLES_CSS
     assert ".tag-closeout-wizard" in STYLES_CSS
+    assert ".tag-director-links" in STYLES_CSS
+    assert ".tag-action-dialog.has-director:not(.show-advanced) .tag-advanced-controls" in STYLES_CSS
     assert "Guild 50% loot share" in INDEX_HTML
     assert "Guild resurrection fund" in INDEX_HTML
     assert "await recoverTagBankRobbery();" in APP_JS

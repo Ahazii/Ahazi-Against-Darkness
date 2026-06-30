@@ -11227,6 +11227,17 @@ function openTagAdventureActions() {
   }
 }
 
+function syncTagAdvancedControls(hasDirector = false) {
+  if (!tagAdventureActionsDialog) return;
+  const grids = Array.from(tagAdventureActionsDialog.querySelectorAll(".tag-settlement-grid"));
+  for (const grid of grids) {
+    grid.classList.add("tag-advanced-controls");
+    setTooltip(grid, "Advanced TAG controls: the full toolbox for edge cases, manual PDF/player signoff, character-specific rewards, Guild, finance, XP, and route edits.");
+  }
+  tagAdventureActionsDialog.classList.toggle("has-director", Boolean(hasDirector));
+  if (!hasDirector) tagAdventureActionsDialog.classList.remove("show-advanced");
+}
+
 function enableTagActionDialogDrag() {
   if (!tagAdventureActionsDialog || tagAdventureActionsDialog.dataset.dragBound === "1") return;
   const handle = tagAdventureActionsDialog.querySelector(".transfer-dialog-header");
@@ -17652,10 +17663,10 @@ function currentObjectiveForSession(session) {
   }
   const quest = session.active_quest && !session.active_quest.reward_claimed ? session.active_quest : null;
   const generated = tagCurrentPromptData(session);
-  if (generated.tagReference && generated.promptData) {
+  if (generated.tagReference) {
     const leadLabel = tagLeadLabel(generated.tagReference);
     const director = generatedTagDirectorStep(session);
-    const actions = Array.isArray(generated.promptData.actions)
+    const actions = Array.isArray(generated.promptData?.actions)
       ? generated.promptData.actions.filter((action) => action?.label && action.action_type)
       : [];
     if (session.active_quest?.completed && !generatedTagLeadSignedOff(session)) {
@@ -17665,6 +17676,15 @@ function currentObjectiveForSession(session) {
           "The generated TAG objective is complete. Review route markers, rewards, XP, Guild share, banking/storage, and any closeout tasks before starting another lead.",
         tone: "tag",
         action: { label: "Sign off TAG lead", kind: "tag-lead-signoff" },
+      };
+    }
+    if (!actions.length && director) {
+      return {
+        title: `Current objective: ${director.phase}`,
+        body: `${director.instruction} ${director.playbook} If this resumed module has no Relevant Now buttons, run Repair guidance to rebuild generic prompt metadata.`,
+        tone: "tag",
+        action: { label: "Repair guidance", kind: "tag-repair" },
+        secondaryAction: { label: "Open TAG Actions", kind: "tag-actions" },
       };
     }
     if (actions.length) {
@@ -17763,6 +17783,10 @@ function appendCurrentObjectiveButton(parent, action) {
       btn.addEventListener("click", () =>
         signOffGeneratedTagLead("Player confirmed generated TAG lead route, reward, XP, Guild, banking/storage, and closeout checks.").catch(handleError)
       );
+      break;
+    case "tag-repair":
+      setButtonTooltip(btn, "Repair generated TAG guidance for an older/resumed module by rebuilding generic prompt metadata and normalizing legacy log wording.");
+      btn.addEventListener("click", () => repairGeneratedTagGuidance().catch(handleError));
       break;
     default:
       return;
@@ -17878,12 +17902,8 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
   );
   panel.appendChild(node("strong", "", "Generated TAG closeout"));
   if (director) {
-    const directorBox = node("div", "tag-director-panel");
-    setTooltip(directorBox, "Generated TAG closeout director: the app's best current read of what this lead needs next.");
-    directorBox.appendChild(node("strong", "", director.heading));
-    directorBox.appendChild(node("span", "", director.instruction));
-    directorBox.appendChild(node("span", "", director.playbook));
-    panel.appendChild(directorBox);
+    const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated TAG closeout director");
+    if (directorBox) panel.appendChild(directorBox);
   }
   panel.appendChild(
     node(
@@ -22713,6 +22733,79 @@ function generatedTagLeadPlaybook(tagReference = {}) {
   return "Generated TAG playbook: follow the room prompt, record only the branch/reward/XP/route that actually happened, then finish closeout before starting another lead.";
 }
 
+function generatedTagReferenceTargets(tagReference = {}) {
+  const type = String(tagReference.lead_type || "").toLowerCase();
+  if (type === "treasure_map") {
+    return {
+      rules: "tag_treasure_map_playthrough_audit",
+      table: "tag_treasure_map_playthrough_audit_table",
+      label: "Treasure Map reference",
+    };
+  }
+  if (type === "rumor") {
+    return { rules: "tag_rumor_playthrough_audit", table: "tag_rumor_playthrough_audit_table", label: "Rumor reference" };
+  }
+  if (type === "thematic_dungeon") {
+    return {
+      rules: "tag_thematic_dungeon_playthrough_audit",
+      table: "tag_thematic_dungeon_playthrough_audit_table",
+      label: "Thematic reference",
+    };
+  }
+  return {
+    rules: "tag_generated_prompt_playtest",
+    table: "tag_generated_adventure_signoff_table",
+    label: "Generated TAG reference",
+  };
+}
+
+function appendGeneratedTagDirectorLinks(parent, tagReference = {}) {
+  const targets = generatedTagReferenceTargets(tagReference);
+  const row = node("div", "tag-director-links");
+  const rules = document.createElement("a");
+  rules.href = `/modern/rules-reference?help=${encodeURIComponent(targets.rules)}`;
+  rules.target = "_blank";
+  rules.rel = "noopener";
+  rules.textContent = "Rules Reference";
+  rules.title = `Open ${targets.label} in the modern Rules Reference. This is app workflow guidance, not copied PDF scene text.`;
+  const table = document.createElement("a");
+  table.href = `/modern/tables?help=${encodeURIComponent(targets.table)}`;
+  table.target = "_blank";
+  table.rel = "noopener";
+  table.textContent = "Tables";
+  table.title = `Open ${targets.table} in the modern Tables list for dashboard workflow and PDF-boundary notes.`;
+  row.append(rules, table);
+  parent.appendChild(row);
+}
+
+function generatedTagRecoveryAssessment(session = state.session) {
+  const tagReference = tagReferenceForGeneratedAdventure(session);
+  if (!tagReference) return null;
+  const { room, promptData } = tagCurrentPromptData(session);
+  const lifecycle = generatedTagLifecycleState(session);
+  const missingPrompts = !tagReference.room_prompts || !Object.keys(tagReference.room_prompts || {}).length;
+  const repaired = Boolean(tagReference.prompt_repair_note || session?.active_quest?.tag_generated_lead_state?.guidance_repaired);
+  const phase = room?.id ? (generatedTagDirectorStep(session)?.phase || room.id) : "unknown room";
+  const confidence =
+    promptData && !missingPrompts ? "High" : repaired ? "Repaired" : room?.id ? "Medium" : "Low";
+  const warnings = [];
+  if (missingPrompts) warnings.push("Prompt metadata is missing; run repair guidance.");
+  if (repaired) warnings.push("Generic prompts were rebuilt for this older module; confirm exact PDF/player values.");
+  if (!lifecycle.entry_seen && room?.id !== "tag-lead-entry") warnings.push("Entry was not clearly recorded in lifecycle state.");
+  return { phase, confidence, warnings, repaired };
+}
+
+async function repairGeneratedTagGuidance() {
+  if (!state.session?.id) return;
+  const result = await api(`/api/sessions/${encodeURIComponent(state.session.id)}/tag-repair-guidance`, {
+    method: "POST",
+  });
+  state.session = result;
+  renderSession();
+  syncSessionListFromSession(state.session);
+  setStatus("Generated TAG guidance repaired for this session.");
+}
+
 function generatedTagRecommendedAction(promptData = {}) {
   const actions = Array.isArray(promptData.actions) ? promptData.actions.filter((action) => action?.label) : [];
   if (!actions.length) return null;
@@ -22806,6 +22899,32 @@ function generatedTagDirectorStep(session = state.session) {
   };
 }
 
+function createGeneratedTagDirectorPanel(director, tagReference, session = state.session, title = "Generated TAG director") {
+  if (!director) return null;
+  const directorBox = node("div", "tag-director-panel");
+  setTooltip(directorBox, `${title}: app-authored phase guidance for the current generated room. It narrows the next action without replacing printed TAG rules.`);
+  directorBox.appendChild(node("strong", "", director.heading));
+  directorBox.appendChild(node("span", "", director.instruction));
+  directorBox.appendChild(node("span", "", director.playbook));
+  const recovery = generatedTagRecoveryAssessment(session);
+  if (recovery) {
+    const recoveryLine = node(
+      "span",
+      "tag-recovery-assessment",
+      `I think you are here: ${recovery.phase} (${recovery.confidence} confidence).${recovery.warnings.length ? ` ${recovery.warnings.join(" ")}` : ""}`
+    );
+    setTooltip(recoveryLine, "Recovery assessment is inferred from current room, prompt metadata, lifecycle state, logs, route markers, XP markers, and closeout state.");
+    directorBox.appendChild(recoveryLine);
+  }
+  appendGeneratedTagDirectorLinks(directorBox, tagReference);
+  const repair = node("button", "secondary tag-repair-guidance", "Repair guidance");
+  repair.type = "button";
+  setButtonTooltip(repair, "Rebuild missing generated TAG prompt metadata for older sessions and normalize legacy log wording. This does not change PDF/player outcomes.");
+  repair.addEventListener("click", () => repairGeneratedTagGuidance().catch(handleError));
+  directorBox.appendChild(repair);
+  return directorBox;
+}
+
 async function signOffGeneratedTagLead(note = "") {
   if (!state.session?.id) return;
   const result = await api(`/api/sessions/${encodeURIComponent(state.session.id)}/tag-generated-lead-signoff`, {
@@ -22832,18 +22951,16 @@ function renderTagRelevantActions(session = state.session) {
   const actions = Array.isArray(promptData?.actions) ? promptData.actions.filter((action) => action?.label) : [];
   if (!tagReference || !actions.length) {
     tagRelevantActions.classList.add("hidden");
+    syncTagAdvancedControls(false);
     return;
   }
   tagRelevantActions.classList.remove("hidden");
   tagRelevantActions.appendChild(node("strong", "", "Relevant now"));
   const director = generatedTagDirectorStep(session);
+  syncTagAdvancedControls(Boolean(director));
   if (director) {
-    const directorBox = node("div", "tag-director-panel");
-    setTooltip(directorBox, "Generated TAG director: app-authored phase guidance for the current generated room. It narrows the next action without replacing printed TAG rules.");
-    directorBox.appendChild(node("strong", "", director.heading));
-    directorBox.appendChild(node("span", "", director.instruction));
-    directorBox.appendChild(node("span", "", director.playbook));
-    tagRelevantActions.appendChild(directorBox);
+    const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated TAG director");
+    if (directorBox) tagRelevantActions.appendChild(directorBox);
   }
   tagRelevantActions.appendChild(
     node(
@@ -22860,6 +22977,18 @@ function renderTagRelevantActions(session = state.session) {
     callout.appendChild(node("strong", "", `Recommended: ${recommended.label}`));
     callout.appendChild(node("span", "", generatedTagPromptActionExplanation(promptData, recommended)));
     tagRelevantActions.appendChild(callout);
+  }
+  if (director && tagAdventureActionsDialog) {
+    const toggle = node("button", "secondary tag-advanced-toggle", "Advanced TAG controls");
+    toggle.type = "button";
+    setButtonTooltip(toggle, "Show or hide the full TAG Actions toolbox. Use it for edge cases, manual edits, finance, Guild, XP, and character-specific decisions not covered by Relevant Now.");
+    toggle.addEventListener("click", () => {
+      tagAdventureActionsDialog.classList.toggle("show-advanced");
+      toggle.textContent = tagAdventureActionsDialog.classList.contains("show-advanced")
+        ? "Hide advanced controls"
+        : "Advanced TAG controls";
+    });
+    tagRelevantActions.appendChild(toggle);
   }
   const focusedActions = recommended?.action_type
     ? actions.filter((action) => action === recommended || action.action_type === recommended.action_type)
@@ -22981,12 +23110,8 @@ function appendTagContextualActions(parent, session, tile) {
   block.appendChild(prompt);
   const director = generatedTagDirectorStep(session);
   if (director) {
-    const directorBox = node("div", "tag-director-panel");
-    setTooltip(directorBox, "Generated TAG director: app-authored current-step guidance. It tells you what kind of decision this room is asking for.");
-    directorBox.appendChild(node("strong", "", director.heading));
-    directorBox.appendChild(node("span", "", director.instruction));
-    directorBox.appendChild(node("span", "", director.playbook));
-    block.appendChild(directorBox);
+    const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated TAG room director");
+    if (directorBox) block.appendChild(directorBox);
   }
   appendTagLeadUseGuide(block, tagReference);
   appendTagModuleProfile(block, tagReference.module_profile);

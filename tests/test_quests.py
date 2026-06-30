@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from app import main
 from app.engine.adventure_allowlists import major_foe_table_keys
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
@@ -116,6 +117,40 @@ def test_active_quest_can_persist_tag_treasure_map_procedure_state() -> None:
     assert restored.tag_procedure_state["map_cave_room_count"]["completed"] is True
     assert restored.tag_procedure_state["map_cave_room_count"]["total"] == 6
     assert "room target" in restored.tag_procedure_state["next_action"]
+
+
+def test_generated_tag_guidance_repair_endpoint_rebuilds_prompt_metadata(client) -> None:
+    session = base_session(
+        id="repair-session",
+        adventure_id="tag-old-rumor",
+        adventure_type="imported",
+        imported_manifest={
+            "title": "Old TAG Rumor",
+            "source": {
+                "parameters": {
+                    "tag_reference": {
+                        "lead_type": "rumor",
+                        "title": "Old Rumor",
+                    }
+                }
+            },
+            "rooms": [{"id": "tag-complication", "triggers": []}],
+        },
+        active_quest=ActiveQuestState(tile_id="t", key="imported_boss", description="Resolve old TAG lead."),
+        log=[
+            "TAG note: Apply The Map Leads To 1 reward/procedure text for Underground caves; confirm exact amounts and treasure handling from the PDF/player signoff."
+        ],
+    )
+    main.store.save("sessions", session)
+
+    response = client.post("/api/sessions/repair-session/tag-repair-guidance")
+    assert response.status_code == 200
+    payload = response.json()
+    reference = payload["imported_manifest"]["source"]["parameters"]["tag_reference"]
+    assert reference["prompt_repair_note"]
+    assert reference["room_prompts"]["tag-complication"]["actions"][1]["action_type"] == "route"
+    assert "Apply The Map Leads To" not in " ".join(payload["log"])
+    assert payload["active_quest"]["tag_generated_lead_state"]["guidance_repaired"] is True
 
 
 def test_kerrak_dar_reward_spends_one_clue_for_hoard(monkeypatch) -> None:

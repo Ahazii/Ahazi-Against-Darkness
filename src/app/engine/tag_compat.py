@@ -77,6 +77,78 @@ def normalize_tag_log_lines(lines: list[str]) -> bool:
     return changed
 
 
+def _generic_tag_prompt(title: str, body: str, *, action_type: str, action_value: str, reference: str) -> dict[str, Any]:
+    return {
+        "title": title,
+        "body": body,
+        "checklist": [
+            "Confirm the printed TAG scene/result before changing state.",
+            "Use the generated TAG Director for the current phase, then record only the branch, route, reward, or XP that actually happened.",
+        ],
+        "actions": [
+            {
+                "label": "Open TAG Actions",
+                "tooltip": "Open the full TAG Actions dialog without changing any values.",
+                "action_type": "dialog",
+            },
+            {
+                "label": title,
+                "tooltip": "Prefill TAG Actions from repaired generic prompt metadata. Confirm exact values from the PDF/player decision.",
+                "action_type": action_type,
+                "action_value": action_value,
+                "reference": reference,
+                "amount": 0,
+            },
+        ],
+    }
+
+
+def _repaired_room_prompts(tag_reference: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
+    title = str(tag_reference.get("title") or manifest.get("title") or "Generated TAG lead")
+    lead_type = str(tag_reference.get("lead_type") or "generated TAG lead").replace("_", " ")
+    playbook = (
+        "Repaired prompt metadata: this older generated TAG module did not carry room prompts, so the app rebuilt generic phase guidance. "
+        "Use it as workflow help only; printed scene text, rewards, room counts, and exact outcomes still come from the PDF/player decision."
+    )
+    return {
+        "tag-lead-entry": _generic_tag_prompt(
+            "Record lead choice",
+            f"{playbook} Entry phase for {lead_type}: establish why the party follows {title}, then decide whether any optional side lead is worth pursuing.",
+            action_type="branch",
+            action_value="social_choice",
+            reference=f"{title}: repaired lead entry",
+        ),
+        "tag-side-clue": _generic_tag_prompt(
+            "Claim printed reward",
+            f"{playbook} Side lead phase: record only the clue, reward, XP, or skipped-scene decision that actually applies.",
+            action_type="branch",
+            action_value="claim_reward",
+            reference=f"{title}: repaired side lead",
+        ),
+        "tag-complication": _generic_tag_prompt(
+            "Record route branch",
+            f"{playbook} Complication phase: resolve the parley, hostile turn, Clue gate, blocked path, or special procedure before treating the finale as normal exploration.",
+            action_type="route",
+            action_value="final_route",
+            reference=f"{title}: repaired complication",
+        ),
+        "tag-final-scene": _generic_tag_prompt(
+            "Final route",
+            f"{playbook} Finale phase: record final route, reward, XP, capture/bounty/treasure handling, then close out Guild, banking, storage, and guidance.",
+            action_type="route",
+            action_value="final_route",
+            reference=f"{title}: repaired finale",
+        ),
+        "tag-unlocked-scene": _generic_tag_prompt(
+            "Mark unlocked scene",
+            f"{playbook} Unlocked scene phase: this room exists because of an earlier choice. Record arrival, route, reward, and XP before returning to the main lead.",
+            action_type="route",
+            action_value="unlock_scene",
+            reference=f"{title}: repaired unlocked scene",
+        ),
+    }
+
+
 def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     parameters = manifest.get("source", {}).get("parameters", {})
     tag_reference = parameters.get("tag_reference") if isinstance(parameters, dict) else None
@@ -91,8 +163,15 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
             tag_reference["rewards"] = treasure_map_note_for(map_roll).removeprefix("TAG guidance: ")
         tag_reference.setdefault("side_reward_note", treasure_map_note_for(map_roll).removeprefix("TAG guidance: "))
         tag_reference.setdefault("final_reward_note", treasure_map_note_for(map_roll, final=True).removeprefix("TAG final guidance: "))
+        prompts = tag_reference.get("room_prompts")
+        if not isinstance(prompts, dict) or not prompts:
+            tag_reference["room_prompts"] = _repaired_room_prompts(tag_reference, manifest)
+            tag_reference["prompt_repair_note"] = (
+                "Generic generated TAG room prompts were rebuilt for this older module. "
+                "Use them as app workflow guidance only; exact printed text and rewards remain with the PDF/player."
+            )
+            prompts = tag_reference["room_prompts"]
         if str(tag_reference.get("lead_type") or "") == "treasure_map" or map_roll:
-            prompts = tag_reference.get("room_prompts")
             if isinstance(prompts, dict):
                 for prompt in prompts.values():
                     if not isinstance(prompt, dict):

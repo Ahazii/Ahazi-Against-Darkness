@@ -2186,8 +2186,13 @@ def _rules_tables_payload() -> dict:
         },
         {
             "checkpoint": "Director step",
-            "review": "Read the phase-specific director text first. It explains whether the current room is Entry, Side lead, Complication, Finale, Unlocked scene, or Closeout and says what kind of TAG action matters now.",
+            "review": "Read the phase-specific director text first. It explains whether the current room is Entry, Side lead, Complication, Finale, Unlocked scene, or Closeout, says what kind of TAG action matters now, and links to the matching Rules Reference/Tables workflow entry.",
             "where": "Exploration TAG prompt, Current Objective banner, TAG Actions Relevant Now, and Ongoing Quest closeout panel.",
+        },
+        {
+            "checkpoint": "Recovery / repair",
+            "review": "For old or resumed generated modules, check the I think you are here recovery line. If prompt metadata is missing, use Repair guidance to rebuild generic app prompts and normalize legacy log wording.",
+            "where": "Current Objective banner, generated TAG Director panels, and /api/sessions/{id}/tag-repair-guidance.",
         },
         {
             "checkpoint": "Lifecycle visible",
@@ -2253,8 +2258,14 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Prompt action buttons and Relevant Now shortcuts",
             "shown_in": "Generated TAG rooms and TAG Actions dialog.",
-            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls; the TAG Actions dialog repeats current-room shortcuts at the top with director guidance, a Recommended action, and the focused current action family before the full controls.",
+            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls; the TAG Actions dialog repeats current-room shortcuts at the top with director guidance, a Recommended action, reference links, and the focused current action family before the collapsible advanced controls.",
             "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
+        },
+        {
+            "surface": "Recovery and repair",
+            "shown_in": "Current Objective banner and generated TAG Director panels.",
+            "player_use": "Shows I think you are here with confidence, warns when generic prompt metadata was repaired, and offers Repair guidance for older generated modules.",
+            "pdf_boundary": "Repair rebuilds app prompt metadata and log wording only; it does not invent printed scene text or resolve rewards.",
         },
         {
             "surface": "Generated lead signoff",
@@ -3869,6 +3880,33 @@ async def session_tag_generated_lead_signoff(session_id: str, payload: dict[str,
         )
     if warnings:
         session.log.append(f"TAG generated lead signoff warnings: {'; '.join(warnings)}")
+    store.save("sessions", session)
+    return enrich_session(session)
+
+
+@app.post("/api/sessions/{session_id}/tag-repair-guidance")
+async def session_tag_repair_guidance(session_id: str) -> SessionState:
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    if not _is_generated_tag_session(session):
+        raise HTTPException(status_code=400, detail="This session is not a generated TAG lead.")
+    changed = False
+    if isinstance(session.imported_manifest, dict):
+        before = repr(session.imported_manifest)
+        session.imported_manifest = upgrade_tag_manifest(session.imported_manifest)
+        changed = changed or repr(session.imported_manifest) != before
+    changed = normalize_tag_log_lines(session.log) or changed
+    if session.active_quest is not None:
+        state = dict(session.active_quest.tag_generated_lead_state or {})
+        state["guidance_repaired"] = True
+        state["repaired_at"] = now_utc()
+        state["next_action"] = "Generated TAG guidance repaired. Use the Director, Relevant Now shortcuts, and closeout wizard to continue from the current room."
+        session.active_quest.tag_generated_lead_state = state
+        changed = True
+    session.log.append(
+        "TAG generated guidance repair: rebuilt missing prompt metadata where needed, normalized legacy log wording, and refreshed the current-room Director guidance."
+    )
     store.save("sessions", session)
     return enrich_session(session)
 

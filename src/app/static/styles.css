@@ -758,6 +758,35 @@ h2 {
   color: var(--muted);
 }
 
+.tag-director-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tag-director-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid rgba(201, 162, 39, 0.32);
+  border-radius: 6px;
+  color: var(--accent);
+  text-decoration: none;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.tag-recovery-assessment {
+  color: var(--warning, #d4a574);
+}
+
+.tag-repair-guidance,
+.tag-advanced-toggle {
+  width: fit-content;
+  min-width: 0;
+  text-align: left;
+}
+
 .ongoing-quest-actions .primary {
   border-color: #b88a3a;
   background: #7b4e16;
@@ -963,6 +992,10 @@ h2 {
 
 .tag-action-guide strong {
   color: var(--accent);
+}
+
+.tag-action-dialog.has-director:not(.show-advanced) .tag-advanced-controls {
+  display: none;
 }
 
 .tag-relevant-actions {

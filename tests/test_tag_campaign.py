@@ -1140,6 +1140,24 @@ def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
     assert {"action_value": "treasure_map_follow"} not in actions
     assert {"action_value": "map_cave_room_count"} in actions
 
+    old_manifest = {
+        "title": "Old TAG Rumor",
+        "source": {
+            "parameters": {
+                "tag_reference": {
+                    "lead_type": "rumor",
+                    "title": "Old Rumor",
+                }
+            }
+        },
+        "rooms": [{"id": "tag-complication", "triggers": []}],
+    }
+    repaired = upgrade_tag_manifest(old_manifest)
+    repaired_reference = repaired["source"]["parameters"]["tag_reference"]
+    assert repaired_reference["prompt_repair_note"]
+    assert repaired_reference["room_prompts"]["tag-complication"]["actions"][1]["action_type"] == "route"
+    assert "older generated TAG module" in repaired_reference["room_prompts"]["tag-final-scene"]["body"]
+
 
 def test_tag_theme_procedure_branch_actions_roll_exact_tables(monkeypatch) -> None:
     campaign = default_campaign()
