@@ -390,7 +390,8 @@ def test_tag_adventure_manifest_generation_validates() -> None:
         assert tag_reference["lead_type"] == lead_type
         assert tag_reference["how_to"]
         assert tag_reference["mood"]
-        assert "Record the party's printed approach" in tag_reference["room_prompts"]["tag-lead-entry"]["body"]
+        assert "handoff from settlement rumor" in tag_reference["room_prompts"]["tag-lead-entry"]["body"]
+        assert "stops being travel and becomes a decision" in tag_reference["room_prompts"]["tag-complication"]["body"]
         assert "Adventure section" in entry.result_text
 
 

@@ -2057,6 +2057,13 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_SETTLEMENT_TOOLTIPS.tagRunBankTransfer" in APP_JS
     assert "function renderTagTroupeDialog" in APP_JS
     assert "tag-action-guide" in INDEX_HTML
+    assert "tag-relevant-actions" in INDEX_HTML
+    assert "function renderTagRelevantActions" in APP_JS
+    assert "Relevant now" in APP_JS
+    assert "tag-generated-lead-signoff" in APP_JS
+    assert "Current objective: TAG closeout signoff" in APP_JS
+    assert "tag-prompt-action" in APP_JS
+    assert ".tag-relevant-actions" in STYLES_CSS
     assert "Guild 50% loot share" in INDEX_HTML
     assert "Guild resurrection fund" in INDEX_HTML
     assert "await recoverTagBankRobbery();" in APP_JS

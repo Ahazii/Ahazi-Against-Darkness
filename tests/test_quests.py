@@ -89,6 +89,8 @@ def test_active_quest_can_persist_tag_treasure_map_procedure_state() -> None:
     )
     quest.tag_treasure_map_destination = 1
     quest.tag_procedure_signoff = True
+    quest.tag_generated_lead_signoff = True
+    quest.tag_generated_lead_state["closeout"] = {"completed": True, "result": "Reviewed"}
     quest.tag_procedure_state["map_cave_room_count"] = {
         "completed": True,
         "total": 6,
@@ -99,6 +101,8 @@ def test_active_quest_can_persist_tag_treasure_map_procedure_state() -> None:
     restored = ActiveQuestState.model_validate(quest.model_dump())
     assert restored.tag_treasure_map_destination == 1
     assert restored.tag_procedure_signoff is True
+    assert restored.tag_generated_lead_signoff is True
+    assert restored.tag_generated_lead_state["closeout"]["completed"] is True
     assert restored.tag_procedure_state["map_cave_room_count"]["completed"] is True
     assert restored.tag_procedure_state["map_cave_room_count"]["total"] == 6
     assert "room target" in restored.tag_procedure_state["next_action"]

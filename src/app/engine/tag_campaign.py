@@ -5085,7 +5085,10 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     prompts: dict[str, object] = {
         "tag-lead-entry": {
             "title": "Lead entry choices",
-            "body": f"{mood} {how_to} {entry_guidance} Record the party's printed approach before moving deeper into the generated TAG lead.",
+            "body": (
+                f"{mood} {how_to} {entry_guidance} "
+                "This is the handoff from settlement rumor, job, map, or patron into a playable dungeon thread: decide why the party trusts the lead, what they risk by following it, and which printed approach or refusal should be recorded before the doors start closing behind them."
+            ),
             "checklist": [
                 f"Confirm which {lead_result_label} produced this module.",
                 "Record the party's first approach or refusal in TAG Actions.",
@@ -5114,7 +5117,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             "body": (
                 f"{profile.get('side') or 'The side path offers a useful clue, but it should feel like a choice rather than housekeeping.'} "
                 f"{side_guidance} "
-                "Check the printed scene for reward, Clue, or XP handling before confirming an action."
+                "Treat this as the lead breathing at the edge of the map: a torn sign, nervous witness, half-hidden cache, or too-clean footprint that tells the players this job has teeth. Check the printed scene for reward, Clue, or XP handling before confirming an action."
             ),
             "checklist": [
                 "Check whether the side clue changes Clues, reward, XP, or route options.",
@@ -5142,7 +5145,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             "body": (
                 f"{profile.get('complication') or 'The lead tightens here: a bargain can sour, a shortcut can close, or a fight can turn the room into evidence.'} "
                 f"{complication_guidance} "
-                "Resolve the printed social, combat, Clue, or blocked-route branch."
+                "This is where the lead stops being travel and becomes a decision. Resolve the printed social, combat, Clue, or blocked-route branch before the party treats the finale as ordinary room-clearing."
             ),
             "checklist": [
                 "Resolve the printed branch, Clue cost, or procedure before moving to the finale.",
@@ -5184,7 +5187,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         "tag-final-scene": {
             "title": "Final scene closeout",
             "body": (
-                "Check final foe, route, reward, and XP text before closing the generated TAG lead. "
+                "The trail tightens into its last chamber, witness, bargain, or monster. Check final foe, route, reward, and XP text before closing the generated TAG lead. "
                 "If the scene offers capture alive, tick Subdual damage before Resolve Round; then record Capture alive and any special reward in TAG Actions. "
                 f"{finale_guidance} "
                 f"Reward note: {profile.get('rewards') or 'see source scene.'}"
@@ -5221,7 +5224,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         },
         "tag-unlocked-scene": {
             "title": "Unlocked scene",
-            "body": "This room was inserted by a TAG route rewrite. Treat it like a door the story only opens because of an earlier choice: record arrival, reward, and XP against the printed branch.",
+            "body": "This room was inserted by a TAG route rewrite. Treat it like a door the story only opens because of an earlier choice: the party paid a clue cost, spared someone, followed a dangerous hint, or refused the obvious road. Record arrival, reward, and XP against the printed branch.",
             "checklist": [
                 "Confirm which earlier route unlocked this scene.",
                 "Record arrival, reward, XP, and any closeout note before moving on.",

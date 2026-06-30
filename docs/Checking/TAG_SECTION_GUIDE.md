@@ -35,7 +35,7 @@ The **Route / XP / Bank summary** under Services and Log shows recent bank balan
 
 ## During a TAG Adventure
 
-Use the normal Adventure section to play the generated module. TAG-specific follow-up decisions are handled from the **TAG Actions** button in the exploration side action bar, so the branch choice is made at the point of play without crowding the map/exits area.
+Use the normal Adventure section to play the generated module. TAG-specific follow-up decisions are handled from the **TAG Actions** button in the exploration side action bar, so the branch choice is made at the point of play without crowding the map/exits area. The **Current Objective** banner also reads the current generated-room prompt and surfaces the next likely action; opening TAG Actions shows **Relevant Now** shortcuts before the full selectors.
 
 - **Branch** logs generic social choices, Clue spends, variable counts, capture-alive outcomes, and printed gp rewards.
 - **Route** records the exact scene flow: parley success/failure, Clue-gated routes, peaceful/hostile branches, skipped or unlocked scenes, solo restrictions, and final routes. Route markers are saved in campaign state and also applied to the latest generated TAG module where safe.

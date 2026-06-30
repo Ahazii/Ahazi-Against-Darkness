@@ -323,6 +323,7 @@ const tagFinanceAmount = document.getElementById("tag-finance-amount");
 const tagFinanceNote = document.getElementById("tag-finance-note");
 const tagRunFinance = document.getElementById("tag-run-finance");
 const tagAdventureActionsDialog = document.getElementById("tag-adventure-actions-dialog");
+const tagRelevantActions = document.getElementById("tag-relevant-actions");
 const tagBankTransferDialog = document.getElementById("tag-bank-transfer-dialog");
 const tagBankTransferCharacter = document.getElementById("tag-bank-transfer-character");
 const tagBankTransferAll = document.getElementById("tag-bank-transfer-all");
@@ -11201,6 +11202,7 @@ function openTagAdventureActions() {
   enableTagActionDialogDrag();
   renderTagCharacterOptions(state.campaign);
   state.tagActionContextNote = "";
+  renderTagRelevantActions(state.session);
   updateTagBranchActionHint();
   try {
     if (!tagAdventureActionsDialog.open) {
@@ -17649,6 +17651,39 @@ function currentObjectiveForSession(session) {
     };
   }
   const quest = session.active_quest && !session.active_quest.reward_claimed ? session.active_quest : null;
+  const generated = tagCurrentPromptData(session);
+  if (generated.tagReference && generated.promptData) {
+    const leadLabel = tagLeadLabel(generated.tagReference);
+    const actions = Array.isArray(generated.promptData.actions)
+      ? generated.promptData.actions.filter((action) => action?.label && action.action_type)
+      : [];
+    if (session.active_quest?.completed && !generatedTagLeadSignedOff(session)) {
+      return {
+        title: "Current objective: TAG closeout signoff",
+        body:
+          "The generated TAG objective is complete. Review route markers, rewards, XP, Guild share, banking/storage, and any closeout tasks before starting another lead.",
+        tone: "tag",
+        action: { label: "Sign off TAG lead", kind: "tag-lead-signoff" },
+      };
+    }
+    if (actions.length) {
+      const primary = actions[0];
+      return {
+        title: `Current objective: ${generated.promptData.title || "TAG room prompt"}`,
+        body:
+          `${leadLabel}. ${generated.promptData.body || "Use the current generated TAG room prompt to decide which branch, route, reward, XP, or closeout marker applies."}`,
+        tone: "tag",
+        action: {
+          label: String(primary.label || "Open TAG Actions"),
+          kind: "tag-prompt-action",
+          promptAction: primary,
+          fallbackReference: `${generated.tagReference.title || "TAG lead"}: ${generated.promptData.title || generated.room?.id || "room prompt"}`,
+          tagReference: generated.tagReference,
+        },
+        secondaryAction: { label: "Open TAG Actions", kind: "tag-actions" },
+      };
+    }
+  }
   if (quest) {
     const claimStatus = questClaimStatus(session, quest);
     return {
@@ -17708,6 +17743,24 @@ function appendCurrentObjectiveButton(parent, action) {
       setButtonTooltip(btn, "Sign off the active Treasure Map destination after PDF/player confirmation and closeout checks.");
       btn.addEventListener("click", () =>
         signOffTagTreasureMapQuest("Player confirmed the Treasure Map destination procedure and closeout checks.").catch(handleError)
+      );
+      break;
+    case "tag-prompt-action":
+      setButtonTooltip(btn, `${action.promptAction?.tooltip || "Use this current-room TAG prompt action."} Opens TAG Actions prefilled; confirm exact PDF/player values before applying.`);
+      btn.addEventListener("click", () =>
+        openTagActionsWithDefaults(
+          generatedTagPromptActionDefaults(action.promptAction, action.fallbackReference, action.tagReference)
+        )
+      );
+      break;
+    case "tag-actions":
+      setButtonTooltip(btn, "Open TAG Actions with relevant current-room shortcuts shown at the top.");
+      btn.addEventListener("click", () => openTagAdventureActions());
+      break;
+    case "tag-lead-signoff":
+      setButtonTooltip(btn, "Sign off generated TAG lead closeout after reviewing route, reward, XP, Guild, banking/storage, and guidance tasks.");
+      btn.addEventListener("click", () =>
+        signOffGeneratedTagLead("Player confirmed generated TAG lead route, reward, XP, Guild, banking/storage, and closeout checks.").catch(handleError)
       );
       break;
     default:
@@ -22303,6 +22356,7 @@ function openTagActionsWithDefaults(defaults = {}) {
   if (defaults.sceneAction) setSelectValueIfOptionExists(tagSceneAction, defaults.sceneAction);
   if (defaults.xpAction) setSelectValueIfOptionExists(tagXpAction, defaults.xpAction);
   state.tagActionContextNote = defaults.contextNote || "";
+  renderTagRelevantActions(state.session);
   updateTagBranchActionHint();
   tagAdventureActionsDialog?.showModal();
 }
@@ -22355,6 +22409,77 @@ function tagPromptDefaultsFromAction(action = {}, fallbackReference = "") {
   if (action.action_type === "scene") defaults.sceneAction = value;
   if (action.action_type === "xp") defaults.xpAction = value;
   return defaults;
+}
+
+function tagCurrentPromptData(session = state.session) {
+  const tile = session ? currentTile(session) : null;
+  const tagReference = tagReferenceForGeneratedAdventure(session);
+  const room = tagRoomForCurrentTile(session, tile);
+  const promptData = room?.id ? tagReference?.room_prompts?.[room.id] : null;
+  return { tile, tagReference, room, promptData };
+}
+
+function tagLeadLabel(tagReference = {}) {
+  const type = String(tagReference.lead_type || "generated TAG lead").replace(/_/g, " ");
+  const detail = String(tagReference.lead_detail || tagReference.title || "").trim();
+  return detail ? `${type}: ${detail}` : type;
+}
+
+function generatedTagLeadSignedOff(session) {
+  const quest = session?.active_quest;
+  return Boolean(quest?.tag_generated_lead_signoff || quest?.tag_generated_lead_state?.closeout?.completed);
+}
+
+async function signOffGeneratedTagLead(note = "") {
+  if (!state.session?.id) return;
+  const result = await api(`/api/sessions/${encodeURIComponent(state.session.id)}/tag-generated-lead-signoff`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+  state.session = result;
+  renderSession();
+  syncSessionListFromSession(state.session);
+  setStatus("Generated TAG lead signed off.");
+}
+
+function generatedTagPromptActionDefaults(action = {}, fallbackReference = "", tagReference = {}) {
+  return {
+    ...tagPromptDefaultsFromAction(action, fallbackReference),
+    contextNote: `${tagLeadLabel(tagReference)} context: this shortcut came from the current room prompt. Confirm exact printed text, amount, reward, XP, or route consequence before applying it.`,
+  };
+}
+
+function renderTagRelevantActions(session = state.session) {
+  if (!tagRelevantActions) return;
+  tagRelevantActions.replaceChildren();
+  const { tagReference, room, promptData } = tagCurrentPromptData(session);
+  const actions = Array.isArray(promptData?.actions) ? promptData.actions.filter((action) => action?.label) : [];
+  if (!tagReference || !actions.length) {
+    tagRelevantActions.classList.add("hidden");
+    return;
+  }
+  tagRelevantActions.classList.remove("hidden");
+  tagRelevantActions.appendChild(node("strong", "", "Relevant now"));
+  tagRelevantActions.appendChild(
+    node(
+      "span",
+      "",
+      `${promptData.title || room?.id || "Current TAG room"}: choose one of these if it matches the printed scene. The full controls remain below for edge cases.`
+    )
+  );
+  const row = node("div", "tag-relevant-actions-row");
+  const fallback = `${tagReference.title || "TAG lead"}: ${promptData.title || room?.id || "room prompt"}`;
+  for (const action of actions.slice(0, 6)) {
+    const btn = node("button", "secondary", String(action.label));
+    btn.type = "button";
+    const tooltip = String(action.tooltip || "Prefill TAG Actions from the current generated-room prompt.");
+    setButtonTooltip(btn, `${tooltip} Confirm the PDF/player choice before applying.`);
+    btn.addEventListener("click", () => {
+      openTagActionsWithDefaults(generatedTagPromptActionDefaults(action, fallback, tagReference));
+    });
+    row.appendChild(btn);
+  }
+  tagRelevantActions.appendChild(row);
 }
 
 function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {

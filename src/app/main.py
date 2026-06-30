@@ -2181,8 +2181,8 @@ def _rules_tables_payload() -> dict:
         },
         {
             "checkpoint": "Room prompt used",
-            "review": "Use room prompt buttons/TAG Actions to prefill branch, reward, route, XP, or finance markers; confirm exact printed amount/result manually where needed.",
-            "where": "Exploration TAG prompt and TAG Actions dialog.",
+            "review": "Use room prompt buttons, the Current Objective banner, or TAG Actions Relevant Now shortcuts to prefill branch, reward, route, XP, or finance markers; confirm exact printed amount/result manually where needed.",
+            "where": "Exploration TAG prompt, Current Objective banner, and TAG Actions dialog.",
         },
         {
             "checkpoint": "Route marker recorded",
@@ -2236,15 +2236,21 @@ def _rules_tables_payload() -> dict:
     data["tag_generated_prompt_playtest_table"] = [
         {
             "surface": "Generated room prompt guide",
-            "shown_in": "Exploration TAG scene prompt panel.",
-            "player_use": "Explains why the lead exists, how to use the room prompt, and which TAG Action buttons can prefill branch, route, XP, reward, or finance state.",
+            "shown_in": "Exploration TAG scene prompt panel and Current Objective banner.",
+            "player_use": "Explains why the lead exists, how to use the room prompt, which immediate action matters, and which TAG Action buttons can prefill branch, route, XP, reward, or finance state.",
             "pdf_boundary": "Guide text is app-authored; exact printed scene text and reward values stay with the PDF/player signoff.",
         },
         {
-            "surface": "Prompt action buttons",
-            "shown_in": "Generated TAG rooms.",
-            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls.",
+            "surface": "Prompt action buttons and Relevant Now shortcuts",
+            "shown_in": "Generated TAG rooms and TAG Actions dialog.",
+            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls; the TAG Actions dialog repeats current-room shortcuts at the top so the player does not hunt through every selector.",
             "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
+        },
+        {
+            "surface": "Generated lead signoff",
+            "shown_in": "Current Objective banner after generated TAG objective completion.",
+            "player_use": "Records player review of route, reward, XP, Guild share, banking/storage, and closeout checks before another lead is started.",
+            "pdf_boundary": "Signoff records app/player review only; it does not resolve printed-rule decisions without player confirmation.",
         },
         {
             "surface": "Generated TAG Leads panel",
@@ -3721,6 +3727,14 @@ def _is_tag_treasure_map_quest(quest: Any) -> bool:
     return "treasure map" in quest_text
 
 
+def _is_generated_tag_session(session: SessionState) -> bool:
+    params = ((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}
+    if not isinstance(params, dict):
+        return False
+    tag_ref = params.get("tag_reference") if isinstance(params, dict) else None
+    return isinstance(tag_ref, dict) or params.get("origin") == "Tales from the Adventurers' Guild"
+
+
 def _update_session_tag_procedure_state(session: SessionState, branch_action: str, entry: Any) -> None:
     quest = session.active_quest
     if not _is_tag_treasure_map_quest(quest):
@@ -3784,6 +3798,43 @@ async def session_tag_treasure_map_signoff(session_id: str, payload: dict[str, A
     session.log.append(
         f"TAG Treasure Map signoff: {state['manual_signoff']['result']}"
     )
+    store.save("sessions", session)
+    return enrich_session(session)
+
+
+@app.post("/api/sessions/{session_id}/tag-generated-lead-signoff")
+async def session_tag_generated_lead_signoff(session_id: str, payload: dict[str, Any]) -> SessionState:
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    if not _is_generated_tag_session(session):
+        raise HTTPException(status_code=400, detail="This session is not a generated TAG lead.")
+    quest = session.active_quest
+    if quest is None:
+        raise HTTPException(status_code=400, detail="No active generated TAG quest is available for signoff.")
+    params = ((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}
+    tag_ref = params.get("tag_reference") if isinstance(params, dict) else {}
+    lead_type = str((tag_ref or {}).get("lead_type") or params.get("lead_type") or "generated_tag")
+    lead_detail = str((tag_ref or {}).get("lead_detail") or params.get("lead_detail") or session.imported_title or "TAG lead")
+    state = dict(quest.tag_generated_lead_state or {})
+    note = str(payload.get("note") or "").strip()[:300]
+    result = note or "Player confirmed route, reward, XP, Guild share, banking/storage, and closeout checks."
+    state["lead_type"] = lead_type
+    state["lead_detail"] = lead_detail
+    state["closeout"] = {
+        "completed": True,
+        "result": result,
+        "updated_at": now_utc(),
+    }
+    state["next_action"] = "Generated TAG lead signed off. Return to the Dashboard/Go Adventure closeout panels before starting another lead."
+    quest.tag_generated_lead_state = state
+    quest.tag_generated_lead_signoff = True
+    if quest.completed:
+        session.log.append(f"TAG generated lead signoff: {lead_detail}: {result}")
+    else:
+        session.log.append(
+            f"TAG generated lead closeout noted before objective completion: {lead_detail}: {result}"
+        )
     store.save("sessions", session)
     return enrich_session(session)
 

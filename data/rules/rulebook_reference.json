@@ -2785,8 +2785,8 @@
         "XP",
         "closeout"
       ],
-      "summary": "Checklist for reviewing generated TAG leads before adventure closeout and the next start.",
-      "body": "Generated TAG adventures use app-created modules and room prompts that point the player to TAG Actions. The signoff panel summarizes the latest generated lead, latest route marker, pending XP markers, and latest TAG log so branch choices, rewards, XP, Guild obligations, banking/storage consequences, and closeout prompts can be reviewed. Exact printed reward text or amounts still require PDF/player signoff where the app only records a marker.",
+      "summary": "Checklist and in-play signoff for reviewing generated TAG leads before adventure closeout and the next start.",
+      "body": "Generated TAG adventures use app-created modules and room prompts that point the player to TAG Actions. The signoff panel summarizes the latest generated lead, latest route marker, pending XP markers, and latest TAG log so branch choices, rewards, XP, Guild obligations, banking/storage consequences, and closeout prompts can be reviewed. During play, the Current Objective banner can also request generated TAG lead signoff after objective completion, and TAG Actions shows Relevant Now shortcuts from the current room prompt. Exact printed reward text or amounts still require PDF/player signoff where the app only records a marker.",
       "implementation_status": "implemented"
     },
     {
@@ -2835,8 +2835,8 @@
         "signoff",
         "closeout"
       ],
-      "summary": "Tables documents generated TAG adventure signoff checkpoints.",
-      "body": "The modern Tables page includes tag_generated_adventure_signoff_table. It documents lead creation, room prompt usage, route marker recording, and closeout resolution checkpoints.",
+      "summary": "Tables documents generated TAG adventure signoff checkpoints and in-play closeout prompts.",
+      "body": "The modern Tables page includes tag_generated_adventure_signoff_table. It documents lead creation, room prompt usage, Current Objective signoff prompts, route marker recording, and closeout resolution checkpoints.",
       "implementation_status": "implemented"
     },
     {
@@ -2852,8 +2852,8 @@
         "lead selector",
         "action log"
       ],
-      "summary": "App-owned playtest workflow for generated TAG modules, room prompts, lead selection, and TAG log review.",
-      "body": "Generated TAG modules now carry app-authored lead guidance, scene tone, room prompt bodies, and action-button metadata. During exploration, the TAG scene prompt explains why the lead exists, how to use the current room, and which buttons prefill TAG Actions for route, branch, reward, Clue, XP, finance, or Guild review. Go Adventure lists installed generated TAG leads with type, detail, prompt count, route markers, closeout state, and pending XP. The TAG Action Log filter helps review route, XP, finance, Guild, branch, generated-lead, and signoff events. This is app workflow and atmospheric connective prose; exact printed scene text, reward values, and rule outcomes remain with the PDF/player signoff.",
+      "summary": "App-owned playtest workflow for generated TAG modules, room prompts, current-objective guidance, lead selection, and TAG log review.",
+      "body": "Generated TAG modules now carry app-authored lead guidance, scene tone, room prompt bodies, and action-button metadata. During exploration, the TAG scene prompt and Current Objective banner explain why the lead exists, how to use the current room, and which button or TAG Action is relevant now for route, branch, reward, Clue, XP, finance, Guild review, or generated lead signoff. TAG Actions repeats current-room shortcuts in a Relevant Now panel above the full controls. Go Adventure lists installed generated TAG leads with type, detail, prompt count, route markers, closeout state, and pending XP. The TAG Action Log filter helps review route, XP, finance, Guild, branch, generated-lead, and signoff events. This is app workflow and atmospheric connective prose; exact printed scene text, reward values, and rule outcomes remain with the PDF/player signoff.",
       "implementation_status": "implemented"
     },
     {
@@ -2869,8 +2869,8 @@
         "lead selector",
         "action log"
       ],
-      "summary": "Tables documents generated TAG prompt guide, prompt buttons, lead selector, and action-log filter surfaces.",
-      "body": "The modern Tables page includes tag_generated_prompt_playtest_table. It documents the exploration room prompt guide, prompt action buttons, Go Adventure generated TAG leads panel, and TAG Action Log filtering.",
+      "summary": "Tables documents generated TAG prompt guide, current-objective prompts, relevant action shortcuts, lead selector, and action-log filter surfaces.",
+      "body": "The modern Tables page includes tag_generated_prompt_playtest_table. It documents the exploration room prompt guide, Current Objective banner, Relevant Now TAG Actions shortcuts, prompt action buttons, Go Adventure generated TAG leads panel, and TAG Action Log filtering.",
       "implementation_status": "implemented"
     },
     {

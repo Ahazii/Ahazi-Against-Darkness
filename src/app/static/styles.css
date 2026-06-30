@@ -944,6 +944,42 @@ h2 {
   color: var(--accent);
 }
 
+.tag-relevant-actions {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(201, 162, 39, 0.38);
+  border-radius: 8px;
+  background: rgba(60, 45, 12, 0.32);
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.tag-relevant-actions.hidden {
+  display: none;
+}
+
+.tag-relevant-actions strong {
+  color: var(--accent);
+}
+
+.tag-relevant-actions span {
+  color: var(--muted);
+}
+
+.tag-relevant-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tag-relevant-actions-row button {
+  width: auto;
+  min-width: 0;
+  white-space: normal;
+  text-align: left;
+}
+
 .tag-action-field-hint {
   grid-column: 1 / -1;
   min-height: 20px;
