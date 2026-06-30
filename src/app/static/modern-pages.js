@@ -1145,6 +1145,7 @@ function renderTagLeadSelectorPanel(adventureSelect = null) {
           adventureSelect.replaceChildren(...optionRows(adventureOptions("imported")));
           adventureSelect.value = adventure.id;
         }
+        writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: adventure.id || "" });
         setStatus(`Selected ${adventure.name || adventure.id}. Review setup and closeout gates before starting.`);
       }),
       link("Rules", ruleReferenceHref("tag_generated_prompt_playtest", "TAG generated prompt playtest"), "Open the Rules Reference entry for generated TAG prompt playtest and selector workflow.", "link-button secondary")
@@ -1152,6 +1153,89 @@ function renderTagLeadSelectorPanel(adventureSelect = null) {
     row.appendChild(rowActions);
     panel.appendChild(row);
   }
+  return panel;
+}
+
+function tagRumorNumber(adventure) {
+  const text = `${adventure.tag_lead_detail || ""} ${adventure.name || ""} ${adventure.id || ""}`;
+  const explicit = text.match(/rumor\s+(\d{1,2})/i);
+  if (explicit) return Number(explicit[1]);
+  const tagId = String(adventure.id || "");
+  const suffix = tagId.match(/tag-rumor-(\d{1,2})/i);
+  return suffix ? Number(suffix[1]) : 0;
+}
+
+function tagRumorAuditRows(adventure) {
+  const number = tagRumorNumber(adventure);
+  return [
+    ["Rumor result", number ? `Rumor ${number}` : "Generated Rumor lead", "Use this to confirm the intended TAG rumor result before starting or resuming the module."],
+    ["Printed scene", adventure.tag_scene || adventure.tag_pdf_pages || "Check generated module metadata", "Scene/page metadata comes from the generated adventure manifest; exact rule text stays in the PDF/player signoff."],
+    ["Play focus", "Entry choice -> complication branch -> final reward/XP closeout", "Rumor leads should be played as a short settlement story, not only as a combat room."],
+    ["Signoff", "Route, reward, XP, Guild/finance, and closeout review", "Use the TAG prompt buttons during exploration, then review TAG Action Log before starting another lead."],
+  ];
+}
+
+function renderRumorLeadAuditPanel(adventureSelect = null) {
+  const panel = card("TAG Rumor Leads", "Audit installed Rumor Scene modules before play. Each row links to the app-owned Rumor playthrough reference and helps confirm scene, prompt, route, reward, and XP signoff.");
+  const rumors = tagGeneratedAdventures().filter((adventure) => String(adventure.tag_lead_type || "").toLowerCase() === "rumor");
+  if (!rumors.length) {
+    panel.appendChild(el("p", "muted", "No Rumor Scene modules are installed yet. Create a Rumor lead in Go Adventure, then use this panel to review it before Start Adventure."));
+    const emptyActions = actions();
+    emptyActions.append(
+      link("Rumor Rules", ruleReferenceHref("tag_rumor_playthrough_audit", "TAG rumor playthrough audit"), "Open the Rules Reference entry for the app-owned Rumor playthrough audit workflow.", "link-button secondary"),
+      link("Rumor Table", "/modern/tables?help=tag_rumor_playthrough_audit_table", "Open the modern Tables entry for Rumor audit surfaces and PDF boundaries.", "link-button secondary")
+    );
+    panel.appendChild(emptyActions);
+    return panel;
+  }
+  for (const adventure of rumors.slice(0, 12)) {
+    const row = el("div", "modern-row");
+    row.title = "Rumor audit row: confirms which Rumor module this is, what scene metadata exists, and which closeout checks should be reviewed before another lead.";
+    row.append(
+      el("strong", "", adventure.name || adventure.id),
+      el("span", "muted", `${adventure.tag_lead_detail || "Rumor Scene"}${adventure.tag_pdf_pages ? ` · ${adventure.tag_pdf_pages}` : ""}`)
+    );
+    for (const [title, body, hint] of tagRumorAuditRows(adventure)) {
+      row.appendChild(modernStatusRow(title, body, hint));
+    }
+    const rowActions = actions();
+    rowActions.append(
+      button("Select Rumor", "Switch Start New Adventure to Imported Adventure Module and select this Rumor lead.", async () => {
+        const type = document.getElementById("modern-adventure-type");
+        if (type) type.value = "imported";
+        if (adventureSelect) {
+          adventureSelect.replaceChildren(...optionRows(adventureOptions("imported")));
+          adventureSelect.value = adventure.id;
+        }
+        writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: adventure.id || "" });
+        setStatus(`Selected Rumor lead ${adventure.name || adventure.id}. Review setup and closeout gates before starting.`);
+      }),
+      link("Rules", ruleReferenceHref("tag_rumor_playthrough_audit", "TAG rumor playthrough audit"), "Open the Rules Reference entry for Rumor playthrough audit guidance.", "link-button secondary"),
+      link("Table", "/modern/tables?help=tag_rumor_playthrough_audit_table", "Open the modern Tables row documenting this Rumor audit surface.", "link-button secondary")
+    );
+    row.appendChild(rowActions);
+    panel.appendChild(row);
+  }
+  return panel;
+}
+
+function renderRumorSignoffChecklist() {
+  const panel = card("Rumor Signoff Checklist", "Use this app-owned checklist after a TAG Rumor module. It helps you remember what to review without replacing the printed scene rules.");
+  const checks = [
+    ["Entry choice", "Record the party's approach, refusal, stealth, parley, or direct confrontation.", "Entry state explains why later route markers exist."],
+    ["Complication", "Resolve Clue costs, red herrings, ambushes, peaceful/hostile branches, and profile-specific rolls.", "Use TAG Actions so the Campaign log shows why the route changed."],
+    ["Finale", "Confirm final foe/procedure, reward, item, bounty, capture-alive route, and any scene restriction.", "The generated room is a play aid; the printed result remains the authority."],
+    ["Closeout", "Review pending XP, Guild obligations, banking/storage, guidance tasks, and the TAG Action Log.", "Do this before creating the next lead so unresolved state is visible."],
+  ];
+  for (const [title, body, hint] of checks) {
+    panel.appendChild(modernStatusRow(title, body, hint));
+  }
+  const panelActions = actions();
+  panelActions.append(
+    link("Rumor Rules", ruleReferenceHref("tag_rumor_playthrough_audit", "TAG rumor playthrough audit"), "Open the Rules Reference entry for Rumor signoff guidance.", "link-button secondary"),
+    link("Closeout Rules", ruleReferenceHref("tag_closeout_checklist_automation", "TAG closeout checklist automation"), "Open the closeout checklist reference entry.", "link-button secondary")
+  );
+  panel.appendChild(panelActions);
   return panel;
 }
 
@@ -2662,7 +2746,9 @@ async function renderGoAdventure() {
   const party = select("modern-start-party", "Party to send on the adventure.", partyOptions());
   party.value = prefs.lastPartyId || "";
   const type = select("modern-adventure-type", "Adventure type filter: Random creates a generated dungeon; Imported/AI uses an installed adventure module.", [["random", "Random"], ["imported", "Imported Adventure Module"], ["ai", "AI Adventure Module"]]);
-  const adventure = select("modern-start-adventure", "Specific adventure module to play. For Random, this remains Random Dungeon.", adventureOptions("random"));
+  type.value = ["random", "imported", "ai"].includes(prefs.lastAdventureType) ? prefs.lastAdventureType : "random";
+  const adventure = select("modern-start-adventure", "Specific adventure module to play. For Random, this remains Random Dungeon.", adventureOptions(type.value));
+  if (prefs.lastAdventureId && [...adventure.options].some((option) => option.value === prefs.lastAdventureId)) adventure.value = prefs.lastAdventureId;
   const enabledRulesets = prefs.enabledRulesets || modernState.rulesProfiles.map((profile) => profile.id);
   const profileRows = modernState.rulesProfiles.filter((profile) => enabledRulesets.includes(profile.id));
   const profile = select("modern-start-profile", "Ruleset profile used only for Random adventures.", profileRows.map((p) => [p.id, p.label]));
@@ -2721,10 +2807,14 @@ async function renderGoAdventure() {
   });
   type.addEventListener("change", () => {
     adventure.replaceChildren(...optionRows(adventureOptions(type.value)));
+    writeModernPrefs({ lastAdventureType: type.value, lastAdventureId: adventure.value || "" });
     profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
     drawReadiness();
   });
-  adventure.addEventListener("change", drawReadiness);
+  adventure.addEventListener("change", () => {
+    writeModernPrefs({ lastAdventureType: type.value, lastAdventureId: adventure.value || "" });
+    drawReadiness();
+  });
   profile.addEventListener("change", drawReadiness);
   mapLimit.addEventListener("input", drawReadiness);
   profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
@@ -2750,6 +2840,7 @@ async function renderGoAdventure() {
     adventure.replaceChildren(...optionRows(adventureOptions("imported")));
     adventure.value = result.adventure_id || "";
     profile.closest("label")?.classList.add("hidden");
+    writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: result.adventure_id || "" });
     setStatus(`Created ${result.title || result.adventure_id}. It is selected in Adventure/module.`);
     await refreshCoreAndRender();
   }));
@@ -2831,7 +2922,7 @@ async function renderGoAdventure() {
     saved.appendChild(row);
   }
   if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
-  rootEl.append(panel, readiness, gate, tagLead, renderTagLeadSelectorPanel(adventure), renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), renderTagActionLogExplorer(), sessions, saved);
+  rootEl.append(panel, readiness, gate, tagLead, renderTagLeadSelectorPanel(adventure), renderRumorLeadAuditPanel(adventure), renderRumorSignoffChecklist(), renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), renderTagActionLogExplorer(), sessions, saved);
 }
 
 async function renderRulesReference() {

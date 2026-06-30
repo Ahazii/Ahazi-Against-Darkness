@@ -749,6 +749,15 @@ h2 {
   padding: 8px 10px;
 }
 
+.tag-context-checklist {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #38423a;
+  border-radius: 6px;
+  background: rgba(71, 111, 89, 0.12);
+  padding: 8px 10px;
+}
+
 .tag-panel-heading {
   display: flex;
   align-items: flex-start;

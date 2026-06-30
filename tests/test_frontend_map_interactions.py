@@ -2042,16 +2042,22 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "appendTagMetadataPromptActions" in APP_JS
     assert "appendTagModuleProfile" in APP_JS
     assert "appendTagLeadUseGuide" in APP_JS
+    assert "appendTagPromptChecklist" in APP_JS
     assert "How to use this lead" in APP_JS
     assert "room_prompts" in APP_JS
     assert "module_profile" in APP_JS
     assert "tag-context-use-guide" in STYLES_CSS
+    assert "tag-context-checklist" in STYLES_CSS
     assert "tag-lead-entry" in APP_JS
     assert "tag-complication" in APP_JS
     assert "tag-final-scene" in APP_JS
     assert "tag-context-actions" in STYLES_CSS
     assert "tag-context-module-profile" in STYLES_CSS
     assert "Generated TAG Leads" in MODERN_PAGES_JS
+    assert "renderRumorLeadAuditPanel" in MODERN_PAGES_JS
+    assert "TAG Rumor Leads" in MODERN_PAGES_JS
+    assert "Rumor Signoff Checklist" in MODERN_PAGES_JS
+    assert "tag_rumor_playthrough_audit" in MODERN_PAGES_JS
     assert "TAG Action Log" in MODERN_PAGES_JS
     assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
     assert "Class dossier" in MODERN_PAGES_JS

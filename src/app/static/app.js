@@ -21790,6 +21790,20 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
   return true;
 }
 
+function appendTagPromptChecklist(parent, checklist = []) {
+  if (!Array.isArray(checklist) || !checklist.length) return false;
+  const box = node("div", "tag-context-checklist");
+  setTooltip(box, "Generated TAG prompt checklist: app-owned signoff reminders for route, reward, XP, Guild, banking, and closeout review. Check the printed scene for exact rules.");
+  box.appendChild(subline("Prompt checklist"));
+  for (const item of checklist.slice(0, 7)) {
+    const line = subline(`- ${String(item)}`);
+    setTooltip(line, "Checklist reminder only; confirm exact rule text and amounts from the PDF/player decision before applying changes.");
+    box.appendChild(line);
+  }
+  parent.appendChild(box);
+  return true;
+}
+
 function appendTagModuleProfile(parent, moduleProfile) {
   if (!moduleProfile || typeof moduleProfile !== "object") return;
   const targetRooms = moduleProfile.target_rooms || "";
@@ -21861,6 +21875,7 @@ function appendTagContextualActions(parent, session, tile) {
   block.appendChild(prompt);
   appendTagLeadUseGuide(block, tagReference);
   appendTagModuleProfile(block, tagReference.module_profile);
+  appendTagPromptChecklist(block, promptData?.checklist || tagReference.signoff_checks || []);
   if (appendTagMetadataPromptActions(block, promptData, fallbackReference)) {
     parent.appendChild(block);
     return;

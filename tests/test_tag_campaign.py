@@ -542,6 +542,31 @@ def test_tag_rumor_manifests_include_contextual_scene_procedure_prompts() -> Non
     assert reference["module_profile"]["target_rooms"] == "seven-room temple dungeon"
 
 
+def test_all_tag_rumor_manifests_include_playthrough_audit_guidance() -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+
+    for number in range(1, 13):
+        manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail=str(number))
+        assert validate_adventure_manifest(manifest, rules_repo=repo).valid
+        reference = manifest["source"]["parameters"]["tag_reference"]
+        prompts = reference["room_prompts"]
+
+        assert reference["audit_family"] == "rumor_playthrough"
+        assert reference["rumor_number"] == number
+        assert reference["playthrough_focus"]
+        assert reference["signoff_checks"]
+        assert "Rumor audit focus" in reference["module_profile"]["procedure"][-1]
+        assert "Confirm the printed scene/result" in reference["module_profile"]["signoff_checks"][-3]
+        assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in prompts.values())
+        assert "Prompt checklist" not in prompts["tag-final-scene"]["body"]
+        assert prompts["tag-lead-entry"]["checklist"]
+        assert prompts["tag-complication"]["checklist"]
+        assert prompts["tag-final-scene"]["checklist"]
+        assert any("Guild" in item or "banking" in item for item in prompts["tag-final-scene"]["checklist"])
+        assert any(action["tooltip"] for prompt in prompts.values() for action in prompt.get("actions", []))
+
+
 def test_tag_treasure_map_manifests_include_destination_procedure_prompts() -> None:
     repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
     campaign = default_campaign()

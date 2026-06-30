@@ -2255,6 +2255,32 @@ def _rules_tables_payload() -> dict:
             "pdf_boundary": "Displays app logs and player-entered notes.",
         },
     ]
+    data["tag_rumor_playthrough_audit_table"] = [
+        {
+            "surface": "Rumor audit metadata",
+            "shown_in": "Generated TAG Rumor manifests and exploration prompt panels.",
+            "player_use": "Carries rumor number, play focus, entry guidance, complication guidance, finale guidance, and signoff reminders for all twelve Rumor Scene leads.",
+            "pdf_boundary": "App-authored atmosphere and workflow notes only; exact scene text, rolls, rewards, and consequences remain with the PDF/player signoff.",
+        },
+        {
+            "surface": "TAG Rumor Leads panel",
+            "shown_in": "Go Adventure.",
+            "player_use": "Lists installed Rumor modules, scene/page metadata, prompt counts, route/reward/XP signoff reminders, and quick Select Rumor/Rules/Table actions.",
+            "pdf_boundary": "Displays generated manifest metadata and app checklist text, not copied scene prose.",
+        },
+        {
+            "surface": "Rumor Signoff Checklist",
+            "shown_in": "Go Adventure.",
+            "player_use": "Guides the post-adventure review: entry choice, complication branch, final reward, XP, Guild obligations, banking/storage, and closeout tasks.",
+            "pdf_boundary": "Checklist points to what the player should verify; it does not quote or replace the printed TAG scene.",
+        },
+        {
+            "surface": "Prompt checklist",
+            "shown_in": "Exploration room detail panel.",
+            "player_use": "Shows room-specific reminders beside TAG Action buttons so the player knows why a branch, Clue cost, route rewrite, reward, or XP marker matters.",
+            "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
+        },
+    ]
     data["character_management_readiness_table"] = [
         {
             "area": "Roster filters",

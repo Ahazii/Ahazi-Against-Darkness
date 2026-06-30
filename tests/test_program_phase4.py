@@ -164,6 +164,7 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         "tag_generated_adventure_signoff_table",
         "tag_closeout_checklist_automation_table",
         "tag_generated_prompt_playtest_table",
+        "tag_rumor_playthrough_audit_table",
     ]:
         assert key in payload
         assert len(payload[key]) > 0

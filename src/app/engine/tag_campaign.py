@@ -4746,6 +4746,125 @@ def _tag_scene_mood(lead_type: str, profile: dict[str, object], lead_detail: str
     )
 
 
+TAG_RUMOR_AUDIT_GUIDANCE: dict[int, dict[str, str]] = {
+    1: {
+        "focus": "Choice-heavy lead: make the object feel tempting, wrong, and politically awkward before the player chooses how far to push Bofto's family.",
+        "entry": "Start in the settlement with gossip that does not quite agree: a prize find, a changed farmer, and neighbours who are suddenly careful with their words.",
+        "complication": "Pause before violence. The important state is whether the party steals, questions, leaves, or forces the issue.",
+        "finale": "Close by recording the exact choice and any cursed-object follow-up before another adventure buries the consequence.",
+    },
+    2: {
+        "focus": "Two-sided monster lead: make the assassins and Xasartha feel like competing dangers rather than a simple bounty notice.",
+        "entry": "Frame the cabin as a place people avoid in daylight; the story should feel hunted before the medusa appears.",
+        "complication": "Resolve the assassins' approach, ambush, or parley first so the final scene is not just an isolated fight.",
+        "finale": "Record stealth, reaction, pendant, and any gaze consequences before awarding the lead.",
+    },
+    3: {
+        "focus": "Red-herring lead: give the players enough texture that the disappointment still feels like a played scene.",
+        "entry": "Let the old farm look plausible: old tracks, over-told local claims, and someone who insists the sword was seen recently.",
+        "complication": "The audit point is the ambush/red-herring resolution, not finding a sword.",
+        "finale": "Sign off days, ambush, and no-sword outcome so the rumor is crossed off cleanly.",
+    },
+    4: {
+        "focus": "Creature-feature lead: the bridge should feel wet, hungry, and watched before the mutant fish rule calls matter.",
+        "entry": "Use spoiled nets, missing livestock, and villagers who avoid the water to give the fight a reason to exist.",
+        "complication": "Track hypnosis, food/ration handling, and any minor encounter count that affects XP.",
+        "finale": "Close by confirming rations, reward, and XP markers rather than just clearing the final room.",
+    },
+    5: {
+        "focus": "Suspicion lead: the dragon is hidden in town life, so the procedure should reward investigation before confrontation.",
+        "entry": "Make the clues domestic and unsettling: heat where it should be cold, missing wealth, and witnesses who change their story.",
+        "complication": "Use the reveal action before the final route; the lead is about proving what is underneath the disguise.",
+        "finale": "Record reveal, route, treasure, and any fallout from exposing a disguised dragon.",
+    },
+    6: {
+        "focus": "Trickster lead: Blackbird Hill should feel like a bargain with smiling terms and sharp hooks.",
+        "entry": "Present the leprechauns as charming first, inconvenient second, and dangerous only when the players push the wrong angle.",
+        "complication": "Track shoes, illusion spell, and peaceful/hostile route separately.",
+        "finale": "Sign off whether the lead ended as trade, trick, or fight before applying reward text.",
+    },
+    7: {
+        "focus": "Hidden-temple lead: turn the town clue into a small expedition with a clear seven-room target.",
+        "entry": "Make the stair feel deliberately hidden: dust, old repairs, and locals who pretend not to know why the place is avoided.",
+        "complication": "Watch target-room and route state because the generated dungeon is standing in for a specific temple procedure.",
+        "finale": "Before closing, check final route, temple reward, XP, and any unresolved route rewrites.",
+    },
+    8: {
+        "focus": "Cult lead: Shaura works best when the party feels pressure from recruitment, secrecy, and the 2-Clue gate.",
+        "entry": "Seed whispered devotion, missing townsfolk, and the feeling that the cult is already inside ordinary life.",
+        "complication": "Make the Clue spend explicit; if the party lacks Clues, record the blocked route instead of silently skipping it.",
+        "finale": "Confirm cultist groups, Shaura reward, route, and ten-room target signoff.",
+    },
+    9: {
+        "focus": "Clue-gated rescue lead: Daroc's familiar is small stakes emotionally, but the Clue cost is the mechanical hinge.",
+        "entry": "Let the missing familiar leave traces that matter: scratches, alley witnesses, and people trying to profit from Daroc's worry.",
+        "complication": "Record whether cat/beast help reduced the Clue burden before spending anything.",
+        "finale": "Apply Daroc's reward and XP only after the Clue route is settled.",
+    },
+    10: {
+        "focus": "Rooftop threat lead: the white gargoyles should feel like a public emergency with variable count and surprise pressure.",
+        "entry": "Open with dusk, roof tiles, frightened guards, and townspeople arguing over how many shapes they saw.",
+        "complication": "Roll count and surprise before the fight is treated as ordinary combat.",
+        "finale": "Record stone-skin checks and bounty head count before banking the reward.",
+    },
+    11: {
+        "focus": "Training lead: make the player decide whether the cost and XP-roll opportunity are worth the interruption.",
+        "entry": "Deoldyn's range should feel precise and expensive: split shafts, measured criticism, and no patience for vague promises.",
+        "complication": "The payment and qualifying character matter more than the proxy encounter.",
+        "finale": "Sign off training payment, eligible XP roll, and who actually trained.",
+    },
+    12: {
+        "focus": "Solo-sword lead: Agaratha needs a clear restriction note before the generated module becomes normal party play.",
+        "entry": "Let Shinta's request feel personal and risky before it becomes a bandit hideout problem.",
+        "complication": "Record whether the table is enforcing the solo restriction or deliberately treating this as a party handoff.",
+        "finale": "Apply Agaratha only after route, solo note, and sword consequence are logged.",
+    },
+}
+
+
+def _tag_rumor_number_from_profile(profile: dict[str, object]) -> int | None:
+    title = str(profile.get("title") or "")
+    for number, rumor in TAG_RUMORS.items():
+        if title and title.lower() in rumor.lower():
+            return number
+        if title and title == str(TAG_RUMOR_PROFILES.get(number, {}).get("title") or ""):
+            return number
+    return None
+
+
+def _tag_enrich_rumor_profile(profile: dict[str, object], lead_detail: str) -> dict[str, object]:
+    rumor_number = _tag_rumor_number_from_profile(profile)
+    if not rumor_number:
+        return profile
+    guidance = TAG_RUMOR_AUDIT_GUIDANCE.get(rumor_number, {})
+    title = str(profile.get("title") or lead_detail)
+    signoff_checks = [
+        "Confirm the printed scene/result was checked before accepting any generated-room shortcut.",
+        "Record the chosen route, blocked route, Clue spend, or social result in TAG Actions.",
+        "Review reward, XP, Guild/finance, and closeout tasks before starting the next lead.",
+    ]
+    module_profile = dict(profile.get("module_profile") or {})
+    module_signoff = list(module_profile.get("signoff_checks") or [])
+    module_profile["signoff_checks"] = [*module_signoff, *[item for item in signoff_checks if item not in module_signoff]]
+    module_procedure = list(module_profile.get("procedure") or [])
+    module_profile["procedure"] = [
+        *module_procedure,
+        f"Rumor audit focus: {guidance.get('focus') or f'Play {title} as a settlement lead with explicit route and reward signoff.'}",
+    ]
+    return {
+        **profile,
+        "rumor_number": rumor_number,
+        "audit_family": "rumor_playthrough",
+        "playthrough_focus": guidance.get("focus", f"Audit {title} as a settlement rumor handoff with visible route, reward, and XP signoff."),
+        "entry_guidance": guidance.get("entry", "Open with settlement evidence and a player-facing reason to follow this rumor now."),
+        "side_guidance": "Use the side room as a clue, witness, or pressure beat; if it changes reward, Clues, or XP, record that before moving on.",
+        "complication_guidance": guidance.get("complication", "Resolve the printed branch deliberately and log the player choice in TAG Actions."),
+        "finale_guidance": guidance.get("finale", "Before closing the lead, verify final foe/procedure, reward, XP, and campaign closeout state."),
+        "signoff_checks": signoff_checks,
+        "module_profile": module_profile,
+    }
+
+
 def _tag_prompt_action_from_profile(action: object) -> dict[str, object] | None:
     if not isinstance(action, dict) or not action.get("label"):
         return None
@@ -4778,12 +4897,22 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     lead_type = str(profile.get("lead_type") or "")
     how_to = str(profile.get("how_to") or _tag_lead_how_to(lead_type))
     mood = str(profile.get("mood") or _tag_scene_mood(lead_type, profile, lead_detail))
+    entry_guidance = str(profile.get("entry_guidance") or "")
+    side_guidance = str(profile.get("side_guidance") or "")
+    complication_guidance = str(profile.get("complication_guidance") or "")
+    finale_guidance = str(profile.get("finale_guidance") or "")
+    signoff_checks = list(profile.get("signoff_checks") or [])
     clue_cost = max(0, int(profile.get("clue_gate_cost") or 0))
     clue_label = str(profile.get("clue_gate_label") or "Unlock Clue route")
     prompts: dict[str, object] = {
         "tag-lead-entry": {
             "title": "Lead entry choices",
-            "body": f"{mood} {how_to} Record the party's printed approach before moving deeper into the generated TAG lead.",
+            "body": f"{mood} {how_to} {entry_guidance} Record the party's printed approach before moving deeper into the generated TAG lead.",
+            "checklist": [
+                "Confirm which printed rumor/result produced this module.",
+                "Record the party's first approach or refusal in TAG Actions.",
+                "Check whether a side scene or Clue route should be pursued before the complication.",
+            ],
             "actions": [
                 _tag_prompt_action("TAG Actions", "Open the full TAG Actions dialog without changing any values."),
                 _tag_prompt_action(
@@ -4806,8 +4935,13 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             "title": "Side clue and reward",
             "body": (
                 f"{profile.get('side') or 'The side path offers a useful clue, but it should feel like a choice rather than housekeeping.'} "
+                f"{side_guidance} "
                 "Check the printed scene for reward, Clue, or XP handling before confirming an action."
             ),
+            "checklist": [
+                "Check whether the side clue changes Clues, reward, XP, or route options.",
+                "Record any reward or skipped-scene decision before leaving the room.",
+            ],
             "actions": [
                 _tag_prompt_action(
                     "Claim printed reward",
@@ -4829,8 +4963,13 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             "title": "Complication route",
             "body": (
                 f"{profile.get('complication') or 'The lead tightens here: a bargain can sour, a shortcut can close, or a fight can turn the room into evidence.'} "
+                f"{complication_guidance} "
                 "Resolve the printed social, combat, Clue, or blocked-route branch."
             ),
+            "checklist": [
+                "Resolve the printed branch, Clue cost, or procedure before moving to the finale.",
+                "Use route markers for peaceful, hostile, blocked, skipped, or unlocked paths.",
+            ],
             "actions": [
                 _tag_prompt_action(
                     "Parley succeeds",
@@ -4869,8 +5008,15 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             "body": (
                 "Check final foe, route, reward, and XP text before closing the generated TAG lead. "
                 "If the scene offers capture alive, tick Subdual damage before Resolve Round; then record Capture alive and any special reward in TAG Actions. "
+                f"{finale_guidance} "
                 f"Reward note: {profile.get('rewards') or 'see source scene.'}"
             ),
+            "checklist": [
+                "Confirm final foe/procedure and any special scene restrictions.",
+                "Record final route, reward, item, bounty, or capture-alive result.",
+                "Mark or award scene XP, then review Guild, banking, and closeout tasks.",
+                *signoff_checks,
+            ],
             "actions": [
                 _tag_prompt_action(
                     "Final route",
@@ -4898,6 +5044,10 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         "tag-unlocked-scene": {
             "title": "Unlocked scene",
             "body": "This room was inserted by a TAG route rewrite. Treat it like a door the story only opens because of an earlier choice: record arrival, reward, and XP against the printed branch.",
+            "checklist": [
+                "Confirm which earlier route unlocked this scene.",
+                "Record arrival, reward, XP, and any closeout note before moving on.",
+            ],
             "actions": [
                 _tag_prompt_action(
                     "Mark unlocked scene",
@@ -4934,6 +5084,8 @@ def _tag_manifest(
     final_room_description: str,
 ) -> dict[str, object]:
     profile = {**profile, "lead_type": lead_type}
+    if lead_type == "rumor":
+        profile = _tag_enrich_rumor_profile(profile, lead_detail)
     final_foe = str(profile.get("final_foe") or "Wraith")
     final_count = max(1, int(profile.get("final_count") or 1))
     final_extra_foes = [
@@ -4954,6 +5106,10 @@ def _tag_manifest(
                 "lead_detail": lead_detail,
                 "how_to": profile.get("how_to") or _tag_lead_how_to(lead_type),
                 "mood": profile.get("mood") or _tag_scene_mood(lead_type, profile, lead_detail),
+                "audit_family": profile.get("audit_family", ""),
+                "rumor_number": profile.get("rumor_number", 0),
+                "playthrough_focus": profile.get("playthrough_focus", ""),
+                "signoff_checks": profile.get("signoff_checks", []),
                 "rules": profile.get("rules", []),
             "rewards": profile.get("rewards", ""),
             "final_foe_proxy": final_foe,
