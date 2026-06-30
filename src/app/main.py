@@ -546,6 +546,145 @@ def _sync_guild_assignments(campaign: CampaignState, guild: WorldGuildRecord, *,
             _sync_troupe_assignments(campaign, troupe, timestamp=timestamp)
 
 
+def _campaign_record_name(rows: list[Any], record_id: str | None, fallback: str = "Unassigned") -> str:
+    return next((item.name for item in rows if item.id == record_id), fallback)
+
+
+def _character_equipment_warnings(character: Character) -> list[str]:
+    inventory = [str(item) for item in character.inventory]
+    weapon_pattern = ("weapon", "sword", "dagger", "axe", "mace", "spear", "scimitar", "club", "hammer", "staff", "bow", "sling", "crossbow", "javelin")
+    missile_pattern = ("bow", "sling", "crossbow", "javelin", "arrow", "missile")
+    weapons = [item for item in inventory if any(token in item.lower() for token in weapon_pattern)]
+    melee = [item for item in weapons if not any(token in item.lower() for token in missile_pattern)]
+    missile = [item for item in weapons if any(token in item.lower() for token in missile_pattern)]
+    warnings: list[str] = []
+    if not melee:
+        warnings.append("No melee weapon detected in inventory.")
+    if melee and not character.default_melee_weapon:
+        warnings.append("Melee slot is not assigned.")
+    if missile and not character.default_missile_weapon:
+        warnings.append("Missile weapon carried but missile slot is not assigned.")
+    for field, label in [
+        ("default_melee_weapon", "Assigned melee weapon"),
+        ("default_melee_weapon_secondary", "Assigned off-hand weapon"),
+        ("default_missile_weapon", "Assigned missile weapon"),
+    ]:
+        value = getattr(character, field, None)
+        if value and value not in inventory:
+            warnings.append(f"{label} is no longer in inventory.")
+    return warnings
+
+
+def _character_context_warnings(campaign: CampaignState, character: Character, party: Party | None = None) -> list[str]:
+    warnings: list[str] = []
+    troupe = _world_troupe(campaign, character.troupe_id or "")
+    if party and party.troupe_id and character.troupe_id and party.troupe_id != character.troupe_id:
+        warnings.append(
+            f"Party {party.name} belongs to {_campaign_record_name(campaign.world_troupes, party.troupe_id)}, "
+            f"but {character.name} points to {_campaign_record_name(campaign.world_troupes, character.troupe_id)}."
+        )
+    if party and party.campaign_id and character.campaign_id and party.campaign_id != character.campaign_id:
+        warnings.append(
+            f"Party campaign {_campaign_record_name(campaign.world_campaigns, party.campaign_id)} differs from "
+            f"{character.name}'s campaign {_campaign_record_name(campaign.world_campaigns, character.campaign_id)}."
+        )
+    if troupe and troupe.campaign_id and character.campaign_id and troupe.campaign_id != character.campaign_id:
+        warnings.append(
+            f"Troupe campaign {_campaign_record_name(campaign.world_campaigns, troupe.campaign_id)} differs from "
+            f"{character.name}'s campaign {_campaign_record_name(campaign.world_campaigns, character.campaign_id)}."
+        )
+    if troupe and troupe.guild_id and character.guild_id and troupe.guild_id != character.guild_id:
+        warnings.append(
+            f"Troupe guild {_campaign_record_name(campaign.world_guilds, troupe.guild_id)} differs from "
+            f"{character.name}'s guild {_campaign_record_name(campaign.world_guilds, character.guild_id)}."
+        )
+    if not character.party_id:
+        warnings.append(f"{character.name} has no saved party assignment.")
+    if not character.troupe_id:
+        warnings.append(f"{character.name} has no troupe assignment.")
+    if not character.guild_id:
+        warnings.append(f"{character.name} has no guild assignment.")
+    if not character.campaign_id:
+        warnings.append(f"{character.name} has no campaign assignment.")
+    return warnings
+
+
+def campaign_closeout_gate(campaign: CampaignState, party_id: str | None = None) -> dict[str, Any]:
+    issues: list[dict[str, Any]] = []
+    party = store.get("parties", party_id, Party.model_validate) if party_id else None
+    if not party_id:
+        issues.append({"code": "party_required", "severity": "block", "title": "Choose party", "body": "Pick a saved party before starting a new adventure."})
+    elif party is None:
+        issues.append({"code": "party_missing", "severity": "block", "title": "Party not found", "body": f"No saved party matched {party_id}."})
+    if party is not None:
+        members = [store.get("characters", character_id, Character.model_validate) for character_id in party.character_ids]
+        characters = [character for character in members if character is not None]
+        if len(characters) != 4:
+            issues.append({"code": "party_size", "severity": "block", "title": "Party size", "body": f"{party.name} has {len(characters)}/4 available member(s)."})
+        fallen = [character.name for character in characters if character.current_life <= 0]
+        if fallen:
+            issues.append({"code": "fallen_members", "severity": "block", "title": "Fallen members", "body": ", ".join(fallen)})
+        locked = [character.name for character in characters if character_busy_session_id(character, store)]
+        if locked:
+            issues.append({"code": "active_locks", "severity": "block", "title": "Active locks", "body": f"Already in an active adventure: {', '.join(locked)}."})
+        injured = [f"{character.name} {character.current_life}/{character.max_life}" for character in characters if 0 < character.current_life < character.max_life]
+        if injured:
+            issues.append({"code": "injured_members", "severity": "warn", "title": "Injured members", "body": ", ".join(injured)})
+        equipment = [f"{character.name}: {' '.join(_character_equipment_warnings(character))}" for character in characters if _character_equipment_warnings(character)]
+        if equipment:
+            issues.append({"code": "equipment_warnings", "severity": "warn", "title": "Equipment warnings", "body": " ".join(equipment)})
+        context = [warning for character in characters for warning in _character_context_warnings(campaign, character, party)]
+        if context:
+            issues.append({"code": "context_warnings", "severity": "warn", "title": "Context warnings", "body": " ".join(context)})
+    open_required = [task for task in campaign.guidance_tasks if task.status == "open" and task.priority == "required"]
+    if open_required:
+        issues.append({
+            "code": "required_guidance",
+            "severity": "override",
+            "title": "Required guidance open",
+            "body": f"{len(open_required)} required guidance task(s) remain open: {', '.join(task.title for task in open_required[:4])}.",
+        })
+    unresolved_closeout = [task for task in campaign.tag_closeout_tasks if not task.resolved]
+    if unresolved_closeout:
+        issues.append({
+            "code": "unresolved_closeout",
+            "severity": "override",
+            "title": "Unresolved closeout",
+            "body": f"{len(unresolved_closeout)} TAG closeout prompt(s) remain unresolved.",
+        })
+    return {
+        "party_id": party_id,
+        "can_start": not any(issue["severity"] == "block" for issue in issues),
+        "requires_override": any(issue["severity"] == "override" for issue in issues),
+        "issues": issues,
+    }
+
+
+def campaign_command_center_payload(campaign: CampaignState, campaign_id: str | None = None) -> dict[str, Any]:
+    active_id = campaign_id or campaign.active_world_campaign_id
+    selected = next((item for item in campaign.world_campaigns if item.id == active_id), None)
+    parties = store.list("parties", Party.model_validate)
+    campaign_parties = [item for item in parties if item.campaign_id == active_id]
+    campaign_party_ids = {item.id for item in campaign_parties}
+    characters = store.list("characters", Character.model_validate)
+    sessions = store.list("sessions", SessionState.model_validate)
+    return {
+        "campaign_id": active_id,
+        "campaign_name": selected.name if selected else "Unassigned",
+        "campaign": selected.model_dump() if selected else None,
+        "guilds": [item for item in campaign.world_guilds if item.campaign_id == active_id],
+        "troupes": [item for item in campaign.world_troupes if item.campaign_id == active_id],
+        "settlements": [item for item in campaign.world_settlements if item.campaign_id == active_id],
+        "troublesome_towns": [item for item in campaign.world_troublesome_towns if item.campaign_id == active_id],
+        "parties": campaign_parties,
+        "characters": [item for item in characters if item.campaign_id == active_id],
+        "active_sessions": [item for item in sessions if item.mode != "complete" and item.party_id in campaign_party_ids],
+        "open_guidance": [item for item in campaign.guidance_tasks if item.status == "open"],
+        "unresolved_closeout": [item for item in campaign.tag_closeout_tasks if not item.resolved],
+        "recent_chronicle": list(reversed(campaign.campaign_chronicle[-12:])),
+    }
+
+
 @app.post("/api/campaign/world")
 async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import (
@@ -801,6 +940,63 @@ async def campaign_world_action(payload: dict[str, Any]) -> dict[str, Any]:
             break
         else:
             raise HTTPException(status_code=404, detail="Settlement not found.")
+    elif action == "bulk_assign_campaign":
+        campaign_id = str(payload.get("campaign_id") or campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID)
+        if not _world_record_exists(campaign.world_campaigns, campaign_id):
+            raise HTTPException(status_code=404, detail="Campaign not found.")
+        target_guild = next((guild for guild in campaign.world_guilds if guild.campaign_id == campaign_id), None)
+        target_troupe = next((troupe for troupe in campaign.world_troupes if troupe.campaign_id == campaign_id), None)
+        target_settlement = next((settlement for settlement in campaign.world_settlements if settlement.campaign_id == campaign_id), None)
+        counts = {"guilds": 0, "troupes": 0, "settlements": 0, "parties": 0, "characters": 0}
+        for guild in campaign.world_guilds:
+            if not guild.campaign_id and target_guild is None:
+                guild.campaign_id = campaign_id
+                target_guild = guild
+                counts["guilds"] += 1
+        for settlement in [*campaign.world_settlements, *campaign.world_troublesome_towns]:
+            if not settlement.campaign_id:
+                settlement.campaign_id = campaign_id
+                if settlement.kind == "friendly" and target_settlement is None:
+                    target_settlement = settlement
+                counts["settlements"] += 1
+        for troupe in campaign.world_troupes:
+            if not troupe.campaign_id:
+                troupe.campaign_id = campaign_id
+                if not troupe.guild_id and target_guild is not None:
+                    troupe.guild_id = target_guild.id
+                if not troupe.home_settlement_id and target_settlement is not None:
+                    troupe.home_settlement_id = target_settlement.id
+                if target_troupe is None:
+                    target_troupe = troupe
+                counts["troupes"] += 1
+        for party in store.list("parties", Party.model_validate):
+            if not party.campaign_id:
+                party.campaign_id = campaign_id
+                if not party.troupe_id and target_troupe is not None:
+                    party.troupe_id = target_troupe.id
+                    if party.id not in target_troupe.party_ids:
+                        target_troupe.party_ids.append(party.id)
+                party.updated_at = timestamp
+                store.save("parties", party)
+                counts["parties"] += 1
+        for character in store.list("characters", Character.model_validate):
+            if not character.campaign_id or not character.troupe_id or not character.guild_id:
+                if not character.campaign_id:
+                    character.campaign_id = campaign_id
+                if not character.troupe_id and target_troupe is not None:
+                    character.troupe_id = target_troupe.id
+                    if character.id not in target_troupe.member_character_ids:
+                        target_troupe.member_character_ids.append(character.id)
+                if not character.guild_id and target_guild is not None:
+                    character.guild_id = target_guild.id
+                character.updated_at = timestamp
+                store.save("characters", character)
+                counts["characters"] += 1
+        messages.append(
+            "Bulk assignment cleanup: "
+            + ", ".join(f"{count} {name}" for name, count in counts.items() if count)
+            + (" updated." if any(counts.values()) else "no orphaned records found.")
+        )
     elif action == "assign_party_troupe":
         party_id = str(payload.get("party_id") or "")
         troupe_id = str(payload.get("troupe_id") or DEFAULT_WORLD_TROUPE_ID)
@@ -1478,6 +1674,69 @@ async def campaign_guidance_task(payload: dict[str, Any]) -> dict[str, Any]:
     return {"campaign": campaign, "entry": entry}
 
 
+@app.get("/api/campaign/guidance-tasks")
+async def campaign_guidance_tasks(request: Request) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign
+
+    campaign = load_campaign(store)
+    status = str(request.query_params.get("status") or "")
+    priority = str(request.query_params.get("priority") or "")
+    category = str(request.query_params.get("category") or "")
+    search = str(request.query_params.get("search") or "").lower()
+    rows = campaign.guidance_tasks
+    if status:
+        rows = [task for task in rows if task.status == status]
+    if priority:
+        rows = [task for task in rows if task.priority == priority]
+    if category:
+        rows = [task for task in rows if task.category == category]
+    if search:
+        rows = [
+            task
+            for task in rows
+            if search in f"{task.title} {task.body} {task.reference} {task.priority} {task.status} {task.category}".lower()
+        ]
+    return {"tasks": list(reversed(rows)), "count": len(rows)}
+
+
+@app.get("/api/campaign/command-center")
+async def campaign_command_center(request: Request) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign
+
+    campaign = load_campaign(store)
+    return campaign_command_center_payload(campaign, request.query_params.get("campaign_id"))
+
+
+@app.get("/api/campaign/closeout-gate")
+async def campaign_closeout_gate_api(request: Request) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign
+
+    campaign = load_campaign(store)
+    return campaign_closeout_gate(campaign, request.query_params.get("party_id"))
+
+
+@app.get("/api/campaign/chronicle/export", response_model=None)
+async def campaign_chronicle_export(request: Request) -> Any:
+    from .engine.tag_campaign import load_campaign
+
+    campaign = load_campaign(store)
+    campaign_id = request.query_params.get("campaign_id")
+    export_format = str(request.query_params.get("format") or "json").lower()
+    entries = [
+        entry
+        for entry in campaign.campaign_chronicle
+        if not campaign_id or not entry.campaign_id or entry.campaign_id == campaign_id
+    ]
+    if export_format == "markdown":
+        campaign_name = _campaign_record_name(campaign.world_campaigns, campaign_id or campaign.active_world_campaign_id, "Campaign")
+        lines = [f"# {campaign_name} Chronicle", ""]
+        for entry in reversed(entries):
+            context = " · ".join(item for item in [entry.created_at, entry.party_name, entry.character_name, entry.reference] if item)
+            lines.extend([f"## {entry.title}", context, "", entry.body or "", ""])
+        return Response("\n".join(lines), media_type="text/markdown")
+    return {"exported_at": now_utc(), "campaign_id": campaign_id or campaign.active_world_campaign_id, "entries": list(reversed(entries))}
+
+
 @app.post("/api/campaign/tag/bank-robbery-recovery")
 async def campaign_tag_bank_robbery_recovery(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.adventure_import import import_adventure_manifest
@@ -1814,6 +2073,52 @@ def _rules_tables_payload() -> dict:
             "status": "dismissed",
             "meaning": "Hidden from active guidance without erasing history.",
             "safe_use": "Use only for prompts that are irrelevant to this campaign.",
+        },
+    ]
+    data["campaign_command_center_table"] = [
+        {
+            "surface": "Campaign overview",
+            "shows": "Selected campaign, assigned Guild, troupes, settlements, troublesome-town placeholders, parties, characters, active sessions, open guidance, unresolved closeout, and recent chronicle.",
+            "source": "/api/campaign/command-center",
+            "rules_boundary": "App world-builder bookkeeping, not printed TAG rule text.",
+        },
+        {
+            "surface": "Guidance archive",
+            "shows": "Status, priority, category, and search filters for all structured guidance tasks.",
+            "source": "CampaignState.guidance_tasks",
+            "rules_boundary": "Prompt history remains separate from the campaign chronicle.",
+        },
+        {
+            "surface": "Chronicle export",
+            "shows": "JSON or Markdown export of campaign chronicle entries.",
+            "source": "/api/campaign/chronicle/export",
+            "rules_boundary": "Exports app-owned play history only.",
+        },
+        {
+            "surface": "Assign orphans",
+            "shows": "Bulk assignment cleanup for records without campaign/guild/troupe context.",
+            "source": "/api/campaign/world action bulk_assign_campaign",
+            "rules_boundary": "Only fills missing app assignment fields where safe.",
+        },
+    ]
+    data["go_adventure_closeout_gate_table"] = [
+        {
+            "issue": "Hard block",
+            "examples": "Missing party, wrong party size, fallen members, active character locks.",
+            "start_behavior": "Start Adventure is blocked until resolved.",
+            "override": "No override.",
+        },
+        {
+            "issue": "Override warning",
+            "examples": "Open required guidance or unresolved TAG closeout prompts.",
+            "start_behavior": "Start Adventure requires explicit Start Anyway confirmation.",
+            "override": "Allowed after player confirmation.",
+        },
+        {
+            "issue": "Warning",
+            "examples": "Injured members, equipment-slot warnings, campaign/guild/troupe context mismatches.",
+            "start_behavior": "Shown for review but does not block.",
+            "override": "Not required.",
         },
     ]
     data["character_management_readiness_table"] = [
@@ -2950,6 +3255,17 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
     from .engine.tag_campaign import load_campaign
 
     campaign = load_campaign(store)
+    allow_start_anyway = _parse_bool(payload.get("allow_start_anyway"), default=False)
+    gate = campaign_closeout_gate(campaign, party.id)
+    hard_blocks = [issue for issue in gate["issues"] if issue["severity"] == "block"]
+    if hard_blocks:
+        raise HTTPException(status_code=409, detail=" ".join(f"{issue['title']}: {issue['body']}" for issue in hard_blocks))
+    if gate["requires_override"] and not allow_start_anyway:
+        raise HTTPException(
+            status_code=409,
+            detail="Closeout review requires explicit override before starting: "
+            + " ".join(f"{issue['title']}: {issue['body']}" for issue in gate["issues"] if issue["severity"] == "override"),
+        )
     tag_banking_enabled = campaign.tag_banking_enabled
     profile = None
     if adventure_id in {"random", "courtship-demesne"}:

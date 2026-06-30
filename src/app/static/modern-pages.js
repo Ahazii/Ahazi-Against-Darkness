@@ -69,7 +69,7 @@ const PAGE_HELP_QUERIES = {
   campaign: "campaign world builder",
   settings: "settings ruleset profile",
   "ai-adventures": "ai adventure import",
-  "go-adventure": "go adventure tag lead",
+  "go-adventure": "go adventure closeout gates start override",
   "rules-reference": "rules artwork registry",
   tables: "artwork table source page",
   library: "pdf artwork boundary",
@@ -85,8 +85,8 @@ const PAGE_HELP_REFS = {
   equipment: "equipment_shop",
   banking: "tag_settlement_campaign",
   settlement: "tag_settlement_campaign",
-  campaign: "campaign_world_builder",
-  "go-adventure": "tag_settlement_campaign",
+  campaign: "campaign_command_center",
+  "go-adventure": "go_adventure_closeout_gates",
   "rules-reference": "rules_artwork_registry",
   tables: "rules_tables_index",
   library: "pdf_artwork_boundary",
@@ -606,6 +606,74 @@ function renderCampaignChronicle(title = "Campaign Chronicle", limit = 12) {
       )
     );
   }
+  return panel;
+}
+
+function renderCommandCenter(command) {
+  const panel = card("Campaign Command Center", "Selected campaign overview: assigned Guild, troupes, settlements, troublesome towns, parties, active sessions, open guidance, unresolved closeout prompts, and recent chronicle.");
+  panel.classList.add("modern-primary-card");
+  const campaignName = command?.campaign_name || selectedWorldCampaign()?.name || "No campaign";
+  panel.append(
+    modernStatusRow("Campaign", campaignName, "The active world-builder campaign. New records default here unless a creation form overrides the campaign."),
+    modernStatusRow("World records", `${(command.guilds || []).length} guild(s) · ${(command.troupes || []).length} troupe(s) · ${(command.settlements || []).length} friendly settlement(s) · ${(command.troublesome_towns || []).length} troublesome town(s)`, "Records assigned to this selected campaign."),
+    modernStatusRow("Play records", `${(command.parties || []).length} part${(command.parties || []).length === 1 ? "y" : "ies"} · ${(command.characters || []).length} character(s) · ${(command.active_sessions || []).length} active session(s)`, "Campaign-linked parties, characters, and active sessions."),
+    modernStatusRow("Needs attention", `${(command.open_guidance || []).length} open guidance · ${(command.unresolved_closeout || []).length} unresolved closeout`, "Open app guidance and TAG closeout prompts that should be reviewed before the next adventure.")
+  );
+  const row = actions();
+  row.append(
+    link("Export Chronicle JSON", `/api/campaign/chronicle/export?campaign_id=${encodeURIComponent(command.campaign_id || "")}`, "Export this campaign chronicle as JSON.", "link-button secondary"),
+    link("Export Chronicle MD", `/api/campaign/chronicle/export?format=markdown&campaign_id=${encodeURIComponent(command.campaign_id || "")}`, "Export this campaign chronicle as Markdown.", "link-button secondary"),
+    button("Assign Orphans", "Assign orphaned characters, parties, troupes, guilds, settlements, and troublesome-town placeholders to the selected campaign where safe.", async () => {
+      await worldAction({ action: "bulk_assign_campaign", campaign_id: command.campaign_id || modernState.campaign?.active_world_campaign_id });
+    })
+  );
+  panel.appendChild(row);
+  return panel;
+}
+
+function renderGuidanceArchive() {
+  const panel = card("Guidance Archive", "Filter open, deferred, completed, and dismissed guidance without deleting campaign chronicle history.");
+  const search = input("search", "modern-guidance-search", "Search guidance title, body, reference, status, priority, or category.");
+  const status = select("modern-guidance-status", "Filter by guidance status. Open tasks appear in Dashboard guidance; completed/deferred/dismissed tasks remain for review.", [["", "All statuses"], ["open", "Open"], ["deferred", "Deferred"], ["completed", "Completed"], ["dismissed", "Dismissed"]]);
+  status.value = "open";
+  const priority = select("modern-guidance-priority", "Filter by priority. Required tasks are the strongest closeout/start warnings.", [["", "All priorities"], ["required", "Required"], ["recommended", "Recommended"], ["optional", "Optional"]]);
+  const category = select("modern-guidance-category", "Filter by category: closeout, campaign, character, finance, guild, settlement, or adventure.", [["", "All categories"], ["closeout", "Closeout"], ["campaign", "Campaign"], ["character", "Character"], ["finance", "Finance"], ["guild", "Guild"], ["settlement", "Settlement"], ["adventure", "Adventure"]]);
+  const results = el("div", "modern-list");
+  const controls = el("div", "modern-filterbar");
+  controls.append(field("Search", search), field("Status", status), field("Priority", priority), field("Category", category));
+  function draw() {
+    results.replaceChildren();
+    const needle = search.value.toLowerCase();
+    const rows = (modernState.campaign?.guidance_tasks || [])
+      .filter((task) => !status.value || task.status === status.value)
+      .filter((task) => !priority.value || task.priority === priority.value)
+      .filter((task) => !category.value || task.category === category.value)
+      .filter((task) => !needle || `${task.title} ${task.body} ${task.reference} ${task.status} ${task.priority} ${task.category}`.toLowerCase().includes(needle))
+      .slice()
+      .reverse();
+    results.appendChild(el("p", "muted", `${rows.length} guidance task(s) match the current filters.`));
+    for (const task of rows) {
+      const row = modernStatusRow(`${modernTitleFromKey(task.priority)} · ${task.title}`, `${modernTitleFromKey(task.status)} · ${modernTitleFromKey(task.category)} · ${task.body || task.reference || "No detail."}`, task.reference || "Structured app guidance task.");
+      const rowActions = actions();
+      if (task.status === "open") {
+        rowActions.append(
+          button("Complete", "Mark this open guidance task complete and keep its chronicle history.", () => updateGuidanceTask(task, "completed")),
+          button("Defer", "Defer this guidance task for later.", () => updateGuidanceTask(task, "deferred")),
+          button("Dismiss", "Dismiss this guidance task as irrelevant to this campaign.", () => updateGuidanceTask(task, "dismissed"))
+        );
+      } else {
+        rowActions.append(button("Reopen", "Return this guidance task to the active Dashboard guidance list.", () => updateGuidanceTask(task, "open")));
+      }
+      row.appendChild(rowActions);
+      results.appendChild(row);
+    }
+  }
+  search.addEventListener("input", draw);
+  status.addEventListener("change", draw);
+  priority.addEventListener("change", draw);
+  category.addEventListener("change", draw);
+  panel.append(controls, results);
+  draw();
   return panel;
 }
 
@@ -1950,13 +2018,14 @@ async function renderSettlement() {
   rootEl.append(panel, worldList, list);
 }
 
-function renderCampaign() {
+async function renderCampaign() {
+  const command = await api(`/api/campaign/command-center?campaign_id=${encodeURIComponent(modernState.campaign?.active_world_campaign_id || "")}`);
   const campaign = modernState.campaign || {};
   rootEl.appendChild(renderGuide("Campaign Workflow", [
     "Campaign is the world-builder layer; it is app-owned rather than a TAG PDF rule.",
     "Assign one guild per campaign, multiple troupes, and multiple friendly/troublesome settlements.",
     "Use map notes for hex-map planning until the dedicated campaign map editor is built."
-  ], "campaign_world_builder", "campaign world builder"));
+  ], "campaign_command_center", "campaign world builder"));
   const layout = el("div", "modern-world-grid");
   const filters = worldFilterControls("modern-world", drawLists);
 
@@ -2173,7 +2242,7 @@ function renderCampaign() {
     renderSettlementRows("troublesome", troublesomeCard._worldRows);
   }
 
-  layout.append(selectedCard, filters.panel, campaignsCard, guildsCard, troupesCard, friendlyCard, troublesomeCard, mapCard, renderCampaignChronicle("Campaign Chronicle", 16));
+  layout.append(renderCommandCenter(command), renderGuidanceArchive(), selectedCard, filters.panel, campaignsCard, guildsCard, troupesCard, friendlyCard, troublesomeCard, mapCard, renderCampaignChronicle("Campaign Chronicle", 16));
   drawLists();
   rootEl.appendChild(layout);
 }
@@ -2290,7 +2359,7 @@ function renderAiAdventures() {
   rootEl.append(panel, list);
 }
 
-function renderGoAdventure() {
+async function renderGoAdventure() {
   const prefs = readModernPrefs();
   rootEl.appendChild(renderGuide("Adventure Workflow", [
     "Start New creates a fresh session from the selected party and module.",
@@ -2314,6 +2383,15 @@ function renderGoAdventure() {
   const mapLimit = input("number", "modern-start-map-limit", "Unlimited-map element cap before end-boss pressure.", String(prefs.defaultMapLimit || 60));
   const readiness = card("Setup Check", "Warnings here should be handled before starting unless you are deliberately testing an edge case.");
   readiness.classList.add("modern-card-compact");
+  const gate = card("Closeout Gate", "Server-checked campaign closeout, guidance, roster health, context, equipment, and active-session warnings for the selected party.");
+  gate.classList.add("modern-card-compact");
+  const gateRows = el("div", "modern-list");
+  gate.appendChild(gateRows);
+  const overrideStart = input("checkbox", "modern-start-override", "Allow Start Adventure to proceed through overridable closeout/guidance warnings. Hard blocks such as fallen members and active locks cannot be overridden.");
+  const overrideRow = el("label", "modern-check-row");
+  overrideRow.title = overrideStart.title;
+  overrideRow.append(overrideStart, el("span", "", "Start anyway after reviewing overridable closeout warnings"));
+  let latestGate = null;
   function drawReadiness() {
     readiness.querySelectorAll(".modern-row").forEach((node) => node.remove());
     const rows = adventureReadinessRows(party.value, { adventureType: type.value, adventureId: adventure.value, profileId: profile.value, mapLimitValue: mapLimit.value });
@@ -2325,9 +2403,31 @@ function renderGoAdventure() {
       readiness.appendChild(item);
     }
   }
+  async function drawCloseoutGate() {
+    gateRows.replaceChildren();
+    latestGate = await api(`/api/campaign/closeout-gate?party_id=${encodeURIComponent(party.value || "")}`);
+    const issues = latestGate.issues || [];
+    const blocks = issues.filter((issue) => issue.severity === "block").length;
+    const overrides = issues.filter((issue) => issue.severity === "override").length;
+    const warnings = issues.filter((issue) => issue.severity === "warn").length;
+    gateRows.appendChild(modernStatusRow("Gate summary", latestGate.can_start ? `${blocks} block(s) · ${overrides} override warning(s) · ${warnings} warning(s)` : `${blocks} blocking issue(s) must be resolved.`, latestGate.requires_override ? "Explicit override is required for closeout/guidance warnings." : "Hard blocks cannot be overridden."));
+    if (!issues.length) {
+      gateRows.appendChild(el("p", "muted", "No campaign closeout, roster, context, or active-session warnings for this party."));
+    }
+    for (const issue of issues) {
+      const row = modernStatusRow(issue.title, issue.body, issue.severity === "override" ? "Overridable only after explicit player confirmation." : "Review this start gate issue.");
+      row.classList.add(issue.severity === "block" ? "modern-row-warn" : "modern-row-ok");
+      gateRows.appendChild(row);
+    }
+    if (latestGate.requires_override) gateRows.appendChild(overrideRow);
+  }
   panel.append(field("Party", party), field("Adventure type", type), field("Adventure/module", adventure), field("Random ruleset", profile), field("XP system", xp), field("Map mode", mapMode), field("Map limit", mapLimit));
   drawReadiness();
-  party.addEventListener("change", drawReadiness);
+  await drawCloseoutGate();
+  party.addEventListener("change", () => {
+    drawReadiness();
+    drawCloseoutGate().catch(handleError);
+  });
   type.addEventListener("change", () => {
     adventure.replaceChildren(...optionRows(adventureOptions(type.value)));
     profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
@@ -2367,6 +2467,10 @@ function renderGoAdventure() {
     const readinessRows = adventureReadinessRows(party.value, { adventureType: type.value, adventureId: adventure.value, profileId: profile.value, mapLimitValue: mapLimit.value });
     const blocking = adventureReadinessBlocks(readinessRows);
     if (blocking.length) throw new Error(`Resolve setup first: ${blocking.map(([title]) => title).join(", ")}.`);
+    latestGate = await api(`/api/campaign/closeout-gate?party_id=${encodeURIComponent(party.value || "")}`);
+    const gateBlocks = (latestGate.issues || []).filter((issue) => issue.severity === "block");
+    if (gateBlocks.length) throw new Error(`Resolve start gate first: ${gateBlocks.map((issue) => issue.title).join(", ")}.`);
+    if (latestGate.requires_override && !overrideStart.checked) throw new Error("Review the Closeout Gate and tick Start anyway before overriding required closeout/guidance warnings.");
     writeModernPrefs({ lastPartyId: party.value, defaultRulesetProfile: profile.value, defaultXpSystem: xp.value, defaultMapMode: mapMode.value, defaultMapLimit: Number(mapLimit.value || 60) });
     const adventureId = type.value === "random" ? "random" : adventure.value;
     const session = await api("/api/sessions", {
@@ -2378,6 +2482,7 @@ function renderGoAdventure() {
         xp_system: xp.value,
         map_bounds_mode: mapMode.value,
         unlimited_map_element_cap: Number(mapLimit.value || 60),
+        allow_start_anyway: Boolean(overrideStart.checked),
       }),
     });
     window.location.href = `/?session=${encodeURIComponent(session.id || "")}`;
@@ -2434,7 +2539,7 @@ function renderGoAdventure() {
     saved.appendChild(row);
   }
   if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
-  rootEl.append(panel, readiness, tagLead, sessions, saved);
+  rootEl.append(panel, readiness, gate, tagLead, sessions, saved);
 }
 
 async function renderRulesReference() {

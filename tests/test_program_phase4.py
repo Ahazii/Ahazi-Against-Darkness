@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app import main
 from app.engine.abyss_tables import abyss_table_roll_keys, abyss_table_rows
-from app.engine.tag_campaign import record_adventure_complete
+from app.engine.tag_campaign import add_guidance_task, record_adventure_complete, save_campaign
 from app.engine.forsaken_depths_heroic_spells import heroic_spell_names, is_fd_heroic_spell
 from app.engine.ruleset_profiles import (
     class_allowed_for_profile,
@@ -302,6 +302,93 @@ def test_adventure_completion_creates_chronicle_and_guidance(client: TestClient)
     payload = update.json()["campaign"]
     assert any(item["id"] == task.id and item["status"] == "dismissed" for item in payload["guidance_tasks"])
     assert any(item["event_type"] == "adventure_completed" for item in payload["campaign_chronicle"])
+
+
+def test_campaign_command_center_guidance_export_and_start_gate(client: TestClient) -> None:
+    character_ids: list[str] = []
+    for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
+        response = client.post("/api/characters", json={"name": f"Gate Hero {index}", "class_id": class_id})
+        assert response.status_code == 200
+        character_ids.append(response.json()["id"])
+    party_response = client.post("/api/parties", json={"name": "Gate Party", "character_ids": character_ids})
+    assert party_response.status_code == 200
+    party_id = party_response.json()["id"]
+
+    session = SessionState.model_validate(
+        {
+            "id": "gate-closeout-session",
+            "party_id": party_id,
+            "adventure_id": "random",
+            "adventure_type": "random",
+            "mode": "complete",
+            "party": [],
+            "map_state": {"width": 1, "height": 1, "tiles": [], "current_tile_id": "t0"},
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        }
+    )
+    campaign = record_adventure_complete(main.store, session)
+    add_guidance_task(
+        campaign,
+        title="Required gate review",
+        body="Required closeout review for start-gate override coverage.",
+        category="closeout",
+        priority="required",
+        reference="App test guidance.",
+        rules_reference_id="go_adventure_closeout_gates",
+    )
+    save_campaign(main.store, campaign)
+
+    command = client.get("/api/campaign/command-center")
+    assert command.status_code == 200
+    payload = command.json()
+    assert payload["campaign_name"] == "Norindaal"
+    assert any(item["name"] == "Gate Party" for item in payload["parties"])
+    assert payload["open_guidance"]
+
+    guidance = client.get("/api/campaign/guidance-tasks", params={"status": "open", "priority": "required"})
+    assert guidance.status_code == 200
+    assert guidance.json()["count"] >= 1
+
+    markdown = client.get("/api/campaign/chronicle/export", params={"format": "markdown"})
+    assert markdown.status_code == 200
+    assert "Adventure" in markdown.text
+
+    gate = client.get("/api/campaign/closeout-gate", params={"party_id": party_id})
+    assert gate.status_code == 200
+    assert gate.json()["can_start"] is True
+    assert gate.json()["requires_override"] is True
+    assert any(issue["severity"] == "override" for issue in gate.json()["issues"])
+
+    blocked = client.post("/api/sessions", json={"party_id": party_id, "adventure_id": "random"})
+    assert blocked.status_code == 409
+    assert "explicit override" in blocked.json()["detail"]
+
+    started = client.post(
+        "/api/sessions",
+        json={"party_id": party_id, "adventure_id": "random", "allow_start_anyway": True},
+    )
+    assert started.status_code == 200
+
+
+def test_campaign_bulk_assign_orphans(client: TestClient) -> None:
+    response = client.post("/api/characters", json={"name": "Orphan Hero", "class_id": "warrior"})
+    assert response.status_code == 200
+    character_id = response.json()["id"]
+    character = main.store.get("characters", character_id, main.Character.model_validate)
+    assert character is not None
+    character.campaign_id = None
+    character.guild_id = None
+    character.troupe_id = None
+    main.store.save("characters", character)
+
+    cleanup = client.post("/api/campaign/world", json={"action": "bulk_assign_campaign", "campaign_id": "norindaal"})
+    assert cleanup.status_code == 200
+    assert cleanup.json()["messages"]
+    updated = next(item for item in client.get("/api/characters").json() if item["id"] == character_id)
+    assert updated["campaign_id"] == "norindaal"
+    assert updated["guild_id"] == "adventurers-guild"
+    assert updated["troupe_id"] == "troupe1"
 
 
 def test_heroic_spell_catalog_matches_fd_table() -> None:
