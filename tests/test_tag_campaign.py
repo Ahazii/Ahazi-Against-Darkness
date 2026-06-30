@@ -619,15 +619,28 @@ def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
     expected = {
         "1": ("Ghastly Mine", "9-room dungeon", "cave-ins"),
         "2": ("Giant's Lair", "HCL+5 rooms", "boulder"),
+        "3": ("Dragon's Lair", "4-room dungeon", "dragon"),
         "4": ("Fiendish Abyss", "HCL+5 rooms", "Prisoner Table"),
         "5": ("Minotaur Maze", "d6+5 rooms", "lost"),
+        "6": ("Bandit Hideout", "HCL+3 rooms", "stolen-goods"),
     }
     for detail, (title, target, keyword) in expected.items():
         manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="thematic_dungeon", detail=detail)
         assert validate_adventure_manifest(manifest, rules_repo=repo).valid
         reference = manifest["source"]["parameters"]["tag_reference"]
         assert reference["title"] == title
+        assert reference["audit_family"] == "thematic_dungeon_playthrough"
+        assert reference["thematic_dungeon_number"] == int(detail)
+        assert reference["playthrough_focus"]
+        assert reference["signoff_checks"]
         assert reference["module_profile"]["target_rooms"] == target
+        assert "Thematic Dungeon audit focus" in reference["module_profile"]["procedure"][-1]
+        assert "Confirm the Thematic Dungeon result" in reference["module_profile"]["signoff_checks"][-3]
+        assert reference["room_prompts"]["tag-lead-entry"]["checklist"]
+        assert reference["room_prompts"]["tag-complication"]["checklist"]
+        assert reference["room_prompts"]["tag-final-scene"]["checklist"]
+        assert any("Guild" in item or "banking" in item for item in reference["room_prompts"]["tag-final-scene"]["checklist"])
+        assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in reference["room_prompts"].values())
         joined = " ".join(reference["module_profile"]["procedure"] + reference["module_profile"]["signoff_checks"])
         assert keyword.lower() in joined.lower()
         actions = reference["room_prompts"]["tag-complication"]["actions"] + reference["room_prompts"]["tag-final-scene"]["actions"]
@@ -636,10 +649,14 @@ def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
             assert {"ghastly_mine_minion_replacement", "ghastly_mine_major_replacement", "ghastly_mine_cave_in", "ghastly_mine_treasure_conversion"} <= action_values
         if detail == "2":
             assert {"giant_lair_boulder", "giant_lair_treasure"} <= action_values
+        if detail == "3":
+            assert "dragon_type_reveal" in action_values
         if detail == "4":
             assert "fiendish_abyss_prisoner" in action_values
         if detail == "5":
             assert {"minotaur_maze_lost_check", "minotaur_maze_wandering", "minotaur_maze_event", "unlock_scene"} <= action_values
+        if detail == "6":
+            assert {"bandit_stolen_goods_check", "capture_alive", "bandit_chieftain_capture"} <= action_values
 
 
 def test_tag_remaining_guild_jobs_carry_pdf_module_profiles(monkeypatch) -> None:

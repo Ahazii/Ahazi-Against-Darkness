@@ -1322,6 +1322,101 @@ function renderTreasureMapSignoffChecklist() {
   return panel;
 }
 
+function tagThematicDungeonNumber(adventure) {
+  const text = `${adventure.tag_lead_detail || ""} ${adventure.name || ""} ${adventure.id || ""}`;
+  const explicit = text.match(/thematic dungeon\s+(\d{1,2})/i);
+  if (explicit) return Number(explicit[1]);
+  const themeNames = [
+    ["ghastly mine", 1],
+    ["giant's lair", 2],
+    ["dragon's lair", 3],
+    ["fiendish abyss", 4],
+    ["minotaur maze", 5],
+    ["bandit hideout", 6],
+  ];
+  const lower = text.toLowerCase();
+  for (const [name, number] of themeNames) {
+    if (lower.includes(name)) return number;
+  }
+  const tagId = String(adventure.id || "");
+  const suffix = tagId.match(/tag-thematic-dungeon-(\d{1,2})/i);
+  return suffix ? Number(suffix[1]) : 0;
+}
+
+function tagThematicAuditRows(adventure) {
+  const number = tagThematicDungeonNumber(adventure);
+  return [
+    ["Theme result", number ? `Thematic Dungeon ${number}` : "Generated Thematic Dungeon", "Confirm this is the intended TAG thematic result before Start Adventure; themes change room count, monster logic, treasure, or final-room handling."],
+    ["Procedure", adventure.tag_scene || adventure.tag_lead_detail || "Check generated module metadata", "Theme metadata comes from the generated manifest. Exact room count, replacement rolls, and special procedure values remain with the PDF/player signoff."],
+    ["Play focus", "Target rooms -> theme procedure -> final-room exception -> reward/XP closeout", "Thematic Dungeons should be treated as altered dungeon engines, not just renamed random dungeons."],
+    ["Signoff", "Replacement rolls, Clue spends, route markers, reward, XP, Guild/finance, and storage review", "Use TAG Actions during exploration, then review TAG Action Log before starting another lead."],
+  ];
+}
+
+function renderThematicDungeonLeadAuditPanel(adventureSelect = null) {
+  const panel = card("TAG Thematic Dungeon Leads", "Audit installed Thematic Dungeon modules before play. Each row helps confirm target rooms, special procedure, final-room exception, reward, XP, and closeout signoff.");
+  const themes = tagGeneratedAdventures().filter((adventure) => String(adventure.tag_lead_type || "").toLowerCase() === "thematic_dungeon");
+  if (!themes.length) {
+    panel.appendChild(el("p", "muted", "No Thematic Dungeon modules are installed yet. Create a Thematic Dungeon lead in Go Adventure, then use this panel to review it before Start Adventure."));
+    const emptyActions = actions();
+    emptyActions.append(
+      link("Theme Rules", ruleReferenceHref("tag_thematic_dungeon_playthrough_audit", "TAG thematic dungeon playthrough audit"), "Open the Rules Reference entry for the app-owned Thematic Dungeon playthrough audit workflow.", "link-button secondary"),
+      link("Theme Table", "/modern/tables?help=tag_thematic_dungeon_playthrough_audit_table", "Open the modern Tables entry for Thematic Dungeon audit surfaces and PDF boundaries.", "link-button secondary")
+    );
+    panel.appendChild(emptyActions);
+    return panel;
+  }
+  for (const adventure of themes.slice(0, 12)) {
+    const row = el("div", "modern-row");
+    row.title = "Thematic Dungeon audit row: confirms which theme this is and which room-count, procedure, reward, XP, Guild, banking, and storage checks should be reviewed.";
+    row.append(
+      el("strong", "", adventure.name || adventure.id),
+      el("span", "muted", `${adventure.tag_lead_detail || "Thematic Dungeon"}${adventure.tag_pdf_pages ? ` · ${adventure.tag_pdf_pages}` : ""}`)
+    );
+    for (const [title, body, hint] of tagThematicAuditRows(adventure)) {
+      row.appendChild(modernStatusRow(title, body, hint));
+    }
+    const rowActions = actions();
+    rowActions.append(
+      button("Select Theme", "Switch Start New Adventure to Imported Adventure Module and select this Thematic Dungeon lead.", async () => {
+        const type = document.getElementById("modern-adventure-type");
+        if (type) type.value = "imported";
+        if (adventureSelect) {
+          adventureSelect.replaceChildren(...optionRows(adventureOptions("imported")));
+          adventureSelect.value = adventure.id;
+        }
+        writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: adventure.id || "" });
+        setStatus(`Selected Thematic Dungeon lead ${adventure.name || adventure.id}. Review setup and closeout gates before starting.`);
+      }),
+      link("Rules", ruleReferenceHref("tag_thematic_dungeon_playthrough_audit", "TAG thematic dungeon playthrough audit"), "Open the Rules Reference entry for Thematic Dungeon playthrough audit guidance.", "link-button secondary"),
+      link("Table", "/modern/tables?help=tag_thematic_dungeon_playthrough_audit_table", "Open the modern Tables row documenting this Thematic Dungeon audit surface.", "link-button secondary")
+    );
+    row.appendChild(rowActions);
+    panel.appendChild(row);
+  }
+  return panel;
+}
+
+function renderThematicDungeonSignoffChecklist() {
+  const panel = card("Thematic Dungeon Signoff Checklist", "Use this app-owned checklist after a TAG Thematic Dungeon. It focuses on target-room procedure, theme exceptions, reward handling, and closeout.");
+  const checks = [
+    ["Target and theme", "Confirm room target and core procedure: nine-room mine, HCL+5 giant/abyss, four-room dragon, d6+5 maze, or HCL+3 hideout.", "Theme target changes when the dungeon should end and what happens to unvisited exits."],
+    ["Procedure rolls", "Resolve undead replacement, cave-ins, boulder throw, dragon reveal, prisoner table, maze lost/event checks, stolen goods, or capture-alive choice.", "Use TAG Actions so the changed dungeon logic stays visible in the campaign log."],
+    ["Finale", "Confirm final-room size/route, final foe, special restrictions, reward, treasure conversion, and XP.", "Generated encounters are proxies where needed; the printed theme procedure remains the authority."],
+    ["Closeout", "Review pending XP, Guild share, banking/storage, guidance tasks, route markers, and the TAG Action Log before creating another lead.", "Thematic dungeons tend to leave more state behind than ordinary random dungeons."],
+  ];
+  for (const [title, body, hint] of checks) {
+    panel.appendChild(modernStatusRow(title, body, hint));
+  }
+  const panelActions = actions();
+  panelActions.append(
+    link("Theme Rules", ruleReferenceHref("tag_thematic_dungeon_playthrough_audit", "TAG thematic dungeon playthrough audit"), "Open the Rules Reference entry for Thematic Dungeon signoff guidance.", "link-button secondary"),
+    link("TAG Actions", "/modern/go-adventure", "Return to Go Adventure to review generated leads, closeout, signoff, and TAG Action Log state.", "link-button secondary")
+  );
+  panel.appendChild(panelActions);
+  return panel;
+}
+
 function sessionRecencyKey(session) {
   return String(session?.updated_at || session?.saved_at || session?.created_at || session?.id || "");
 }
@@ -3005,7 +3100,7 @@ async function renderGoAdventure() {
     saved.appendChild(row);
   }
   if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
-  rootEl.append(panel, readiness, gate, tagLead, renderTagLeadSelectorPanel(adventure), renderRumorLeadAuditPanel(adventure), renderRumorSignoffChecklist(), renderTreasureMapLeadAuditPanel(adventure), renderTreasureMapSignoffChecklist(), renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), renderTagActionLogExplorer(), sessions, saved);
+  rootEl.append(panel, readiness, gate, tagLead, renderTagLeadSelectorPanel(adventure), renderRumorLeadAuditPanel(adventure), renderRumorSignoffChecklist(), renderTreasureMapLeadAuditPanel(adventure), renderTreasureMapSignoffChecklist(), renderThematicDungeonLeadAuditPanel(adventure), renderThematicDungeonSignoffChecklist(), renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), renderTagActionLogExplorer(), sessions, saved);
 }
 
 async function renderRulesReference() {

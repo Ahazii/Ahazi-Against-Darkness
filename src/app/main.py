@@ -2307,6 +2307,32 @@ def _rules_tables_payload() -> dict:
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]
+    data["tag_thematic_dungeon_playthrough_audit_table"] = [
+        {
+            "surface": "Thematic Dungeon audit metadata",
+            "shown_in": "Generated TAG Thematic Dungeon manifests and exploration prompt panels.",
+            "player_use": "Carries theme number, play focus, entry guidance, complication guidance, finale guidance, target-room procedure reminders, and closeout checks for all six Thematic Dungeon results.",
+            "pdf_boundary": "App-authored atmosphere and workflow notes only; exact room targets, replacement rolls, rewards, and special procedures remain with the PDF/player signoff.",
+        },
+        {
+            "surface": "TAG Thematic Dungeon Leads panel",
+            "shown_in": "Go Adventure.",
+            "player_use": "Lists installed Thematic Dungeon modules with theme metadata, prompt counts, procedure/reward/XP signoff reminders, and quick Select Theme/Rules/Table actions.",
+            "pdf_boundary": "Displays generated manifest metadata and app checklist text, not copied table prose.",
+        },
+        {
+            "surface": "Thematic Dungeon Signoff Checklist",
+            "shown_in": "Go Adventure.",
+            "player_use": "Guides review of target rooms, theme procedure rolls, final-room exceptions, reward, XP, Guild share, banking/storage, and closeout tasks.",
+            "pdf_boundary": "Checklist points to what the player should verify; it does not quote or replace the printed TAG theme rules.",
+        },
+        {
+            "surface": "Theme prompt checklist",
+            "shown_in": "Exploration room detail panel.",
+            "player_use": "Shows room-specific reminders beside TAG Action buttons for cave-ins, undead replacement, boulder throw, dragon reveal, prisoner table, maze checks, stolen goods, and capture-alive choices.",
+            "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
+        },
+    ]
     data["character_management_readiness_table"] = [
         {
             "area": "Roster filters",

@@ -2062,6 +2062,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG Treasure Map Leads" in MODERN_PAGES_JS
     assert "Treasure Map Signoff Checklist" in MODERN_PAGES_JS
     assert "tag_treasure_map_playthrough_audit" in MODERN_PAGES_JS
+    assert "renderThematicDungeonLeadAuditPanel" in MODERN_PAGES_JS
+    assert "TAG Thematic Dungeon Leads" in MODERN_PAGES_JS
+    assert "Thematic Dungeon Signoff Checklist" in MODERN_PAGES_JS
+    assert "tag_thematic_dungeon_playthrough_audit" in MODERN_PAGES_JS
     assert "TAG Action Log" in MODERN_PAGES_JS
     assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
     assert "Class dossier" in MODERN_PAGES_JS

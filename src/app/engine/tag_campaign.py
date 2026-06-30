@@ -4949,6 +4949,99 @@ def _tag_enrich_treasure_map_profile(profile: dict[str, object], lead_detail: st
     }
 
 
+TAG_THEMATIC_DUNGEON_AUDIT_GUIDANCE: dict[int, dict[str, str]] = {
+    1: {
+        "title": "Ghastly Mine",
+        "focus": "Attrition and collapse lead: the mine should feel unstable before the undead tables and cave-in count start changing decisions.",
+        "entry": "Open with rotten timbers, breath-thin air, and pick marks that vanish under old grave dust. The party is not just entering a mine; they are stepping into a place that wants to close behind them.",
+        "side": "Use side clues as warning signs: splintered supports, cold veins in the rock, old miners' marks, or gold dust that may become something stranger when checked.",
+        "complication": "Make every replacement roll and cave-in count visible. The danger is cumulative, so log undead replacements, treasure conversion, and prior cave-ins before the next room blurs the record.",
+        "finale": "Close with the mine's debts paid: final undead, cave-in severity, trapped or fallen characters, gp-to-gem/nugget conversion, XP, storage, and closeout.",
+    },
+    2: {
+        "title": "Giant's Lair",
+        "focus": "Scale and deadline lead: ordinary dungeon habits should feel too small for the halls, furniture, and final-room requirements.",
+        "entry": "Let the party feel the lair's size immediately: gouged doorframes, huge bowls used as troughs, and a ceiling that makes torches look timid.",
+        "side": "Use side clues to confirm they are in a giant's territory before the final room arrives: oversized tracks, thrown stones, or bones cracked like kindling.",
+        "complication": "Track the HCL+5 endpoint and final-room shape. The giant finale is a room-design constraint as much as a monster encounter.",
+        "finale": "Sign off the large final room, boulder throw, spell modifier, three treasure rolls, doubled gp, XP, Guild share, and storage.",
+    },
+    3: {
+        "title": "Dragon's Lair",
+        "focus": "Compressed reveal lead: four rooms means every clue should build pressure toward the dragon type choice.",
+        "entry": "Start with heat in the stone, claw scores at shoulder height, and old scales caught where something too large squeezed through.",
+        "side": "Use side clues to tempt the 2-Clue reveal: scorch marks, darkness stains, grave-cold scratches, or hoard scraps that make the unknown dragon feel knowable.",
+        "complication": "Make the Clue spend explicit before the final room. If the party will not or cannot pay, record that the reveal stayed hidden.",
+        "finale": "Record dragon type, route, hoard/reward, XP, and any update to the generated finale before another lead overwrites the context.",
+    },
+    4: {
+        "title": "Fiendish Abyss",
+        "focus": "Escalation and prisoner lead: the dungeon is not just harder; it changes what the final boss means after the prisoner table is rolled.",
+        "entry": "Open with sigils that look scratched from the other side, candle soot on the floor, and air that tastes like old iron.",
+        "side": "Use side clues to remind players that ordinary foes may be raised in danger and that a prisoner or bargain may wait at the end.",
+        "complication": "Track any Clue reveal, raised monster assumptions, and Abyss/Fiendish substitutions before the final boss.",
+        "finale": "Roll the prisoner table after the final boss, then sign off rescue, reward, map/rumor follow-up, XP, Guild/finance, and closeout.",
+    },
+    5: {
+        "title": "Minotaur Maze",
+        "focus": "Navigation pressure lead: the map should feel unreliable and every backtrack/search should have a visible consequence.",
+        "entry": "Open with passages that bend too soon, hoofprints crossing themselves, and scratches where someone counted turns until they stopped.",
+        "side": "Use side clues as possible shortcuts, guide marks, or warnings that minotaur rules change Luck, charge pressure, and wandering danger.",
+        "complication": "Log lost checks, wandering subtype, special events, and shortcut unlocks as they happen. Maze state is the adventure.",
+        "finale": "Close with minotaur lord route, first-attack penalties, halfling Luck restriction, treasure, XP, and any unresolved shortcut or lost marker.",
+    },
+    6: {
+        "title": "Bandit Hideout",
+        "focus": "Loot and capture lead: room-by-room stolen goods and the chieftain alive/dead choice should drive the audit.",
+        "entry": "Start with boot tracks, wagon splinters, and a guard fire burning low enough to prove the hideout was used recently.",
+        "side": "Use side clues to show stolen goods, trapdoor risks, and whether the party wants proof, loot, or a living chieftain.",
+        "complication": "Roll stolen-goods checks room by room and record trapdoor results. The hideout's value is discovered before the final den.",
+        "finale": "Decide kill/capture before reward handling, then sign off bounty/free rumor, random magic item, 8d6 gp, XP, Guild share, and storage.",
+    },
+}
+
+
+def _tag_thematic_number_from_profile(profile: dict[str, object]) -> int | None:
+    title = str(profile.get("title") or "")
+    for number, name in TAG_THEMATIC_DUNGEONS.items():
+        if title == name:
+            return number
+    return None
+
+
+def _tag_enrich_thematic_profile(profile: dict[str, object], lead_detail: str) -> dict[str, object]:
+    theme_number = _tag_thematic_number_from_profile(profile)
+    if not theme_number:
+        return profile
+    guidance = TAG_THEMATIC_DUNGEON_AUDIT_GUIDANCE.get(theme_number, TAG_THEMATIC_DUNGEON_AUDIT_GUIDANCE[1])
+    signoff_checks = [
+        "Confirm the Thematic Dungeon result and target-room procedure before treating the generated module like a normal dungeon.",
+        "Record theme-specific procedure rolls, route changes, Clue spends, replacement checks, or treasure handling in TAG Actions.",
+        "Review final reward, XP, Guild share, banking/storage, and closeout tasks before creating another lead.",
+    ]
+    module_profile = dict(profile.get("module_profile") or {})
+    module_signoff = list(module_profile.get("signoff_checks") or [])
+    module_profile["signoff_checks"] = [*module_signoff, *[item for item in signoff_checks if item not in module_signoff]]
+    module_procedure = list(module_profile.get("procedure") or [])
+    module_profile["procedure"] = [
+        *module_procedure,
+        f"Thematic Dungeon audit focus: {guidance['focus']}",
+    ]
+    return {
+        **profile,
+        "audit_family": "thematic_dungeon_playthrough",
+        "thematic_dungeon_number": theme_number,
+        "playthrough_focus": guidance["focus"],
+        "entry_guidance": guidance["entry"],
+        "side_guidance": guidance["side"],
+        "complication_guidance": guidance["complication"],
+        "finale_guidance": guidance["finale"],
+        "lead_result_label": "printed thematic dungeon result",
+        "signoff_checks": signoff_checks,
+        "module_profile": module_profile,
+    }
+
+
 def _tag_prompt_action_from_profile(action: object) -> dict[str, object] | None:
     if not isinstance(action, dict) or not action.get("label"):
         return None
@@ -5173,6 +5266,8 @@ def _tag_manifest(
         profile = _tag_enrich_rumor_profile(profile, lead_detail)
     if lead_type == "treasure_map":
         profile = _tag_enrich_treasure_map_profile(profile, lead_detail)
+    if lead_type == "thematic_dungeon":
+        profile = _tag_enrich_thematic_profile(profile, lead_detail)
     final_foe = str(profile.get("final_foe") or "Wraith")
     final_count = max(1, int(profile.get("final_count") or 1))
     final_extra_foes = [
@@ -5196,6 +5291,7 @@ def _tag_manifest(
                 "audit_family": profile.get("audit_family", ""),
                 "rumor_number": profile.get("rumor_number", 0),
                 "treasure_map_destination": profile.get("treasure_map_destination", 0),
+                "thematic_dungeon_number": profile.get("thematic_dungeon_number", 0),
                 "playthrough_focus": profile.get("playthrough_focus", ""),
                 "signoff_checks": profile.get("signoff_checks", []),
                 "rules": profile.get("rules", []),
