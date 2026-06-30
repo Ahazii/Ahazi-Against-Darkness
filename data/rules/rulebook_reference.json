@@ -2921,8 +2921,8 @@
         "signoff",
         "prompt checklist"
       ],
-      "summary": "App-owned workflow for all six generated TAG Treasure Map destination leads, with richer destination guidance and closeout reminders.",
-      "body": "Generated TAG Treasure Map modules now add app-authored playthrough audit metadata: destination number, play focus, entry guidance, complication guidance, finale guidance, signoff reminders, and prompt checklists. Go Adventure includes a TAG Treasure Map Leads panel and Treasure Map Signoff Checklist so the player can select the intended map destination, confirm destination metadata, review procedure/reward/XP/Guild/finance/storage closeout state, and open the TAG Action Log before another lead is created. During exploration, the TAG scene prompt displays destination checklist reminders next to action buttons. This is dashboard workflow and atmospheric connective prose only; exact map table text, room counts, reward values, and rule outcomes remain with the PDF/player signoff.",
+      "summary": "App-owned workflow for all six generated TAG Treasure Map destination leads, with clearer destination guidance, ordinary-room treasure handling, and closeout reminders.",
+      "body": "Generated TAG Treasure Map modules now add app-authored playthrough audit metadata: destination number, play focus, entry guidance, complication guidance, finale guidance, signoff reminders, and prompt checklists. Go Adventure includes a TAG Treasure Map Leads panel and Treasure Map Signoff Checklist so the player can select the intended map destination, confirm destination metadata, review procedure/reward/XP/Guild/finance/storage closeout state, and open the TAG Action Log before another lead is created. During exploration, the TAG scene prompt displays destination checklist reminders next to action buttons. If the log says hidden treasure was found, Claim Treasure handles the ordinary room hoard; the Map Leads To destination procedure is recorded separately through TAG Actions, such as Underground caves room target for Map Leads To 1. This is dashboard workflow and atmospheric connective prose only; exact map table text, room counts, reward values, and rule outcomes remain with the PDF/player signoff.",
       "implementation_status": "implemented"
     },
     {
@@ -2940,7 +2940,7 @@
         "PDF boundary"
       ],
       "summary": "Tables documents Treasure Map audit metadata, Go Adventure map panels, signoff checklist, and exploration prompt checklist boundaries.",
-      "body": "The modern Tables page includes tag_treasure_map_playthrough_audit_table. It documents the Treasure Map audit metadata, TAG Treasure Map Leads panel, Treasure Map Signoff Checklist, and in-play destination prompt checklist, including the boundary that these are app-authored workflow aids and do not replace the printed map tables.",
+      "body": "The modern Tables page includes tag_treasure_map_playthrough_audit_table. It documents the Treasure Map audit metadata, TAG Treasure Map Leads panel, Treasure Map Signoff Checklist, and in-play destination prompt checklist, including the boundary that these are app-authored workflow aids and do not replace the printed map tables. It also documents the player-facing split between current-room Claim Treasure prompts and the separate Map Leads To destination procedure.",
       "implementation_status": "implemented"
     },
     {

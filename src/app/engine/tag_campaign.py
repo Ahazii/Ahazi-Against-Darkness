@@ -5294,8 +5294,10 @@ def _tag_manifest(
                 "thematic_dungeon_number": profile.get("thematic_dungeon_number", 0),
                 "playthrough_focus": profile.get("playthrough_focus", ""),
                 "signoff_checks": profile.get("signoff_checks", []),
-                "rules": profile.get("rules", []),
+            "rules": profile.get("rules", []),
             "rewards": profile.get("rewards", ""),
+            "side_reward_note": profile.get("side_reward_note", ""),
+            "final_reward_note": profile.get("final_reward_note", ""),
             "final_foe_proxy": final_foe,
             "final_foe_count": final_count,
             "final_foes": final_foes,
@@ -5378,7 +5380,7 @@ def _tag_manifest(
                     {
                         "when": "on_search",
                         "once": True,
-                        "log": f"TAG note: {profile.get('rewards') or 'Record any printed reward from the source scene.'}",
+                        "log": f"TAG guidance: {profile.get('side_reward_note') or profile.get('rewards') or 'Record any printed reward from the source scene.'}",
                         "treasure": {"gold": 12, "items": []},
                     }
                 ],
@@ -5438,7 +5440,7 @@ def _tag_manifest(
                     {
                         "when": "on_enter",
                         "once": True,
-                        "log": f"TAG final note: {profile.get('rewards') or 'Apply printed reward text after victory.'}",
+                        "log": f"TAG final guidance: {profile.get('final_reward_note') or profile.get('rewards') or 'Apply printed reward text after victory.'}",
                         "encounter": {"foes": final_foes},
                     }
                 ],
@@ -5480,15 +5482,24 @@ def _profile_synopsis(campaign: CampaignState, lead_detail: str, profile: dict[s
 def _treasure_map_prompt_actions(map_roll: int) -> list[dict[str, object]]:
     base = [
         {
-            "label": "Roll follow map",
-            "tooltip": "Prefill the Following Treasure Map table; Amount can hold stored/Guild map bonus.",
+            "label": "Roll follow-map table",
+            "tooltip": "Use before a destination module is chosen: prefill the TAG Following Treasure Map roll; Amount can hold stored/Guild map bonus.",
             "action_type": "branch",
             "action_value": "treasure_map_follow",
             "reference": "TAG p.32 Following Treasure Map",
         }
     ]
     if map_roll == 1:
-        return [*base, {"label": "Cave room count", "tooltip": "Prefill d6+3 room count for the underground caves.", "action_type": "branch", "action_value": "map_cave_room_count", "reference": "Map Leads To 1 cave complex"}]
+        return [
+            *base,
+            {
+                "label": "Underground caves: room target",
+                "tooltip": "Roll/log the d6+3 target-room count for Map Leads To 1. This is separate from Claim Treasure in the current room.",
+                "action_type": "branch",
+                "action_value": "map_cave_room_count",
+                "reference": "Map Leads To 1 underground caves",
+            },
+        ]
     if map_roll == 2:
         return [
             *base,
@@ -5549,6 +5560,42 @@ def _treasure_map_module_profile(map_roll: int) -> dict[str, object]:
     return profiles.get(map_roll, profiles[1])
 
 
+def _treasure_map_reward_notes(map_roll: int, destination_title: str) -> dict[str, str]:
+    notes = {
+        1: {
+            "rewards": "Underground caves procedure: track the d6+3 room target, do not roll content in the entrance, close unopened exits after the target count, then sign off the boosted final Boss and double maximum treasure.",
+            "side": "This side-room treasure is ordinary room treasure; use Claim Treasure if you want to collect it now. The map destination procedure is separate: for Underground caves, roll/log the d6+3 room target, skip entrance-room content, dead-end unopened exits after the target count, and sign off the boosted final Boss with double maximum treasure.",
+            "final": "Underground caves closeout: confirm the room target was reached, unopened exits were dead-ended, the final Boss used +2 Life, and double maximum treasure was handled before XP, Guild share, banking, or storage.",
+        },
+        2: {
+            "rewards": "Forgotten temple procedure: resolve the idol value, cult leader scroll chance, cultist treasure, XP, and how the heavy idol is carried or stored.",
+            "side": "This side-room treasure is ordinary room treasure; use Claim Treasure if it exists. The map destination procedure is separate: for the Forgotten temple, record idol value and leader scroll chance when those printed steps become relevant.",
+            "final": "Forgotten temple closeout: confirm idol value, leader scroll chance, cultist treasure, XP, Guild share, banking, and storage.",
+        },
+        3: {
+            "rewards": "Hostile humanoid camp procedure: choose report, stealth theft, or fight before reward and XP handling.",
+            "side": "This side-room treasure is ordinary room treasure; use Claim Treasure if it exists. The camp procedure is separate: record whether the party reports the camp, sneaks for loot, or fights it.",
+            "final": "Hostile camp closeout: confirm report reward or theft/fight consequences, loot, reinforcements, XP, Guild share, banking, and storage.",
+        },
+        4: {
+            "rewards": "Underground structure procedure: track generated treasure as deferred state and move it to the final Boss before closeout.",
+            "side": "This side-room treasure is ordinary room treasure unless the destination procedure says to defer it. Use the structure prompts to record deferred treasure before final Boss handling.",
+            "final": "Underground structure closeout: move deferred treasure to the final Boss, then confirm XP, Guild share, banking, and storage.",
+        },
+        5: {
+            "rewards": "Boss-only underground structure procedure: convert all monster results to Boss encounters, defer treasure to the final Boss, and enforce final reward minimums.",
+            "side": "This side-room treasure is ordinary room treasure unless the destination procedure says to defer it. Use the boss-only structure prompts to record monster conversion and deferred treasure.",
+            "final": "Boss-only structure closeout: confirm Boss-only conversion, deferred treasure, final reward minimums, XP, Guild share, banking, and storage.",
+        },
+        6: {
+            "rewards": "Lich chamber procedure: resolve entry death magic, lich Life, defenders, lich treasure, and any map/scroll follow-up before closeout.",
+            "side": "This side-room treasure is ordinary room treasure; use Claim Treasure if it exists. The lich chamber procedure is separate: record death magic, lich Life, and lich treasure when the one-room destination is resolved.",
+            "final": "Lich chamber closeout: confirm death-magic Life loss, lich Life, defenders, treasure, XP, Guild share, banking, storage, and any map/scroll follow-up.",
+        },
+    }
+    return notes.get(map_roll, notes[1])
+
+
 def _guild_job_profile(campaign: CampaignState, detail: str) -> tuple[str, str, dict[str, object]]:
     job_roll = int(detail) if detail.isdigit() else roll_d6()
     job_roll = max(1, min(6, job_roll))
@@ -5594,6 +5641,7 @@ def build_tag_adventure_manifest(
         lead_detail = TAG_MAP_LEADS_TO[map_roll]
         guidance = TAG_TREASURE_MAP_AUDIT_GUIDANCE[map_roll]
         destination_title = guidance["title"]
+        reward_notes = _treasure_map_reward_notes(map_roll, destination_title)
         profile = {
             "title": destination_title,
             "map_roll": map_roll,
@@ -5606,7 +5654,9 @@ def build_tag_adventure_manifest(
             "final_description": guidance["finale"],
             "final_foe": "Wraith" if map_roll in {4, 5, 6} else "Goblins",
             "final_count": 1 if map_roll in {4, 5, 6} else 4,
-            "rewards": f"Apply The Map Leads To {map_roll} reward/procedure text for {destination_title}; confirm exact amounts and treasure handling from the PDF/player signoff.",
+            "rewards": reward_notes["rewards"],
+            "side_reward_note": reward_notes["side"],
+            "final_reward_note": reward_notes["final"],
             "module_profile": _treasure_map_module_profile(map_roll),
             "complication_prompt_actions": _treasure_map_prompt_actions(map_roll),
             "final_prompt_actions": _treasure_map_prompt_actions(map_roll),

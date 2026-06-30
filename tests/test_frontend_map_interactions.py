@@ -1999,10 +1999,13 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "gargoyle_skin" in APP_JS
     assert "star-shaped object curse" in INDEX_HTML
     assert "Following Treasure Map table" in INDEX_HTML
+    assert "Underground caves room target" in INDEX_HTML
+    assert "separate from Claim Treasure" in INDEX_HTML
     assert "golden idol value" in INDEX_HTML
     assert "hostile camp forces" in INDEX_HTML
     assert "death-magic entry Save" in INDEX_HTML
     assert "map_lich_treasure" in APP_JS
+    assert "This is separate from Claim Treasure" in APP_JS
     assert "hill giant boulder throw" in INDEX_HTML
     assert "giant_lair_boulder" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.routeAction" in APP_JS

@@ -602,7 +602,12 @@ def test_tag_treasure_map_manifests_include_destination_procedure_prompts() -> N
         assert reference["room_prompts"]["tag-final-scene"]["checklist"]
         assert any("Guild" in item or "banking" in item for item in reference["room_prompts"]["tag-final-scene"]["checklist"])
         assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in reference["room_prompts"].values())
-        assert "Apply The Map Leads To" in reference["rewards"]
+        assert "Apply The Map Leads To" not in reference["rewards"]
+        assert "procedure" in reference["rewards"]
+        assert reference["side_reward_note"]
+        if detail == "1":
+            assert "Claim Treasure" in reference["side_reward_note"]
+            assert "Underground caves" in reference["final_reward_note"]
         found = {
             str(action.get("action_value"))
             for prompt in reference["room_prompts"].values()

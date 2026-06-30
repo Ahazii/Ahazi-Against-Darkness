@@ -2285,7 +2285,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Treasure Map audit metadata",
             "shown_in": "Generated TAG Treasure Map manifests and exploration prompt panels.",
-            "player_use": "Carries destination number, play focus, entry guidance, complication guidance, finale guidance, destination procedure reminders, and closeout checks for all six Map Leads To results.",
+            "player_use": "Carries destination number, play focus, entry guidance, complication guidance, finale guidance, destination procedure reminders, closeout checks, and player-facing separation between current-room Claim Treasure and Map Leads To procedure handling.",
             "pdf_boundary": "App-authored atmosphere and workflow notes only; exact map results, room counts, rewards, and special procedures remain with the PDF/player signoff.",
         },
         {
@@ -2303,7 +2303,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Destination prompt checklist",
             "shown_in": "Exploration room detail panel.",
-            "player_use": "Shows room-specific reminders beside TAG Action buttons for cave count, temple reward, camp approach, deferred structure treasure, boss-only conversion, or lich setup.",
+            "player_use": "Shows room-specific reminders beside TAG Action buttons for cave count, temple reward, camp approach, deferred structure treasure, boss-only conversion, lich setup, and whether ordinary room treasure should simply be claimed.",
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]

@@ -1248,11 +1248,24 @@ function tagTreasureMapDestination(adventure) {
   return suffix ? Number(suffix[1]) : 0;
 }
 
+function tagTreasureMapDestinationGuidance(number) {
+  const guidance = {
+    1: "Underground caves: roll/log the d6+3 room target, skip entrance content, dead-end unopened exits after the target count, then resolve the boosted final Boss and double maximum treasure.",
+    2: "Forgotten temple: record idol value, cult leader scroll chance, cultist treasure, XP, and how the heavy idol is carried or stored.",
+    3: "Hostile humanoid camp: choose report, stealth theft, or fight before resolving reward, loot, reinforcements, and XP.",
+    4: "Underground structure: track generated treasure as deferred state and move it to the final Boss before closeout.",
+    5: "Boss-only underground structure: convert monsters to Boss encounters, defer treasure, and enforce final reward minimums.",
+    6: "Lich chamber: resolve entry death magic, lich Life, defenders, treasure, and map/scroll follow-up before closeout.",
+  };
+  return guidance[number] || "Check generated module metadata for the selected Map Leads To destination.";
+}
+
 function tagTreasureMapAuditRows(adventure) {
   const number = tagTreasureMapDestination(adventure);
   return [
     ["Destination", number ? `Map Leads To ${number}` : "Generated Treasure Map destination", "Confirm this is the intended destination before Start Adventure; Follow Map and Map Leads To are separate signoff steps."],
-    ["Procedure", adventure.tag_scene || adventure.tag_lead_detail || "Check generated module metadata", "Destination metadata comes from the generated manifest. Exact room count, reward, and procedure values remain with the PDF/player signoff."],
+    ["Procedure", tagTreasureMapDestinationGuidance(number), "Destination metadata comes from the generated manifest. Exact room count, reward, and procedure values remain with the PDF/player signoff."],
+    ["Current room treasure", "If exploration says hidden treasure was found, use Claim Treasure for that room. That does not replace the Map Leads To destination procedure.", "Claim Treasure handles the local room hoard; TAG Actions record map procedure and closeout decisions."],
     ["Play focus", "Follow-map result -> destination procedure -> deferred/reward treasure -> closeout", "Treasure Map leads are about proving the map, choosing risk, and making reward accounting visible."],
     ["Signoff", "Route, procedure rolls, treasure transfer, XP, Guild/finance, and storage review", "Use TAG Actions during exploration, then review TAG Action Log and banking/storage before starting another lead."],
   ];
