@@ -453,6 +453,38 @@ h2 {
   font-size: 18px;
 }
 
+.modern-start-button {
+  min-height: 42px;
+  border-color: var(--accent);
+  background: #332719;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.modern-guide-card {
+  border-color: #5a614d;
+  background: #202219;
+}
+
+.modern-guide-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.modern-row-ok {
+  border-color: rgba(111, 155, 122, 0.55);
+}
+
+.modern-row-warn {
+  border-color: rgba(198, 143, 59, 0.75);
+  background: #1f1b12;
+}
+
 .modern-check-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

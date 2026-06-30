@@ -514,6 +514,23 @@ function renderGuidanceLog() {
   return panel;
 }
 
+function renderGuide(title, items, referenceId = "", fallbackQuery = "") {
+  const panel = card(title, "");
+  panel.classList.add("modern-guide-card");
+  const list = el("ul", "modern-guide-list");
+  for (const item of items) {
+    const row = el("li", "", item);
+    row.title = item;
+    list.appendChild(row);
+  }
+  const guideActions = actions();
+  guideActions.appendChild(
+    helpLink("?", ruleReferenceHref(referenceId, fallbackQuery || title), `Open the most relevant Rules Reference entry for ${title}.`)
+  );
+  panel.append(list, guideActions);
+  return panel;
+}
+
 function characterEquipmentSummary(character) {
   const slots = [
     ["Melee", character.default_melee_weapon || "unassigned"],
@@ -636,6 +653,22 @@ function latestSessionPerParty(sessions) {
     }
   }
   return Array.from(latest.values()).sort((a, b) => sessionRecencyKey(b).localeCompare(sessionRecencyKey(a)));
+}
+
+function adventureReadinessRows(selectedPartyId) {
+  const party = modernState.parties.find((item) => item.id === selectedPartyId);
+  if (!party) return [["Choose party", "Pick a saved party before starting a new adventure.", "warn"]];
+  const memberCount = (party.character_ids || []).length;
+  const rows = [
+    ["Party", `${party.name} · ${memberCount}/4 members`, memberCount === 4 ? "ok" : "warn"],
+    ["Troupe", worldName(worldTroupes(), party.troupe_id, "No troupe assigned"), party.troupe_id ? "ok" : "warn"],
+    ["Campaign", worldName(worldCampaigns(), party.campaign_id, "No campaign assigned"), party.campaign_id ? "ok" : "warn"],
+  ];
+  const locked = (party.character_ids || [])
+    .map((id) => modernState.characters.find((character) => character.id === id))
+    .filter((character) => character?.active_session_id);
+  if (locked.length) rows.push(["Active locks", `${locked.length} member(s) already have an active session.`, "warn"]);
+  return rows;
 }
 
 async function loadCore() {
@@ -875,6 +908,11 @@ function knownSettlements() {
 
 function renderTroupes() {
   const campaign = modernState.campaign || {};
+  rootEl.appendChild(renderGuide("Troupe Workflow", [
+    "Pick the campaign first, then keep roster membership and active adventurers in sync.",
+    "A character can belong to one troupe; assigning across troupes may remove incompatible party membership.",
+    "Use the settlement/travel section after membership is saved so logs and home settlement match the troupe."
+  ], "campaign_membership_boundaries", "troupe membership party campaign"));
   const panel = card("Create / Select Troupe", "Select the current troupe, add or remove roster members, choose up to four active adventurers, and manage the home settlement and travel below.");
   const name = input("text", "modern-troupe-name", "Name shown for this TAG troupe in dashboard summaries, closeout prompts, and travel logs.", campaign.tag_troupe_name || "Adventuring Troupe");
   const campaignAssign = select("modern-troupe-campaign", "Campaign/world this troupe belongs to. Each troupe may belong to only one campaign.", worldCampaignOptions());
@@ -985,6 +1023,11 @@ function renderTroupes() {
 
 function renderGuild() {
   const campaign = modernState.campaign || {};
+  rootEl.appendChild(renderGuide("Guild Workflow", [
+    "Guild benefits need active membership and coffers above 0 gp.",
+    "Adventure closeout creates Guild prompts for loot share, upkeep, reroll reset, and leaving-restriction signoff.",
+    "Create Guild Job leads here, then start the installed module from Go Adventure."
+  ], "tag_guild_closeout_guidance", "guild closeout upkeep job"));
   const panel = card("Create / Select Guild", "Select the current Adventurers Guild state for the troupe, then manage members, coffers, Guild jobs, benefits, and closeout obligations below.");
   const active = input("checkbox", "modern-guild-active", "Enables Adventurers Guild rules for the current TAG troupe. Benefits need membership plus coffers above 0 gp.");
   active.checked = Boolean(campaign.tag_guild_member);
@@ -1117,6 +1160,11 @@ function renderGuild() {
 }
 
 function renderParties() {
+  rootEl.appendChild(renderGuide("Party Workflow", [
+    "Create parties from four different roster characters.",
+    "A party belongs to one troupe; all party characters should belong to that same troupe.",
+    "Use Assign Troupe when moving an existing party into a campaign troupe."
+  ], "campaign_membership_boundaries", "party troupe membership"));
   const create = card("Create Party", "Choose exactly four different roster heroes and assign the saved party to one troupe.");
   const name = input("text", "modern-party-name", "Name of this saved party.");
   const partyTroupe = select("modern-party-troupe", "Troupe this party belongs to. Characters can belong to only one party and one troupe.", worldTroupeOptions());
@@ -1236,6 +1284,11 @@ async function renderEquipment() {
 }
 
 function renderBanking() {
+  rootEl.appendChild(renderGuide("Finance Workflow", [
+    "Choose a character first so carried gold, TAG bank, party, and troupe context are visible.",
+    "Use party/troupe bulk banking for setup migration; use character actions for normal play logs.",
+    "Robbed bank accounts and stolen troves create recovery prompts in Guidance and closeout panels."
+  ], "tag_settlement_campaign", "banking finance trove robbery"));
   const panel = card("TAG Banking and Finance", "Banking moves gold between carried roster gold and TAG bank accounts. Troves store hidden gold/items; robbery and inheritance actions create explicit log entries.");
   const filters = characterFilterControls("modern-finance", () => updateCharacterSelect(character, "Choose character", { search: filters.search.value, classId: filters.classFilter.value, sort: filters.sort.value }));
   const character = characterSelect("modern-finance-character", "Character used for TAG finance actions.", "Choose character");
@@ -1348,6 +1401,11 @@ async function renderSettlement() {
     const payload = await api("/api/rules/equipment-shop");
     modernState.equipmentRows = payload.items || Object.values(payload).flat().filter((item) => item && item.key && item.name);
   }
+  rootEl.appendChild(renderGuide("Settlement Workflow", [
+    "Friendly settlements are campaign world records; TAG settlement fields drive services, availability, travel, and logs.",
+    "Size modifies availability checks and should be saved before rolling item or service availability.",
+    "Troublesome towns are campaign placeholders for later supplement support, not active TAG settlement mechanics yet."
+  ], "friendly_settlements", "settlement services availability"));
   const campaign = modernState.campaign || {};
   const panel = card("Create / Select Settlement", "TAG settlements are downtime hubs. Select or create one, maintain notes, check services/items, and travel between known settlements.");
   const name = input("text", "modern-settlement-name-page", "TAG settlement name used in travel logs, troupe home summaries, and service/availability checks.", campaign.settlement_name || "Home Settlement");
@@ -1435,6 +1493,11 @@ async function renderSettlement() {
 
 function renderCampaign() {
   const campaign = modernState.campaign || {};
+  rootEl.appendChild(renderGuide("Campaign Workflow", [
+    "Campaign is the world-builder layer; it is app-owned rather than a TAG PDF rule.",
+    "Assign one guild per campaign, multiple troupes, and multiple friendly/troublesome settlements.",
+    "Use map notes for hex-map planning until the dedicated campaign map editor is built."
+  ], "campaign_world_builder", "campaign world builder"));
   const layout = el("div", "modern-world-grid");
 
   const campaignsCard = card("Campaign Details", "Campaigns are the world-builder layer. A guild, troupes, settlements, parties, and characters point into this layer without changing printed TAG rules.");
@@ -1551,6 +1614,11 @@ function renderCampaign() {
 
 function renderSettings() {
   const prefs = readModernPrefs();
+  rootEl.appendChild(renderGuide("Settings Workflow", [
+    "Settings affect dashboard defaults and Go Adventure choices; they do not delete rules data.",
+    "Enabled rulesets control which profiles appear as preferred random-adventure choices.",
+    "TAG banking toggles which finance workflow the dashboard emphasizes."
+  ], "", "settings ruleset profile"));
   const panel = card("Settings / Options", "Save dashboard preferences for starting adventures. These preferences are used by Go Adventure.");
   const tag = input("checkbox", "modern-tag-banking", "Use TAG banking for campaign finance actions instead of only the legacy home-bank flow.");
   tag.checked = Boolean(modernState.campaign?.tag_banking_enabled);
@@ -1658,7 +1726,12 @@ function renderAiAdventures() {
 
 function renderGoAdventure() {
   const prefs = readModernPrefs();
-  const panel = card("Go Adventure!", "Choose party, adventure type, module, ruleset, and start play. New adventures start a session; Resume/Saved Games below reopen existing sessions.");
+  rootEl.appendChild(renderGuide("Adventure Workflow", [
+    "Start New creates a fresh session from the selected party and module.",
+    "Resume Adventure reopens active in-progress sessions; Saved Games are listed separately.",
+    "Create a TAG lead first when the next adventure comes from a rumor, map, theme, or Guild job."
+  ], "tag_guild_closeout_guidance", "go adventure tag lead resume saved"));
+  const panel = card("Start New Adventure", "Choose party, adventure type, module, ruleset, and start play. This creates a new session.");
   panel.classList.add("modern-primary-card");
   const party = select("modern-start-party", "Party to send on the adventure.", partyOptions());
   party.value = prefs.lastPartyId || "";
@@ -1673,7 +1746,19 @@ function renderGoAdventure() {
   const mapMode = select("modern-start-map-mode", "Map mode for this adventure.", [["unlimited", "Unlimited"], ["paper", "Paper 20x28"]]);
   mapMode.value = prefs.defaultMapMode || "unlimited";
   const mapLimit = input("number", "modern-start-map-limit", "Unlimited-map element cap before end-boss pressure.", String(prefs.defaultMapLimit || 60));
+  const readiness = card("Setup Check", "Warnings here should be handled before starting unless you are deliberately testing an edge case.");
+  readiness.classList.add("modern-card-compact");
+  function drawReadiness() {
+    readiness.querySelectorAll(".modern-row").forEach((node) => node.remove());
+    for (const [title, body, status] of adventureReadinessRows(party.value)) {
+      const item = modernStatusRow(title, body, status === "warn" ? "Resolve this warning before starting a normal adventure." : "This setup item is ready.");
+      item.classList.add(status === "warn" ? "modern-row-warn" : "modern-row-ok");
+      readiness.appendChild(item);
+    }
+  }
   panel.append(field("Party", party), field("Adventure type", type), field("Adventure/module", adventure), field("Random ruleset", profile), field("XP system", xp), field("Map mode", mapMode), field("Map limit", mapLimit));
+  drawReadiness();
+  party.addEventListener("change", drawReadiness);
   type.addEventListener("change", () => {
     adventure.replaceChildren(...optionRows(adventureOptions(type.value)));
     profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
@@ -1703,7 +1788,8 @@ function renderGoAdventure() {
     profile.closest("label")?.classList.add("hidden");
     setStatus(`Created ${result.title || result.adventure_id}. It is selected in Adventure/module.`);
   }));
-  panel.appendChild(button("Start Adventure", "Create a new session with the selected party and adventure settings.", async () => {
+  const startRow = actions();
+  startRow.appendChild(button("Start Adventure", "Create a new session with the selected party and adventure settings.", async () => {
     if (!party.value) throw new Error("Choose a party.");
     writeModernPrefs({ lastPartyId: party.value, defaultRulesetProfile: profile.value, defaultXpSystem: xp.value, defaultMapMode: mapMode.value, defaultMapLimit: Number(mapLimit.value || 60) });
     const adventureId = type.value === "random" ? "random" : adventure.value;
@@ -1719,21 +1805,24 @@ function renderGoAdventure() {
       }),
     });
     window.location.href = `/?session=${encodeURIComponent(session.id || "")}`;
-  }, ""));
-  const sessions = card("Resume Adventure", "Resume the latest active or saved session for each party. This is separate from starting a new adventure above.");
+  }, "modern-start-button"));
+  panel.appendChild(startRow);
+  const sessions = card("Resume Adventure", "Resume the latest active in-progress session for each party. Saved games are listed separately below.");
   const visibleSessions = latestSessionPerParty(modernState.sessions);
   const hiddenSessionCount = Math.max(0, (modernState.sessions || []).length - visibleSessions.length);
   if (hiddenSessionCount) {
     sessions.appendChild(el("p", "muted", `${hiddenSessionCount} older session(s) hidden. Delete or load older sessions from the legacy home list if needed.`));
   }
-  for (const session of visibleSessions) {
+  const activeSessions = visibleSessions.filter((session) => !session.saved_at);
+  const savedSessions = visibleSessions.filter((session) => session.saved_at);
+  for (const session of activeSessions) {
     const partyName = modernState.parties.find((item) => item.id === session.party_id)?.name || session.party_id;
     const row = el("div", "modern-row");
     row.append(el("strong", "", session.save_label || `${partyName} - ${session.mode}`));
     row.append(el("span", "muted", `${partyName} · ${session.adventure_type || session.adventure_id} · ${session.saved_at ? `saved ${session.saved_at}` : "active/unsaved"} · ${session.tile_count || 0} map element(s)`));
     const rowActions = actions();
     rowActions.append(
-      button(session.saved_at ? "Load Saved Game" : "Resume Adventure", "Open this session in the main play interface.", async () => {
+      button("Resume Adventure", "Open this active session in the main play interface.", async () => {
         window.location.href = `/?session=${encodeURIComponent(session.id)}`;
       }, ""),
       button("Delete", "Delete this saved/active session and unlock its characters.", async () => {
@@ -1746,8 +1835,30 @@ function renderGoAdventure() {
     row.appendChild(rowActions);
     sessions.appendChild(row);
   }
-  if (!visibleSessions.length) sessions.appendChild(el("p", "muted", "No active or saved sessions."));
-  rootEl.append(panel, tagLead, sessions);
+  if (!activeSessions.length) sessions.appendChild(el("p", "muted", "No active sessions."));
+  const saved = card("Saved Games", "Load or delete saved sessions. These are separated from active resumes so continuing an old game is not confused with starting a new one.");
+  for (const session of savedSessions) {
+    const partyName = modernState.parties.find((item) => item.id === session.party_id)?.name || session.party_id;
+    const row = el("div", "modern-row");
+    row.append(el("strong", "", session.save_label || `${partyName} - ${session.mode}`));
+    row.append(el("span", "muted", `${partyName} · ${session.adventure_type || session.adventure_id} · saved ${session.saved_at} · ${session.tile_count || 0} map element(s)`));
+    const rowActions = actions();
+    rowActions.append(
+      button("Load Saved Game", "Open this saved session in the main play interface.", async () => {
+        window.location.href = `/?session=${encodeURIComponent(session.id)}`;
+      }, ""),
+      button("Delete", "Delete this saved session and unlock its characters.", async () => {
+        if (!window.confirm("Delete this saved game?")) return;
+        await api(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
+        setStatus("Saved game deleted.");
+        await refreshCoreAndRender();
+      })
+    );
+    row.appendChild(rowActions);
+    saved.appendChild(row);
+  }
+  if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
+  rootEl.append(panel, readiness, tagLead, sessions, saved);
 }
 
 async function renderRulesReference() {
