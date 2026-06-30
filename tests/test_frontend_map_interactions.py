@@ -2043,6 +2043,11 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "function appendTagContextualActions" in APP_JS
     assert "TAG scene prompt" in APP_JS
     assert "openTagActionsWithDefaults" in APP_JS
+    assert "runTagBranchActionWithDefaults" in APP_JS
+    assert "DIRECT_TAG_BRANCH_ACTIONS" in APP_JS
+    assert "Run ${label}" in APP_JS
+    assert "Edit ${label}" in APP_JS
+    assert "map_cave_room_count" in APP_JS
     assert "tagPromptDefaultsFromAction" in APP_JS
     assert "result.module_update" in APP_JS
     assert "appendTagMetadataPromptActions" in APP_JS
@@ -2059,6 +2064,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "tag-final-scene" in APP_JS
     assert "tag-context-actions" in STYLES_CSS
     assert "tag-context-module-profile" in STYLES_CSS
+    assert ".tag-context-actions-row .primary" in STYLES_CSS
+    assert ".tag-action-dialog .dialog-drag-handle" in STYLES_CSS
+    assert "enableTagActionDialogDrag" in APP_JS
     assert "Generated TAG Leads" in MODERN_PAGES_JS
     assert "renderRumorLeadAuditPanel" in MODERN_PAGES_JS
     assert "TAG Rumor Leads" in MODERN_PAGES_JS

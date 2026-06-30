@@ -10907,6 +10907,44 @@ function handleError(error) {
   setStatus(error.message || "Action failed");
 }
 
+const DIRECT_TAG_BRANCH_ACTIONS = new Set([
+  "tag_ambush_chance",
+  "medusa_assassin_ambush",
+  "medusa_reaction",
+  "gargoyle_count",
+  "gargoyle_surprise",
+  "gargoyle_skin",
+  "star_slayer_check",
+  "treasure_map_follow",
+  "map_cave_room_count",
+  "map_temple_idol",
+  "map_temple_scroll",
+  "map_humanoid_report",
+  "map_humanoid_forces",
+  "map_structure_rooms",
+  "map_lich_treasure",
+  "giant_lair_boulder",
+  "giant_lair_treasure",
+  "ghastly_mine_minion_replacement",
+  "ghastly_mine_major_replacement",
+  "ghastly_mine_treasure_conversion",
+  "fiendish_abyss_prisoner",
+  "minotaur_maze_wandering",
+  "minotaur_maze_event",
+  "griffin_mountain_check",
+  "griffin_nest_search",
+  "griffin_egg_count",
+  "portrait_return_snatch",
+  "sewers_vermin",
+  "sewers_minions",
+  "monoceros_clue_encounter",
+  "monoceros_hide",
+]);
+
+function directTagBranchAllowed(defaults = {}) {
+  return DIRECT_TAG_BRANCH_ACTIONS.has(defaults.branchAction || "");
+}
+
 function setupViewVisible() {
   return Boolean(setupPanel && !setupPanel.classList.contains("hidden"));
 }
@@ -11137,6 +11175,7 @@ function openTagAdventureActions() {
   if (tagAdventureActionsDialog.parentElement !== document.body) {
     document.body.appendChild(tagAdventureActionsDialog);
   }
+  enableTagActionDialogDrag();
   renderTagCharacterOptions(state.campaign);
   updateTagBranchActionHint();
   try {
@@ -11160,6 +11199,65 @@ function openTagAdventureActions() {
       setStatus("Could not open TAG Actions.");
     }
   }
+}
+
+function enableTagActionDialogDrag() {
+  if (!tagAdventureActionsDialog || tagAdventureActionsDialog.dataset.dragBound === "1") return;
+  const handle = tagAdventureActionsDialog.querySelector(".transfer-dialog-header");
+  if (!handle) return;
+  tagAdventureActionsDialog.dataset.dragBound = "1";
+  handle.classList.add("dialog-drag-handle");
+  handle.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const rect = tagAdventureActionsDialog.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;
+    const offsetY = event.clientY - rect.top;
+    tagAdventureActionsDialog.style.position = "fixed";
+    tagAdventureActionsDialog.style.margin = "0";
+    tagAdventureActionsDialog.style.left = `${rect.left}px`;
+    tagAdventureActionsDialog.style.top = `${rect.top}px`;
+    tagAdventureActionsDialog.style.right = "auto";
+    tagAdventureActionsDialog.style.bottom = "auto";
+    handle.setPointerCapture?.(event.pointerId);
+    const move = (moveEvent) => {
+      const width = tagAdventureActionsDialog.offsetWidth;
+      const height = tagAdventureActionsDialog.offsetHeight;
+      const nextLeft = Math.max(8, Math.min(window.innerWidth - width - 8, moveEvent.clientX - offsetX));
+      const nextTop = Math.max(8, Math.min(window.innerHeight - Math.min(height, window.innerHeight - 16) - 8, moveEvent.clientY - offsetY));
+      tagAdventureActionsDialog.style.left = `${nextLeft}px`;
+      tagAdventureActionsDialog.style.top = `${nextTop}px`;
+    };
+    const cleanup = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", cleanup);
+      handle.removeEventListener("pointercancel", cleanup);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", cleanup, { once: true });
+    handle.addEventListener("pointercancel", cleanup, { once: true });
+  });
+}
+
+async function runTagBranchActionWithDefaults(defaults = {}) {
+  const branchAction = defaults.branchAction || "";
+  if (!directTagBranchAllowed(defaults)) {
+    openTagActionsWithDefaults(defaults);
+    setStatus("This TAG procedure needs a character, amount, or player choice; review it in TAG Actions before running.");
+    return;
+  }
+  const result = await api("/api/campaign/tag/branch-action", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: defaults.characterId || "",
+      branch_action: branchAction,
+      reference: defaults.reference || "",
+      clue_cost: Number(defaults.amount || 0),
+      reward_gp: Number(defaults.amount || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG procedure logged.");
 }
 
 function classImageUrl(profile) {
@@ -21757,6 +21855,34 @@ function appendTagContextualButton(parent, label, tooltip, defaults) {
   setButtonTooltip(btn, tooltip);
   btn.addEventListener("click", () => openTagActionsWithDefaults(defaults));
   parent.appendChild(btn);
+  return btn;
+}
+
+function appendTagDirectProcedureButton(parent, action, fallbackReference) {
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  if (!directTagBranchAllowed(defaults)) return false;
+  const label = String(action.label || "TAG procedure");
+  const btn = node("button", "primary", `Run ${label}`);
+  btn.type = "button";
+  setButtonTooltip(
+    btn,
+    `${action.tooltip || "Run this TAG procedure now."} This records the roll/result immediately; no character is required unless the action says so.`
+  );
+  btn.addEventListener("click", async () => {
+    try {
+      await runTagBranchActionWithDefaults(defaults);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+  parent.appendChild(btn);
+  appendTagContextualButton(
+    parent,
+    `Edit ${label}`,
+    "Open TAG Actions with this procedure prefilled if you need to change Reference, Amount, or character first.",
+    defaults
+  );
+  return true;
 }
 
 function tagPromptDefaultsFromAction(action = {}, fallbackReference = "") {
@@ -21778,6 +21904,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
   const row = node("div", "tag-context-actions-row");
   for (const action of promptData.actions) {
     if (!action?.label) continue;
+    if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     appendTagContextualButton(
       row,
       String(action.label),

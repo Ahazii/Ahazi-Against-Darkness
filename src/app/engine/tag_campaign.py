@@ -5480,18 +5480,8 @@ def _profile_synopsis(campaign: CampaignState, lead_detail: str, profile: dict[s
 
 
 def _treasure_map_prompt_actions(map_roll: int) -> list[dict[str, object]]:
-    base = [
-        {
-            "label": "Roll follow-map table",
-            "tooltip": "Use before a destination module is chosen: prefill the TAG Following Treasure Map roll; Amount can hold stored/Guild map bonus.",
-            "action_type": "branch",
-            "action_value": "treasure_map_follow",
-            "reference": "TAG p.32 Following Treasure Map",
-        }
-    ]
     if map_roll == 1:
         return [
-            *base,
             {
                 "label": "Underground caves: room target",
                 "tooltip": "Roll/log the d6+3 target-room count for Map Leads To 1. This is separate from Claim Treasure in the current room.",
@@ -5502,22 +5492,19 @@ def _treasure_map_prompt_actions(map_roll: int) -> list[dict[str, object]]:
         ]
     if map_roll == 2:
         return [
-            *base,
             {"label": "Idol value", "tooltip": "Prefill 1d3 x 100 gp golden idol value.", "action_type": "branch", "action_value": "map_temple_idol", "reference": "Map Leads To 2 golden idol"},
             {"label": "Leader scroll chance", "tooltip": "Prefill the chaos cult leader's 3-in-6 random scroll chance.", "action_type": "branch", "action_value": "map_temple_scroll", "reference": "Map Leads To 2 leader scroll"},
         ]
     if map_roll == 3:
         return [
-            *base,
             {"label": "Report reward", "tooltip": "Prefill 4d6 gp reward for reporting the hostile humanoid camp.", "action_type": "branch", "action_value": "map_humanoid_report", "reference": "Map Leads To 3 report to authorities"},
             {"label": "Camp stealth", "tooltip": "Prefill L4 worst-Stealth group check for stealing camp loot.", "action_type": "branch", "action_value": "map_humanoid_stealth", "reference": "Map Leads To 3 camp stealth"},
             {"label": "Camp forces", "tooltip": "Prefill hostile camp force rolls: orcs, bosses, black ogre chance.", "action_type": "branch", "action_value": "map_humanoid_forces", "reference": "Map Leads To 3 hostile camp forces"},
         ]
     if map_roll in {4, 5}:
         label = "Map Leads To 5 boss-only structure" if map_roll == 5 else "Map Leads To 4 underground structure"
-        return [*base, {"label": "Structure rooms", "tooltip": "Prefill 2d6 underground structure room count.", "action_type": "branch", "action_value": "map_structure_rooms", "reference": label}]
+        return [{"label": "Structure rooms", "tooltip": "Prefill 2d6 underground structure room count.", "action_type": "branch", "action_value": "map_structure_rooms", "reference": label}]
     return [
-        *base,
         {"label": "Death magic save", "tooltip": "Prefill one L7 death-magic entry Save for the lich chamber.", "action_type": "branch", "action_value": "map_lich_death_magic", "reference": "Map Leads To 6 death magic"},
         {"label": "Lich Life", "tooltip": "Prefill lich Life calculation from total party Life lost plus 4.", "action_type": "branch", "action_value": "map_lich_life", "reference": "Map Leads To 6 lich Life"},
         {"label": "Lich treasure", "tooltip": "Prefill 10d6 gp lich treasure and reminder for map/scroll rewards.", "action_type": "branch", "action_value": "map_lich_treasure", "reference": "Map Leads To 6 lich treasure"},

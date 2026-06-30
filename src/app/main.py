@@ -2307,7 +2307,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Destination prompt checklist",
             "shown_in": "Exploration room detail panel.",
-            "player_use": "Shows room-specific reminders beside TAG Action buttons for cave count, temple reward, camp approach, deferred structure treasure, boss-only conversion, lich setup, and whether ordinary room treasure should simply be claimed.",
+            "player_use": "Shows room-specific reminders beside TAG Action buttons for cave count, temple reward, camp approach, deferred structure treasure, boss-only conversion, lich setup, and whether ordinary room treasure should simply be claimed. Safe procedure prompts can run directly from the room prompt while TAG Actions remains available for edits.",
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]

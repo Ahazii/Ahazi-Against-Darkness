@@ -732,6 +732,11 @@ h2 {
   gap: 8px;
 }
 
+.tag-context-actions-row .primary {
+  border-color: #b88a3a;
+  background: #7b4e16;
+}
+
 .tag-context-module-profile {
   display: grid;
   gap: 4px;
@@ -912,6 +917,11 @@ h2 {
   margin: 12px -14px -14px;
   padding: 10px 14px 14px;
   background: linear-gradient(180deg, rgba(29, 31, 24, 0), var(--panel) 28%);
+}
+
+.tag-action-dialog .dialog-drag-handle {
+  cursor: move;
+  user-select: none;
 }
 
 .tag-action-guide {

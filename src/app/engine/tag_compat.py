@@ -91,6 +91,19 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
             tag_reference["rewards"] = treasure_map_note_for(map_roll).removeprefix("TAG guidance: ")
         tag_reference.setdefault("side_reward_note", treasure_map_note_for(map_roll).removeprefix("TAG guidance: "))
         tag_reference.setdefault("final_reward_note", treasure_map_note_for(map_roll, final=True).removeprefix("TAG final guidance: "))
+        if str(tag_reference.get("lead_type") or "") == "treasure_map" or map_roll:
+            prompts = tag_reference.get("room_prompts")
+            if isinstance(prompts, dict):
+                for prompt in prompts.values():
+                    if not isinstance(prompt, dict):
+                        continue
+                    actions = prompt.get("actions")
+                    if isinstance(actions, list):
+                        prompt["actions"] = [
+                            action
+                            for action in actions
+                            if not (isinstance(action, dict) and action.get("action_value") == "treasure_map_follow")
+                        ]
 
     for room in manifest.get("rooms") or []:
         if not isinstance(room, dict):

@@ -571,12 +571,12 @@ def test_tag_treasure_map_manifests_include_destination_procedure_prompts() -> N
     repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
     campaign = default_campaign()
     expected_actions = {
-        "1": {"treasure_map_follow", "map_cave_room_count"},
-        "2": {"treasure_map_follow", "map_temple_idol", "map_temple_scroll"},
-        "3": {"treasure_map_follow", "map_humanoid_report", "map_humanoid_stealth", "map_humanoid_forces"},
-        "4": {"treasure_map_follow", "map_structure_rooms"},
-        "5": {"treasure_map_follow", "map_structure_rooms"},
-        "6": {"treasure_map_follow", "map_lich_death_magic", "map_lich_life", "map_lich_treasure"},
+        "1": {"map_cave_room_count"},
+        "2": {"map_temple_idol", "map_temple_scroll"},
+        "3": {"map_humanoid_report", "map_humanoid_stealth", "map_humanoid_forces"},
+        "4": {"map_structure_rooms"},
+        "5": {"map_structure_rooms"},
+        "6": {"map_lich_death_magic", "map_lich_life", "map_lich_treasure"},
     }
     expected_targets = {
         "1": "d6+3-room standard dungeon",
@@ -1103,7 +1103,23 @@ def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
     assert "Underground caves room target" in translated
 
     manifest = {
-        "source": {"parameters": {"tag_reference": {"treasure_map_destination": 1, "rewards": old_line}}},
+        "source": {
+            "parameters": {
+                "tag_reference": {
+                    "lead_type": "treasure_map",
+                    "treasure_map_destination": 1,
+                    "rewards": old_line,
+                    "room_prompts": {
+                        "tag-complication": {
+                            "actions": [
+                                {"action_value": "treasure_map_follow"},
+                                {"action_value": "map_cave_room_count"},
+                            ]
+                        }
+                    },
+                }
+            }
+        },
         "rooms": [{"id": "tag-side-clue", "triggers": [{"when": "on_search", "log": old_line}]}],
     }
     upgraded = upgrade_tag_manifest(manifest)
@@ -1113,6 +1129,9 @@ def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
     assert "Claim Treasure" in reference["side_reward_note"]
     assert "Apply The Map Leads To" not in trigger_log
     assert "Underground caves room target" in trigger_log
+    actions = reference["room_prompts"]["tag-complication"]["actions"]
+    assert {"action_value": "treasure_map_follow"} not in actions
+    assert {"action_value": "map_cave_room_count"} in actions
 
 
 def test_tag_theme_procedure_branch_actions_roll_exact_tables(monkeypatch) -> None:
