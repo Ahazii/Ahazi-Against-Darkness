@@ -24,6 +24,8 @@ APP_ONLY_REFERENCE_IDS = {
     "modern_dashboard_management_table",
     "party_troupe_management",
     "settlement_management_workflow",
+    "character_management_deep_polish",
+    "go_adventure_setup_readiness",
     "rules_artwork_registry",
     "pdf_artwork_boundary",
 }

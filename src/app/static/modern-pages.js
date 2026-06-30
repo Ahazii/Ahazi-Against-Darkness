@@ -348,29 +348,53 @@ function modernStatusRow(title, body, hint = "") {
 }
 
 function characterSearchText(character) {
+  const troupe = worldTroupeForCharacter(character);
   return [
     character.name,
     character.class_name,
     character.level,
     character.gold,
     character.clues,
+    worldName(worldCampaigns(), character.campaign_id, ""),
+    worldName(worldGuilds(), character.guild_id, ""),
+    worldName(worldTroupes(), character.troupe_id, ""),
+    troupe?.home_settlement_id ? worldName(worldSettlements(), troupe.home_settlement_id, "") : "",
     ...(character.statuses || []),
+    ...(character.inventory || []),
+    ...(character.spells || []),
+    ...(character.abilities || []),
     ...partyNamesForCharacter(character.id),
     (modernState.campaign?.tag_troupe_member_character_ids || []).includes(character.id) ? "troupe" : "",
     (modernState.campaign?.tag_troupe_active_character_ids || []).includes(character.id) ? "active" : "",
+    characterEquipmentWarnings(character).length ? "equipment gap warning" : "",
+    characterContextWarnings(character).length ? "context mismatch warning" : "",
+    character.current_life <= 0 ? "dead fallen" : "",
+    character.current_life < character.max_life ? "injured wounded" : "",
   ].join(" ").toLowerCase();
 }
 
-function filteredCharacters({ search = "", classId = "", sort = "name" } = {}) {
+function filteredCharacters({ search = "", classId = "", sort = "name", campaignId = "", guildId = "", troupeId = "", partyId = "", readiness = "" } = {}) {
   const needle = String(search || "").toLowerCase();
   const rows = modernState.characters.filter((character) => {
     if (classId && character.class_id !== classId) return false;
+    if (campaignId && character.campaign_id !== campaignId) return false;
+    if (guildId && character.guild_id !== guildId) return false;
+    if (troupeId && character.troupe_id !== troupeId) return false;
+    if (partyId && character.party_id !== partyId) return false;
+    if (readiness === "injured" && !(character.current_life < character.max_life && character.current_life > 0)) return false;
+    if (readiness === "fallen" && character.current_life > 0) return false;
+    if (readiness === "locked" && !character.active_session_id) return false;
+    if (readiness === "equipment_gap" && !characterEquipmentWarnings(character).length) return false;
+    if (readiness === "context_warning" && !characterContextWarnings(character).length) return false;
     return !needle || characterSearchText(character).includes(needle);
   });
   rows.sort((left, right) => {
     if (sort === "level") return (right.level || 0) - (left.level || 0) || left.name.localeCompare(right.name);
     if (sort === "class") return String(left.class_name || "").localeCompare(String(right.class_name || "")) || left.name.localeCompare(right.name);
     if (sort === "party") return partyNamesForCharacter(left.id).join(",").localeCompare(partyNamesForCharacter(right.id).join(",")) || left.name.localeCompare(right.name);
+    if (sort === "troupe") return worldName(worldTroupes(), left.troupe_id, "").localeCompare(worldName(worldTroupes(), right.troupe_id, "")) || left.name.localeCompare(right.name);
+    if (sort === "campaign") return worldName(worldCampaigns(), left.campaign_id, "").localeCompare(worldName(worldCampaigns(), right.campaign_id, "")) || left.name.localeCompare(right.name);
+    if (sort === "life") return (left.current_life || 0) - (right.current_life || 0) || left.name.localeCompare(right.name);
     return left.name.localeCompare(right.name);
   });
   return rows;
@@ -386,6 +410,24 @@ function characterFilterControls(prefix, onChange) {
   classFilter.addEventListener("change", onChange);
   sort.addEventListener("change", onChange);
   return { panel, search, classFilter, sort };
+}
+
+function characterManagementFilterControls(prefix, onChange) {
+  const panel = el("div", "modern-filterbar");
+  const search = input("search", `${prefix}-character-search`, "Search by name, class, party, campaign, guild, troupe, home settlement, inventory, spells, status, gold, Clues, or setup warnings.");
+  const classFilter = select(`${prefix}-character-class-filter`, "Filter roster characters by class.", [["", "All classes"], ...modernState.classes.map((item) => [item.id, item.name])]);
+  const campaignFilter = select(`${prefix}-character-campaign-filter`, "Filter by assigned campaign/world.", [["", "All campaigns"], ...worldCampaigns().map((item) => [item.id, item.name])]);
+  const guildFilter = select(`${prefix}-character-guild-filter`, "Filter by assigned guild.", [["", "All guilds"], ...worldGuilds().map((item) => [item.id, item.name])]);
+  const troupeFilter = select(`${prefix}-character-troupe-filter`, "Filter by assigned troupe.", [["", "All troupes"], ...worldTroupes().map((item) => [item.id, item.name])]);
+  const partyFilter = select(`${prefix}-character-party-filter`, "Filter by saved party assignment.", [["", "All parties"], ...modernState.parties.map((item) => [item.id, item.name])]);
+  const readiness = select(`${prefix}-character-readiness-filter`, "Filter by adventure readiness and cleanup warnings.", [["", "All readiness"], ["injured", "Injured"], ["fallen", "Fallen"], ["locked", "Active session lock"], ["equipment_gap", "Equipment gaps"], ["context_warning", "Context warnings"]]);
+  const sort = select(`${prefix}-character-sort`, "Sort roster characters.", [["name", "Name"], ["level", "Level"], ["class", "Class"], ["party", "Party"], ["troupe", "Troupe"], ["campaign", "Campaign"], ["life", "Lowest Life"]]);
+  panel.append(field("Search", search), field("Class", classFilter), field("Campaign", campaignFilter), field("Guild", guildFilter), field("Troupe", troupeFilter), field("Party", partyFilter), field("Readiness", readiness), field("Sort", sort));
+  for (const node of [search, classFilter, campaignFilter, guildFilter, troupeFilter, partyFilter, readiness, sort]) {
+    node.addEventListener("input", onChange);
+    node.addEventListener("change", onChange);
+  }
+  return { panel, search, classFilter, campaignFilter, guildFilter, troupeFilter, partyFilter, readiness, sort };
 }
 
 function characterSelect(id, title, blank = "Choose character") {
@@ -531,6 +573,71 @@ function renderGuide(title, items, referenceId = "", fallbackQuery = "") {
   return panel;
 }
 
+function inventoryItemsMatching(character, pattern) {
+  return (character.inventory || []).filter((item) => pattern.test(String(item)));
+}
+
+function equippedArmorSummary(character) {
+  const armor = inventoryItemsMatching(character, /armor|mail|chain|attire|garment/i);
+  const shields = inventoryItemsMatching(character, /shield/i);
+  return {
+    armor: armor.join(", ") || "No armor detected",
+    shield: shields.join(", ") || "No shield detected",
+  };
+}
+
+function characterEquipmentWarnings(character) {
+  const warnings = [];
+  const meleeItems = modernInventoryWeaponCandidates(character, "melee");
+  const missileItems = modernInventoryWeaponCandidates(character, "missile");
+  if (!meleeItems.length) warnings.push("No melee weapon detected in inventory.");
+  if (meleeItems.length && !character.default_melee_weapon) warnings.push("Melee slot is not assigned; the backend will infer a default where possible.");
+  if (missileItems.length && !character.default_missile_weapon) warnings.push("Missile weapon carried but missile slot is not assigned.");
+  if (character.default_melee_weapon && !(character.inventory || []).includes(character.default_melee_weapon)) warnings.push("Assigned melee weapon is no longer in inventory.");
+  if (character.default_melee_weapon_secondary && !(character.inventory || []).includes(character.default_melee_weapon_secondary)) warnings.push("Assigned off-hand weapon is no longer in inventory.");
+  if (character.default_missile_weapon && !(character.inventory || []).includes(character.default_missile_weapon)) warnings.push("Assigned missile weapon is no longer in inventory.");
+  return warnings;
+}
+
+function characterContextWarnings(character) {
+  const warnings = [];
+  const party = modernState.parties.find((item) => item.id === character.party_id);
+  const troupe = worldTroupes().find((item) => item.id === character.troupe_id);
+  if (party && party.troupe_id && character.troupe_id && party.troupe_id !== character.troupe_id) warnings.push(`Party ${party.name} belongs to ${worldName(worldTroupes(), party.troupe_id)}, but character points to ${worldName(worldTroupes(), character.troupe_id)}.`);
+  if (party && party.campaign_id && character.campaign_id && party.campaign_id !== character.campaign_id) warnings.push(`Party campaign ${worldName(worldCampaigns(), party.campaign_id)} differs from character campaign ${worldName(worldCampaigns(), character.campaign_id)}.`);
+  if (troupe && troupe.campaign_id && character.campaign_id && troupe.campaign_id !== character.campaign_id) warnings.push(`Troupe campaign ${worldName(worldCampaigns(), troupe.campaign_id)} differs from character campaign ${worldName(worldCampaigns(), character.campaign_id)}.`);
+  if (troupe && troupe.guild_id && character.guild_id && troupe.guild_id !== character.guild_id) warnings.push(`Troupe guild ${worldName(worldGuilds(), troupe.guild_id)} differs from character guild ${worldName(worldGuilds(), character.guild_id)}.`);
+  if (!character.party_id) warnings.push("No saved party assigned.");
+  if (!character.troupe_id) warnings.push("No troupe assigned.");
+  if (!character.guild_id) warnings.push("No guild assigned.");
+  if (!character.campaign_id) warnings.push("No campaign assigned.");
+  return warnings;
+}
+
+function characterReadinessRows(character) {
+  const armor = equippedArmorSummary(character);
+  const equipmentWarnings = characterEquipmentWarnings(character);
+  const contextWarnings = characterContextWarnings(character);
+  const rows = [
+    ["Life", `${character.current_life}/${character.max_life} Life`, character.current_life <= 0 ? "block" : (character.current_life < character.max_life ? "warn" : "ok"), "Fallen characters cannot start ordinary adventures; injured characters can start but should be reviewed."],
+    ["Equipment", equipmentWarnings.length ? equipmentWarnings.join(" ") : characterEquipmentSummary(character), equipmentWarnings.length ? "warn" : "ok", "Weapon slot assignments are saved to the roster. Armor and shield are detected from inventory until explicit armor slots are added."],
+    ["Armor / shield", `${armor.armor} · ${armor.shield}`, "ok", "Detected carried armor/shield. Class legality is enforced during adventure play where those rules already exist."],
+    ["World context", contextWarnings.length ? contextWarnings.join(" ") : characterWorldSummary(character), contextWarnings.length ? "warn" : "ok", "Campaign, guild, troupe, party, and home settlement context used by management pages and adventure setup checks."],
+  ];
+  if (character.active_session_id) rows.push(["Active session", `Locked by session ${character.active_session_id}.`, "block", "Delete or resume the active session before sending this character into another new adventure."]);
+  return rows;
+}
+
+function renderReadinessRows(rows) {
+  const wrap = el("div", "modern-list");
+  for (const [title, body, status, hint] of rows) {
+    const row = modernStatusRow(title, body, hint || (status === "ok" ? "Ready." : "Review this before continuing."));
+    row.classList.add(status === "ok" ? "modern-row-ok" : "modern-row-warn");
+    wrap.appendChild(row);
+  }
+  return wrap;
+}
+
 function characterEquipmentSummary(character) {
   const slots = [
     ["Melee", character.default_melee_weapon || "unassigned"],
@@ -553,7 +660,7 @@ function modernInventoryWeaponCandidates(character, kind = "all") {
 }
 
 function weaponSlotSelect(id, title, items, current) {
-  const rows = [["", "Unassigned"], ...items.map((item) => [item, item])];
+  const rows = [["", "Auto / unassigned"], ...items.map((item) => [item, item])];
   const node = select(id, title, rows);
   if (current && rows.some(([value]) => value === current)) node.value = current;
   return node;
@@ -565,25 +672,25 @@ function renderCharacterEquipmentEditor(character) {
   const missileItems = modernInventoryWeaponCandidates(character, "missile");
   const melee = weaponSlotSelect(
     `modern-${character.id}-melee`,
-    "Default melee weapon used when this character enters combat.",
+    "Default melee weapon used when this character enters combat. Choosing Auto lets the backend infer a carried weapon where possible.",
     meleeItems,
     character.default_melee_weapon
   );
   const offhand = weaponSlotSelect(
     `modern-${character.id}-offhand`,
-    "Optional off-hand melee weapon. Backend loadout rules decide whether the combination is legal.",
+    "Optional off-hand melee weapon. Backend loadout rules decide whether the combination is legal; incompatible pairings are rejected during play.",
     meleeItems,
     character.default_melee_weapon_secondary
   );
   const missile = weaponSlotSelect(
     `modern-${character.id}-missile`,
-    "Default missile weapon used for ranged attacks where allowed.",
+    "Default missile weapon used for ranged attacks where allowed. Carrying a bow/sling/crossbow without assigning it creates a setup warning.",
     missileItems,
     character.default_missile_weapon
   );
   editor.append(field("Melee slot", melee), field("Off-hand slot", offhand), field("Missile slot", missile));
   editor.appendChild(
-    button("Save equipment slots", "Assign these inventory items to the character's melee, off-hand, and missile slots. Existing rules validation still applies.", async () => {
+    button("Save equipment slots", "Assign these inventory items to the character's melee, off-hand, and missile slots. Empty slots are treated as Auto and may be inferred from inventory by the backend.", async () => {
       await api(`/api/characters/${character.id}/weapon-defaults`, {
         method: "POST",
         body: JSON.stringify({
@@ -607,12 +714,25 @@ function renderCharacterInventoryDetails(character) {
   summary.append(el("strong", "", "Full sheet"), el("span", "muted", `${(character.inventory || []).length} inventory item(s)`));
   details.appendChild(summary);
   const body = el("div", "modern-stack");
+  const armor = equippedArmorSummary(character);
+  body.appendChild(modernStatusRow("Core stats", `Attack +${character.attack_bonus || 0} · Defense +${character.defense_bonus || 0} · Save +${character.save_bonus || 0} · Madness ${character.madness || 0}`, "Permanent roster modifiers and Madness. Adventure-specific temporary effects are shown during play."));
+  body.appendChild(modernStatusRow("World assignment", characterWorldSummary(character), "Campaign, Guild, Troupe, Party, and home settlement context. Use the quick links above to edit assignments."));
+  body.appendChild(renderReadinessRows(characterReadinessRows(character)));
   body.appendChild(modernStatusRow("Equipment slots", characterEquipmentSummary(character), "Assigned defaults used by the adventure combat sheet when a fight starts."));
   body.appendChild(renderCharacterEquipmentEditor(character));
-  body.appendChild(modernStatusRow("Inventory", (character.inventory || []).join(", ") || "No inventory.", "Everything currently stored on this roster character."));
+  body.appendChild(modernStatusRow("Armor / shield", `${armor.armor} · ${armor.shield}`, "Detected from inventory. Explicit armor/shield slot persistence is not added yet, so combat and save rules still use existing inventory detection."));
+  body.appendChild(modernStatusRow("Inventory", (character.inventory || []).join(", ") || "No inventory.", "Everything currently stored on this roster character, including weapons, armor, supplies, special items, scrolls, and treasure items."));
   body.appendChild(modernStatusRow("Spells", (character.spells || []).join(", ") || "No spells.", "Known spells/prayers available to this character where their class supports them."));
   body.appendChild(modernStatusRow("Abilities", (character.abilities || []).join(", ") || "No abilities listed.", "Class and rules abilities tracked for this roster character."));
+  body.appendChild(modernStatusRow("Learned skills", [...(character.learned_expert_skills || []), ...(character.learned_heroic_skills || []), ...(character.learned_legendary_skills || [])].join(", ") || "No learned tier skills.", "Expert, Heroic, and Legendary learned skills on this roster character."));
   body.appendChild(modernStatusRow("Traits / statuses", [...(character.class_traits || []), ...(character.statuses || [])].join(", ") || "None.", "Class traits and current roster statuses."));
+  const referenceLinks = actions();
+  referenceLinks.append(
+    link("Class Rules", `/modern/rules-reference?help=${encodeURIComponent(character.class_name || character.class_id || "class")}`, "Open Rules Reference search for this character class.", "link-button secondary"),
+    link("Equipment Rules", ruleReferenceHref("equipment_shop", "equipment inventory carry limits"), "Open equipment/inventory rules reference.", "link-button secondary"),
+    link("Character Sheet Rules", ruleReferenceHref("character_management_deep_polish", "character sheet equipment slots"), "Open the dashboard character-sheet reference entry.", "link-button secondary")
+  );
+  body.appendChild(referenceLinks);
   details.appendChild(body);
   return details;
 }
@@ -655,20 +775,37 @@ function latestSessionPerParty(sessions) {
   return Array.from(latest.values()).sort((a, b) => sessionRecencyKey(b).localeCompare(sessionRecencyKey(a)));
 }
 
-function adventureReadinessRows(selectedPartyId) {
+function adventureReadinessRows(selectedPartyId, { adventureType = "random", adventureId = "", profileId = "", mapLimitValue = 60 } = {}) {
   const party = modernState.parties.find((item) => item.id === selectedPartyId);
-  if (!party) return [["Choose party", "Pick a saved party before starting a new adventure.", "warn"]];
-  const memberCount = (party.character_ids || []).length;
-  const rows = [
-    ["Party", `${party.name} · ${memberCount}/4 members`, memberCount === 4 ? "ok" : "warn"],
-    ["Troupe", worldName(worldTroupes(), party.troupe_id, "No troupe assigned"), party.troupe_id ? "ok" : "warn"],
-    ["Campaign", worldName(worldCampaigns(), party.campaign_id, "No campaign assigned"), party.campaign_id ? "ok" : "warn"],
+  const baseRows = [
+    ["Adventure module", adventureType === "random" ? `Random dungeon · ${profileId || "profile"}` : (adventureId ? `${adventureType} · ${adventureId}` : "Choose an installed module"), adventureType === "random" || adventureId ? "ok" : "block", "Imported and AI adventure types require a selected installed module."],
+    ["Map limit", `${Number(mapLimitValue || 0)} map element cap`, Number(mapLimitValue || 0) > 0 ? "ok" : "block", "Unlimited map mode needs a positive cap before end-boss pressure."],
   ];
-  const locked = (party.character_ids || [])
-    .map((id) => modernState.characters.find((character) => character.id === id))
-    .filter((character) => character?.active_session_id);
-  if (locked.length) rows.push(["Active locks", `${locked.length} member(s) already have an active session.`, "warn"]);
+  if (!party) return [["Choose party", "Pick a saved party before starting a new adventure.", "block", "A saved party is required before a new session can be created."], ...baseRows];
+  const memberCount = (party.character_ids || []).length;
+  const members = (party.character_ids || []).map((id) => modernState.characters.find((character) => character.id === id)).filter(Boolean);
+  const mismatched = members.filter((member) => characterContextWarnings(member).some((warning) => !warning.startsWith("No saved party")));
+  const equipmentWarnings = members.filter((member) => characterEquipmentWarnings(member).length);
+  const fallen = members.filter((member) => member.current_life <= 0);
+  const injured = members.filter((member) => member.current_life > 0 && member.current_life < member.max_life);
+  const locked = members.filter((member) => member.active_session_id);
+  const activeTroupe = worldTroupes().find((item) => item.id === party.troupe_id);
+  const rows = [
+    ["Party", `${party.name} · ${memberCount}/4 members`, memberCount === 4 ? "ok" : "block", "A normal 4AD party needs exactly four members."],
+    ["Troupe", `${worldName(worldTroupes(), party.troupe_id, "No troupe assigned")} · home ${activeTroupe?.home_settlement_id ? worldName(worldSettlements(), activeTroupe.home_settlement_id) : "Unassigned"}`, party.troupe_id ? "ok" : "warn", "Party troupe sets campaign/guild/home context for characters when assigned."],
+    ["Campaign", worldName(worldCampaigns(), party.campaign_id, "No campaign assigned"), party.campaign_id ? "ok" : "warn", "Campaign context is app world-builder bookkeeping and should be set before play."],
+    ...baseRows,
+  ];
+  if (fallen.length) rows.push(["Fallen members", fallen.map((member) => member.name).join(", "), "block", "Fallen characters cannot start normal adventures. Heal/resurrect or change party."]);
+  if (locked.length) rows.push(["Active locks", `${locked.length} member(s) already have an active session: ${locked.map((member) => member.name).join(", ")}.`, "block", "Delete or resume the active session before starting another new adventure with these characters."]);
+  if (injured.length) rows.push(["Injured members", injured.map((member) => `${member.name} ${member.current_life}/${member.max_life}`).join(", "), "warn", "Injured characters can start, but this should be a deliberate choice."]);
+  if (equipmentWarnings.length) rows.push(["Equipment warnings", equipmentWarnings.map((member) => `${member.name}: ${characterEquipmentWarnings(member).join(" ")}`).join(" "), "warn", "Open Character Management to assign weapon slots or review inventory."]);
+  if (mismatched.length) rows.push(["Context warnings", mismatched.map((member) => `${member.name}: ${characterContextWarnings(member).join(" ")}`).join(" "), "warn", "Use Party or Troupe Management to resync campaign/guild/troupe context before play."]);
   return rows;
+}
+
+function adventureReadinessBlocks(rows) {
+  return rows.filter(([, , status]) => status === "block");
 }
 
 async function loadCore() {
@@ -780,22 +917,53 @@ function renderHome() {
 }
 
 function renderCharacters() {
+  rootEl.appendChild(renderWorldContextPanel("Character World Context"));
+  rootEl.appendChild(renderGuide("Character Sheet Workflow", [
+    "Use readiness filters to find injured, locked, under-equipped, or context-mismatched characters before starting play.",
+    "Weapon slots are saved on the roster; armor and shield are currently detected from inventory and shown for review.",
+    "Campaign, Guild, Troupe, Party, and Home settlement should line up before Go Adventure setup."
+  ], "character_management_deep_polish", "character sheet equipment slots campaign context"));
   const layout = el("div", "modern-two-col");
-  const list = card("Roster", "Search, sort, heal, spend XP, or delete roster characters.");
-  const filters = characterFilterControls("modern-roster", drawRoster);
+  const list = card("Roster", "Search, sort, filter, heal, spend XP, review full sheets, or delete roster characters.");
+  const filters = characterManagementFilterControls("modern-roster", drawRoster);
+  const summary = el("div", "modern-list");
   const rows = el("div", "modern-list modern-list-tall");
-  list.append(filters.panel, rows);
+  list.append(filters.panel, summary, rows);
   function drawRoster() {
+    summary.replaceChildren();
     rows.replaceChildren();
-    for (const character of filteredCharacters({ search: filters.search.value, classId: filters.classFilter.value, sort: filters.sort.value })) {
+    const filtered = filteredCharacters({
+      search: filters.search.value,
+      classId: filters.classFilter.value,
+      campaignId: filters.campaignFilter.value,
+      guildId: filters.guildFilter.value,
+      troupeId: filters.troupeFilter.value,
+      partyId: filters.partyFilter.value,
+      readiness: filters.readiness.value,
+      sort: filters.sort.value,
+    });
+    const injured = filtered.filter((character) => character.current_life < character.max_life && character.current_life > 0).length;
+    const fallen = filtered.filter((character) => character.current_life <= 0).length;
+    const equipmentGaps = filtered.filter((character) => characterEquipmentWarnings(character).length).length;
+    const contextWarnings = filtered.filter((character) => characterContextWarnings(character).length).length;
+    summary.appendChild(modernStatusRow("Visible roster", `${filtered.length} character(s) · ${injured} injured · ${fallen} fallen · ${equipmentGaps} equipment warning(s) · ${contextWarnings} context warning(s)`, "Summary of the currently filtered roster. Use Readiness to narrow specific cleanup work."));
+    for (const character of filtered) {
       const row = el("div", "modern-row");
       const parties = partyNamesForCharacter(character.id);
       const troupe = (modernState.campaign?.tag_troupe_member_character_ids || []).includes(character.id) ? "TAG troupe" : "not in TAG troupe";
+      const readiness = characterReadinessRows(character);
+      const blocking = readiness.filter(([, , status]) => status === "block").length;
+      const warnings = readiness.filter(([, , status]) => status === "warn").length;
       row.appendChild(el("strong", "", `${character.name} - ${character.class_name} L${character.level}`));
       row.appendChild(el("span", "muted", `HP ${character.current_life}/${character.max_life} · XP ${character.xp || 0} · carried ${character.gold || 0}gp · TAG bank ${tagBankForCharacter(character.id)}gp · ${character.clues || 0} Clues`));
       row.appendChild(el("span", "muted", `Party: ${parties.join(", ") || "none"} · ${troupe}`));
       row.appendChild(el("span", "muted", characterWorldSummary(character)));
       row.appendChild(el("span", "muted", characterEquipmentSummary(character)));
+      if (blocking || warnings) {
+        const warning = el("span", "muted", `${blocking} blocking issue(s) · ${warnings} warning(s). Open Full sheet for details.`);
+        warning.title = "Blocking issues stop normal adventure start; warnings are cleanup items to review before play.";
+        row.appendChild(warning);
+      }
       const worldLinks = actions();
       worldLinks.append(
         link("Campaign", "/modern/campaign", "Open Campaign Management for this character's campaign, guild, troupe, party, and home-settlement context.", "link-button secondary"),
@@ -827,6 +995,7 @@ function renderCharacters() {
       row.appendChild(rowActions);
       rows.appendChild(row);
     }
+    if (!rows.childElementCount) rows.appendChild(el("p", "muted", "No roster characters match the current filters."));
   }
   drawRoster();
   layout.appendChild(list);
@@ -2066,9 +2235,12 @@ function renderGoAdventure() {
   readiness.classList.add("modern-card-compact");
   function drawReadiness() {
     readiness.querySelectorAll(".modern-row").forEach((node) => node.remove());
-    for (const [title, body, status] of adventureReadinessRows(party.value)) {
-      const item = modernStatusRow(title, body, status === "warn" ? "Resolve this warning before starting a normal adventure." : "This setup item is ready.");
-      item.classList.add(status === "warn" ? "modern-row-warn" : "modern-row-ok");
+    const rows = adventureReadinessRows(party.value, { adventureType: type.value, adventureId: adventure.value, profileId: profile.value, mapLimitValue: mapLimit.value });
+    const blocks = adventureReadinessBlocks(rows).length;
+    readiness.appendChild(modernStatusRow("Start readiness", blocks ? `${blocks} blocking issue(s) must be resolved before Start Adventure.` : "No blocking setup issues detected.", blocks ? "Start Adventure is blocked until critical setup issues are fixed." : "Warnings may remain if you deliberately start with injured or under-equipped characters."));
+    for (const [title, body, status, hint] of rows) {
+      const item = modernStatusRow(title, body, hint || (status === "warn" || status === "block" ? "Resolve this warning before starting a normal adventure." : "This setup item is ready."));
+      item.classList.add(status === "ok" ? "modern-row-ok" : "modern-row-warn");
       readiness.appendChild(item);
     }
   }
@@ -2078,7 +2250,11 @@ function renderGoAdventure() {
   type.addEventListener("change", () => {
     adventure.replaceChildren(...optionRows(adventureOptions(type.value)));
     profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
+    drawReadiness();
   });
+  adventure.addEventListener("change", drawReadiness);
+  profile.addEventListener("change", drawReadiness);
+  mapLimit.addEventListener("input", drawReadiness);
   profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
   const tagLead = card("Create TAG Adventure Lead", "Player-facing TAG lead creation. Use this to install a Rumor, Treasure Map destination, Thematic Dungeon, or Guild Job as a playable imported module.");
   const tagLeadType = select("modern-tag-lead-type", "Choose which TAG lead table to generate from.", [
@@ -2107,6 +2283,9 @@ function renderGoAdventure() {
   const startRow = actions();
   startRow.appendChild(button("Start Adventure", "Create a new session with the selected party and adventure settings.", async () => {
     if (!party.value) throw new Error("Choose a party.");
+    const readinessRows = adventureReadinessRows(party.value, { adventureType: type.value, adventureId: adventure.value, profileId: profile.value, mapLimitValue: mapLimit.value });
+    const blocking = adventureReadinessBlocks(readinessRows);
+    if (blocking.length) throw new Error(`Resolve setup first: ${blocking.map(([title]) => title).join(", ")}.`);
     writeModernPrefs({ lastPartyId: party.value, defaultRulesetProfile: profile.value, defaultXpSystem: xp.value, defaultMapMode: mapMode.value, defaultMapLimit: Number(mapLimit.value || 60) });
     const adventureId = type.value === "random" ? "random" : adventure.value;
     const session = await api("/api/sessions", {

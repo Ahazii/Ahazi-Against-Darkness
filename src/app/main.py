@@ -1592,6 +1592,58 @@ def _rules_tables_payload() -> dict:
             "rules_reference": "settlement_management_workflow",
         },
     ]
+    data["character_management_readiness_table"] = [
+        {
+            "area": "Roster filters",
+            "ui_behavior": "Search by name, class, party, campaign, guild, troupe, home settlement, inventory, spells, statuses, gold, Clues, and setup warnings.",
+            "setup_value": "Find injured, fallen, active-session locked, under-equipped, or context-mismatched characters before starting an adventure.",
+            "rules_boundary": "App dashboard workflow; printed character rules remain in class/equipment references.",
+        },
+        {
+            "area": "Weapon slots",
+            "ui_behavior": "Melee, off-hand, and missile defaults are saved through the existing weapon-defaults endpoint.",
+            "setup_value": "Go Adventure flags carried missile weapons without missile defaults and stale assigned weapons no longer in inventory.",
+            "rules_boundary": "Backend weapon legality remains the authority during play.",
+        },
+        {
+            "area": "Armor and shield",
+            "ui_behavior": "Detected from inventory and shown on the full sheet.",
+            "setup_value": "Visible before play without adding new persistent armor/shield slot fields.",
+            "rules_boundary": "Existing combat/save systems still apply inventory-based armor and shield rules.",
+        },
+        {
+            "area": "World context",
+            "ui_behavior": "Full sheets show campaign, guild, troupe, party, and home settlement with links to management pages.",
+            "setup_value": "Warnings flag party/troupe/campaign/guild mismatches before Go Adventure.",
+            "rules_boundary": "App world-builder bookkeeping; not a printed TAG rule.",
+        },
+    ]
+    data["go_adventure_setup_readiness_table"] = [
+        {
+            "check": "Party",
+            "blocking": "No party selected or party does not have exactly four members.",
+            "warning": "",
+            "resolution": "Create or edit a saved party in Party Management.",
+        },
+        {
+            "check": "Adventure module",
+            "blocking": "Imported or AI adventure type selected without an installed module.",
+            "warning": "",
+            "resolution": "Select an installed module or create a TAG lead first.",
+        },
+        {
+            "check": "Character state",
+            "blocking": "Fallen character or active-session lock in selected party.",
+            "warning": "Injured members, equipment warnings, and context mismatches.",
+            "resolution": "Heal/resurrect, delete/resume active sessions, or use Character/Party/Troupe Management to clean up.",
+        },
+        {
+            "check": "Map settings",
+            "blocking": "Map element cap is zero or negative.",
+            "warning": "",
+            "resolution": "Set a positive map cap in Go Adventure or Settings.",
+        },
+    ]
     data["map_elements_validation_table"] = map_elements_validation_table_rows(rules.tiles())
     data["forsaken_depths_map_elements_validation_table"] = map_elements_validation_table_rows(
         rules.tiles("forsaken_depths"), catalog="forsaken_depths"
@@ -2015,7 +2067,10 @@ async def set_character_weapon_defaults(character_id: str, payload: CharacterWea
     ):
         raise HTTPException(status_code=400, detail="Provide at least one default weapon to set.")
     messages: list[str] = []
-    if payload.default_melee_weapon is not None:
+    if payload.default_melee_weapon == "":
+        character.default_melee_weapon = None
+        messages.append(f"{character.name} clears default melee weapon.")
+    elif payload.default_melee_weapon is not None:
         ok, message = set_weapon_default(
             character,
             item_name=payload.default_melee_weapon,
@@ -2025,7 +2080,10 @@ async def set_character_weapon_defaults(character_id: str, payload: CharacterWea
         if not ok:
             raise HTTPException(status_code=400, detail=message)
         messages.append(message)
-    if payload.default_melee_weapon_secondary is not None:
+    if payload.default_melee_weapon_secondary == "":
+        character.default_melee_weapon_secondary = None
+        messages.append(f"{character.name} clears default secondary melee weapon.")
+    elif payload.default_melee_weapon_secondary is not None:
         ok, message = set_weapon_default(
             character,
             item_name=payload.default_melee_weapon_secondary,
@@ -2035,7 +2093,10 @@ async def set_character_weapon_defaults(character_id: str, payload: CharacterWea
         if not ok:
             raise HTTPException(status_code=400, detail=message)
         messages.append(message)
-    if payload.default_missile_weapon is not None:
+    if payload.default_missile_weapon == "":
+        character.default_missile_weapon = None
+        messages.append(f"{character.name} clears default missile weapon.")
+    elif payload.default_missile_weapon is not None:
         ok, message = set_weapon_default(
             character,
             item_name=payload.default_missile_weapon,
