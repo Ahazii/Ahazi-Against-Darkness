@@ -10575,7 +10575,7 @@ function updateTagBranchActionHint() {
   const hint =
     TAG_BRANCH_ACTION_HINTS[value] ||
     selected?.title ||
-    "Reference should name the printed scene/page/result. Amount is used only when the selected branch asks for a number.";
+    "Reference is optional unless the selected action asks for a scene, page, result, or map note. Amount is used only when the selected branch asks for a number.";
   tagBranchActionHint.textContent = hint;
   setTooltip(tagBranchActionHint, hint);
 }

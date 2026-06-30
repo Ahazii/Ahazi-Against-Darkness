@@ -1093,6 +1093,28 @@ def test_tag_treasure_map_branch_actions_roll_destination_procedures(monkeypatch
     assert "nine squares" in giant_treasure.result_text
 
 
+def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
+    from app.engine.tag_compat import normalize_tag_log_line, upgrade_tag_manifest
+
+    old_line = "TAG note: Apply The Map Leads To 1 reward/procedure text for Underground caves; confirm exact amounts and treasure handling from the PDF/player signoff."
+    translated = normalize_tag_log_line(old_line)
+    assert "Apply The Map Leads To" not in translated
+    assert "Claim Treasure" in translated
+    assert "Underground caves room target" in translated
+
+    manifest = {
+        "source": {"parameters": {"tag_reference": {"treasure_map_destination": 1, "rewards": old_line}}},
+        "rooms": [{"id": "tag-side-clue", "triggers": [{"when": "on_search", "log": old_line}]}],
+    }
+    upgraded = upgrade_tag_manifest(manifest)
+    reference = upgraded["source"]["parameters"]["tag_reference"]
+    trigger_log = upgraded["rooms"][0]["triggers"][0]["log"]
+    assert "Apply The Map Leads To" not in reference["rewards"]
+    assert "Claim Treasure" in reference["side_reward_note"]
+    assert "Apply The Map Leads To" not in trigger_log
+    assert "Underground caves room target" in trigger_log
+
+
 def test_tag_theme_procedure_branch_actions_roll_exact_tables(monkeypatch) -> None:
     campaign = default_campaign()
     hero = _character(clues=0)

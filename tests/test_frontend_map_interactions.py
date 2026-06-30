@@ -2001,6 +2001,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Following Treasure Map table" in INDEX_HTML
     assert "Underground caves room target" in INDEX_HTML
     assert "separate from Claim Treasure" in INDEX_HTML
+    assert "If the room log says hidden treasure was found, use Claim Treasure" in INDEX_HTML
+    assert "Character is optional" in INDEX_HTML
+    assert "Branch > Underground caves room target" in INDEX_HTML
     assert "golden idol value" in INDEX_HTML
     assert "hostile camp forces" in INDEX_HTML
     assert "death-magic entry Save" in INDEX_HTML

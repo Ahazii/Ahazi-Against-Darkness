@@ -10,6 +10,7 @@ from typing import Any
 
 from ..schemas import AdventureDescriptor
 from .adventure_manifest import ManifestValidationResult, validate_adventure_manifest
+from .tag_compat import upgrade_tag_manifest
 
 ADVENTURE_MANIFEST_FILENAME = "adventure.json"
 ADVENTURE_META_FILENAME = "adventure.meta.json"
@@ -105,7 +106,7 @@ def load_installed_manifest(root_dir: Path, data_dir: Path, adventure_id: str) -
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("Adventure manifest must be a JSON object.")
-    return payload
+    return upgrade_tag_manifest(payload)
 
 
 def build_adventure_export_zip(root_dir: Path, data_dir: Path, adventure_id: str) -> bytes:

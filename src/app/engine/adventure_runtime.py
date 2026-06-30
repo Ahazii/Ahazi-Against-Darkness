@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from ..schemas import ActiveQuestState, SessionState, TileState
 from .adventure_foes import spawn_manifest_foes
+from .tag_compat import normalize_tag_log_line
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
@@ -434,7 +435,7 @@ def fire_imported_triggers(
 
         log_line = trigger.get("log")
         if isinstance(log_line, str) and log_line.strip():
-            session.log.append(log_line.strip())
+            session.log.append(normalize_tag_log_line(log_line.strip()))
 
         if trigger.get("once", True):
             session.imported_fired_triggers.append(key)

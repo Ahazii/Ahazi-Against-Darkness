@@ -46,6 +46,7 @@ from .engine.roster_sync import (
     sync_party_members_to_roster,
     unlock_characters_for_session,
 )
+from .engine.tag_compat import normalize_tag_log_lines, upgrade_tag_manifest
 from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import (
     expert_skills_catalog_with_summaries,
@@ -261,6 +262,9 @@ def enrich_session(session: SessionState) -> SessionState:
     from .schemas import PlayContextView
 
     _restore_missing_recovery_members(session)
+    normalize_tag_log_lines(session.log)
+    if isinstance(session.imported_manifest, dict):
+        session.imported_manifest = upgrade_tag_manifest(session.imported_manifest)
     tile = random_engine._current_tile(session)
     ok, reason = rest_eligibility(session, tile)
     session.rest_available = ok
@@ -2285,7 +2289,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Treasure Map audit metadata",
             "shown_in": "Generated TAG Treasure Map manifests and exploration prompt panels.",
-            "player_use": "Carries destination number, play focus, entry guidance, complication guidance, finale guidance, destination procedure reminders, closeout checks, and player-facing separation between current-room Claim Treasure and Map Leads To procedure handling.",
+            "player_use": "Carries destination number, play focus, entry guidance, complication guidance, finale guidance, destination procedure reminders, closeout checks, player-facing separation between current-room Claim Treasure and Map Leads To procedure handling, and compatibility translation for older generated notes.",
             "pdf_boundary": "App-authored atmosphere and workflow notes only; exact map results, room counts, rewards, and special procedures remain with the PDF/player signoff.",
         },
         {
