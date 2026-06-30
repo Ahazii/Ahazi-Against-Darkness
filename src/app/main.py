@@ -3805,16 +3805,25 @@ def _update_session_tag_procedure_state(session: SessionState, branch_action: st
             )
 
 
-def _generated_tag_stored_procedure(session: SessionState, branch_action: str) -> dict[str, Any] | None:
+def _stored_single_run_procedure(session: SessionState, branch_action: str) -> dict[str, Any] | None:
     quest = session.active_quest
     if quest is None or branch_action not in TAG_SINGLE_RUN_BRANCH_ACTIONS:
         return None
+    if _is_tag_treasure_map_quest(quest):
+        procedure_state = dict(quest.tag_procedure_state or {})
+        stored = procedure_state.get(branch_action)
+        if isinstance(stored, dict) and stored.get("completed"):
+            if "next_action" not in stored and procedure_state.get("next_action"):
+                stored = {**stored, "next_action": procedure_state.get("next_action")}
+            return stored
     state = dict(quest.tag_generated_lead_state or {})
     procedures = state.get("procedures")
     if not isinstance(procedures, dict):
         return None
     stored = procedures.get(branch_action)
     if isinstance(stored, dict) and stored.get("completed"):
+        if "next_action" not in stored and state.get("next_action"):
+            stored = {**stored, "next_action": state.get("next_action")}
         return stored
     return None
 
@@ -3979,7 +3988,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
     branch_action = str(payload.get("branch_action") or "social_choice")
-    stored = _generated_tag_stored_procedure(session, branch_action)
+    stored = _stored_single_run_procedure(session, branch_action)
     if stored is not None and not payload.get("force_reroll"):
         result_text = (
             f"{stored.get('label') or 'TAG procedure'} already recorded: {stored.get('result') or 'result stored'}. "
