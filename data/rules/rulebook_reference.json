@@ -2706,6 +2706,26 @@
       "summary": "PDF artwork can be used locally through ignored assets, but extracted copyrighted art should not be committed unless publication rights are secured.",
       "body": "Use tools/extract_rules_artwork.py to render a configured local artwork slot from an owned PDF. The generated image goes to assets/rules_art/local/ and is intentionally ignored by git. If you later obtain a publishing agreement, the same registry entries can point to approved committed assets or packaged licensed art.",
       "implementation_status": "implemented"
+    },
+    {
+      "id": "tag_guild_closeout_guidance",
+      "title": "TAG Guidance and Adventure Closeout",
+      "category": "tag",
+      "source_page": 68,
+      "keywords": [
+        "tag",
+        "guidance",
+        "closeout",
+        "guild",
+        "upkeep",
+        "loot share",
+        "bank robbery",
+        "hidden trove",
+        "xp"
+      ],
+      "summary": "Dashboard guidance summarizes unresolved TAG closeout work and recent campaign logs after adventures, Guild jobs, travel, banking, and settlement actions.",
+      "body": "Use the dashboard Guidance / Log section as an app checklist, not as replacement PDF text. After a TAG adventure completes, the app creates closeout tasks for supported obligations such as Guild loot share, upkeep, used availability reroll reset, leaving-restriction signoff, bank robbery recovery, hidden-trove risk/recovery, and pending TAG XP markers. The related Guild, Banking, Settlement, and Go Adventure pages expose the real controls that resolve many of those prompts. When a printed rule is not yet represented by a specific reference entry, the dashboard links to a targeted Rules Reference search and the owned PDF page rather than copying the rulebook text into the app.",
+      "implementation_status": "implemented"
     }
   ]
 }

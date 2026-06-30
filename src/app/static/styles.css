@@ -279,6 +279,37 @@ h2 {
   font-size: 15px;
 }
 
+.modern-collapsible > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  cursor: pointer;
+  list-style: none;
+}
+
+.modern-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.modern-collapsible > summary::before {
+  content: "▸";
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.modern-collapsible[open] > summary::before {
+  content: "▾";
+}
+
+.modern-collapsible > summary strong {
+  font-size: 15px;
+}
+
+.modern-collapsible > summary .muted {
+  overflow-wrap: anywhere;
+}
+
 .modern-card-compact {
   align-content: start;
   max-height: 360px;

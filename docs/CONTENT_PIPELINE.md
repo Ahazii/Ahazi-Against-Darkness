@@ -206,6 +206,13 @@ the helper.
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.
 
+Rules Reference links should target a specific `rulebook_reference.json` entry
+with `/modern/rules-reference?entry=<id>` whenever a precise entry exists. If a
+specific entry does not exist yet, link to a targeted search with
+`/modern/rules-reference?help=<query>` and add a concise reference entry later.
+Do not paste full PDF sections into dashboard help text; use summaries, source
+page citations, and short implementation notes.
+
 ## Adventure Pipelines
 
 Two authoring paths share **one manifest schema** and the same imported-session

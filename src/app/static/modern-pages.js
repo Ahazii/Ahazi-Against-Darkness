@@ -77,6 +77,21 @@ const PAGE_HELP_QUERIES = {
   developer: "developer import editor",
 };
 
+const PAGE_HELP_REFS = {
+  characters: "home_character_sheets",
+  troupes: "campaign_membership_boundaries",
+  guild: "tag_guild_closeout_guidance",
+  parties: "campaign_membership_boundaries",
+  equipment: "equipment_shop",
+  banking: "tag_settlement_campaign",
+  settlement: "tag_settlement_campaign",
+  campaign: "campaign_world_builder",
+  "go-adventure": "tag_settlement_campaign",
+  "rules-reference": "rules_artwork_registry",
+  tables: "rules_tables_index",
+  library: "pdf_artwork_boundary",
+};
+
 const statusEl = document.getElementById("modern-status");
 const titleEl = document.getElementById("modern-page-title");
 const subtitleEl = document.getElementById("modern-page-subtitle");
@@ -180,6 +195,11 @@ function helpLink(label, href, title) {
   const anchor = link(label, href, title, "help-ref-link");
   anchor.setAttribute("aria-label", title);
   return anchor;
+}
+
+function ruleReferenceHref(entryId, fallbackQuery = "") {
+  if (entryId) return `/modern/rules-reference?entry=${encodeURIComponent(entryId)}`;
+  return `/modern/rules-reference?help=${encodeURIComponent(fallbackQuery || "rules reference")}`;
 }
 
 function actions() {
@@ -462,13 +482,18 @@ function guidanceLogEntries() {
 }
 
 function renderGuidanceLog() {
-  const panel = card(
-    "Guidance / Log",
-    "Next-action prompts from TAG closeout tasks and recent Guild, settlement, travel, banking, and adventure logs."
+  const panel = document.createElement("details");
+  panel.className = "modern-card modern-collapsible";
+  const summary = document.createElement("summary");
+  summary.title = "Show or hide next-action guidance and recent campaign log entries.";
+  summary.append(
+    el("strong", "", "Guidance / Log"),
+    el("span", "muted", "Next-action prompts from TAG closeout tasks and recent Guild, settlement, travel, banking, and adventure logs.")
   );
+  panel.appendChild(summary);
   const links = actions();
   links.append(
-    helpLink("?", "/modern/rules-reference", "Open the curated rules reference instead of copying long PDF text into the dashboard."),
+    helpLink("?", ruleReferenceHref("tag_guild_closeout_guidance", "TAG closeout guidance"), "Open the exact guidance/closeout rules-reference entry. If an exact entry does not exist, the app links to a targeted search instead of copying PDF text here."),
     link("TAG Guide", "/docs/Checking/TAG_SECTION_GUIDE.html", "Open the TAG workflow guide.", "link-button secondary")
   );
   panel.appendChild(links);
@@ -718,7 +743,7 @@ function renderHome() {
     section.appendChild(row);
     grid.appendChild(section);
   }
-  rootEl.append(renderGuidanceLog(), grid);
+  rootEl.appendChild(grid);
 }
 
 function renderCharacters() {
@@ -1733,7 +1758,9 @@ async function renderRulesReference() {
   await loadArtwork();
   const panel = card("Rules Reference", "Search every curated implementation reference entry from the app reference index.");
   const search = input("search", "modern-rules-search", "Filter rules reference entries.");
-  const helpQuery = new URLSearchParams(window.location.search).get("help");
+  const params = new URLSearchParams(window.location.search);
+  const helpQuery = params.get("help");
+  const exactEntryId = params.get("entry");
   if (helpQuery) search.value = helpQuery;
   const categories = [...new Set(modernState.rulesReference.map((entry) => entry.category || "rules"))].sort();
   const category = select("modern-rules-category", "Filter by rules category.", [["", "All categories"], ...categories.map((item) => [item, item])]);
@@ -1758,6 +1785,7 @@ async function renderRulesReference() {
     results.replaceChildren();
     const needle = search.value.toLowerCase();
     const rows = modernState.rulesReference
+      .filter((entry) => !exactEntryId || entry.id === exactEntryId)
       .filter((entry) => !category.value || (entry.category || "rules") === category.value)
       .filter((entry) => !status.value || (entry.implementation_status || "reference") === status.value)
       .filter((entry) => source.value !== "with" || Boolean(entry.source_page))
@@ -1771,12 +1799,14 @@ async function renderRulesReference() {
       groups[key].push(entry);
       return groups;
     }, {});
-    const summary = el("p", "muted", `${rows.length} matching rule reference entr${rows.length === 1 ? "y" : "ies"} across ${Object.keys(byCategory).length} categor${Object.keys(byCategory).length === 1 ? "y" : "ies"}.`);
+    const summary = el("p", "muted", exactEntryId
+      ? `${rows.length ? "Exact" : "No"} rule reference match for ${exactEntryId}.`
+      : `${rows.length} matching rule reference entr${rows.length === 1 ? "y" : "ies"} across ${Object.keys(byCategory).length} categor${Object.keys(byCategory).length === 1 ? "y" : "ies"}.`);
     results.appendChild(summary);
     for (const [groupName, items] of Object.entries(byCategory).sort(([a], [b]) => a.localeCompare(b))) {
       const group = document.createElement("details");
       group.className = "modern-row modern-reference-group";
-      group.open = rows.length <= 25 || Boolean(search.value);
+      group.open = Boolean(exactEntryId) || rows.length <= 25 || Boolean(search.value);
       const groupSummary = document.createElement("summary");
       groupSummary.title = `Show or hide ${items.length} ${groupName} reference entries.`;
       groupSummary.append(el("strong", "", modernTitleFromKey(groupName)), el("span", "muted", `${items.length} entr${items.length === 1 ? "y" : "ies"}`));
@@ -1785,7 +1815,7 @@ async function renderRulesReference() {
       for (const item of items) {
         const row = document.createElement("details");
         row.className = "modern-row modern-reference-card";
-        row.open = rows.length <= 8;
+        row.open = Boolean(exactEntryId) || rows.length <= 8;
         const rowSummary = document.createElement("summary");
         rowSummary.title = "Show or hide the full implementation note for this rule reference.";
         rowSummary.append(
@@ -2047,8 +2077,10 @@ function renderPage() {
     helpEl.replaceChildren(
       helpLink(
         "?",
-        `/modern/rules-reference?help=${encodeURIComponent(PAGE_HELP_QUERIES[page] || page)}`,
-        `Open Rules Reference context for ${meta[0]}. This explains related rules, app-only boundaries, artwork slots, and implementation notes.`
+        ruleReferenceHref(PAGE_HELP_REFS[page], PAGE_HELP_QUERIES[page] || page),
+        PAGE_HELP_REFS[page]
+          ? `Open the exact Rules Reference entry for ${meta[0]}.`
+          : `Open Rules Reference context for ${meta[0]}. This explains related rules, app-only boundaries, artwork slots, and implementation notes.`
       )
     );
   }
@@ -2076,6 +2108,7 @@ function renderPage() {
     .then(() => renderPageArtwork(page))
     .then((panel) => {
       if (panel && currentPage() === page) rootEl.appendChild(panel);
+      if (page === "home" && currentPage() === page) rootEl.appendChild(renderGuidanceLog());
     })
     .catch(handleError);
 }
