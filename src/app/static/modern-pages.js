@@ -1120,7 +1120,7 @@ function tagLeadStatusRows(adventure) {
 }
 
 function renderTagLeadSelectorPanel(adventureSelect = null) {
-  const panel = card("Generated TAG Leads", "Installed TAG modules with lead type, source detail, prompt coverage, and signoff state. Use this before Start Adventure so you know why the module exists and what still needs review.");
+  const panel = card("Generated TAG Leads", "Installed TAG modules with lead type, source detail, prompt coverage, director guidance, and closeout wizard state. Use this before Start Adventure so you know why the module exists and what still needs review.");
   const leads = tagGeneratedAdventures();
   if (!leads.length) {
     panel.appendChild(el("p", "muted", "No generated TAG modules are installed yet. Create a Rumor, Treasure Map, Thematic Dungeon, or Guild Job lead first."));

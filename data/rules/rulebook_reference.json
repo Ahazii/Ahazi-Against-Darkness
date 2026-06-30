@@ -2786,7 +2786,7 @@
         "closeout"
       ],
       "summary": "Checklist and in-play signoff for reviewing generated TAG leads before adventure closeout and the next start.",
-      "body": "Generated TAG adventures use app-created modules and room prompts that point the player to TAG Actions. The signoff panel summarizes the latest generated lead, latest route marker, pending XP markers, and latest TAG log so branch choices, rewards, XP, Guild obligations, banking/storage consequences, and closeout prompts can be reviewed. During play, the Current Objective banner can request generated TAG lead signoff after objective completion and now shows lifecycle chips for Entry, Side lead, Complication, Finale, Route, Reward, XP, and Closeout. TAG Actions shows Relevant Now shortcuts from the current room prompt with a recommended action and explanation. Ongoing Quest generated closeout panels show route marker, pending XP, unresolved closeout, open guidance, lifecycle, and signoff status. Exact printed reward text or amounts still require PDF/player signoff where the app only records a marker.",
+      "body": "Generated TAG adventures use app-created modules and room prompts that point the player to TAG Actions. The signoff panel summarizes the latest generated lead, latest route marker, pending XP markers, and latest TAG log so branch choices, rewards, XP, Guild obligations, banking/storage consequences, and closeout prompts can be reviewed. During play, the Current Objective banner can request generated TAG lead signoff after objective completion and shows lifecycle chips for Entry, Side lead, Complication, Finale, Route, Reward, XP, and Closeout. TAG Actions shows Relevant Now shortcuts from the current room prompt with a generated TAG director, a recommended action, and an explanation. Ongoing Quest generated closeout panels show a five-step closeout wizard for objective, route/reward, XP, Guild/banking/guidance, and signoff. Exact printed reward text or amounts still require PDF/player signoff where the app only records a marker.",
       "implementation_status": "implemented"
     },
     {
@@ -2836,7 +2836,7 @@
         "closeout"
       ],
       "summary": "Tables documents generated TAG adventure signoff checkpoints and in-play closeout prompts.",
-      "body": "The modern Tables page includes tag_generated_adventure_signoff_table. It documents lead creation, room prompt usage, lifecycle visibility, Current Objective signoff prompts, route marker recording, and closeout resolution checkpoints. Generated lead signoff stores warnings when route, XP, guidance, or closeout work remains.",
+      "body": "The modern Tables page includes tag_generated_adventure_signoff_table. It documents lead creation, generated TAG director steps, room prompt usage, lifecycle visibility, Current Objective signoff prompts, route marker recording, and five-step closeout checkpoints. Generated lead signoff stores warnings when route, XP, guidance, or closeout work remains.",
       "implementation_status": "implemented"
     },
     {
@@ -2853,7 +2853,7 @@
         "action log"
       ],
       "summary": "App-owned playtest workflow for generated TAG modules, room prompts, current-objective guidance, lead selection, and TAG log review.",
-      "body": "Generated TAG modules now carry app-authored lead guidance, scene tone, room prompt bodies, and action-button metadata. During exploration, the TAG scene prompt and Current Objective banner explain why the lead exists, how to use the current room, and which button or TAG Action is relevant now for route, branch, reward, Clue, XP, finance, Guild review, or generated lead signoff. The Current Objective banner also shows lifecycle chips for Entry, Side lead, Complication, Finale, Route, Reward, XP, and Closeout. TAG Actions repeats current-room shortcuts in a Relevant Now panel above the full controls with a recommended action and explanation. Ongoing Quest generated closeout panels show route marker, pending XP, unresolved closeout, open guidance, lifecycle, and signoff status. Go Adventure lists installed generated TAG leads with type, detail, prompt count, route markers, closeout state, and pending XP. The TAG Action Log filter helps review route, XP, finance, Guild, branch, generated-lead, and signoff events. This is app workflow and atmospheric connective prose; exact printed scene text, reward values, and rule outcomes remain with the PDF/player signoff.",
+      "body": "Generated TAG modules now carry app-authored lead guidance, scene tone, room prompt bodies, and action-button metadata. During exploration, the TAG scene prompt and Current Objective banner explain why the lead exists, how to use the current room, and which button or TAG Action is relevant now for route, branch, reward, Clue, XP, finance, Guild review, or generated lead signoff. The generated TAG director names the current phase and gives a lead-type playbook for Rumor, Treasure Map, Thematic Dungeon, or Guild Job leads. The Current Objective banner also shows lifecycle chips for Entry, Side lead, Complication, Finale, Route, Reward, XP, and Closeout. TAG Actions repeats current-room shortcuts in a Relevant Now panel above the full controls with a recommended action and focused current action family. Ongoing Quest generated closeout panels show a five-step closeout wizard for objective, route/reward, XP, Guild/banking/guidance, and signoff. Go Adventure lists installed generated TAG leads with type, detail, prompt count, route markers, closeout state, and pending XP. The TAG Action Log filter helps review route, XP, finance, Guild, branch, generated-lead, and signoff events. This is app workflow and atmospheric connective prose; exact printed scene text, reward values, and rule outcomes remain with the PDF/player signoff.",
       "implementation_status": "implemented"
     },
     {
@@ -2870,7 +2870,7 @@
         "action log"
       ],
       "summary": "Tables documents generated TAG prompt guide, current-objective prompts, relevant action shortcuts, lead selector, and action-log filter surfaces.",
-      "body": "The modern Tables page includes tag_generated_prompt_playtest_table. It documents the exploration room prompt guide, Current Objective banner lifecycle chips, Relevant Now recommended TAG Actions shortcuts, prompt action buttons, generated TAG closeout panel, Go Adventure generated TAG leads panel, and TAG Action Log filtering.",
+      "body": "The modern Tables page includes tag_generated_prompt_playtest_table. It documents the exploration room prompt guide, generated TAG director, lead-type playbooks, Current Objective banner lifecycle chips, Relevant Now recommended TAG Actions shortcuts, prompt action buttons, generated TAG closeout wizard, Go Adventure generated TAG leads panel, and TAG Action Log filtering.",
       "implementation_status": "implemented"
     },
     {

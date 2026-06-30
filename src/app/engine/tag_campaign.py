@@ -5345,7 +5345,11 @@ def _tag_manifest(
                 "id": "tag-lead-entry",
                 "tile_key": "02",
                 "title": "Lead Trail",
-                "description": str(profile.get("entry") or "The party follows a TAG campaign lead out of the settlement. The first signs point north, while a side clue lies east."),
+                "description": (
+                    f"{profile.get('entry') or 'The party follows a TAG campaign lead out of the settlement.'} "
+                    "The last warmth of the home settlement is behind them now: boot-mud, market smoke, and the contact's warning all narrow into one uneasy trail. "
+                    "The main lead presses north, while a side clue lies east for players who want leverage before the trouble shows its teeth."
+                ),
                 "environment": "dungeon",
                 "exits": [
                     {
@@ -5369,7 +5373,10 @@ def _tag_manifest(
                 "id": "tag-side-clue",
                 "tile_key": "12",
                 "title": "Side Clue",
-                "description": str(profile.get("side") or "Discarded gear and frightened local gossip confirm that the lead is real."),
+                "description": (
+                    f"{profile.get('side') or 'Discarded gear and frightened local gossip confirm that the lead is real.'} "
+                    "This is not the heart of the job; it is the thing half-buried beside it. A torn strap, sour candle smoke, a nervous witness mark, or a cache tucked too neatly away can turn a blind advance into an informed risk."
+                ),
                 "exits": [
                     {
                         "id": "tag-side-clue-west",
@@ -5392,7 +5399,10 @@ def _tag_manifest(
                 "id": "tag-complication",
                 "tile_key": "13",
                 "title": "Complication",
-                "description": str(profile.get("complication") or "Local troublemakers have reached the lead first."),
+                "description": (
+                    f"{profile.get('complication') or 'Local troublemakers have reached the lead first.'} "
+                    "The lead stops behaving like a route and starts behaving like a problem: someone has lied, blocked the passage, demanded a price, sprung a trap, or made violence feel cheaper than caution. Resolve the printed branch before treating the finale as ordinary exploration."
+                ),
                 "exits": [
                     {
                         "id": "tag-complication-south",
@@ -5429,7 +5439,10 @@ def _tag_manifest(
                 "id": "tag-final-scene",
                 "tile_key": "11",
                 "title": final_room_title,
-                "description": final_room_description,
+                "description": (
+                    f"{final_room_description} "
+                    "This is where the lead comes due: steel, spell, bargain, capture, or proof must turn into a recorded result before the party drags the story back to town."
+                ),
                 "exits": [
                     {
                         "id": "tag-final-scene-south",
@@ -5452,7 +5465,7 @@ def _tag_manifest(
                 "id": "tag-return-road",
                 "tile_key": "06",
                 "title": "Return Road",
-                "description": "The road back to the settlement is quiet in the wrong way: every coin, clue, and promise from this lead now has to survive the journey home and the accounting that follows.",
+                "description": "The road back to the settlement is quiet in the wrong way: every coin, clue, oath, injury, rumor, and Guild expectation from this lead now has to survive the journey home and the accounting that follows.",
                 "exits": [
                     {
                         "id": "tag-return-road-east",

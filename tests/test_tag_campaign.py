@@ -603,6 +603,9 @@ def test_tag_treasure_map_manifests_include_destination_procedure_prompts() -> N
         assert reference["room_prompts"]["tag-final-scene"]["checklist"]
         assert any("Guild" in item or "banking" in item for item in reference["room_prompts"]["tag-final-scene"]["checklist"])
         assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in reference["room_prompts"].values())
+        descriptions = " ".join(str(room.get("description", "")) for room in manifest["rooms"])
+        assert "last warmth of the home settlement" in descriptions
+        assert "comes due" in descriptions
         assert "Apply The Map Leads To" not in reference["rewards"]
         assert "procedure" in reference["rewards"]
         assert reference["side_reward_note"]
@@ -647,6 +650,9 @@ def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
         assert reference["room_prompts"]["tag-final-scene"]["checklist"]
         assert any("Guild" in item or "banking" in item for item in reference["room_prompts"]["tag-final-scene"]["checklist"])
         assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in reference["room_prompts"].values())
+        descriptions = " ".join(str(room.get("description", "")) for room in manifest["rooms"])
+        assert "lead stops behaving like a route" in descriptions
+        assert "comes due" in descriptions
         joined = " ".join(reference["module_profile"]["procedure"] + reference["module_profile"]["signoff_checks"])
         assert keyword.lower() in joined.lower()
         actions = reference["room_prompts"]["tag-complication"]["actions"] + reference["room_prompts"]["tag-final-scene"]["actions"]

@@ -2064,6 +2064,14 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "function renderGeneratedTagLifecycleStrip" in APP_JS
     assert "function appendGeneratedTagCloseoutPanel" in APP_JS
     assert "Recommended:" in APP_JS
+    assert "function generatedTagDirectorStep" in APP_JS
+    assert "function generatedTagLeadPlaybook" in APP_JS
+    assert "Director: choose the branch before the finale" in APP_JS
+    assert "Treasure Map playbook" in APP_JS
+    assert "tag-director-panel" in APP_JS
+    assert "tag-closeout-wizard" in APP_JS
+    assert "1. Objective" in APP_JS
+    assert "4. Guild / banking / guidance" in APP_JS
     assert "Generated TAG closeout" in APP_JS
     assert "tag-generated-lead-signoff" in APP_JS
     assert "Current objective: TAG closeout signoff" in APP_JS
@@ -2071,6 +2079,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert ".tag-relevant-actions" in STYLES_CSS
     assert ".tag-lifecycle-strip" in STYLES_CSS
     assert ".tag-generated-closeout-panel" in STYLES_CSS
+    assert ".tag-director-panel" in STYLES_CSS
+    assert ".tag-closeout-wizard" in STYLES_CSS
     assert "Guild 50% loot share" in INDEX_HTML
     assert "Guild resurrection fund" in INDEX_HTML
     assert "await recoverTagBankRobbery();" in APP_JS

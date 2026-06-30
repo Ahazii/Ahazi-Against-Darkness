@@ -17654,6 +17654,7 @@ function currentObjectiveForSession(session) {
   const generated = tagCurrentPromptData(session);
   if (generated.tagReference && generated.promptData) {
     const leadLabel = tagLeadLabel(generated.tagReference);
+    const director = generatedTagDirectorStep(session);
     const actions = Array.isArray(generated.promptData.actions)
       ? generated.promptData.actions.filter((action) => action?.label && action.action_type)
       : [];
@@ -17667,11 +17668,11 @@ function currentObjectiveForSession(session) {
       };
     }
     if (actions.length) {
-      const primary = actions[0];
+      const primary = director?.recommended || actions[0];
       return {
-        title: `Current objective: ${generated.promptData.title || "TAG room prompt"}`,
+        title: `Current objective: ${director?.phase || generated.promptData.title || "TAG room prompt"}`,
         body:
-          `${leadLabel}. ${generated.promptData.body || "Use the current generated TAG room prompt to decide which branch, route, reward, XP, or closeout marker applies."}`,
+          `${director?.instruction || `${leadLabel}. ${generated.promptData.body || "Use the current generated TAG room prompt to decide which branch, route, reward, XP, or closeout marker applies."}`} ${director?.playbook || ""}`,
         tone: "tag",
         action: {
           label: String(primary.label || "Open TAG Actions"),
@@ -17869,12 +17870,21 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
   const tagReference = tagReferenceForGeneratedAdventure(session);
   if (!tagReference || !quest) return;
   const status = generatedTagCloseoutStatus(session);
+  const director = generatedTagDirectorStep(session);
   const panel = node("div", "tag-generated-closeout-panel");
   setTooltip(
     panel,
     "Generated TAG closeout panel: action-first review of route markers, rewards, XP, Guild, banking/storage, guidance, and final signoff for this lead."
   );
   panel.appendChild(node("strong", "", "Generated TAG closeout"));
+  if (director) {
+    const directorBox = node("div", "tag-director-panel");
+    setTooltip(directorBox, "Generated TAG closeout director: the app's best current read of what this lead needs next.");
+    directorBox.appendChild(node("strong", "", director.heading));
+    directorBox.appendChild(node("span", "", director.instruction));
+    directorBox.appendChild(node("span", "", director.playbook));
+    panel.appendChild(directorBox);
+  }
   panel.appendChild(
     node(
       "div",
@@ -17886,6 +17896,47 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
   );
   const lifecycle = renderGeneratedTagLifecycleStrip(session);
   if (lifecycle) panel.appendChild(lifecycle);
+  const wizard = node("div", "tag-closeout-wizard");
+  const wizardSteps = [
+    {
+      label: "1. Objective",
+      value: quest.completed ? "Complete" : "Still in progress",
+      done: Boolean(quest.completed),
+      hint: "Finish the generated lead objective before final signoff. You can still review route/reward/XP state while the lead is live.",
+    },
+    {
+      label: "2. Route / reward",
+      value: status.routes.length || status.lifecycle.reward_recorded ? "Recorded or ready" : "Needs route/reward review",
+      done: Boolean(status.routes.length || status.lifecycle.reward_recorded),
+      hint: "Record the branch, route, final reward, capture, bounty, or treasure handling that actually occurred.",
+    },
+    {
+      label: "3. XP",
+      value: status.pendingXp.length ? `${status.pendingXp.length} pending` : "No pending XP",
+      done: !status.pendingXp.length,
+      hint: "Award, dismiss, or sign off pending TAG XP markers before calling the lead clean.",
+    },
+    {
+      label: "4. Guild / banking / guidance",
+      value: status.unresolvedCloseout.length || status.openGuidance.length ? `${status.unresolvedCloseout.length + status.openGuidance.length} open` : "No open follow-up",
+      done: !(status.unresolvedCloseout.length || status.openGuidance.length),
+      hint: "Resolve Guild share/upkeep, banking/storage, hidden-trove, robbed-account, and guidance follow-up.",
+    },
+    {
+      label: "5. Signoff",
+      value: generatedTagLeadSignedOff(session) ? "Signed off" : "Awaiting signoff",
+      done: generatedTagLeadSignedOff(session),
+      hint: "Signoff records player/app review. It stores warnings if unresolved work remains.",
+    },
+  ];
+  for (const step of wizardSteps) {
+    const row = node("div", `tag-closeout-step ${step.done ? "done" : "pending"}`);
+    setTooltip(row, step.hint);
+    row.appendChild(node("span", "tag-closeout-step-label", step.label));
+    row.appendChild(node("span", "tag-closeout-step-value", step.value));
+    wizard.appendChild(row);
+  }
+  panel.appendChild(wizard);
   const rows = [
     {
       label: "Route markers",
@@ -22645,6 +22696,116 @@ function generatedTagPromptActionExplanation(promptData = {}, action = {}) {
   return "Recommended from the current room prompt. Use it only if it matches the scene you are resolving now.";
 }
 
+function generatedTagLeadPlaybook(tagReference = {}) {
+  const type = String(tagReference.lead_type || "").toLowerCase();
+  if (type === "treasure_map") {
+    return "Treasure Map playbook: ordinary room treasure is still Claim Treasure. The map procedure is separate: prove the destination, record the special route/procedure, then close out reward, XP, Guild share, banking, and storage.";
+  }
+  if (type === "rumor") {
+    return "Rumor playbook: treat this like a short settlement story that has followed the party into the dungeon. Record the approach, resolve the complication branch, then capture the final reward or consequence.";
+  }
+  if (type === "thematic_dungeon") {
+    return "Thematic Dungeon playbook: the lead changes how the dungeon behaves. Watch target-room counts, replacement rolls, clue gates, final-room exceptions, and any deferred reward before closeout.";
+  }
+  if (type === "guild_job") {
+    return "Guild Job playbook: the Guild wants proof and bookkeeping, not just a cleared room. Track the job condition, payment or bounty, Guild obligations, and any banking/storage consequence.";
+  }
+  return "Generated TAG playbook: follow the room prompt, record only the branch/reward/XP/route that actually happened, then finish closeout before starting another lead.";
+}
+
+function generatedTagRecommendedAction(promptData = {}) {
+  const actions = Array.isArray(promptData.actions) ? promptData.actions.filter((action) => action?.label) : [];
+  if (!actions.length) return null;
+  const priority = ["route", "branch", "scene", "xp"];
+  for (const type of priority) {
+    const match = actions.find((action) => action.action_type === type);
+    if (match) return match;
+  }
+  return actions[0];
+}
+
+function generatedTagDirectorStep(session = state.session) {
+  const { tagReference, room, promptData } = tagCurrentPromptData(session);
+  if (!tagReference) return null;
+  const roomId = room?.id || "";
+  const recommended = generatedTagRecommendedAction(promptData || {});
+  const lead = tagLeadLabel(tagReference);
+  const playbook = generatedTagLeadPlaybook(tagReference);
+  if (session?.active_quest?.completed && !generatedTagLeadSignedOff(session)) {
+    return {
+      phase: "Closeout",
+      heading: "Director: close out the generated TAG lead",
+      instruction:
+        "The objective is complete. Do not start another generated lead yet: review route, reward, XP, Guild share, banking/storage, guidance, and unresolved closeout tasks, then sign off.",
+      playbook,
+      recommended,
+      actionType: "signoff",
+    };
+  }
+  if (roomId === "tag-lead-entry") {
+    return {
+      phase: "Entry",
+      heading: "Director: establish the lead",
+      instruction: `${lead}. Decide why the party follows this hook, record the approach if the printed scene asks for it, then choose whether the optional side clue is worth the risk.`,
+      playbook,
+      recommended,
+      actionType: recommended?.action_type || "branch",
+    };
+  }
+  if (roomId === "tag-side-clue") {
+    return {
+      phase: "Side lead",
+      heading: "Director: resolve the optional side lead",
+      instruction:
+        "This is optional evidence, leverage, or loot. Claim only the reward/XP the printed scene actually grants, or mark that the party skipped it and move back to the main route.",
+      playbook,
+      recommended,
+      actionType: recommended?.action_type || "branch",
+    };
+  }
+  if (roomId === "tag-complication") {
+    return {
+      phase: "Complication",
+      heading: "Director: choose the branch before the finale",
+      instruction:
+        "This is the decision point. Resolve the parley, hostile turn, clue gate, blocked path, or special procedure now so the finale is not treated like a generic room.",
+      playbook,
+      recommended,
+      actionType: recommended?.action_type || "route",
+    };
+  }
+  if (roomId === "tag-final-scene") {
+    return {
+      phase: "Finale",
+      heading: "Director: finish the lead, then account for it",
+      instruction:
+        "Resolve the final foe or procedure, then immediately record final route, reward, XP, and any capture/treasure/bounty handling. Closeout comes next.",
+      playbook,
+      recommended,
+      actionType: recommended?.action_type || "route",
+    };
+  }
+  if (roomId === "tag-unlocked-scene") {
+    return {
+      phase: "Unlocked scene",
+      heading: "Director: handle the branch you unlocked",
+      instruction:
+        "This scene exists because of an earlier choice. Record arrival, reward, XP, and route consequences against that branch before returning to the main lead.",
+      playbook,
+      recommended,
+      actionType: recommended?.action_type || "route",
+    };
+  }
+  return {
+    phase: "Generated lead",
+    heading: "Director: use the current TAG prompt",
+    instruction: "Use the current generated prompt only for the decision that is happening now. Leave unrelated TAG Actions alone unless the printed scene calls for them.",
+    playbook,
+    recommended,
+    actionType: recommended?.action_type || "branch",
+  };
+}
+
 async function signOffGeneratedTagLead(note = "") {
   if (!state.session?.id) return;
   const result = await api(`/api/sessions/${encodeURIComponent(state.session.id)}/tag-generated-lead-signoff`, {
@@ -22675,6 +22836,15 @@ function renderTagRelevantActions(session = state.session) {
   }
   tagRelevantActions.classList.remove("hidden");
   tagRelevantActions.appendChild(node("strong", "", "Relevant now"));
+  const director = generatedTagDirectorStep(session);
+  if (director) {
+    const directorBox = node("div", "tag-director-panel");
+    setTooltip(directorBox, "Generated TAG director: app-authored phase guidance for the current generated room. It narrows the next action without replacing printed TAG rules.");
+    directorBox.appendChild(node("strong", "", director.heading));
+    directorBox.appendChild(node("span", "", director.instruction));
+    directorBox.appendChild(node("span", "", director.playbook));
+    tagRelevantActions.appendChild(directorBox);
+  }
   tagRelevantActions.appendChild(
     node(
       "span",
@@ -22684,14 +22854,18 @@ function renderTagRelevantActions(session = state.session) {
   );
   const row = node("div", "tag-relevant-actions-row");
   const fallback = `${tagReference.title || "TAG lead"}: ${promptData.title || room?.id || "room prompt"}`;
-  const recommended = actions.find((action) => action.action_type && action.action_type !== "dialog") || actions[0];
+  const recommended = director?.recommended || generatedTagRecommendedAction(promptData) || actions[0];
   if (recommended) {
     const callout = node("div", "tag-relevant-recommendation");
     callout.appendChild(node("strong", "", `Recommended: ${recommended.label}`));
     callout.appendChild(node("span", "", generatedTagPromptActionExplanation(promptData, recommended)));
     tagRelevantActions.appendChild(callout);
   }
-  for (const action of actions.slice(0, 6)) {
+  const focusedActions = recommended?.action_type
+    ? actions.filter((action) => action === recommended || action.action_type === recommended.action_type)
+    : actions;
+  const displayActions = [...focusedActions, ...actions.filter((action) => !focusedActions.includes(action))].slice(0, 6);
+  for (const action of displayActions) {
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
     const tooltip = String(action.tooltip || "Prefill TAG Actions from the current generated-room prompt.");
@@ -22805,6 +22979,15 @@ function appendTagContextualActions(parent, session, tile) {
   );
   setTooltip(prompt, "Generated TAG modules can contain printed choices that the app cannot infer automatically from movement alone. Use the buttons to prefill state, then confirm exact results from the PDF/player decision.");
   block.appendChild(prompt);
+  const director = generatedTagDirectorStep(session);
+  if (director) {
+    const directorBox = node("div", "tag-director-panel");
+    setTooltip(directorBox, "Generated TAG director: app-authored current-step guidance. It tells you what kind of decision this room is asking for.");
+    directorBox.appendChild(node("strong", "", director.heading));
+    directorBox.appendChild(node("span", "", director.instruction));
+    directorBox.appendChild(node("span", "", director.playbook));
+    block.appendChild(directorBox);
+  }
   appendTagLeadUseGuide(block, tagReference);
   appendTagModuleProfile(block, tagReference.module_profile);
   appendTagPromptChecklist(block, promptData?.checklist || tagReference.signoff_checks || []);

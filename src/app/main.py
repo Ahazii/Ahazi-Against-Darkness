@@ -2181,8 +2181,13 @@ def _rules_tables_payload() -> dict:
         },
         {
             "checkpoint": "Room prompt used",
-            "review": "Use room prompt buttons, the Current Objective banner, lifecycle strip, or TAG Actions Relevant Now shortcuts to prefill branch, reward, route, XP, or finance markers; confirm exact printed amount/result manually where needed.",
+            "review": "Use the generated TAG director, room prompt buttons, the Current Objective banner, lifecycle strip, or TAG Actions Relevant Now shortcuts to prefill branch, reward, route, XP, or finance markers; confirm exact printed amount/result manually where needed.",
             "where": "Exploration TAG prompt, Current Objective banner, and TAG Actions dialog.",
+        },
+        {
+            "checkpoint": "Director step",
+            "review": "Read the phase-specific director text first. It explains whether the current room is Entry, Side lead, Complication, Finale, Unlocked scene, or Closeout and says what kind of TAG action matters now.",
+            "where": "Exploration TAG prompt, Current Objective banner, TAG Actions Relevant Now, and Ongoing Quest closeout panel.",
         },
         {
             "checkpoint": "Lifecycle visible",
@@ -2196,7 +2201,7 @@ def _rules_tables_payload() -> dict:
         },
         {
             "checkpoint": "Closeout resolved",
-            "review": "Resolve Guild loot/upkeep/reroll, hidden trove risk/recovery, bank robbery recovery, pending XP markers, and open guidance. Signoff stores warnings if any remain.",
+            "review": "Use the five-step closeout wizard: objective, route/reward, XP, Guild/banking/guidance, then signoff. Signoff stores warnings if any remain.",
             "where": "Ongoing Quest generated closeout panel, Dashboard Guidance, Guild Management, Banking and Finance, Go Adventure Closeout Gate.",
         },
     ]
@@ -2242,19 +2247,19 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Generated room prompt guide",
             "shown_in": "Exploration TAG scene prompt panel and Current Objective banner.",
-            "player_use": "Explains why the lead exists, how to use the room prompt, which immediate action matters, and which TAG Action buttons can prefill branch, route, XP, reward, or finance state. The lifecycle strip shows entry, side lead, complication, finale, route, reward, XP, and closeout status.",
+            "player_use": "Explains why the lead exists, how to use the room prompt, which immediate action matters, and which TAG Action buttons can prefill branch, route, XP, reward, or finance state. The director panel gives phase-specific next-step guidance and a lead-type playbook; the lifecycle strip shows entry, side lead, complication, finale, route, reward, XP, and closeout status.",
             "pdf_boundary": "Guide text is app-authored; exact printed scene text and reward values stay with the PDF/player signoff.",
         },
         {
             "surface": "Prompt action buttons and Relevant Now shortcuts",
             "shown_in": "Generated TAG rooms and TAG Actions dialog.",
-            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls; the TAG Actions dialog repeats current-room shortcuts at the top with a Recommended action and why it matters.",
+            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls; the TAG Actions dialog repeats current-room shortcuts at the top with director guidance, a Recommended action, and the focused current action family before the full controls.",
             "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
         },
         {
             "surface": "Generated lead signoff",
             "shown_in": "Current Objective banner and Ongoing Quest generated closeout panel after generated TAG objective completion.",
-            "player_use": "Records player review of route, reward, XP, Guild share, banking/storage, and closeout checks before another lead is started. If route, XP, guidance, or closeout work remains, signoff records warnings instead of silently pretending the lead is clean.",
+            "player_use": "Records player review of route, reward, XP, Guild share, banking/storage, and closeout checks before another lead is started. The closeout panel is a five-step wizard; if route, XP, guidance, or closeout work remains, signoff records warnings instead of silently pretending the lead is clean.",
             "pdf_boundary": "Signoff records app/player review only; it does not resolve printed-rule decisions without player confirmation.",
         },
         {
