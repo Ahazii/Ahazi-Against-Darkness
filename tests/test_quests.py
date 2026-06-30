@@ -7,7 +7,7 @@ from app import main
 from app.engine.adventure_allowlists import major_foe_table_keys
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
-from app.schemas import ActiveQuestState, EnemyState, MapState, PartyMemberState, SessionState, TileState
+from app.schemas import ActiveQuestState, EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
 
 
 def engine() -> RandomDungeonEngine:
@@ -186,7 +186,7 @@ def test_generated_tag_direct_procedure_is_single_run(client, monkeypatch) -> No
     assert first_payload["entry"]["total"] == 5
     procedure_state = first_payload["session"]["active_quest"]["tag_generated_lead_state"]["procedures"]
     assert procedure_state["map_cave_room_count"]["total"] == 5
-    assert "Do not click the room-target button again" in first_payload["session"]["active_quest"]["tag_generated_lead_state"]["next_action"]
+    assert "the app counts rooms" in first_payload["session"]["active_quest"]["tag_generated_lead_state"]["next_action"]
     assert any("TAG next:" in line and "room 5" in line for line in first_payload["session"]["log"])
 
     second = client.post(
@@ -244,6 +244,110 @@ def test_active_treasure_map_procedure_does_not_reroll(client, monkeypatch) -> N
     assert second_payload["entry"]["total"] == 5
     assert "already recorded" in second_payload["entry"]["result_text"]
     assert second_payload["session"]["active_quest"]["tag_procedure_state"]["map_cave_room_count"]["total"] == 5
+
+
+def test_tag_underground_caves_target_spawns_final_boss(monkeypatch) -> None:
+    eng = engine()
+    session = base_session(
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_treasure_map",
+            description="Follow the purchased TAG treasure map to the underground caves.",
+            tag_procedure_state={
+                "map_cave_room_count": {
+                    "completed": True,
+                    "total": 2,
+                }
+            },
+        )
+    )
+    target_room = TileState(
+        id="target",
+        x=1,
+        y=0,
+        tile_key="22",
+        tile_type="room",
+        title="Target Room",
+        description="The map's scratches match the stone here.",
+        exits=[
+            ExitState(direction="east", kind="door"),
+            ExitState(direction="west", kind="door", destination_tile_id="t"),
+        ],
+    )
+    session.map_state.tiles.append(target_room)
+    session.map_state.current_tile_id = target_room.id
+    monkeypatch.setattr(
+        eng,
+        "_roll_enemy",
+        lambda *_args, **_kwargs: [
+            EnemyState(id="boss", name="Ogre", category="boss", level=4, life=4, max_life=4)
+        ],
+    )
+
+    started = eng._maybe_trigger_tag_underground_caves_finale(session, target_room, show_rolls=False)
+
+    assert started is True
+    assert session.mode == "combat"
+    assert target_room.enemies[0].name == "Ogre"
+    assert target_room.enemies[0].life == 6
+    assert target_room.enemies[0].max_life == 6
+    assert "final_boss" in target_room.enemies[0].tags
+    assert "tag_treasure_map_finale" in target_room.enemies[0].tags
+    assert target_room.final_boss_treasure is True
+    assert target_room.exits[0].status == "blocked"
+    state = session.active_quest.tag_procedure_state["map_cave_room_count"]
+    assert state["final_room_tile_id"] == "target"
+    assert state["rooms_seen"] == 2
+
+
+def test_tag_underground_caves_final_boss_completes_objective() -> None:
+    eng = engine()
+    boss = EnemyState(
+        id="boss",
+        name="Ogre",
+        category="boss",
+        level=4,
+        life=0,
+        max_life=6,
+        tags=["final_boss", "tag_treasure_map_finale"],
+    )
+    final_room = TileState(
+        id="target",
+        x=1,
+        y=0,
+        tile_key="22",
+        tile_type="room",
+        title="Target Room",
+        description="The destination.",
+        defeated_enemies=[boss],
+    )
+    session = base_session(
+        mode="exploration",
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_treasure_map",
+            description="Follow the purchased TAG treasure map to the underground caves.",
+            tag_procedure_state={
+                "map_cave_room_count": {
+                    "completed": True,
+                    "total": 2,
+                    "rooms_seen": 2,
+                    "final_room_tile_id": "target",
+                    "finale_spawned": True,
+                }
+            },
+        ),
+        map_state=MapState(tiles=[base_session().map_state.tiles[0], final_room], current_tile_id="target"),
+    )
+
+    eng._update_quest_on_combat_end(session, [boss], show_rolls=False)
+
+    assert session.active_quest.completed is True
+    assert session.active_quest.tag_procedure_signoff is True
+    state = session.active_quest.tag_procedure_state["map_cave_room_count"]
+    assert state["finale_defeated"] is True
+    assert "final Boss defeated" in session.active_quest.tag_procedure_state["next_action"]
+    assert any("TAG Treasure Map objective complete" in line for line in session.log)
 
 
 def test_kerrak_dar_reward_spends_one_clue_for_hoard(monkeypatch) -> None:

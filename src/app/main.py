@@ -2340,7 +2340,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Active quest procedure tracker",
             "shown_in": "Ongoing Quests during Lady in White Treasure Map play.",
-            "player_use": "Shows the selected Map Leads To procedure as a guided checklist, explains why the player is pressing the action, records the result on the active quest, marks completed procedure rows, displays any room target, separates ordinary Claim Treasure from the destination procedure, and provides manual destination signoff for PDF/player-confirmed branches.",
+            "player_use": "Shows the selected Map Leads To procedure as a guided checklist, explains why the player is pressing the action, records the result on the active quest, marks completed procedure rows, displays any room target, separates ordinary Claim Treasure from the destination procedure, and lets automated destination procedures complete from play state where possible.",
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
         {
@@ -3685,7 +3685,7 @@ TAG_TREASURE_MAP_DESTINATIONS: dict[str, dict[str, Any]] = {
     "map_cave_room_count": {
         "destination": 1,
         "label": "Underground caves room target",
-        "next_action": "Target recorded. Do not click the room-target button again. Explore the cave complex until the rolled room target is reached; use Claim Treasure for ordinary room treasure; treat the target room as the final Boss closeout with +2 Life and double maximum treasure.",
+        "next_action": "Target recorded. Explore normally; the app counts rooms, makes the target room the Treasure Map final Boss room, and completes the objective after that Boss is defeated.",
     },
     "map_temple_idol": {
         "destination": 2,
@@ -3787,8 +3787,8 @@ def _update_session_tag_procedure_state(session: SessionState, branch_action: st
         state["room_target"] = total
     if branch_action == "map_cave_room_count" and total is not None:
         state["next_action"] = (
-            f"Underground caves target recorded as room {total}. Do not click the room-target button again. "
-            "Keep exploring until that room, then resolve the final Boss with +2 Life and double maximum treasure before XP, Guild share, banking/storage, and signoff."
+            f"Underground caves target recorded as room {total}. "
+            "Explore normally; the app counts rooms, makes that room the Treasure Map final Boss room, and completes the objective when that Boss is defeated."
         )
     quest.tag_treasure_map_destination = int(procedure["destination"])
     quest.tag_procedure_state = state
@@ -3856,8 +3856,8 @@ def _update_generated_tag_procedure_state(session: SessionState, branch_action: 
         state["route_recorded"] = True
     if branch_action == "map_cave_room_count" and total is not None:
         state["next_action"] = (
-            f"Underground caves target recorded as room {total}. Do not click the room-target button again. "
-            "Keep exploring until that room, then resolve the final Boss with +2 Life and double maximum treasure before XP, Guild share, banking/storage, and signoff."
+            f"Underground caves target recorded as room {total}. "
+            "Explore normally; the app counts rooms, makes that room the Treasure Map final Boss room, and completes the objective when that Boss is defeated."
         )
     quest.tag_generated_lead_state = state
 

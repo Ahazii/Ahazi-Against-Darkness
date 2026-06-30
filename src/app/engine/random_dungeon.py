@@ -2244,6 +2244,11 @@ class RandomDungeonEngine:
                 if session.adventure_type == "imported":
                     session.log.append(existing.description)
                     fire_imported_triggers(self, session, existing, "on_enter", show_rolls=show_rolls)
+                tag_finale_started = self._maybe_trigger_tag_underground_caves_finale(
+                    session,
+                    existing,
+                    show_rolls=show_rolls,
+                )
                 self._tick_phoenix_mushrooms(session)
                 self._tick_toxic_spores(session)
                 self._tick_abyss_room_entry_afflictions(session, existing, show_rolls=show_rolls)
@@ -2253,7 +2258,11 @@ class RandomDungeonEngine:
                 session.log.extend(maybe_summon_on_wilderness_entry(session, existing))
                 self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
                 self._maybe_resume_detached_encounter(session, existing, show_rolls=show_rolls)
-                if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
+                if (
+                    not tag_finale_started
+                    and session.mode == "exploration"
+                    and any(enemy.life > 0 for enemy in existing.enemies)
+                ):
                     if self._hideout_skips_auto_combat(session, existing):
                         session.log.append(
                             "The hideout guards may accept ransom. Pay ransom or start combat to rescue your comrades."
@@ -2358,6 +2367,11 @@ class RandomDungeonEngine:
             from .hunger import tick_party_hunger
 
             tick_party_hunger(session, [pc for pc in session.party if pc.current_life > 0], log=session.log)
+            tag_finale_started = self._maybe_trigger_tag_underground_caves_finale(
+                session,
+                new_tile,
+                show_rolls=show_rolls,
+            )
             self._tick_phoenix_mushrooms(session)
             self._tick_toxic_spores(session)
             self._tick_abyss_room_entry_afflictions(session, new_tile, show_rolls=show_rolls)
@@ -2367,7 +2381,7 @@ class RandomDungeonEngine:
             session.log.extend(maybe_summon_on_wilderness_entry(session, new_tile))
             self._maybe_resume_detached_encounter(session, new_tile, show_rolls=show_rolls)
             self._ensure_capture_hideout_reaction(session, new_tile, show_rolls=show_rolls)
-            if new_tile.enemies and session.mode == "exploration":
+            if not tag_finale_started and new_tile.enemies and session.mode == "exploration":
                 self._announce_encounter(session, new_tile, show_rolls=show_rolls)
             if is_fd_ruleset(session) and session_tile_catalog(session) == "forsaken_depths_rivers":
                 self._fd_on_river_stretch_entered(session, new_tile, show_rolls=show_rolls)
@@ -2390,6 +2404,115 @@ class RandomDungeonEngine:
         tick_fd_quest_on_area_enter(self, session, tile, show_rolls=show_rolls)
         fd_quest_on_new_tile_entered(self, session, tile, show_rolls=show_rolls)
         apply_fd_dungeon_room_codes_on_enter(self, session, tile, show_rolls=show_rolls)
+
+    def _tag_cave_room_count_state(self, session: SessionState) -> dict | None:
+        quest = session.active_quest
+        if quest is None or quest.completed:
+            return None
+        state = dict(quest.tag_procedure_state or {})
+        recorded = state.get("map_cave_room_count")
+        if not isinstance(recorded, dict) or not recorded.get("completed"):
+            return None
+        try:
+            target = int(recorded.get("total") or 0)
+        except (TypeError, ValueError):
+            return None
+        if target <= 0:
+            return None
+        recorded["total"] = target
+        return {"state": state, "recorded": recorded, "target": target}
+
+    def _tag_cave_rooms_explored(self, session: SessionState) -> int:
+        return sum(
+            1
+            for tile in session.map_state.tiles
+            if tile.tile_type == "room" and tile.content_key != "entrance"
+        )
+
+    def _maybe_trigger_tag_underground_caves_finale(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+    ) -> bool:
+        cave_state = self._tag_cave_room_count_state(session)
+        if cave_state is None or tile.tile_type != "room" or tile.content_key == "entrance":
+            return False
+        state = cave_state["state"]
+        recorded = cave_state["recorded"]
+        target = cave_state["target"]
+        if recorded.get("final_room_tile_id"):
+            return False
+        rooms_seen = self._tag_cave_rooms_explored(session)
+        recorded["rooms_seen"] = rooms_seen
+        if rooms_seen < target:
+            remaining = target - rooms_seen
+            state["map_cave_room_count"] = recorded
+            state["next_action"] = (
+                f"Underground caves progress: room {rooms_seen}/{target}. "
+                f"Explore {remaining} more room{'s' if remaining != 1 else ''}; "
+                "the target room becomes the final Boss room automatically."
+            )
+            if session.active_quest is not None:
+                session.active_quest.tag_procedure_state = state
+            session.log.append(f"TAG Underground caves progress: room {rooms_seen}/{target}.")
+            return False
+
+        boss = self._roll_enemy(
+            session,
+            "boss",
+            self._highest_character_level(session.party),
+        )[0]
+        boss.life += 2
+        boss.max_life += 2
+        for tag in ("final_boss", "tag_treasure_map_finale"):
+            if tag not in boss.tags:
+                boss.tags.append(tag)
+        tile.enemies = [boss]
+        tile.defeated_enemies = []
+        tile.resolved = False
+        tile.content_key = "tag_treasure_map_final_boss"
+        tile.final_boss_treasure = True
+        tile.treasure_claimed = False
+        tile.treasure_summary = None
+        tile.treasure_gold = 0
+        tile.treasure_items = []
+        tile.pending_treasure_choice = None
+        session.final_boss_designated = True
+        recorded["rooms_seen"] = rooms_seen
+        recorded["final_room_tile_id"] = tile.id
+        recorded["final_boss_name"] = boss.name
+        recorded["finale_spawned"] = True
+        state["map_cave_room_count"] = recorded
+        state["next_action"] = (
+            f"Underground caves target reached: room {rooms_seen}/{target} is the map destination. "
+            f"Defeat {boss.name}; the app will mark the Treasure Map objective complete after combat."
+        )
+        if session.active_quest is not None:
+            session.active_quest.tag_procedure_state = state
+        blocked = 0
+        for exit_state in tile.exits:
+            if not exit_state.destination_tile_id and not exit_state.dungeon_exit:
+                exit_state.status = "blocked"
+                blocked += 1
+        session.log.append(
+            f"TAG Underground caves target reached: room {rooms_seen}/{target}. "
+            f"{boss.name} is the Treasure Map final Boss (+2 Life)."
+        )
+        if blocked:
+            session.log.append(
+                f"TAG Underground caves: {blocked} unopened exit{'s' if blocked != 1 else ''} "
+                "from the destination room become dead ends."
+            )
+        self._begin_combat(
+            session,
+            "The Treasure Map destination is found!",
+            show_rolls=show_rolls,
+            allow_final_boss_check=False,
+            tile=tile,
+        )
+        return True
 
     def _maybe_fd_revelation_preview_room(
         self,
@@ -19457,6 +19580,34 @@ class RandomDungeonEngine:
         quest = session.active_quest
         if quest is None or quest.completed:
             return
+        cave_state = self._tag_cave_room_count_state(session)
+        if cave_state is not None:
+            tile = self._current_tile(session)
+            recorded = cave_state["recorded"]
+            state = cave_state["state"]
+            final_room_tile_id = str(recorded.get("final_room_tile_id") or "")
+            final_boss_ids = {
+                enemy.id
+                for enemy in defeated
+                if "tag_treasure_map_finale" in {tag.lower() for tag in enemy.tags}
+                or "final_boss" in {tag.lower() for tag in enemy.tags}
+            }
+            if final_room_tile_id and tile.id == final_room_tile_id and final_boss_ids:
+                quest.completed = True
+                quest.tag_procedure_signoff = True
+                recorded["finale_defeated"] = True
+                recorded["completed"] = True
+                state["map_cave_room_count"] = recorded
+                state["next_action"] = (
+                    "Underground caves destination complete: final Boss defeated. "
+                    "Claim the Lady in White reward when ready, after any treasure, XP, Guild share, banking, or storage choices."
+                )
+                quest.tag_procedure_state = state
+                session.log.append(
+                    "TAG Treasure Map objective complete: Underground caves final Boss defeated. "
+                    "Claim the Lady in White reward when ready."
+                )
+                return
         from .forsaken_depths_map import is_fd_ruleset
         from .forsaken_depths_quest import update_fd_quest_on_combat_end
 

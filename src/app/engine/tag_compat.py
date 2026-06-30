@@ -7,8 +7,8 @@ from typing import Any
 TREASURE_MAP_PROCEDURE_NOTES: dict[int, dict[str, str]] = {
     1: {
         "title": "Underground caves",
-        "procedure": "Underground caves procedure: use Claim Treasure for ordinary room treasure. Separately, open TAG Actions > Branch > Underground caves room target to roll/log the d6+3 room target. Track that count, skip entrance-room content, dead-end unopened exits after the target count, then sign off the final Boss with +2 Life and double maximum treasure.",
-        "final": "Underground caves closeout: confirm the room target was reached, unopened exits were dead-ended, the final Boss used +2 Life, and double maximum treasure was handled before XP, Guild share, banking, or storage.",
+        "procedure": "Underground caves procedure: use Claim Treasure for ordinary room treasure. Separately, run Underground caves room target once to roll/log the d6+3 room target. The app then counts rooms, makes the target room the Treasure Map final Boss room, dead-ends unopened exits there, and completes the objective after that Boss is defeated.",
+        "final": "Underground caves closeout: after the target-room Boss is defeated, review double maximum treasure handling, XP, Guild share, banking, or storage before claiming the Lady in White reward.",
     },
     2: {
         "title": "Forgotten temple",

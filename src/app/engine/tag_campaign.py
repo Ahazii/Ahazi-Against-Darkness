@@ -5566,9 +5566,9 @@ def _treasure_map_module_profile(map_roll: int) -> dict[str, object]:
 def _treasure_map_reward_notes(map_roll: int, destination_title: str) -> dict[str, str]:
     notes = {
         1: {
-            "rewards": "Underground caves procedure: track the d6+3 room target, do not roll content in the entrance, close unopened exits after the target count, then sign off the boosted final Boss and double maximum treasure.",
-            "side": "This side-room treasure is ordinary room treasure; use Claim Treasure if you want to collect it now. The map destination procedure is separate: for Underground caves, roll/log the d6+3 room target, skip entrance-room content, dead-end unopened exits after the target count, and sign off the boosted final Boss with double maximum treasure.",
-            "final": "Underground caves closeout: confirm the room target was reached, unopened exits were dead-ended, the final Boss used +2 Life, and double maximum treasure was handled before XP, Guild share, banking, or storage.",
+            "rewards": "Underground caves procedure: roll/log the d6+3 room target. In live play the app counts rooms, turns the target room into the Treasure Map final Boss room, dead-ends unopened exits there, and completes the objective when that Boss is defeated.",
+            "side": "This side-room treasure is ordinary room treasure; use Claim Treasure if you want to collect it now. The map destination procedure is separate: for Underground caves, roll/log the d6+3 room target, then keep exploring while the app counts rooms and handles the target-room final Boss.",
+            "final": "Underground caves closeout: after the app reaches the target room and the final Boss is defeated, review double maximum treasure handling, XP, Guild share, banking, and storage before claiming the Lady in White reward.",
         },
         2: {
             "rewards": "Forgotten temple procedure: resolve the idol value, cult leader scroll chance, cultist treasure, XP, and how the heavy idol is carried or stored.",

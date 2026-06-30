@@ -629,7 +629,7 @@ def test_quest_panel_shows_disabled_turn_in_reason() -> None:
     assert "tag_procedure_signoff" in APP_JS
     assert "Treasure Map procedure" in APP_JS
     assert "Room target recorded" in APP_JS
-    assert "Sign off destination" in APP_JS
+    assert "Manual override signoff" in APP_JS
     assert "function renderCurrentObjectiveBanner" in APP_JS
     assert "Current objective: resolve the Treasure Map destination" in APP_JS
     assert "state.tagActionContextNote" in APP_JS
@@ -2079,7 +2079,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "function tagCaveTargetProgress" in APP_JS
     assert "function appendTagCaveProgressPanel" in APP_JS
     assert "Underground caves target reached" in APP_JS
-    assert "Do not click the room-target button again" in APP_JS
+    assert "the app is counting rooms automatically" in APP_JS
     assert "1. Objective" in APP_JS
     assert "4. Guild / banking / guidance" in APP_JS
     assert "Generated TAG closeout" in APP_JS

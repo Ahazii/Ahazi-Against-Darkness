@@ -17493,11 +17493,11 @@ function nextTagTreasureMapProcedure(quest) {
 function tagTreasureMapQuestNextText(quest) {
   const state = tagTreasureMapQuestState(quest);
   if (tagTreasureMapQuestSignedOff(quest) || quest?.completed) {
-    return state.next_action || "Destination procedure is signed off. Claim the Lady in White reward when the party is ready, then finish Guild share, banking/storage, XP, and closeout review.";
+    return state.next_action || "Destination procedure is complete. Claim the Lady in White reward when the party is ready, then finish Guild share, banking/storage, XP, and closeout review.";
   }
   const next = nextTagTreasureMapProcedure(quest);
   if (next) return next.guidance;
-  return "Resolve and sign off the Treasure Map destination procedure before claiming the quest reward.";
+  return "Resolve the Treasure Map destination procedure before claiming the quest reward.";
 }
 
 async function signOffTagTreasureMapQuest(note = "") {
@@ -17579,11 +17579,11 @@ function appendTagTreasureMapQuestActions(actions, quest) {
     panel.appendChild(row);
   }
   if (!tagTreasureMapQuestSignedOff(quest)) {
-    const signoff = node("button", tagTreasureMapQuestHasProcedureProgress(quest) ? "primary" : "secondary", "Sign off destination");
+    const signoff = node("button", tagTreasureMapQuestHasProcedureProgress(quest) ? "primary" : "secondary", "Manual override signoff");
     signoff.type = "button";
     setButtonTooltip(
       signoff,
-      "Mark this Treasure Map destination procedure as resolved after you have checked the PDF/player choices, treasure handling, XP, Guild share, banking, and storage. This enables the Lady in White reward claim."
+      "Manual backstop only: mark this Treasure Map destination as resolved when a procedure cannot be inferred from play state. Underground caves normally completes automatically when the target-room Boss is defeated."
     );
     signoff.addEventListener("click", () =>
       signOffTagTreasureMapQuest("Player confirmed the Treasure Map destination procedure and closeout checks.").catch(handleError)
@@ -17650,8 +17650,8 @@ function appendTagCaveProgressPanel(parent, session) {
       "span",
       "",
       progress.reached
-        ? "Target appears reached. Treat this destination room as the final Boss closeout: final Boss +2 Life and double maximum treasure, then review XP, Guild share, banking/storage, and signoff."
-        : `Keep exploring the cave complex. ${progress.remaining} room(s) remain before the destination-room closeout. Do not click the room-target button again; the target is already recorded.`
+        ? "Target reached. The app turns this room into the Treasure Map final Boss room and completes the objective after that Boss is defeated."
+        : `Keep exploring the cave complex. ${progress.remaining} room(s) remain; the app is counting rooms automatically.`
     )
   );
   parent.appendChild(panel);
@@ -17706,25 +17706,28 @@ function currentObjectiveForSession(session) {
     if (claimStatus.ok) {
       return {
         title: "Current objective: claim the Lady in White reward",
-        body: "The Treasure Map destination is signed off. Claim the Epic Reward when you are ready, then review Guild share, banking/storage, XP, and adventure closeout.",
+        body: "The Treasure Map destination is complete. Claim the Epic Reward when you are ready, then review Guild share, banking/storage, XP, and adventure closeout.",
         tone: "success",
         action: { label: "Claim Quest Reward", kind: "advance", advanceAction: "claim_quest_reward" },
       };
     }
     const next = nextTagTreasureMapProcedure(mapQuest);
+    const caveAutomationRunning = next?.branchAction === "map_cave_room_count" && tagTreasureMapProcedureDone(mapQuest, "map_cave_room_count");
     return {
       title: "Current objective: resolve the Treasure Map destination",
       body: tagTreasureMapQuestNextText(mapQuest),
       tone: "tag",
-      action: next
+      action: caveAutomationRunning
+        ? null
+        : next
         ? {
             label: next.requiresReview ? next.runLabel : next.runLabel,
             kind: next.requiresReview ? "tag-review" : "tag-run",
             procedure: next,
           }
-        : { label: "Sign off destination", kind: "tag-signoff" },
-      secondaryAction: tagTreasureMapQuestHasProcedureProgress(mapQuest)
-        ? { label: "Sign off destination", kind: "tag-signoff" }
+        : { label: "Manual override signoff", kind: "tag-signoff" },
+      secondaryAction: !caveAutomationRunning && tagTreasureMapQuestHasProcedureProgress(mapQuest)
+        ? { label: "Manual override signoff", kind: "tag-signoff" }
         : null,
     };
   }
@@ -17828,7 +17831,7 @@ function appendCurrentObjectiveButton(parent, action) {
       );
       break;
     case "tag-signoff":
-      setButtonTooltip(btn, "Sign off the active Treasure Map destination after PDF/player confirmation and closeout checks.");
+      setButtonTooltip(btn, "Manual backstop: sign off the active Treasure Map destination only when the app cannot infer completion from play state.");
       btn.addEventListener("click", () =>
         signOffTagTreasureMapQuest("Player confirmed the Treasure Map destination procedure and closeout checks.").catch(handleError)
       );
