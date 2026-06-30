@@ -2060,10 +2060,17 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "tag-relevant-actions" in INDEX_HTML
     assert "function renderTagRelevantActions" in APP_JS
     assert "Relevant now" in APP_JS
+    assert "TAG_GENERATED_LIFECYCLE_STEPS" in APP_JS
+    assert "function renderGeneratedTagLifecycleStrip" in APP_JS
+    assert "function appendGeneratedTagCloseoutPanel" in APP_JS
+    assert "Recommended:" in APP_JS
+    assert "Generated TAG closeout" in APP_JS
     assert "tag-generated-lead-signoff" in APP_JS
     assert "Current objective: TAG closeout signoff" in APP_JS
     assert "tag-prompt-action" in APP_JS
     assert ".tag-relevant-actions" in STYLES_CSS
+    assert ".tag-lifecycle-strip" in STYLES_CSS
+    assert ".tag-generated-closeout-panel" in STYLES_CSS
     assert "Guild 50% loot share" in INDEX_HTML
     assert "Guild resurrection fund" in INDEX_HTML
     assert "await recoverTagBankRobbery();" in APP_JS

@@ -967,6 +967,20 @@ h2 {
   color: var(--muted);
 }
 
+.tag-relevant-recommendation {
+  display: grid;
+  gap: 3px;
+  max-width: 720px;
+  padding: 7px 8px;
+  border: 1px solid rgba(201, 162, 39, 0.32);
+  border-radius: 6px;
+  background: rgba(20, 21, 16, 0.72);
+}
+
+.tag-relevant-recommendation strong {
+  font-size: 13px;
+}
+
 .tag-relevant-actions-row {
   display: flex;
   flex-wrap: wrap;
@@ -3058,6 +3072,42 @@ button.secondary,
   min-width: 0;
   white-space: normal;
   text-align: left;
+}
+
+.tag-lifecycle-strip {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.tag-lifecycle-step {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.tag-lifecycle-step.done {
+  border-color: rgba(139, 207, 139, 0.44);
+  color: var(--success, #8bcf8b);
+}
+
+.tag-lifecycle-step.pending {
+  border-color: rgba(212, 165, 116, 0.45);
+  color: var(--warning, #d4a574);
+}
+
+.tag-lifecycle-step.optional {
+  opacity: 0.78;
 }
 
 .exploration-command-bar {
@@ -6233,6 +6283,29 @@ input[type="radio"] {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.tag-generated-closeout-panel {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(201, 162, 39, 0.28);
+  border-radius: 6px;
+  background: rgba(201, 162, 39, 0.08);
+}
+
+.tag-generated-closeout-panel > strong {
+  color: var(--accent);
+}
+
+.tag-closeout-warning {
+  padding: 7px 8px;
+  border: 1px solid rgba(212, 165, 116, 0.42);
+  border-radius: 6px;
+  color: var(--warning, #d4a574);
+  background: rgba(212, 165, 116, 0.08);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .tag-map-procedure-panel {

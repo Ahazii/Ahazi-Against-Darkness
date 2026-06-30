@@ -90,7 +90,14 @@ def test_active_quest_can_persist_tag_treasure_map_procedure_state() -> None:
     quest.tag_treasure_map_destination = 1
     quest.tag_procedure_signoff = True
     quest.tag_generated_lead_signoff = True
-    quest.tag_generated_lead_state["closeout"] = {"completed": True, "result": "Reviewed"}
+    quest.tag_generated_lead_state["entry_seen"] = True
+    quest.tag_generated_lead_state["route_recorded"] = True
+    quest.tag_generated_lead_state["closeout_warnings"] = ["1 pending TAG XP marker still needs review."]
+    quest.tag_generated_lead_state["closeout"] = {
+        "completed": True,
+        "result": "Reviewed",
+        "warnings": ["1 pending TAG XP marker still needs review."],
+    }
     quest.tag_procedure_state["map_cave_room_count"] = {
         "completed": True,
         "total": 6,
@@ -102,7 +109,10 @@ def test_active_quest_can_persist_tag_treasure_map_procedure_state() -> None:
     assert restored.tag_treasure_map_destination == 1
     assert restored.tag_procedure_signoff is True
     assert restored.tag_generated_lead_signoff is True
+    assert restored.tag_generated_lead_state["entry_seen"] is True
+    assert restored.tag_generated_lead_state["route_recorded"] is True
     assert restored.tag_generated_lead_state["closeout"]["completed"] is True
+    assert "pending TAG XP" in restored.tag_generated_lead_state["closeout"]["warnings"][0]
     assert restored.tag_procedure_state["map_cave_room_count"]["completed"] is True
     assert restored.tag_procedure_state["map_cave_room_count"]["total"] == 6
     assert "room target" in restored.tag_procedure_state["next_action"]

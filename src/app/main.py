@@ -2181,8 +2181,13 @@ def _rules_tables_payload() -> dict:
         },
         {
             "checkpoint": "Room prompt used",
-            "review": "Use room prompt buttons, the Current Objective banner, or TAG Actions Relevant Now shortcuts to prefill branch, reward, route, XP, or finance markers; confirm exact printed amount/result manually where needed.",
+            "review": "Use room prompt buttons, the Current Objective banner, lifecycle strip, or TAG Actions Relevant Now shortcuts to prefill branch, reward, route, XP, or finance markers; confirm exact printed amount/result manually where needed.",
             "where": "Exploration TAG prompt, Current Objective banner, and TAG Actions dialog.",
+        },
+        {
+            "checkpoint": "Lifecycle visible",
+            "review": "Check Entry, Side lead, Complication, Finale, Route, Reward, XP, and Closeout chips so the player knows what has actually been seen or recorded.",
+            "where": "Current Objective banner and Ongoing Quest generated closeout panel.",
         },
         {
             "checkpoint": "Route marker recorded",
@@ -2191,8 +2196,8 @@ def _rules_tables_payload() -> dict:
         },
         {
             "checkpoint": "Closeout resolved",
-            "review": "Resolve Guild loot/upkeep/reroll, hidden trove risk/recovery, bank robbery recovery, and pending XP markers.",
-            "where": "Dashboard Guidance, Guild Management, Banking and Finance, Go Adventure Closeout Gate.",
+            "review": "Resolve Guild loot/upkeep/reroll, hidden trove risk/recovery, bank robbery recovery, pending XP markers, and open guidance. Signoff stores warnings if any remain.",
+            "where": "Ongoing Quest generated closeout panel, Dashboard Guidance, Guild Management, Banking and Finance, Go Adventure Closeout Gate.",
         },
     ]
     data["tag_closeout_checklist_automation_table"] = [
@@ -2237,19 +2242,19 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Generated room prompt guide",
             "shown_in": "Exploration TAG scene prompt panel and Current Objective banner.",
-            "player_use": "Explains why the lead exists, how to use the room prompt, which immediate action matters, and which TAG Action buttons can prefill branch, route, XP, reward, or finance state.",
+            "player_use": "Explains why the lead exists, how to use the room prompt, which immediate action matters, and which TAG Action buttons can prefill branch, route, XP, reward, or finance state. The lifecycle strip shows entry, side lead, complication, finale, route, reward, XP, and closeout status.",
             "pdf_boundary": "Guide text is app-authored; exact printed scene text and reward values stay with the PDF/player signoff.",
         },
         {
             "surface": "Prompt action buttons and Relevant Now shortcuts",
             "shown_in": "Generated TAG rooms and TAG Actions dialog.",
-            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls; the TAG Actions dialog repeats current-room shortcuts at the top so the player does not hunt through every selector.",
+            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls; the TAG Actions dialog repeats current-room shortcuts at the top with a Recommended action and why it matters.",
             "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
         },
         {
             "surface": "Generated lead signoff",
-            "shown_in": "Current Objective banner after generated TAG objective completion.",
-            "player_use": "Records player review of route, reward, XP, Guild share, banking/storage, and closeout checks before another lead is started.",
+            "shown_in": "Current Objective banner and Ongoing Quest generated closeout panel after generated TAG objective completion.",
+            "player_use": "Records player review of route, reward, XP, Guild share, banking/storage, and closeout checks before another lead is started. If route, XP, guidance, or closeout work remains, signoff records warnings instead of silently pretending the lead is clean.",
             "pdf_boundary": "Signoff records app/player review only; it does not resolve printed-rule decisions without player confirmation.",
         },
         {
@@ -3804,6 +3809,8 @@ async def session_tag_treasure_map_signoff(session_id: str, payload: dict[str, A
 
 @app.post("/api/sessions/{session_id}/tag-generated-lead-signoff")
 async def session_tag_generated_lead_signoff(session_id: str, payload: dict[str, Any]) -> SessionState:
+    from .engine.tag_campaign import load_campaign
+
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
@@ -3819,11 +3826,31 @@ async def session_tag_generated_lead_signoff(session_id: str, payload: dict[str,
     state = dict(quest.tag_generated_lead_state or {})
     note = str(payload.get("note") or "").strip()[:300]
     result = note or "Player confirmed route, reward, XP, Guild share, banking/storage, and closeout checks."
+    campaign = load_campaign(store)
+    pending_xp = [marker for marker in campaign.tag_xp_markers if not marker.applied]
+    open_closeout = [task for task in campaign.tag_closeout_tasks if not task.resolved]
+    open_guidance = [task for task in campaign.guidance_tasks if task.status == "open"]
+    warnings: list[str] = []
+    if not quest.completed:
+        warnings.append("Lead objective is not complete yet.")
+    if not campaign.tag_adventure_routes:
+        warnings.append("No structured route marker is recorded for this generated lead.")
+    if pending_xp:
+        warnings.append(f"{len(pending_xp)} pending TAG XP marker(s) still need award/dismiss/signoff.")
+    if open_closeout:
+        warnings.append(f"{len(open_closeout)} TAG closeout task(s) are still unresolved.")
+    if open_guidance:
+        warnings.append(f"{len(open_guidance)} open guidance item(s) remain in the campaign log.")
     state["lead_type"] = lead_type
     state["lead_detail"] = lead_detail
+    state["route_recorded"] = bool(campaign.tag_adventure_routes)
+    state["xp_reviewed"] = not pending_xp
+    state["reward_recorded"] = bool(quest.completed or quest.reward_claimed)
+    state["closeout_warnings"] = warnings
     state["closeout"] = {
         "completed": True,
         "result": result,
+        "warnings": warnings,
         "updated_at": now_utc(),
     }
     state["next_action"] = "Generated TAG lead signed off. Return to the Dashboard/Go Adventure closeout panels before starting another lead."
@@ -3835,6 +3862,8 @@ async def session_tag_generated_lead_signoff(session_id: str, payload: dict[str,
         session.log.append(
             f"TAG generated lead closeout noted before objective completion: {lead_detail}: {result}"
         )
+    if warnings:
+        session.log.append(f"TAG generated lead signoff warnings: {'; '.join(warnings)}")
     store.save("sessions", session)
     return enrich_session(session)
 

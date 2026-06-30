@@ -17790,6 +17790,8 @@ function renderCurrentObjectiveBanner(session) {
   appendCurrentObjectiveButton(actions, objective.action);
   appendCurrentObjectiveButton(actions, objective.secondaryAction);
   if (actions.childElementCount) currentObjectiveBanner.appendChild(actions);
+  const lifecycle = renderGeneratedTagLifecycleStrip(session);
+  if (lifecycle) currentObjectiveBanner.appendChild(lifecycle);
 }
 
 function questObjectiveRows(session, quest) {
@@ -17861,6 +17863,86 @@ function questJournalNode(session, quest) {
     journal.appendChild(line);
   });
   return journal;
+}
+
+function appendGeneratedTagCloseoutPanel(parent, session, quest) {
+  const tagReference = tagReferenceForGeneratedAdventure(session);
+  if (!tagReference || !quest) return;
+  const status = generatedTagCloseoutStatus(session);
+  const panel = node("div", "tag-generated-closeout-panel");
+  setTooltip(
+    panel,
+    "Generated TAG closeout panel: action-first review of route markers, rewards, XP, Guild, banking/storage, guidance, and final signoff for this lead."
+  );
+  panel.appendChild(node("strong", "", "Generated TAG closeout"));
+  panel.appendChild(
+    node(
+      "div",
+      "ongoing-quest-guidance",
+      quest.completed
+        ? "The lead objective is complete. Work down this checklist, then sign off the generated TAG lead before starting another one."
+        : "This lead is still live. Use the current-room prompt and lifecycle strip to see what kind of TAG decision the room is asking for."
+    )
+  );
+  const lifecycle = renderGeneratedTagLifecycleStrip(session);
+  if (lifecycle) panel.appendChild(lifecycle);
+  const rows = [
+    {
+      label: "Route markers",
+      value: status.routes.length ? `${status.routes.length} recorded` : "None recorded yet",
+      hint: "Routes capture parley, hostile branches, clue gates, skips, unlocked scenes, solo restrictions, and final-route decisions.",
+    },
+    {
+      label: "Pending XP",
+      value: status.pendingXp.length ? `${status.pendingXp.length} marker(s) need resolution` : "No pending XP markers",
+      hint: "XP markers are created from TAG scene prompts and should be awarded, dismissed, or manually signed off during closeout.",
+    },
+    {
+      label: "Closeout tasks",
+      value: status.unresolvedCloseout.length ? `${status.unresolvedCloseout.length} open` : "No open closeout tasks",
+      hint: "Closeout tasks cover Guild share/upkeep/rerolls, banking, hidden troves, storage, and other app-tracked campaign consequences.",
+    },
+    {
+      label: "Guidance",
+      value: status.openGuidance.length ? `${status.openGuidance.length} open guidance item(s)` : "No open guidance",
+      hint: "Guidance items are app-authored reminders. Use them to finish bookkeeping that the generated TAG lead created.",
+    },
+  ];
+  const journal = node("div", "quest-journal");
+  for (const row of rows) {
+    const line = node("div", "quest-journal-row");
+    setTooltip(line, row.hint);
+    line.appendChild(node("span", "quest-journal-label", row.label));
+    line.appendChild(node("span", "quest-journal-value", row.value));
+    journal.appendChild(line);
+  }
+  panel.appendChild(journal);
+  if (status.missing.length) {
+    const missing = node("div", "tag-closeout-warning", `Still missing: ${status.missing.join(", ")}.`);
+    setTooltip(missing, "This does not hard-block play, but it tells you what the generated lead has not clearly recorded yet.");
+    panel.appendChild(missing);
+  }
+  const actions = node("div", "ongoing-quest-actions");
+  const tagActions = node("button", "secondary", "Open TAG Actions");
+  tagActions.type = "button";
+  setButtonTooltip(tagActions, "Open TAG Actions with the current-room Relevant Now shortcuts visible at the top.");
+  tagActions.addEventListener("click", () => openTagAdventureActions());
+  actions.appendChild(tagActions);
+  const signoff = node("button", quest.completed ? "primary" : "secondary", "Sign off TAG lead");
+  signoff.type = "button";
+  signoff.disabled = !quest.completed;
+  setButtonTooltip(
+    signoff,
+    quest.completed
+      ? "Record player/app closeout signoff for this generated TAG lead. The backend will also store warnings for unresolved route, XP, guidance, or closeout work."
+      : "Complete the lead objective first; then sign off route, reward, XP, Guild, banking/storage, and closeout checks."
+  );
+  signoff.addEventListener("click", () =>
+    signOffGeneratedTagLead("Player confirmed generated TAG lead lifecycle, route, reward, XP, Guild, banking/storage, and closeout checks.").catch(handleError)
+  );
+  actions.appendChild(signoff);
+  panel.appendChild(actions);
+  parent.appendChild(panel);
 }
 
 let restPanelOpen = false;
@@ -18359,6 +18441,7 @@ function renderOngoingQuests(session) {
     }
     card.appendChild(node("div", "ongoing-quest-guidance", questGuidance(session, quest)));
     card.appendChild(questJournalNode(session, quest));
+    appendGeneratedTagCloseoutPanel(card, session, quest);
     if (giverTile) {
       card.appendChild(node("div", "ongoing-quest-guidance", `Quest-giver tile: ${giverTile.title}`));
     }
@@ -22419,6 +22502,54 @@ function tagCurrentPromptData(session = state.session) {
   return { tile, tagReference, room, promptData };
 }
 
+const TAG_GENERATED_LIFECYCLE_STEPS = [
+  {
+    key: "entry_seen",
+    label: "Entry",
+    roomId: "tag-lead-entry",
+    tooltip: "The lead handoff room has been reached. This proves the app introduced the TAG lead before asking for route/reward decisions.",
+  },
+  {
+    key: "side_seen",
+    label: "Side lead",
+    roomId: "tag-side-clue",
+    optional: true,
+    tooltip: "Optional side lead, clue, or extra reward prompt. It may be skipped if the generated map path never reaches it.",
+  },
+  {
+    key: "complication_seen",
+    label: "Complication",
+    roomId: "tag-complication",
+    tooltip: "The generated TAG lead has reached its pressure point: branch, clue gate, route rewrite, or special procedure.",
+  },
+  {
+    key: "finale_seen",
+    label: "Finale",
+    roomId: "tag-final-scene",
+    tooltip: "The final generated TAG scene has been reached. Review reward, XP, Guild, banking/storage, and route consequences before signoff.",
+  },
+  {
+    key: "route_recorded",
+    label: "Route",
+    tooltip: "At least one structured TAG route marker exists in the campaign log.",
+  },
+  {
+    key: "reward_recorded",
+    label: "Reward",
+    tooltip: "A reward/branch/finance entry has been logged for this generated lead or the quest reward is ready to claim.",
+  },
+  {
+    key: "xp_reviewed",
+    label: "XP",
+    tooltip: "TAG XP markers have been created or reviewed. Pending markers still need resolving before a clean closeout.",
+  },
+  {
+    key: "closeout_signed",
+    label: "Closeout",
+    tooltip: "Generated TAG lead closeout has been signed off by the player/app workflow.",
+  },
+];
+
 function tagLeadLabel(tagReference = {}) {
   const type = String(tagReference.lead_type || "generated TAG lead").replace(/_/g, " ");
   const detail = String(tagReference.lead_detail || tagReference.title || "").trim();
@@ -22428,6 +22559,90 @@ function tagLeadLabel(tagReference = {}) {
 function generatedTagLeadSignedOff(session) {
   const quest = session?.active_quest;
   return Boolean(quest?.tag_generated_lead_signoff || quest?.tag_generated_lead_state?.closeout?.completed);
+}
+
+function generatedTagLifecycleState(session = state.session) {
+  const quest = session?.active_quest || {};
+  const stored = quest.tag_generated_lead_state || {};
+  const lifecycle = { ...stored };
+  const { room } = tagCurrentPromptData(session);
+  for (const step of TAG_GENERATED_LIFECYCLE_STEPS) {
+    if (step.roomId && room?.id === step.roomId) lifecycle[step.key] = true;
+  }
+  const campaign = state.campaign || {};
+  if ((campaign.tag_adventure_routes || []).length) lifecycle.route_recorded = true;
+  const tagLogText = (campaign.tag_downtime_log || [])
+    .slice(-8)
+    .map((item) => `${item.action || ""} ${item.result_text || ""}`)
+    .join(" ")
+    .toLowerCase();
+  if (
+    quest.completed ||
+    quest.reward_claimed ||
+    tagLogText.includes("reward") ||
+    tagLogText.includes("gold") ||
+    tagLogText.includes("bank") ||
+    tagLogText.includes("guild")
+  ) {
+    lifecycle.reward_recorded = true;
+  }
+  if ((campaign.tag_xp_markers || []).length || tagLogText.includes("xp")) lifecycle.xp_reviewed = true;
+  if (generatedTagLeadSignedOff(session)) lifecycle.closeout_signed = true;
+  return lifecycle;
+}
+
+function generatedTagCloseoutStatus(session = state.session) {
+  const campaign = state.campaign || {};
+  const unresolvedCloseout = (campaign.tag_closeout_tasks || []).filter((task) => !task.resolved);
+  const openGuidance = (campaign.guidance_tasks || []).filter((task) => task.status === "open");
+  const pendingXp = (campaign.tag_xp_markers || []).filter((marker) => !marker.applied);
+  const lifecycle = generatedTagLifecycleState(session);
+  const missing = TAG_GENERATED_LIFECYCLE_STEPS.filter(
+    (step) => !step.optional && !lifecycle[step.key]
+  ).map((step) => step.label);
+  return {
+    lifecycle,
+    routes: campaign.tag_adventure_routes || [],
+    pendingXp,
+    unresolvedCloseout,
+    openGuidance,
+    missing,
+  };
+}
+
+function renderGeneratedTagLifecycleStrip(session = state.session) {
+  if (!tagReferenceForGeneratedAdventure(session)) return null;
+  const status = generatedTagCloseoutStatus(session);
+  const strip = node("div", "tag-lifecycle-strip");
+  setTooltip(strip, "Generated TAG lead lifecycle: shows whether the lead has reached entry, complication, finale, route/reward/XP review, and closeout signoff.");
+  for (const step of TAG_GENERATED_LIFECYCLE_STEPS) {
+    const done = Boolean(status.lifecycle[step.key]);
+    const marker = done ? "OK" : step.optional ? "-" : "!";
+    const item = node("span", `tag-lifecycle-step ${done ? "done" : step.optional ? "optional" : "pending"}`, `${marker} ${step.label}`);
+    setTooltip(item, step.tooltip);
+    strip.appendChild(item);
+  }
+  return strip;
+}
+
+function generatedTagPromptActionExplanation(promptData = {}, action = {}) {
+  const type = action.action_type || "dialog";
+  if (type === "branch") {
+    return "Recommended because this room is asking for a branch/procedure decision. It records the TAG consequence instead of leaving you to hunt through every selector.";
+  }
+  if (type === "route") {
+    return "Recommended because this room changes the lead's route. Recording it now keeps the final signoff honest.";
+  }
+  if (type === "xp") {
+    return "Recommended because this prompt can create an XP marker. Mark it now, then resolve it during closeout.";
+  }
+  if (type === "scene") {
+    return "Recommended because this is a scene-level TAG note. Use it to capture what changed in the lead.";
+  }
+  if ((promptData.title || "").toLowerCase().includes("final")) {
+    return "Recommended because this is the finale prompt. Capture reward, XP, and closeout consequences before moving on.";
+  }
+  return "Recommended from the current room prompt. Use it only if it matches the scene you are resolving now.";
 }
 
 async function signOffGeneratedTagLead(note = "") {
@@ -22464,16 +22679,23 @@ function renderTagRelevantActions(session = state.session) {
     node(
       "span",
       "",
-      `${promptData.title || room?.id || "Current TAG room"}: choose one of these if it matches the printed scene. The full controls remain below for edge cases.`
+      `${promptData.title || room?.id || "Current TAG room"}: these are the current-room choices. Start with the recommendation, then use the full controls below only for edge cases.`
     )
   );
   const row = node("div", "tag-relevant-actions-row");
   const fallback = `${tagReference.title || "TAG lead"}: ${promptData.title || room?.id || "room prompt"}`;
+  const recommended = actions.find((action) => action.action_type && action.action_type !== "dialog") || actions[0];
+  if (recommended) {
+    const callout = node("div", "tag-relevant-recommendation");
+    callout.appendChild(node("strong", "", `Recommended: ${recommended.label}`));
+    callout.appendChild(node("span", "", generatedTagPromptActionExplanation(promptData, recommended)));
+    tagRelevantActions.appendChild(callout);
+  }
   for (const action of actions.slice(0, 6)) {
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
     const tooltip = String(action.tooltip || "Prefill TAG Actions from the current generated-room prompt.");
-    setButtonTooltip(btn, `${tooltip} Confirm the PDF/player choice before applying.`);
+    setButtonTooltip(btn, `${tooltip} ${generatedTagPromptActionExplanation(promptData, action)} Confirm the PDF/player choice before applying.`);
     btn.addEventListener("click", () => {
       openTagActionsWithDefaults(generatedTagPromptActionDefaults(action, fallback, tagReference));
     });

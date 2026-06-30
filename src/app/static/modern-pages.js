@@ -1148,7 +1148,8 @@ function renderTagLeadSelectorPanel(adventureSelect = null) {
         writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: adventure.id || "" });
         setStatus(`Selected ${adventure.name || adventure.id}. Review setup and closeout gates before starting.`);
       }),
-      link("Rules", ruleReferenceHref("tag_generated_prompt_playtest", "TAG generated prompt playtest"), "Open the Rules Reference entry for generated TAG prompt playtest and selector workflow.", "link-button secondary")
+      link("Rules", ruleReferenceHref("tag_generated_prompt_playtest", "TAG generated prompt playtest"), "Open the Rules Reference entry for generated TAG prompt playtest and selector workflow.", "link-button secondary"),
+      link("Signoff Table", "/modern/tables?help=tag_generated_adventure_signoff_table", "Open the Tables row for generated TAG lifecycle, route, reward, XP, guidance, and closeout signoff checkpoints.", "link-button secondary")
     );
     row.appendChild(rowActions);
     panel.appendChild(row);
