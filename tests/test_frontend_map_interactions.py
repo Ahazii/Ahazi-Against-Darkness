@@ -2041,13 +2041,19 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "result.module_update" in APP_JS
     assert "appendTagMetadataPromptActions" in APP_JS
     assert "appendTagModuleProfile" in APP_JS
+    assert "appendTagLeadUseGuide" in APP_JS
+    assert "How to use this lead" in APP_JS
     assert "room_prompts" in APP_JS
     assert "module_profile" in APP_JS
+    assert "tag-context-use-guide" in STYLES_CSS
     assert "tag-lead-entry" in APP_JS
     assert "tag-complication" in APP_JS
     assert "tag-final-scene" in APP_JS
     assert "tag-context-actions" in STYLES_CSS
     assert "tag-context-module-profile" in STYLES_CSS
+    assert "Generated TAG Leads" in MODERN_PAGES_JS
+    assert "TAG Action Log" in MODERN_PAGES_JS
+    assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
     assert "Class dossier" in MODERN_PAGES_JS
     assert "modern-class-info" in MODERN_PAGES_JS
     assert "Create / Save Troupe" in MODERN_PAGES_JS
@@ -2057,7 +2063,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
     main_py = Path("src/app/main.py").read_text(encoding="utf-8")
     assert '@app.get("/modern"' in main_py
     assert '@app.get("/modern/{page_name}"' in main_py
-    assert 'src="/static/modern-pages.js?v=0.1.0"' in MODERN_HTML
+    assert 'src="/static/modern-pages.js?v=0.2.0"' in MODERN_HTML
     for page in [
         "characters",
         "troupes",

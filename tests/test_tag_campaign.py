@@ -386,6 +386,11 @@ def test_tag_adventure_manifest_generation_validates() -> None:
         assert result.valid, result.errors
         assert manifest["id"] in campaign.tag_generated_adventure_ids
         assert manifest["source"]["parameters"]["lead_type"] == lead_type
+        tag_reference = manifest["source"]["parameters"]["tag_reference"]
+        assert tag_reference["lead_type"] == lead_type
+        assert tag_reference["how_to"]
+        assert tag_reference["mood"]
+        assert "Record the party's printed approach" in tag_reference["room_prompts"]["tag-lead-entry"]["body"]
         assert "Adventure section" in entry.result_text
 
 

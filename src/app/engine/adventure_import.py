@@ -164,6 +164,35 @@ def list_installed_adventures(root_dir: Path, data_dir: Path) -> list[AdventureD
                 playable=True,
                 notes=str(manifest.get("synopsis") or "Imported adventure module."),
                 removable=is_user_installed(data_dir, adventure_id),
+                tag_lead_type=str(
+                    manifest.get("source", {})
+                    .get("parameters", {})
+                    .get("lead_type", "")
+                ),
+                tag_lead_detail=str(
+                    manifest.get("source", {})
+                    .get("parameters", {})
+                    .get("lead_detail", "")
+                ),
+                tag_scene=str(
+                    manifest.get("source", {})
+                    .get("parameters", {})
+                    .get("tag_reference", {})
+                    .get("scene", "")
+                ),
+                tag_pdf_pages=str(
+                    manifest.get("source", {})
+                    .get("parameters", {})
+                    .get("tag_reference", {})
+                    .get("pdf_pages", "")
+                ),
+                tag_status="generated_tag" if manifest.get("source", {}).get("parameters", {}).get("tag_reference") else "",
+                tag_prompt_count=len(
+                    manifest.get("source", {})
+                    .get("parameters", {})
+                    .get("tag_reference", {})
+                    .get("room_prompts", {})
+                ),
             )
         )
     return adventures

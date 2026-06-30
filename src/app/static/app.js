@@ -21808,6 +21808,23 @@ function appendTagModuleProfile(parent, moduleProfile) {
   parent.appendChild(profile);
 }
 
+function appendTagLeadUseGuide(parent, tagReference) {
+  if (!tagReference || typeof tagReference !== "object") return;
+  const howTo = tagReference.how_to || "";
+  const mood = tagReference.mood || "";
+  const leadType = tagReference.lead_type || "";
+  if (!howTo && !mood && !leadType) return;
+  const guide = node("div", "tag-context-use-guide");
+  setTooltip(
+    guide,
+    "Generated TAG lead guide: app-authored play guidance that explains how to use the room prompt without replacing the printed TAG rules."
+  );
+  if (leadType) guide.appendChild(subline(`Lead type: ${String(leadType).replace(/_/g, " ")}`));
+  if (mood) guide.appendChild(subline(`Scene tone: ${mood}`));
+  if (howTo) guide.appendChild(subline(`How to use this lead: ${howTo}`));
+  parent.appendChild(guide);
+}
+
 function sessionHasCaptureAliveObjective(session) {
   const quest = session?.active_quest;
   if (!quest || quest.completed) return false;
@@ -21840,8 +21857,9 @@ function appendTagContextualActions(parent, session, tile) {
     promptData?.body ||
       "Use these room-aware shortcuts to prefill TAG Actions for the current generated scene, then confirm the exact branch, reward, Clue spend, or XP marker."
   );
-  setTooltip(prompt, "Generated TAG modules can contain printed choices that the app cannot infer automatically from movement alone.");
+  setTooltip(prompt, "Generated TAG modules can contain printed choices that the app cannot infer automatically from movement alone. Use the buttons to prefill state, then confirm exact results from the PDF/player decision.");
   block.appendChild(prompt);
+  appendTagLeadUseGuide(block, tagReference);
   appendTagModuleProfile(block, tagReference.module_profile);
   if (appendTagMetadataPromptActions(block, promptData, fallbackReference)) {
     parent.appendChild(block);

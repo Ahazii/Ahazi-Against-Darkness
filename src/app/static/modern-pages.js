@@ -769,6 +769,60 @@ function renderTagSignoffPanel(context = "TAG Signoff") {
   return panel;
 }
 
+function renderTagActionLogExplorer() {
+  const panel = card("TAG Action Log", "Search and filter TAG route, XP, finance, Guild, branch, generated-module, and signoff events. Use this when checking what a generated lead changed before closeout.");
+  const search = input("search", "modern-tag-log-search", "Search TAG action, character, result text, reference, cost, or roll.");
+  const family = select("modern-tag-log-family", "Filter by TAG log family.", [
+    ["", "All TAG logs"],
+    ["route", "Route"],
+    ["xp", "XP"],
+    ["finance", "Finance / banking"],
+    ["guild", "Guild"],
+    ["branch", "Branch / scene"],
+    ["generated", "Generated lead"],
+    ["signoff", "Signoff / closeout"],
+  ]);
+  const results = el("div", "modern-list");
+  const controls = el("div", "modern-filterbar");
+  controls.append(field("Search", search), field("Family", family));
+  const familyMatches = (entry) => {
+    const action = String(entry.action || "").toLowerCase();
+    if (!family.value) return true;
+    if (family.value === "route") return action.includes("route");
+    if (family.value === "xp") return action.includes("xp");
+    if (family.value === "finance") return /bank|finance|trove|loan|inheritance/.test(action);
+    if (family.value === "guild") return action.includes("guild");
+    if (family.value === "branch") return /branch|scene|reward|map|rumor|maze|portrait|sewer|monoceros|dragon|bandit|gargoyle/.test(action);
+    if (family.value === "generated") return action.includes("create_tag_adventure");
+    if (family.value === "signoff") return /signoff|closeout/.test(action);
+    return true;
+  };
+  function draw() {
+    results.replaceChildren();
+    const needle = search.value.toLowerCase();
+    const rows = [...(modernState.campaign?.tag_downtime_log || [])]
+      .reverse()
+      .filter(familyMatches)
+      .filter((entry) => !needle || `${entry.action} ${entry.character_name || ""} ${entry.result_text || ""} ${entry.roll || ""} ${entry.cost_gp || ""}`.toLowerCase().includes(needle))
+      .slice(0, 40);
+    results.appendChild(el("p", "muted", `${rows.length} TAG log entr${rows.length === 1 ? "y" : "ies"} shown.`));
+    for (const entry of rows) {
+      results.appendChild(
+        modernStatusRow(
+          `${modernTitleFromKey(entry.action)}${entry.character_name ? ` · ${entry.character_name}` : ""}`,
+          `${entry.result_text || ""}${entry.roll ? ` · roll ${entry.roll}` : ""}${entry.cost_gp ? ` · ${entry.cost_gp} gp` : ""}`,
+          "TAG action history for route, XP, finance, Guild, generated-module, and closeout review."
+        )
+      );
+    }
+  }
+  search.addEventListener("input", draw);
+  family.addEventListener("change", draw);
+  panel.append(controls, results);
+  draw();
+  return panel;
+}
+
 function renderCommandCenter(command) {
   const panel = card("Campaign Command Center", "Selected campaign overview: assigned Guild, troupes, settlements, troublesome towns, parties, active sessions, open guidance, unresolved closeout prompts, and recent chronicle.");
   panel.classList.add("modern-primary-card");
@@ -1032,12 +1086,73 @@ function adventureOptions(kind = "all") {
     const adventureId = String(adventure.id || "");
     const adventureSource = String(adventure.source || "");
     const adventureName = adventure.name || adventure.title || adventureId;
+    const tagLabel = adventure.tag_lead_type
+      ? `TAG ${modernTitleFromKey(adventure.tag_lead_type)} · ${adventureName}${adventure.tag_prompt_count ? ` · ${adventure.tag_prompt_count} prompts` : ""}`
+      : adventureName;
     if (kind === "ai" && !adventureId.startsWith("ai-")) continue;
     if (kind === "imported" && (adventureId === "random" || adventureId === "ai-adventure" || adventureId.startsWith("ai-") || adventureSource === "rules")) continue;
     if ((kind === "random" || kind === "ruleset") && adventure.id !== "random") continue;
-    rows.push([adventure.id, adventureName]);
+    rows.push([adventure.id, tagLabel]);
   }
   return rows;
+}
+
+function tagGeneratedAdventures() {
+  const generatedIds = modernState.campaign?.tag_generated_adventure_ids || [];
+  const generatedIdSet = new Set(generatedIds);
+  const order = new Map(generatedIds.map((id, index) => [id, index]));
+  return (modernState.adventures || [])
+    .filter((adventure) => adventure.tag_lead_type || generatedIdSet.has(adventure.id) || String(adventure.id || "").startsWith("tag-"))
+    .sort((left, right) => (order.get(right.id) ?? -1) - (order.get(left.id) ?? -1) || String(right.id || "").localeCompare(String(left.id || "")));
+}
+
+function tagLeadStatusRows(adventure) {
+  const campaign = modernState.campaign || {};
+  const openCloseout = (campaign.tag_closeout_tasks || []).filter((task) => !task.resolved).length;
+  const pendingXp = (campaign.tag_xp_markers || []).filter((marker) => !marker.applied).length;
+  const routeCount = (campaign.tag_adventure_routes || []).length;
+  return [
+    ["Lead", adventure.tag_lead_detail || adventure.name || adventure.id, "Generated TAG lead detail/result. Use this to confirm you created the intended Rumor, Treasure Map, Thematic Dungeon, or Guild Job."],
+    ["Prompts", `${adventure.tag_prompt_count || 0} room prompt(s)`, "Prompt count from the generated module metadata. More prompts means more room-aware TAG Action shortcuts during exploration."],
+    ["Route signoff", `${routeCount} route marker(s) in campaign`, "Route markers are global campaign signoff state; review latest markers before closing the lead."],
+    ["Closeout", `${openCloseout} open closeout · ${pendingXp} pending XP`, "Generated adventures should be reviewed against closeout and XP state before starting another lead."],
+  ];
+}
+
+function renderTagLeadSelectorPanel(adventureSelect = null) {
+  const panel = card("Generated TAG Leads", "Installed TAG modules with lead type, source detail, prompt coverage, and signoff state. Use this before Start Adventure so you know why the module exists and what still needs review.");
+  const leads = tagGeneratedAdventures();
+  if (!leads.length) {
+    panel.appendChild(el("p", "muted", "No generated TAG modules are installed yet. Create a Rumor, Treasure Map, Thematic Dungeon, or Guild Job lead first."));
+    return panel;
+  }
+  for (const adventure of leads.slice(0, 8)) {
+    const row = el("div", "modern-row");
+    row.title = `${adventure.notes || "Generated TAG module."} ${adventure.tag_pdf_pages ? `Source ${adventure.tag_pdf_pages}.` : ""}`;
+    row.append(
+      el("strong", "", adventure.name || adventure.id),
+      el("span", "muted", `${modernTitleFromKey(adventure.tag_lead_type || "tag lead")} · ${adventure.tag_scene || adventure.tag_lead_detail || "generated module"}${adventure.tag_pdf_pages ? ` · ${adventure.tag_pdf_pages}` : ""}`)
+    );
+    for (const [title, body, hint] of tagLeadStatusRows(adventure)) {
+      row.appendChild(modernStatusRow(title, body, hint));
+    }
+    const rowActions = actions();
+    rowActions.append(
+      button("Select Lead", "Switch Go Adventure to Imported Adventure Module and select this generated TAG lead.", async () => {
+        const type = document.getElementById("modern-adventure-type");
+        if (type) type.value = "imported";
+        if (adventureSelect) {
+          adventureSelect.replaceChildren(...optionRows(adventureOptions("imported")));
+          adventureSelect.value = adventure.id;
+        }
+        setStatus(`Selected ${adventure.name || adventure.id}. Review setup and closeout gates before starting.`);
+      }),
+      link("Rules", ruleReferenceHref("tag_generated_prompt_playtest", "TAG generated prompt playtest"), "Open the Rules Reference entry for generated TAG prompt playtest and selector workflow.", "link-button secondary")
+    );
+    row.appendChild(rowActions);
+    panel.appendChild(row);
+  }
+  return panel;
 }
 
 function sessionRecencyKey(session) {
@@ -1737,7 +1852,7 @@ function renderGuild() {
   );
   finance.appendChild(financeRow);
 
-  const members = card("Member List and Guild Jobs", "Troupe members are treated as Guild members while Guild membership is active. Search and sort this list to check member state before using Guild finance or jobs.");
+  const members = card("Guild Jobs and Members", "Troupe members are treated as Guild members while Guild membership is active. Search and sort this list to check member state before using Guild finance or jobs.");
   const guildMemberFilters = characterFilterControls("modern-guild-members", drawGuildMembers);
   members.append(guildMemberFilters.panel, field("Character", actionCharacter));
   const memberRow = actions();
@@ -2117,7 +2232,7 @@ async function renderSettlement() {
     })
   );
   panel.appendChild(row);
-  const worldList = card("Campaign Settlement Records", "Friendly settlements are active campaign world records; troublesome towns are placeholders for later supplement support. Use Campaign Management for inline editing.");
+  const worldList = card("Known Settlements / Campaign Records", "Friendly settlements are active campaign world records; troublesome towns are placeholders for later supplement support. Use Campaign Management for inline editing.");
   const worldFilters = worldFilterControls("modern-settlement-world", drawWorldSettlements);
   const worldRows = el("div", "modern-list");
   worldList.append(worldFilters.panel, worldRows);
@@ -2636,6 +2751,7 @@ async function renderGoAdventure() {
     adventure.value = result.adventure_id || "";
     profile.closest("label")?.classList.add("hidden");
     setStatus(`Created ${result.title || result.adventure_id}. It is selected in Adventure/module.`);
+    await refreshCoreAndRender();
   }));
   const startRow = actions();
   startRow.appendChild(button("Start Adventure", "Create a new session with the selected party and adventure settings.", async () => {
@@ -2664,7 +2780,7 @@ async function renderGoAdventure() {
     window.location.href = `/?session=${encodeURIComponent(session.id || "")}`;
   }, "modern-start-button"));
   panel.appendChild(startRow);
-  const sessions = card("Resume Adventure", "Resume the latest active in-progress session for each party. Saved games are listed separately below.");
+  const sessions = card("Resume Adventure", "Shows the latest resumable or saved session for each party. Resume the latest active in-progress session for each party; saved games are listed separately below.");
   const visibleSessions = latestSessionPerParty(modernState.sessions);
   const hiddenSessionCount = Math.max(0, (modernState.sessions || []).length - visibleSessions.length);
   if (hiddenSessionCount) {
@@ -2715,7 +2831,7 @@ async function renderGoAdventure() {
     saved.appendChild(row);
   }
   if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
-  rootEl.append(panel, readiness, gate, tagLead, renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), sessions, saved);
+  rootEl.append(panel, readiness, gate, tagLead, renderTagLeadSelectorPanel(adventure), renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), renderTagActionLogExplorer(), sessions, saved);
 }
 
 async function renderRulesReference() {

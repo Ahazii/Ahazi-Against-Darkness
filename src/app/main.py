@@ -2229,6 +2229,32 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Guidance is app-owned campaign bookkeeping and remains in the campaign chronicle.",
         },
     ]
+    data["tag_generated_prompt_playtest_table"] = [
+        {
+            "surface": "Generated room prompt guide",
+            "shown_in": "Exploration TAG scene prompt panel.",
+            "player_use": "Explains why the lead exists, how to use the room prompt, and which TAG Action buttons can prefill branch, route, XP, reward, or finance state.",
+            "pdf_boundary": "Guide text is app-authored; exact printed scene text and reward values stay with the PDF/player signoff.",
+        },
+        {
+            "surface": "Prompt action buttons",
+            "shown_in": "Generated TAG rooms.",
+            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls.",
+            "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
+        },
+        {
+            "surface": "Generated TAG Leads panel",
+            "shown_in": "Go Adventure.",
+            "player_use": "Lists installed TAG modules with lead type, source detail, prompt count, route markers, open closeout, and pending XP before selecting a module.",
+            "pdf_boundary": "Shows metadata from generated manifests, not copied rule text.",
+        },
+        {
+            "surface": "TAG Action Log filter",
+            "shown_in": "Go Adventure.",
+            "player_use": "Searches and filters route, XP, finance, Guild, branch, generated-lead, and signoff events during generated-adventure review.",
+            "pdf_boundary": "Displays app logs and player-entered notes.",
+        },
+    ]
     data["character_management_readiness_table"] = [
         {
             "area": "Roster filters",

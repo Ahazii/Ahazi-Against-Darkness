@@ -1701,6 +1701,12 @@ class AdventureDescriptor(BaseModel):
     playable: bool
     notes: str
     removable: bool = False
+    tag_lead_type: str = ""
+    tag_lead_detail: str = ""
+    tag_scene: str = ""
+    tag_pdf_pages: str = ""
+    tag_status: str = ""
+    tag_prompt_count: int = 0
 
 
 class AdventurePromptParameters(BaseModel):

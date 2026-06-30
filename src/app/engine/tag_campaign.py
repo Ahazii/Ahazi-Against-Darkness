@@ -4714,6 +4714,38 @@ def _tag_prompt_action(
     }
 
 
+def _tag_lead_how_to(lead_type: str) -> str:
+    lead_labels = {
+        "rumor": "Rumor leads begin as settlement talk. Use the entry room to record the party's approach, then let the side clue and complication rooms capture which branch the players chose.",
+        "treasure_map": "Treasure Map leads are about uncertainty before payoff. Use the prompt buttons to log follow-map rolls, false trails, destination procedures, and reward/XP signoff.",
+        "thematic_dungeon": "Thematic Dungeons change ordinary dungeon expectations. Use the room prompts to record replacement rolls, special procedures, and final-route decisions.",
+        "guild_job": "Guild Jobs are obligations as much as adventures. Use the prompts to record job conditions, capture-alive choices, Guild payment consequences, and closeout checks.",
+    }
+    return lead_labels.get(lead_type, "Use room prompts to record the branch, reward, route, XP, and closeout decisions that the app cannot infer from movement alone.")
+
+
+def _tag_scene_mood(lead_type: str, profile: dict[str, object], lead_detail: str) -> str:
+    title = str(profile.get("title") or lead_detail)
+    scene = str(profile.get("scene") or "")
+    if lead_type == "treasure_map":
+        return (
+            "The map is creased, greasy at the folds, and just convincing enough to be dangerous. "
+            "Every landmark feels like a promise made by someone who expected another fool to do the walking."
+        )
+    if lead_type == "guild_job":
+        return (
+            "The Guild seal makes the work official, but not comfortable. "
+            "Someone wants this handled cleanly, and the payment will only matter if the party survives the fine print."
+        )
+    if lead_type == "thematic_dungeon":
+        return (
+            f"The place carries the mood of {title}: wrong sounds behind stone, stale air, and evidence that ordinary dungeon habits may betray the party."
+        )
+    return (
+        f"The rumor has teeth now. {scene or title} has left enough tracks to follow, enough contradictions to worry over, and enough danger to make the settlement suddenly feel far away."
+    )
+
+
 def _tag_prompt_action_from_profile(action: object) -> dict[str, object] | None:
     if not isinstance(action, dict) or not action.get("label"):
         return None
@@ -4743,12 +4775,15 @@ def _extend_prompt_actions(prompt: dict[str, object], actions: object) -> None:
 def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object]) -> dict[str, object]:
     profile_title = str(profile.get("title") or lead_detail)
     base_ref = title or profile_title
+    lead_type = str(profile.get("lead_type") or "")
+    how_to = str(profile.get("how_to") or _tag_lead_how_to(lead_type))
+    mood = str(profile.get("mood") or _tag_scene_mood(lead_type, profile, lead_detail))
     clue_cost = max(0, int(profile.get("clue_gate_cost") or 0))
     clue_label = str(profile.get("clue_gate_label") or "Unlock Clue route")
     prompts: dict[str, object] = {
         "tag-lead-entry": {
             "title": "Lead entry choices",
-            "body": "Record the party's printed approach before moving deeper into the generated TAG lead.",
+            "body": f"{mood} {how_to} Record the party's printed approach before moving deeper into the generated TAG lead.",
             "actions": [
                 _tag_prompt_action("TAG Actions", "Open the full TAG Actions dialog without changing any values."),
                 _tag_prompt_action(
@@ -4769,7 +4804,10 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         },
         "tag-side-clue": {
             "title": "Side clue and reward",
-            "body": str(profile.get("side") or "Check the printed scene for reward, Clue, or XP handling before confirming an action."),
+            "body": (
+                f"{profile.get('side') or 'The side path offers a useful clue, but it should feel like a choice rather than housekeeping.'} "
+                "Check the printed scene for reward, Clue, or XP handling before confirming an action."
+            ),
             "actions": [
                 _tag_prompt_action(
                     "Claim printed reward",
@@ -4789,7 +4827,10 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         },
         "tag-complication": {
             "title": "Complication route",
-            "body": str(profile.get("complication") or "Resolve the printed social, combat, Clue, or blocked-route branch."),
+            "body": (
+                f"{profile.get('complication') or 'The lead tightens here: a bargain can sour, a shortcut can close, or a fight can turn the room into evidence.'} "
+                "Resolve the printed social, combat, Clue, or blocked-route branch."
+            ),
             "actions": [
                 _tag_prompt_action(
                     "Parley succeeds",
@@ -4856,7 +4897,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         },
         "tag-unlocked-scene": {
             "title": "Unlocked scene",
-            "body": "This room was inserted by a TAG route rewrite. Record arrival, reward, and XP against the printed branch.",
+            "body": "This room was inserted by a TAG route rewrite. Treat it like a door the story only opens because of an earlier choice: record arrival, reward, and XP against the printed branch.",
             "actions": [
                 _tag_prompt_action(
                     "Mark unlocked scene",
@@ -4892,6 +4933,7 @@ def _tag_manifest(
     final_room_title: str,
     final_room_description: str,
 ) -> dict[str, object]:
+    profile = {**profile, "lead_type": lead_type}
     final_foe = str(profile.get("final_foe") or "Wraith")
     final_count = max(1, int(profile.get("final_count") or 1))
     final_extra_foes = [
@@ -4904,11 +4946,15 @@ def _tag_manifest(
         "origin": "Tales from the Adventurers' Guild",
         "lead_type": lead_type,
         "lead_detail": lead_detail,
-        "tag_reference": {
-            "title": profile.get("title", lead_detail),
-            "scene": profile.get("scene", ""),
-            "pdf_pages": profile.get("pdf_pages", ""),
-            "rules": profile.get("rules", []),
+            "tag_reference": {
+                "title": profile.get("title", lead_detail),
+                "scene": profile.get("scene", ""),
+                "pdf_pages": profile.get("pdf_pages", ""),
+                "lead_type": lead_type,
+                "lead_detail": lead_detail,
+                "how_to": profile.get("how_to") or _tag_lead_how_to(lead_type),
+                "mood": profile.get("mood") or _tag_scene_mood(lead_type, profile, lead_detail),
+                "rules": profile.get("rules", []),
             "rewards": profile.get("rewards", ""),
             "final_foe_proxy": final_foe,
             "final_foe_count": final_count,

@@ -741,6 +741,14 @@ h2 {
   padding: 8px;
 }
 
+.tag-context-use-guide {
+  display: grid;
+  gap: 4px;
+  border-left: 3px solid var(--accent);
+  background: rgba(198, 143, 59, 0.08);
+  padding: 8px 10px;
+}
+
 .tag-panel-heading {
   display: flex;
   align-items: flex-start;
