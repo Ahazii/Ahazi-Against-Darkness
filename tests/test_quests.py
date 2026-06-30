@@ -81,6 +81,27 @@ def test_accept_quest_sets_active_quest(monkeypatch) -> None:
     assert session.active_quest.gold_required == 100
 
 
+def test_active_quest_can_persist_tag_treasure_map_procedure_state() -> None:
+    quest = ActiveQuestState(
+        tile_id="t",
+        key="tag_treasure_map",
+        description="Follow the purchased TAG treasure map to the underground caves.",
+    )
+    quest.tag_treasure_map_destination = 1
+    quest.tag_procedure_state["map_cave_room_count"] = {
+        "completed": True,
+        "total": 6,
+        "result": "Map cave complex room count: dungeon ends after 6 rooms.",
+    }
+    quest.tag_procedure_state["next_action"] = "Explore until the room target is reached."
+
+    restored = ActiveQuestState.model_validate(quest.model_dump())
+    assert restored.tag_treasure_map_destination == 1
+    assert restored.tag_procedure_state["map_cave_room_count"]["completed"] is True
+    assert restored.tag_procedure_state["map_cave_room_count"]["total"] == 6
+    assert "room target" in restored.tag_procedure_state["next_action"]
+
+
 def test_kerrak_dar_reward_spends_one_clue_for_hoard(monkeypatch) -> None:
     eng = engine()
     session = base_session()

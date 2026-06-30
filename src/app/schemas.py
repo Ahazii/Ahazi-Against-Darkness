@@ -518,6 +518,8 @@ class ActiveQuestState(BaseModel):
     completed: bool = False
     reward_claimed: bool = False
     quest_id: str = Field(default_factory=lambda: uuid4().hex)
+    tag_treasure_map_destination: int = Field(default=0, ge=0)
+    tag_procedure_state: dict[str, object] = Field(default_factory=dict)
     fd_oracle_character_id: str | None = None
     fd_quest_servitor_type: str | None = None
     fd_quest_servitor_found: bool = False

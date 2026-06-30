@@ -17291,62 +17291,218 @@ function questGuidance(session, quest) {
   }
 }
 
-function tagTreasureMapQuestProcedure(quest) {
+function tagTreasureMapQuestState(quest) {
+  return quest?.tag_procedure_state && typeof quest.tag_procedure_state === "object"
+    ? quest.tag_procedure_state
+    : {};
+}
+
+function tagTreasureMapProcedureDone(quest, branchAction) {
+  return Boolean(tagTreasureMapQuestState(quest)?.[branchAction]?.completed);
+}
+
+function tagTreasureMapQuestProcedures(quest) {
   const text = `${quest?.description || ""} ${quest?.key || ""}`.toLowerCase();
-  if (!text.includes("tag treasure map") && !text.includes("treasure map")) return null;
+  if (!text.includes("tag treasure map") && !text.includes("treasure map")) return [];
   if (text.includes("underground caves")) {
-    return {
-      label: "Underground caves room target",
-      runLabel: "Run Underground caves room target",
-      branchAction: "map_cave_room_count",
-      reference: "Map Leads To 1 underground caves",
-      guidance:
-        "Roll/log the d6+3 cave target now. This is the destination procedure; ordinary hidden treasure still uses Claim Treasure.",
-    };
+    return [
+      {
+        label: "Underground caves room target",
+        runLabel: "Run Underground caves room target",
+        branchAction: "map_cave_room_count",
+        reference: "Map Leads To 1 underground caves",
+        guidance:
+          "The map becomes a route through cold, echoing caves. Roll the d6+3 room target now; ordinary hidden treasure still uses Claim Treasure, and the target room becomes the final Boss closeout.",
+      },
+    ];
+  }
+  if (text.includes("temple")) {
+    return [
+      {
+        label: "Forgotten temple idol reward",
+        runLabel: "Roll idol reward",
+        branchAction: "map_temple_idol",
+        reference: "Map Leads To 2 forgotten temple idol",
+        guidance:
+          "Resolve the idol reward when the moss-choked shrine is reached; this records the gold portion while leaving exact printed handling with the PDF.",
+      },
+      {
+        label: "Forgotten temple scroll",
+        runLabel: "Roll temple scroll",
+        branchAction: "map_temple_scroll",
+        reference: "Map Leads To 2 forgotten temple scroll",
+        guidance:
+          "Resolve the temple scroll separately so the log shows whether the destination produced a spell-list scroll before final treasure and storage closeout.",
+      },
+    ];
+  }
+  if (text.includes("humanoid") || text.includes("camp")) {
+    return [
+      {
+        label: "Hostile camp report reward",
+        runLabel: "Log report reward",
+        branchAction: "map_humanoid_report",
+        reference: "Map Leads To 3 camp report",
+        guidance:
+          "Use this when the party sells or reports the camp location instead of raiding it; the log records the reward path and no-XP warning.",
+      },
+      {
+        label: "Hostile camp stealth raid",
+        runLabel: "Set up stealth raid",
+        branchAction: "map_humanoid_stealth",
+        reference: "Map Leads To 3 camp stealth; mod=0",
+        guidance:
+          "Use TAG Actions for this one because the worst group Stealth modifier matters. Prefill the camp raid and adjust the modifier before rolling.",
+        requiresReview: true,
+      },
+      {
+        label: "Hostile camp battle forces",
+        runLabel: "Roll camp forces",
+        branchAction: "map_humanoid_forces",
+        reference: "Map Leads To 3 camp forces",
+        guidance:
+          "Use this when the camp turns into a fight. It generates the raiders waiting beyond the firelight so you can resolve the battle before rewards.",
+      },
+    ];
+  }
+  if (text.includes("boss-only") || text.includes("boss only")) {
+    return [
+      {
+        label: "Boss-only structure room target",
+        runLabel: "Roll boss-only structure target",
+        branchAction: "map_structure_rooms",
+        reference: "Map Leads To 5 boss-only underground structure",
+        guidance:
+          "Roll the structure room target, then treat the destination as a tightened boss approach where treasure handling waits for the final room.",
+      },
+    ];
+  }
+  if (text.includes("structure")) {
+    return [
+      {
+        label: "Abandoned structure room target",
+        runLabel: "Roll structure room target",
+        branchAction: "map_structure_rooms",
+        reference: "Map Leads To 4 underground structure",
+        guidance:
+          "Roll the abandoned structure room count. The rooms hold their breath until the final Boss, where accumulated treasure handling is closed out.",
+      },
+    ];
   }
   if (text.includes("lich")) {
-    return {
-      label: "Lich treasure",
-      runLabel: "Run lich treasure",
-      branchAction: "map_lich_treasure",
-      reference: "Map Leads To 6 lich treasure",
-      guidance: "Log the lich chamber treasure closeout when the lich destination is resolved.",
-    };
+    return [
+      {
+        label: "Lich death magic check",
+        runLabel: "Set up death magic",
+        branchAction: "map_lich_death_magic",
+        reference: "Map Leads To 6 death magic; mod=0",
+        guidance:
+          "Use TAG Actions for this because the Save modifier depends on the entering character. Record the chill death-magic check before the lich is fought.",
+        requiresReview: true,
+      },
+      {
+        label: "Lich Life adjustment",
+        runLabel: "Set lich Life",
+        branchAction: "map_lich_life",
+        reference: "Map Leads To 6 lich Life",
+        guidance:
+          "Use TAG Actions after death magic is resolved; enter Life lost as Amount so the app can calculate the lich's Life total.",
+        requiresReview: true,
+      },
+      {
+        label: "Lich treasure closeout",
+        runLabel: "Roll lich treasure",
+        branchAction: "map_lich_treasure",
+        reference: "Map Leads To 6 lich treasure",
+        guidance:
+          "Use this after the lich chamber is resolved to record the grave-cold treasure bundle before Guild share, banking, and quest reward checks.",
+      },
+    ];
   }
-  return null;
+  return [
+    {
+      label: "Treasure Map destination procedure",
+      runLabel: "Review map procedure",
+      branchAction: "treasure_map_follow",
+      reference: "Treasure Map destination",
+      guidance:
+        "This Treasure Map quest needs its Map Leads To destination identified. Open TAG Actions, choose the matching destination branch, and record the result before claiming the quest reward.",
+      requiresReview: true,
+    },
+  ];
+}
+
+function tagTreasureMapQuestProcedure(quest) {
+  return tagTreasureMapQuestProcedures(quest)[0] || null;
 }
 
 function appendTagTreasureMapQuestActions(actions, quest) {
-  const procedure = tagTreasureMapQuestProcedure(quest);
-  if (!procedure) return false;
-  const note = node("div", "ongoing-quest-guidance", procedure.guidance);
-  actions.appendChild(note);
-  const run = node("button", "primary", procedure.runLabel);
-  run.type = "button";
-  setButtonTooltip(run, `${procedure.guidance} Records the result in the live adventure log and TAG campaign log.`);
-  run.addEventListener("click", async () => {
-    try {
-      await runTagBranchActionWithDefaults({
+  const procedures = tagTreasureMapQuestProcedures(quest);
+  if (!procedures.length) return false;
+  const state = tagTreasureMapQuestState(quest);
+  const panel = node("div", "tag-map-procedure-panel");
+  panel.appendChild(
+    node(
+      "div",
+      "tag-map-procedure-title",
+      "Treasure Map procedure"
+    )
+  );
+  const next = state.next_action
+    ? state.next_action
+    : "Resolve the Map Leads To destination here. Use Claim Treasure only for ordinary current-room treasure; these buttons log the separate map destination procedure.";
+  panel.appendChild(node("div", "tag-map-next-action", next));
+  if (state.room_target) {
+    panel.appendChild(node("div", "tag-map-procedure-status", `Room target recorded: ${state.room_target}.`));
+  }
+  for (const procedure of procedures) {
+    const done = tagTreasureMapProcedureDone(quest, procedure.branchAction);
+    const row = node("div", `tag-map-procedure-row${done ? " done" : ""}`);
+    const copy = node("div", "tag-map-procedure-copy");
+    copy.appendChild(node("strong", "", procedure.label));
+    copy.appendChild(node("span", "", done ? `Done — ${state[procedure.branchAction]?.result || "procedure logged."}` : procedure.guidance));
+    row.appendChild(copy);
+    const buttonClass = procedure.requiresReview || done ? "secondary" : "primary";
+    const run = node("button", buttonClass, done ? "Logged" : procedure.runLabel);
+    run.type = "button";
+    run.disabled = done;
+    setButtonTooltip(
+      run,
+      done
+        ? "This procedure has already been logged for the active quest. Use Edit if you need to review or rerun it deliberately."
+        : `${procedure.guidance} ${procedure.requiresReview ? "Opens TAG Actions because this needs a modifier, amount, or player choice." : "Runs now and records the result in the live adventure log and TAG campaign log."}`
+    );
+    run.addEventListener("click", async () => {
+      try {
+        const defaults = {
+          branchAction: procedure.branchAction,
+          reference: procedure.reference,
+          amount: 0,
+        };
+        if (procedure.requiresReview) {
+          openTagActionsWithDefaults(defaults);
+        } else {
+          await runTagBranchActionWithDefaults(defaults);
+        }
+      } catch (error) {
+        handleError(error);
+      }
+    });
+    row.appendChild(run);
+    const edit = node("button", "secondary", "Edit");
+    edit.type = "button";
+    setButtonTooltip(edit, "Open TAG Actions with this procedure prefilled so you can adjust Reference, Amount, character, or rerun deliberately.");
+    edit.addEventListener("click", () =>
+      openTagActionsWithDefaults({
         branchAction: procedure.branchAction,
         reference: procedure.reference,
         amount: 0,
-      });
-    } catch (error) {
-      handleError(error);
-    }
-  });
-  actions.appendChild(run);
-  const edit = node("button", "secondary", `Edit ${procedure.label}`);
-  edit.type = "button";
-  setButtonTooltip(edit, "Open TAG Actions with this procedure prefilled if you need to adjust Reference or Amount first.");
-  edit.addEventListener("click", () =>
-    openTagActionsWithDefaults({
-      branchAction: procedure.branchAction,
-      reference: procedure.reference,
-      amount: 0,
-    })
-  );
-  actions.appendChild(edit);
+      })
+    );
+    row.appendChild(edit);
+    panel.appendChild(row);
+  }
+  actions.appendChild(panel);
   return true;
 }
 

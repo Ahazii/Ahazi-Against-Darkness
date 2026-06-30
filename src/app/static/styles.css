@@ -6132,6 +6132,71 @@ input[type="radio"] {
   gap: 8px;
 }
 
+.tag-map-procedure-panel {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(201, 162, 39, 0.28);
+  border-radius: 6px;
+  background: rgba(201, 162, 39, 0.08);
+}
+
+.tag-map-procedure-title {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.tag-map-next-action,
+.tag-map-procedure-status {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tag-map-procedure-status {
+  color: var(--success, #8bcf8b);
+}
+
+.tag-map-procedure-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: start;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tag-map-procedure-row.done {
+  opacity: 0.86;
+}
+
+.tag-map-procedure-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.tag-map-procedure-copy strong {
+  color: var(--text);
+}
+
+.tag-map-procedure-copy span {
+  color: var(--muted);
+}
+
+.tag-map-procedure-row button {
+  width: auto;
+  min-width: 0;
+  white-space: normal;
+  text-align: left;
+}
+
 .icon-key-list {
   display: grid;
   gap: 10px;
