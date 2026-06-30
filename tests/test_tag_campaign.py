@@ -35,6 +35,7 @@ from app.engine.tag_campaign import (
     resolve_tag_finance_action,
     resolve_tag_route_action,
     resolve_tag_scene_action,
+    record_tag_signoff_review,
     resolve_tag_xp_action,
     settlement_size_from_roll,
     settlement_service_rows,
@@ -1304,6 +1305,40 @@ def test_tag_adventure_closeout_tasks_are_created_and_resolved(monkeypatch) -> N
     manual = resolve_tag_closeout_task(campaign, task_action="guild_leaving_restriction", note="Checked")
     assert "resolved" in manual.result_text
     assert next(task for task in campaign.tag_closeout_tasks if task.task_action == "guild_leaving_restriction").resolved is True
+
+
+def test_tag_signoff_review_logs_unresolved_state_and_completes_clear_guidance() -> None:
+    campaign = default_campaign()
+    campaign.tag_generated_adventure_ids.append("tag-rumor-1")
+    campaign.tag_xp_markers.append(
+        TagXpMarkerState(
+            xp_action="award_scene_xp",
+            character_id="hero-1",
+            character_name="Sly Silas",
+            reference="Scene XP",
+            xp=1,
+            applied=False,
+            result_text="Pending XP",
+            created_at=now_utc(),
+        )
+    )
+    guidance = tag_campaign.add_guidance_task(
+        campaign,
+        title="Review adventure 1 closeout",
+        body="Review generated TAG signoff.",
+        category="closeout",
+        priority="required",
+    )
+    assert guidance is not None
+
+    first = record_tag_signoff_review(campaign, note="checked route")
+    assert "1 pending XP marker" in first.result_text
+    assert guidance.status == "open"
+
+    campaign.tag_xp_markers[0].applied = True
+    second = record_tag_signoff_review(campaign)
+    assert "0 pending XP marker" in second.result_text
+    assert guidance.status == "completed"
 
 
 def test_tag_guild_mundane_equipment_discount() -> None:

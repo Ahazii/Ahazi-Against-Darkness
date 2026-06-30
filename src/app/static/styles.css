@@ -308,9 +308,12 @@ h2 {
 
 .modern-collapsible > summary strong {
   font-size: 15px;
+  min-width: 0;
 }
 
 .modern-collapsible > summary .muted {
+  grid-column: 2;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 

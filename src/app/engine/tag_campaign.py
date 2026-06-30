@@ -5480,3 +5480,25 @@ def record_adventure_complete(store: Store, session: SessionState | None = None)
         affected_entity_id=party_id or "",
     )
     return save_campaign(store, campaign)
+
+
+def record_tag_signoff_review(campaign: CampaignState, *, note: str = "") -> TagDowntimeLogEntry:
+    open_closeout = [task for task in campaign.tag_closeout_tasks if not task.resolved]
+    pending_xp = [marker for marker in campaign.tag_xp_markers if not marker.applied]
+    latest_lead = next((item for item in reversed(campaign.tag_generated_adventure_ids) if item), "")
+    latest_route = campaign.tag_adventure_routes[-1] if campaign.tag_adventure_routes else None
+    if not open_closeout and not pending_xp:
+        now = now_utc()
+        for task in campaign.guidance_tasks:
+            if task.status == "open" and task.category == "closeout" and "closeout" in task.title.lower():
+                task.status = "completed"
+                task.resolved_at = now
+    summary = (
+        f"TAG generated-adventure signoff reviewed"
+        f"{f' for {latest_lead}' if latest_lead else ''}: "
+        f"{len(open_closeout)} open closeout task(s), {len(pending_xp)} pending XP marker(s)"
+        f"{f', latest route: {latest_route.result_text}' if latest_route is not None else ', no route marker recorded'}."
+    )
+    if note.strip():
+        summary += f" Note: {note.strip()}"
+    return append_tag_log(campaign, action="tag_signoff_review", result_text=summary)

@@ -22,6 +22,7 @@ Status: active priority.
 - Next dashboard work should focus on making every modern section complete enough to avoid falling back to the legacy homepage: clearer page summaries, denser lists, better hover explanations, tighter controls, and targeted rules-reference links.
 - Next TAG work should focus on player-facing completeness: closeout workflows, Guild/banking/troupe/settlement actions, generated TAG adventure prompt/signoff coverage, and clearer post-adventure guidance.
 - TAG-heavy modern pages now share a workflow summary and generated-adventure signoff panel; future TAG passes should deepen the underlying automation and playtest signoff rather than adding more campaign-map features.
+- Dashboard and Go Adventure now have a TAG closeout checklist with action links, generated-adventure review logging, and clearer readiness state. Next TAG work should focus on playtesting the generated modules and converting more room prompts into direct TAG Actions where the PDF boundary allows it.
 - The PDF boundary remains: app workflow guidance can be expanded freely, but exact printed text should stay in Rules Reference links or source-page references unless explicitly signed off.
 
 ## Dashboard Artwork And Help

@@ -489,6 +489,87 @@ async function updateGuidanceTask(task, status) {
   await refreshCoreAndRender();
 }
 
+async function recordTagSignoffReview(note = "") {
+  const result = await api("/api/campaign/tag/signoff-review", {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+  modernState.campaign = result.campaign;
+  setStatus(result.entry?.result_text || "TAG signoff review recorded.");
+  await refreshCoreAndRender();
+}
+
+function closeoutActionTargets(task) {
+  const action = task.task_action || "";
+  if (action.includes("guild")) {
+    return [
+      ["Guild", "/modern/guild", "Open Guild Management to resolve loot share, upkeep, reroll reset, resurrection funding, or leaving-restriction closeout."],
+      ["Rules", ruleReferenceHref("tag_guild_closeout_guidance", "TAG guild closeout"), "Open the Guild closeout guidance reference."]
+    ];
+  }
+  if (action.includes("bank") || action.includes("trove") || task.category === "finance" || task.category === "storage") {
+    return [
+      ["Banking", "/modern/banking", "Open Banking and Finance to resolve bank robbery, hidden trove risk, recovery, inheritance, or storage consequences."],
+      ["Rules", ruleReferenceHref("tag_settlement_campaign", "TAG banking storage"), "Open the TAG settlement/banking reference."]
+    ];
+  }
+  if (action.includes("xp") || task.category === "xp") {
+    return [
+      ["Go Adventure", "/modern/go-adventure", "Open Go Adventure and review generated-adventure signoff before manually clearing XP closeout."],
+      ["Rules", ruleReferenceHref("tag_generated_adventure_signoff", "TAG XP signoff"), "Open the TAG generated-adventure signoff reference."]
+    ];
+  }
+  return [
+    ["Rules", ruleReferenceHref("adventure_closeout_workflow", "adventure closeout workflow"), "Open the app-owned adventure closeout workflow reference."]
+  ];
+}
+
+function closeoutChecklistRows() {
+  const campaign = modernState.campaign || {};
+  const tasks = campaign.tag_closeout_tasks || [];
+  const openTasks = tasks.filter((task) => !task.resolved);
+  const pendingXp = (campaign.tag_xp_markers || []).filter((marker) => !marker.applied);
+  const openGuidance = (campaign.guidance_tasks || []).filter((task) => task.status === "open");
+  const latestRoute = (campaign.tag_adventure_routes || []).slice(-1)[0];
+  const latestLead = (campaign.tag_generated_adventure_ids || []).slice(-1)[0];
+  return [
+    ["Generated lead", latestLead || "No generated TAG lead recorded.", latestLead ? "ok" : "warn", "Confirm the latest generated module came from the intended Rumor, Treasure Map, Thematic Dungeon, or Guild Job."],
+    ["Route / branch marker", latestRoute ? latestRoute.result_text : "No route marker recorded.", latestRoute ? "ok" : "warn", "Record parley, Clue gates, skipped scenes, unlocked scenes, final route, or solo restrictions when the generated adventure uses them."],
+    ["XP markers", `${pendingXp.length} pending marker(s).`, pendingXp.length ? "block" : "ok", "Pending XP markers should be awarded, rolled, or intentionally dismissed before the next adventure."],
+    ["Guild obligations", `${openTasks.filter((task) => task.category === "guild").length} open task(s).`, openTasks.some((task) => task.category === "guild") ? "block" : "ok", "Resolve Guild loot share, upkeep, availability reroll reset, leaving restrictions, and other Guild obligations."],
+    ["Banking / storage", `${openTasks.filter((task) => ["finance", "storage"].includes(task.category)).length} open task(s).`, openTasks.some((task) => ["finance", "storage"].includes(task.category)) ? "block" : "ok", "Resolve bank robbery recovery, hidden trove risk, stolen trove recovery, inheritance, and storage consequences."],
+    ["Guidance actions", `${openGuidance.length} open guidance task(s).`, openGuidance.some((task) => task.priority === "required") ? "block" : (openGuidance.length ? "warn" : "ok"), "Complete, defer, or dismiss guidance tasks from the Dashboard Guidance / Log or Campaign Management archive."]
+  ];
+}
+
+function renderAdventureCloseoutCockpit(context = "Dashboard") {
+  const rows = closeoutChecklistRows();
+  const openRows = rows.filter(([, , status]) => status === "block");
+  const warnRows = rows.filter(([, , status]) => status === "warn");
+  const panel = card("Adventure Closeout Checklist", "Actionable TAG closeout review before the next start: generated lead, route marker, XP, Guild, banking/storage, and guidance.");
+  panel.classList.add(openRows.length ? "modern-primary-card" : "modern-card-compact");
+  const statusText = openRows.length
+    ? `${openRows.length} required closeout area(s) need attention before normal play.`
+    : (warnRows.length ? `${warnRows.length} review warning(s); signoff may still be valid if not relevant.` : "Closeout looks ready for the next adventure.");
+  panel.appendChild(modernStatusRow(`${context} closeout state`, statusText, "This is app workflow guidance. It summarizes open state but does not replace printed PDF decisions for exact rewards or scene text."));
+  for (const [title, body, status, hint] of rows) {
+    const row = modernStatusRow(title, body, hint);
+    row.classList.add(status === "ok" ? "modern-row-ok" : "modern-row-warn");
+    panel.appendChild(row);
+  }
+  const note = input("text", `modern-tag-signoff-note-${context.toLowerCase().replace(/\W+/g, "-")}`, "Optional note saved to the TAG log and Campaign Chronicle with this generated-adventure signoff review.", "");
+  const row = actions();
+  row.append(
+    field("Review note", note),
+    button("Mark Signoff Reviewed", "Record a generated TAG adventure signoff review. This logs open closeout and XP counts; it only completes broad review guidance when no open closeout or XP markers remain.", () => recordTagSignoffReview(note.value), ""),
+    link("Guild", "/modern/guild", "Resolve Guild closeout obligations.", "link-button secondary"),
+    link("Banking", "/modern/banking", "Resolve banking and hidden-trove closeout obligations.", "link-button secondary"),
+    link("Rules", ruleReferenceHref("tag_closeout_checklist_automation", "TAG closeout checklist automation"), "Open the Rules Reference entry for this closeout checklist.", "link-button secondary")
+  );
+  panel.appendChild(row);
+  return panel;
+}
+
 function renderCloseoutTasks(title, categories) {
   const tasks = closeoutTasksFor(categories);
   const panel = card(title, "Outstanding TAG closeout prompts created when an adventure completes.");
@@ -503,7 +584,11 @@ function renderCloseoutTasks(title, categories) {
     copy.append(el("strong", "", task.title), el("span", "muted", task.result_text || ""));
     if (task.reference) copy.appendChild(el("span", "muted", task.reference));
     row.appendChild(copy);
-    row.appendChild(button("Mark Done", "Mark this TAG closeout task as resolved if you handled it manually or with another control.", async () => {
+    const taskActions = actions();
+    for (const [label, href, titleText] of closeoutActionTargets(task)) {
+      taskActions.appendChild(link(label, href, titleText, "link-button secondary"));
+    }
+    taskActions.appendChild(button("Mark Done", "Manual signoff: mark this TAG closeout task as resolved only after you used the relevant control, checked the printed rule/PDF, or intentionally handled it outside the app.", async () => {
       const result = await api("/api/campaign/tag/closeout-task", {
         method: "POST",
         body: JSON.stringify({ task_id: task.id, note: "Resolved from modern closeout checklist" }),
@@ -512,6 +597,7 @@ function renderCloseoutTasks(title, categories) {
       setStatus(result.entry?.result_text || "Closeout task resolved.");
       await refreshCoreAndRender();
     }));
+    row.appendChild(taskActions);
     panel.appendChild(row);
   }
   return panel;
@@ -661,14 +747,20 @@ function renderTagSignoffPanel(context = "TAG Signoff") {
   const panel = card(context, "Checklist for generated TAG adventures: record branch/route choices, rewards, XP, Guild obligations, banking/storage consequences, and closeout resolution.");
   const route = (campaign.tag_adventure_routes || []).slice(-1)[0];
   const log = (campaign.tag_downtime_log || []).slice(-1)[0];
+  const openCloseout = (campaign.tag_closeout_tasks || []).filter((task) => !task.resolved).length;
+  const pendingXp = (campaign.tag_xp_markers || []).filter((marker) => !marker.applied).length;
   panel.append(
     modernStatusRow("Generated lead", (campaign.tag_generated_adventure_ids || []).slice(-1)[0] || "No generated TAG lead yet.", "Create Rumor, Treasure Map, Thematic Dungeon, or Guild Job modules from Go Adventure or Guild Management."),
     modernStatusRow("Latest route marker", route ? route.result_text : "No route marker recorded.", "TAG Actions during exploration records parley, Clue gates, skipped scenes, final route, solo restrictions, and generated-module route rewrites."),
-    modernStatusRow("Pending XP", `${(campaign.tag_xp_markers || []).filter((marker) => !marker.applied).length} marker(s)`, "Resolve pending TAG XP markers from TAG Actions or closeout before starting the next adventure."),
+    modernStatusRow("Pending XP", `${pendingXp} marker(s)`, "Resolve pending TAG XP markers from TAG Actions or closeout before starting the next adventure."),
+    modernStatusRow("Closeout prompts", `${openCloseout} open prompt(s)`, "Open closeout prompts must be resolved by the relevant Guild, Banking, storage, XP, or manual signoff workflow."),
     modernStatusRow("Latest TAG log", log ? `${modernTitleFromKey(log.action)} · ${log.result_text}` : "No TAG log entries yet.", "Recent TAG automation/log action. Open the TAG guide when checking generated-adventure signoff against the PDF.")
   );
+  const note = input("text", `modern-tag-panel-signoff-note-${context.toLowerCase().replace(/\W+/g, "-")}`, "Optional generated-adventure signoff note. This is saved to the TAG log and Campaign Chronicle.", "");
   const row = actions();
   row.append(
+    field("Signoff note", note),
+    button("Mark Reviewed", "Record that the latest generated TAG adventure signoff was reviewed. This does not resolve printed-rule decisions or open closeout tasks by itself.", () => recordTagSignoffReview(note.value), ""),
     link("Go Adventure", "/modern/go-adventure", "Open Go Adventure to create TAG leads, select generated modules, and review closeout gates.", "link-button secondary"),
     link("Guidance", "/modern/home", "Return to the Dashboard Guidance / Log for active task completion, deferral, or dismissal.", "link-button secondary"),
     link("TAG Guide", "/docs/Checking/TAG_SECTION_GUIDE.html", "Open generated-adventure manual checking and signoff guidance.", "link-button secondary")
@@ -1126,6 +1218,7 @@ function renderNeedsAttention() {
 
 function renderHome() {
   rootEl.appendChild(renderNeedsAttention());
+  rootEl.appendChild(renderAdventureCloseoutCockpit("Dashboard"));
   const grid = el("div", "modern-home-grid");
   for (const [page, meta] of Object.entries(PAGE_META)) {
     if (page === "home") continue;
@@ -2622,7 +2715,7 @@ async function renderGoAdventure() {
     saved.appendChild(row);
   }
   if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
-  rootEl.append(panel, readiness, gate, tagLead, renderTagSignoffPanel("TAG Lead / Start Signoff"), sessions, saved);
+  rootEl.append(panel, readiness, gate, tagLead, renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), sessions, saved);
 }
 
 async function renderRulesReference() {

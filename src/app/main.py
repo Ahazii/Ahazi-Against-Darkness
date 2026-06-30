@@ -1659,6 +1659,16 @@ async def campaign_tag_closeout_task(payload: dict[str, Any]) -> dict[str, Any]:
     return {"campaign": campaign, "entry": entry}
 
 
+@app.post("/api/campaign/tag/signoff-review")
+async def campaign_tag_signoff_review(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, record_tag_signoff_review, save_campaign
+
+    campaign = load_campaign(store)
+    entry = record_tag_signoff_review(campaign, note=str(payload.get("note") or "").strip())
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
 @app.post("/api/campaign/guidance-task")
 async def campaign_guidance_task(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, save_campaign, update_guidance_task
@@ -2179,6 +2189,44 @@ def _rules_tables_payload() -> dict:
             "checkpoint": "Closeout resolved",
             "review": "Resolve Guild loot/upkeep/reroll, hidden trove risk/recovery, bank robbery recovery, and pending XP markers.",
             "where": "Dashboard Guidance, Guild Management, Banking and Finance, Go Adventure Closeout Gate.",
+        },
+    ]
+    data["tag_closeout_checklist_automation_table"] = [
+        {
+            "check": "Generated lead",
+            "status_source": "CampaignState.tag_generated_adventure_ids",
+            "action": "Create a TAG module from Go Adventure or Guild Management, then confirm it is the intended lead.",
+            "rules_boundary": "App records the lead id; the player/PDF remains authority for exact scene interpretation.",
+        },
+        {
+            "check": "Route / branch marker",
+            "status_source": "CampaignState.tag_adventure_routes",
+            "action": "Use TAG Actions to record parley, Clue gates, skipped scenes, unlocked scenes, final route, or solo restrictions.",
+            "rules_boundary": "Markers summarize the branch choice; they do not replace printed room text.",
+        },
+        {
+            "check": "XP markers",
+            "status_source": "CampaignState.tag_xp_markers",
+            "action": "Award, roll, dismiss, or manually sign off pending XP before the next adventure.",
+            "rules_boundary": "Manual signoff records player review when the printed scene controls the exact award.",
+        },
+        {
+            "check": "Guild obligations",
+            "status_source": "CampaignState.tag_closeout_tasks category guild",
+            "action": "Open Guild Management for loot share, upkeep, reroll reset, resurrection funding, and leaving restrictions.",
+            "rules_boundary": "Guild controls automate supported arithmetic; manual signoff is for rules already checked by the player.",
+        },
+        {
+            "check": "Banking / storage",
+            "status_source": "CampaignState.tag_closeout_tasks category finance/storage",
+            "action": "Open Banking and Finance for bank robbery, hidden trove risk, stolen trove recovery, inheritance, and storage consequences.",
+            "rules_boundary": "App workflow points to the relevant action; exact PDF text is not copied into the checklist.",
+        },
+        {
+            "check": "Guidance actions",
+            "status_source": "CampaignState.guidance_tasks",
+            "action": "Complete, defer, dismiss, or reopen guidance from Dashboard Guidance / Log or Campaign Management.",
+            "rules_boundary": "Guidance is app-owned campaign bookkeeping and remains in the campaign chronicle.",
         },
     ]
     data["character_management_readiness_table"] = [
