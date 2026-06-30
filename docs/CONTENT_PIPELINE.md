@@ -187,8 +187,21 @@ Clean adventure exit persists party rewards to the character pool via
 Between-adventure gear uses `data/rules/equipment_shop.json` and the home
 Equipment Shop UI (`docs/ARCHITECTURE.md`).
 
-To show PDF scans beside each table, add source page and crop coordinates to
-the structured table data, then generate cached images from the rulebook PDF.
+To show PDF scans or artwork beside each dashboard section/table, add an entry
+to `data/rules/artwork_registry.json`. Asset paths should normally point under
+`assets/rules_art/local/`, which is ignored by git. This lets a local personal
+copy use PDF-derived artwork without pushing extracted art to GitHub.
+
+Generate a configured local artwork slot with:
+
+```bash
+python tools/extract_rules_artwork.py tag_guild_workflow --force
+```
+
+The helper renders the configured PDF page from `Rules/` and writes the image to
+the registry's `asset_path`. If an entry later needs an exact crop, add a
+`crop_pct` object with percentage bounds (`x`, `y`, `right`, `bottom`) and rerun
+the helper.
 
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.

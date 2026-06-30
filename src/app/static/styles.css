@@ -249,6 +249,10 @@ h2 {
   padding: 14px;
 }
 
+#modern-page-help {
+  flex: 0 0 auto;
+}
+
 #modern-page-root {
   display: grid;
   gap: 12px;
@@ -267,6 +271,7 @@ h2 {
   border-radius: 8px;
   background: var(--panel);
   padding: 12px;
+  text-align: left;
 }
 
 .modern-card h3 {
@@ -284,6 +289,8 @@ h2 {
   display: grid;
   gap: 4px;
   justify-items: start;
+  align-content: start;
+  text-align: left;
 }
 
 .modern-field span {
@@ -302,9 +309,10 @@ h2 {
 .modern-filterbar,
 .modern-picker {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 22rem));
   gap: 8px;
   align-items: end;
+  justify-content: start;
 }
 
 .modern-row {
@@ -388,10 +396,12 @@ h2 {
 .modern-card input:not([type="checkbox"]):not([type="radio"]),
 .modern-card select {
   width: min(100%, 22rem);
+  max-width: 22rem;
 }
 
 .modern-card textarea {
   width: min(100%, 42rem);
+  max-width: 42rem;
 }
 
 .modern-card button,
@@ -400,6 +410,7 @@ h2 {
   max-width: 100%;
   justify-self: start;
   text-align: left;
+  white-space: normal;
 }
 
 .modern-primary-card {
@@ -478,6 +489,61 @@ h2 {
   color: var(--text);
   font-size: 13px;
   line-height: 1.4;
+}
+
+.modern-art-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.modern-art-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 240px));
+}
+
+.modern-art-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid #3c3a30;
+  border-radius: 6px;
+  background: #171814;
+  padding: 8px;
+  min-width: 0;
+  text-align: left;
+}
+
+.modern-art-card strong,
+.modern-art-card span {
+  overflow-wrap: anywhere;
+}
+
+.modern-art-frame {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #11130f;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  padding: 4px;
+}
+
+.modern-art-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.modern-art-frame.missing {
+  border-style: dashed;
 }
 
 .modern-class-info {

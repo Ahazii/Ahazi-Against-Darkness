@@ -286,6 +286,21 @@ class RulesRepository:
                 by_id[item_id] = {**by_id.get(item_id, {}), **item}
         return list(by_id.values())
 
+    def artwork_registry(self) -> list[dict[str, Any]]:
+        packaged = self._load_packaged("artwork_registry.json")
+        entries = packaged.get("entries", []) if isinstance(packaged, dict) else []
+        override_path = self.override_dir / "artwork_registry.json"
+        if not override_path.exists():
+            return entries
+        override = json.loads(override_path.read_text(encoding="utf-8"))
+        override_entries = override.get("entries", []) if isinstance(override, dict) else []
+        by_id = {item["id"]: dict(item) for item in entries if isinstance(item, dict) and item.get("id")}
+        for item in override_entries:
+            if isinstance(item, dict) and item.get("id"):
+                item_id = item["id"]
+                by_id[item_id] = {**by_id.get(item_id, {}), **item}
+        return list(by_id.values())
+
     def search_reference(
         self,
         *,

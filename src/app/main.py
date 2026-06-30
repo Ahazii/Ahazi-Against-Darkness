@@ -1402,6 +1402,11 @@ async def rules_reference(q: str | None = None, category: str | None = None, imp
     return rules.search_reference(q=q, category=category, implementation_status=implementation_status)
 
 
+@app.get("/api/rules/artwork")
+async def rules_artwork() -> dict:
+    return {"entries": rules.artwork_registry()}
+
+
 def _rules_tables_payload() -> dict:
     data = dict(rules.dungeon_tables())
     shop = rules.equipment_shop()
@@ -1436,6 +1441,19 @@ def _rules_tables_payload() -> dict:
     data["legendary_skills_table"] = tier_skills_table_rows(rules.legendary_skills(), "legendary")
     data["class_tricks_implementation_table"] = class_tricks_implementation_rows()
     data["ee_class_trick_flags_table"] = ee_class_trick_flags_table_rows(rules.ee_class_tricks())
+    data["artwork_registry_table"] = [
+        {
+            "id": row.get("id", ""),
+            "title": row.get("title", ""),
+            "category": row.get("category", ""),
+            "status": row.get("status", ""),
+            "source_pdf": row.get("source_pdf", ""),
+            "source_page": row.get("source_page", ""),
+            "asset_path": row.get("asset_path", ""),
+            "summary": row.get("summary", ""),
+        }
+        for row in rules.artwork_registry()
+    ]
     data["map_elements_validation_table"] = map_elements_validation_table_rows(rules.tiles())
     data["forsaken_depths_map_elements_validation_table"] = map_elements_validation_table_rows(
         rules.tiles("forsaken_depths"), catalog="forsaken_depths"

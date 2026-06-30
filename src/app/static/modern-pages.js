@@ -8,6 +8,7 @@ const modernState = {
   rulesProfiles: [],
   equipmentRows: [],
   rulesReference: [],
+  artwork: [],
   tables: {},
 };
 
@@ -56,10 +57,31 @@ const PDF_LINKS = [
   ["Courtship of Flower Demons", "/Rules/The_Courtship_of_Flower_Demons.pdf", "Open The Courtship of Flower Demons PDF."],
 ];
 
+const PAGE_HELP_QUERIES = {
+  home: "dashboard guidance log",
+  characters: "character sheet equipment inventory party troupe guild",
+  troupes: "troupe campaign party settlement travel",
+  guild: "guild coffers upkeep job benefits",
+  parties: "party troupe membership",
+  equipment: "equipment shop buy sell guild discount",
+  banking: "banking finance trove robbery inheritance",
+  settlement: "settlement services availability travel",
+  campaign: "campaign world builder",
+  settings: "settings ruleset profile",
+  "ai-adventures": "ai adventure import",
+  "go-adventure": "go adventure tag lead",
+  "rules-reference": "rules artwork registry",
+  tables: "artwork table source page",
+  library: "pdf artwork boundary",
+  guides: "guide checklist",
+  developer: "developer import editor",
+};
+
 const statusEl = document.getElementById("modern-status");
 const titleEl = document.getElementById("modern-page-title");
 const subtitleEl = document.getElementById("modern-page-subtitle");
 const descriptionEl = document.getElementById("modern-page-description");
+const helpEl = document.getElementById("modern-page-help");
 const rootEl = document.getElementById("modern-page-root");
 
 function currentPage() {
@@ -613,6 +635,77 @@ async function loadCore() {
 async function refreshCoreAndRender() {
   await loadCore();
   renderPage();
+}
+
+async function loadArtwork() {
+  if (!modernState.artwork.length) {
+    const payload = await api("/api/rules/artwork");
+    modernState.artwork = Array.isArray(payload) ? payload : (payload.entries || []);
+  }
+  return modernState.artwork;
+}
+
+function artAssetUrl(entry) {
+  return entry?.asset_path ? `/assets/${entry.asset_path}` : "";
+}
+
+function artworkForPage(page) {
+  return modernState.artwork.filter((entry) => (entry.dashboard_pages || []).includes(page));
+}
+
+function artworkForReference(entry) {
+  const id = entry?.id || "";
+  const category = entry?.category || "";
+  return modernState.artwork.filter((art) => (art.reference_ids || []).includes(id) || (art.category && art.category === category));
+}
+
+function artworkForTable(key) {
+  return modernState.artwork.filter((art) => (art.table_keys || []).includes(key));
+}
+
+function renderArtworkImage(entry) {
+  const frame = el("div", "modern-art-frame");
+  const src = artAssetUrl(entry);
+  if (!src) {
+    frame.appendChild(el("span", "", "No asset path configured"));
+    return frame;
+  }
+  const image = document.createElement("img");
+  image.src = src;
+  image.alt = entry.title || "Rules artwork";
+  image.title = entry.hover || entry.summary || "Rules artwork.";
+  image.loading = "lazy";
+  image.addEventListener("error", () => {
+    frame.classList.add("missing");
+    frame.replaceChildren(el("span", "", "Local artwork file not found"));
+  }, { once: true });
+  frame.appendChild(image);
+  return frame;
+}
+
+function renderArtworkRows(entries, { compact = false } = {}) {
+  const wrap = el("div", compact ? "modern-art-grid compact" : "modern-art-grid");
+  for (const entry of entries) {
+    const row = el("div", "modern-art-card");
+    row.title = entry.hover || entry.summary || "Artwork registry entry.";
+    row.appendChild(renderArtworkImage(entry));
+    const body = el("div", "modern-stack");
+    body.appendChild(el("strong", "", entry.title || entry.id));
+    body.appendChild(el("span", "muted", `${entry.source_pdf || "App"}${entry.source_page ? ` p.${entry.source_page}` : ""} · ${entry.status || "slot"}`));
+    if (!compact && entry.summary) body.appendChild(el("span", "muted", entry.summary));
+    row.appendChild(body);
+    wrap.appendChild(row);
+  }
+  return wrap;
+}
+
+async function renderPageArtwork(page, title = "Relevant Artwork") {
+  await loadArtwork();
+  const entries = artworkForPage(page);
+  if (!entries.length) return null;
+  const panel = card(title, "Local artwork slots and licensed/private-use PDF crops relevant to this section. Missing files are expected until you populate assets/rules_art/local/.");
+  panel.appendChild(renderArtworkRows(entries));
+  return panel;
 }
 
 function renderHome() {
@@ -1637,13 +1730,16 @@ async function renderRulesReference() {
     const payload = await api("/api/rules/reference");
     modernState.rulesReference = Array.isArray(payload) ? payload : (payload.entries || []);
   }
+  await loadArtwork();
   const panel = card("Rules Reference", "Search every curated implementation reference entry from the app reference index.");
   const search = input("search", "modern-rules-search", "Filter rules reference entries.");
+  const helpQuery = new URLSearchParams(window.location.search).get("help");
+  if (helpQuery) search.value = helpQuery;
   const categories = [...new Set(modernState.rulesReference.map((entry) => entry.category || "rules"))].sort();
   const category = select("modern-rules-category", "Filter by rules category.", [["", "All categories"], ...categories.map((item) => [item, item])]);
   const statuses = [...new Set(modernState.rulesReference.map((entry) => entry.implementation_status || "reference"))].sort();
   const status = select("modern-rules-status", "Filter by implementation status.", [["", "All statuses"], ...statuses.map((item) => [item, modernStatusLabel(item)])]);
-  const source = select("modern-rules-source", "Filter entries by whether they cite a printed source page.", [["", "All source refs"], ["with", "With source page"], ["app", "App-only / no source page"]]);
+  const source = select("modern-rules-source", "Filter entries by whether they cite a printed source page or have artwork slots.", [["", "All source refs"], ["with", "With source page"], ["app", "App-only / no source page"], ["art", "With artwork slot"]]);
   const sort = select("modern-rules-sort", "Sort rules reference entries.", [["category", "Category"], ["title", "Title"], ["implementation_status", "Status"], ["source_page", "Source page"]]);
   const results = el("div", "modern-list");
   const controls = el("div", "modern-filterbar");
@@ -1666,7 +1762,8 @@ async function renderRulesReference() {
       .filter((entry) => !status.value || (entry.implementation_status || "reference") === status.value)
       .filter((entry) => source.value !== "with" || Boolean(entry.source_page))
       .filter((entry) => source.value !== "app" || !entry.source_page)
-      .filter((entry) => `${entry.title} ${entry.summary || ""} ${entry.body} ${entry.category || ""} ${entry.implementation_status || ""} ${entry.source_page || ""} ${(entry.keywords || []).join(" ")}`.toLowerCase().includes(needle))
+      .filter((entry) => source.value !== "art" || artworkForReference(entry).length)
+      .filter((entry) => `${entry.title} ${entry.summary || ""} ${entry.body} ${entry.category || ""} ${entry.implementation_status || ""} ${entry.source_page || ""} ${(entry.keywords || []).join(" ")} ${artworkForReference(entry).map((art) => `${art.title} ${art.summary} ${art.source_pdf}`).join(" ")}`.toLowerCase().includes(needle))
       .sort((a, b) => String(a[sort.value] || "").localeCompare(String(b[sort.value] || ""), undefined, { numeric: true }) || String(a.title || "").localeCompare(String(b.title || "")));
     const byCategory = rows.reduce((groups, entry) => {
       const key = entry.category || "rules";
@@ -1698,6 +1795,8 @@ async function renderRulesReference() {
         row.appendChild(rowSummary);
         if (item.summary) row.appendChild(el("p", "modern-home-status", item.summary));
         if (item.keywords?.length) row.appendChild(el("span", "muted", item.keywords.join(" · ")));
+        const relatedArt = artworkForReference(item);
+        if (relatedArt.length) row.appendChild(renderArtworkRows(relatedArt.slice(0, 3), { compact: true }));
         if (item.body) {
           const body = el("div", "modern-reference-body");
           item.body.split("\n").filter((line) => line.trim()).forEach((line) => body.appendChild(el("p", "", line)));
@@ -1740,6 +1839,7 @@ function modernTableRows(value) {
 }
 
 function modernTableFamily(key) {
+  if (key.includes("artwork")) return "Artwork and local assets";
   if (key.startsWith("abyss_")) return "Four Against the Abyss";
   if (key.startsWith("fd_") || key.startsWith("forsaken_depths_")) return "Forsaken Depths";
   if (key.startsWith("courtship_")) return "Courtship of Flower Demons";
@@ -1785,14 +1885,16 @@ function modernTablePreview(value, needle = "") {
 
 async function renderTables() {
   if (!Object.keys(modernState.tables).length) modernState.tables = await api("/api/rules/tables");
+  await loadArtwork();
   const panel = card("Tables List", "Search every structured rules and app table exposed by the game.");
   const search = input("search", "modern-table-search", "Search by table name or entry text.");
   const families = [...new Set(Object.keys(modernState.tables).map(modernTableFamily))].sort();
   const family = select("modern-table-family", "Filter by table family.", [["", "All table families"], ...families.map((item) => [item, item])]);
+  const artworkFilter = select("modern-table-artwork", "Filter tables by whether they have local artwork slots.", [["", "All artwork states"], ["with", "With artwork slot"], ["without", "Without artwork slot"]]);
   const sort = select("modern-table-sort", "Sort table groups.", [["name", "Name"], ["rows", "Row count"]]);
   const results = el("div", "modern-list");
   const controls = el("div", "modern-filterbar");
-  controls.append(field("Search", search), field("Family", family), field("Sort", sort));
+  controls.append(field("Search", search), field("Family", family), field("Artwork", artworkFilter), field("Sort", sort));
   const rowActions = actions();
   rowActions.append(
     button("Expand All", "Open every visible table group and table.", async () => {
@@ -1808,8 +1910,12 @@ async function renderTables() {
     const needle = search.value.toLowerCase();
     const keys = Object.keys(modernState.tables).filter((key) => {
       if (family.value && modernTableFamily(key) !== family.value) return false;
+      if (artworkFilter.value === "with" && !artworkForTable(key).length) return false;
+      if (artworkFilter.value === "without" && artworkForTable(key).length) return false;
       if (!needle) return true;
-      return key.toLowerCase().includes(needle) || modernSearchText(modernState.tables[key]).toLowerCase().includes(needle);
+      return key.toLowerCase().includes(needle)
+        || modernSearchText(modernState.tables[key]).toLowerCase().includes(needle)
+        || artworkForTable(key).map((art) => `${art.title} ${art.summary} ${art.source_pdf}`).join(" ").toLowerCase().includes(needle);
     });
     keys.sort((a, b) => {
       if (sort.value === "rows") {
@@ -1825,7 +1931,8 @@ async function renderTables() {
       groups[groupName].push(key);
       return groups;
     }, {});
-    results.appendChild(el("p", "muted", `${keys.length} matching table${keys.length === 1 ? "" : "s"} across ${Object.keys(byFamily).length} famil${Object.keys(byFamily).length === 1 ? "y" : "ies"}.`));
+    const artworkCount = keys.filter((key) => artworkForTable(key).length).length;
+    results.appendChild(el("p", "muted", `${keys.length} matching table${keys.length === 1 ? "" : "s"} across ${Object.keys(byFamily).length} famil${Object.keys(byFamily).length === 1 ? "y" : "ies"} · ${artworkCount} with artwork slots.`));
     for (const [groupName, groupKeys] of Object.entries(byFamily).sort(([a], [b]) => a.localeCompare(b))) {
       const group = document.createElement("details");
       group.className = "modern-row modern-table-group";
@@ -1843,8 +1950,10 @@ async function renderTables() {
         details.open = groupKeys.length <= 4 && keys.length <= 12;
         const summary = document.createElement("summary");
         summary.title = "Show or hide this table's rows.";
-        summary.append(el("strong", "", modernTitleFromKey(key)), el("span", "muted", `${key} · ${modernTableRowCount(value)} row(s)`));
+        const tableArt = artworkForTable(key);
+        summary.append(el("strong", "", modernTitleFromKey(key)), el("span", "muted", `${key} · ${modernTableRowCount(value)} row(s)${tableArt.length ? ` · ${tableArt.length} art slot(s)` : ""}`));
         details.appendChild(summary);
+        if (tableArt.length) details.appendChild(renderArtworkRows(tableArt.slice(0, 4), { compact: true }));
         const previewMount = el("div", "modern-table-preview-mount");
         const renderPreview = () => {
           if (previewMount.dataset.loaded === "1" && previewMount.dataset.needle === needle) return;
@@ -1868,19 +1977,24 @@ async function renderTables() {
   };
   search.addEventListener("input", draw);
   family.addEventListener("change", draw);
+  artworkFilter.addEventListener("change", draw);
   sort.addEventListener("change", draw);
   draw();
   rootEl.appendChild(panel);
 }
 
-function renderLibrary() {
+async function renderLibrary() {
+  await loadArtwork();
   const panel = card("PDF Library and Background", "Open owned PDFs and maintain signoff-safe background summaries.");
   const pdfRow = actions();
   for (const [label, href, title] of PDF_LINKS) pdfRow.appendChild(link(label, href, title));
   panel.appendChild(pdfRow);
   const notes = card("Background Import Plan", "I should not bulk-copy full PDF background text. Work book-by-book and section-by-section: you identify pages, I summarise into app-safe background notes and cite the PDF page.");
   notes.appendChild(el("p", "modern-home-status in-progress", "In progress: curated background summaries and approved artwork/map extraction."));
-  rootEl.append(panel, notes);
+  const artwork = card("Local Rules Artwork", "Artwork slots for relevant PDF sections. Files under assets/rules_art/local/ are ignored by git so personal-use or licensed art is not pushed accidentally.");
+  artwork.appendChild(renderArtworkRows(modernState.artwork));
+  artwork.appendChild(el("p", "muted", "To populate a slot, create the named asset_path file under assets/. The dashboard will show it automatically after refresh."));
+  rootEl.append(panel, notes, artwork);
 }
 
 function renderGuides() {
@@ -1929,6 +2043,15 @@ function renderPage() {
   titleEl.textContent = meta[0];
   subtitleEl.textContent = meta[0];
   descriptionEl.textContent = meta[1];
+  if (helpEl) {
+    helpEl.replaceChildren(
+      helpLink(
+        "?",
+        `/modern/rules-reference?help=${encodeURIComponent(PAGE_HELP_QUERIES[page] || page)}`,
+        `Open Rules Reference context for ${meta[0]}. This explains related rules, app-only boundaries, artwork slots, and implementation notes.`
+      )
+    );
+  }
   rootEl.replaceChildren();
   const result = {
     home: renderHome,
@@ -1949,7 +2072,12 @@ function renderPage() {
     guides: renderGuides,
     developer: renderDeveloper,
   }[page]();
-  if (result?.catch) result.catch(handleError);
+  Promise.resolve(result)
+    .then(() => renderPageArtwork(page))
+    .then((panel) => {
+      if (panel && currentPage() === page) rootEl.appendChild(panel);
+    })
+    .catch(handleError);
 }
 
 loadCore()

@@ -10,6 +10,14 @@ Status: foundation implemented; feature growth planned.
 - Characters are constrained to one party, one troupe, and one guild. Parties are assigned to one troupe. Assigning a character to an incompatible troupe removes them from the previous party with a user-facing alert/message.
 - Next campaign work: complete richer campaign detail editing, add sortable/searchable world lists, build the hex-map editor, connect settlement placement to travel, and decide how troublesome towns differ mechanically once the add-on supplements are implemented.
 
+## Dashboard Artwork And Help
+
+Status: dashboard support implemented; asset population is local/licensing-dependent.
+
+- Rules artwork is tracked in `data/rules/artwork_registry.json` and displayed on relevant modern dashboard pages, Rules Reference entries, and Tables rows.
+- Generated or extracted PDF artwork belongs under ignored `assets/rules_art/local/` unless a publishing agreement allows it to be committed.
+- Next artwork work: choose exact crops per PDF section, add `crop_pct` bounds where useful, render with `tools/extract_rules_artwork.py`, then review each slot visually before deciding whether any image can be distributed.
+
 ## Phase 1 - Clean Foundation
 
 Status: substantially complete; retained for foundation maintenance.

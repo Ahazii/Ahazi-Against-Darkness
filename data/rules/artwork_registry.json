@@ -1,0 +1,88 @@
+{
+  "entries": [
+    {
+      "id": "dashboard_campaign_worldbuilder",
+      "title": "Campaign World Builder",
+      "category": "campaign",
+      "dashboard_pages": ["home", "campaign"],
+      "reference_ids": ["campaign_world_builder", "campaign_hex_map_placeholder"],
+      "table_keys": ["artwork_registry_table"],
+      "source_pdf": "App-owned",
+      "source_page": 0,
+      "asset_path": "rules_art/local/dashboard_campaign_worldbuilder.webp",
+      "status": "local_slot",
+      "summary": "Optional campaign/world map artwork for the modern dashboard and Campaign Management page.",
+      "hover": "Local-only artwork slot. Put licensed or personal-use art at assets/rules_art/local/dashboard_campaign_worldbuilder.webp to show it in the dashboard."
+    },
+    {
+      "id": "tag_guild_workflow",
+      "title": "Adventurers Guild Workflow",
+      "category": "tag",
+      "dashboard_pages": ["guild", "go-adventure", "rules-reference"],
+      "reference_ids": ["tag_guild_membership", "tag_generated_adventures", "tag_guild_jobs"],
+      "table_keys": ["tag_generated_adventure_profiles_table"],
+      "source_pdf": "Tales_from_the_adventurers_guild.pdf",
+      "source_page": 68,
+      "asset_path": "rules_art/local/tag_guild_workflow.webp",
+      "status": "local_slot",
+      "summary": "Optional TAG guild artwork or page crop for Guild Management and TAG lead creation.",
+      "hover": "Use this for licensed or private TAG Guild art. Do not commit extracted PDF art unless you have publication rights."
+    },
+    {
+      "id": "tag_settlement_services",
+      "title": "TAG Settlement Services",
+      "category": "tag",
+      "dashboard_pages": ["settlement", "banking", "troupes"],
+      "reference_ids": ["tag_banking_finance", "friendly_settlements"],
+      "table_keys": ["tag_services_table"],
+      "source_pdf": "Tales_from_the_adventurers_guild.pdf",
+      "source_page": 9,
+      "asset_path": "rules_art/local/tag_settlement_services.webp",
+      "status": "local_slot",
+      "summary": "Optional settlement/services artwork for TAG banking, availability, and travel surfaces.",
+      "hover": "Local artwork slot for TAG settlement service art. The UI still works when the file is absent."
+    },
+    {
+      "id": "expanded_dungeon_tables",
+      "title": "Expanded Edition Dungeon Tables",
+      "category": "expanded_edition",
+      "dashboard_pages": ["tables", "rules-reference", "go-adventure"],
+      "reference_ids": ["room_content_table", "door_table", "trap_table", "treasure_table"],
+      "table_keys": ["room_content_table", "door_table", "trap_table", "treasure_table"],
+      "source_pdf": "Four_Against_Darkness_Expanded_Edition.pdf",
+      "source_page": 152,
+      "asset_path": "rules_art/local/expanded_dungeon_tables.webp",
+      "status": "local_slot",
+      "summary": "Optional artwork/page crop for the core dungeon table browsing surface.",
+      "hover": "Suggested use: a small licensed or private-use crop that reminds the user which rulebook section the tables come from."
+    },
+    {
+      "id": "forsaken_depths_tiles",
+      "title": "Forsaken Depths Map Elements",
+      "category": "forsaken_depths",
+      "dashboard_pages": ["tables", "developer"],
+      "reference_ids": ["fd_map_elements", "fd_river_map_elements"],
+      "table_keys": ["forsaken_depths_map_elements_validation_table", "forsaken_depths_rivers_map_elements_validation_table"],
+      "source_pdf": "Four_Against_the_Forsaken_Depths.pdf",
+      "source_page": 27,
+      "asset_path": "rules_art/local/forsaken_depths_tiles.webp",
+      "status": "local_slot",
+      "summary": "Optional Forsaken Depths tile artwork for table validation and map-editor workflows.",
+      "hover": "Local-only art slot for FD tile/page artwork. Keep generated PDF crops out of git unless licensed for publication."
+    },
+    {
+      "id": "troublesome_towns_future",
+      "title": "Troublesome Towns",
+      "category": "campaign",
+      "dashboard_pages": ["campaign", "settlement"],
+      "reference_ids": ["troublesome_towns_placeholder"],
+      "table_keys": ["artwork_registry_table"],
+      "source_pdf": "Treacheries of the Troublesome Towns",
+      "source_page": 0,
+      "asset_path": "rules_art/local/troublesome_towns_future.webp",
+      "status": "planned",
+      "summary": "Future artwork slot for troublesome town campaign records.",
+      "hover": "Planned slot for the future Troublesome Towns supplements. No supplement mechanics are implemented here yet."
+    }
+  ]
+}
