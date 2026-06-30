@@ -609,6 +609,74 @@ function renderCampaignChronicle(title = "Campaign Chronicle", limit = 12) {
   return panel;
 }
 
+function tagWorkflowCounts() {
+  const campaign = modernState.campaign || {};
+  return {
+    troupeMembers: (campaign.tag_troupe_member_character_ids || []).length,
+    activeMembers: (campaign.tag_troupe_active_character_ids || []).length,
+    guildActive: Boolean(campaign.tag_guild_member),
+    guildBenefits: tagGuildBenefitsActive(campaign),
+    guildCoffers: campaign.tag_guild_coffers_gp || 0,
+    bankAccounts: (campaign.tag_bank_accounts || []).length,
+    robbedAccounts: (campaign.tag_bank_accounts || []).filter((account) => account.robbed).length,
+    hiddenTroveItems: (campaign.tag_stored_items || []).filter((item) => item.storage === "trove").length,
+    hiddenTroveGold: campaign.tag_storage_gold_gp || 0,
+    hiddenTroveRobbed: Boolean(campaign.tag_hidden_trove_robbed),
+    routes: (campaign.tag_adventure_routes || []).length,
+    xpPending: (campaign.tag_xp_markers || []).filter((marker) => !marker.applied).length,
+    generatedLeads: (campaign.tag_generated_adventure_ids || []).length,
+    openCloseout: (campaign.tag_closeout_tasks || []).filter((task) => !task.resolved).length,
+    openGuidance: (campaign.guidance_tasks || []).filter((task) => task.status === "open").length,
+  };
+}
+
+function renderTagWorkflowDashboard(context = "overview") {
+  const counts = tagWorkflowCounts();
+  const panel = card("TAG Workflow Summary", "Live player-facing TAG status: troupe, Guild, banking, storage, generated leads, route/XP signoff, and closeout prompts. Use this as the first scan before and after TAG adventures.");
+  panel.classList.add("modern-primary-card");
+  panel.append(
+    modernStatusRow("Troupe readiness", `${counts.troupeMembers} troupe member(s) · ${counts.activeMembers}/4 active`, "Active members are the likely adventuring party. Keep this aligned with Party Management and Go Adventure."),
+    modernStatusRow("Guild status", `${counts.guildActive ? "member" : "not a member"} · benefits ${counts.guildBenefits ? "active" : "inactive"} · ${counts.guildCoffers} gp coffers`, "Guild benefits depend on active membership and coffers above 0 gp; coffers affect benefits, upkeep, resurrection funding, and loot-share obligations."),
+    modernStatusRow("Finance/storage", `${counts.bankAccounts} bank account(s) · ${counts.robbedAccounts} robbed · trove ${counts.hiddenTroveGold} gp / ${counts.hiddenTroveItems} item stack(s)${counts.hiddenTroveRobbed ? " · stolen" : ""}`, "Bank accounts, robbery recovery, hidden troves, and stolen trove recovery are handled from Banking and Finance."),
+    modernStatusRow("Adventure signoff", `${counts.generatedLeads} generated TAG lead(s) · ${counts.routes} route marker(s) · ${counts.xpPending} pending XP marker(s)`, "Generated TAG adventures use room prompts and TAG Actions to record branch, route, reward, and XP signoff."),
+    modernStatusRow("Needs attention", `${counts.openCloseout} closeout prompt(s) · ${counts.openGuidance} open guidance task(s)`, "Closeout and guidance tasks should be reviewed before the next adventure; Go Adventure enforces required closeout warnings with explicit override.")
+  );
+  const row = actions();
+  row.append(
+    link("Guild", "/modern/guild", "Open Guild Management for membership, coffers, benefits, Guild jobs, and closeout prompts.", "link-button secondary"),
+    link("Banking", "/modern/banking", "Open Banking and Finance for TAG bank accounts, hidden troves, robbery recovery, inheritance, and loans.", "link-button secondary"),
+    link("Troupe", "/modern/troupes", "Open Troupe Management for members, active adventurers, settlement travel, and party context.", "link-button secondary"),
+    link("Settlement", "/modern/settlement", "Open Settlement Management for size, availability checks, tracked settlements, and travel.", "link-button secondary"),
+    link("Rules", ruleReferenceHref("modern_tag_workflow_completion", "modern TAG workflow"), "Open the Rules Reference entry for this modern TAG workflow pass.", "link-button secondary")
+  );
+  if (context === "go") {
+    row.appendChild(link("TAG Guide", "/docs/Checking/TAG_SECTION_GUIDE.html", "Open the TAG checking guide for generated adventures and closeout review.", "link-button secondary"));
+  }
+  panel.appendChild(row);
+  return panel;
+}
+
+function renderTagSignoffPanel(context = "TAG Signoff") {
+  const campaign = modernState.campaign || {};
+  const panel = card(context, "Checklist for generated TAG adventures: record branch/route choices, rewards, XP, Guild obligations, banking/storage consequences, and closeout resolution.");
+  const route = (campaign.tag_adventure_routes || []).slice(-1)[0];
+  const log = (campaign.tag_downtime_log || []).slice(-1)[0];
+  panel.append(
+    modernStatusRow("Generated lead", (campaign.tag_generated_adventure_ids || []).slice(-1)[0] || "No generated TAG lead yet.", "Create Rumor, Treasure Map, Thematic Dungeon, or Guild Job modules from Go Adventure or Guild Management."),
+    modernStatusRow("Latest route marker", route ? route.result_text : "No route marker recorded.", "TAG Actions during exploration records parley, Clue gates, skipped scenes, final route, solo restrictions, and generated-module route rewrites."),
+    modernStatusRow("Pending XP", `${(campaign.tag_xp_markers || []).filter((marker) => !marker.applied).length} marker(s)`, "Resolve pending TAG XP markers from TAG Actions or closeout before starting the next adventure."),
+    modernStatusRow("Latest TAG log", log ? `${modernTitleFromKey(log.action)} · ${log.result_text}` : "No TAG log entries yet.", "Recent TAG automation/log action. Open the TAG guide when checking generated-adventure signoff against the PDF.")
+  );
+  const row = actions();
+  row.append(
+    link("Go Adventure", "/modern/go-adventure", "Open Go Adventure to create TAG leads, select generated modules, and review closeout gates.", "link-button secondary"),
+    link("Guidance", "/modern/home", "Return to the Dashboard Guidance / Log for active task completion, deferral, or dismissal.", "link-button secondary"),
+    link("TAG Guide", "/docs/Checking/TAG_SECTION_GUIDE.html", "Open generated-adventure manual checking and signoff guidance.", "link-button secondary")
+  );
+  panel.appendChild(row);
+  return panel;
+}
+
 function renderCommandCenter(command) {
   const panel = card("Campaign Command Center", "Selected campaign overview: assigned Guild, troupes, settlements, troublesome towns, parties, active sessions, open guidance, unresolved closeout prompts, and recent chronicle.");
   panel.classList.add("modern-primary-card");
@@ -986,6 +1054,11 @@ function renderArtworkImage(entry) {
     frame.appendChild(el("span", "", "No asset path configured"));
     return frame;
   }
+  if (entry.asset_exists === false) {
+    frame.classList.add("missing");
+    frame.appendChild(el("span", "", "Local artwork file not found"));
+    return frame;
+  }
   const image = document.createElement("img");
   image.src = src;
   image.alt = entry.title || "Rules artwork";
@@ -1351,10 +1424,12 @@ function knownSettlements() {
 function renderTroupes() {
   const campaign = modernState.campaign || {};
   rootEl.appendChild(renderWorldContextPanel("Troupe World Context"));
+  rootEl.appendChild(renderTagWorkflowDashboard("troupe"));
   rootEl.appendChild(renderGuide("Troupe Workflow", [
     "Pick the campaign first, then keep roster membership and active adventurers in sync.",
     "A character can belong to one troupe; assigning across troupes may remove incompatible party membership.",
-    "Use the settlement/travel section after membership is saved so logs and home settlement match the troupe."
+    "Use the settlement/travel section after membership is saved so logs and home settlement match the troupe.",
+    "Before a TAG adventure, check that the active troupe has four intended adventurers and that their saved party context matches."
   ], "campaign_membership_boundaries", "troupe membership party campaign"));
   const panel = card("Create / Select Troupe", "Select the current troupe, add or remove roster members, choose up to four active adventurers, and manage the home settlement and travel below.");
   const name = input("text", "modern-troupe-name", "Name shown for this TAG troupe in dashboard summaries, closeout prompts, and travel logs.", campaign.tag_troupe_name || "Adventuring Troupe");
@@ -1482,16 +1557,18 @@ function renderTroupes() {
     })
   );
   travel.appendChild(travelActions);
-  rootEl.append(panel, memberList, troupeParties, travel);
+  rootEl.append(panel, memberList, troupeParties, travel, renderTagSignoffPanel("Troupe Adventure Signoff"));
 }
 
 function renderGuild() {
   const campaign = modernState.campaign || {};
   rootEl.appendChild(renderWorldContextPanel("Guild World Context"));
+  rootEl.appendChild(renderTagWorkflowDashboard("guild"));
   rootEl.appendChild(renderGuide("Guild Workflow", [
     "Guild benefits need active membership and coffers above 0 gp.",
     "Adventure closeout creates Guild prompts for loot share, upkeep, reroll reset, and leaving-restriction signoff.",
-    "Create Guild Job leads here, then start the installed module from Go Adventure."
+    "Create Guild Job leads here, then start the installed module from Go Adventure.",
+    "Use the closeout card after every Guild-linked adventure so coffers, rerolls, and leaving restrictions do not drift."
   ], "tag_guild_closeout_guidance", "guild closeout upkeep job"));
   const panel = card("Create / Select Guild", "Select the current Adventurers Guild state for the troupe, then manage members, coffers, Guild jobs, benefits, and closeout obligations below.");
   const active = input("checkbox", "modern-guild-active", "Enables Adventurers Guild rules for the current TAG troupe. Benefits need membership plus coffers above 0 gp.");
@@ -1628,7 +1705,7 @@ function renderGuild() {
     recent.appendChild(modernStatusRow(entry.action.replaceAll("_", " "), entry.result_text || "", "Recent TAG Guild log entry."));
   }
   if (recent.childElementCount <= 2) recent.appendChild(el("p", "muted", "No recent Guild log entries."));
-  rootEl.append(panel, finance, members, renderCloseoutTasks("Guild Closeout", ["guild", "xp"]), benefits, recent);
+  rootEl.append(panel, finance, members, renderCloseoutTasks("Guild Closeout", ["guild", "xp"]), renderTagSignoffPanel("Guild Adventure Signoff"), benefits, recent);
 }
 
 function renderParties() {
@@ -1771,10 +1848,12 @@ async function renderEquipment() {
 }
 
 function renderBanking() {
+  rootEl.appendChild(renderTagWorkflowDashboard("banking"));
   rootEl.appendChild(renderGuide("Finance Workflow", [
     "Choose a character first so carried gold, TAG bank, party, and troupe context are visible.",
     "Use party/troupe bulk banking for setup migration; use character actions for normal play logs.",
-    "Robbed bank accounts and stolen troves create recovery prompts in Guidance and closeout panels."
+    "Robbed bank accounts and stolen troves create recovery prompts in Guidance and closeout panels.",
+    "After every adventure, review hidden trove risk, robbed bank accounts, inheritance notes, and Guild ledger consequences before starting again."
   ], "tag_settlement_campaign", "banking finance trove robbery"));
   const panel = card("TAG Banking and Finance", "Banking moves gold between carried roster gold and TAG bank accounts. Troves store hidden gold/items; robbery and inheritance actions create explicit log entries.");
   const filters = characterFilterControls("modern-finance", () => updateCharacterSelect(character, "Choose character", { search: filters.search.value, classId: filters.classFilter.value, sort: filters.sort.value }));
@@ -1873,7 +1952,7 @@ function renderBanking() {
     recent.appendChild(modernStatusRow(entry.action.replaceAll("_", " "), entry.result_text || "", "Recent TAG finance log entry."));
   }
   if (recent.childElementCount <= 2) recent.appendChild(el("p", "muted", "No recent finance log entries."));
-  rootEl.append(panel, ledger, trove, renderCloseoutTasks("Finance Closeout", ["finance", "storage"]), recent);
+  rootEl.append(panel, ledger, trove, renderCloseoutTasks("Finance Closeout", ["finance", "storage"]), renderTagSignoffPanel("Finance / Storage Signoff"), recent);
 }
 
 async function tagFinance(characterId, action, amount, note = "") {
@@ -1889,10 +1968,12 @@ async function renderSettlement() {
     modernState.equipmentRows = payload.items || Object.values(payload).flat().filter((item) => item && item.key && item.name);
   }
   rootEl.appendChild(renderWorldContextPanel("Settlement World Context"));
+  rootEl.appendChild(renderTagWorkflowDashboard("settlement"));
   rootEl.appendChild(renderGuide("Settlement Workflow", [
     "Friendly settlements are campaign world records; TAG settlement fields drive services, availability, travel, and logs.",
     "Size modifies availability checks and should be saved before rolling item or service availability.",
-    "Troublesome towns are campaign placeholders for later supplement support, not active TAG settlement mechanics yet."
+    "Troublesome towns are campaign placeholders for later supplement support, not active TAG settlement mechanics yet.",
+    "Availability hover text explains whether a value changes service/item discovery, travel context, or tracked settlement history."
   ], "friendly_settlements", "settlement services availability"));
   const campaign = modernState.campaign || {};
   const panel = card("Create / Select Settlement", "TAG settlements are downtime hubs. Select or create one, maintain notes, check services/items, and travel between known settlements.");
@@ -2015,7 +2096,7 @@ async function renderSettlement() {
   trackedPicker.search.addEventListener("input", drawTrackedSettlements);
   trackedPicker.sort.addEventListener("change", drawTrackedSettlements);
   drawTrackedSettlements();
-  rootEl.append(panel, worldList, list);
+  rootEl.append(panel, worldList, list, renderTagSignoffPanel("Settlement / Travel Signoff"));
 }
 
 async function renderCampaign() {
@@ -2361,10 +2442,12 @@ function renderAiAdventures() {
 
 async function renderGoAdventure() {
   const prefs = readModernPrefs();
+  rootEl.appendChild(renderTagWorkflowDashboard("go"));
   rootEl.appendChild(renderGuide("Adventure Workflow", [
     "Start New creates a fresh session from the selected party and module.",
     "Resume Adventure reopens active in-progress sessions; Saved Games are listed separately.",
-    "Create a TAG lead first when the next adventure comes from a rumor, map, theme, or Guild job."
+    "Create a TAG lead first when the next adventure comes from a rumor, map, theme, or Guild job.",
+    "The Closeout Gate uses campaign guidance and TAG closeout prompts to warn before starting again."
   ], "tag_guild_closeout_guidance", "go adventure tag lead resume saved"));
   const panel = card("Start New Adventure", "Choose party, adventure type, module, ruleset, and start play. This creates a new session.");
   panel.classList.add("modern-primary-card");
@@ -2539,7 +2622,7 @@ async function renderGoAdventure() {
     saved.appendChild(row);
   }
   if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
-  rootEl.append(panel, readiness, gate, tagLead, sessions, saved);
+  rootEl.append(panel, readiness, gate, tagLead, renderTagSignoffPanel("TAG Lead / Start Signoff"), sessions, saved);
 }
 
 async function renderRulesReference() {

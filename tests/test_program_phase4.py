@@ -160,6 +160,8 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         "monster_reaction_tables",
         "map_elements_table",
         "icon_registry_table",
+        "modern_tag_workflow_table",
+        "tag_generated_adventure_signoff_table",
     ]:
         assert key in payload
         assert len(payload[key]) > 0

@@ -1851,7 +1851,13 @@ async def rules_reference(q: str | None = None, category: str | None = None, imp
 
 @app.get("/api/rules/artwork")
 async def rules_artwork() -> dict:
-    return {"entries": rules.artwork_registry()}
+    entries = []
+    for row in rules.artwork_registry():
+        item = dict(row)
+        asset_path = str(item.get("asset_path") or "").strip()
+        item["asset_exists"] = bool(asset_path and (settings.assets_dir / asset_path).exists())
+        entries.append(item)
+    return {"entries": entries}
 
 
 def _rules_tables_payload() -> dict:
@@ -2119,6 +2125,60 @@ def _rules_tables_payload() -> dict:
             "examples": "Injured members, equipment-slot warnings, campaign/guild/troupe context mismatches.",
             "start_behavior": "Shown for review but does not block.",
             "override": "Not required.",
+        },
+    ]
+    data["modern_tag_workflow_table"] = [
+        {
+            "surface": "TAG Workflow Summary",
+            "shown_on": "Troupe, Guild, Banking, Settlement, and Go Adventure modern pages.",
+            "tracks": "Troupe membership/active count, Guild benefits/coffers, bank accounts, robbed accounts, hidden trove, generated TAG leads, route markers, XP markers, closeout prompts, guidance tasks.",
+            "player_use": "First scan before and after TAG adventures.",
+        },
+        {
+            "surface": "TAG Signoff panel",
+            "shown_on": "Troupe, Guild, Banking, Settlement, and Go Adventure modern pages.",
+            "tracks": "Latest generated lead, latest route marker, pending XP markers, latest TAG log.",
+            "player_use": "Review generated-adventure branch/reward/XP/Guild/banking consequences before closeout.",
+        },
+        {
+            "surface": "Guild workflow",
+            "shown_on": "Guild Management.",
+            "tracks": "Membership, coffers, benefits, loot share, upkeep, availability reroll, resurrection funding, Guild job lead creation, Guild closeout prompts.",
+            "player_use": "Run Guild obligations without falling back to the legacy homepage.",
+        },
+        {
+            "surface": "Finance workflow",
+            "shown_on": "Banking and Finance.",
+            "tracks": "TAG bank ledgers, hidden troves, robbed accounts, inheritance, loans, bulk migration, closeout recovery prompts.",
+            "player_use": "Resolve banking/storage consequences after adventures.",
+        },
+        {
+            "surface": "Settlement workflow",
+            "shown_on": "Settlement Management.",
+            "tracks": "Settlement name, size modifier, notes, tracked settlements, availability checks, travel logs.",
+            "player_use": "Understand what settlement size affects and keep service/travel context visible.",
+        },
+    ]
+    data["tag_generated_adventure_signoff_table"] = [
+        {
+            "checkpoint": "Lead created",
+            "review": "Confirm the generated TAG module came from the intended Rumor, Treasure Map, Thematic Dungeon, or Guild Job.",
+            "where": "Go Adventure, Guild Job Lead, TAG guide.",
+        },
+        {
+            "checkpoint": "Room prompt used",
+            "review": "Use room prompt buttons/TAG Actions to prefill branch, reward, route, XP, or finance markers; confirm exact printed amount/result manually where needed.",
+            "where": "Exploration TAG prompt and TAG Actions dialog.",
+        },
+        {
+            "checkpoint": "Route marker recorded",
+            "review": "Record parley, hostile branch, Clue gate, skip, unlocked scene, solo restriction, or final route before closing the lead.",
+            "where": "TAG Signoff panel and campaign route log.",
+        },
+        {
+            "checkpoint": "Closeout resolved",
+            "review": "Resolve Guild loot/upkeep/reroll, hidden trove risk/recovery, bank robbery recovery, and pending XP markers.",
+            "where": "Dashboard Guidance, Guild Management, Banking and Finance, Go Adventure Closeout Gate.",
         },
     ]
     data["character_management_readiness_table"] = [

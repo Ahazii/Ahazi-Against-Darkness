@@ -2,7 +2,7 @@
 
 ## Campaign / World Builder
 
-Status: foundation implemented; feature growth planned.
+Status: foundation implemented; low-priority feature growth.
 
 - The campaign layer is app-owned and is not a TAG PDF rule. TAG content can attach to it, but campaign/world ownership rules should be documented separately from printed mechanics.
 - Default world records are seeded and migrated once: campaign `Norindaal`, guild `Adventurers Guild`, troupe `Troupe1`, and friendly settlement `Hearthmere`.
@@ -13,7 +13,16 @@ Status: foundation implemented; feature growth planned.
 - Adventure completion now feeds a campaign chronicle and structured guidance tasks. Dashboard Needs Attention summarizes open tasks, closeout prompts, active sessions, roster health, and context warnings; Campaign Management shows recent chronicle entries.
 - Campaign Management now has a command-center overview, guidance archive filters, safe orphan-assignment cleanup, and JSON/Markdown chronicle export. Go Adventure uses a server-side closeout gate so required guidance and unresolved TAG closeout prompts require explicit override before starting again.
 - Characters are constrained to one party, one troupe, and one guild. Parties are assigned to one troupe. Assigning a character to an incompatible troupe removes them from the previous party with a user-facing alert/message.
-- Next campaign work: build the hex-map editor, connect settlement placement to travel, add per-campaign chronicle search/export polish, and decide how troublesome towns differ mechanically once the add-on supplements are implemented.
+- Priority note: campaign work is parked unless allocation/regression issues appear. The current requirement is that a campaign can hold a Guild, one or more troupes, and friendly/troublesome settlements. Hex-map editing, settlement placement, deeper campaign chronicle polish, and troublesome-town mechanics are deferred behind Modern Dashboard and TAG support.
+
+## Modern Dashboard And TAG Support
+
+Status: active priority.
+
+- Next dashboard work should focus on making every modern section complete enough to avoid falling back to the legacy homepage: clearer page summaries, denser lists, better hover explanations, tighter controls, and targeted rules-reference links.
+- Next TAG work should focus on player-facing completeness: closeout workflows, Guild/banking/troupe/settlement actions, generated TAG adventure prompt/signoff coverage, and clearer post-adventure guidance.
+- TAG-heavy modern pages now share a workflow summary and generated-adventure signoff panel; future TAG passes should deepen the underlying automation and playtest signoff rather than adding more campaign-map features.
+- The PDF boundary remains: app workflow guidance can be expanded freely, but exact printed text should stay in Rules Reference links or source-page references unless explicitly signed off.
 
 ## Dashboard Artwork And Help
 
