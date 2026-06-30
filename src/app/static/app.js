@@ -11245,7 +11245,10 @@ async function runTagBranchActionWithDefaults(defaults = {}) {
     setStatus("This TAG procedure needs a character, amount, or player choice; review it in TAG Actions before running.");
     return;
   }
-  const result = await api("/api/campaign/tag/branch-action", {
+  const endpoint = state.session?.id
+    ? `/api/sessions/${encodeURIComponent(state.session.id)}/tag-branch-action`
+    : "/api/campaign/tag/branch-action";
+  const result = await api(endpoint, {
     method: "POST",
     body: JSON.stringify({
       character_id: defaults.characterId || "",
@@ -11256,6 +11259,11 @@ async function runTagBranchActionWithDefaults(defaults = {}) {
     }),
   });
   state.campaign = result.campaign;
+  if (result.session) {
+    state.session = result.session;
+    renderSession();
+    syncSessionListFromSession(state.session);
+  }
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG procedure logged.");
 }
@@ -17283,6 +17291,65 @@ function questGuidance(session, quest) {
   }
 }
 
+function tagTreasureMapQuestProcedure(quest) {
+  const text = `${quest?.description || ""} ${quest?.key || ""}`.toLowerCase();
+  if (!text.includes("tag treasure map") && !text.includes("treasure map")) return null;
+  if (text.includes("underground caves")) {
+    return {
+      label: "Underground caves room target",
+      runLabel: "Run Underground caves room target",
+      branchAction: "map_cave_room_count",
+      reference: "Map Leads To 1 underground caves",
+      guidance:
+        "Roll/log the d6+3 cave target now. This is the destination procedure; ordinary hidden treasure still uses Claim Treasure.",
+    };
+  }
+  if (text.includes("lich")) {
+    return {
+      label: "Lich treasure",
+      runLabel: "Run lich treasure",
+      branchAction: "map_lich_treasure",
+      reference: "Map Leads To 6 lich treasure",
+      guidance: "Log the lich chamber treasure closeout when the lich destination is resolved.",
+    };
+  }
+  return null;
+}
+
+function appendTagTreasureMapQuestActions(actions, quest) {
+  const procedure = tagTreasureMapQuestProcedure(quest);
+  if (!procedure) return false;
+  const note = node("div", "ongoing-quest-guidance", procedure.guidance);
+  actions.appendChild(note);
+  const run = node("button", "primary", procedure.runLabel);
+  run.type = "button";
+  setButtonTooltip(run, `${procedure.guidance} Records the result in the live adventure log and TAG campaign log.`);
+  run.addEventListener("click", async () => {
+    try {
+      await runTagBranchActionWithDefaults({
+        branchAction: procedure.branchAction,
+        reference: procedure.reference,
+        amount: 0,
+      });
+    } catch (error) {
+      handleError(error);
+    }
+  });
+  actions.appendChild(run);
+  const edit = node("button", "secondary", `Edit ${procedure.label}`);
+  edit.type = "button";
+  setButtonTooltip(edit, "Open TAG Actions with this procedure prefilled if you need to adjust Reference or Amount first.");
+  edit.addEventListener("click", () =>
+    openTagActionsWithDefaults({
+      branchAction: procedure.branchAction,
+      reference: procedure.reference,
+      amount: 0,
+    })
+  );
+  actions.appendChild(edit);
+  return true;
+}
+
 function questObjectiveRows(session, quest) {
   if (!quest) return [];
   const giver = questTile(session);
@@ -17869,6 +17936,7 @@ function renderOngoingQuests(session) {
       )
     );
     const actions = node("div", "ongoing-quest-actions");
+    appendTagTreasureMapQuestActions(actions, quest);
     appendFdQuestActions(
       actions,
       session,

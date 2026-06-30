@@ -737,6 +737,11 @@ h2 {
   background: #7b4e16;
 }
 
+.ongoing-quest-actions .primary {
+  border-color: #b88a3a;
+  background: #7b4e16;
+}
+
 .tag-context-module-profile {
   display: grid;
   gap: 4px;

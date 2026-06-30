@@ -3642,6 +3642,32 @@ async def update_session_party(session_id: str, payload: SessionPartyUpdate) -> 
     return enrich_session(session)
 
 
+@app.post("/api/sessions/{session_id}/tag-branch-action")
+async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, resolve_tag_branch_action, save_campaign
+
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    campaign = load_campaign(store)
+    character = _optional_campaign_character(payload)
+    entry = resolve_tag_branch_action(
+        campaign,
+        character,
+        branch_action=str(payload.get("branch_action") or "social_choice"),
+        reference=str(payload.get("reference") or ""),
+        clue_cost=int(payload.get("clue_cost") or 0),
+        reward_gp=int(payload.get("reward_gp") or 0),
+    )
+    if character is not None:
+        store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    if entry.result_text and entry.result_text not in session.log:
+        session.log.append(f"TAG procedure: {entry.result_text}")
+    store.save("sessions", session)
+    return {"campaign": campaign, "character": character, "entry": entry, "session": enrich_session(session)}
+
+
 @app.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str) -> dict[str, bool]:
     session = store.get("sessions", session_id, SessionState.model_validate)

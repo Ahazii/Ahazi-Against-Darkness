@@ -612,6 +612,7 @@ def test_quest_panel_shows_disabled_turn_in_reason() -> None:
     assert "Epic Reward roll on claim" in rows
     render = _function_body("renderOngoingQuests", APP_JS)
     assert "questJournalNode(session, quest)" in render
+    assert "appendTagTreasureMapQuestActions(actions, quest)" in render
     assert "Turn-in blocked: ${claimStatus.reason}" in render
     assert "claim.disabled = !claimStatus.ok;" in render
     assert "Cannot claim yet: ${claimStatus.reason}" in render
@@ -622,6 +623,11 @@ def test_quest_panel_shows_disabled_turn_in_reason() -> None:
     assert ".quest-journal" in STYLES_CSS
     assert ".map-content-marker.quest-ready" in STYLES_CSS
     assert ".ongoing-quest-turnin" in STYLES_CSS
+    assert "function tagTreasureMapQuestProcedure" in APP_JS
+    assert "Run Underground caves room target" in APP_JS
+    assert "map_cave_room_count" in APP_JS
+    assert "/tag-branch-action" in APP_JS
+    assert ".ongoing-quest-actions .primary" in STYLES_CSS
 
 
 def test_epic_reward_statuses_have_ui_actions_and_hints() -> None:
@@ -1898,6 +1904,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "/api/campaign/tag/follow-treasure-map",
         "/api/campaign/tag/create-adventure",
         "/api/campaign/tag/branch-action",
+        "/api/sessions/",
         "/api/campaign/tag/route-action",
         "/api/campaign/tag/scene-action",
         "/api/campaign/tag/xp-action",
