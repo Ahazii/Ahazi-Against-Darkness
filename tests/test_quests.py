@@ -8,7 +8,7 @@ from app.engine.adventure_allowlists import major_foe_table_keys
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.tag_compat import upgrade_tag_manifest
 from app.rules.repository import RulesRepository
-from app.schemas import ActiveQuestState, EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
+from app.schemas import ActiveQuestState, Character, EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
 
 
 def engine() -> RandomDungeonEngine:
@@ -445,6 +445,65 @@ def test_generated_tag_imports_do_not_claim_core_epic_rewards(monkeypatch) -> No
     assert "Kerrak Dar Hoard" not in hero.statuses
     assert any("generated Adventures Guild scenes" in entry for entry in session.log)
     assert not any("Quest complete! Epic reward" in entry for entry in session.log)
+
+
+def test_session_tag_branch_action_syncs_live_party_character(client) -> None:
+    character = Character(
+        id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=250,
+        max_life=3,
+        current_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=[],
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    session = base_session(
+        id="tag-live-sync",
+        party=[
+            PartyMemberState(
+                character_id="h",
+                name="Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=250,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+                inventory=[],
+            )
+        ],
+    )
+    main.store.save("characters", character)
+    main.store.save("sessions", session)
+
+    response = client.post(
+        "/api/sessions/tag-live-sync/tag-branch-action",
+        json={
+            "character_id": "h",
+            "branch_action": "leprechaun_shoes",
+            "reference": "Scene 2 Shoes of Fast Walk",
+            "clue_cost": 1,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    hero = payload["session"]["party"][0]
+    assert hero["gold"] == 50
+    assert "Shoes of Fast Walk" in hero["inventory"]
+    assert "buys 1 pair" in payload["entry"]["result_text"]
 
 
 def test_enchanted_weapon_reward_marks_adventure_status(monkeypatch) -> None:

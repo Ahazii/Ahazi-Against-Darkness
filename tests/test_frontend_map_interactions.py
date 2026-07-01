@@ -1977,6 +1977,9 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "Fallback prompt metadata inferred from an older generated module" in APP_JS
     assert "Scene 2 Shoes of Fast Walk" in APP_JS
     assert "Scene 2 illusion spell - choose spell" in APP_JS
+    assert "function appendLeprechaunGuidedAction" in APP_JS
+    assert "tag-context-guided-action" in APP_JS
+    assert ".tag-context-guided-action" in STYLES_CSS
     assert "TAG_GENERIC_COMPLICATION_ACTIONS" in APP_JS
     assert '"final_route"' in APP_JS
     assert '"claim_reward"' in APP_JS

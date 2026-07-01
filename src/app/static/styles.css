@@ -1084,6 +1084,29 @@ h2 {
   background: #7b4e16;
 }
 
+.tag-context-guided-action {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 190px) minmax(110px, 150px) auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 760px;
+  padding: 7px;
+  border: 1px solid rgba(184, 138, 58, 0.38);
+  border-radius: 6px;
+  background: rgba(24, 22, 14, 0.72);
+}
+
+.tag-context-guided-action select,
+.tag-context-guided-action input {
+  width: 100%;
+  min-height: 32px;
+}
+
+.tag-context-guided-action .subline {
+  grid-column: 1 / -1;
+}
+
 .tag-director-panel {
   display: grid;
   gap: 4px;

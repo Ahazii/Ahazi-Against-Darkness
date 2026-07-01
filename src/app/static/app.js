@@ -11319,6 +11319,11 @@ async function runTagBranchActionWithDefaults(defaults = {}) {
     }),
   });
   state.campaign = result.campaign;
+  if (result.character) {
+    const index = state.characters.findIndex((character) => character.id === result.character.id);
+    if (index >= 0) state.characters[index] = result.character;
+    else state.characters.push(result.character);
+  }
   if (result.session) {
     state.session = result.session;
     renderSession();
@@ -22935,6 +22940,62 @@ function appendTagDirectProcedureButton(parent, action, fallbackReference) {
   return true;
 }
 
+function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  if (!["leprechaun_shoes", "leprechaun_illusion_spell"].includes(defaults.branchAction || "")) return false;
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  const wrap = node("div", "tag-context-guided-action");
+  const label = defaults.branchAction === "leprechaun_shoes" ? "Buy Shoes of Fast Walk" : "Learn illusion spell";
+  wrap.appendChild(node("strong", "", label));
+  const select = document.createElement("select");
+  setTooltip(select, "Choose the character who pays for and receives this Scene 2 leprechaun result.");
+  for (const member of living) {
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = `${member.name} (${member.gold || 0}gp)`;
+    select.appendChild(option);
+  }
+  wrap.appendChild(select);
+  const input = document.createElement("input");
+  input.type = defaults.branchAction === "leprechaun_shoes" ? "number" : "text";
+  if (defaults.branchAction === "leprechaun_shoes") {
+    input.min = "1";
+    input.max = "4";
+    input.step = "1";
+    input.value = String(defaults.amount || 1);
+    setTooltip(input, "Number of shoe pairs to buy. Each pair costs 200 gp.");
+  } else {
+    input.placeholder = "Spell name, or include free";
+    input.value = defaults.reference || "Scene 2 illusion spell - choose spell";
+    setTooltip(input, "Enter the illusion spell name. Include the word free if three shoe pairs were bought and the lesson costs 0 gp.");
+  }
+  wrap.appendChild(input);
+  const btn = node("button", "primary", defaults.branchAction === "leprechaun_shoes" ? "Buy" : "Record spell");
+  btn.type = "button";
+  setButtonTooltip(btn, action.tooltip || "Apply this leprechaun Scene 2 result to the selected character.");
+  btn.disabled = !living.length;
+  btn.addEventListener("click", async () => {
+    try {
+      await runTagBranchActionWithDefaults({
+        branchAction: defaults.branchAction,
+        characterId: select.value,
+        reference: defaults.branchAction === "leprechaun_shoes" ? defaults.reference : input.value,
+        amount: defaults.branchAction === "leprechaun_shoes" ? Number(input.value || 1) : defaults.amount,
+      });
+    } catch (error) {
+      handleError(error);
+    }
+  });
+  wrap.appendChild(btn);
+  const help =
+    defaults.branchAction === "leprechaun_shoes"
+      ? "Costs 200 gp per pair and adds Shoes of Fast Walk to the selected character if they can pay."
+      : "Costs 100 gp unless the reference says free; records a pending illusion spell lesson on the selected character.";
+  wrap.appendChild(subline(help));
+  parent.appendChild(wrap);
+  return true;
+}
+
 function tagPromptDefaultsFromAction(action = {}, fallbackReference = "") {
   if (!action.action_type || action.action_type === "dialog") return {};
   const defaults = {
@@ -23443,6 +23504,7 @@ function renderTagRelevantActions(session = state.session) {
     : actions;
   const displayActions = [...focusedActions, ...actions.filter((action) => !focusedActions.includes(action))].slice(0, 6);
   for (const action of displayActions) {
+    if (appendLeprechaunGuidedAction(row, action, fallback)) continue;
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
     const tooltip = String(action.tooltip || "Prefill TAG Actions from the current generated-room prompt.");
@@ -23474,6 +23536,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
   const row = node("div", "tag-context-actions-row");
   for (const action of promptData.actions) {
     if (!action?.label) continue;
+    if (appendLeprechaunGuidedAction(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     appendTagContextualButton(
       row,

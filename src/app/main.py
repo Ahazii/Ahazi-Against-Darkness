@@ -1515,6 +1515,31 @@ def _optional_campaign_character(payload: dict[str, Any]) -> Character | None:
     return character
 
 
+def _sync_character_to_session_party(session: SessionState, character: Character | None) -> None:
+    if character is None:
+        return
+    for member in session.party:
+        if member.character_id != character.id:
+            continue
+        member.gold = character.gold
+        member.clues = character.clues
+        member.secrets = list(character.secrets)
+        member.current_life = character.current_life
+        member.max_life = character.max_life
+        member.inventory = list(character.inventory)
+        member.spells = list(character.spells)
+        member.statuses = list(character.statuses)
+        member.learned_expert_skills = list(character.learned_expert_skills)
+        member.learned_heroic_skills = list(character.learned_heroic_skills)
+        member.learned_legendary_skills = list(character.learned_legendary_skills)
+        member.expert_skill_targets = dict(character.expert_skill_targets)
+        member.expert_trained = character.expert_trained
+        member.heroic_trained = character.heroic_trained
+        member.legendary_trained = character.legendary_trained
+        member.epic_trained = character.epic_trained
+        break
+
+
 @app.post("/api/campaign/tag/branch-action")
 async def campaign_tag_branch_action(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, resolve_tag_branch_action, save_campaign
@@ -1565,6 +1590,7 @@ async def campaign_tag_route_action(payload: dict[str, Any]) -> dict[str, Any]:
     rewrite_result = apply_latest_tag_route_to_adventure(settings.data_dir, campaign)
     if character is not None:
         store.save("characters", character)
+        _sync_character_to_session_party(session, character)
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign, "character": character, "entry": entry, "rewrite_result": rewrite_result}
 
@@ -1617,6 +1643,7 @@ async def campaign_tag_xp_action(payload: dict[str, Any]) -> dict[str, Any]:
     )
     if character is not None:
         store.save("characters", character)
+        _sync_character_to_session_party(session, character)
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign, "character": character, "entry": entry}
 
@@ -1678,6 +1705,7 @@ async def campaign_tag_finance_action(payload: dict[str, Any]) -> dict[str, Any]
     )
     if character is not None:
         store.save("characters", character)
+        _sync_character_to_session_party(session, character)
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign, "character": character, "entry": entry}
 
@@ -4380,6 +4408,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     )
     if character is not None:
         store.save("characters", character)
+        _sync_character_to_session_party(session, character)
     campaign = save_campaign(store, campaign)
     _update_session_tag_procedure_state(session, branch_action, entry)
     _update_generated_tag_procedure_state(session, branch_action, entry)
