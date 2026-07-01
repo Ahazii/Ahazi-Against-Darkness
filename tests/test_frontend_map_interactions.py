@@ -1887,6 +1887,22 @@ def test_application_artwork_manager_and_slots_are_wired() -> None:
     assert "function renderArtworkManager()" in MODERN_PAGES_JS
     assert "Artwork Manager" in MODERN_PAGES_JS
     assert "DATA_DIR/assets/Application Artwork" in MODERN_PAGES_JS
+    assert 'id="modern-page-artwork"' in MODERN_HTML
+    assert 'id="modern-nav-artwork"' in MODERN_HTML
+    assert "function primaryApplicationArtworkForPage" in MODERN_PAGES_JS
+    assert "function renderShellArtwork" in MODERN_PAGES_JS
+    assert "modern-page-artwork-figure" in MODERN_PAGES_JS
+    assert "modern-nav-artwork-figure" in MODERN_PAGES_JS
+    assert "modern-home-tile-artwork" in MODERN_PAGES_JS
+    assert 'entry.category !== "app_assets"' in MODERN_PAGES_JS
+    assert "featureApplication" in MODERN_PAGES_JS
+    assert "modern-art-card-feature" in MODERN_PAGES_JS
+    assert ".modern-art-card-feature" in STYLES_CSS
+    assert ".modern-page-head.has-artwork" in STYLES_CSS
+    assert ".modern-page-artwork-figure" in STYLES_CSS
+    assert ".modern-nav-artwork-figure" in STYLES_CSS
+    assert ".modern-home-tile-artwork" in STYLES_CSS
+    assert "aspect-ratio: 16 / 9" in STYLES_CSS
     assert "application_artwork_slots_table" in MAIN_PY
 
 

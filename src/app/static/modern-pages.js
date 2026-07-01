@@ -100,6 +100,9 @@ const titleEl = document.getElementById("modern-page-title");
 const subtitleEl = document.getElementById("modern-page-subtitle");
 const descriptionEl = document.getElementById("modern-page-description");
 const helpEl = document.getElementById("modern-page-help");
+const pageHeadEl = document.querySelector(".modern-page-head");
+const pageArtworkEl = document.getElementById("modern-page-artwork");
+const navArtworkEl = document.getElementById("modern-nav-artwork");
 const rootEl = document.getElementById("modern-page-root");
 
 function currentPage() {
@@ -1538,6 +1541,27 @@ function artworkForTable(key) {
   return modernState.artwork.filter((art) => (art.table_keys || []).includes(key));
 }
 
+function primaryApplicationArtworkForPage(page, { requirePresent = true } = {}) {
+  const entries = artworkForPage(page).filter((entry) => entry.category === "app_assets");
+  if (!requirePresent) return entries[0] || null;
+  return entries.find((entry) => entry.asset_exists !== false) || null;
+}
+
+function renderArtworkFigure(entry, className, caption = "") {
+  const figure = el("figure", className);
+  figure.title = entry.hover || entry.summary || "Application artwork.";
+  const image = document.createElement("img");
+  image.src = artAssetUrl(entry);
+  image.alt = caption || entry.title || "Application artwork";
+  image.loading = "lazy";
+  image.addEventListener("error", () => {
+    figure.remove();
+  }, { once: true });
+  figure.appendChild(image);
+  if (caption) figure.appendChild(el("figcaption", "", caption));
+  return figure;
+}
+
 function renderArtworkImage(entry) {
   const frame = el("div", "modern-art-frame");
   const src = artAssetUrl(entry);
@@ -1563,10 +1587,11 @@ function renderArtworkImage(entry) {
   return frame;
 }
 
-function renderArtworkRows(entries, { compact = false } = {}) {
+function renderArtworkRows(entries, { compact = false, featureApplication = false } = {}) {
   const wrap = el("div", compact ? "modern-art-grid compact" : "modern-art-grid");
   for (const entry of entries) {
     const row = el("div", "modern-art-card");
+    if (featureApplication && !compact && entry.category === "app_assets") row.classList.add("modern-art-card-feature");
     row.title = entry.hover || entry.summary || "Artwork registry entry.";
     row.appendChild(renderArtworkImage(entry));
     const body = el("div", "modern-stack");
@@ -1581,11 +1606,26 @@ function renderArtworkRows(entries, { compact = false } = {}) {
 
 async function renderPageArtwork(page, title = "Relevant Artwork") {
   await loadArtwork();
-  const entries = artworkForPage(page);
+  const entries = artworkForPage(page).filter((entry) => entry.category !== "app_assets");
   if (!entries.length) return null;
   const panel = card(title, "Local artwork slots and licensed/private-use PDF crops relevant to this section. Missing files are expected until you populate DATA_DIR/assets, including DATA_DIR/assets/Application Artwork.");
-  panel.appendChild(renderArtworkRows(entries));
+  panel.appendChild(renderArtworkRows(entries, { featureApplication: true }));
   return panel;
+}
+
+async function renderShellArtwork(page) {
+  await loadArtwork();
+  if (pageArtworkEl) {
+    pageArtworkEl.replaceChildren();
+    const pageArt = page === "home" ? null : primaryApplicationArtworkForPage(page);
+    if (pageArt) pageArtworkEl.appendChild(renderArtworkFigure(pageArt, "modern-page-artwork-figure"));
+    if (pageHeadEl) pageHeadEl.classList.toggle("has-artwork", Boolean(pageArt));
+  }
+  if (navArtworkEl) {
+    navArtworkEl.replaceChildren();
+    const dashboardArt = primaryApplicationArtworkForPage("home");
+    if (dashboardArt) navArtworkEl.appendChild(renderArtworkFigure(dashboardArt, "modern-nav-artwork-figure", "Dashboard"));
+  }
 }
 
 function renderNeedsAttention() {
@@ -1615,13 +1655,16 @@ function renderNeedsAttention() {
   return panel;
 }
 
-function renderHome() {
+async function renderHome() {
+  await loadArtwork();
   rootEl.appendChild(renderNeedsAttention());
   rootEl.appendChild(renderAdventureCloseoutCockpit("Dashboard"));
   const grid = el("div", "modern-home-grid");
   for (const [page, meta] of Object.entries(PAGE_META)) {
     if (page === "home") continue;
     const section = card(meta[0], meta[1]);
+    const art = primaryApplicationArtworkForPage(page);
+    if (art) section.prepend(renderArtworkFigure(art, "modern-home-tile-artwork"));
     const row = actions();
     row.appendChild(link("Open", `/modern/${page}`, `Open ${meta[0]}.`, "link-button"));
     section.appendChild(row);
@@ -3837,6 +3880,9 @@ function renderPage() {
     );
   }
   rootEl.replaceChildren();
+  if (pageArtworkEl) pageArtworkEl.replaceChildren();
+  if (pageHeadEl) pageHeadEl.classList.remove("has-artwork");
+  if (navArtworkEl) navArtworkEl.replaceChildren();
   const result = {
     home: renderHome,
     characters: renderCharacters,
@@ -3858,6 +3904,7 @@ function renderPage() {
     developer: renderDeveloper,
   }[page]();
   Promise.resolve(result)
+    .then(() => renderShellArtwork(page))
     .then(() => renderPageArtwork(page))
     .then((panel) => {
       if (panel && currentPage() === page) rootEl.appendChild(panel);
