@@ -2616,10 +2616,10 @@ def _rules_tables_payload() -> dict:
             "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
         },
         {
-            "surface": "Social/vendor finale profiles",
+            "surface": "Finale mode profiles",
             "shown_in": "Generated Rumor and Guild Job modules.",
-            "player_use": "Marks scenes such as the leprechaun bargain as vendor/social finales instead of spawning proxy foes. The final room presents purchase or teaching actions, while the complication room remains narrative unless the source scene has a current-room procedure.",
-            "pdf_boundary": "The app may name supported choices and costs from checked scene metadata, but the player still chooses the receiver, spell, eligibility, and any optional hostile turn from the PDF/table context.",
+            "player_use": "Marks choice, procedure, service, and vendor finales so Bofto's star object, the false paladin-sword trail, Daroc's familiar, Deoldyn's training, the leprechaun bargain, and A Portrait in Red resolve through scene-specific buttons instead of proxy foes. Sewer Search now uses the named thief final boss instead of a sewer-danger proxy.",
+            "pdf_boundary": "The app may name supported choices and checked costs from indexed scene metadata, but the player still confirms receiver, spell, eligibility, exact optional ambush/hostile turns, and any printed consequence before applying it.",
         },
         {
             "surface": "Recovery and repair",

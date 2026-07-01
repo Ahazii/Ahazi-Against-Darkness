@@ -23285,11 +23285,19 @@ function generatedTagDirectorStep(session = state.session) {
   if (roomId === "tag-final-scene") {
     const actions = Array.isArray(promptData?.actions) ? promptData.actions.filter((action) => action?.label) : [];
     const choiceText = actions.length ? ` Available choices: ${actions.map((action) => action.label).join(" / ")}.` : "";
-    const isVendor = String(tagReference.finale_mode || "").toLowerCase() === "vendor";
+    const finaleMode = String(tagReference.finale_mode || "").toLowerCase();
+    const finaleHeadings = {
+      vendor: "Director: make the bargain",
+      service: "Director: choose the service",
+      social: "Director: resolve the scene choice",
+      choice: "Director: resolve the scene choice",
+      procedure: "Director: run the scene procedure",
+    };
+    const nonCombatFinale = ["vendor", "service", "social", "choice", "procedure"].includes(finaleMode);
     return {
       phase: "Finale",
-      heading: isVendor ? "Director: make the bargain" : "Director: resolve this lead's finale",
-      instruction: isVendor
+      heading: finaleHeadings[finaleMode] || "Director: resolve this lead's finale",
+      instruction: nonCombatFinale
         ? `${promptData?.body || tagReference.finale_instruction || "Choose the purchase or service the party wants before leaving."}${choiceText}`
         : `${promptData?.body || tagReference.finale_instruction || "Resolve the final foe, choice, or procedure shown by this lead."}${choiceText}`,
       playbook,

@@ -178,6 +178,16 @@
       "notes": "TAG A Portrait in Red: supernatural portrait threat for the generated guild-job finale. Use printed scene text for exact non-combat choices."
     },
     {
+      "name": "Sewer Thief",
+      "level_delta": 2,
+      "count": "1",
+      "life": 3,
+      "attacks": 1,
+      "tags": ["boss", "tag", "human", "thief"],
+      "treasure_rolls": 0,
+      "notes": "TAG Sewers Search: the thief with the silk rolls is the final boss after the 3-Clue search route. Capture alive for the printed interrogation bonus."
+    },
+    {
       "name": "Monoceros",
       "level_delta": 4,
       "count": "1",

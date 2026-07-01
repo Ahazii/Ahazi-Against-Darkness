@@ -700,8 +700,8 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Treat theft or confrontation as a manual TAG social choice before combat starts.",
         "final_title": "The Star Object",
         "final_description": "A star-shaped object hums in the vineyard. Use the TAG Scene 9 choices: steal, talk, or leave; record consequences manually.",
-        "final_foe": "Goblins",
-        "final_count": 4,
+        "finale_mode": "choice",
+        "finale_instruction": "Choose the Scene 9 resolution that actually applies: leave the object alone, question Bofto's family, steal it, or trigger the cursed-object follow-up.",
         "rewards": "Depends on the chosen Scene 9 resolution.",
         "final_prompt_actions": [
             {
@@ -735,7 +735,7 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         ],
         "rules": [
             "Rumor is crossed off once played.",
-            "This is primarily a choice scene; the installed encounter is a proxy if the table result turns hostile.",
+            "This is primarily a choice scene; do not install a proxy fight unless a later table result actually turns hostile.",
         ],
     },
     2: {
@@ -798,8 +798,8 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Scene 11 is a red herring with a 2-in-6 Riff-Raff or Outside ambush chance.",
         "final_title": "False Sword Trail",
         "final_description": "No paladin sword is here. Roll the Scene 11 ambush chance manually if you want the printed resolution.",
-        "final_foe": "Goblins",
-        "final_count": 4,
+        "finale_mode": "procedure",
+        "finale_instruction": "This is a red herring. Use the ambush button if the optional 2-in-6 ambush is being checked; otherwise record the false trail and return to settlement play.",
         "rewards": "No sword; possible ambush rewards only.",
         "final_prompt_actions": [
             {
@@ -811,7 +811,7 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
                 "amount": 2,
             }
         ],
-        "rules": ["Installed combat is a proxy for the optional ambush."],
+        "rules": ["The ambush is optional procedure text; no proxy combat is installed unless the table result produces one."],
     },
     4: {
         "title": "Mutant Fish Under the Bridge",
@@ -988,9 +988,9 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "side": "Beastmasters, druids, cat-like characters, or cat companions reduce the Clue burden.",
         "complication": "Scene 5 requires 2 Clues from town Streetwise, reduced to 1 with the listed cat/beast help.",
         "final_title": "The Familiar's Hiding Place",
-        "final_description": "The familiar is cornered by rough locals. Resolve the Clue spend before claiming the reward.",
-        "final_foe": "Goblins",
-        "final_count": 4,
+        "final_description": "The familiar is found after the party pays the required Clue cost or qualifies for the reduced cat/beast route.",
+        "finale_mode": "procedure",
+        "finale_instruction": "Confirm the Clue spend or reduced-Clue exception, then apply Daroc's reward. No fight is required by this scene unless your table adds one.",
         "rewards": "100 gp and 1 XP.",
         "clue_gate_cost": 2,
         "clue_gate_label": "Spend town Clues for Daroc's familiar",
@@ -1004,7 +1004,7 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
                 "amount": 100,
             }
         ],
-        "rules": ["Installed combat represents trouble around the familiar, not a mandatory PDF fight."],
+        "rules": ["This is a Clue-and-reward procedure; no mandatory proxy combat is installed."],
     },
     10: {
         "title": "Winged Things Over the Burgomaster's House",
@@ -1063,8 +1063,8 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Training costs 60 gp x level and grants one XP roll for Deadly Accuracy or Dead Shot.",
         "final_title": "Deoldyn's Range",
         "final_description": "Resolve payment and training; the encounter is only used if the meeting is interrupted.",
-        "final_foe": "Goblins",
-        "final_count": 4,
+        "finale_mode": "service",
+        "finale_instruction": "Choose the trainee, calculate the 60 gp x level payment, then mark the one qualifying archery XP roll.",
         "rewards": "One qualifying XP roll for the listed archery benefits.",
         "final_prompt_actions": [
             {
@@ -1082,7 +1082,7 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
                 "reference": "Scene 3 archery training XP roll",
             },
         ],
-        "rules": ["Installed combat is a proxy interruption, not required by the training scene."],
+        "rules": ["This is a paid training service; no proxy interruption fight is installed."],
     },
     12: {
         "title": "Shinta and Agaratha",
@@ -1580,8 +1580,8 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         "complication": "On the return journey, a surprised painting snatcher must be stopped within one turn or the portrait is lost.",
         "final_title": "Red Gallery",
         "final_description": "The painted commission must survive the return trip for the party to be paid.",
-        "final_foe": "Red Portrait Horror",
-        "final_count": 1,
+        "finale_mode": "procedure",
+        "finale_instruction": "Track the outbound checks, persuasion, return checks, and painting-snatch risk. If the artist and portrait survive the route, apply the commission pay.",
         "rewards": "200 gp to each surviving party member if the artist and portrait return.",
         "module_profile": {
             "target_rooms": "outbound and return wilderness escort",
@@ -1621,7 +1621,7 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
                 "amount": 0,
             },
         ],
-        "rules": ["Red Portrait Horror remains a proxy; the printed mission is primarily escort, persuasion, and painting-loss handling."],
+        "rules": ["The printed mission is primarily escort, persuasion, and painting-loss handling; no proxy final horror is installed."],
     },
     5: {
         "title": "Sewers Search",
@@ -1632,8 +1632,8 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
         "complication": "All empty rooms may be searched for Clues; 3 Clues reveal the thief in the next room.",
         "final_title": "Sewer Sump",
         "final_description": "The thief with the silk rolls is the Final Boss; capture alive for interrogation bonus.",
-        "final_foe": "Skeletons/Zombies",
-        "final_count": 6,
+        "final_foe": "Sewer Thief",
+        "final_count": 1,
         "rewards": "50 gp per character for the silk rolls, plus 100 gp if the thief is brought back alive.",
         "clue_gate_cost": 3,
         "clue_gate_label": "Spend 3 Clues to find the thief",
@@ -1693,7 +1693,7 @@ TAG_MINOR_QUEST_PROFILES: dict[int, dict[str, object]] = {
                 "amount": 0,
             }
         ],
-        "rules": ["Skeletons/Zombies are a sewer-danger proxy until sewer-specific foe tables are fully generated."],
+        "rules": ["The thief with the silk rolls is the final boss; sewer vermin and minion tables are handled as room procedures before the finale."],
     },
     6: {
         "title": "Monoceros Hunt",
@@ -5078,14 +5078,19 @@ def _tag_profile_actions(profile: dict[str, object], key: str) -> list[dict[str,
     actions = profile.get(key)
     if not isinstance(actions, list):
         return []
-    return [_tag_prompt_action_from_profile(action) for action in actions if _tag_prompt_action_from_profile(action)]
+    cleaned: list[dict[str, object]] = []
+    for action in actions:
+        clean = _tag_prompt_action_from_profile(action)
+        if clean:
+            cleaned.append(clean)
+    return cleaned
 
 
 def _tag_final_prompt_body(profile: dict[str, object], finale_guidance: str) -> str:
     mode = _tag_finale_mode(profile)
     instruction = str(profile.get("finale_instruction") or "").strip()
     rewards = str(profile.get("rewards") or "").strip()
-    if mode == "vendor":
+    if mode in {"vendor", "service"}:
         return (
             f"{profile.get('final_description') or 'The final scene is a bargain, service, or purchase opportunity.'} "
             f"{instruction or 'Choose the purchase or service the party wants, pick the receiving character, and confirm payment before leaving.'} "
@@ -5116,8 +5121,15 @@ def _tag_final_prompt_body(profile: dict[str, object], finale_guidance: str) -> 
 def _tag_final_prompt_title(profile: dict[str, object]) -> str:
     if profile.get("final_prompt_title"):
         return str(profile["final_prompt_title"])
-    if _tag_finale_mode(profile) == "vendor":
+    mode = _tag_finale_mode(profile)
+    if mode == "vendor":
         return "Bargain choices"
+    if mode == "service":
+        return "Service choices"
+    if mode in {"choice", "social"}:
+        return "Scene choices"
+    if mode == "procedure":
+        return "Scene procedure"
     return str(profile.get("final_title") or "Final scene")
 
 
@@ -5321,7 +5333,7 @@ def _tag_manifest(
     if lead_type == "thematic_dungeon":
         profile = _tag_enrich_thematic_profile(profile, lead_detail)
     finale_mode = _tag_finale_mode(profile)
-    noncombat_finale = finale_mode in {"vendor", "social", "choice", "procedure"} and not profile.get("final_foe")
+    noncombat_finale = finale_mode in {"vendor", "service", "social", "choice", "procedure"} and not profile.get("final_foe")
     final_foe = "" if noncombat_finale else str(profile.get("final_foe") or "Wraith")
     final_count = 0 if noncombat_finale else max(1, int(profile.get("final_count") or 1))
     final_extra_foes = [

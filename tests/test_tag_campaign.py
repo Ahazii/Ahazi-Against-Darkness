@@ -511,6 +511,48 @@ def test_tag_leprechaun_rumor_is_vendor_scene_not_proxy_combat() -> None:
     assert final_prompt["actions"][1]["amount"] == 100
 
 
+def test_tag_generated_noncombat_finales_do_not_install_proxy_fights(monkeypatch) -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+    expected = {
+        ("rumor", "1"): ("choice", "Scene choices", {"bofto_scene_choice", "bofto_theft_save"}),
+        ("rumor", "3"): ("procedure", "Scene procedure", {"tag_ambush_chance"}),
+        ("rumor", "9"): ("procedure", "Scene procedure", {"daroc_cat"}),
+        ("rumor", "11"): ("service", "Service choices", {"deoldyn_training", "mark_training_xp_roll"}),
+    }
+
+    for (lead_type, detail), (mode, title, actions) in expected.items():
+        manifest, _entry = build_tag_adventure_manifest(campaign, lead_type=lead_type, detail=detail)
+        result = validate_adventure_manifest(manifest, rules_repo=repo)
+
+        assert result.valid, result.errors
+        reference = manifest["source"]["parameters"]["tag_reference"]
+        assert reference["finale_mode"] == mode
+        assert reference["final_foes"] == []
+        assert reference["final_foe_proxy"] == ""
+        assert manifest["quest"]["complete_when"] == {"type": "room_reached", "room_id": "tag-final-scene"}
+        final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+        assert "encounter" not in final_room["triggers"][0]
+        final_prompt = reference["room_prompts"]["tag-final-scene"]
+        assert final_prompt["title"] == title
+        assert actions <= {action["action_value"] for action in final_prompt["actions"]}
+        assert not any(action["action_value"] == "claim_reward" for action in final_prompt["actions"])
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    portrait, _entry = build_tag_adventure_manifest(campaign, lead_type="guild_job", detail="1")
+    portrait_result = validate_adventure_manifest(portrait, rules_repo=repo)
+    assert portrait_result.valid, portrait_result.errors
+    portrait_ref = portrait["source"]["parameters"]["tag_reference"]
+    assert portrait_ref["finale_mode"] == "procedure"
+    assert portrait_ref["final_foes"] == []
+    assert portrait["quest"]["complete_when"] == {"type": "room_reached", "room_id": "tag-final-scene"}
+    assert "portrait_return_snatch" in {
+        action["action_value"]
+        for prompt in portrait_ref["room_prompts"].values()
+        for action in prompt.get("actions", [])
+    }
+
+
 def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
     campaign = default_campaign()
@@ -781,8 +823,11 @@ def test_tag_remaining_guild_jobs_carry_pdf_module_profiles(monkeypatch) -> None
             assert {"griffin_mountain_check", "griffin_nest_search", "griffin_egg_count", "griffin_egg_break"} <= action_values
         if quest_roll == 4:
             assert {"portrait_outbound_check", "portrait_persuasion", "portrait_return_snatch"} <= action_values
+            assert reference["finale_mode"] == "procedure"
+            assert reference["final_foes"] == []
         if quest_roll == 5:
             assert {"sewers_vermin", "sewers_minions", "sewers_disease", "clue_gate_unlocked", "capture_alive"} <= action_values
+            assert reference["final_foes"] == [{"name": "Sewer Thief", "count": 1}]
         if quest_roll == 6:
             assert {"monoceros_tracking", "monoceros_clue_encounter", "monoceros_hide", "capture_alive"} <= action_values
 

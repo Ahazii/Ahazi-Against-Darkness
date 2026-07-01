@@ -76,6 +76,7 @@ def test_tag_special_foes_are_live_spawn_names(repo: RulesRepository) -> None:
         "Bandit Chieftain",
         "Gorungar the Mighty",
         "Griffin",
+        "Sewer Thief",
         "Monoceros",
     ):
         assert name in foes
