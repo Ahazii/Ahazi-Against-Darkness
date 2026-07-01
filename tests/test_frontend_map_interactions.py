@@ -1864,6 +1864,9 @@ def test_user_artwork_placeholders_are_documented_slots() -> None:
         "assets/artwork/user/portraits/character_portrait_768x1024_REPLACE_WITH_PNG.txt",
     ]:
         assert Path(path).exists()
+    assert "DATA_DIR/assets/artwork/user/adventures/" in MAIN_PY
+    assert "The app serves DATA_DIR/assets first, then falls back to bundled /app/assets defaults." in MAIN_PY
+    assert "DATA_DIR/assets" in MODERN_PAGES_JS
 
 
 def test_mass_blessing_ui_sends_targets_and_conditions() -> None:

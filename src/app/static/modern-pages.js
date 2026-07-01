@@ -1578,7 +1578,7 @@ async function renderPageArtwork(page, title = "Relevant Artwork") {
   await loadArtwork();
   const entries = artworkForPage(page);
   if (!entries.length) return null;
-  const panel = card(title, "Local artwork slots and licensed/private-use PDF crops relevant to this section. Missing files are expected until you populate assets/rules_art/local/.");
+  const panel = card(title, "Local artwork slots and licensed/private-use PDF crops relevant to this section. Missing files are expected until you populate DATA_DIR/assets/rules_art/local/.");
   panel.appendChild(renderArtworkRows(entries));
   return panel;
 }
@@ -3690,9 +3690,9 @@ async function renderLibrary() {
   panel.appendChild(pdfRow);
   const notes = card("Background Import Plan", "I should not bulk-copy full PDF background text. Work book-by-book and section-by-section: you identify pages, I summarise into app-safe background notes and cite the PDF page.");
   notes.appendChild(el("p", "modern-home-status in-progress", "In progress: curated background summaries and approved artwork/map extraction."));
-  const artwork = card("Local Rules Artwork", "Artwork slots for relevant PDF sections. Files under assets/rules_art/local/ are ignored by git so personal-use or licensed art is not pushed accidentally.");
+  const artwork = card("Local Rules Artwork", "Artwork slots for relevant PDF sections. User-facing files live beside game.db under DATA_DIR/assets; /assets URLs prefer that folder and then fall back to bundled defaults.");
   artwork.appendChild(renderArtworkRows(modernState.artwork));
-  artwork.appendChild(el("p", "muted", "To populate a slot, create the named asset_path file under assets/. The dashboard will show it automatically after refresh."));
+  artwork.appendChild(el("p", "muted", "On Docker this is the shared appdata folder: DATA_DIR/assets, for example /data/assets/rules_art/local or /data/assets/artwork/user. The dashboard will show matching asset_path files automatically after refresh."));
   rootEl.append(panel, notes, artwork);
 }
 

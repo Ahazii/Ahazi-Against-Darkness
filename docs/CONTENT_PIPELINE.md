@@ -68,9 +68,9 @@ that attribution requirement under their license terms. The Icon Editor reads
 and writes `icons.json`, while `GET /api/rules/icons` also synthesizes default
 rows for room states, playable classes, monster categories, and each named
 monster. User-downloaded files should go under
-`assets/icons/user/`. The Docker image copies committed project assets to
-`/app/assets/icons/user/` automatically during deployment. The Icon Editor lists
-supported files in that folder and stores paths as `icons/user/name.svg`, so
+`DATA_DIR/assets/icons/user/` beside `game.db`. Bundled fallback icons still ship
+under `/app/assets/icons/user/`. The Icon Editor lists
+supported files from both places and stores paths as `icons/user/name.svg`, so
 normally you should assign internal files from the dropdown rather than upload
 from your PC. The play screen uses these definitions for marker hover text and
 the Map Icon Key. Existing `icons.json` rows override generated defaults; leave
@@ -188,11 +188,14 @@ Between-adventure gear uses `data/rules/equipment_shop.json` and the home
 Equipment Shop UI (`docs/ARCHITECTURE.md`).
 
 To show PDF scans or artwork beside each dashboard section/table, add an entry
-to `data/rules/artwork_registry.json`. Asset paths should normally point under
-`assets/rules_art/local/`, which is ignored by git. This lets a local personal
-copy use PDF-derived artwork without pushing extracted art to GitHub. Use `.png`
-paths for extractor-rendered PDF pages unless a separate image conversion step is
-added.
+to `data/rules/artwork_registry.json` or the override at
+`DATA_DIR/rules/artwork_registry.json`. Asset paths should normally point under
+`rules_art/local/` and the actual file should live at
+`DATA_DIR/assets/rules_art/local/`. The `/assets/<path>` route prefers
+`DATA_DIR/assets` and then falls back to bundled `/app/assets`, letting local
+personal copies use PDF-derived artwork without pushing extracted art to GitHub.
+Use `.png` paths for extractor-rendered PDF pages unless a separate image
+conversion step is added.
 
 Generate a configured local artwork slot with:
 

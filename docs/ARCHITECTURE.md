@@ -233,10 +233,11 @@ from the same home-bank pool and syncs the remaining total back to carried/banke
 session fields. The frontend clamps quantity buys to the selected hero's
 spendable gold and the API enforces the total price.
 
-Map element GIFs live in:
+Map element GIFs and other assets resolve through a two-layer asset path:
 
 ```text
-assets/tiles/
+DATA_DIR/assets/      user-facing overrides and additions, backed up with game.db
+assets/               bundled fallback assets inside the app/container
 ```
 
 The backend serves these at:
@@ -244,6 +245,11 @@ The backend serves these at:
 ```text
 /assets/tiles/<tile>.gif
 ```
+
+The `/assets/...` route checks `DATA_DIR/assets` first and then falls back to
+bundled `assets`. This keeps built-in tiles/icons available while allowing
+user-provided artwork, icons, tiles, and module assets to live in the appdata
+folder.
 
 Map element metadata is separate from image files. Starting elements are
 `01-06`; generated elements use two d6 faces as `11-66`. Fill in `tiles.json`

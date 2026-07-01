@@ -21,7 +21,7 @@ current with every rules or content change.
 - Player data export/import for character and party backups
 - Local icon registry and Icon Editor for assigning downloaded SVG/PNG files,
   source URLs, licenses, and attribution, with automatic discovery of files in
-  `assets/icons/user`
+  `DATA_DIR/assets/icons/user`
 - Random dungeon session creation
 - Active sessions reload after browser refresh, with explicit server-side saved games
 - Session play opens in its own game view, with a return path to setup
@@ -109,13 +109,17 @@ http://192.168.1.55:8001
 src/app/                  FastAPI app, schemas, SQLite store, rules engine
 src/app/static/           Browser UI
 data/rules/               Packaged starter rule data
-assets/tiles/             Reused dungeon map element images
-assets/icons/user/        User-supplied downloaded icon assets
+assets/                   Bundled fallback image/icon/tile assets
+DATA_DIR/assets/          User-facing artwork, icons, tiles, and module assets
 docs/                     Architecture, roadmap, and content pipeline docs
 tools/                    Offline PDF/content helper scripts
 Rules/                    Local rule PDFs, ignored by git
 Adventures/               Local adventure PDFs, ignored by git
 ```
+
+Runtime user data that should be backed up lives under `DATA_DIR`, including
+`game.db`, `Adventures/`, `rules/`, and `assets/`. In Docker/Unraid this is the
+appdata share, for example `\\TOWER\appdata\ahazi-against-darkness`.
 
 ## Documentation
 

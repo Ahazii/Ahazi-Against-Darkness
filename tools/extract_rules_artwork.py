@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -10,6 +11,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "data" / "rules" / "artwork_registry.json"
+
+
+def data_dir() -> Path:
+    configured = Path(os.getenv("DATA_DIR", ".data"))
+    return configured if configured.is_absolute() else ROOT / configured
 
 
 def find_pdftoppm() -> str | None:
@@ -80,12 +86,12 @@ def main() -> None:
     if not source_pdf.endswith(".pdf") or source_page <= 0:
         raise SystemExit("This entry does not point at a concrete PDF page.")
     if not asset_path.startswith("rules_art/local/"):
-        raise SystemExit("Refusing to write outside assets/rules_art/local/.")
+        raise SystemExit("Refusing to write outside DATA_DIR/assets/rules_art/local/.")
 
     pdf_path = ROOT / "Rules" / source_pdf
     if not pdf_path.exists():
         raise SystemExit(f"PDF not found: {pdf_path}")
-    output_path = ROOT / "assets" / asset_path
+    output_path = data_dir() / "assets" / asset_path
     if output_path.exists() and not args.force:
         raise SystemExit(f"Asset already exists. Re-run with --force to overwrite: {output_path}")
     output_path.parent.mkdir(parents=True, exist_ok=True)

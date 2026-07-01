@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib
+import json
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from fastapi.testclient import TestClient
@@ -12,6 +14,36 @@ def test_random_session_smoke(monkeypatch) -> None:
         main = importlib.import_module("app.main")
         main = importlib.reload(main)
         client = TestClient(main.app)
+        data_path = Path(data_dir)
+        user_asset = data_path / "assets" / "test" / "override.txt"
+        user_asset.parent.mkdir(parents=True, exist_ok=True)
+        user_asset.write_text("user asset wins", encoding="utf-8")
+        user_icon = data_path / "assets" / "icons" / "user" / "custom-smoke.svg"
+        user_icon.parent.mkdir(parents=True, exist_ok=True)
+        user_icon.write_text("<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>", encoding="utf-8")
+        artwork_override = data_path / "rules" / "artwork_registry.json"
+        artwork_override.write_text(
+            json.dumps(
+                {
+                    "entries": [
+                        {
+                            "id": "smoke_user_asset",
+                            "title": "Smoke User Asset",
+                            "asset_path": "test/override.txt",
+                            "dashboard_pages": ["home"],
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        assert client.get("/assets/test/override.txt").text == "user asset wins"
+        assert client.get("/assets/tiles/01.gif").status_code == 200
+        assert client.get("/assets/../src/app/main.py").status_code == 404
+        artwork_payload = client.get("/api/rules/artwork").json()
+        smoke_art = next(entry for entry in artwork_payload["entries"] if entry["id"] == "smoke_user_asset")
+        assert smoke_art["asset_exists"] is True
+        assert smoke_art["asset_source"] == "user"
         classes = client.get("/api/rules/classes").json()
         tiles = client.get("/api/rules/tiles").json()
         class_ids = [item["id"] for item in classes[:4]]
@@ -27,6 +59,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         icon_files = client.get("/api/assets/icon-files")
         assert icon_files.status_code == 200
         assert isinstance(icon_files.json(), list)
+        assert "icons/user/custom-smoke.svg" in icon_files.json()
         icon_payload[0]["notes"] = "smoke-test"
         save_icons = client.put("/api/rules/icons", json=icon_payload)
         assert save_icons.status_code == 200
@@ -95,9 +128,17 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert update_party_response.json()["name"] == "Updated Smoke Party"
         blocked_delete = client.delete(f"/api/characters/{character_ids[0]}")
         assert blocked_delete.status_code == 400
+        throwaway_ids = []
+        for index, class_id in enumerate(class_ids, start=1):
+            response = client.post(
+                "/api/characters",
+                json={"name": f"Throwaway Hero {index}", "class_id": class_id},
+            )
+            assert response.status_code == 200
+            throwaway_ids.append(response.json()["id"])
         throwaway_party_response = client.post(
             "/api/parties",
-            json={"name": "Throwaway Party", "character_ids": character_ids},
+            json={"name": "Throwaway Party", "character_ids": throwaway_ids},
         )
         assert throwaway_party_response.status_code == 200
         delete_party_response = client.delete(f"/api/parties/{throwaway_party_response.json()['id']}")

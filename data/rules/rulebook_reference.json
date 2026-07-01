@@ -3300,8 +3300,8 @@
         "personal use",
         "licensed"
       ],
-      "summary": "Manual artwork slots live under assets/artwork/user with dimension-labelled placeholder files.",
-      "body": "The app now provides placeholder text files under assets/artwork/user for adventure scenes, Underground Caves, camp, settlement, final Boss, treasure map, and character portrait artwork. Replace these placeholders locally with PNG, JPG, or WebP files using the dimensions in the filename. Copyrighted PDF crops should stay local unless publication rights are secured.",
+      "summary": "Manual artwork slots live under DATA_DIR/assets/artwork/user with dimension-labelled placeholder files.",
+      "body": "The app now seeds placeholder text files under DATA_DIR/assets/artwork/user for adventure scenes, Underground Caves, camp, settlement, final Boss, treasure map, and character portrait artwork. Replace these placeholders locally with PNG, JPG, WebP, GIF, or other browser-supported image files using the dimensions in the filename. Copyrighted PDF crops should stay local unless publication rights are secured.",
       "implementation_status": "implemented"
     },
     {
@@ -3346,7 +3346,7 @@
         "placeholders"
       ],
       "summary": "Tables documents user artwork placeholder slots and recommended dimensions.",
-      "body": "The modern Tables page includes user_artwork_placeholders_table. It documents the placeholder asset paths, recommended image sizes, and intended use for local or licensed artwork slots.",
+      "body": "The modern Tables page includes user_artwork_placeholders_table. It documents the DATA_DIR/assets placeholder paths, recommended image sizes, and intended use for local or licensed artwork slots. Runtime /assets URLs resolve DATA_DIR/assets first and then fall back to bundled defaults.",
       "implementation_status": "implemented"
     },
     {
@@ -3363,7 +3363,7 @@
         "dashboard"
       ],
       "summary": "Local-only registry for licensed or personal-use artwork tied to rules references, tables, and dashboard pages.",
-      "body": "The app can show relevant art beside dashboard sections, rules reference entries, and tables through data/rules/artwork_registry.json. The configured asset paths point under assets/rules_art/local/, which is ignored by git. This means personal-use PDF crops or licensed images can appear locally without being pushed to GitHub.",
+      "body": "The app can show relevant art beside dashboard sections, rules reference entries, and tables through data/rules/artwork_registry.json or the override at DATA_DIR/rules/artwork_registry.json. Configured asset paths are relative to /assets; user files should live under DATA_DIR/assets, normally DATA_DIR/assets/rules_art/local/. The /assets route serves DATA_DIR/assets first and then falls back to bundled /app/assets.",
       "implementation_status": "implemented"
     },
     {
@@ -3378,8 +3378,8 @@
         "local assets",
         "art extraction"
       ],
-      "summary": "PDF artwork can be used locally through ignored assets, but extracted copyrighted art should not be committed unless publication rights are secured.",
-      "body": "Use tools/extract_rules_artwork.py to render a configured local artwork slot from an owned PDF. The generated image goes to assets/rules_art/local/ and is intentionally ignored by git. If you later obtain a publishing agreement, the same registry entries can point to approved committed assets or packaged licensed art.",
+      "summary": "PDF artwork can be used locally through DATA_DIR assets, but extracted copyrighted art should not be committed unless publication rights are secured.",
+      "body": "Use tools/extract_rules_artwork.py to render a configured local artwork slot from an owned PDF. The generated image goes to DATA_DIR/assets/rules_art/local/ beside game.db. If you later obtain a publishing agreement, the same registry entries can point to approved committed assets or packaged licensed art.",
       "implementation_status": "implemented"
     },
     {

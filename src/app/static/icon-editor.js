@@ -47,7 +47,7 @@ async function loadIcons() {
     editor.icons = icons;
     editor.iconFiles = iconFiles;
     renderIcons();
-    setStatus(`${editor.icons.length} icons | ${editor.iconFiles.length} files found in assets/icons/user`);
+    setStatus(`${editor.icons.length} icons | ${editor.iconFiles.length} files found in DATA_DIR/assets/icons/user plus bundled fallbacks`);
   } catch (error) {
     setStatus(error.message);
   }

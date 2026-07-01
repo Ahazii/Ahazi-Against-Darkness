@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
@@ -359,9 +359,43 @@ ICON_FILE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
 
 app = FastAPI(title="Ahazi Against Darkness", version="0.26.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
-app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 app.mount("/docs", StaticFiles(directory=settings.root_dir / "docs"), name="docs")
 app.mount("/Rules", StaticFiles(directory=settings.root_dir / "Rules", check_dir=False), name="rules-pdfs")
+
+
+def _safe_relative_asset_path(asset_path: str) -> Path:
+    candidate = Path(asset_path)
+    if candidate.is_absolute() or any(part in {"", ".", ".."} for part in candidate.parts):
+        raise HTTPException(status_code=404, detail="Asset not found.")
+    return candidate
+
+
+def _resolve_asset_file(asset_path: str) -> tuple[Path, str] | tuple[None, None]:
+    relative = _safe_relative_asset_path(asset_path)
+    for root, source in (
+        (settings.user_assets_dir, "user"),
+        (settings.packaged_assets_dir, "bundled"),
+    ):
+        base = root.resolve()
+        resolved = (base / relative).resolve()
+        if not resolved.is_relative_to(base):
+            continue
+        if resolved.is_file():
+            return resolved, source
+    return None, None
+
+
+def _asset_exists(asset_path: str) -> bool:
+    resolved, _source = _resolve_asset_file(asset_path)
+    return resolved is not None
+
+
+@app.get("/assets/{asset_path:path}")
+async def serve_asset(asset_path: str) -> FileResponse:
+    resolved, _source = _resolve_asset_file(asset_path)
+    if resolved is None:
+        raise HTTPException(status_code=404, detail="Asset not found.")
+    return FileResponse(resolved)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -1869,7 +1903,10 @@ async def rules_artwork() -> dict:
     for row in rules.artwork_registry():
         item = dict(row)
         asset_path = str(item.get("asset_path") or "").strip()
-        item["asset_exists"] = bool(asset_path and (settings.assets_dir / asset_path).exists())
+        resolved, source = _resolve_asset_file(asset_path) if asset_path else (None, None)
+        item["asset_exists"] = resolved is not None
+        item["asset_source"] = source or ""
+        item["user_asset_path"] = f"assets/{asset_path}" if asset_path else ""
         entries.append(item)
     return {"entries": entries}
 
@@ -2214,33 +2251,39 @@ def _rules_tables_payload() -> dict:
     data["user_artwork_placeholders_table"] = [
         {
             "slot": "tag_treasure_map_underground_caves_1600x900",
-            "path": "assets/artwork/user/adventures/",
+            "path": "DATA_DIR/assets/artwork/user/adventures/",
             "recommended_size": "1600x900",
             "use": "Scene art for TAG Treasure Map: Underground Caves.",
         },
         {
             "slot": "generated_adventure_scene_1600x900",
-            "path": "assets/artwork/user/adventures/",
+            "path": "DATA_DIR/assets/artwork/user/adventures/",
             "recommended_size": "1600x900",
             "use": "Overview art for generated or imported adventures.",
         },
         {
             "slot": "camp_1600x900 / settlement_1600x900",
-            "path": "assets/artwork/user/locations/",
+            "path": "DATA_DIR/assets/artwork/user/locations/",
             "recommended_size": "1600x900",
             "use": "Camp and friendly settlement scene art.",
         },
         {
             "slot": "final_boss_1024x1024",
-            "path": "assets/artwork/user/monsters/",
+            "path": "DATA_DIR/assets/artwork/user/monsters/",
             "recommended_size": "1024x1024",
             "use": "Final Boss portrait or encounter image.",
         },
         {
             "slot": "treasure_map_1024x768 / character_portrait_768x1024",
-            "path": "assets/artwork/user/items/ and assets/artwork/user/portraits/",
+            "path": "DATA_DIR/assets/artwork/user/items/ and DATA_DIR/assets/artwork/user/portraits/",
             "recommended_size": "1024x768 or 768x1024",
             "use": "Treasure map item art and character portrait art.",
+        },
+        {
+            "slot": "asset resolution",
+            "path": "/assets/<relative-path>",
+            "recommended_size": "n/a",
+            "use": "The app serves DATA_DIR/assets first, then falls back to bundled /app/assets defaults.",
         },
     ]
     data["modern_tag_workflow_table"] = [
@@ -2688,14 +2731,16 @@ async def list_monsters() -> dict[str, list[dict]]:
 
 @app.get("/api/assets/icon-files")
 async def list_icon_files() -> list[str]:
-    icon_dir = settings.assets_dir / "icons" / "user"
-    if not icon_dir.exists():
-        return []
-    files = [
-        f"icons/user/{path.relative_to(icon_dir).as_posix()}"
-        for path in icon_dir.rglob("*")
-        if path.is_file() and path.suffix.lower() in ICON_FILE_EXTENSIONS
-    ]
+    files: set[str] = set()
+    for root in (settings.packaged_assets_dir, settings.user_assets_dir):
+        icon_dir = root / "icons" / "user"
+        if not icon_dir.exists():
+            continue
+        files.update(
+            f"icons/user/{path.relative_to(icon_dir).as_posix()}"
+            for path in icon_dir.rglob("*")
+            if path.is_file() and path.suffix.lower() in ICON_FILE_EXTENSIONS
+        )
     return sorted(files)
 
 

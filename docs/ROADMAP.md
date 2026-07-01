@@ -32,8 +32,9 @@ Status: active priority.
 Status: dashboard support implemented; asset population is local/licensing-dependent.
 
 - Rules artwork is tracked in `data/rules/artwork_registry.json` and displayed on relevant modern dashboard pages, Rules Reference entries, and Tables rows.
-- Generated or extracted PDF artwork belongs under ignored `assets/rules_art/local/` unless a publishing agreement allows it to be committed.
-- Manual player-provided artwork placeholders live under `assets/artwork/user/`. Replace the dimension-labelled text files locally with licensed or personal-use PNG/JPG/WebP art.
+- Generated or extracted PDF artwork belongs under `DATA_DIR/assets/rules_art/local/` unless a publishing agreement allows it to be committed.
+- Manual player-provided artwork placeholders live under `DATA_DIR/assets/artwork/user/`. Replace the dimension-labelled text files locally with licensed or personal-use PNG/JPG/WebP art.
+- `/assets/<path>` now resolves from `DATA_DIR/assets` first, then bundled app assets. Bundled defaults can stay in the container; user-facing art/icons/tiles/module assets should be placed beside `game.db`.
 - Next artwork work: choose exact crops per PDF section, add `crop_pct` bounds where useful, render with `tools/extract_rules_artwork.py`, then review each slot visually before deciding whether any image can be distributed.
 
 ## Phase 1 - Clean Foundation
