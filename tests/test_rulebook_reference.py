@@ -52,6 +52,12 @@ APP_ONLY_REFERENCE_IDS = {
     "settlement_management_workflow",
     "character_management_deep_polish",
     "go_adventure_setup_readiness",
+    "go_adventure_tabbed_workflow",
+    "exploration_narrative_layout",
+    "user_artwork_placeholders",
+    "go_adventure_tabbed_workflow_table",
+    "exploration_narrative_layout_table",
+    "user_artwork_placeholders_table",
     "rules_artwork_registry",
     "pdf_artwork_boundary",
 }

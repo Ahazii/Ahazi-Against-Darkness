@@ -19597,15 +19597,18 @@ class RandomDungeonEngine:
                 quest.tag_procedure_signoff = True
                 recorded["finale_defeated"] = True
                 recorded["completed"] = True
+                recorded["route_recorded"] = True
                 state["map_cave_room_count"] = recorded
+                state["route_recorded"] = True
+                state["route_note"] = "Auto route: Underground caves target room reached and final Boss defeated."
                 state["next_action"] = (
                     "Underground caves destination complete: final Boss defeated. "
-                    "Claim the Lady in White reward when ready, after any treasure, XP, Guild share, banking, or storage choices."
+                    "Claim the Treasure Map quest reward when ready, after any treasure, XP, Guild share, banking, or storage choices."
                 )
                 quest.tag_procedure_state = state
                 session.log.append(
                     "TAG Treasure Map objective complete: Underground caves final Boss defeated. "
-                    "Claim the Lady in White reward when ready."
+                    "Claim the Treasure Map quest reward when ready."
                 )
                 return
         from .forsaken_depths_map import is_fd_ruleset

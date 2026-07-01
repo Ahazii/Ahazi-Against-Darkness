@@ -3114,7 +3114,87 @@ async function renderGoAdventure() {
     saved.appendChild(row);
   }
   if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
-  rootEl.append(panel, readiness, gate, tagLead, renderTagLeadSelectorPanel(adventure), renderRumorLeadAuditPanel(adventure), renderRumorSignoffChecklist(), renderTreasureMapLeadAuditPanel(adventure), renderTreasureMapSignoffChecklist(), renderThematicDungeonLeadAuditPanel(adventure), renderThematicDungeonSignoffChecklist(), renderAdventureCloseoutCockpit("Go Adventure"), renderTagSignoffPanel("TAG Lead / Start Signoff"), renderTagActionLogExplorer(), sessions, saved);
+  const guildJobs = card(
+    "Guild Jobs",
+    "Create Guild Job generated adventures from the Generate tab, then start them from Start. Guild Jobs are TAG leads: fixed rolls can be automated, while printed choices remain player choices."
+  );
+  const guildJobActions = actions();
+  guildJobActions.append(
+    button("Select Guild Job generator", "Switch to Generate and preselect Guild Job as the lead type.", async () => {
+      tagLeadType.value = "guild_job";
+      activateGoAdventureTab("generate");
+      setStatus("Guild Job selected. Enter an optional result number or leave blank to roll.");
+    }),
+    button("Open Guild Management", "Open Guild Management to review Guild members, coffers, jobs, and campaign assignment before generating a Guild Job.", async () => {
+      window.location.href = "/modern/guild";
+    }, "secondary")
+  );
+  guildJobs.appendChild(
+    modernStatusRow(
+      "How Guild Jobs should run",
+      "Generate the job, start it as an imported module, let the app deliver the lead in the Narrative, then use Current Objective for procedure and closeout tracking.",
+      "Use Guild Jobs when the adventure comes from TAG guild work rather than a random dungeon start."
+    )
+  );
+  guildJobs.appendChild(guildJobActions);
+  const reference = card(
+    "Reference",
+    "Review closeout, signoff, action history, and rules/table links without crowding the Start flow."
+  );
+  const referenceActions = actions();
+  referenceActions.append(
+    button("Rules Reference", "Open the Rules Reference filtered to Go Adventure and TAG lead support.", async () => {
+      window.location.href = "/modern/rules-reference?help=go%20adventure%20tag%20lead";
+    }, "secondary"),
+    button("Rules Tables", "Open the Rules Tables dashboard for generated adventures, TAG leads, treasure maps, monsters, and artwork-linked tables.", async () => {
+      window.location.href = "/modern/tables?search=tag";
+    }, "secondary")
+  );
+  reference.appendChild(referenceActions);
+  const tabs = el("div", "modern-tabs");
+  const panels = {};
+  function activateGoAdventureTab(key) {
+    for (const buttonEl of tabs.querySelectorAll(".modern-tab-button")) {
+      const selected = buttonEl.dataset.tab === key;
+      buttonEl.classList.toggle("selected", selected);
+      buttonEl.setAttribute("aria-selected", selected ? "true" : "false");
+    }
+    Object.entries(panels).forEach(([panelKey, panelEl]) => {
+      panelEl.classList.toggle("hidden", panelKey !== key);
+    });
+  }
+  function addGoAdventureTab(key, label, title, nodes) {
+    const tab = button(label, title, async () => activateGoAdventureTab(key), "secondary modern-tab-button");
+    tab.dataset.tab = key;
+    tab.setAttribute("role", "tab");
+    tabs.appendChild(tab);
+    const panelEl = el("section", "modern-tab-panel hidden");
+    panelEl.dataset.tabPanel = key;
+    panelEl.setAttribute("role", "tabpanel");
+    panelEl.append(...nodes.filter(Boolean));
+    panels[key] = panelEl;
+  }
+  addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate]);
+  addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [sessions, saved]);
+  addGoAdventureTab("generate", "Generate", "Create TAG leads from rumors, treasure maps, thematic dungeons, or Guild jobs.", [
+    tagLead,
+    renderTagLeadSelectorPanel(adventure),
+    renderRumorLeadAuditPanel(adventure),
+    renderRumorSignoffChecklist(),
+    renderTreasureMapLeadAuditPanel(adventure),
+    renderTreasureMapSignoffChecklist(),
+    renderThematicDungeonLeadAuditPanel(adventure),
+    renderThematicDungeonSignoffChecklist(),
+  ]);
+  addGoAdventureTab("guild-jobs", "Guild Jobs", "Review Guild Job generated-adventure flow and open the Guild manager.", [guildJobs]);
+  addGoAdventureTab("reference", "Reference", "Review closeout, signoff, TAG action log, rules reference, and tables.", [
+    reference,
+    renderAdventureCloseoutCockpit("Go Adventure"),
+    renderTagSignoffPanel("TAG Lead / Start Signoff"),
+    renderTagActionLogExplorer(),
+  ]);
+  rootEl.append(tabs, ...Object.values(panels));
+  activateGoAdventureTab("start");
 }
 
 async function renderRulesReference() {

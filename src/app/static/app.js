@@ -56,6 +56,12 @@ const state = {
   campHirelingsOpen: false,
   partySuppliesOpen: false,
   partySheetOpen: {},
+  explorationPanels: {
+    objective: true,
+    commands: true,
+    exits: true,
+    sheets: true,
+  },
   logPanelHeight: 240,
   mapStageHeight: null,
   sidePanelWidth: 420,
@@ -432,6 +438,7 @@ const combatCinemaToggleBtn = document.getElementById("combat-cinema-toggle");
 const combatRoundToastEl = document.getElementById("combat-round-toast");
 const exitActions = document.getElementById("exit-actions");
 const partyState = document.getElementById("party-state");
+const partySheetsPanel = document.getElementById("party-sheets-panel");
 const partySheetsExpandBtn = document.getElementById("party-sheets-expand");
 const partySheetsCollapseBtn = document.getElementById("party-sheets-collapse");
 const campPanel = document.getElementById("camp-panel");
@@ -511,6 +518,10 @@ const explorationCommandBar = document.getElementById("exploration-command-bar")
 const explorationCommandForm = document.getElementById("exploration-command-form");
 const explorationCommandInput = document.getElementById("exploration-command-input");
 const explorationCommandHints = document.getElementById("exploration-command-hints");
+const toggleCurrentObjectiveBtn = document.getElementById("toggle-current-objective");
+const toggleTextCommandsBtn = document.getElementById("toggle-text-commands");
+const toggleExitsPanelBtn = document.getElementById("toggle-exits-panel");
+const togglePartySheetsPanelBtn = document.getElementById("toggle-party-sheets-panel");
 const mapLogPanel = document.getElementById("map-log-panel");
 const mapLogRow = document.getElementById("map-log-row");
 const mapStageWrap = document.getElementById("map-stage-wrap");
@@ -626,8 +637,8 @@ const ACTION_TOOLTIPS = {
   rest:
     "Rulebook Rest (p.114, once/adventure): cleared room + cleared adjacent tiles, optional nail doors (1 bag of nails per door, 4gp). Each hero recovers 1 Life or 1 spent ability, then roll 1-in-6 for Wandering Monsters.",
   saveSession: "Save this session to the server so you can resume it later from the home screen.",
-  logSummary: "Summary log: show outcomes without roll, lookup, or math detail.",
-  logVerbose: "Verbose log: include rolls, table lookups, and modifier math.",
+  logSummary: "Summary narrative: show outcomes without roll, lookup, or math detail.",
+  logVerbose: "Verbose narrative: include rolls, table lookups, and modifier math.",
   usePotion:
     "Drink a Potion of Healing: restore all lost Life. Once per hero per adventure; free action even in combat. Barbarians cannot use potions — transfer to an ally.",
   useHolyWater:
@@ -4497,7 +4508,7 @@ function setLogMode(mode) {
 function buildLogModeToggle() {
   const wrap = node("div", "log-mode-toggle", "");
   wrap.setAttribute("role", "group");
-  wrap.setAttribute("aria-label", "Log detail");
+  wrap.setAttribute("aria-label", "Narrative detail");
   const summary = node("button", `secondary log-mode-btn${state.logMode === "summary" ? " selected" : ""}`, "Summary");
   summary.type = "button";
   summary.setAttribute("aria-pressed", state.logMode === "summary" ? "true" : "false");
@@ -4832,7 +4843,7 @@ function renderCombatRailLog(session) {
   if (!combatRailLogEl) return;
   combatRailLogEl.replaceChildren();
   const head = node("div", "combat-rail-log-head");
-  head.appendChild(node("strong", "", "Log"));
+  head.appendChild(node("strong", "", "Narrative"));
   head.appendChild(buildLogColourKey());
   head.appendChild(buildLogModeToggle());
   combatRailLogEl.appendChild(head);
@@ -16812,6 +16823,7 @@ function renderSession() {
   cachedSessionRender("log", logRenderSignature(session), () => renderLog(session));
   safeSessionRender("currentObjective", () => renderCurrentObjectiveBanner(session));
   safeSessionRender("explorationCommand", () => renderExplorationCommandBar(session));
+  applyExplorationPanelVisibility();
   if (tagOpenAdventureActions) {
     const isTagGenerated =
       Boolean(session.tag_banking_enabled) ||
@@ -16986,7 +16998,7 @@ function safeSessionRender(label, renderFn) {
       partyState.replaceChildren(node("div", "item", "Could not render party sheets."));
     }
     if (label === "log" && sessionLog) {
-      sessionLog.replaceChildren(node("div", "item", "Could not render adventure log."));
+      sessionLog.replaceChildren(node("div", "item", "Could not render adventure narrative."));
     }
   }
 }
@@ -17493,7 +17505,7 @@ function nextTagTreasureMapProcedure(quest) {
 function tagTreasureMapQuestNextText(quest) {
   const state = tagTreasureMapQuestState(quest);
   if (tagTreasureMapQuestSignedOff(quest) || quest?.completed) {
-    return state.next_action || "Destination procedure is complete. Claim the Lady in White reward when the party is ready, then finish Guild share, banking/storage, XP, and closeout review.";
+    return state.next_action || "Destination procedure is complete. Claim the Treasure Map quest reward when the party is ready, then finish Guild share, banking/storage, XP, and closeout review.";
   }
   const next = nextTagTreasureMapProcedure(quest);
   if (next) return next.guidance;
@@ -17705,7 +17717,7 @@ function currentObjectiveForSession(session) {
     const claimStatus = questClaimStatus(session, mapQuest);
     if (claimStatus.ok) {
       return {
-        title: "Current objective: claim the Lady in White reward",
+        title: "Current objective: claim the Treasure Map reward",
         body: "The Treasure Map destination is complete. Claim the Epic Reward when you are ready, then review Guild share, banking/storage, XP, and adventure closeout.",
         tone: "success",
         action: { label: "Claim Quest Reward", kind: "advance", advanceAction: "claim_quest_reward" },
@@ -17959,6 +17971,61 @@ function questJournalNode(session, quest) {
     journal.appendChild(line);
   });
   return journal;
+}
+
+function questPrettyTitle(value) {
+  const text = String(value || "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  return text.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function tagDestinationLabelForQuest(quest) {
+  const text = `${quest?.description || ""} ${quest?.tag_treasure_map_destination || ""}`.toLowerCase();
+  if (text.includes("underground caves") || quest?.tag_treasure_map_destination === 1) return "Underground Caves";
+  if (text.includes("forgotten temple") || quest?.tag_treasure_map_destination === 2) return "Forgotten Temple";
+  if (text.includes("forest camp") || quest?.tag_treasure_map_destination === 3) return "Forest Camp";
+  if (text.includes("ruined structure") || quest?.tag_treasure_map_destination === 4) return "Ruined Structure";
+  if (text.includes("humanoid camp") || quest?.tag_treasure_map_destination === 5) return "Humanoid Camp";
+  if (text.includes("lich") || quest?.tag_treasure_map_destination === 6) return "Lich's Lair";
+  return "";
+}
+
+function questDisplayTitle(session, quest) {
+  if (!quest) return "Quest";
+  if (quest.key && quest.key.startsWith("fd_")) return questPrettyTitle(quest.key.replace(/^fd_/, "FD "));
+  const tagReference = tagReferenceForGeneratedAdventure(session);
+  const manifestQuest = session?.imported_manifest?.quest || {};
+  const description = String(quest.description || "");
+  if (description.toLowerCase().includes("treasure map")) {
+    const destination = tagDestinationLabelForQuest(quest) || questPrettyTitle(tagReference?.lead_detail);
+    return destination ? `Treasure Map: ${destination}` : "Follow the Treasure Map";
+  }
+  if (manifestQuest.title) return String(manifestQuest.title);
+  if (tagReference?.title) return String(tagReference.title);
+  if (tagReference?.lead_detail) return questPrettyTitle(tagReference.lead_detail);
+  if (session?.imported_title || session?.imported_manifest?.title) return session.imported_title || session.imported_manifest.title;
+  if (description) {
+    const trimmed = description.replace(/^quest:\s*/i, "").trim();
+    return trimmed.length > 58 ? `${trimmed.slice(0, 55).trim()}...` : trimmed;
+  }
+  return "Lady in White Quest";
+}
+
+function questSourceLabel(session, quest) {
+  if (!quest) return "";
+  const giverTile = questTile(session, quest);
+  if (quest.key && quest.key.startsWith("fd_")) return `Forsaken Depths quest${giverTile?.title ? ` - ${giverTile.title}` : ""}`;
+  const tagReference = tagReferenceForGeneratedAdventure(session);
+  const description = String(quest.description || "").toLowerCase();
+  if (description.includes("treasure map")) {
+    const origin = tagReference?.lead_type ? questPrettyTitle(tagReference.lead_type) : "Treasure Map";
+    return `${origin} procedure - the app rolls and tracks fixed procedures; it asks the player only when the source calls for a choice.`;
+  }
+  if (session?.adventure_type === "imported" || session?.adventure_type === "ai") {
+    const title = session.imported_title || session.imported_manifest?.title || "Imported adventure";
+    return `Imported adventure - ${title}`;
+  }
+  return giverTile?.title ? `From ${giverTile.title}` : "From Lady in White";
 }
 
 function appendGeneratedTagCloseoutPanel(parent, session, quest) {
@@ -18565,11 +18632,9 @@ function renderOngoingQuests(session) {
   for (const quest of activeQuests) {
     const card = node("div", "ongoing-quest-card");
     const giverTile = questTile(session, quest);
-    const questGiverLabel =
-      quest.key && quest.key.startsWith("fd_")
-        ? `FD Quest — ${giverTile?.title || "quest giver"}`
-        : "From Lady in White";
-    card.appendChild(node("strong", "", questGiverLabel));
+    card.appendChild(node("strong", "", questDisplayTitle(session, quest)));
+    const sourceLabel = questSourceLabel(session, quest);
+    if (sourceLabel) card.appendChild(node("div", "ongoing-quest-guidance", sourceLabel));
     if (quest.fd_oracle_character_id) {
       const enchanted = (session.party || []).find((m) => m.character_id === quest.fd_oracle_character_id);
       if (enchanted) {
@@ -19000,6 +19065,15 @@ function loadLayoutPrefs() {
     if (typeof saved.partyRegroupOpen === "boolean") state.partyRegroupOpen = saved.partyRegroupOpen;
     if (typeof saved.campHirelingsOpen === "boolean") state.campHirelingsOpen = saved.campHirelingsOpen;
     if (typeof saved.partySuppliesOpen === "boolean") state.partySuppliesOpen = saved.partySuppliesOpen;
+    if (saved.explorationPanels && typeof saved.explorationPanels === "object") {
+      state.explorationPanels = {
+        ...state.explorationPanels,
+        objective: saved.explorationPanels.objective !== false,
+        commands: saved.explorationPanels.commands !== false,
+        exits: saved.explorationPanels.exits !== false,
+        sheets: saved.explorationPanels.sheets !== false,
+      };
+    }
     if (typeof saved.combatRailHeight === "number") {
       state.combatRailHeight = clampFloat(saved.combatRailHeight, 140, 260);
     }
@@ -19027,6 +19101,7 @@ function saveLayoutPrefs() {
         partyRegroupOpen: state.partyRegroupOpen,
         campHirelingsOpen: state.campHirelingsOpen,
         partySuppliesOpen: state.partySuppliesOpen,
+        explorationPanels: state.explorationPanels,
         combatRailHeight: state.combatRailHeight,
         combatSideRailWidth: state.combatSideRailWidth,
         combatHeroDrawerHeight: state.combatHeroDrawerHeight,
@@ -22544,6 +22619,29 @@ function appendAbyssCampaignActions(parent, session, tile) {
   parent.appendChild(block);
 }
 
+function applyExplorationPanelVisibility() {
+  const panels = state.explorationPanels || {};
+  currentObjectiveBanner?.classList.toggle("panel-user-hidden", panels.objective === false);
+  explorationCommandBar?.classList.toggle("panel-user-hidden", panels.commands === false);
+  mapExitsPanel?.classList.toggle("panel-user-hidden", panels.exits === false);
+  logExitsResizer?.classList.toggle("panel-user-hidden", panels.exits === false);
+  partySheetsPanel?.classList.toggle("panel-user-hidden", panels.sheets === false);
+  toggleCurrentObjectiveBtn?.setAttribute("aria-pressed", panels.objective === false ? "false" : "true");
+  toggleTextCommandsBtn?.setAttribute("aria-pressed", panels.commands === false ? "false" : "true");
+  toggleExitsPanelBtn?.setAttribute("aria-pressed", panels.exits === false ? "false" : "true");
+  togglePartySheetsPanelBtn?.setAttribute("aria-pressed", panels.sheets === false ? "false" : "true");
+  toggleCurrentObjectiveBtn?.classList.toggle("selected", panels.objective !== false);
+  toggleTextCommandsBtn?.classList.toggle("selected", panels.commands !== false);
+  toggleExitsPanelBtn?.classList.toggle("selected", panels.exits !== false);
+  togglePartySheetsPanelBtn?.classList.toggle("selected", panels.sheets !== false);
+}
+
+function setExplorationPanelVisibility(key, open) {
+  state.explorationPanels = { ...(state.explorationPanels || {}), [key]: Boolean(open) };
+  applyExplorationPanelVisibility();
+  saveLayoutPrefs();
+}
+
 function tagReferenceForGeneratedAdventure(session) {
   const manifest = session?.imported_manifest || {};
   const source = manifest.source || {};
@@ -22750,6 +22848,9 @@ function generatedTagLifecycleState(session = state.session) {
   }
   const campaign = state.campaign || {};
   if ((campaign.tag_adventure_routes || []).length) lifecycle.route_recorded = true;
+  if (quest.tag_procedure_state?.route_recorded || quest.tag_procedure_state?.map_cave_room_count?.route_recorded) {
+    lifecycle.route_recorded = true;
+  }
   const tagLogText = (campaign.tag_downtime_log || [])
     .slice(-8)
     .map((item) => `${item.action || ""} ${item.result_text || ""}`)
@@ -29719,7 +29820,7 @@ function renderLog(session) {
 
 function buildLogColourKey() {
   const key = node("div", "log-colour-key");
-  key.setAttribute("aria-label", "Log colour key");
+  key.setAttribute("aria-label", "Narrative colour key");
   const chips = [
     ["log-key-party-damage", "Party dmg", "Red: damage or Life loss suffered by party members."],
     ["log-key-party-heal", "Party heal", "Green: Life restored to party members."],
@@ -30091,6 +30192,18 @@ mapElementCapCustom?.addEventListener("input", () => {
     if (mapElementCapCustom.value !== raw) mapElementCapCustom.value = raw;
   }
   writeStartSetupPrefs();
+});
+toggleCurrentObjectiveBtn?.addEventListener("click", () => {
+  setExplorationPanelVisibility("objective", state.explorationPanels?.objective === false);
+});
+toggleTextCommandsBtn?.addEventListener("click", () => {
+  setExplorationPanelVisibility("commands", state.explorationPanels?.commands === false);
+});
+toggleExitsPanelBtn?.addEventListener("click", () => {
+  setExplorationPanelVisibility("exits", state.explorationPanels?.exits === false);
+});
+togglePartySheetsPanelBtn?.addEventListener("click", () => {
+  setExplorationPanelVisibility("sheets", state.explorationPanels?.sheets === false);
 });
 
 startSession.addEventListener("click", async () => {

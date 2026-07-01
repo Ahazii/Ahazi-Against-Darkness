@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 ## Summary
 
@@ -10,6 +10,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 
 ### Validation status (June 2026)
 
+- **Exploration Narrative / Go Adventure tab pass (2026-07-01):** The live adventure Log is now labelled **Narrative** in exploration and combat focus. Exploration header controls can show/hide Current Objective, Text Commands, Exits, and Character Sheets to make the map and Narrative less cramped. Go Adventure is split into Start, Resume, Generate, Guild Jobs, and Reference tabs. Ongoing Quest cards now derive titles/sources from TAG/imported module context instead of labelling every imported quest as Lady in White. Underground Caves completion records the route automatically when the target-room Boss is defeated. Tables now includes `go_adventure_tabbed_workflow_table`, `exploration_narrative_layout_table`, and `user_artwork_placeholders_table`. Manual artwork placeholders live under `assets/artwork/user/`.
 - **TAG Treasure Map clarity pass (2026-06-30):** Generated Treasure Map modules now separate ordinary room treasure from Map Leads To destination procedure guidance. Underground caves prompts are labelled as room-target automation, side-room logs explain when to use Claim Treasure, the modern Treasure Map audit panel includes current-room treasure guidance, and Rules Reference/Tables wording documents the split.
 - **TAG resumed Treasure Map compatibility pass (2026-06-30):** Older generated Treasure Map manifests and resumed session logs now translate legacy `Apply The Map Leads To...` notes into player-facing guidance. TAG Actions workflow text now starts with the Claim Treasure vs TAG procedure split, makes character selection optional for map procedure rolls, and names the Underground caves room-target branch directly.
 - **TAG direct procedure prompt pass (2026-06-30):** Exploration TAG prompt rows now run safe procedure branches directly, so Underground caves room target and similar table/count rolls no longer require opening TAG Actions, choosing a character, selecting Branch, and finding a second run button. The TAG Actions dialog remains available for edits/character-specific choices and can be dragged away from the log.

@@ -2141,6 +2141,102 @@ def _rules_tables_payload() -> dict:
             "override": "Not required.",
         },
     ]
+    data["go_adventure_tabbed_workflow_table"] = [
+        {
+            "tab": "Start",
+            "contains": "Start New Adventure, Setup Check, and Closeout Gate.",
+            "player_use": "Choose party/module/rules and start only after hard blocks are clear.",
+            "rules_boundary": "Start checks are app workflow; printed rules still control adventure resolution.",
+        },
+        {
+            "tab": "Resume",
+            "contains": "Active sessions and saved games.",
+            "player_use": "Continue existing play without confusing it with creating a fresh adventure.",
+            "rules_boundary": "No rules automation; this is session management.",
+        },
+        {
+            "tab": "Generate",
+            "contains": "TAG lead creation plus Rumor, Treasure Map, and Thematic Dungeon audit/signoff panels.",
+            "player_use": "Create TAG modules, then start them as imported adventures.",
+            "rules_boundary": "The app rolls fixed lead details when requested; printed choices remain player choices.",
+        },
+        {
+            "tab": "Guild Jobs",
+            "contains": "Guild Job guidance and a shortcut to select the Guild Job generator.",
+            "player_use": "Use when the adventure comes from Guild work rather than a normal random start.",
+            "rules_boundary": "Guild Job procedure support is app-authored workflow around TAG source references.",
+        },
+        {
+            "tab": "Reference",
+            "contains": "Closeout, generated-lead signoff, TAG Action Log, Rules Reference, and Tables links.",
+            "player_use": "Review after play or before creating another lead.",
+            "rules_boundary": "Reference links point to implementation notes and source pages; they do not copy full PDF text.",
+        },
+    ]
+    data["exploration_narrative_layout_table"] = [
+        {
+            "control": "Narrative",
+            "affects": "The live adventure text stream formerly labelled Log.",
+            "player_use": "Read room prose, procedure results, combat summaries, treasure notices, and closeout guidance.",
+            "automation": "Summary/Verbose changes how much roll and lookup detail is visible.",
+        },
+        {
+            "control": "Current Objective",
+            "affects": "The next-step guidance banner.",
+            "player_use": "Show it when you want the app to say what to do next; hide it when the map needs more room.",
+            "automation": "For supported TAG procedures it can run stored/idempotent rolls or show the exact next play-state target.",
+        },
+        {
+            "control": "Text Commands",
+            "affects": "Typed exploration command entry.",
+            "player_use": "Use commands such as look, search, claim, rest, or go north 1.",
+            "automation": "Commands call the same session actions as buttons.",
+        },
+        {
+            "control": "Exits",
+            "affects": "Door and passage list beside the Narrative.",
+            "player_use": "Open while choosing where to move; hide when the map and Narrative need the space.",
+            "automation": "Exit buttons use the app's current legal exit state.",
+        },
+        {
+            "control": "Character Sheets",
+            "affects": "Party sheet panel in the exploration side rail.",
+            "player_use": "Open for Life, inventory, equipment, spells, statuses, transfer, and character actions.",
+            "automation": "Sheet actions use the same validated backend endpoints as the older controls.",
+        },
+    ]
+    data["user_artwork_placeholders_table"] = [
+        {
+            "slot": "tag_treasure_map_underground_caves_1600x900",
+            "path": "assets/artwork/user/adventures/",
+            "recommended_size": "1600x900",
+            "use": "Scene art for TAG Treasure Map: Underground Caves.",
+        },
+        {
+            "slot": "generated_adventure_scene_1600x900",
+            "path": "assets/artwork/user/adventures/",
+            "recommended_size": "1600x900",
+            "use": "Overview art for generated or imported adventures.",
+        },
+        {
+            "slot": "camp_1600x900 / settlement_1600x900",
+            "path": "assets/artwork/user/locations/",
+            "recommended_size": "1600x900",
+            "use": "Camp and friendly settlement scene art.",
+        },
+        {
+            "slot": "final_boss_1024x1024",
+            "path": "assets/artwork/user/monsters/",
+            "recommended_size": "1024x1024",
+            "use": "Final Boss portrait or encounter image.",
+        },
+        {
+            "slot": "treasure_map_1024x768 / character_portrait_768x1024",
+            "path": "assets/artwork/user/items/ and assets/artwork/user/portraits/",
+            "recommended_size": "1024x768 or 768x1024",
+            "use": "Treasure map item art and character portrait art.",
+        },
+    ]
     data["modern_tag_workflow_table"] = [
         {
             "surface": "TAG Workflow Summary",
@@ -2346,7 +2442,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Current objective banner",
             "shown_in": "Exploration log/command area.",
-            "player_use": "Puts the next useful action beside the log: resolve combat/traps first, claim ordinary room treasure with Claim Treasure, run or review the current Treasure Map procedure, sign off destination choices, or claim the Lady in White reward once the procedure is complete.",
+            "player_use": "Puts the next useful action beside the Narrative: resolve combat/traps first, claim ordinary room treasure with Claim Treasure, run or review the current Treasure Map procedure, sign off destination choices, or claim the quest reward once the procedure is complete.",
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]
@@ -3801,7 +3897,7 @@ def _update_session_tag_procedure_state(session: SessionState, branch_action: st
         quest.tag_procedure_signoff = True
         if not any("TAG Treasure Map objective complete" in line for line in session.log):
             session.log.append(
-                "TAG Treasure Map objective complete: destination procedure logged. Claim the Lady in White reward when ready, after any treasure, Guild share, banking, and XP signoff."
+                "TAG Treasure Map objective complete: destination procedure logged. Claim the Treasure Map quest reward when ready, after any treasure, Guild share, banking, and XP signoff."
             )
 
 
@@ -3879,7 +3975,7 @@ async def session_tag_treasure_map_signoff(session_id: str, payload: dict[str, A
         "updated_at": now_utc(),
     }
     state["latest"] = "manual_signoff"
-    state["next_action"] = "Destination procedure signed off. Claim the Lady in White reward when the party is ready, then finish Guild share, banking/storage, XP, and closeout review."
+    state["next_action"] = "Destination procedure signed off. Claim the Treasure Map quest reward when the party is ready, then finish Guild share, banking/storage, XP, and closeout review."
     quest.tag_procedure_state = state
     quest.tag_procedure_signoff = True
     quest.completed = True

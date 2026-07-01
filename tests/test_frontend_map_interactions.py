@@ -22,6 +22,7 @@ MODERN_HTML = Path("src/app/static/modern.html").read_text(encoding="utf-8")
 MODERN_PAGES_JS = Path("src/app/static/modern-pages.js").read_text(encoding="utf-8")
 ICON_EDITOR_JS = Path("src/app/static/icon-editor.js").read_text(encoding="utf-8")
 DOCKERFILE = Path("Dockerfile").read_text(encoding="utf-8")
+MAIN_PY = Path("src/app/main.py").read_text(encoding="utf-8")
 
 
 # ── Helper ─────────────────────────────────────────────────────────────────────
@@ -601,6 +602,10 @@ def test_quest_panel_shows_disabled_turn_in_reason() -> None:
     assert "function questClaimStatus(session, quest)" in APP_JS
     assert "function questObjectiveRows(session, quest)" in APP_JS
     assert "function questJournalNode(session, quest)" in APP_JS
+    assert "function questDisplayTitle(session, quest)" in APP_JS
+    assert "function questSourceLabel(session, quest)" in APP_JS
+    assert "Treasure Map: ${destination}" in APP_JS
+    assert "Imported adventure - ${title}" in APP_JS
     status = _function_body("questClaimStatus", APP_JS)
     assert "Return to the Quest-giver's tile" in status
     assert "Quest target is not yet correctly subdued or slain." in status
@@ -1135,18 +1140,19 @@ def test_api_validation_errors_are_formatted_for_status() -> None:
     assert "Request failed:" in formatter
 
 
-# ── Log mode controls ─────────────────────────────────────────────────────────
+# ── Narrative mode controls ───────────────────────────────────────────────────
 
 def test_log_controls_are_summary_verbose_not_rolls_math_or_expand() -> None:
     """
-    Log detail is one explicit mode: Summary hides rolls/lookups/math, Verbose
+    Narrative detail is one explicit mode: Summary hides rolls/lookups/math, Verbose
     includes them.  The old Rolls/Math checkboxes and Expand Log controls should
     not return because they split one concern across three controls.
     """
+    assert ">Narrative<" in INDEX_HTML
     assert 'id="log-mode-summary"' in INDEX_HTML
     assert 'id="log-mode-verbose"' in INDEX_HTML
-    assert 'title="Summary log: show outcomes without roll, lookup, or math detail."' in INDEX_HTML
-    assert 'title="Verbose log: include rolls, table lookups, and modifier math."' in INDEX_HTML
+    assert 'title="Summary narrative: show outcomes without roll, lookup, or math detail."' in INDEX_HTML
+    assert 'title="Verbose narrative: include rolls, table lookups, and modifier math."' in INDEX_HTML
     assert 'id="show-rolls"' not in INDEX_HTML
     assert 'id="show-math"' not in INDEX_HTML
     assert "Expand log" not in INDEX_HTML
@@ -1821,6 +1827,36 @@ def test_exploration_command_bar_stays_visible_and_typable() -> None:
     assert "flex-shrink: 0" in STYLES_CSS.split(".exploration-command-bar {", 1)[1].split("}", 1)[0]
 
 
+def test_exploration_panels_can_be_toggled_from_header() -> None:
+    for element_id in [
+        "toggle-current-objective",
+        "toggle-text-commands",
+        "toggle-exits-panel",
+        "toggle-party-sheets-panel",
+        "party-sheets-panel",
+    ]:
+        assert f'id="{element_id}"' in INDEX_HTML
+    assert "function applyExplorationPanelVisibility()" in APP_JS
+    assert "function setExplorationPanelVisibility(key, open)" in APP_JS
+    assert "explorationPanels" in APP_JS
+    assert ".panel-user-hidden" in STYLES_CSS
+    assert ".exploration-panel-toggle" in STYLES_CSS
+
+
+def test_user_artwork_placeholders_are_documented_slots() -> None:
+    for path in [
+        "assets/artwork/user/README.md",
+        "assets/artwork/user/adventures/tag_treasure_map_underground_caves_1600x900_REPLACE_WITH_PNG.txt",
+        "assets/artwork/user/adventures/generated_adventure_scene_1600x900_REPLACE_WITH_PNG.txt",
+        "assets/artwork/user/locations/camp_1600x900_REPLACE_WITH_PNG.txt",
+        "assets/artwork/user/locations/settlement_1600x900_REPLACE_WITH_PNG.txt",
+        "assets/artwork/user/monsters/final_boss_1024x1024_REPLACE_WITH_PNG.txt",
+        "assets/artwork/user/items/treasure_map_1024x768_REPLACE_WITH_PNG.txt",
+        "assets/artwork/user/portraits/character_portrait_768x1024_REPLACE_WITH_PNG.txt",
+    ]:
+        assert Path(path).exists()
+
+
 def test_mass_blessing_ui_sends_targets_and_conditions() -> None:
     assert "function appendMassBlessingTargeting(container, session, member)" in APP_JS
     assert "mass_blessing_target_ids" in APP_JS
@@ -2146,6 +2182,15 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "tag_thematic_dungeon_playthrough_audit" in MODERN_PAGES_JS
     assert "TAG Action Log" in MODERN_PAGES_JS
     assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
+    assert "Start\", \"Start a fresh adventure" in MODERN_PAGES_JS
+    assert "Resume\", \"Resume active adventures" in MODERN_PAGES_JS
+    assert "Generate\", \"Create TAG leads" in MODERN_PAGES_JS
+    assert "Guild Jobs\", \"Review Guild Job" in MODERN_PAGES_JS
+    assert "Reference\", \"Review closeout" in MODERN_PAGES_JS
+    assert ".modern-tabs" in STYLES_CSS
+    assert "go_adventure_tabbed_workflow_table" in MAIN_PY
+    assert "exploration_narrative_layout_table" in MAIN_PY
+    assert "user_artwork_placeholders_table" in MAIN_PY
     assert "Class dossier" in MODERN_PAGES_JS
     assert "modern-class-info" in MODERN_PAGES_JS
     assert "Create / Save Troupe" in MODERN_PAGES_JS

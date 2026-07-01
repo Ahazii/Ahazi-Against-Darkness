@@ -353,6 +353,32 @@ h2 {
   justify-content: start;
 }
 
+.modern-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.modern-tab-button {
+  width: auto;
+  min-width: 0;
+  text-align: left;
+}
+
+.modern-tab-button.selected,
+.exploration-panel-toggle.selected {
+  border-color: rgba(201, 162, 39, 0.72);
+  background: rgba(201, 162, 39, 0.16);
+  color: var(--text);
+}
+
+.modern-tab-panel {
+  display: grid;
+  gap: 10px;
+}
+
 .modern-row {
   display: grid;
   gap: 5px;
@@ -3076,6 +3102,22 @@ button.secondary,
 
 .current-objective-banner.hidden {
   display: none;
+}
+
+.current-objective-banner.panel-user-hidden,
+.exploration-command-bar.panel-user-hidden,
+.map-exits-dock.panel-user-hidden,
+.log-exits-resizer.panel-user-hidden,
+.party-sheets-panel.panel-user-hidden {
+  display: none;
+}
+
+.exploration-panel-toggle {
+  width: auto;
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 8px;
+  text-align: left;
 }
 
 .current-objective-banner.tag,

@@ -5568,7 +5568,7 @@ def _treasure_map_reward_notes(map_roll: int, destination_title: str) -> dict[st
         1: {
             "rewards": "Underground caves procedure: roll/log the d6+3 room target. In live play the app counts rooms, turns the target room into the Treasure Map final Boss room, dead-ends unopened exits there, and completes the objective when that Boss is defeated.",
             "side": "This side-room treasure is ordinary room treasure; use Claim Treasure if you want to collect it now. The map destination procedure is separate: for Underground caves, roll/log the d6+3 room target, then keep exploring while the app counts rooms and handles the target-room final Boss.",
-            "final": "Underground caves closeout: after the app reaches the target room and the final Boss is defeated, review double maximum treasure handling, XP, Guild share, banking, and storage before claiming the Lady in White reward.",
+            "final": "Underground caves closeout: after the app reaches the target room and the final Boss is defeated, review double maximum treasure handling, XP, Guild share, banking, and storage before claiming the Treasure Map quest reward.",
         },
         2: {
             "rewards": "Forgotten temple procedure: resolve the idol value, cult leader scroll chance, cultist treasure, XP, and how the heavy idol is carried or stored.",
