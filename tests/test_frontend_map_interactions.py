@@ -2188,6 +2188,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Guild Jobs\", \"Review Guild Job" in MODERN_PAGES_JS
     assert "Reference\", \"Review closeout" in MODERN_PAGES_JS
     assert ".modern-tabs" in STYLES_CSS
+    assert "renderTagWorkflowDashboard(\"go\")," in MODERN_PAGES_JS
+    assert "modern-tag-lead-detail" not in MODERN_PAGES_JS
+    assert "leadTypes[Math.floor(Math.random() * leadTypes.length)]" in MODERN_PAGES_JS
+    assert "detail: \"\"" in MODERN_PAGES_JS
     assert "go_adventure_tabbed_workflow_table" in MAIN_PY
     assert "exploration_narrative_layout_table" in MAIN_PY
     assert "user_artwork_placeholders_table" in MAIN_PY
@@ -2256,7 +2260,8 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "Load Saved Game",
         "Create TAG Adventure Lead",
         "modern-tag-lead-type",
-        "modern-tag-lead-detail",
+        "modern-tag-lead-random",
+        "Random TAG lead: choose the lead family and the result randomly.",
         "Create TAG Module",
         "It is selected in Adventure/module.",
         "latestSessionPerParty",

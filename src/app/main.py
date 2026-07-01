@@ -2144,9 +2144,9 @@ def _rules_tables_payload() -> dict:
     data["go_adventure_tabbed_workflow_table"] = [
         {
             "tab": "Start",
-            "contains": "Start New Adventure, Setup Check, and Closeout Gate.",
-            "player_use": "Choose party/module/rules and start only after hard blocks are clear.",
-            "rules_boundary": "Start checks are app workflow; printed rules still control adventure resolution.",
+            "contains": "Start New Adventure controls plus a compact ready status. Setup Check and Closeout Gate details appear only when warnings or blocks exist.",
+            "player_use": "Choose party/module/rules and start; expand visible warnings only when the app says review is needed.",
+            "rules_boundary": "Start checks remain enforced by the backend; printed rules still control adventure resolution.",
         },
         {
             "tab": "Resume",
@@ -2156,9 +2156,9 @@ def _rules_tables_payload() -> dict:
         },
         {
             "tab": "Generate",
-            "contains": "TAG lead creation plus Rumor, Treasure Map, and Thematic Dungeon audit/signoff panels.",
-            "player_use": "Create TAG modules, then start them as imported adventures.",
-            "rules_boundary": "The app rolls fixed lead details when requested; printed choices remain player choices.",
+            "contains": "TAG Workflow Summary, TAG lead creation, and Rumor, Treasure Map, and Thematic Dungeon audit/signoff panels.",
+            "player_use": "Use Random to let the app choose the lead family and result, or uncheck it to choose the family and let the app roll within that family.",
+            "rules_boundary": "The app rolls fixed lead family/result values when requested; printed choices remain player choices.",
         },
         {
             "tab": "Guild Jobs",

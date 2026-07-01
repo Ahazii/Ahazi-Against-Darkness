@@ -2926,7 +2926,6 @@ function renderAiAdventures() {
 
 async function renderGoAdventure() {
   const prefs = readModernPrefs();
-  rootEl.appendChild(renderTagWorkflowDashboard("go"));
   rootEl.appendChild(renderGuide("Adventure Workflow", [
     "Start New creates a fresh session from the selected party and module.",
     "Resume Adventure reopens active in-progress sessions; Saved Games are listed separately.",
@@ -2960,17 +2959,39 @@ async function renderGoAdventure() {
   const overrideRow = el("label", "modern-check-row");
   overrideRow.title = overrideStart.title;
   overrideRow.append(overrideStart, el("span", "", "Start anyway after reviewing overridable closeout warnings"));
+  const startSummary = el("div", "modern-list modern-start-summary");
+  let latestReadinessRows = [];
   let latestGate = null;
+  function drawStartSummary() {
+    startSummary.replaceChildren();
+    const setupIssues = latestReadinessRows.filter(([, , status]) => status !== "ok");
+    const gateIssues = latestGate?.issues || [];
+    startSummary.appendChild(
+      modernStatusRow(
+        "Ready status",
+        setupIssues.length || gateIssues.length
+          ? `${setupIssues.length} setup issue(s) · ${gateIssues.length} closeout/guidance issue(s)`
+          : "Ready to start.",
+        setupIssues.length || gateIssues.length
+          ? "Open the visible Setup Check or Closeout Gate details below only when something needs review."
+          : "Setup Check and Closeout Gate are still enforced in the background when Start Adventure is pressed."
+      )
+    );
+  }
   function drawReadiness() {
     readiness.querySelectorAll(".modern-row").forEach((node) => node.remove());
     const rows = adventureReadinessRows(party.value, { adventureType: type.value, adventureId: adventure.value, profileId: profile.value, mapLimitValue: mapLimit.value });
+    latestReadinessRows = rows;
     const blocks = adventureReadinessBlocks(rows).length;
+    const visibleIssues = rows.filter(([, , status]) => status !== "ok");
+    readiness.classList.toggle("hidden", !visibleIssues.length);
     readiness.appendChild(modernStatusRow("Start readiness", blocks ? `${blocks} blocking issue(s) must be resolved before Start Adventure.` : "No blocking setup issues detected.", blocks ? "Start Adventure is blocked until critical setup issues are fixed." : "Warnings may remain if you deliberately start with injured or under-equipped characters."));
     for (const [title, body, status, hint] of rows) {
       const item = modernStatusRow(title, body, hint || (status === "warn" || status === "block" ? "Resolve this warning before starting a normal adventure." : "This setup item is ready."));
       item.classList.add(status === "ok" ? "modern-row-ok" : "modern-row-warn");
       readiness.appendChild(item);
     }
+    drawStartSummary();
   }
   async function drawCloseoutGate() {
     gateRows.replaceChildren();
@@ -2979,6 +3000,7 @@ async function renderGoAdventure() {
     const blocks = issues.filter((issue) => issue.severity === "block").length;
     const overrides = issues.filter((issue) => issue.severity === "override").length;
     const warnings = issues.filter((issue) => issue.severity === "warn").length;
+    gate.classList.toggle("hidden", !issues.length);
     gateRows.appendChild(modernStatusRow("Gate summary", latestGate.can_start ? `${blocks} block(s) · ${overrides} override warning(s) · ${warnings} warning(s)` : `${blocks} blocking issue(s) must be resolved.`, latestGate.requires_override ? "Explicit override is required for closeout/guidance warnings." : "Hard blocks cannot be overridden."));
     if (!issues.length) {
       gateRows.appendChild(el("p", "muted", "No campaign closeout, roster, context, or active-session warnings for this party."));
@@ -2989,8 +3011,9 @@ async function renderGoAdventure() {
       gateRows.appendChild(row);
     }
     if (latestGate.requires_override) gateRows.appendChild(overrideRow);
+    drawStartSummary();
   }
-  panel.append(field("Party", party), field("Adventure type", type), field("Adventure/module", adventure), field("Random ruleset", profile), field("XP system", xp), field("Map mode", mapMode), field("Map limit", mapLimit));
+  panel.append(field("Party", party), field("Adventure type", type), field("Adventure/module", adventure), field("Random ruleset", profile), field("XP system", xp), field("Map mode", mapMode), field("Map limit", mapLimit), startSummary);
   drawReadiness();
   await drawCloseoutGate();
   party.addEventListener("change", () => {
@@ -3017,14 +3040,26 @@ async function renderGoAdventure() {
     ["thematic_dungeon", "Thematic Dungeon"],
     ["guild_job", "Guild Job"],
   ]);
-  const tagLeadDetail = input("number", "modern-tag-lead-detail", "Optional result number: Rumor 1-12, Treasure Map 1-6, Thematic Dungeon 1-6, Guild Job 1-6. Leave blank to roll.", "");
-  tagLeadDetail.min = "1";
-  tagLeadDetail.step = "1";
-  tagLead.append(field("Lead type", tagLeadType), field("Detail", tagLeadDetail));
-  tagLead.appendChild(button("Create TAG Module", "Create and install the selected TAG lead as a playable imported adventure, then select it above.", async () => {
+  const tagLeadRandom = input("checkbox", "modern-tag-lead-random", "Random TAG lead: choose the lead family and the result randomly.");
+  tagLeadRandom.checked = true;
+  const randomRow = el("label", "modern-check-row");
+  randomRow.title = tagLeadRandom.title;
+  randomRow.append(tagLeadRandom, el("span", "", "Random"));
+  const syncTagLeadRandom = () => {
+    tagLeadType.disabled = tagLeadRandom.checked;
+    tagLeadType.closest("label")?.classList.toggle("muted", tagLeadRandom.checked);
+  };
+  tagLeadRandom.addEventListener("change", syncTagLeadRandom);
+  syncTagLeadRandom();
+  tagLead.append(randomRow, field("Lead type", tagLeadType));
+  tagLead.appendChild(button("Create TAG Module", "Create and install a TAG lead as a playable imported adventure, then select it above. With Random checked, the app chooses the lead family and table result.", async () => {
+    const leadTypes = ["rumor", "treasure_map", "thematic_dungeon", "guild_job"];
+    const selectedLeadType = tagLeadRandom.checked
+      ? leadTypes[Math.floor(Math.random() * leadTypes.length)]
+      : tagLeadType.value;
     const result = await api("/api/campaign/tag/create-adventure", {
       method: "POST",
-      body: JSON.stringify({ lead_type: tagLeadType.value, detail: tagLeadDetail.value }),
+      body: JSON.stringify({ lead_type: selectedLeadType, detail: "" }),
     });
     modernState.campaign = result.campaign;
     modernState.adventures = await api("/api/adventures");
@@ -3121,9 +3156,11 @@ async function renderGoAdventure() {
   const guildJobActions = actions();
   guildJobActions.append(
     button("Select Guild Job generator", "Switch to Generate and preselect Guild Job as the lead type.", async () => {
+      tagLeadRandom.checked = false;
       tagLeadType.value = "guild_job";
+      syncTagLeadRandom();
       activateGoAdventureTab("generate");
-      setStatus("Guild Job selected. Enter an optional result number or leave blank to roll.");
+      setStatus("Guild Job selected. Press Create TAG Module to roll a Guild Job result.");
     }),
     button("Open Guild Management", "Open Guild Management to review Guild members, coffers, jobs, and campaign assignment before generating a Guild Job.", async () => {
       window.location.href = "/modern/guild";
@@ -3177,6 +3214,7 @@ async function renderGoAdventure() {
   addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate]);
   addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [sessions, saved]);
   addGoAdventureTab("generate", "Generate", "Create TAG leads from rumors, treasure maps, thematic dungeons, or Guild jobs.", [
+    renderTagWorkflowDashboard("go"),
     tagLead,
     renderTagLeadSelectorPanel(adventure),
     renderRumorLeadAuditPanel(adventure),

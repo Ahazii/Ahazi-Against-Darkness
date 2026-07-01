@@ -54,7 +54,7 @@ Current generated TAG prompt coverage includes specific buttons for Rumor scene 
 Use this workflow when playtesting the generated TAG modules against `Tales_from_the_adventurers_guild.pdf`.
 
 1. **Prepare a clean test party**: create or choose four living characters, enable TAG banking if you want finance prompts, and save the active party.
-2. **Create the lead**: New Dashboard -> Go Adventure! -> Create TAG Adventure Lead. Choose one lead type and detail number, then press **Create TAG Module**. The legacy route still works from Home -> Adventure -> TAG Settlement -> Maps and Adventure Leads. Use these detail ranges:
+2. **Create the lead**: New Dashboard -> Go Adventure! -> Generate -> Create TAG Adventure Lead. Leave **Random** checked to let the app choose both the lead type and result, or uncheck it to choose the lead type and let the app roll that family's result. The legacy route still works from Home -> Adventure -> TAG Settlement -> Maps and Adventure Leads. For targeted legacy/testing calls, use these detail ranges:
    - Rumor Scene: 1-12.
    - Thematic Dungeon: 1-6.
    - Treasure Map destination: 1-6.
