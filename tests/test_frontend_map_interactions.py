@@ -1985,6 +1985,7 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "Director: move to the scene-specific choice" in APP_JS
     assert "No Adventures Guild action is required in this room unless the printed scene asks for one" in APP_JS
     assert "The app has not applied a route or reward here because this is movement/scene setup" in APP_JS
+    assert "Generated Adventures Guild leads use their scene reward buttons and closeout signoff" in APP_JS
     assert "If this room has no scene-specific button" in Path("src/app/engine/tag_campaign.py").read_text(encoding="utf-8")
 
 

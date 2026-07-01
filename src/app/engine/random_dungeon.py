@@ -76,6 +76,7 @@ from .druid_companion import (
     maybe_summon_on_wilderness_entry,
 )
 from .roster_sync import initial_xp_tally
+from .tag_compat import is_generated_tag_manifest
 from .split_party import (
     active_tile_id,
     apply_scout_lag_on_move,
@@ -19494,6 +19495,14 @@ class RandomDungeonEngine:
         quest = session.active_quest
         if quest is None:
             session.log.append("No active Quest.")
+            return
+        if session.adventure_type == "imported" and is_generated_tag_manifest(session.imported_manifest):
+            session.log.append(
+                "Quest reward blocked: generated Adventures Guild scenes use their printed scene rewards and TAG Action buttons, not the core Epic Rewards table."
+            )
+            session.log.append(
+                "Use the current room prompt or Adventures Guild Actions for purchases, services, bounties, route rewards, XP markers, Guild share, banking, and closeout signoff."
+            )
             return
         if quest.reward_claimed:
             session.log.append("Quest reward already claimed.")

@@ -4128,6 +4128,14 @@ function questClaimStatus(session, quest) {
   const tile = currentTile(session);
   const onQuestTile = tile?.id === quest.tile_id;
   const partyGold = partyGoldTotal(session);
+  const tagReference = session?.imported_manifest?.source?.parameters?.tag_reference;
+  if (tagReference && typeof tagReference === "object") {
+    return {
+      ok: false,
+      reason:
+        "Generated Adventures Guild leads use their scene reward buttons and closeout signoff, not the core Epic Rewards table.",
+    };
+  }
   const isTagTreasureMap =
     `${quest.key || ""} ${quest.description || ""}`.toLowerCase().includes("treasure map");
   if (isTagTreasureMap) {

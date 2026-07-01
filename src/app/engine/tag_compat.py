@@ -103,6 +103,140 @@ def _generic_tag_prompt(title: str, body: str, *, action_type: str, action_value
     }
 
 
+def tag_reference_from_manifest(manifest: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(manifest, dict):
+        return {}
+    source = manifest.get("source") if isinstance(manifest.get("source"), dict) else {}
+    parameters = source.get("parameters") if isinstance(source.get("parameters"), dict) else {}
+    tag_reference = parameters.get("tag_reference") if isinstance(parameters, dict) else None
+    return tag_reference if isinstance(tag_reference, dict) else {}
+
+
+def is_generated_tag_manifest(manifest: dict[str, Any] | None) -> bool:
+    return bool(tag_reference_from_manifest(manifest))
+
+
+def _leprechaun_scene_actions() -> list[dict[str, Any]]:
+    return [
+        {
+            "label": "Buy Shoes of Fast Walk",
+            "tooltip": "Buy up to one pair per character for 200 gp each. Only characters who can use magic items, and hirelings, may use them; animal companions may not.",
+            "action_type": "branch",
+            "action_value": "leprechaun_shoes",
+            "reference": "Scene 2 Shoes of Fast Walk",
+            "amount": 1,
+        },
+        {
+            "label": "Learn illusion spell",
+            "tooltip": "One eligible character learns one illusion spell automatically for 100 gp, or free if the party bought at least three pairs of magical shoes.",
+            "action_type": "branch",
+            "action_value": "leprechaun_illusion_spell",
+            "reference": "Scene 2 illusion spell - choose spell",
+            "amount": 100,
+        },
+    ]
+
+
+def _upgrade_leprechaun_vendor_manifest(manifest: dict[str, Any], tag_reference: dict[str, Any]) -> None:
+    haystack = " ".join(
+        str(value or "")
+        for value in (
+            manifest.get("title"),
+            manifest.get("synopsis"),
+            tag_reference.get("title"),
+            tag_reference.get("lead_detail"),
+            tag_reference.get("rewards"),
+            (manifest.get("quest") or {}).get("objective_text") if isinstance(manifest.get("quest"), dict) else "",
+        )
+    ).lower()
+    if "leprechaun" not in haystack and "blackbird hill" not in haystack:
+        return
+
+    tag_reference["title"] = tag_reference.get("title") or "Leprechauns at Blackbird Hill"
+    tag_reference["scene"] = tag_reference.get("scene") or "Scene 2"
+    tag_reference["pdf_pages"] = tag_reference.get("pdf_pages") or "TAG pp.23, 25"
+    tag_reference["finale_mode"] = "vendor"
+    tag_reference["finale_instruction"] = (
+        "Choose who buys magical shoes, whether the party buys enough pairs to make spell teaching free, "
+        "and which single eligible character learns an illusion spell."
+    )
+    tag_reference["rewards"] = (
+        "Buy Shoes of Fast Walk for 200 gp per pair, up to one pair per character. "
+        "One eligible character may learn one illusion spell for 100 gp, or free if at least three pairs of shoes were bought."
+    )
+    tag_reference["final_foe_proxy"] = ""
+    tag_reference["final_foe_count"] = 0
+    tag_reference["final_foes"] = []
+    rules = tag_reference.get("rules")
+    if not isinstance(rules, list):
+        rules = []
+    vendor_rule = "Scene 2 is a bargain/vendor scene; no proxy combat is required unless the table deliberately turns the encounter hostile."
+    if vendor_rule not in rules:
+        rules.append(vendor_rule)
+    tag_reference["rules"] = rules
+
+    quest = manifest.get("quest")
+    if isinstance(quest, dict):
+        quest["complete_when"] = {"type": "room_reached", "room_id": "tag-final-scene"}
+
+    prompts = tag_reference.get("room_prompts")
+    if not isinstance(prompts, dict):
+        prompts = {}
+        tag_reference["room_prompts"] = prompts
+    prompts["tag-complication"] = {
+        "title": "Complication route",
+        "body": (
+            "Tiny footprints loop around the stones in impossible circles. A laugh skips from one side of the hill to the other, "
+            "always just behind the party. No purchase or spell choice is due in this room; continue to the bargain scene when ready."
+        ),
+        "checklist": [
+            "Do not claim an Epic Reward here.",
+            "Continue to the bargain scene unless the table deliberately turns the encounter hostile.",
+        ],
+        "actions": [
+            {
+                "label": "Proceed to bargain",
+                "tooltip": "Mark that the party keeps following the leprechaun trail toward the Scene 2 bargain.",
+                "action_type": "route",
+                "action_value": "parley_success",
+                "reference": "Scene 2 leprechaun bargain route",
+                "amount": 0,
+            }
+        ],
+    }
+    prompts["tag-final-scene"] = {
+        "title": "Bargain choices",
+        "body": (
+            "The leprechauns finally stop running the party in circles. They are ready to bargain, not to be looted like a monster room. "
+            "Choose the purchase or lesson the party wants, pick the receiving character, and confirm payment before leaving."
+        ),
+        "checklist": [
+            "Buy Shoes of Fast Walk only if a character pays 200 gp per pair.",
+            "One eligible character may learn one illusion spell for 100 gp, or free if at least three shoe pairs were bought.",
+            "Do not roll or claim a core Epic Reward for this generated Adventures Guild scene.",
+        ],
+        "actions": _leprechaun_scene_actions(),
+    }
+    tag_reference["prompt_repair_note"] = (
+        "Legacy leprechaun generated module upgraded to the Scene 2 vendor finale. "
+        "The old proxy Goblins objective and Epic Reward path are not part of this scene."
+    )
+
+    for room in manifest.get("rooms") or []:
+        if not isinstance(room, dict):
+            continue
+        if room.get("id") == "tag-complication":
+            room["description"] = str(prompts["tag-complication"]["body"])
+        if room.get("id") == "tag-final-scene":
+            room["title"] = "Blackbird Hill Bargain"
+            room["description"] = "The leprechauns finally stop running the party in circles. They are ready to bargain, not to be looted like a monster room."
+            for trigger in room.get("triggers") or []:
+                if isinstance(trigger, dict):
+                    trigger.pop("encounter", None)
+                    if isinstance(trigger.get("log"), str):
+                        trigger["log"] = "Resolve the leprechaun bargain; use Buy Shoes of Fast Walk or Learn illusion spell if the party chooses those Scene 2 options."
+
+
 def _repaired_room_prompts(tag_reference: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
     title = str(tag_reference.get("title") or manifest.get("title") or "Generated TAG lead")
     lead_type = str(tag_reference.get("lead_type") or "generated TAG lead").replace("_", " ")
@@ -154,15 +288,19 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     tag_reference = parameters.get("tag_reference") if isinstance(parameters, dict) else None
     map_roll = 0
     if isinstance(tag_reference, dict):
+        _upgrade_leprechaun_vendor_manifest(manifest, tag_reference)
         try:
             map_roll = int(tag_reference.get("treasure_map_destination") or tag_reference.get("map_roll") or 0)
         except (TypeError, ValueError):
             map_roll = 0
+        is_treasure_map = str(tag_reference.get("lead_type") or "") == "treasure_map" or bool(map_roll)
         rewards = str(tag_reference.get("rewards") or "")
         if "Apply The Map Leads To" in rewards:
             tag_reference["rewards"] = treasure_map_note_for(map_roll).removeprefix("TAG guidance: ")
-        tag_reference.setdefault("side_reward_note", treasure_map_note_for(map_roll).removeprefix("TAG guidance: "))
-        tag_reference.setdefault("final_reward_note", treasure_map_note_for(map_roll, final=True).removeprefix("TAG final guidance: "))
+            is_treasure_map = True
+        if is_treasure_map:
+            tag_reference.setdefault("side_reward_note", treasure_map_note_for(map_roll).removeprefix("TAG guidance: "))
+            tag_reference.setdefault("final_reward_note", treasure_map_note_for(map_roll, final=True).removeprefix("TAG final guidance: "))
         prompts = tag_reference.get("room_prompts")
         if not isinstance(prompts, dict) or not prompts:
             tag_reference["room_prompts"] = _repaired_room_prompts(tag_reference, manifest)
@@ -171,7 +309,7 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
                 "Use them as app workflow guidance only; exact printed text and rewards remain with the PDF/player."
             )
             prompts = tag_reference["room_prompts"]
-        if str(tag_reference.get("lead_type") or "") == "treasure_map" or map_roll:
+        if is_treasure_map:
             if isinstance(prompts, dict):
                 for prompt in prompts.values():
                     if not isinstance(prompt, dict):

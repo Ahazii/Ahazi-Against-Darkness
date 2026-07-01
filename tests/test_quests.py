@@ -6,6 +6,7 @@ from unittest.mock import patch
 from app import main
 from app.engine.adventure_allowlists import major_foe_table_keys
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.tag_compat import upgrade_tag_manifest
 from app.rules.repository import RulesRepository
 from app.schemas import ActiveQuestState, EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
 
@@ -151,6 +152,48 @@ def test_generated_tag_guidance_repair_endpoint_rebuilds_prompt_metadata(client)
     assert reference["room_prompts"]["tag-complication"]["actions"][1]["action_type"] == "route"
     assert "Apply The Map Leads To" not in " ".join(payload["log"])
     assert payload["active_quest"]["tag_generated_lead_state"]["guidance_repaired"] is True
+
+
+def test_legacy_leprechaun_manifest_upgrades_to_vendor_finale() -> None:
+    manifest = {
+        "title": "TAG Guild Job 4: Leprechauns at Blackbird Hill",
+        "source": {
+            "parameters": {
+                "tag_reference": {
+                    "lead_type": "rumor",
+                    "title": "Leprechauns at Blackbird Hill",
+                    "final_foes": [{"name": "Goblins", "count": 4}],
+                }
+            }
+        },
+        "quest": {
+            "key": "tag_lead",
+            "objective_text": "Find the leprechauns and decide whether to buy Shoes of Fast Walk or learn their illusion spell.",
+            "complete_when": {"type": "boss_defeated", "boss_name": "Goblins", "room_id": "tag-final-scene"},
+        },
+        "rooms": [
+            {
+                "id": "tag-final-scene",
+                "title": "Blackbird Hill",
+                "description": "Old proxy fight.",
+                "triggers": [{"when": "on_enter", "encounter": {"foes": [{"name": "Goblins", "count": 4}]}}],
+            }
+        ],
+    }
+
+    upgraded = upgrade_tag_manifest(manifest)
+    reference = upgraded["source"]["parameters"]["tag_reference"]
+    final_room = upgraded["rooms"][0]
+
+    assert upgraded["quest"]["complete_when"] == {"type": "room_reached", "room_id": "tag-final-scene"}
+    assert reference["finale_mode"] == "vendor"
+    assert reference["final_foes"] == []
+    assert reference["room_prompts"]["tag-final-scene"]["title"] == "Bargain choices"
+    assert [action["action_value"] for action in reference["room_prompts"]["tag-final-scene"]["actions"]] == [
+        "leprechaun_shoes",
+        "leprechaun_illusion_spell",
+    ]
+    assert "encounter" not in final_room["triggers"][0]
 
 
 def test_generated_tag_direct_procedure_is_single_run(client, monkeypatch) -> None:
@@ -370,6 +413,38 @@ def test_kerrak_dar_reward_spends_one_clue_for_hoard(monkeypatch) -> None:
     assert session.map_state.tiles[0].treasure_gold == 300
     assert "Kerrak Dar Hoard" not in hero.statuses
     assert any("Kerrak Dar's hoard found" in entry for entry in session.log)
+
+
+def test_generated_tag_imports_do_not_claim_core_epic_rewards(monkeypatch) -> None:
+    eng = engine()
+    session = base_session(
+        adventure_type="imported",
+        imported_manifest={
+            "title": "TAG Guild Job 4: Leprechauns at Blackbird Hill",
+            "source": {
+                "parameters": {
+                    "tag_reference": {
+                        "lead_type": "rumor",
+                        "title": "Leprechauns at Blackbird Hill",
+                        "finale_mode": "vendor",
+                    }
+                }
+            },
+        },
+    )
+    session.active_quest = ActiveQuestState(tile_id="t", key="imported_room", description="Find the leprechauns.", completed=True)
+    hero = session.party[0]
+    hero.clues = 1
+    session.clues_found = 1
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+
+    eng.advance(session, "claim_quest_reward", show_rolls=False)
+
+    assert session.active_quest is not None
+    assert session.active_quest.reward_claimed is False
+    assert "Kerrak Dar Hoard" not in hero.statuses
+    assert any("generated Adventures Guild scenes" in entry for entry in session.log)
+    assert not any("Quest complete! Epic reward" in entry for entry in session.log)
 
 
 def test_enchanted_weapon_reward_marks_adventure_status(monkeypatch) -> None:
