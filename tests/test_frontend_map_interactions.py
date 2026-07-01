@@ -1830,17 +1830,26 @@ def test_exploration_command_bar_stays_visible_and_typable() -> None:
 def test_exploration_panels_can_be_toggled_from_header() -> None:
     for element_id in [
         "toggle-current-objective",
+        "toggle-ongoing-quests",
         "toggle-text-commands",
         "toggle-exits-panel",
         "toggle-party-sheets-panel",
+        "ongoing-quests",
         "party-sheets-panel",
     ]:
         assert f'id="{element_id}"' in INDEX_HTML
+    assert 'aria-label="Action Rail"' in INDEX_HTML
     assert "function applyExplorationPanelVisibility()" in APP_JS
     assert "function setExplorationPanelVisibility(key, open)" in APP_JS
-    assert "explorationPanels" in APP_JS
+    assert "objective: false" in APP_JS
+    assert "quests: false" in APP_JS
+    assert "commands: false" in APP_JS
+    assert "exits: false" in APP_JS
+    assert "sheets: false" in APP_JS
+    assert "setExplorationPanelVisibility(\"quests\"" in APP_JS
     assert ".panel-user-hidden" in STYLES_CSS
     assert ".exploration-panel-toggle" in STYLES_CSS
+    assert ".ongoing-quests.panel-user-hidden" in STYLES_CSS
 
 
 def test_user_artwork_placeholders_are_documented_slots() -> None:
@@ -2198,6 +2207,12 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Class dossier" in MODERN_PAGES_JS
     assert "modern-class-info" in MODERN_PAGES_JS
     assert "Create / Save Troupe" in MODERN_PAGES_JS
+    assert "troupe-member-browser" in MODERN_PAGES_JS
+    assert "troupe-member-sheet" in MODERN_PAGES_JS
+    assert "troupe-member-select" in MODERN_PAGES_JS
+    assert "Selected troupe member" in MODERN_PAGES_JS
+    assert "rootEl.append(panel, troupeParties, travel" in MODERN_PAGES_JS
+    assert ".troupe-member-browser" in STYLES_CSS
 
 
 def test_modern_home_routes_and_pages_are_standalone() -> None:

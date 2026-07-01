@@ -3285,7 +3285,7 @@
         "party sheets"
       ],
       "summary": "Exploration renames the live log to Narrative and adds panel toggles for crowded play screens.",
-      "body": "The live adventure text stream is labelled Narrative. Header controls can show or hide Current Objective, Text Commands, Exits, and Character Sheets, with preferences saved locally. Current Objective remains the place where supported automation is surfaced: combat/trap priority, ordinary Claim Treasure, TAG room target progress, and quest reward readiness. The app should automate fixed rolls/procedures it already understands, while player choices remain explicit where the source says choose.",
+      "body": "The live adventure text stream is labelled Narrative. Header controls can show or hide Current Objective, Ongoing Quests, Text Commands, Exits, and Character Sheets, with all helper panels defaulting off for a cleaner map/Narrative view. The right-side immediate-control column is the Action Rail. Current Objective remains the place where supported automation is surfaced: combat/trap priority, ordinary Claim Treasure, TAG room target progress, and quest reward readiness. The app should automate fixed rolls/procedures it already understands, while player choices remain explicit where the source says choose.",
       "implementation_status": "implemented"
     },
     {
@@ -3331,7 +3331,7 @@
         "controls"
       ],
       "summary": "Tables documents the Narrative and exploration panel controls.",
-      "body": "The modern Tables page includes exploration_narrative_layout_table. It documents the Narrative stream and the Current Objective, Text Commands, Exits, and Character Sheets controls, including what each affects and which app automation it exposes.",
+      "body": "The modern Tables page includes exploration_narrative_layout_table. It documents the Narrative stream, Action Rail naming, and the Current Objective, Ongoing Quests, Text Commands, Exits, and Character Sheets controls, including what each affects and which app automation it exposes.",
       "implementation_status": "implemented"
     },
     {

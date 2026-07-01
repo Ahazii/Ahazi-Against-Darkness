@@ -1975,25 +1975,50 @@ function renderTroupes() {
     button("Delete Troupe", "Clear troupe members, active party selection, and reset the troupe name.", () => save([]))
   );
   panel.appendChild(row);
-  const memberList = card("List Members", "Current troupe members with party, bank, activity, TAG bank, and carried-gold status.");
+  let selectedTroupeMemberId = troupeMemberIds()[0] || "";
   const memberFilters = characterFilterControls("modern-troupe-members", drawTroupeMembers);
   const memberRows = el("div", "modern-list");
-  memberList.append(memberFilters.panel, memberRows);
+  const memberSheet = el("div", "modern-row troupe-member-sheet");
+  const memberBrowser = el("div", "modern-two-col troupe-member-browser");
+  const memberListPane = el("div", "modern-stack");
+  memberListPane.append(el("strong", "", "Members"), memberFilters.panel, memberRows);
+  memberBrowser.append(memberListPane, memberSheet);
+  panel.appendChild(memberBrowser);
   function drawTroupeMembers() {
     memberRows.replaceChildren();
+    memberSheet.replaceChildren();
     const ids = new Set(troupeMemberIds());
     const rows = filteredCharacters({ search: memberFilters.search.value, classId: memberFilters.classFilter.value, sort: memberFilters.sort.value }).filter((item) => ids.has(item.id));
+    if (!rows.some((character) => character.id === selectedTroupeMemberId)) selectedTroupeMemberId = rows[0]?.id || "";
     for (const character of rows) {
       const activeText = (campaign.tag_troupe_active_character_ids || []).includes(character.id) ? "active party" : "home/available";
       const worldTroupe = worldTroupeForCharacter(character);
-      const memberRow = el("div", "modern-row");
+      const memberRow = document.createElement("button");
+      memberRow.type = "button";
+      memberRow.className = `modern-row troupe-member-select${character.id === selectedTroupeMemberId ? " selected" : ""}`;
       memberRow.append(
         el("strong", "", character.name),
         el("span", "muted", `${character.class_name} L${character.level} · ${activeText} · carried ${character.gold || 0}gp · TAG bank ${tagBankForCharacter(character.id)}gp · parties: ${partyNamesForCharacter(character.id).join(", ") || "none"}`),
         el("span", "muted", `Campaign ${worldName(worldCampaigns(), character.campaign_id)} · Guild ${worldName(worldGuilds(), character.guild_id)} · Troupe ${worldName(worldTroupes(), character.troupe_id)} · Home ${worldTroupe?.home_settlement_id ? worldName(worldSettlements(), worldTroupe.home_settlement_id) : "Unassigned"}`)
       );
       memberRow.title = "Troupe member status. Assigning a character to another troupe can remove incompatible party membership; the backend enforces one troupe per character.";
+      memberRow.addEventListener("click", () => {
+        selectedTroupeMemberId = character.id;
+        drawTroupeMembers();
+      });
       memberRows.appendChild(memberRow);
+    }
+    const selected = modernState.characters.find((character) => character.id === selectedTroupeMemberId);
+    if (selected) {
+      memberSheet.append(
+        el("strong", "", `${selected.name} sheet`),
+        el("span", "muted", "Selected troupe member. Review equipment, inventory, spells, statuses, and world context before choosing active adventurers.")
+      );
+      const sheet = renderCharacterInventoryDetails(selected);
+      sheet.open = true;
+      memberSheet.appendChild(sheet);
+    } else {
+      memberSheet.appendChild(el("p", "muted", "Select a troupe member to show their character sheet here."));
     }
     if (!memberRows.childElementCount) {
       memberRows.appendChild(el("p", "muted", "No troupe members match the current filters. Add roster characters above, then choose up to four active members."));
@@ -2041,7 +2066,7 @@ function renderTroupes() {
     })
   );
   travel.appendChild(travelActions);
-  rootEl.append(panel, memberList, troupeParties, travel, renderTagSignoffPanel("Troupe Adventure Signoff"));
+  rootEl.append(panel, troupeParties, travel, renderTagSignoffPanel("Troupe Adventure Signoff"));
 }
 
 function renderGuild() {

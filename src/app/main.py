@@ -2187,6 +2187,12 @@ def _rules_tables_payload() -> dict:
             "automation": "For supported TAG procedures it can run stored/idempotent rolls or show the exact next play-state target.",
         },
         {
+            "control": "Ongoing Quests",
+            "affects": "Quest cards in the Action Rail.",
+            "player_use": "Open when checking active objectives, source, turn-in state, TAG procedure progress, and reward buttons.",
+            "automation": "Quest cards expose supported reward, TAG procedure, and signoff actions while keeping player choices explicit.",
+        },
+        {
             "control": "Text Commands",
             "affects": "Typed exploration command entry.",
             "player_use": "Use commands such as look, search, claim, rest, or go north 1.",

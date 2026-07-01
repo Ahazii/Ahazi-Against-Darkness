@@ -379,6 +379,25 @@ h2 {
   gap: 10px;
 }
 
+.troupe-member-browser {
+  align-items: start;
+}
+
+.troupe-member-select {
+  width: 100%;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.troupe-member-select.selected {
+  border-color: rgba(201, 162, 39, 0.72);
+  background: rgba(201, 162, 39, 0.14);
+}
+
+.troupe-member-sheet {
+  align-self: start;
+}
+
 .modern-row {
   display: grid;
   gap: 5px;
@@ -3105,6 +3124,7 @@ button.secondary,
 }
 
 .current-objective-banner.panel-user-hidden,
+.ongoing-quests.panel-user-hidden,
 .exploration-command-bar.panel-user-hidden,
 .map-exits-dock.panel-user-hidden,
 .log-exits-resizer.panel-user-hidden,

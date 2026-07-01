@@ -1027,10 +1027,11 @@
                 <span id="fd-oblivion-offer" class="status fd-oblivion-offer hidden" title="River of Oblivion Madness redemption offer"></span>
                 <span id="fd-magic-mr" class="status fd-magic-mr hidden" title="Magic Citadel — magic resistance suspended"></span>
                 <span id="session-mode" class="status"></span>
-                <button id="toggle-current-objective" type="button" class="secondary exploration-panel-toggle" aria-pressed="true" title="Show or hide the current objective guidance. This tells you the next app-supported step, such as resolving combat, claiming treasure, or letting the app track a TAG target.">Current Objective</button>
-                <button id="toggle-text-commands" type="button" class="secondary exploration-panel-toggle" aria-pressed="true" title="Show or hide the text command bar. Use this for typed exploration commands such as look, search, claim, rest, or go north 1.">Text Commands</button>
-                <button id="toggle-exits-panel" type="button" class="secondary exploration-panel-toggle" aria-pressed="true" title="Show or hide the exits panel. Exits lists doors and passages the app can move through from the current map element.">Exits</button>
-                <button id="toggle-party-sheets-panel" type="button" class="secondary exploration-panel-toggle" aria-pressed="true" title="Show or hide party character sheets. The sheets show current Life, equipment, inventory, abilities, spells, statuses, and actions.">Character Sheets</button>
+                <button id="toggle-current-objective" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide the current objective guidance. This tells you the next app-supported step, such as resolving combat, claiming treasure, or letting the app track a TAG target.">Current Objective</button>
+                <button id="toggle-ongoing-quests" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide Ongoing Quests. Quest cards show active objectives, source, turn-in state, TAG procedure tracking, and reward buttons.">Ongoing Quests</button>
+                <button id="toggle-text-commands" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide the text command bar. Use this for typed exploration commands such as look, search, claim, rest, or go north 1.">Text Commands</button>
+                <button id="toggle-exits-panel" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide the exits panel. Exits lists doors and passages the app can move through from the current map element.">Exits</button>
+                <button id="toggle-party-sheets-panel" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide party character sheets. The sheets show current Life, equipment, inventory, abilities, spells, statuses, and actions.">Character Sheets</button>
               </div>
             </div>
             <div id="combat-command-rail" class="combat-command-rail hidden" aria-label="Combat command rail">
@@ -1205,7 +1206,7 @@
             tabindex="0"
           ></div>
 
-          <div class="panel side-panel">
+          <div class="panel side-panel" aria-label="Action Rail" title="Action Rail: immediate play controls, transient choices, Ongoing Quests, combat controls, and character sheets.">
             <div class="side-panel-sticky-bar">
               <div class="actions session-actions">
                 <div id="pending-xp-banner" class="pending-xp-banner hidden"></div>

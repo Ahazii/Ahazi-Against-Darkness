@@ -57,10 +57,11 @@ const state = {
   partySuppliesOpen: false,
   partySheetOpen: {},
   explorationPanels: {
-    objective: true,
-    commands: true,
-    exits: true,
-    sheets: true,
+    objective: false,
+    quests: false,
+    commands: false,
+    exits: false,
+    sheets: false,
   },
   logPanelHeight: 240,
   mapStageHeight: null,
@@ -519,6 +520,7 @@ const explorationCommandForm = document.getElementById("exploration-command-form
 const explorationCommandInput = document.getElementById("exploration-command-input");
 const explorationCommandHints = document.getElementById("exploration-command-hints");
 const toggleCurrentObjectiveBtn = document.getElementById("toggle-current-objective");
+const toggleOngoingQuestsBtn = document.getElementById("toggle-ongoing-quests");
 const toggleTextCommandsBtn = document.getElementById("toggle-text-commands");
 const toggleExitsPanelBtn = document.getElementById("toggle-exits-panel");
 const togglePartySheetsPanelBtn = document.getElementById("toggle-party-sheets-panel");
@@ -19068,10 +19070,11 @@ function loadLayoutPrefs() {
     if (saved.explorationPanels && typeof saved.explorationPanels === "object") {
       state.explorationPanels = {
         ...state.explorationPanels,
-        objective: saved.explorationPanels.objective !== false,
-        commands: saved.explorationPanels.commands !== false,
-        exits: saved.explorationPanels.exits !== false,
-        sheets: saved.explorationPanels.sheets !== false,
+        objective: saved.explorationPanels.objective === true,
+        quests: saved.explorationPanels.quests === true,
+        commands: saved.explorationPanels.commands === true,
+        exits: saved.explorationPanels.exits === true,
+        sheets: saved.explorationPanels.sheets === true,
       };
     }
     if (typeof saved.combatRailHeight === "number") {
@@ -22622,15 +22625,18 @@ function appendAbyssCampaignActions(parent, session, tile) {
 function applyExplorationPanelVisibility() {
   const panels = state.explorationPanels || {};
   currentObjectiveBanner?.classList.toggle("panel-user-hidden", panels.objective === false);
+  ongoingQuestsEl?.classList.toggle("panel-user-hidden", panels.quests === false);
   explorationCommandBar?.classList.toggle("panel-user-hidden", panels.commands === false);
   mapExitsPanel?.classList.toggle("panel-user-hidden", panels.exits === false);
   logExitsResizer?.classList.toggle("panel-user-hidden", panels.exits === false);
   partySheetsPanel?.classList.toggle("panel-user-hidden", panels.sheets === false);
   toggleCurrentObjectiveBtn?.setAttribute("aria-pressed", panels.objective === false ? "false" : "true");
+  toggleOngoingQuestsBtn?.setAttribute("aria-pressed", panels.quests === false ? "false" : "true");
   toggleTextCommandsBtn?.setAttribute("aria-pressed", panels.commands === false ? "false" : "true");
   toggleExitsPanelBtn?.setAttribute("aria-pressed", panels.exits === false ? "false" : "true");
   togglePartySheetsPanelBtn?.setAttribute("aria-pressed", panels.sheets === false ? "false" : "true");
   toggleCurrentObjectiveBtn?.classList.toggle("selected", panels.objective !== false);
+  toggleOngoingQuestsBtn?.classList.toggle("selected", panels.quests !== false);
   toggleTextCommandsBtn?.classList.toggle("selected", panels.commands !== false);
   toggleExitsPanelBtn?.classList.toggle("selected", panels.exits !== false);
   togglePartySheetsPanelBtn?.classList.toggle("selected", panels.sheets !== false);
@@ -30195,6 +30201,9 @@ mapElementCapCustom?.addEventListener("input", () => {
 });
 toggleCurrentObjectiveBtn?.addEventListener("click", () => {
   setExplorationPanelVisibility("objective", state.explorationPanels?.objective === false);
+});
+toggleOngoingQuestsBtn?.addEventListener("click", () => {
+  setExplorationPanelVisibility("quests", state.explorationPanels?.quests === false);
 });
 toggleTextCommandsBtn?.addEventListener("click", () => {
   setExplorationPanelVisibility("commands", state.explorationPanels?.commands === false);
