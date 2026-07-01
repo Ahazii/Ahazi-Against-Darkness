@@ -2004,6 +2004,13 @@ def _rules_tables_payload() -> dict:
     ]
     data["modern_dashboard_management_table"] = [
         {
+            "page": "Dashboard",
+            "primary_controls": "Section launcher tiles, linked artwork, status-icon snapshot, collapsed needs-attention and closeout panels.",
+            "assignment_model": "App navigation and status summary only; underlying records remain owned by their management pages.",
+            "hover_focus": "Snapshot rows open exact issue lists without increasing header height, such as missing artwork paths, open guidance, active sessions, fallen characters, and setup warnings.",
+            "rules_reference": "modern_dashboard_management_polish",
+        },
+        {
             "page": "Troupe Management",
             "primary_controls": "World context, member filters, add/remove member, active members, assigned party filter, settlement travel.",
             "assignment_model": "Troupe1 remains the TAG-focused default; world troupes are edited in Campaign Management. Characters belong to one troupe.",
@@ -2181,8 +2188,8 @@ def _rules_tables_payload() -> dict:
     data["go_adventure_tabbed_workflow_table"] = [
         {
             "tab": "Start",
-            "contains": "Start New Adventure controls plus a compact ready status. Setup Check and Closeout Gate details appear only when warnings or blocks exist.",
-            "player_use": "Choose party/module/rules and start; expand visible warnings only when the app says review is needed.",
+            "contains": "Start New Adventure controls plus setup and closeout status icons. Clicking an icon opens the exact issue list; full Setup Check and Closeout Gate panels are no longer shown.",
+            "player_use": "Choose party/module/rules and start; click the status icons only when the app reports setup, closeout, or guidance issues.",
             "rules_boundary": "Start checks remain enforced by the backend; printed rules still control adventure resolution.",
         },
         {

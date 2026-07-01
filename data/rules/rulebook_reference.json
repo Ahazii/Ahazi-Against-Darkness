@@ -3162,8 +3162,8 @@
         "hover",
         "filter"
       ],
-      "summary": "Troupe, Guild, Party, and Settlement Management share world context, filters, clearer assignment summaries, and detailed hover text.",
-      "body": "The modern dashboard management pages now start with a world-context panel, link back to Campaign Management, and expose searchable/filterable management lists. Troupe Management filters members and assigned parties. Guild Management filters Guild members and keeps Guild finance/closeout controls near the member list. Party Management filters saved parties and flags troupe assignment mismatches before resync. Settlement Management separates campaign settlement records from tracked TAG settlement state and distinguishes friendly settlements from troublesome-town placeholders.",
+      "summary": "Dashboard and management pages share the artwork/header layout, filters, clearer assignment summaries, detailed hover text, and click-through snapshot details.",
+      "body": "The modern Dashboard now uses the same header structure as the management pages: description, page snapshot, help link, and large 1600x900 artwork. Management pages start with a world-context panel, link back to Campaign Management, and expose searchable/filterable management lists. Snapshot rows stay compact but can open detail dialogs for concrete issues such as missing artwork paths, open guidance, active sessions, fallen characters, equipment warnings, and closeout prompts. Troupe Management filters members and assigned parties. Guild Management filters Guild members and keeps Guild finance/closeout controls near the member list. Party Management filters saved parties and flags troupe assignment mismatches before resync. Settlement Management separates campaign settlement records from tracked TAG settlement state and distinguishes friendly settlements from troublesome-town placeholders.",
       "implementation_status": "implemented"
     },
     {
@@ -3178,8 +3178,8 @@
         "workflow",
         "hover text"
       ],
-      "summary": "Tables exposes a dashboard management workflow index for Troupe, Guild, Party, and Settlement pages.",
-      "body": "The modern Tables page includes modern_dashboard_management_table. It documents the primary controls, assignment model, hover-text focus, and rules-reference target for Troupe Management, Guild Management, Party Management, and Settlement Management.",
+      "summary": "Tables exposes a dashboard management workflow index for Dashboard, Troupe, Guild, Party, and Settlement pages.",
+      "body": "The modern Tables page includes modern_dashboard_management_table. It documents the primary controls, assignment model, hover-text/detail focus, and rules-reference target for the Dashboard plus Troupe Management, Guild Management, Party Management, and Settlement Management.",
       "implementation_status": "implemented"
     },
     {
@@ -3251,7 +3251,7 @@
         "map limit"
       ],
       "summary": "Go Adventure setup blocks critical start problems and surfaces review warnings before creating a session.",
-      "body": "Go Adventure now checks the selected party, adventure module, character state, world context, equipment warnings, and map cap before starting. Blocking issues include no party, not exactly four party members, fallen party members, active-session character locks, missing imported/AI module selection, and non-positive map caps. Injured members, equipment warnings, and campaign/guild/troupe context mismatches remain visible warnings for deliberate player signoff.",
+      "body": "Go Adventure now checks the selected party, adventure module, character state, world context, equipment warnings, and map cap before starting. Blocking issues include no party, not exactly four party members, fallen party members, active-session character locks, missing imported/AI module selection, and non-positive map caps. Injured members, equipment warnings, and campaign/guild/troupe context mismatches remain visible warnings for deliberate player signoff. The Start tab presents setup and closeout as compact status icons; clicking an icon opens the exact issue list without showing large Setup Check or Closeout Gate panels.",
       "implementation_status": "implemented"
     },
     {
@@ -3268,7 +3268,7 @@
         "reference"
       ],
       "summary": "Go Adventure is split into Start, Resume, Generate, Guild Jobs, and Reference tabs.",
-      "body": "Go Adventure now starts with a short Start tab for new sessions and a compact ready status. Setup Check and Closeout Gate details are still enforced by the backend, but the full detail panels appear only when warnings or blocks exist. Resume separates active sessions and saved games. Generate contains the TAG Workflow Summary, TAG lead creation, and audit panels for Rumors, Treasure Maps, and Thematic Dungeons. The Generate Random checkbox chooses both the lead family and result; when unchecked, the selected Lead Type chooses the family and the app rolls within that family. Guild Jobs explains the Guild Job lead flow and links back to Guild Management. Reference holds closeout, generated lead signoff, TAG Action Log, Rules Reference, and Tables links. This is app workflow organization; printed adventure rules remain in the source PDFs and targeted reference entries.",
+      "body": "Go Adventure now starts with a short Start tab for new sessions and compact setup/closeout status icons. Backend Setup Check and Closeout Gate enforcement remains, but the old full panels are replaced by click-through issue detail dialogs and an override checkbox only when overridable guidance/closeout warnings exist. Resume separates active sessions and saved games. Generate contains Adventures Guild lead creation and audit panels for Rumors, Treasure Maps, and Thematic Dungeons. The Generate Random checkbox chooses both the lead family and result; when unchecked, the selected Lead Type chooses the family and the app rolls within that family. Reference holds closeout, generated lead signoff, TAG Action Log, Rules Reference, and Tables links. This is app workflow organization; printed adventure rules remain in the source PDFs and targeted reference entries.",
       "implementation_status": "implemented"
     },
     {

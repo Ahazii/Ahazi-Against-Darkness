@@ -352,6 +352,58 @@ function modernStatusRow(title, body, hint = "") {
   return row;
 }
 
+function formatSnapshotDetail(detail) {
+  if (detail == null) return "";
+  if (Array.isArray(detail)) return detail.filter(Boolean).join("\n");
+  return String(detail || "");
+}
+
+function showSnapshotDetail(title, detail) {
+  const text = formatSnapshotDetail(detail);
+  if (!text) return;
+  const existing = document.getElementById("modern-snapshot-detail-dialog");
+  if (existing) existing.remove();
+  const overlay = el("div", "modern-snapshot-detail-overlay");
+  overlay.id = "modern-snapshot-detail-dialog";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", title);
+  const panel = el("section", "modern-snapshot-detail-panel");
+  panel.appendChild(el("h3", "", title));
+  const body = el("pre", "modern-snapshot-detail-body", text);
+  panel.appendChild(body);
+  const row = actions();
+  row.appendChild(button("Close", "Close this snapshot detail panel.", async () => overlay.remove(), "secondary"));
+  panel.appendChild(row);
+  overlay.appendChild(panel);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) overlay.remove();
+  });
+  overlay.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") overlay.remove();
+  });
+  document.body.appendChild(overlay);
+  row.querySelector("button")?.focus();
+}
+
+function snapshotStatusRow(title, body, hint = "", detail = "") {
+  const text = formatSnapshotDetail(detail);
+  const row = modernStatusRow(title, body, text ? `${hint || "Open details."}\n\n${text}` : hint);
+  if (text) {
+    row.classList.add("modern-row-action");
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.setAttribute("aria-label", `${title}: open details`);
+    row.addEventListener("click", () => showSnapshotDetail(title, text));
+    row.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      showSnapshotDetail(title, text);
+    });
+  }
+  return row;
+}
+
 function characterSearchText(character) {
   const troupe = worldTroupeForCharacter(character);
   return [
@@ -1590,6 +1642,20 @@ function moduleInUseCount() {
   return modernState.adventures.filter((adventure) => activeIds.has(adventure.id || adventure.adventure_id)).length;
 }
 
+function namesList(rows, getName = (row) => row.name || row.id || "Unnamed", empty = "No matching records.") {
+  const values = rows.map(getName).filter(Boolean);
+  return values.length ? values : [empty];
+}
+
+function snapshotTaskDetails(rows, getLine) {
+  return rows.length ? rows.map(getLine) : ["No matching issues."];
+}
+
+function compactSnapshotDetails(...groups) {
+  const rows = groups.flat().filter((line) => line && line !== "No matching issues.");
+  return rows.length ? rows : ["No matching issues."];
+}
+
 function renderPageCompanion(page) {
   const campaign = modernState.campaign || {};
   const counts = tagWorkflowCounts();
@@ -1597,10 +1663,13 @@ function renderPageCompanion(page) {
   const injured = modernState.characters.filter((character) => character.current_life > 0 && character.current_life < character.max_life);
   const fallen = modernState.characters.filter((character) => character.current_life <= 0);
   const equipmentWarnings = modernState.characters.filter((character) => characterEquipmentWarnings(character).length);
+  const openGuidance = openGuidanceTasks();
+  const openCloseout = closeoutTasksFor([]);
+  const missingArt = modernState.artwork.filter((entry) => entry.asset_exists === false);
   const companion = el("section", "modern-page-companion");
   const addRows = (title, rows, href = "") => {
     companion.appendChild(el("h3", "", title));
-    for (const [rowTitle, body, hint] of rows) companion.appendChild(modernStatusRow(rowTitle, body, hint));
+    for (const [rowTitle, body, hint, detail] of rows) companion.appendChild(snapshotStatusRow(rowTitle, body, hint, detail));
     if (href) {
       const row = actions();
       row.appendChild(link("Open Details", href, `Open the main controls for ${title}.`, "link-button secondary"));
@@ -1616,14 +1685,14 @@ function renderPageCompanion(page) {
   ];
   const definitions = {
     home: ["Dashboard", [
-      ["Active sessions", `${activeSessions.length} in progress`, "Resume or close sessions before reusing locked characters."],
-      ["Open guidance", `${openGuidanceTasks().length} task(s)`, "Collapsed dashboard checks are at the bottom of the page."],
+      ["Active sessions", `${activeSessions.length} in progress`, "Resume or close sessions before reusing locked characters.", namesList(activeSessions, (session) => `${session.save_label || session.id}: ${session.adventure_type || session.adventure_id || "adventure"} (${session.mode || "active"})`)],
+      ["Open guidance", `${openGuidance.length} task(s)`, "Collapsed dashboard checks are at the bottom of the page.", snapshotTaskDetails(openGuidance, (task) => `${modernTitleFromKey(task.priority || "recommended")}: ${task.title || "Guidance task"} - ${task.body || task.reference || "No detail."}`)],
       ["Modules", `${modernState.adventures.length} installed`, "Adventure Management now owns generated, imported, and AI-authored modules."],
     ]],
     characters: ["Roster Snapshot", [
       ["Roster", `${modernState.characters.length} character(s)`, "Full character sheets remain in Character Management below."],
-      ["Health", `${injured.length} injured · ${fallen.length} fallen`, "Fallen heroes block normal adventure starts."],
-      ["Equipment", `${equipmentWarnings.length} warning(s)`, "Open individual sheets to assign weapon slots or review carried gear."],
+      ["Health", `${injured.length} injured · ${fallen.length} fallen`, "Fallen heroes block normal adventure starts.", compactSnapshotDetails(snapshotTaskDetails(injured, (character) => `${character.name}: injured at ${character.current_life}/${character.max_life} Life`), snapshotTaskDetails(fallen, (character) => `${character.name}: fallen at ${character.current_life}/${character.max_life} Life`))],
+      ["Equipment", `${equipmentWarnings.length} warning(s)`, "Open individual sheets to assign weapon slots or review carried gear.", snapshotTaskDetails(equipmentWarnings, (character) => `${character.name}: ${characterEquipmentWarnings(character).join("; ")}`)],
     ]],
     troupes: ["Troupe Snapshot", [
       ["Members", `${counts.troupeMembers} member(s) · ${counts.activeMembers}/4 active`, "Active troupe members should match the intended party."],
@@ -1637,12 +1706,12 @@ function renderPageCompanion(page) {
     ]],
     parties: ["Party Snapshot", [
       ["Saved parties", `${modernState.parties.length} party record(s)`, "A normal party should have exactly four characters."],
-      ["Active locks", `${activeSessions.length} active session(s)`, "Characters in active sessions cannot start another adventure."],
-      ["Roster warnings", `${fallen.length} fallen · ${equipmentWarnings.length} equipment`, "Resolve hard blocks before Go Adventure."],
+      ["Active locks", `${activeSessions.length} active session(s)`, "Characters in active sessions cannot start another adventure.", namesList(activeSessions, (session) => `${session.save_label || session.id}: party ${session.party_id || "unknown"}`)],
+      ["Roster warnings", `${fallen.length} fallen · ${equipmentWarnings.length} equipment`, "Resolve hard blocks before Go Adventure.", compactSnapshotDetails(snapshotTaskDetails(fallen, (character) => `${character.name}: fallen`), snapshotTaskDetails(equipmentWarnings, (character) => `${character.name}: ${characterEquipmentWarnings(character).join("; ")}`))],
     ]],
     equipment: ["Shop Snapshot", [
       ["Roster shoppers", `${modernState.characters.length} character(s)`, "Choose a character before buying or selling."],
-      ["Equipment warnings", `${equipmentWarnings.length} character(s)`, "Warnings usually mean missing weapon-slot assignment or inventory review."],
+      ["Equipment warnings", `${equipmentWarnings.length} character(s)`, "Warnings usually mean missing weapon-slot assignment or inventory review.", snapshotTaskDetails(equipmentWarnings, (character) => `${character.name}: ${characterEquipmentWarnings(character).join("; ")}`)],
       ["Rules context", "Buy full price · sell half price", "Specific exceptions remain in the equipment rules tables."],
     ]],
     banking: ["Finance / Storage Snapshot", [
@@ -1671,9 +1740,9 @@ function renderPageCompanion(page) {
       ["Completed", `${completedAdventureCount()} completed · ${adventureTypeCount("ai")} AI`, "Module badges distinguish AI, Adventures Guild, completed, protected, and in-use states."],
     ]],
     "go-adventure": ["Start Snapshot", [
-      ["Active sessions", `${activeSessions.length} in progress`, "Resume active sessions instead of starting duplicates."],
+      ["Active sessions", `${activeSessions.length} in progress`, "Resume active sessions instead of starting duplicates.", namesList(activeSessions, (session) => `${session.save_label || session.id}: ${session.adventure_type || session.adventure_id || "adventure"}`)],
       ["Parties", `${modernState.parties.length} saved`, "Choose a four-character party before starting."],
-      ["Closeout warnings", `${closeoutTasksFor([]).length} unresolved task(s)`, "Required guidance can trigger a start override warning."],
+      ["Closeout warnings", `${openCloseout.length} unresolved task(s)`, "Required guidance can trigger a start override warning.", snapshotTaskDetails(openCloseout, (task) => `${task.title || task.task_action}: ${task.result_text || task.reference || "No detail."}`)],
     ]],
     "rules-reference": ["Reference Snapshot", [
       ["Loaded entries", `${modernState.rulesReference.length || "on demand"}`, "Search exact implementation notes, source refs, and app-owned boundaries."],
@@ -1697,7 +1766,7 @@ function renderPageCompanion(page) {
     ]],
     developer: ["Developer Snapshot", [
       ["Artwork slots", `${modernState.artwork.length} registered`, "Artwork Manager shows missing/present DATA_DIR/assets paths."],
-      ["Missing art", `${modernState.artwork.filter((entry) => entry.asset_exists === false).length} missing`, "Missing application art means the placeholder has not been replaced yet."],
+      ["Missing art", `${missingArt.length} missing`, "Missing application art means the placeholder has not been replaced yet.", snapshotTaskDetails(missingArt, (entry) => `${entry.title || entry.id}: ${entry.asset_path || entry.path || "No asset path"}${entry.dashboard_pages?.length ? ` (${entry.dashboard_pages.join(", ")})` : ""}`)],
       ["Editors", "map, icon, module scaffolds", "Developer tools are maintenance surfaces, not normal play flow."],
     ]],
   };
@@ -1764,7 +1833,7 @@ async function renderShellArtwork(page) {
   }
   if (pageArtworkEl) {
     pageArtworkEl.replaceChildren();
-    const pageArt = page === "home" ? null : primaryApplicationArtworkForPage(page);
+    const pageArt = primaryApplicationArtworkForPage(page);
     if (pageArt) pageArtworkEl.appendChild(renderArtworkFigure(pageArt, "modern-page-artwork-figure"));
     if (pageHeadEl) pageHeadEl.classList.toggle("has-artwork", Boolean(pageArt));
   }
@@ -3573,12 +3642,12 @@ function renderAdventureManagement() {
 
 async function renderGoAdventure() {
   const prefs = readModernPrefs();
-  rootEl.appendChild(renderGuide("Adventure Workflow", [
+  const workflowGuide = renderGuide("Adventure Workflow", [
     "Start New creates a fresh session from the selected party and module.",
     "Resume Adventure reopens active in-progress sessions; Saved Games are listed separately.",
     "Generate, import, export, or delete modules from Adventure Management.",
     "The Closeout Gate uses campaign guidance and Adventures Guild closeout prompts to warn before starting again."
-  ], "tag_guild_closeout_guidance", "go adventure tag lead resume saved"));
+  ], "tag_guild_closeout_guidance", "go adventure tag lead resume saved");
   const panel = card("Start New Adventure", "Choose party, adventure type, module, ruleset, and start play. This creates a new session.");
   panel.classList.add("modern-primary-card");
   const party = select("modern-start-party", "Party to send on the adventure.", partyOptions());
@@ -3607,12 +3676,44 @@ async function renderGoAdventure() {
   overrideRow.title = overrideStart.title;
   overrideRow.append(overrideStart, el("span", "", "Start anyway after reviewing overridable closeout warnings"));
   const startSummary = el("div", "modern-list modern-start-summary");
+  const startStatusIcons = el("section", "modern-dashboard-status-icons modern-start-status-icons");
+  startStatusIcons.setAttribute("aria-label", "Start status checks");
   let latestReadinessRows = [];
   let latestGate = null;
+  function addStartStatusIcon(symbol, label, value, tooltip, detail, status = "ok") {
+    const item = el("button", `modern-dashboard-status-icon modern-start-status-icon ${status === "block" ? "is-block" : status === "warn" ? "is-warn" : "is-ok"}`);
+    item.type = "button";
+    item.title = `${tooltip}\n\n${formatSnapshotDetail(detail)}`;
+    item.append(el("span", "modern-dashboard-status-symbol", symbol), el("strong", "", label), el("span", "muted", value));
+    item.addEventListener("click", () => showSnapshotDetail(label, detail));
+    startStatusIcons.appendChild(item);
+  }
   function drawStartSummary() {
     startSummary.replaceChildren();
+    startStatusIcons.replaceChildren();
     const setupIssues = latestReadinessRows.filter(([, , status]) => status !== "ok");
     const gateIssues = latestGate?.issues || [];
+    const setupBlocks = latestReadinessRows.filter(([, , status]) => status === "block").length;
+    const gateBlocks = gateIssues.filter((issue) => issue.severity === "block").length;
+    const setupStatus = setupBlocks ? "block" : (setupIssues.length ? "warn" : "ok");
+    const gateStatus = gateBlocks ? "block" : (latestGate?.requires_override || gateIssues.length ? "warn" : "ok");
+    addStartStatusIcon(
+      setupBlocks ? "!" : (setupIssues.length ? "?" : "✓"),
+      "Setup",
+      setupIssues.length ? `${setupBlocks} block · ${setupIssues.length - setupBlocks} warn` : "Ready",
+      setupIssues.length ? "Open setup issue details." : "No setup issues detected for the selected party/module.",
+      setupIssues.length ? setupIssues.map(([title, body, status, hint]) => `${modernTitleFromKey(status)}: ${title} - ${body}${hint ? ` (${hint})` : ""}`) : ["No setup issues detected."],
+      setupStatus
+    );
+    addStartStatusIcon(
+      gateBlocks ? "!" : (latestGate?.requires_override || gateIssues.length ? "?" : "✓"),
+      "Closeout",
+      gateIssues.length ? `${gateBlocks} block · ${gateIssues.length - gateBlocks} warn` : "Clear",
+      gateIssues.length ? "Open closeout/guidance gate details." : "No campaign closeout or guidance warnings for this party.",
+      gateIssues.length ? gateIssues.map((issue) => `${modernTitleFromKey(issue.severity)}: ${issue.title} - ${issue.body || "No detail."}`) : ["No campaign closeout or guidance warnings for this party."],
+      gateStatus
+    );
+    if (latestGate?.requires_override) startStatusIcons.appendChild(overrideRow);
     startSummary.appendChild(
       modernStatusRow(
         "Ready status",
@@ -3620,7 +3721,7 @@ async function renderGoAdventure() {
           ? `${setupIssues.length} setup issue(s) · ${gateIssues.length} closeout/guidance issue(s)`
           : "Ready to start.",
         setupIssues.length || gateIssues.length
-          ? "Open the visible Setup Check or Closeout Gate details below only when something needs review."
+          ? "Click the setup or closeout status icon for exact issues. Hard blocks still stop Start Adventure."
           : "Setup Check and Closeout Gate are still enforced in the background when Start Adventure is pressed."
       )
     );
@@ -3657,10 +3758,9 @@ async function renderGoAdventure() {
       row.classList.add(issue.severity === "block" ? "modern-row-warn" : "modern-row-ok");
       gateRows.appendChild(row);
     }
-    if (latestGate.requires_override) gateRows.appendChild(overrideRow);
     drawStartSummary();
   }
-  panel.append(field("Party", party), field("Adventure type", type), field("Adventure/module", adventure), field("Random ruleset", profile), field("XP system", xp), field("Map mode", mapMode), field("Map limit", mapLimit), startSummary);
+  panel.append(field("Party", party), field("Adventure type", type), field("Adventure/module", adventure), field("Random ruleset", profile), field("XP system", xp), field("Map mode", mapMode), field("Map limit", mapLimit), startStatusIcons, startSummary);
   drawReadiness();
   await drawCloseoutGate();
   party.addEventListener("change", () => {
@@ -3787,7 +3887,7 @@ async function renderGoAdventure() {
     panelEl.append(...nodes.filter(Boolean));
     panels[key] = panelEl;
   }
-  addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate]);
+  addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, workflowGuide]);
   addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [sessions, saved, management]);
   addGoAdventureTab("reference", "Reference / Playtest", "Capture playtest issues and review closeout/reference context.", [
     renderPlaytestTriagePanel("go-adventure"),

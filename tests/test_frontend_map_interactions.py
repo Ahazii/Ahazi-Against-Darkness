@@ -1917,6 +1917,10 @@ def test_application_artwork_manager_and_slots_are_wired() -> None:
     assert "modern-home-tile-artwork-link" in MODERN_PAGES_JS
     assert "function renderDashboardStatusIcons()" in MODERN_PAGES_JS
     assert "modern-dashboard-status-icons" in MODERN_PAGES_JS
+    assert "function snapshotStatusRow" in MODERN_PAGES_JS
+    assert "function showSnapshotDetail" in MODERN_PAGES_JS
+    assert "modern-snapshot-detail-dialog" in MODERN_PAGES_JS
+    assert "primaryApplicationArtworkForPage(page)" in MODERN_PAGES_JS
     assert 'home: ["Dashboard"' in MODERN_PAGES_JS
     assert "New Home Dashboard" not in MODERN_HTML
     assert "New home dashboard" not in MODERN_HTML
@@ -1932,6 +1936,9 @@ def test_application_artwork_manager_and_slots_are_wired() -> None:
     assert ".modern-page-artwork-figure" in STYLES_CSS
     assert ".modern-page-artwork-figure img" in STYLES_CSS
     assert "object-fit: contain" in STYLES_CSS
+    assert "grid-template-columns: minmax(0, 1fr) auto minmax(420px, 48%)" in STYLES_CSS
+    assert ".modern-snapshot-detail-overlay" in STYLES_CSS
+    assert ".modern-row-action" in STYLES_CSS
     assert ".modern-dashboard-status-icons" in STYLES_CSS
     assert ".modern-home-tile-artwork-link" in STYLES_CSS
     assert ".modern-nav-artwork-figure" in STYLES_CSS
@@ -1991,6 +1998,19 @@ def test_modern_dashboard_status_and_developer_tools_are_demoted() -> None:
     assert "const artworkMount = el(\"div\", \"modern-dev-artwork-manager hidden\")" in MODERN_PAGES_JS
     assert "button(\"Artwork Manager\"" in MODERN_PAGES_JS
     assert "tools.appendChild(artworkMount)" in MODERN_PAGES_JS
+
+
+def test_go_adventure_start_uses_status_icons_not_setup_panels() -> None:
+    go_start = MODERN_PAGES_JS.index("async function renderGoAdventure()")
+    assert "const workflowGuide = renderGuide(\"Adventure Workflow\"" in MODERN_PAGES_JS[go_start:]
+    assert "modern-start-status-icons" in MODERN_PAGES_JS[go_start:]
+    assert "function addStartStatusIcon" in MODERN_PAGES_JS[go_start:]
+    assert "showSnapshotDetail(label, detail)" in MODERN_PAGES_JS[go_start:]
+    assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, workflowGuide])' in MODERN_PAGES_JS
+    assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate])' not in MODERN_PAGES_JS
+    assert "button.modern-dashboard-status-icon" in STYLES_CSS
+    assert ".modern-start-status-icons" in STYLES_CSS
+    assert "full Setup Check and Closeout Gate panels are no longer shown" in MAIN_PY
 
 
 def test_mass_blessing_ui_sends_targets_and_conditions() -> None:
