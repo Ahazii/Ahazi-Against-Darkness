@@ -26,7 +26,7 @@
         <div class="modern-home-head">
           <div>
             <h2>Home Dashboard</h2>
-            <p class="muted">Organized campaign, party, TAG, rules, and adventure tools. The legacy home remains available from the modern dashboard.</p>
+            <p class="muted">Organized campaign, party, The Adventures Guild, rules, and adventure tools. The legacy home remains available from the modern dashboard.</p>
           </div>
           <button id="modern-home-back" type="button" class="secondary" title="Return to the existing default home screen.">Existing Home</button>
         </div>
@@ -109,10 +109,10 @@
             </div>
           </details>
           <details class="modern-home-section">
-            <summary>AI Adventure Generation</summary>
+            <summary>Adventure Management</summary>
             <div class="modern-home-actions">
-              <a class="link-button" href="/modern/ai-adventures" title="Open standalone AI adventure generation.">Open AI Page</a>
-              <span class="modern-home-status in-progress" title="Export, rename, and delete AI adventure management needs a later pass.">In progress: export/name/delete management</span>
+              <a class="link-button" href="/modern/adventure-management" title="Open module import, export, delete, and generation tools.">Open Adventure Management</a>
+              <span class="modern-home-status" title="Modules are tagged as AI, Adventures Guild, completed, and in use. In-use modules cannot be deleted.">AI and Adventures Guild modules managed together</span>
             </div>
           </details>
           <details class="modern-home-section" open>
@@ -703,19 +703,19 @@
               <dialog id="tag-adventure-actions-dialog" class="help-dialog transfer-dialog tag-action-dialog">
                 <form method="dialog" id="tag-adventure-actions-form">
                   <div class="transfer-dialog-header">
-                    <h3>TAG Adventure Actions</h3>
-                    <p class="muted">Resolve TAG scene branches, route choices, rewards, XP markers, Guild spell timing, and finance notes while playing the adventure. Use this when a TAG room prompt, printed scene, quest closeout, or log reminder says a decision cannot be inferred from movement or combat alone.</p>
+                    <h3>The Adventures Guild Actions</h3>
+                    <p class="muted">Resolve The Adventures Guild scene branches, route choices, rewards, XP markers, Guild spell timing, and finance notes while playing the adventure. Use this when a room prompt from The Adventures Guild, printed scene, quest closeout, or log reminder says a decision cannot be inferred from movement or combat alone.</p>
                   </div>
-                  <div class="tag-action-guide" title="Use these controls during exploration when a TAG generated adventure asks you to make a branch, route, Clue, reward, XP, Guild spell, or finance decision that the app cannot infer automatically.">
+                  <div class="tag-action-guide" title="Use these controls during exploration when a generated adventure from The Adventures Guild asks you to make a branch, route, Clue, reward, XP, Guild spell, or finance decision that the app cannot infer automatically.">
                     <strong>Workflow</strong>
                     <span>1. If the room log says hidden treasure was found, use Claim Treasure. Do not use this dialog for ordinary room treasure.</span>
-                    <span>2. Use this dialog for TAG procedures that movement/combat cannot infer: Treasure Map room targets, report/stealth choices, deferred treasure, Clue spends, special rewards, XP, Guild, and banking.</span>
+                    <span>2. Use this dialog for The Adventures Guild procedures that movement/combat cannot infer: Treasure Map room targets, report/stealth choices, deferred treasure, Clue spends, special rewards, XP, Guild, and banking.</span>
                     <span>3. Character is optional unless someone spends Clues, receives gp/items, casts a spell, owns a bank account, or makes a character-specific Save.</span>
                     <span>4. Treasure Map examples: Branch > Underground caves room target rolls/logs the Map Leads To 1 d6+3 target count; Branch > Map lich save/Life/treasure handles Map Leads To 6 setup and closeout.</span>
                     <span>5. Use Reference for a short note such as "Map Leads To 1" or "Scene 10"; use Amount only when the selected action hint asks for a number.</span>
                     <span>6. For capture-alive text, tick Subdual damage during combat first; after the foe is subdued, record Capture alive and any printed reward here.</span>
                   </div>
-                  <div id="tag-relevant-actions" class="tag-relevant-actions hidden" title="Context-aware shortcuts from the current generated TAG room prompt. These prefill TAG Actions and do not replace PDF/player signoff."></div>
+                  <div id="tag-relevant-actions" class="tag-relevant-actions hidden" title="Context-aware shortcuts from the current generated The Adventures Guild room prompt. These prefill The Adventures Guild Actions and do not replace PDF/player signoff."></div>
                   <div class="tag-settlement-grid">
                     <label for="tag-action-character">
                       <span>Character</span>
@@ -1014,7 +1014,7 @@
         <div id="session-main" class="session-main">
           <div class="panel map-panel map-panel-layout">
             <div class="panel-heading">
-              <h2>Map</h2>
+              <h2>Adventure View</h2>
               <div class="panel-actions">
                 <span id="fd-map-mode" class="status fd-map-mode hidden" title="Current Forsaken Depths map layer"></span>
                 <span id="fd-river-type" class="status fd-river-type hidden" title="Rolled river type for this underground river"></span>
@@ -1027,9 +1027,9 @@
                 <span id="fd-oblivion-offer" class="status fd-oblivion-offer hidden" title="River of Oblivion Madness redemption offer"></span>
                 <span id="fd-magic-mr" class="status fd-magic-mr hidden" title="Magic Citadel — magic resistance suspended"></span>
                 <span id="session-mode" class="status"></span>
-                <button id="toggle-current-objective" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide the current objective guidance. This tells you the next app-supported step, such as resolving combat, claiming treasure, or letting the app track a TAG target.">Current Objective</button>
-                <button id="toggle-ongoing-quests" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide Ongoing Quests. Quest cards show active objectives, source, turn-in state, TAG procedure tracking, and reward buttons.">Ongoing Quests</button>
-                <button id="toggle-text-commands" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide the text command bar. Use this for typed exploration commands such as look, search, claim, rest, or go north 1.">Text Commands</button>
+                <button id="toggle-current-objective" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide detailed objective guidance. The Narrative title also shows compact objective and quest status.">Objective Details</button>
+                <button id="toggle-ongoing-quests" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide detailed quest cards. Quest cards show active objectives, source, turn-in state, Adventures Guild procedure tracking, and reward buttons.">Quest Details</button>
+                <button id="toggle-text-commands" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide the bottom text command bar. Use this for typed exploration commands such as look, search, claim, rest, or go north 1.">Text Commands</button>
                 <button id="toggle-exits-panel" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide the exits panel. Exits lists doors and passages the app can move through from the current map element.">Exits</button>
                 <button id="toggle-party-sheets-panel" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide party character sheets. The sheets show current Life, equipment, inventory, abilities, spells, statuses, and actions.">Character Sheets</button>
               </div>
@@ -1075,6 +1075,7 @@
                     <span class="log-key-chip log-key-foe-damage" title="Blue: damage dealt to foes.">Foe dmg</span>
                     <span class="log-key-chip log-key-foe-heal" title="Purple: foe healing or regeneration.">Foe heal</span>
                   </div>
+                  <div id="narrative-objective-chips" class="narrative-objective-chips" aria-label="Current objective and quest summary"></div>
                   <div class="log-heading-actions">
                     <div class="log-mode-toggle" role="group" aria-label="Narrative detail">
                       <button id="log-mode-summary" type="button" class="secondary log-mode-btn selected" aria-pressed="true" title="Summary narrative: show outcomes without roll, lookup, or math detail.">Summary</button>
@@ -1084,20 +1085,6 @@
                 </div>
                 <div id="session-log" class="log map-log"></div>
                 <div id="current-objective-banner" class="current-objective-banner hidden" aria-live="polite"></div>
-                <div id="exploration-command-bar" class="exploration-command-bar hidden" aria-label="Exploration commands">
-                  <form id="exploration-command-form" class="exploration-command-form" autocomplete="off">
-                    <input
-                      id="exploration-command-input"
-                      class="exploration-command-input"
-                      type="text"
-                      placeholder="Command… try look, go north 1, open east 2, search, claim"
-                      spellcheck="false"
-                      title="Type a command and press Enter. Examples: look · go north 1 · open west 1 · search · claim · fight · rest · help"
-                    />
-                    <button type="submit" class="secondary">Go</button>
-                  </form>
-                  <p id="exploration-command-hints" class="exploration-command-hints muted"></p>
-                </div>
               </div>
               <div
                 id="log-exits-resizer"
@@ -1194,6 +1181,20 @@
             </div>
             <div id="combat-hero-chips" class="combat-hero-chips hidden" aria-label="Party quick view"></div>
             <div id="combat-party-strip" class="combat-party-strip hidden" aria-label="Party sheets"></div>
+            <div id="exploration-command-bar" class="exploration-command-bar bottom-command-bar hidden" aria-label="Exploration commands">
+              <p id="exploration-command-hints" class="exploration-command-hints muted"></p>
+              <form id="exploration-command-form" class="exploration-command-form" autocomplete="off">
+                <input
+                  id="exploration-command-input"
+                  class="exploration-command-input"
+                  type="text"
+                  placeholder="Command... try look, go north 1, open east 2, search, claim"
+                  spellcheck="false"
+                  title="Type a command and press Enter. Examples: look, go north 1, open west 1, search, claim, fight, rest, help."
+                />
+                <button type="submit" class="secondary">Go</button>
+              </form>
+            </div>
           </div>
 
           <div
@@ -1256,7 +1257,7 @@
                 <button id="resolve-trap" type="button" class="secondary exploration-only">Resolve Trap</button>
                 <button id="claim-treasure" type="button" class="secondary exploration-only">Claim Treasure</button>
                 <button id="rest" type="button" class="exploration-only">Rest</button>
-                <button id="tag-open-adventure-actions" type="button" class="secondary exploration-only hidden">TAG Actions</button>
+                <button id="tag-open-adventure-actions" type="button" class="secondary exploration-only hidden">The Adventures Guild Actions</button>
               </div>
             </div>
             <div class="side-panel-body">

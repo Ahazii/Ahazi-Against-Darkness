@@ -515,6 +515,7 @@ const inventoryPickerSelect = document.getElementById("inventory-picker-select")
 const inventoryPickerConfirmBtn = document.getElementById("inventory-picker-confirm");
 const sessionLog = document.getElementById("session-log");
 const currentObjectiveBanner = document.getElementById("current-objective-banner");
+const narrativeObjectiveChips = document.getElementById("narrative-objective-chips");
 const explorationCommandBar = document.getElementById("exploration-command-bar");
 const explorationCommandForm = document.getElementById("exploration-command-form");
 const explorationCommandInput = document.getElementById("exploration-command-input");
@@ -8711,10 +8712,10 @@ const TAG_HELP_CONTENT = {
     ],
   },
   actions: {
-    title: "TAG Actions",
+    title: "Adventures Guild Actions",
     lines: [
-      "TAG Actions cover follow-up decisions after a generated adventure exists: branch choices, Clue spends, variable counts, capture-alive outcomes, exact scene rewards, trinkets, Guild spells, and finance enforcement.",
-      "Generated TAG adventure rooms can open this dialog from their room detail prompt. Check the PDF text, adjust the prefilled amount/reference if needed, then apply the action.",
+      "Adventures Guild Actions cover follow-up decisions after a generated adventure exists: branch choices, Clue spends, variable counts, capture-alive outcomes, exact scene rewards, trinkets, Guild spells, and finance enforcement.",
+      "Generated Adventures Guild adventure rooms can open this dialog from their room detail prompt. Check the PDF text, adjust the prefilled amount/reference if needed, then apply the action.",
       "Route actions preserve scene-by-scene flow: parley success/failure, Clue gates, peaceful or hostile branches, skipped/unlocked scenes, solo restrictions, and finale path choices.",
       "Scene results apply printed outcomes such as Medusa pendant, gargoyle bounty, Gorungar bounty, bandit capture, Shaura reward, Daroc's cat, mutant-fish rations, Agaratha, Deoldyn training, and Dragon's Lair type reveal.",
       "XP actions record pending scene XP, minor encounter counts, capture-alive XP timing, training XP-roll markers, or immediate XP awards to the selected character.",
@@ -11206,7 +11207,7 @@ document.addEventListener(
 
 function openTagAdventureActions() {
   if (!tagAdventureActionsDialog) {
-    setStatus("TAG Actions dialog is not available on this screen.");
+    setStatus("Adventures Guild Actions dialog is not available on this screen.");
     return;
   }
   if (tagAdventureActionsDialog.parentElement !== document.body) {
@@ -11227,15 +11228,15 @@ function openTagAdventureActions() {
     }
     tagAdventureActionsDialog.scrollTop = 0;
     tagBranchAction?.focus();
-    setStatus("TAG Actions opened.");
+    setStatus("Adventures Guild Actions opened.");
   } catch (error) {
     handleError(error);
     try {
       tagAdventureActionsDialog.setAttribute("open", "");
       tagBranchAction?.focus();
-      setStatus("TAG Actions opened without modal support.");
+      setStatus("Adventures Guild Actions opened without modal support.");
     } catch {
-      setStatus("Could not open TAG Actions.");
+      setStatus("Could not open Adventures Guild Actions.");
     }
   }
 }
@@ -11292,7 +11293,7 @@ async function runTagBranchActionWithDefaults(defaults = {}) {
   const branchAction = defaults.branchAction || "";
   if (!directTagBranchAllowed(defaults)) {
     openTagActionsWithDefaults(defaults);
-    setStatus("This TAG procedure needs a character, amount, or player choice; review it in TAG Actions before running.");
+    setStatus("This Adventures Guild procedure needs a character, amount, or player choice; review it in Adventures Guild Actions before running.");
     return;
   }
   const endpoint = state.session?.id
@@ -16824,6 +16825,7 @@ function renderSession() {
   safeSessionRender("partyState", () => renderPartyState(session));
   cachedSessionRender("log", logRenderSignature(session), () => renderLog(session));
   safeSessionRender("currentObjective", () => renderCurrentObjectiveBanner(session));
+  safeSessionRender("narrativeObjectiveChips", () => renderNarrativeObjectiveChips(session));
   safeSessionRender("explorationCommand", () => renderExplorationCommandBar(session));
   applyExplorationPanelVisibility();
   if (tagOpenAdventureActions) {
@@ -17701,7 +17703,7 @@ function currentObjectiveForSession(session) {
       body:
         "This looks like the destination room for the recorded Map Leads To 1 target. Resolve the final Boss with +2 Life and double maximum treasure, then close out reward, XP, Guild share, banking/storage, and signoff. If this room still has ordinary treasure after the fight, use Claim Treasure.",
       tone: "tag",
-      action: { label: "Open TAG Actions", kind: "tag-actions" },
+      action: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
       secondaryAction: { label: "Sign off TAG lead", kind: "tag-lead-signoff" },
     };
   }
@@ -17709,7 +17711,7 @@ function currentObjectiveForSession(session) {
   if (hasTreasure) {
     return {
       title: "Current objective: claim this room's treasure",
-      body: "This is ordinary room treasure in the current map element. Use Claim Treasure for it; do not hunt through TAG Actions for a Map Leads To procedure unless the Treasure Map quest panel asks for one separately.",
+      body: "This is ordinary room treasure in the current map element. Use Claim Treasure for it; do not hunt through Adventures Guild Actions for a Map Leads To procedure unless the Treasure Map quest panel asks for one separately.",
       tone: "gold",
       action: { label: "Claim Treasure", kind: "advance", advanceAction: "claim_treasure" },
     };
@@ -17768,7 +17770,7 @@ function currentObjectiveForSession(session) {
         body: `${director.instruction} ${director.playbook} If this resumed module has no Relevant Now buttons, run Repair guidance to rebuild generic prompt metadata.`,
         tone: "tag",
         action: { label: "Repair guidance", kind: "tag-repair" },
-        secondaryAction: { label: "Open TAG Actions", kind: "tag-actions" },
+        secondaryAction: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
       };
     }
     if (actions.length) {
@@ -17779,13 +17781,13 @@ function currentObjectiveForSession(session) {
           `${director?.instruction || `${leadLabel}. ${generated.promptData.body || "Use the current generated TAG room prompt to decide which branch, route, reward, XP, or closeout marker applies."}`} ${director?.playbook || ""}`,
         tone: "tag",
         action: {
-          label: String(primary.label || "Open TAG Actions"),
+          label: String(primary.label || "Open Adventures Guild Actions"),
           kind: "tag-prompt-action",
           promptAction: primary,
           fallbackReference: `${generated.tagReference.title || "TAG lead"}: ${generated.promptData.title || generated.room?.id || "room prompt"}`,
           tagReference: generated.tagReference,
         },
-        secondaryAction: { label: "Open TAG Actions", kind: "tag-actions" },
+        secondaryAction: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
       };
     }
   }
@@ -17809,7 +17811,7 @@ function currentObjectiveForSession(session) {
   }
   return {
     title: "Current objective: explore",
-    body: "Choose an exit, search a fresh room, rest if the rules allow it, or open TAG Actions only when a TAG lead/procedure explicitly asks for a branch, reward, XP, Guild, or finance decision.",
+    body: "Choose an exit, search a fresh room, rest if the rules allow it, or open Adventures Guild Actions only when an Adventures Guild lead/procedure explicitly asks for a branch, reward, XP, Guild, or finance decision.",
     tone: "neutral",
   };
 }
@@ -17834,7 +17836,7 @@ function appendCurrentObjectiveButton(parent, action) {
       );
       break;
     case "tag-review":
-      setButtonTooltip(btn, `${action.procedure?.guidance || "Review this TAG procedure."} Opens TAG Actions with the relevant branch and reference prefilled.`);
+      setButtonTooltip(btn, `${action.procedure?.guidance || "Review this Adventures Guild procedure."} Opens Adventures Guild Actions with the relevant branch and reference prefilled.`);
       btn.addEventListener("click", () =>
         openTagActionsWithDefaults({
           branchAction: action.procedure.branchAction,
@@ -17851,7 +17853,7 @@ function appendCurrentObjectiveButton(parent, action) {
       );
       break;
     case "tag-prompt-action":
-      setButtonTooltip(btn, `${action.promptAction?.tooltip || "Use this current-room TAG prompt action."} Opens TAG Actions prefilled; confirm exact PDF/player values before applying.`);
+      setButtonTooltip(btn, `${action.promptAction?.tooltip || "Use this current-room Adventures Guild prompt action."} Opens Adventures Guild Actions prefilled; confirm exact PDF/player values before applying.`);
       btn.addEventListener("click", () =>
         openTagActionsWithDefaults(
           generatedTagPromptActionDefaults(action.promptAction, action.fallbackReference, action.tagReference)
@@ -17859,7 +17861,7 @@ function appendCurrentObjectiveButton(parent, action) {
       );
       break;
     case "tag-actions":
-      setButtonTooltip(btn, "Open TAG Actions with relevant current-room shortcuts shown at the top.");
+      setButtonTooltip(btn, "Open Adventures Guild Actions with relevant current-room shortcuts shown at the top.");
       btn.addEventListener("click", () => openTagAdventureActions());
       break;
     case "tag-lead-signoff":
@@ -17902,6 +17904,40 @@ function renderCurrentObjectiveBanner(session) {
   const lifecycle = renderGeneratedTagLifecycleStrip(session);
   if (lifecycle) currentObjectiveBanner.appendChild(lifecycle);
   appendTagCaveProgressPanel(currentObjectiveBanner, session);
+}
+
+function renderNarrativeObjectiveChips(session) {
+  if (!narrativeObjectiveChips) return;
+  narrativeObjectiveChips.replaceChildren();
+  if (!session || session.camped_outside) {
+    narrativeObjectiveChips.classList.add("hidden");
+    return;
+  }
+  const objective = currentObjectiveForSession(session);
+  if (objective) {
+    const chip = node("button", `narrative-objective-chip ${objective.tone || "neutral"}`, objective.title.replace(/^Current objective:\s*/i, ""));
+    chip.type = "button";
+    setButtonTooltip(chip, `${objective.title}: ${objective.body}`);
+    chip.addEventListener("click", () => setExplorationPanelVisibility("objective", !(state.explorationPanels?.objective === true)));
+    narrativeObjectiveChips.appendChild(chip);
+  }
+  const fdQuests = session.ruleset === "forsaken_depths" ? fdActiveQuests(session) : [];
+  const eeQuest =
+    session.ruleset !== "forsaken_depths" && session.active_quest && !session.active_quest.reward_claimed
+      ? session.active_quest
+      : null;
+  const activeQuests = eeQuest ? [eeQuest] : fdQuests;
+  if (activeQuests.length) {
+    const ready = activeQuests.filter((quest) => questClaimStatus(session, quest).ok).length;
+    const label = ready ? `${ready}/${activeQuests.length} quest ready` : `${activeQuests.length} quest`;
+    const chip = node("button", "narrative-objective-chip quest", label);
+    chip.type = "button";
+    const titles = activeQuests.map((quest) => questDisplayTitle(session, quest)).join("; ");
+    setButtonTooltip(chip, `${titles}. Open Quest Details for reward and turn-in controls.`);
+    chip.addEventListener("click", () => setExplorationPanelVisibility("quests", !(state.explorationPanels?.quests === true)));
+    narrativeObjectiveChips.appendChild(chip);
+  }
+  narrativeObjectiveChips.classList.toggle("hidden", narrativeObjectiveChips.childElementCount === 0);
 }
 
 function questObjectiveRows(session, quest) {
@@ -18135,9 +18171,9 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
     panel.appendChild(missing);
   }
   const actions = node("div", "ongoing-quest-actions");
-  const tagActions = node("button", "secondary", "Open TAG Actions");
+  const tagActions = node("button", "secondary", "Open Adventures Guild Actions");
   tagActions.type = "button";
-  setButtonTooltip(tagActions, "Open TAG Actions with the current-room Relevant Now shortcuts visible at the top.");
+  setButtonTooltip(tagActions, "Open Adventures Guild Actions with the current-room Relevant Now shortcuts visible at the top.");
   tagActions.addEventListener("click", () => openTagAdventureActions());
   actions.appendChild(tagActions);
   const signoff = node("button", quest.completed ? "primary" : "secondary", "Sign off TAG lead");
@@ -18571,7 +18607,7 @@ function renderOngoingQuests(session) {
     return;
   }
   ongoingQuestsEl.classList.remove("hidden");
-  ongoingQuestsEl.appendChild(node("h2", "", "Ongoing Quests"));
+  ongoingQuestsEl.appendChild(node("h2", "", "Quest Details"));
 
   if (showLady) {
     const offer = node("div", "ongoing-quest-card");
@@ -23338,8 +23374,8 @@ function appendTagContextualActions(parent, session, tile) {
   const actionsRow = node("div", "tag-context-actions-row");
   appendTagContextualButton(
     actionsRow,
-    "TAG Actions",
-    "Open the full TAG Actions dialog without changing any values.",
+    "Adventures Guild Actions",
+    "Open the full Adventures Guild Actions dialog without changing any values.",
     {}
   );
   if (roomId === "tag-lead-entry") {

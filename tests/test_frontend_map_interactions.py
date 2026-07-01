@@ -2176,7 +2176,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert ".tag-context-actions-row .primary" in STYLES_CSS
     assert ".tag-action-dialog .dialog-drag-handle" in STYLES_CSS
     assert "enableTagActionDialogDrag" in APP_JS
-    assert "Generated TAG Leads" in MODERN_PAGES_JS
+    assert "Generated Adventures Guild Leads" in MODERN_PAGES_JS
     assert "renderRumorLeadAuditPanel" in MODERN_PAGES_JS
     assert "TAG Rumor Leads" in MODERN_PAGES_JS
     assert "Rumor Signoff Checklist" in MODERN_PAGES_JS
@@ -2193,8 +2193,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
     assert "Start\", \"Start a fresh adventure" in MODERN_PAGES_JS
     assert "Resume\", \"Resume active adventures" in MODERN_PAGES_JS
-    assert "Generate\", \"Create TAG leads" in MODERN_PAGES_JS
-    assert "Guild Jobs\", \"Review Guild Job" in MODERN_PAGES_JS
+    assert "The Adventures Guild\", \"Generate Adventures Guild modules" in MODERN_PAGES_JS
+    assert "Adventure Management" in MODERN_PAGES_JS
     assert "Reference\", \"Review closeout" in MODERN_PAGES_JS
     assert ".modern-tabs" in STYLES_CSS
     assert "renderTagWorkflowDashboard(\"go\")," in MODERN_PAGES_JS
@@ -2230,7 +2230,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "settlement",
         "campaign",
         "settings",
-        "ai-adventures",
+        "adventure-management",
         "go-adventure",
         "rules-reference",
         "tables",
@@ -2273,12 +2273,12 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "Known Settlements",
         "Save Preferences",
         "Load Saved Game",
-        "Create TAG Adventure Lead",
+        "Generate The Adventures Guild Module",
         "modern-tag-lead-type",
         "modern-tag-lead-random",
-        "Random TAG lead: choose the lead family and the result randomly.",
-        "Create TAG Module",
-        "It is selected in Adventure/module.",
+        "Random Adventures Guild lead: choose the lead family and table result randomly when the module is generated.",
+        "Create Adventures Guild Module",
+        "Start it from Go Adventure > Start.",
         "latestSessionPerParty",
         "older session(s) hidden",
         "Shows the latest resumable or saved session for each party",
@@ -2296,7 +2296,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
 
 def test_legacy_dashboard_cards_link_to_modern_pages_not_old_home_actions() -> None:
     assert 'id="show-modern-home" class="icon-button" href="/modern"' in INDEX_HTML
-    for page in ["characters", "troupes", "guild", "parties", "equipment", "banking", "settlement", "campaign", "settings", "ai-adventures", "go-adventure", "rules-reference", "tables", "library", "guides", "developer"]:
+    for page in ["characters", "troupes", "guild", "parties", "equipment", "banking", "settlement", "campaign", "settings", "adventure-management", "go-adventure", "rules-reference", "tables", "library", "guides", "developer"]:
         assert f'href="/modern/{page}"' in INDEX_HTML
     assert "function runTagBankTransferAction" in APP_JS
     assert "tag_troupe_member_character_ids" in APP_JS

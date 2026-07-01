@@ -29,16 +29,17 @@ function writeModernPrefs(patch) {
 }
 
 const PAGE_META = {
-  home: ["New Home Dashboard", "Separate pages for campaign setup, TAG management, rules, guides, and developer tools."],
+  home: ["New Home Dashboard", "Separate pages for campaign setup, The Adventures Guild management, rules, guides, and developer tools."],
   characters: ["Character Management", "Create, maintain, level, heal, delete, and review roster characters."],
-  troupes: ["Troupe Management", "Manage the TAG troupe roster, active party selection, travel, and home settlement."],
+  troupes: ["Troupe Management", "Manage The Adventures Guild troupe roster, active party selection, travel, and home settlement."],
   guild: ["Guild Management", "Manage Adventurers Guild membership, coffers, upkeep, benefits, and obligations."],
   parties: ["Party Management", "Create, heal, delete, and review four-character parties."],
   equipment: ["Equipment Shop", "Buy and sell equipment for a selected character without returning to the legacy home page."],
-  banking: ["Banking and Finance", "TAG bank accounts, hidden treasure troves, robbery recovery, and finance actions."],
-  settlement: ["Settlement Management", "Maintain TAG settlement name, size, notes, services, travel, and availability rolls."],
+  banking: ["Banking and Finance", "The Adventures Guild bank accounts, hidden treasure troves, robbery recovery, and finance actions."],
+  settlement: ["Settlement Management", "Maintain The Adventures Guild settlement name, size, notes, services, travel, and availability rolls."],
   campaign: ["Campaign Management", "World, hex map, and settlement-map planning surface."],
-  settings: ["Settings / Options", "Ruleset profiles, campaign options, map limits, and TAG banking preferences."],
+  settings: ["Settings / Options", "Ruleset profiles, campaign options, map limits, and Adventures Guild banking preferences."],
+  "adventure-management": ["Adventure Management", "Import, export, delete, generate, and review playable adventure modules."],
   "ai-adventures": ["AI Adventure Generation", "Generate prompts, validate imports, and install AI-authored modules."],
   "go-adventure": ["Go Adventure!", "Select a party, adventure type, ruleset, and start a session."],
   "rules-reference": ["Rules Reference", "Search and inspect curated implementation references."],
@@ -68,6 +69,7 @@ const PAGE_HELP_QUERIES = {
   settlement: "settlement services availability travel",
   campaign: "campaign world builder",
   settings: "settings ruleset profile",
+  "adventure-management": "adventure management import export generated module",
   "ai-adventures": "ai adventure import",
   "go-adventure": "go adventure closeout gates start override",
   "rules-reference": "rules artwork registry",
@@ -86,6 +88,7 @@ const PAGE_HELP_REFS = {
   banking: "tag_settlement_campaign",
   settlement: "tag_settlement_campaign",
   campaign: "campaign_command_center",
+  "adventure-management": "go_adventure_closeout_gates",
   "go-adventure": "go_adventure_closeout_gates",
   "rules-reference": "rules_artwork_registry",
   tables: "rules_tables_index",
@@ -718,13 +721,13 @@ function tagWorkflowCounts() {
 
 function renderTagWorkflowDashboard(context = "overview") {
   const counts = tagWorkflowCounts();
-  const panel = card("TAG Workflow Summary", "Live player-facing TAG status: troupe, Guild, banking, storage, generated leads, route/XP signoff, and closeout prompts. Use this as the first scan before and after TAG adventures.");
+  const panel = card("The Adventures Guild Workflow Summary", "Live player-facing Adventures Guild status: troupe, Guild, banking, storage, generated leads, route/XP signoff, and closeout prompts. Use this as the first scan before and after Adventures Guild adventures.");
   panel.classList.add("modern-primary-card");
   panel.append(
     modernStatusRow("Troupe readiness", `${counts.troupeMembers} troupe member(s) · ${counts.activeMembers}/4 active`, "Active members are the likely adventuring party. Keep this aligned with Party Management and Go Adventure."),
     modernStatusRow("Guild status", `${counts.guildActive ? "member" : "not a member"} · benefits ${counts.guildBenefits ? "active" : "inactive"} · ${counts.guildCoffers} gp coffers`, "Guild benefits depend on active membership and coffers above 0 gp; coffers affect benefits, upkeep, resurrection funding, and loot-share obligations."),
     modernStatusRow("Finance/storage", `${counts.bankAccounts} bank account(s) · ${counts.robbedAccounts} robbed · trove ${counts.hiddenTroveGold} gp / ${counts.hiddenTroveItems} item stack(s)${counts.hiddenTroveRobbed ? " · stolen" : ""}`, "Bank accounts, robbery recovery, hidden troves, and stolen trove recovery are handled from Banking and Finance."),
-    modernStatusRow("Adventure signoff", `${counts.generatedLeads} generated TAG lead(s) · ${counts.routes} route marker(s) · ${counts.xpPending} pending XP marker(s)`, "Generated TAG adventures use room prompts and TAG Actions to record branch, route, reward, and XP signoff."),
+    modernStatusRow("Adventure signoff", `${counts.generatedLeads} generated Adventures Guild lead(s) · ${counts.routes} route marker(s) · ${counts.xpPending} pending XP marker(s)`, "Generated Adventures Guild adventures use room prompts and Adventures Guild Actions to record branch, route, reward, and XP signoff."),
     modernStatusRow("Needs attention", `${counts.openCloseout} closeout prompt(s) · ${counts.openGuidance} open guidance task(s)`, "Closeout and guidance tasks should be reviewed before the next adventure; Go Adventure enforces required closeout warnings with explicit override.")
   );
   const row = actions();
@@ -1087,7 +1090,7 @@ function adventureOptions(kind = "all") {
     const adventureSource = String(adventure.source || "");
     const adventureName = adventure.name || adventure.title || adventureId;
     const tagLabel = adventure.tag_lead_type
-      ? `TAG ${modernTitleFromKey(adventure.tag_lead_type)} · ${adventureName}${adventure.tag_prompt_count ? ` · ${adventure.tag_prompt_count} prompts` : ""}`
+      ? `Adventures Guild ${modernTitleFromKey(adventure.tag_lead_type)} · ${adventureName}${adventure.tag_prompt_count ? ` · ${adventure.tag_prompt_count} prompts` : ""}`
       : adventureName;
     if (kind === "ai" && !adventureId.startsWith("ai-")) continue;
     if (kind === "imported" && (adventureId === "random" || adventureId === "ai-adventure" || adventureId.startsWith("ai-") || adventureSource === "rules")) continue;
@@ -1112,23 +1115,23 @@ function tagLeadStatusRows(adventure) {
   const pendingXp = (campaign.tag_xp_markers || []).filter((marker) => !marker.applied).length;
   const routeCount = (campaign.tag_adventure_routes || []).length;
   return [
-    ["Lead", adventure.tag_lead_detail || adventure.name || adventure.id, "Generated TAG lead detail/result. Use this to confirm you created the intended Rumor, Treasure Map, Thematic Dungeon, or Guild Job."],
-    ["Prompts", `${adventure.tag_prompt_count || 0} room prompt(s)`, "Prompt count from the generated module metadata. More prompts means more room-aware TAG Action shortcuts during exploration."],
+    ["Lead", adventure.tag_lead_detail || adventure.name || adventure.id, "Generated Adventures Guild lead detail/result. Use this to confirm you created the intended Rumor, Treasure Map, Thematic Dungeon, or Guild Job."],
+    ["Prompts", `${adventure.tag_prompt_count || 0} room prompt(s)`, "Prompt count from the generated module metadata. More prompts means more room-aware Adventures Guild Action shortcuts during exploration."],
     ["Route signoff", `${routeCount} route marker(s) in campaign`, "Route markers are global campaign signoff state; review latest markers before closing the lead."],
     ["Closeout", `${openCloseout} open closeout · ${pendingXp} pending XP`, "Generated adventures should be reviewed against closeout and XP state before starting another lead."],
   ];
 }
 
 function renderTagLeadSelectorPanel(adventureSelect = null) {
-  const panel = card("Generated TAG Leads", "Installed TAG modules with lead type, source detail, prompt coverage, director guidance, and closeout wizard state. Use this before Start Adventure so you know why the module exists and what still needs review.");
+  const panel = card("Generated Adventures Guild Leads", "Installed Adventures Guild modules with lead type, source detail, prompt coverage, director guidance, and closeout wizard state. Use this before Start Adventure so you know why the module exists and what still needs review.");
   const leads = tagGeneratedAdventures();
   if (!leads.length) {
-    panel.appendChild(el("p", "muted", "No generated TAG modules are installed yet. Create a Rumor, Treasure Map, Thematic Dungeon, or Guild Job lead first."));
+    panel.appendChild(el("p", "muted", "No generated Adventures Guild modules are installed yet. Create a Rumor, Treasure Map, Thematic Dungeon, or Guild Job lead first."));
     return panel;
   }
   for (const adventure of leads.slice(0, 8)) {
     const row = el("div", "modern-row");
-    row.title = `${adventure.notes || "Generated TAG module."} ${adventure.tag_pdf_pages ? `Source ${adventure.tag_pdf_pages}.` : ""}`;
+    row.title = `${adventure.notes || "Generated Adventures Guild module."} ${adventure.tag_pdf_pages ? `Source ${adventure.tag_pdf_pages}.` : ""}`;
     row.append(
       el("strong", "", adventure.name || adventure.id),
       el("span", "muted", `${modernTitleFromKey(adventure.tag_lead_type || "tag lead")} · ${adventure.tag_scene || adventure.tag_lead_detail || "generated module"}${adventure.tag_pdf_pages ? ` · ${adventure.tag_pdf_pages}` : ""}`)
@@ -1138,7 +1141,7 @@ function renderTagLeadSelectorPanel(adventureSelect = null) {
     }
     const rowActions = actions();
     rowActions.append(
-      button("Select Lead", "Switch Go Adventure to Imported Adventure Module and select this generated TAG lead.", async () => {
+      button("Select Lead", "Switch Go Adventure to Imported Adventure Module and select this generated Adventures Guild lead.", async () => {
         const type = document.getElementById("modern-adventure-type");
         if (type) type.value = "imported";
         if (adventureSelect) {
@@ -1148,8 +1151,8 @@ function renderTagLeadSelectorPanel(adventureSelect = null) {
         writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: adventure.id || "" });
         setStatus(`Selected ${adventure.name || adventure.id}. Review setup and closeout gates before starting.`);
       }),
-      link("Rules", ruleReferenceHref("tag_generated_prompt_playtest", "TAG generated prompt playtest"), "Open the Rules Reference entry for generated TAG prompt playtest and selector workflow.", "link-button secondary"),
-      link("Signoff Table", "/modern/tables?help=tag_generated_adventure_signoff_table", "Open the Tables row for generated TAG lifecycle, route, reward, XP, guidance, and closeout signoff checkpoints.", "link-button secondary")
+      link("Rules", ruleReferenceHref("tag_generated_prompt_playtest", "Adventures Guild generated prompt playtest"), "Open the Rules Reference entry for generated Adventures Guild prompt playtest and selector workflow.", "link-button secondary"),
+      link("Signoff Table", "/modern/tables?help=tag_generated_adventure_signoff_table", "Open the Tables row for generated Adventures Guild lifecycle, route, reward, XP, guidance, and closeout signoff checkpoints.", "link-button secondary")
     );
     row.appendChild(rowActions);
     panel.appendChild(row);
@@ -2949,13 +2952,254 @@ function renderAiAdventures() {
   rootEl.append(panel, list);
 }
 
+function adventureModuleKind(adventure) {
+  const id = String(adventure.id || "");
+  const source = String(adventure.source || "").toLowerCase();
+  if (id === "random" || source === "rules") return "Rules";
+  if (id.startsWith("ai-") || source === "ai") return "AI";
+  if (adventure.tag_lead_type || (modernState.campaign?.tag_generated_adventure_ids || []).includes(id)) return "The Adventures Guild";
+  return "Imported";
+}
+
+function adventureModuleInUse(adventureId) {
+  return (modernState.sessions || []).filter((session) => session.adventure_id === adventureId && session.mode !== "complete");
+}
+
+function adventureModuleCompleted(adventureId) {
+  return (modernState.sessions || []).some((session) => session.adventure_id === adventureId && session.mode === "complete");
+}
+
+function adventureModuleTags(adventure) {
+  const tags = [adventureModuleKind(adventure)];
+  if (adventure.playable === false) tags.push("Not playable");
+  if (adventureModuleCompleted(adventure.id)) tags.push("Completed");
+  if (adventureModuleInUse(adventure.id).length) tags.push("In use");
+  return tags;
+}
+
+function renderAdventureModuleManager() {
+  const panel = card(
+    "Generated Adventure Modules",
+    "One list is cleaner than separate AI and Adventures Guild lists: the tag on each module shows its source, completion state, and whether an active session is using it. The server also blocks deletion while a module is in use."
+  );
+  const rows = [...(modernState.adventures || [])].sort((a, b) => (a.name || a.title || a.id).localeCompare(b.name || b.title || b.id));
+  for (const adventure of rows) {
+    const id = String(adventure.id || "");
+    const title = adventure.name || adventure.title || id;
+    const inUse = adventureModuleInUse(id);
+    const protectedModule = ["random", "ai-adventure", "courtship-demesne"].includes(id) || adventure.source === "rules" || adventure.playable === false;
+    const row = el("div", "modern-row modern-module-row");
+    const copy = el("div", "modern-row-copy");
+    copy.append(el("strong", "", title));
+    copy.append(el("span", "muted", `${id} · ${adventure.room_count || 0} room(s) · ${adventure.notes || "Playable imported module."}`));
+    const tags = el("div", "modern-chip-row");
+    for (const tag of adventureModuleTags(adventure)) tags.appendChild(el("span", "modern-tag", tag));
+    copy.appendChild(tags);
+    row.appendChild(copy);
+    const rowActions = actions();
+    if (!protectedModule) {
+      rowActions.append(
+        link("Export JSON", `/api/adventures/${encodeURIComponent(id)}/export`, "Export this module manifest as JSON."),
+        link("Export ZIP", `/api/adventures/${encodeURIComponent(id)}/export.zip`, "Export this module as a zip package.")
+      );
+      const remove = button("Delete", inUse.length ? "Cannot delete while this module has an in-progress game." : "Delete this installed module. Completed session history is kept.", async () => {
+        if (inUse.length) throw new Error(`Cannot delete ${title}: ${inUse.length} game(s) still use it.`);
+        if (!window.confirm(`Delete ${title}?`)) return;
+        const result = await api(`/api/adventures/${encodeURIComponent(id)}`, { method: "DELETE" });
+        setStatus(result.message || "Adventure module deleted.");
+        await refreshCoreAndRender();
+      });
+      remove.disabled = Boolean(inUse.length);
+      rowActions.appendChild(remove);
+    } else {
+      rowActions.appendChild(el("span", "muted", protectedModule ? "Protected module" : ""));
+    }
+    row.appendChild(rowActions);
+    panel.appendChild(row);
+  }
+  if (!rows.length) panel.appendChild(el("p", "muted", "No adventure modules found."));
+  return panel;
+}
+
+function renderAdventureModuleImport() {
+  const panel = card("Import Module", "Import any reviewed adventure manifest JSON. The module will appear in the unified module list with source/status tags after validation.");
+  const json = textarea("modern-module-import-json", "Paste an adventure module JSON manifest to validate or import.", 8);
+  const file = input("file", "modern-module-import-file", "Load an adventure module JSON file.");
+  file.accept = ".json,application/json";
+  file.addEventListener("change", async () => {
+    const selected = file.files?.[0];
+    if (!selected) return;
+    json.value = await selected.text();
+    setStatus(`Loaded ${selected.name} into Module JSON.`);
+  });
+  panel.append(field("Module JSON", json), field("Import file", file));
+  const row = actions();
+  row.append(
+    button("Validate Module", "Validate the pasted adventure module before importing it.", async () => {
+      const result = await api("/api/adventures/validate", { method: "POST", body: JSON.stringify({ manifest: JSON.parse(json.value) }) });
+      setStatus(result.valid ? "Adventure module JSON valid." : `Invalid: ${(result.errors || []).join("; ")}`);
+    }),
+    button("Import Module", "Import the pasted module as an installed adventure. The app rejects invalid manifests.", async () => {
+      const result = await api("/api/adventures/import", { method: "POST", body: JSON.stringify({ manifest: JSON.parse(json.value), overwrite: false }) });
+      setStatus(result.message || `Imported ${result.title || result.adventure_id}.`);
+      await refreshCoreAndRender();
+    })
+  );
+  panel.appendChild(row);
+  return panel;
+}
+
+function renderTagModuleGeneration(selectedAdventureControl = null) {
+  const tagLead = card(
+    "Generate The Adventures Guild Module",
+    "Creates a normal playable adventure module from an Adventures Guild rumor, treasure map, thematic dungeon, or Guild job. Printed choices still belong to the player; fixed rolls are automated and reported in the Narrative."
+  );
+  const tagLeadType = select("modern-tag-lead-type", "Choose which Adventures Guild lead table to generate from when Random is off.", [
+    ["rumor", "Rumor Scene"],
+    ["treasure_map", "Treasure Map destination"],
+    ["thematic_dungeon", "Thematic Dungeon"],
+    ["guild_job", "Guild Job"],
+  ]);
+  const tagLeadRandom = input("checkbox", "modern-tag-lead-random", "Random Adventures Guild lead: choose the lead family and table result randomly when the module is generated.");
+  tagLeadRandom.checked = true;
+  const randomRow = el("label", "modern-check-row");
+  randomRow.title = tagLeadRandom.title;
+  randomRow.append(tagLeadRandom, el("span", "", "Random lead family"));
+  const syncTagLeadRandom = () => {
+    tagLeadType.disabled = tagLeadRandom.checked;
+    tagLeadType.closest("label")?.classList.toggle("muted", tagLeadRandom.checked);
+  };
+  tagLeadRandom.addEventListener("change", syncTagLeadRandom);
+  syncTagLeadRandom();
+  tagLead.append(randomRow, field("Lead type", tagLeadType));
+  tagLead.appendChild(button("Create Adventures Guild Module", "Create and install an Adventures Guild lead as a playable imported adventure. With Random checked, the app chooses the lead family and table result.", async () => {
+    const leadTypes = ["rumor", "treasure_map", "thematic_dungeon", "guild_job"];
+    const selectedLeadType = tagLeadRandom.checked
+      ? leadTypes[Math.floor(Math.random() * leadTypes.length)]
+      : tagLeadType.value;
+    const result = await api("/api/campaign/tag/create-adventure", {
+      method: "POST",
+      body: JSON.stringify({ lead_type: selectedLeadType, detail: "" }),
+    });
+    modernState.campaign = result.campaign;
+    modernState.adventures = await api("/api/adventures");
+    if (selectedAdventureControl) {
+      selectedAdventureControl.replaceChildren(...optionRows(adventureOptions("imported")));
+      selectedAdventureControl.value = result.adventure_id || "";
+      writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: result.adventure_id || "" });
+    }
+    setStatus(`Created ${result.title || result.adventure_id}. Start it from Go Adventure > Start.`);
+    await refreshCoreAndRender();
+  }));
+  return tagLead;
+}
+
+function renderAiModuleGeneration() {
+  const panel = card("Generate AI Module", "Generate an external-AI prompt, paste or load the returned adventure JSON, validate it, then import it as a playable module.");
+  const theme = input("text", "modern-adventure-ai-theme", "Theme for the AI adventure prompt.");
+  const promptBox = textarea("modern-adventure-ai-prompt", "Generated prompt/export token text. Send this to your AI tool.", 8);
+  const json = textarea("modern-adventure-ai-json", "Paste AI adventure JSON to validate or import.", 10);
+  const file = input("file", "modern-adventure-ai-file", "Import adventure JSON from a .json file.");
+  file.accept = ".json,application/json";
+  file.addEventListener("change", async () => {
+    const selected = file.files?.[0];
+    if (!selected) return;
+    json.value = await selected.text();
+    setStatus(`Loaded ${selected.name} into Adventure JSON.`);
+  });
+  panel.append(field("Theme", theme), field("Prompt / export token", promptBox), field("Adventure JSON", json), field("Import file", file));
+  const row = actions();
+  row.append(
+    button("Generate Prompt", "Generate an external-LLM prompt for this theme.", async () => {
+      const result = await api("/api/adventures/ai/prompt", {
+        method: "POST",
+        body: JSON.stringify({
+          theme: theme.value || "dungeon",
+          difficulty: "standard",
+          length: "short",
+          style: "grim",
+          environment: "dungeon",
+          boss_type: "random",
+          party_level_min: 1,
+          party_level_max: 3,
+        }),
+      });
+      promptBox.value = result.prompt || "";
+      setStatus("Prompt generated into the text area.");
+    }, ""),
+    button("Validate JSON", "Validate pasted AI adventure JSON before import.", async () => {
+      const result = await api("/api/adventures/validate", { method: "POST", body: JSON.stringify({ manifest: JSON.parse(json.value) }) });
+      setStatus(result.valid ? "Adventure JSON valid." : `Invalid: ${(result.errors || []).join("; ")}`);
+    }),
+    button("Import JSON", "Import pasted AI adventure JSON as an installed module.", async () => {
+      const result = await api("/api/adventures/import", { method: "POST", body: JSON.stringify({ manifest: JSON.parse(json.value), overwrite: false }) });
+      setStatus(result.message || `Imported ${result.title || result.adventure_id}.`);
+      await refreshCoreAndRender();
+    })
+  );
+  panel.appendChild(row);
+  return panel;
+}
+
+function renderAdventureManagement() {
+  rootEl.appendChild(renderGuide("Adventure Management", [
+    "Use Modules to import, export, delete, and check whether a module is AI-authored, Adventures Guild generated, completed, or in use.",
+    "Use The Adventures Guild generation for rumors, treasure maps, thematic dungeons, and Guild jobs.",
+    "Use AI generation when you want a prompt and JSON validation workflow for an external AI-authored adventure.",
+    "Start and resume actual play from Go Adventure."
+  ], "go_adventure_closeout_gates", "adventure management generated modules import export delete"));
+  const tabs = el("div", "modern-tabs");
+  const panels = {};
+  function activateAdventureTab(key) {
+    for (const buttonEl of tabs.querySelectorAll(".modern-tab-button")) {
+      const selected = buttonEl.dataset.tab === key;
+      buttonEl.classList.toggle("selected", selected);
+      buttonEl.setAttribute("aria-selected", selected ? "true" : "false");
+    }
+    Object.entries(panels).forEach(([panelKey, panelEl]) => {
+      panelEl.classList.toggle("hidden", panelKey !== key);
+    });
+  }
+  function addAdventureTab(key, label, title, nodes) {
+    const tab = button(label, title, async () => activateAdventureTab(key), "secondary modern-tab-button");
+    tab.dataset.tab = key;
+    tab.setAttribute("role", "tab");
+    tabs.appendChild(tab);
+    const panelEl = el("section", "modern-tab-panel hidden");
+    panelEl.dataset.tabPanel = key;
+    panelEl.setAttribute("role", "tabpanel");
+    panelEl.append(...nodes.filter(Boolean));
+    panels[key] = panelEl;
+  }
+  addAdventureTab("modules", "Modules", "Import, export, delete, and review all adventure module types.", [renderAdventureModuleImport(), renderAdventureModuleManager()]);
+  addAdventureTab("guild", "The Adventures Guild", "Generate Adventures Guild modules and review lead signoff support.", [
+    renderTagModuleGeneration(),
+    renderTagWorkflowDashboard("go"),
+    renderTagLeadSelectorPanel(),
+    renderRumorLeadAuditPanel(),
+    renderRumorSignoffChecklist(),
+    renderTreasureMapLeadAuditPanel(),
+    renderTreasureMapSignoffChecklist(),
+    renderThematicDungeonLeadAuditPanel(),
+    renderThematicDungeonSignoffChecklist(),
+  ]);
+  addAdventureTab("ai", "AI Modules", "Generate prompts, validate imports, and install AI-authored modules.", [renderAiModuleGeneration()]);
+  addAdventureTab("reference", "Reference", "Review closeout, signoff, action history, and rules/table links for generated modules.", [
+    renderAdventureCloseoutCockpit("Adventure Management"),
+    renderTagSignoffPanel("Adventures Guild Lead / Start Signoff"),
+    renderTagActionLogExplorer(),
+  ]);
+  rootEl.append(tabs, ...Object.values(panels));
+  activateAdventureTab("modules");
+}
+
 async function renderGoAdventure() {
   const prefs = readModernPrefs();
   rootEl.appendChild(renderGuide("Adventure Workflow", [
     "Start New creates a fresh session from the selected party and module.",
     "Resume Adventure reopens active in-progress sessions; Saved Games are listed separately.",
-    "Create a TAG lead first when the next adventure comes from a rumor, map, theme, or Guild job.",
-    "The Closeout Gate uses campaign guidance and TAG closeout prompts to warn before starting again."
+    "Generate, import, export, or delete modules from Adventure Management.",
+    "The Closeout Gate uses campaign guidance and Adventures Guild closeout prompts to warn before starting again."
   ], "tag_guild_closeout_guidance", "go adventure tag lead resume saved"));
   const panel = card("Start New Adventure", "Choose party, adventure type, module, ruleset, and start play. This creates a new session.");
   panel.classList.add("modern-primary-card");
@@ -3058,44 +3302,6 @@ async function renderGoAdventure() {
   profile.addEventListener("change", drawReadiness);
   mapLimit.addEventListener("input", drawReadiness);
   profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
-  const tagLead = card("Create TAG Adventure Lead", "Player-facing TAG lead creation. Use this to install a Rumor, Treasure Map destination, Thematic Dungeon, or Guild Job as a playable imported module.");
-  const tagLeadType = select("modern-tag-lead-type", "Choose which TAG lead table to generate from.", [
-    ["rumor", "Rumor Scene"],
-    ["treasure_map", "Treasure Map destination"],
-    ["thematic_dungeon", "Thematic Dungeon"],
-    ["guild_job", "Guild Job"],
-  ]);
-  const tagLeadRandom = input("checkbox", "modern-tag-lead-random", "Random TAG lead: choose the lead family and the result randomly.");
-  tagLeadRandom.checked = true;
-  const randomRow = el("label", "modern-check-row");
-  randomRow.title = tagLeadRandom.title;
-  randomRow.append(tagLeadRandom, el("span", "", "Random"));
-  const syncTagLeadRandom = () => {
-    tagLeadType.disabled = tagLeadRandom.checked;
-    tagLeadType.closest("label")?.classList.toggle("muted", tagLeadRandom.checked);
-  };
-  tagLeadRandom.addEventListener("change", syncTagLeadRandom);
-  syncTagLeadRandom();
-  tagLead.append(randomRow, field("Lead type", tagLeadType));
-  tagLead.appendChild(button("Create TAG Module", "Create and install a TAG lead as a playable imported adventure, then select it above. With Random checked, the app chooses the lead family and table result.", async () => {
-    const leadTypes = ["rumor", "treasure_map", "thematic_dungeon", "guild_job"];
-    const selectedLeadType = tagLeadRandom.checked
-      ? leadTypes[Math.floor(Math.random() * leadTypes.length)]
-      : tagLeadType.value;
-    const result = await api("/api/campaign/tag/create-adventure", {
-      method: "POST",
-      body: JSON.stringify({ lead_type: selectedLeadType, detail: "" }),
-    });
-    modernState.campaign = result.campaign;
-    modernState.adventures = await api("/api/adventures");
-    type.value = "imported";
-    adventure.replaceChildren(...optionRows(adventureOptions("imported")));
-    adventure.value = result.adventure_id || "";
-    profile.closest("label")?.classList.add("hidden");
-    writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: result.adventure_id || "" });
-    setStatus(`Created ${result.title || result.adventure_id}. It is selected in Adventure/module.`);
-    await refreshCoreAndRender();
-  }));
   const startRow = actions();
   startRow.appendChild(button("Start Adventure", "Create a new session with the selected party and adventure settings.", async () => {
     if (!party.value) throw new Error("Choose a party.");
@@ -3174,45 +3380,12 @@ async function renderGoAdventure() {
     saved.appendChild(row);
   }
   if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
-  const guildJobs = card(
-    "Guild Jobs",
-    "Create Guild Job generated adventures from the Generate tab, then start them from Start. Guild Jobs are TAG leads: fixed rolls can be automated, while printed choices remain player choices."
-  );
-  const guildJobActions = actions();
-  guildJobActions.append(
-    button("Select Guild Job generator", "Switch to Generate and preselect Guild Job as the lead type.", async () => {
-      tagLeadRandom.checked = false;
-      tagLeadType.value = "guild_job";
-      syncTagLeadRandom();
-      activateGoAdventureTab("generate");
-      setStatus("Guild Job selected. Press Create TAG Module to roll a Guild Job result.");
-    }),
-    button("Open Guild Management", "Open Guild Management to review Guild members, coffers, jobs, and campaign assignment before generating a Guild Job.", async () => {
-      window.location.href = "/modern/guild";
-    }, "secondary")
-  );
-  guildJobs.appendChild(
-    modernStatusRow(
-      "How Guild Jobs should run",
-      "Generate the job, start it as an imported module, let the app deliver the lead in the Narrative, then use Current Objective for procedure and closeout tracking.",
-      "Use Guild Jobs when the adventure comes from TAG guild work rather than a random dungeon start."
-    )
-  );
-  guildJobs.appendChild(guildJobActions);
-  const reference = card(
-    "Reference",
-    "Review closeout, signoff, action history, and rules/table links without crowding the Start flow."
-  );
-  const referenceActions = actions();
-  referenceActions.append(
-    button("Rules Reference", "Open the Rules Reference filtered to Go Adventure and TAG lead support.", async () => {
-      window.location.href = "/modern/rules-reference?help=go%20adventure%20tag%20lead";
-    }, "secondary"),
-    button("Rules Tables", "Open the Rules Tables dashboard for generated adventures, TAG leads, treasure maps, monsters, and artwork-linked tables.", async () => {
-      window.location.href = "/modern/tables?search=tag";
-    }, "secondary")
-  );
-  reference.appendChild(referenceActions);
+  const management = card("Need a module?", "Create Adventures Guild modules, generate AI prompts, import JSON, export backups, and delete unused modules from Adventure Management.");
+  const managementActions = actions();
+  managementActions.appendChild(button("Open Adventure Management", "Open module management, Adventures Guild generation, AI generation, and reference tools.", async () => {
+    window.location.href = "/modern/adventure-management";
+  }));
+  management.appendChild(managementActions);
   const tabs = el("div", "modern-tabs");
   const panels = {};
   function activateGoAdventureTab(key) {
@@ -3237,25 +3410,7 @@ async function renderGoAdventure() {
     panels[key] = panelEl;
   }
   addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate]);
-  addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [sessions, saved]);
-  addGoAdventureTab("generate", "Generate", "Create TAG leads from rumors, treasure maps, thematic dungeons, or Guild jobs.", [
-    renderTagWorkflowDashboard("go"),
-    tagLead,
-    renderTagLeadSelectorPanel(adventure),
-    renderRumorLeadAuditPanel(adventure),
-    renderRumorSignoffChecklist(),
-    renderTreasureMapLeadAuditPanel(adventure),
-    renderTreasureMapSignoffChecklist(),
-    renderThematicDungeonLeadAuditPanel(adventure),
-    renderThematicDungeonSignoffChecklist(),
-  ]);
-  addGoAdventureTab("guild-jobs", "Guild Jobs", "Review Guild Job generated-adventure flow and open the Guild manager.", [guildJobs]);
-  addGoAdventureTab("reference", "Reference", "Review closeout, signoff, TAG action log, rules reference, and tables.", [
-    reference,
-    renderAdventureCloseoutCockpit("Go Adventure"),
-    renderTagSignoffPanel("TAG Lead / Start Signoff"),
-    renderTagActionLogExplorer(),
-  ]);
+  addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [sessions, saved, management]);
   rootEl.append(tabs, ...Object.values(panels));
   activateGoAdventureTab("start");
 }
@@ -3610,6 +3765,7 @@ function renderPage() {
     settlement: renderSettlement,
     campaign: renderCampaign,
     settings: renderSettings,
+    "adventure-management": renderAdventureManagement,
     "ai-adventures": renderAiAdventures,
     "go-adventure": renderGoAdventure,
     "rules-reference": renderRulesReference,
