@@ -169,6 +169,10 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         "tag_thematic_dungeon_playthrough_audit_table",
         "go_adventure_tabbed_workflow_table",
         "exploration_narrative_layout_table",
+        "playtest_triage_workflow_table",
+        "exploration_objective_clarity_table",
+        "adventure_management_browser_table",
+        "artwork_expansion_plan_table",
         "application_artwork_slots_table",
         "user_artwork_placeholders_table",
     ]:

@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard Artwork Layout Mockup</title>
+    <style>
+      :root {
+        --bg: #10120e;
+        --panel: #1b1d16;
+        --panel2: #12140f;
+        --line: #454330;
+        --accent: #c9a227;
+        --text: #f6ecd0;
+        --muted: #d8c894;
+        --warn: #f0c451;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: center;
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--line);
+        background: #171a13;
+      }
+
+      h1, h2, h3, p {
+        margin: 0;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 16px;
+        padding: 16px;
+      }
+
+      .nav {
+        display: grid;
+        align-content: start;
+        gap: 5px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 8px;
+      }
+
+      .nav-art,
+      .tile-art,
+      .hero-art {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background:
+          radial-gradient(circle at 72% 34%, rgba(245, 199, 89, 0.28), transparent 19%),
+          radial-gradient(circle at 30% 70%, rgba(105, 66, 20, 0.42), transparent 26%),
+          linear-gradient(135deg, #332012, #12140f 44%, #4e3618);
+      }
+
+      .nav-art {
+        aspect-ratio: 16 / 9;
+        margin-bottom: 8px;
+      }
+
+      .nav a {
+        color: var(--text);
+        text-decoration: none;
+        padding: 8px 9px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+      }
+
+      .nav a.active {
+        border-color: var(--accent);
+        background: #11130f;
+      }
+
+      .content {
+        display: grid;
+        gap: 16px;
+      }
+
+      .mock-title {
+        display: grid;
+        gap: 4px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(360px, 1fr) minmax(360px, 42%);
+        gap: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 12px;
+      }
+
+      .hero-left {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .description-box,
+      .companion-box,
+      .card,
+      .tile {
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel2);
+        padding: 12px;
+      }
+
+      .description-box {
+        display: grid;
+        gap: 7px;
+      }
+
+      .companion-box {
+        display: grid;
+        gap: 10px;
+      }
+
+      .status-row {
+        display: grid;
+        gap: 3px;
+        border: 1px solid #363425;
+        border-radius: 6px;
+        background: #171814;
+        padding: 9px;
+      }
+
+      .hero-art {
+        position: relative;
+        min-height: 310px;
+      }
+
+      .hero-art::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 66% 38%, rgba(255, 216, 126, 0.42), transparent 12%),
+          radial-gradient(circle at 22% 48%, rgba(218, 148, 52, 0.18), transparent 20%),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0));
+      }
+
+      .help {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: rgba(16, 18, 14, 0.86);
+        color: var(--text);
+        font-weight: 800;
+      }
+
+      .action-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      button,
+      .button {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #11130f;
+        color: var(--text);
+        padding: 8px 12px;
+        font-weight: 700;
+      }
+
+      .button.primary {
+        background: var(--accent);
+        color: #15120a;
+        border-color: #e6c75d;
+      }
+
+      .below {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+      }
+
+      .launcher-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 12px;
+      }
+
+      .tile {
+        display: grid;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .tile-art {
+        aspect-ratio: 16 / 9;
+      }
+
+      .tile-status {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .cinematic {
+        position: relative;
+        overflow: hidden;
+        min-height: 360px;
+      }
+
+      .cinematic::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 70% 38%, rgba(246, 199, 83, 0.32), transparent 16%),
+          radial-gradient(circle at 23% 62%, rgba(92, 55, 20, 0.44), transparent 22%),
+          linear-gradient(135deg, #34210f, #0f100d 52%, #553919);
+        opacity: 0.45;
+        filter: saturate(0.85);
+      }
+
+      .cinematic > * {
+        position: relative;
+      }
+
+      .cinematic-grid {
+        display: grid;
+        grid-template-columns: minmax(320px, 0.9fr) minmax(320px, 1.1fr);
+        gap: 12px;
+      }
+
+      .note {
+        border-left: 3px solid var(--warn);
+        padding-left: 10px;
+      }
+
+      @media (max-width: 900px) {
+        .shell,
+        .hero,
+        .cinematic-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Ahazi Against Darkness</h1>
+        <p class="muted">Artwork layout mockup - Banking and Finance example</p>
+      </div>
+      <button>Legacy homepage</button>
+    </header>
+
+    <main class="shell">
+      <aside class="nav">
+        <div class="nav-art" title="Dashboard artwork"></div>
+        <a>Character Management</a>
+        <a>Troupe Management</a>
+        <a>Guild Management</a>
+        <a>Party Management</a>
+        <a>Equipment Shop</a>
+        <a class="active">Banking and Finance</a>
+        <a>Settlement Management</a>
+        <a>Adventure Management</a>
+        <a>Go Adventure!</a>
+        <a>Rules Reference</a>
+      </aside>
+
+      <section class="content">
+        <section class="mock-title">
+          <h2>Recommended: Command Panel Header</h2>
+          <p class="muted">The image stays readable and the page gains a useful left-side command/status area.</p>
+        </section>
+
+        <section class="hero">
+          <div class="hero-left">
+            <article class="description-box">
+              <h2>Banking and Finance</h2>
+              <p class="muted">
+                Track The Adventures Guild accounts, hidden treasure troves, robbed accounts, inheritance, loans,
+                storage risks, and recovery tasks that can affect closeout and future play.
+              </p>
+              <div class="action-strip">
+                <span class="button primary">Open Bank Ledger</span>
+                <span class="button">Resolve Recovery</span>
+                <span class="button">Rules Reference</span>
+              </div>
+            </article>
+
+            <article class="companion-box">
+              <h3>Finance / Storage Snapshot</h3>
+              <div class="status-row">
+                <strong>Bank accounts</strong>
+                <span class="muted">3 accounts - 0 robbed - 0 open recovery tasks</span>
+              </div>
+              <div class="status-row">
+                <strong>Hidden trove</strong>
+                <span class="muted">0 gp - 0 item stacks - no active theft warning</span>
+              </div>
+              <div class="status-row">
+                <strong>Adventure closeout</strong>
+                <span class="muted">No banking/storage blocks before the next adventure</span>
+              </div>
+            </article>
+          </div>
+
+          <figure class="hero-art" aria-label="Banking artwork preview">
+            <span class="help">?</span>
+          </figure>
+        </section>
+
+        <section class="below">
+          <article class="card">
+            <h3>The Adventures Guild Workflow Summary</h3>
+            <p class="muted">
+              This becomes a normal section under the hero instead of competing with the image for first-screen space.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Open Tasks</h3>
+            <p class="muted">Closeout and guidance checks can stay available without dominating the first screen.</p>
+          </article>
+        </section>
+
+        <section class="mock-title">
+          <h2>Dashboard Launcher Tiles</h2>
+          <p class="muted">Each launcher uses its own artwork plus a compact status strip, so art has a job.</p>
+        </section>
+
+        <section class="launcher-grid">
+          <article class="tile">
+            <div class="tile-art"></div>
+            <h3>Character Management</h3>
+            <p class="muted">Roster, sheets, equipment, spells, party, troupe, and Guild context.</p>
+            <div class="tile-status"><span>18 heroes</span><span>2 warnings</span></div>
+          </article>
+          <article class="tile">
+            <div class="tile-art"></div>
+            <h3>Adventure Management</h3>
+            <p class="muted">Generated, imported, and AI-authored modules with import/export/delete.</p>
+            <div class="tile-status"><span>7 modules</span><span>1 in use</span></div>
+          </article>
+          <article class="tile">
+            <div class="tile-art"></div>
+            <h3>Go Adventure!</h3>
+            <p class="muted">Start, resume, readiness checks, and guided objective automation.</p>
+            <div class="tile-status"><span>2 active</span><span>ready</span></div>
+          </article>
+        </section>
+
+        <section class="mock-title">
+          <h2>Alternative: Dimmed Artwork Background</h2>
+          <p class="muted">More dramatic, but riskier for readable dense tools. I would keep this optional.</p>
+        </section>
+
+        <section class="hero cinematic">
+          <div class="cinematic-grid">
+            <article class="description-box">
+              <h2>Banking and Finance</h2>
+              <p class="muted">
+                Same page content, but the image sits behind the entire hero. It looks richer, yet every artwork file
+                now needs enough darkness and empty space to keep text readable.
+              </p>
+              <p class="note">Recommendation: use this only as an optional immersive mode, not the default layout.</p>
+            </article>
+            <article class="companion-box">
+              <h3>Finance / Storage Snapshot</h3>
+              <div class="status-row"><strong>Bank accounts</strong><span class="muted">3 accounts - 0 robbed</span></div>
+              <div class="status-row"><strong>Hidden trove</strong><span class="muted">0 gp - no active risk</span></div>
+              <div class="status-row"><strong>Closeout</strong><span class="muted">No finance/storage blocks</span></div>
+            </article>
+          </div>
+          <span class="help">?</span>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

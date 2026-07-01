@@ -132,6 +132,7 @@ artwork, and `DATA_DIR/assets/icons/user` for Icon Editor files.
 - `docs/ARCHITECTURE.md` - application design
 - `docs/ROADMAP.md` - implementation phases
 - `docs/CONTENT_PIPELINE.md` - PDF-to-manifest workflow
+- `docs/ARTWORK_IDEAS.md` - dashboard and gameplay artwork placement ideas
 - `docs/RULE_COVERAGE.md` - rule implementation checklist
 - `docs/MASTER_RULE_COVERAGE.md` - program-level status across EE, Abyss,
   Forsaken Depths, Adventurers' Guild, and Netherworld

@@ -99,6 +99,7 @@ const subtitleEl = document.getElementById("modern-page-subtitle");
 const descriptionEl = document.getElementById("modern-page-description");
 const helpEl = document.getElementById("modern-page-help");
 const pageHeadEl = document.querySelector(".modern-page-head");
+const pageCompanionEl = document.getElementById("modern-page-companion");
 const pageArtworkEl = document.getElementById("modern-page-artwork");
 const navArtworkEl = document.getElementById("modern-nav-artwork");
 const rootEl = document.getElementById("modern-page-root");
@@ -1576,6 +1577,135 @@ function renderArtworkFigure(entry, className, caption = "") {
   return figure;
 }
 
+function adventureTypeCount(type) {
+  return modernState.adventures.filter((adventure) => adventure.type === type || adventure.source === type || adventure.module_type === type).length;
+}
+
+function completedAdventureCount() {
+  return modernState.adventures.filter((adventure) => adventure.completed || adventure.status === "completed" || adventure.is_completed).length;
+}
+
+function moduleInUseCount() {
+  const activeIds = new Set((modernState.sessions || []).filter((session) => session.mode !== "complete").map((session) => session.adventure_id).filter(Boolean));
+  return modernState.adventures.filter((adventure) => activeIds.has(adventure.id || adventure.adventure_id)).length;
+}
+
+function renderPageCompanion(page) {
+  const campaign = modernState.campaign || {};
+  const counts = tagWorkflowCounts();
+  const activeSessions = (modernState.sessions || []).filter((session) => session.mode !== "complete");
+  const injured = modernState.characters.filter((character) => character.current_life > 0 && character.current_life < character.max_life);
+  const fallen = modernState.characters.filter((character) => character.current_life <= 0);
+  const equipmentWarnings = modernState.characters.filter((character) => characterEquipmentWarnings(character).length);
+  const companion = el("section", "modern-page-companion");
+  const addRows = (title, rows, href = "") => {
+    companion.appendChild(el("h3", "", title));
+    for (const [rowTitle, body, hint] of rows) companion.appendChild(modernStatusRow(rowTitle, body, hint));
+    if (href) {
+      const row = actions();
+      row.appendChild(link("Open Details", href, `Open the main controls for ${title}.`, "link-button secondary"));
+      companion.appendChild(row);
+    }
+  };
+  const worldCounts = [
+    worldCampaigns().length,
+    worldGuilds().length,
+    worldTroupes().length,
+    worldSettlements().length,
+    worldSettlements("troublesome").length,
+  ];
+  const definitions = {
+    home: ["Dashboard Snapshot", [
+      ["Active sessions", `${activeSessions.length} in progress`, "Resume or close sessions before reusing locked characters."],
+      ["Open guidance", `${openGuidanceTasks().length} task(s)`, "Collapsed dashboard checks are at the bottom of the page."],
+      ["Modules", `${modernState.adventures.length} installed`, "Adventure Management now owns generated, imported, and AI-authored modules."],
+    ]],
+    characters: ["Roster Snapshot", [
+      ["Roster", `${modernState.characters.length} character(s)`, "Full character sheets remain in Character Management below."],
+      ["Health", `${injured.length} injured · ${fallen.length} fallen`, "Fallen heroes block normal adventure starts."],
+      ["Equipment", `${equipmentWarnings.length} warning(s)`, "Open individual sheets to assign weapon slots or review carried gear."],
+    ]],
+    troupes: ["Troupe Snapshot", [
+      ["Members", `${counts.troupeMembers} member(s) · ${counts.activeMembers}/4 active`, "Active troupe members should match the intended party."],
+      ["Parties", `${modernState.parties.filter((party) => party.troupe_id === "troupe1").length} assigned to Troupe1`, "Party Management owns party-to-troupe assignment."],
+      ["Home", campaign.settlement_name || "Home Settlement", "Home settlement drives travel and downtime context."],
+    ]],
+    guild: ["Guild Snapshot", [
+      ["Membership", counts.guildActive ? "active member" : "not active", "Guild benefits require active membership."],
+      ["Coffers", `${counts.guildCoffers} gp · benefits ${counts.guildBenefits ? "active" : "inactive"}`, "Coffers affect benefits, upkeep, resurrection funding, and loot-share obligations."],
+      ["Closeout", `${unresolvedCloseoutTasks(["guild"]).length} Guild task(s)`, "Resolve Guild prompts after Guild-linked adventures."],
+    ]],
+    parties: ["Party Snapshot", [
+      ["Saved parties", `${modernState.parties.length} party record(s)`, "A normal party should have exactly four characters."],
+      ["Active locks", `${activeSessions.length} active session(s)`, "Characters in active sessions cannot start another adventure."],
+      ["Roster warnings", `${fallen.length} fallen · ${equipmentWarnings.length} equipment`, "Resolve hard blocks before Go Adventure."],
+    ]],
+    equipment: ["Shop Snapshot", [
+      ["Roster shoppers", `${modernState.characters.length} character(s)`, "Choose a character before buying or selling."],
+      ["Equipment warnings", `${equipmentWarnings.length} character(s)`, "Warnings usually mean missing weapon-slot assignment or inventory review."],
+      ["Rules context", "Buy full price · sell half price", "Specific exceptions remain in the equipment rules tables."],
+    ]],
+    banking: ["Finance / Storage Snapshot", [
+      ["Bank accounts", `${counts.bankAccounts} account(s) · ${counts.robbedAccounts} robbed`, "Robbed accounts create recovery prompts and adventure leads."],
+      ["Hidden trove", `${counts.hiddenTroveGold} gp · ${counts.hiddenTroveItems} item stack(s)${counts.hiddenTroveRobbed ? " · stolen" : ""}`, "Trove risk and recovery are handled in Banking and Finance."],
+      ["Closeout", `${unresolvedCloseoutTasks(["finance", "storage"]).length} finance/storage task(s)`, "Review banking and storage consequences after adventures."],
+    ]],
+    settlement: ["Settlement Snapshot", [
+      ["Current settlement", `${campaign.settlement_name || "Home Settlement"} · size ${campaign.settlement_size ?? 0}`, "Size modifies availability checks."],
+      ["Friendly records", `${worldSettlements().length} settlement(s)`, "Friendly settlements are campaign records and can become troupe homes."],
+      ["Travel log", `${(campaign.tag_travel_log || []).length} trip(s)`, "Travel logs keep downtime location history."],
+    ]],
+    campaign: ["World Snapshot", [
+      ["Campaign records", `${worldCounts[0]} campaign(s)`, "Campaigns group guilds, troupes, settlements, parties, and characters."],
+      ["World entities", `${worldCounts[1]} guild(s) · ${worldCounts[2]} troupe(s) · ${worldCounts[3]} settlement(s)`, "Current campaign support is app-owned world-builder bookkeeping."],
+      ["Troublesome towns", `${worldCounts[4]} placeholder(s)`, "Future supplement hooks only; no unsupported mechanics are claimed."],
+    ]],
+    settings: ["Options Snapshot", [
+      ["Ruleset profiles", `${modernState.rulesProfiles.length} available`, "Profiles affect selectable Go Adventure defaults."],
+      ["Map defaults", `${readModernPrefs().defaultMapMode || "unlimited"} mode`, "Map limits are start-session preferences."],
+      ["Persistence", "Saved in browser preferences", "Rules data itself is not deleted by changing dashboard options."],
+    ]],
+    "adventure-management": ["Module Snapshot", [
+      ["Installed modules", `${modernState.adventures.length} total`, "Adventure Management owns generated, imported, and AI-authored modules."],
+      ["In use", `${moduleInUseCount()} module(s) locked by active sessions`, "Server-side delete blocking protects modules used by active sessions."],
+      ["Completed", `${completedAdventureCount()} completed · ${adventureTypeCount("ai")} AI`, "Module badges distinguish AI, Adventures Guild, completed, protected, and in-use states."],
+    ]],
+    "go-adventure": ["Start Snapshot", [
+      ["Active sessions", `${activeSessions.length} in progress`, "Resume active sessions instead of starting duplicates."],
+      ["Parties", `${modernState.parties.length} saved`, "Choose a four-character party before starting."],
+      ["Closeout warnings", `${closeoutTasksFor([]).length} unresolved task(s)`, "Required guidance can trigger a start override warning."],
+    ]],
+    "rules-reference": ["Reference Snapshot", [
+      ["Loaded entries", `${modernState.rulesReference.length || "on demand"}`, "Search exact implementation notes, source refs, and app-owned boundaries."],
+      ["Artwork links", `${modernState.artwork.length} registry slot(s)`, "Artwork entries can point back to Rules Reference items."],
+      ["Boundary", "Summaries, not full PDF copies", "PDF text remains referenced unless publication rights allow more."],
+    ]],
+    tables: ["Tables Snapshot", [
+      ["Table groups", `${Object.keys(modernState.tables).length || "load on open"}`, "Tables load on demand and are guarded by regression tests."],
+      ["Artwork-linked tables", `${modernState.artwork.filter((entry) => (entry.table_keys || []).length).length} art-linked slot(s)`, "Table artwork links are registry-driven."],
+      ["Validation", "verified allowlist", "New table keys must be documented and classified."],
+    ]],
+    library: ["Library Snapshot", [
+      ["PDF links", `${PDF_LINKS.length} configured`, "Open owned PDFs from the library."],
+      ["Artwork boundary", "local or licensed", "Personal-use crops should stay in DATA_DIR/assets unless publication rights are secured."],
+      ["Background notes", "curated summaries", "The app should not bulk-copy full PDF background text."],
+    ]],
+    guides: ["Guide Snapshot", [
+      ["Available now", "TAG guide and checking docs", "Guides collect player workflow and manual test material."],
+      ["Planned", "starter and closeout guides", "Guide content can grow without changing rule automation."],
+      ["Use case", "before, during, after play", "Good guides reduce log/action confusion during TAG procedures."],
+    ]],
+    developer: ["Developer Snapshot", [
+      ["Artwork slots", `${modernState.artwork.length} registered`, "Artwork Manager shows missing/present DATA_DIR/assets paths."],
+      ["Missing art", `${modernState.artwork.filter((entry) => entry.asset_exists === false).length} missing`, "Missing application art means the placeholder has not been replaced yet."],
+      ["Editors", "map, icon, module scaffolds", "Developer tools are maintenance surfaces, not normal play flow."],
+    ]],
+  };
+  const definition = definitions[page] || definitions.home;
+  addRows(definition[0], definition[1]);
+  return companion;
+}
+
 function renderArtworkImage(entry) {
   const frame = el("div", "modern-art-frame");
   const src = artAssetUrl(entry);
@@ -1629,6 +1759,9 @@ async function renderPageArtwork(page, title = "Relevant Artwork") {
 
 async function renderShellArtwork(page) {
   await loadArtwork();
+  if (pageCompanionEl) {
+    pageCompanionEl.replaceChildren(renderPageCompanion(page));
+  }
   if (pageArtworkEl) {
     pageArtworkEl.replaceChildren();
     const pageArt = page === "home" ? null : primaryApplicationArtworkForPage(page);
@@ -1973,7 +2106,6 @@ function knownSettlements() {
 function renderTroupes() {
   const campaign = modernState.campaign || {};
   rootEl.appendChild(renderWorldContextPanel("Troupe World Context"));
-  rootEl.appendChild(renderTagWorkflowDashboard("troupe"));
   rootEl.appendChild(renderGuide("Troupe Workflow", [
     "Pick the campaign first, then keep roster membership and active adventurers in sync.",
     "A character can belong to one troupe; assigning across troupes may remove incompatible party membership.",
@@ -2137,7 +2269,6 @@ function renderTroupes() {
 function renderGuild() {
   const campaign = modernState.campaign || {};
   rootEl.appendChild(renderWorldContextPanel("Guild World Context"));
-  rootEl.appendChild(renderTagWorkflowDashboard("guild"));
   rootEl.appendChild(renderGuide("Guild Workflow", [
     "Guild benefits need active membership and coffers above 0 gp.",
     "Adventure closeout creates Guild prompts for loot share, upkeep, reroll reset, and leaving-restriction signoff.",
@@ -2422,7 +2553,6 @@ async function renderEquipment() {
 }
 
 function renderBanking() {
-  rootEl.appendChild(renderTagWorkflowDashboard("banking"));
   rootEl.appendChild(renderGuide("Finance Workflow", [
     "Choose a character first so carried gold, TAG bank, party, and troupe context are visible.",
     "Use party/troupe bulk banking for setup migration; use character actions for normal play logs.",
@@ -2542,7 +2672,6 @@ async function renderSettlement() {
     modernState.equipmentRows = payload.items || Object.values(payload).flat().filter((item) => item && item.key && item.name);
   }
   rootEl.appendChild(renderWorldContextPanel("Settlement World Context"));
-  rootEl.appendChild(renderTagWorkflowDashboard("settlement"));
   rootEl.appendChild(renderGuide("Settlement Workflow", [
     "Friendly settlements are campaign world records; TAG settlement fields drive services, availability, travel, and logs.",
     "Size modifies availability checks and should be saved before rolling item or service availability.",
@@ -3111,6 +3240,156 @@ function renderAdventureModuleImport() {
   return panel;
 }
 
+function renderAdventureModuleBrowser() {
+  const panel = card(
+    "Adventure Module Browser",
+    "Select a module to inspect source, status, cover-art guidance, export actions, and delete safety. The server blocks deletion while a module is used by an active session."
+  );
+  const rows = [...(modernState.adventures || [])].sort((a, b) => (a.name || a.title || a.id).localeCompare(b.name || b.title || b.id));
+  if (!rows.length) {
+    panel.appendChild(el("p", "muted", "No adventure modules found."));
+    return panel;
+  }
+  const browser = el("div", "modern-adventure-browser");
+  const list = el("div", "modern-adventure-list");
+  const detail = el("div", "modern-adventure-detail");
+  let selectedId = rows[0]?.id || "";
+  const summary = (adventure) => {
+    const id = String(adventure.id || "");
+    const title = adventure.name || adventure.title || id;
+    const inUse = adventureModuleInUse(id);
+    const protectedModule = ["random", "ai-adventure", "courtship-demesne"].includes(id) || adventure.source === "rules" || adventure.playable === false;
+    return { id, title, inUse, protectedModule };
+  };
+  const drawDetail = (adventure) => {
+    detail.replaceChildren();
+    if (!adventure) {
+      detail.appendChild(el("p", "muted", "No module selected."));
+      return;
+    }
+    const { id, title, inUse, protectedModule } = summary(adventure);
+    detail.appendChild(el("h3", "", title));
+    detail.appendChild(el("p", "muted", adventure.notes || "Playable imported module."));
+    const tags = el("div", "modern-chip-row");
+    for (const tag of adventureModuleTags(adventure)) tags.appendChild(el("span", "modern-tag", tag));
+    detail.appendChild(tags);
+    detail.append(
+      modernStatusRow("Module id", id, "Stable module id used by saved sessions and export/delete endpoints."),
+      modernStatusRow("Rooms", `${adventure.room_count || 0} room(s)`, "Imported and generated modules use authored room counts; Random Dungeon is procedural."),
+      modernStatusRow("Source", adventureModuleKind(adventure), "Source tag used to distinguish rules, imported, AI-authored, and Adventures Guild generated modules."),
+      modernStatusRow("Usage", inUse.length ? `${inUse.length} active session(s)` : "Not currently in use", "Modules in active sessions cannot be deleted."),
+      modernStatusRow("Cover art", `Planned: DATA_DIR/assets/artwork/user/adventures/${id}_cover_1600x900.*`, "Future module cover art slot. Keep copyrighted or AI-generated artwork local unless licensed for distribution.")
+    );
+    const rowActions = actions();
+    if (!protectedModule) {
+      rowActions.append(
+        link("Export JSON", `/api/adventures/${encodeURIComponent(id)}/export`, "Export this module manifest as JSON."),
+        link("Export ZIP", `/api/adventures/${encodeURIComponent(id)}/export.zip`, "Export this module as a zip package.")
+      );
+      const remove = button("Delete", inUse.length ? "Cannot delete while this module has an in-progress game." : "Delete this installed module. Completed session history is kept.", async () => {
+        if (inUse.length) throw new Error(`Cannot delete ${title}: ${inUse.length} game(s) still use it.`);
+        if (!window.confirm(`Delete ${title}?`)) return;
+        const result = await api(`/api/adventures/${encodeURIComponent(id)}`, { method: "DELETE" });
+        setStatus(result.message || "Adventure module deleted.");
+        await refreshCoreAndRender();
+      });
+      remove.disabled = Boolean(inUse.length);
+      rowActions.appendChild(remove);
+    } else {
+      rowActions.appendChild(el("span", "muted", "Protected module"));
+    }
+    detail.appendChild(rowActions);
+  };
+  const drawList = () => {
+    list.replaceChildren();
+    for (const adventure of rows) {
+      const { id, title, inUse } = summary(adventure);
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = `modern-adventure-list-item${id === selectedId ? " selected" : ""}`;
+      item.title = "Select this module to inspect status, export options, delete safety, and planned cover art.";
+      item.append(
+        el("strong", "", title),
+        el("span", "muted", `${adventureModuleKind(adventure)} · ${adventure.room_count || 0} room(s)${inUse.length ? " · in use" : ""}`)
+      );
+      item.addEventListener("click", () => {
+        selectedId = id;
+        drawList();
+        drawDetail(rows.find((row) => row.id === selectedId));
+      });
+      list.appendChild(item);
+    }
+  };
+  browser.append(list, detail);
+  panel.appendChild(browser);
+  drawList();
+  drawDetail(rows.find((row) => row.id === selectedId));
+  return panel;
+}
+
+function renderPlaytestTriagePanel(context = "Playtest") {
+  const panel = card("Playtest Triage", "Capture confusing or blocked play flow while the exact context is fresh. Use this for app workflow issues; verify rule changes against the PDF before changing mechanics.");
+  const area = select(`modern-playtest-area-${context}`, "Where did the issue happen?", [
+    ["exploration", "Exploration / Narrative"],
+    ["objective", "Current Objective / Quest Details"],
+    ["tag", "Adventures Guild generated module"],
+    ["adventure-management", "Adventure Management"],
+    ["go-adventure", "Go Adventure setup"],
+    ["rules", "Rules Reference / Tables"],
+    ["other", "Other"],
+  ]);
+  const severity = select(`modern-playtest-severity-${context}`, "How badly did this affect play?", [
+    ["blocked", "Blocked play"],
+    ["confusing", "Confusing but playable"],
+    ["polish", "Polish / wording"],
+  ]);
+  const happened = textarea(`modern-playtest-happened-${context}`, "What happened? Include exact button/log wording if possible.", 4);
+  const expected = textarea(`modern-playtest-expected-${context}`, "What did you expect the app to do?", 3);
+  const steps = textarea(`modern-playtest-steps-${context}`, "Steps to reproduce from the current save/module.", 4);
+  const report = textarea(`modern-playtest-report-${context}`, "Copyable Markdown playtest report.", 8);
+  const buildReport = () => {
+    const active = (modernState.sessions || []).find((session) => session.mode !== "complete");
+    const lines = [
+      `## Playtest report - ${modernTitleFromKey(area.value)}`,
+      "",
+      `- Severity: ${modernTitleFromKey(severity.value)}`,
+      `- Active session: ${active?.id || "unknown / not loaded in dashboard"}`,
+      `- Adventure: ${active?.adventure_id || "unknown"}`,
+      "",
+      "### What happened",
+      happened.value || "-",
+      "",
+      "### Expected",
+      expected.value || "-",
+      "",
+      "### Steps",
+      steps.value || "-",
+      "",
+      "### Rule boundary",
+      "Do not change mechanics until the relevant PDF/table/reference has been checked.",
+    ];
+    report.value = lines.join("\n");
+  };
+  const row = actions();
+  row.append(
+    button("Build Report", "Create a Markdown report from the fields above.", async () => buildReport(), ""),
+    button("Copy Report", "Copy the generated Markdown report to the clipboard.", async () => {
+      buildReport();
+      try {
+        await navigator.clipboard.writeText(report.value);
+      } catch (error) {
+        report.focus();
+        report.select();
+        document.execCommand("copy");
+      }
+      setStatus("Playtest report copied.");
+    }),
+    link("Rules Reference", ruleReferenceHref("playtest_triage_workflow", "playtest triage workflow"), "Open the Rules Reference note for playtest triage and PDF boundaries.", "link-button secondary")
+  );
+  panel.append(field("Area", area), field("Severity", severity), field("What happened", happened), field("Expected behavior", expected), field("Steps", steps), row, field("Report", report));
+  return panel;
+}
+
 function renderTagModuleGeneration(selectedAdventureControl = null) {
   const tagLead = card(
     "Generate The Adventures Guild Module",
@@ -3233,7 +3512,7 @@ function renderAdventureManagement() {
     panelEl.append(...nodes.filter(Boolean));
     panels[key] = panelEl;
   }
-  addAdventureTab("modules", "Modules", "Import, export, delete, and review all adventure module types.", [renderAdventureModuleImport(), renderAdventureModuleManager()]);
+  addAdventureTab("modules", "Modules", "Import, export, delete, and review all adventure module types.", [renderAdventureModuleImport(), renderAdventureModuleBrowser()]);
   addAdventureTab("guild", "The Adventures Guild", "Generate Adventures Guild modules and review lead signoff support.", [
     renderTagModuleGeneration(),
     renderTagWorkflowDashboard("go"),
@@ -3247,6 +3526,7 @@ function renderAdventureManagement() {
   ]);
   addAdventureTab("ai", "AI Modules", "Generate prompts, validate imports, and install AI-authored modules.", [renderAiModuleGeneration()]);
   addAdventureTab("reference", "Reference", "Review closeout, signoff, action history, and rules/table links for generated modules.", [
+    renderPlaytestTriagePanel("adventure-management"),
     renderAdventureCloseoutCockpit("Adventure Management"),
     renderTagSignoffPanel("Adventures Guild Lead / Start Signoff"),
     renderTagActionLogExplorer(),
@@ -3473,6 +3753,11 @@ async function renderGoAdventure() {
   }
   addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate]);
   addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [sessions, saved, management]);
+  addGoAdventureTab("reference", "Reference / Playtest", "Capture playtest issues and review closeout/reference context.", [
+    renderPlaytestTriagePanel("go-adventure"),
+    renderAdventureCloseoutCockpit("Go Adventure"),
+    renderTagActionLogExplorer(),
+  ]);
   rootEl.append(tabs, ...Object.values(panels));
   activateGoAdventureTab("start");
 }
@@ -3899,6 +4184,7 @@ function renderPage() {
     );
   }
   rootEl.replaceChildren();
+  if (pageCompanionEl) pageCompanionEl.replaceChildren();
   if (pageArtworkEl) pageArtworkEl.replaceChildren();
   if (pageHeadEl) pageHeadEl.classList.remove("has-artwork");
   if (navArtworkEl) navArtworkEl.replaceChildren();

@@ -1889,6 +1889,11 @@ def test_application_artwork_manager_and_slots_are_wired() -> None:
     assert "DATA_DIR/assets/Application Artwork" in MODERN_PAGES_JS
     assert 'id="modern-page-artwork"' in MODERN_HTML
     assert 'id="modern-nav-artwork"' in MODERN_HTML
+    assert 'id="modern-page-companion"' in MODERN_HTML
+    assert "function renderPageCompanion(page)" in MODERN_PAGES_JS
+    assert "modern-page-companion" in MODERN_PAGES_JS
+    assert "Finance / Storage Snapshot" in MODERN_PAGES_JS
+    assert "Module Snapshot" in MODERN_PAGES_JS
     assert "function primaryApplicationArtworkForPage" in MODERN_PAGES_JS
     assert "function renderShellArtwork" in MODERN_PAGES_JS
     assert "modern-page-artwork-figure" in MODERN_PAGES_JS
@@ -1900,12 +1905,34 @@ def test_application_artwork_manager_and_slots_are_wired() -> None:
     assert "modern-art-card-feature" in MODERN_PAGES_JS
     assert ".modern-art-card-feature" in STYLES_CSS
     assert ".modern-page-head.has-artwork" in STYLES_CSS
+    assert ".modern-page-description-box" in STYLES_CSS
+    assert ".modern-page-companion" in STYLES_CSS
     assert ".modern-page-head.has-artwork #modern-page-help" in STYLES_CSS
     assert ".modern-page-artwork-figure" in STYLES_CSS
     assert ".modern-nav-artwork-figure" in STYLES_CSS
     assert ".modern-home-tile-artwork" in STYLES_CSS
     assert "aspect-ratio: 16 / 9" in STYLES_CSS
     assert "application_artwork_slots_table" in MAIN_PY
+    assert Path("docs/ARTWORK_IDEAS.md").exists()
+
+
+def test_playtest_objective_and_adventure_browser_wiring() -> None:
+    assert "function renderObjectiveActionPlan(session, objective)" in APP_JS
+    assert "current-objective-plan" in APP_JS
+    assert ".current-objective-plan" in STYLES_CSS
+    assert "Target" in APP_JS
+    assert "Handled by app" in APP_JS
+    assert "function renderPlaytestTriagePanel" in MODERN_PAGES_JS
+    assert "Playtest Triage" in MODERN_PAGES_JS
+    assert "Do not change mechanics until the relevant PDF/table/reference has been checked." in MODERN_PAGES_JS
+    assert "function renderAdventureModuleBrowser()" in MODERN_PAGES_JS
+    assert "modern-adventure-browser" in MODERN_PAGES_JS
+    assert "Cover art" in MODERN_PAGES_JS
+    assert ".modern-adventure-browser" in STYLES_CSS
+    assert "playtest_triage_workflow_table" in MAIN_PY
+    assert "exploration_objective_clarity_table" in MAIN_PY
+    assert "adventure_management_browser_table" in MAIN_PY
+    assert "artwork_expansion_plan_table" in MAIN_PY
 
 
 def test_modern_dashboard_status_and_developer_tools_are_demoted() -> None:

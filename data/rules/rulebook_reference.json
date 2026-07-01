@@ -2339,7 +2339,7 @@
         "source of truth"
       ],
       "summary": "Home Rules tables are verified either as exact PDF rows, generated from locked PDF catalogs, or app validation tables.",
-      "body": "The Home Rules tables panel is guarded by tests so every exposed table is explicitly classified for compliance. Tables either match exact rows from PDFs in Rules/, are generated from locked PDF-backed catalogs, or are app validation/help tables.\n\nExact/generated table keys currently exposed: abyss_boss_table, abyss_dragon_table, abyss_enchanted_banquet_table, abyss_magic_treasure_table, abyss_magical_defense_table, abyss_minions_table, abyss_room_content_table, abyss_scroll_table, abyss_special_feature_table, abyss_trap_table, abyss_treasure_table, abyss_unique_event_table, abyss_useful_stuff_table, abyss_vermin_table, abyss_weird_table, basic_spells_table, caverns_special_events_table, caverns_special_features_table, caverns_special_item_table, caverns_trap_table, caverns_water_pool_table, class_profiles_table, class_tricks_implementation_table, clue_spends_table, combat_modifiers_table, combat_notes, default_reaction_table, door_table, druid_spells_table, dungeon_magic_treasure_table, dungeon_special_events_table, dungeon_special_features_table, economy_services_table, ee_class_trick_flags_table, epic_rewards_table, equipment_shop_table, experience_classical_table, experience_old_school_table, experience_slow_sure_table, experience_slower_table, expert_skill_implementation_table, expert_skills_table, expert_spells_table, fd_boss_table, fd_citadel_table, fd_citadel_weird_table, fd_cyclopean_idol_table, fd_event_table, fd_hallucination_table, fd_heroic_magic_item_table, fd_horde_table, fd_legendary_magic_item_table, fd_legendary_spell_table, fd_minions_table, fd_quest_table, fd_river_encounter_table, fd_river_hazard_table, fd_river_type_table, fd_room_content_table, fd_ruins_content_table, fd_trap_table, fd_treasure_table, fd_wandering_monsters_table, fd_vermin_table, fd_weird_table, courtship_book_of_secrets_table, courtship_apothecary_recipes_table, courtship_blossoms_magic_item_table, courtship_blossoms_spell_scrolls_table, courtship_lex_shop_table, courtship_meadows_encounter_table, courtship_mountain_encounter_table, courtship_palace_encounter_table, courtship_riverside_encounter_table, courtship_seaside_encounter_table, courtship_woods_encounter_table, fiendish_foes_magic_treasure_table, fiendish_foes_treasure_table, forsaken_depths_map_elements_validation_table, forsaken_depths_rivers_map_elements_validation_table, forsaken_depths_room_codes_table, fungal_grottoes_rare_item_table, fungal_grottoes_rare_mushroom_table, fungal_grottoes_special_events_table, fungal_grottoes_trap_table, heroic_skills_table, hidden_treasure_table, hirelings_table, illusionist_spells_table, legendary_skills_table, major_reaction_table, map_elements_validation_table, milestones_table, minion_reaction_table, play_context_table, quest_table, room_content_table, scrolls_table, search_table, secrets_table, special_event_wandering_table, swashbuckler_traits_table, tier_training_costs_table, trap_table, treasure_table, vermin_reaction_table, wandering_monsters_table.\n\nThe table registry test fails any new table key until it is added to the verified table allowlist and this reference index. Modern expandable reference groups: adventure_closeout_workflow_table, application_artwork_slots_table, artwork_registry_table, campaign_assignment_integrity_table, campaign_chronicle_event_table, campaign_command_center_table, campaign_worldbuilder_schema_table, character_management_readiness_table, exploration_narrative_layout_table, go_adventure_closeout_gate_table, go_adventure_setup_readiness_table, go_adventure_tabbed_workflow_table, guidance_task_status_table, icon_registry_table, map_elements_table, modern_dashboard_management_table, modern_tag_workflow_table, monster_bestiary_table, monster_reaction_tables, tag_closeout_checklist_automation_table, tag_generated_adventure_signoff_table, tag_generated_prompt_playtest_table, tag_rumor_playthrough_audit_table, tag_thematic_dungeon_playthrough_audit_table, tag_treasure_map_playthrough_audit_table, user_artwork_placeholders_table.",
+      "body": "The Home Rules tables panel is guarded by tests so every exposed table is explicitly classified for compliance. Tables either match exact rows from PDFs in Rules/, are generated from locked PDF-backed catalogs, or are app validation/help tables.\n\nExact/generated table keys currently exposed: abyss_boss_table, abyss_dragon_table, abyss_enchanted_banquet_table, abyss_magic_treasure_table, abyss_magical_defense_table, abyss_minions_table, abyss_room_content_table, abyss_scroll_table, abyss_special_feature_table, abyss_trap_table, abyss_treasure_table, abyss_unique_event_table, abyss_useful_stuff_table, abyss_vermin_table, abyss_weird_table, basic_spells_table, caverns_special_events_table, caverns_special_features_table, caverns_special_item_table, caverns_trap_table, caverns_water_pool_table, class_profiles_table, class_tricks_implementation_table, clue_spends_table, combat_modifiers_table, combat_notes, default_reaction_table, door_table, druid_spells_table, dungeon_magic_treasure_table, dungeon_special_events_table, dungeon_special_features_table, economy_services_table, ee_class_trick_flags_table, epic_rewards_table, equipment_shop_table, experience_classical_table, experience_old_school_table, experience_slow_sure_table, experience_slower_table, expert_skill_implementation_table, expert_skills_table, expert_spells_table, fd_boss_table, fd_citadel_table, fd_citadel_weird_table, fd_cyclopean_idol_table, fd_event_table, fd_hallucination_table, fd_heroic_magic_item_table, fd_horde_table, fd_legendary_magic_item_table, fd_legendary_spell_table, fd_minions_table, fd_quest_table, fd_river_encounter_table, fd_river_hazard_table, fd_river_type_table, fd_room_content_table, fd_ruins_content_table, fd_trap_table, fd_treasure_table, fd_wandering_monsters_table, fd_vermin_table, fd_weird_table, courtship_book_of_secrets_table, courtship_apothecary_recipes_table, courtship_blossoms_magic_item_table, courtship_blossoms_spell_scrolls_table, courtship_lex_shop_table, courtship_meadows_encounter_table, courtship_mountain_encounter_table, courtship_palace_encounter_table, courtship_riverside_encounter_table, courtship_seaside_encounter_table, courtship_woods_encounter_table, fiendish_foes_magic_treasure_table, fiendish_foes_treasure_table, forsaken_depths_map_elements_validation_table, forsaken_depths_rivers_map_elements_validation_table, forsaken_depths_room_codes_table, fungal_grottoes_rare_item_table, fungal_grottoes_rare_mushroom_table, fungal_grottoes_special_events_table, fungal_grottoes_trap_table, heroic_skills_table, hidden_treasure_table, hirelings_table, illusionist_spells_table, legendary_skills_table, major_reaction_table, map_elements_validation_table, milestones_table, minion_reaction_table, play_context_table, quest_table, room_content_table, scrolls_table, search_table, secrets_table, special_event_wandering_table, swashbuckler_traits_table, tier_training_costs_table, trap_table, treasure_table, vermin_reaction_table, wandering_monsters_table.\n\nThe table registry test fails any new table key until it is added to the verified table allowlist and this reference index. Modern expandable reference groups: adventure_closeout_workflow_table, adventure_management_browser_table, application_artwork_slots_table, artwork_expansion_plan_table, artwork_registry_table, campaign_assignment_integrity_table, campaign_chronicle_event_table, campaign_command_center_table, campaign_worldbuilder_schema_table, character_management_readiness_table, exploration_narrative_layout_table, exploration_objective_clarity_table, go_adventure_closeout_gate_table, go_adventure_setup_readiness_table, go_adventure_tabbed_workflow_table, guidance_task_status_table, icon_registry_table, map_elements_table, modern_dashboard_management_table, modern_tag_workflow_table, monster_bestiary_table, monster_reaction_tables, playtest_triage_workflow_table, tag_closeout_checklist_automation_table, tag_generated_adventure_signoff_table, tag_generated_prompt_playtest_table, tag_rumor_playthrough_audit_table, tag_thematic_dungeon_playthrough_audit_table, tag_treasure_map_playthrough_audit_table, user_artwork_placeholders_table.",
       "implementation_status": "validated"
     },
     {
@@ -3395,6 +3395,111 @@
       "summary": "Tables documents the page-level Application Artwork filenames and target paths.",
       "body": "The modern Tables page includes application_artwork_slots_table. It documents the DATA_DIR/assets/Application Artwork replacement filenames, recommended 1600x900 dimensions, and the dashboard page where each slot is shown.",
       "implementation_status": "implemented"
+    },
+    {
+      "id": "playtest_triage_workflow",
+      "title": "Playtest Triage Workflow",
+      "category": "app_assets",
+      "source_page": 0,
+      "keywords": [
+        "playtest",
+        "triage",
+        "bug report",
+        "pdf boundary"
+      ],
+      "summary": "Playtest reports capture app workflow issues without changing mechanics before PDF verification.",
+      "body": "The Go Adventure and Adventure Management Reference tabs include Playtest Triage. It creates a Markdown report with area, severity, what happened, expected behavior, steps, active session, and module context. Treat these reports as observations: UI/state defects can be fixed directly, but any rule amount, reward, roll, or procedure must be checked against the relevant PDF/table/reference before changing mechanics.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "playtest_triage_workflow_table",
+      "title": "Playtest Triage Workflow Table",
+      "category": "app_assets",
+      "source_page": 0,
+      "keywords": [
+        "tables",
+        "playtest",
+        "triage"
+      ],
+      "summary": "Tables documents the fields and PDF-boundary rule for playtest reports.",
+      "body": "The modern Tables page includes playtest_triage_workflow_table. It documents the report fields used by the Playtest Triage panel and states that mechanics changes require PDF/source verification.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "exploration_objective_clarity",
+      "title": "Exploration Objective Clarity",
+      "category": "exploration",
+      "source_page": 0,
+      "keywords": [
+        "current objective",
+        "quest details",
+        "narrative",
+        "playtest"
+      ],
+      "summary": "The live objective surface now explains target, next action, app handling, and reward status.",
+      "body": "Current Objective now adds an action-plan block: Target, Next, Handled by app, and Quest reward status when applicable. This is app-owned guidance built from current session state. It is allowed to explain what the app will do next, but it must not invent printed rule outcomes; exact source-dependent choices still route to explicit controls, Rules Reference links, or PDF verification.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "exploration_objective_clarity_table",
+      "title": "Exploration Objective Clarity Table",
+      "category": "exploration",
+      "source_page": 0,
+      "keywords": [
+        "tables",
+        "current objective",
+        "quest details",
+        "narrative"
+      ],
+      "summary": "Tables documents the Current Objective, Quest Details, and Narrative chip clarity model.",
+      "body": "The modern Tables page includes exploration_objective_clarity_table. It documents which exploration surfaces explain target, next action, automation, and reward state.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "adventure_management_browser",
+      "title": "Adventure Management Browser",
+      "category": "campaign",
+      "source_page": 0,
+      "keywords": [
+        "adventure management",
+        "modules",
+        "delete",
+        "export",
+        "cover art"
+      ],
+      "summary": "Adventure Management uses a selectable module browser with detail, status, export, delete safety, and planned cover art paths.",
+      "body": "Adventure Management now shows a selected-module browser rather than a long flat list. The detail pane shows module id, room count, source, active-session usage, cover-art guidance, and export/delete controls. Delete buttons are still backed by server-side blocking for active sessions. Module cover art is planned under DATA_DIR/assets/artwork/user/adventures and is not yet required for play.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "adventure_management_browser_table",
+      "title": "Adventure Management Browser Table",
+      "category": "campaign",
+      "source_page": 0,
+      "keywords": [
+        "tables",
+        "adventure management",
+        "modules"
+      ],
+      "summary": "Tables documents the module list/detail redesign and delete-safety behavior.",
+      "body": "The modern Tables page includes adventure_management_browser_table. It documents the module list, module detail panel, source/status tags, and server-side delete-safety rule.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "artwork_expansion_plan_table",
+      "title": "Artwork Expansion Plan Table",
+      "category": "app_assets",
+      "source_page": 0,
+      "keywords": [
+        "tables",
+        "artwork",
+        "module cover",
+        "portraits",
+        "settlements"
+      ],
+      "summary": "Tables documents planned local artwork slots beyond page-level Application Artwork.",
+      "body": "The modern Tables page includes artwork_expansion_plan_table. It documents proposed user-facing DATA_DIR/assets paths for module cover art, character portraits, settlement art, TAG lead-family art, and finance state art. These are app/user artwork slots, not copied PDF content.",
+      "implementation_status": "planned"
     },
     {
       "id": "rules_artwork_registry",

@@ -17897,6 +17897,7 @@ function renderCurrentObjectiveBanner(session) {
   copy.appendChild(node("strong", "", objective.title));
   copy.appendChild(node("span", "", objective.body));
   currentObjectiveBanner.appendChild(copy);
+  currentObjectiveBanner.appendChild(renderObjectiveActionPlan(session, objective));
   const actions = node("div", "current-objective-actions");
   appendCurrentObjectiveButton(actions, objective.action);
   appendCurrentObjectiveButton(actions, objective.secondaryAction);
@@ -17904,6 +17905,39 @@ function renderCurrentObjectiveBanner(session) {
   const lifecycle = renderGeneratedTagLifecycleStrip(session);
   if (lifecycle) currentObjectiveBanner.appendChild(lifecycle);
   appendTagCaveProgressPanel(currentObjectiveBanner, session);
+}
+
+function renderObjectiveActionPlan(session, objective) {
+  const plan = node("div", "current-objective-plan");
+  const rows = [
+    [
+      "Target",
+      objective.target ||
+        objective.title.replace(/^Current objective:\s*/i, "") ||
+        "Current room state",
+    ],
+    [
+      "Next",
+      objective.next ||
+        (objective.action?.label ? `Press ${objective.action.label}.` : "Use the visible room controls that match the current state."),
+    ],
+    [
+      "Handled by app",
+      objective.handled ||
+        (objective.action ? "The app will update the session, log the result, and refresh guidance after the action resolves." : "The app is monitoring state; no special action is required yet."),
+    ],
+  ];
+  if (session?.active_quest && !session.active_quest.reward_claimed) {
+    const claim = questClaimStatus(session, session.active_quest);
+    rows.push(["Quest reward", claim.ok ? "Ready to claim." : claim.reason]);
+  }
+  for (const [label, value] of rows) {
+    const row = node("div", "current-objective-plan-row");
+    row.appendChild(node("span", "current-objective-plan-label", label));
+    row.appendChild(node("span", "current-objective-plan-value", value));
+    plan.appendChild(row);
+  }
+  return plan;
 }
 
 function renderNarrativeObjectiveChips(session) {

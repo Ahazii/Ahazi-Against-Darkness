@@ -2369,6 +2369,87 @@ def _rules_tables_payload() -> dict:
             "use": "Developer tooling and Artwork Manager artwork.",
         },
     ]
+    data["playtest_triage_workflow_table"] = [
+        {
+            "field": "Area",
+            "purpose": "Classifies whether the report concerns Exploration, Current Objective, TAG generated modules, Adventure Management, Go Adventure, Rules Reference/Tables, or other app flow.",
+            "rules_boundary": "A report can identify a rule concern, but mechanics are changed only after checking the relevant PDF/table/reference.",
+        },
+        {
+            "field": "Severity",
+            "purpose": "Separates blocked play from confusing-but-playable wording and polish issues.",
+            "rules_boundary": "Blocked play can be fixed immediately when it is UI/state handling; rules amounts or outcomes still need source verification.",
+        },
+        {
+            "field": "What happened / Expected / Steps",
+            "purpose": "Produces a copyable Markdown report while the session/module context is fresh.",
+            "rules_boundary": "The report captures observations; it does not assert printed rule text.",
+        },
+    ]
+    data["exploration_objective_clarity_table"] = [
+        {
+            "surface": "Current Objective",
+            "shows": "Target, Next, Handled by app, and Quest reward status when relevant.",
+            "player_use": "Use it to answer what you are trying to do, what button to press next, and what the app will update.",
+            "rules_boundary": "The app explains current state and supported automation; source-specific player choices remain explicit.",
+        },
+        {
+            "surface": "Quest Details",
+            "shows": "Quest title/source, guidance, journal rows, TAG procedure panel, closeout checklist, and reward button state.",
+            "player_use": "Open when the compact Narrative chip is not enough.",
+            "rules_boundary": "Exact PDF procedure text remains referenced by source/page or Rules Reference rather than copied wholesale.",
+        },
+        {
+            "surface": "Narrative chips",
+            "shows": "Compact objective and quest status buttons in the Narrative title bar.",
+            "player_use": "Toggle objective or quest details without losing map space.",
+            "rules_boundary": "Chips summarize app state only.",
+        },
+    ]
+    data["adventure_management_browser_table"] = [
+        {
+            "area": "Module list",
+            "purpose": "Selectable list of all rules, imported, AI, and Adventures Guild modules with source, room count, and in-use status.",
+            "safety": "Deletion is disabled for protected modules and active-session modules.",
+        },
+        {
+            "area": "Module detail",
+            "purpose": "Shows module id, rooms, source, active usage, planned cover-art path, export actions, and delete action.",
+            "safety": "Server-side delete blocking remains authoritative.",
+        },
+        {
+            "area": "Generation tabs",
+            "purpose": "Keep Adventures Guild and AI generation under Adventure Management instead of separate dashboard launchers.",
+            "safety": "Generated modules still start from Go Adventure after readiness checks.",
+        },
+    ]
+    data["artwork_expansion_plan_table"] = [
+        {
+            "slot": "Module cover art",
+            "path": "DATA_DIR/assets/artwork/user/adventures/<module_id>_cover_1600x900.*",
+            "use": "Adventure Management selected-module detail and future module cards.",
+        },
+        {
+            "slot": "Character portraits",
+            "path": "DATA_DIR/assets/artwork/user/portraits/<character_or_portrait_id>.*",
+            "use": "Roster rows, character sheets, party sheets, and selected-member panels.",
+        },
+        {
+            "slot": "Settlement art",
+            "path": "DATA_DIR/assets/artwork/user/locations/<settlement_id>_1600x900.*",
+            "use": "Settlement records and campaign world-builder views.",
+        },
+        {
+            "slot": "TAG lead-family art",
+            "path": "DATA_DIR/assets/artwork/user/adventures/tag_<lead_family>_1600x900.*",
+            "use": "Rumor, Treasure Map, Thematic Dungeon, and Guild Job generation/signoff panels.",
+        },
+        {
+            "slot": "Finance state art",
+            "path": "DATA_DIR/assets/artwork/user/items/<bank_trove_loan_state>.*",
+            "use": "Bank, hidden trove, robbed account, inheritance, and loan status rows.",
+        },
+    ]
     data["user_artwork_placeholders_table"] = [
         {
             "slot": "tag_treasure_map_underground_caves_1600x900",
