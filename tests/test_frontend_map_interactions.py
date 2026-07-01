@@ -1206,7 +1206,7 @@ def test_log_colour_key_and_semantic_classes_are_present() -> None:
     assert "buildLogEntryLine(entry, session" in APP_JS
     assert '["log-line", baseClass, logEntryToneClass(displayEntry, session)]' in APP_JS
     assert "function normalizeLogEntryForDisplay(entry)" in APP_JS
-    assert "If the choice belongs to the next scene, move there" in APP_JS
+    assert "If this room has no scene-specific action, keep moving" in APP_JS
     assert "buildLogColourKey()" in _function_body("renderCombatRailLog", APP_JS)
     assert "regenerates?" in APP_JS
     assert "log-line-party-damage" in STYLES_CSS
@@ -1976,7 +1976,7 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert 'typeof params.tag_reference === "object"' in APP_JS
     assert "Fallback prompt metadata inferred from an older generated module" in APP_JS
     assert "Scene 2 Shoes of Fast Walk" in APP_JS
-    assert "Scene 2 illusion spell" in APP_JS
+    assert "Scene 2 illusion spell - choose spell" in APP_JS
     assert "TAG_GENERIC_COMPLICATION_ACTIONS" in APP_JS
     assert '"final_route"' in APP_JS
     assert '"claim_reward"' in APP_JS
@@ -1985,7 +1985,7 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "Director: move to the scene-specific choice" in APP_JS
     assert "No Adventures Guild action is required in this room unless the printed scene asks for one" in APP_JS
     assert "The app has not applied a route or reward here because this is movement/scene setup" in APP_JS
-    assert "If it only points toward the finale, keep moving" in Path("src/app/engine/tag_campaign.py").read_text(encoding="utf-8")
+    assert "If this room has no scene-specific button" in Path("src/app/engine/tag_campaign.py").read_text(encoding="utf-8")
 
 
 def test_modern_dashboard_status_and_developer_tools_are_demoted() -> None:

@@ -22770,8 +22770,8 @@ function fallbackFinalPromptActions(session = state.session) {
   const actions = [];
   if (objective.includes("shoes of fast walk") || objective.includes("buy shoes")) {
     actions.push({
-      label: "Buy shoes",
-      tooltip: "Open Adventures Guild Actions for the Scene 2 Shoes of Fast Walk purchase. Confirm the exact cost and buyer from the PDF/player decision before applying.",
+      label: "Buy Shoes of Fast Walk",
+      tooltip: "Buy up to one pair per character for 200 gp each. Choose the buyer/receiver before applying.",
       action_type: "branch",
       action_value: "leprechaun_shoes",
       reference: "Scene 2 Shoes of Fast Walk",
@@ -22781,10 +22781,11 @@ function fallbackFinalPromptActions(session = state.session) {
   if (objective.includes("illusion spell") || objective.includes("learn their illusion")) {
     actions.push({
       label: "Learn illusion spell",
-      tooltip: "Open Adventures Guild Actions for the Scene 2 illusion spell lesson. Confirm the exact eligibility/cost from the PDF/player decision before applying.",
+      tooltip: "One eligible character learns one illusion spell automatically for 100 gp, or free if the party bought at least three pairs of magical shoes.",
       action_type: "branch",
       action_value: "leprechaun_illusion_spell",
-      reference: "Scene 2 illusion spell",
+      reference: "Scene 2 illusion spell - choose spell",
+      amount: 100,
     });
   }
   return actions;
@@ -23077,19 +23078,19 @@ function renderGeneratedTagLifecycleStrip(session = state.session) {
 function generatedTagPromptActionExplanation(promptData = {}, action = {}) {
   const type = action.action_type || "dialog";
   if (type === "branch") {
-    return "Recommended because this room is asking for a branch/procedure decision. It records the TAG consequence instead of leaving you to hunt through every selector.";
+    return "Use this when this scene offers that exact choice; it opens the right Adventures Guild action instead of making you hunt through every selector.";
   }
   if (type === "route") {
-    return "Recommended because this room changes the lead's route. Recording it now keeps the final signoff honest.";
+    return "Use this only when this scene actually changes the lead's route, such as capture, parley, escape, skipped route, or blocked route.";
   }
   if (type === "xp") {
-    return "Recommended because this prompt can create an XP marker. Mark it now, then resolve it during closeout.";
+    return "Use this only when this scene grants or marks XP; the marker can then be resolved during closeout.";
   }
   if (type === "scene") {
-    return "Recommended because this is a scene-level TAG note. Use it to capture what changed in the lead.";
+    return "Use this when the scene has a specific roll, reward, item, spell, service, bounty, or special procedure.";
   }
   if ((promptData.title || "").toLowerCase().includes("final")) {
-    return "Recommended because this is the finale prompt. Capture reward, XP, and closeout consequences before moving on.";
+    return "Use the finale actions that match what the scene actually offers; leave unrelated actions alone.";
   }
   return "Recommended from the current room prompt. Use it only if it matches the scene you are resolving now.";
 }
@@ -23282,11 +23283,15 @@ function generatedTagDirectorStep(session = state.session) {
     };
   }
   if (roomId === "tag-final-scene") {
+    const actions = Array.isArray(promptData?.actions) ? promptData.actions.filter((action) => action?.label) : [];
+    const choiceText = actions.length ? ` Available choices: ${actions.map((action) => action.label).join(" / ")}.` : "";
+    const isVendor = String(tagReference.finale_mode || "").toLowerCase() === "vendor";
     return {
       phase: "Finale",
-      heading: "Director: finish the lead, then account for it",
-      instruction:
-        "Resolve the final foe or procedure, then immediately record final route, reward, XP, and any capture/treasure/bounty handling. Closeout comes next.",
+      heading: isVendor ? "Director: make the bargain" : "Director: resolve this lead's finale",
+      instruction: isVendor
+        ? `${promptData?.body || tagReference.finale_instruction || "Choose the purchase or service the party wants before leaving."}${choiceText}`
+        : `${promptData?.body || tagReference.finale_instruction || "Resolve the final foe, choice, or procedure shown by this lead."}${choiceText}`,
       playbook,
       recommended,
       actionType: recommended?.action_type || "route",
@@ -30076,9 +30081,15 @@ function buildLogEntryLine(entry, session, baseClass = "") {
 
 function normalizeLogEntryForDisplay(entry) {
   const line = String(entry || "");
+  if (line.includes("They sell Shoes of Fast Walk") && line.includes("The lead stops behaving")) {
+    return "Tiny footprints loop around the stones in impossible circles. A laugh skips from one side of the hill to the other. The bargain is ahead; no purchase or spell choice is due in this room.";
+  }
+  if (line.startsWith("TAG final guidance: Shoes of Fast Walk")) {
+    return "The leprechauns are ready to bargain. You may buy Shoes of Fast Walk for 200 gp per pair, and one eligible character may learn one illusion spell for 100 gp, or free if the party bought at least three pairs of shoes.";
+  }
   return line.replace(
     "Resolve the printed branch before treating the finale as ordinary exploration.",
-    "If a specific choice is due in this room, use the Current Objective or Adventures Guild Actions. If the choice belongs to the next scene, move there and let the app surface that bargain, reward, spell, fight, Clue spend, or route choice."
+    "If this room has no scene-specific action, keep moving; the next scene will surface the actual bargain, reward, spell, fight, Clue spend, or route choice."
   );
 }
 

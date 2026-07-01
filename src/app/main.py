@@ -2606,14 +2606,20 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Generated room prompt guide",
             "shown_in": "Exploration TAG scene prompt panel and Current Objective banner.",
-            "player_use": "Explains why the lead exists, how to use the room prompt, which immediate action matters, and which TAG Action buttons can prefill branch, route, XP, reward, or finance state. The director panel gives phase-specific next-step guidance and a lead-type playbook; the lifecycle strip shows entry, side lead, complication, finale, route, reward, XP, and closeout status.",
+            "player_use": "Explains why the lead exists, how to use the room prompt, which immediate action matters, and which Adventures Guild Action buttons can prefill the exact branch, route, XP, reward, service, purchase, or finance state for that lead. The director panel gives phase-specific next-step guidance and a lead-type playbook; the lifecycle strip shows entry, side lead, complication, finale, route, reward, XP, and closeout status.",
             "pdf_boundary": "Guide text is app-authored; exact printed scene text and reward values stay with the PDF/player signoff.",
         },
         {
             "surface": "Prompt action buttons and Relevant Now shortcuts",
             "shown_in": "Generated TAG rooms and TAG Actions dialog.",
-            "player_use": "Prefills TAG Actions for lead choices, side rewards, Clue gates, route rewrites, final route, XP markers, and profile-specific procedure rolls; the TAG Actions dialog repeats current-room shortcuts at the top with director guidance, a Recommended action, reference links, and the focused current action family before the collapsible advanced controls.",
+            "player_use": "Prefills Adventures Guild Actions for lead-specific choices, purchases, services, side rewards, Clue gates, route rewrites, XP markers, and profile-specific procedure rolls. Specific lead actions now replace generic final-route/reward/XP boilerplate when the profile knows what the scene offers; older modules still get repaired fallback metadata.",
             "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
+        },
+        {
+            "surface": "Social/vendor finale profiles",
+            "shown_in": "Generated Rumor and Guild Job modules.",
+            "player_use": "Marks scenes such as the leprechaun bargain as vendor/social finales instead of spawning proxy foes. The final room presents purchase or teaching actions, while the complication room remains narrative unless the source scene has a current-room procedure.",
+            "pdf_boundary": "The app may name supported choices and costs from checked scene metadata, but the player still chooses the receiver, spell, eligibility, and any optional hostile turn from the PDF/table context.",
         },
         {
             "surface": "Recovery and repair",
@@ -2644,7 +2650,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Rumor audit metadata",
             "shown_in": "Generated TAG Rumor manifests and exploration prompt panels.",
-            "player_use": "Carries rumor number, play focus, entry guidance, complication guidance, finale guidance, and signoff reminders for all twelve Rumor Scene leads.",
+            "player_use": "Carries rumor number, play focus, entry guidance, complication narrative, finale mode, scene-specific action buttons, and signoff reminders for all twelve Rumor Scene leads.",
             "pdf_boundary": "App-authored atmosphere and workflow notes only; exact scene text, rolls, rewards, and consequences remain with the PDF/player signoff.",
         },
         {

@@ -391,8 +391,7 @@ def test_tag_adventure_manifest_generation_validates() -> None:
         assert tag_reference["how_to"]
         assert tag_reference["mood"]
         assert "handoff from settlement rumor" in tag_reference["room_prompts"]["tag-lead-entry"]["body"]
-        assert "stops being simple travel" in tag_reference["room_prompts"]["tag-complication"]["body"]
-        assert "If it only points toward the finale" in tag_reference["room_prompts"]["tag-complication"]["body"]
+        assert "If this room has no scene-specific button" in tag_reference["room_prompts"]["tag-complication"]["body"]
         assert "Adventure section" in entry.result_text
 
 
@@ -465,10 +464,7 @@ def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
     assert "Pendant worth 260 gp" in reference["rewards"]
     assert "room_prompts" in reference
     assert reference["room_prompts"]["tag-complication"]["actions"][0]["action_value"] == "parley_success"
-    assert any(
-        action["action_type"] == "branch" and action["action_value"] == "claim_reward"
-        for action in reference["room_prompts"]["tag-final-scene"]["actions"]
-    )
+    assert not any(action["action_value"] == "claim_reward" for action in reference["room_prompts"]["tag-final-scene"]["actions"])
     assert any(
         action["action_value"] == "medusa_assassin_ambush"
         for action in reference["room_prompts"]["tag-complication"]["actions"]
@@ -483,6 +479,36 @@ def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
     )
     final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
     assert final_room["triggers"][0]["encounter"]["foes"] == [{"name": "Medusa", "count": 1}]
+
+
+def test_tag_leprechaun_rumor_is_vendor_scene_not_proxy_combat() -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="6")
+    result = validate_adventure_manifest(manifest, rules_repo=repo)
+
+    assert result.valid, result.errors
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    assert reference["finale_mode"] == "vendor"
+    assert "100 gp, or free if at least three pairs" in reference["rewards"]
+    assert reference["final_foes"] == []
+    assert manifest["quest"]["complete_when"] == {"type": "room_reached", "room_id": "tag-final-scene"}
+    complication = next(room for room in manifest["rooms"] if room["id"] == "tag-complication")
+    assert "Tiny footprints loop" in complication["description"]
+    assert "The lead stops behaving" not in complication["description"]
+    assert "encounter" not in complication["triggers"][0]
+    final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+    assert "encounter" not in final_room["triggers"][0]
+    final_prompt = reference["room_prompts"]["tag-final-scene"]
+    assert final_prompt["title"] == "Bargain choices"
+    assert "per Scene 2" not in final_prompt["body"]
+    assert "Reward note:" not in final_prompt["body"]
+    assert [action["action_value"] for action in final_prompt["actions"]] == [
+        "leprechaun_shoes",
+        "leprechaun_illusion_spell",
+    ]
+    assert final_prompt["actions"][1]["amount"] == 100
 
 
 def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
@@ -527,7 +553,7 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     assert job_ref["final_foe_proxy"] == "Gorungar the Mighty"
     assert "50 gp for his head" in job_ref["rewards"]
     assert job_ref["module_profile"]["target_rooms"] == "single guild-job encounter"
-    assert job_ref["room_prompts"]["tag-final-scene"]["title"] == "Final scene closeout"
+    assert job_ref["room_prompts"]["tag-final-scene"]["title"] == "Gorungar's Ambush"
     assert any(action["action_value"] == "gorungar_alive" for action in job_ref["room_prompts"]["tag-final-scene"]["actions"])
     final_room = next(room for room in job["rooms"] if room["id"] == "tag-final-scene")
     assert final_room["triggers"][0]["encounter"]["foes"] == [
@@ -705,7 +731,8 @@ def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
         assert any("Guild" in item or "banking" in item for item in reference["room_prompts"]["tag-final-scene"]["checklist"])
         assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in reference["room_prompts"].values())
         descriptions = " ".join(str(room.get("description", "")) for room in manifest["rooms"])
-        assert "lead stops behaving like a route" in descriptions
+        assert "lead stops behaving like a route" not in descriptions
+        assert "Complication" in descriptions or keyword.lower() in descriptions.lower()
         assert "comes due" in descriptions
         joined = " ".join(reference["module_profile"]["procedure"] + reference["module_profile"]["signoff_checks"])
         assert keyword.lower() in joined.lower()

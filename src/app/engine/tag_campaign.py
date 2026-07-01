@@ -886,16 +886,17 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "objective": "Find the leprechauns and decide whether to buy Shoes of Fast Walk or learn their illusion spell.",
         "entry": "Blackbird Hill is dotted with tiny tracks and mocking laughter.",
         "side": "The leprechauns prefer bargaining to fighting.",
-        "complication": "They sell Shoes of Fast Walk and may teach an illusion spell under the Scene 2 terms.",
+        "complication": "Tiny footprints loop around the stones in impossible circles. A laugh skips from one side of the hill to the other, always just behind the party. Bright scraps of green cloth hang from thorn branches like deliberate bait, and somewhere ahead coins clink in a pouch no honest traveller is carrying.",
+        "complication_guidance": "No purchase or spell choice is due in this room; continue to the bargain scene when ready.",
         "final_title": "Blackbird Hill Bargain",
-        "final_description": "Resolve the leprechaun bargain; fight only if your table turns the scene hostile.",
-        "final_foe": "Goblins",
-        "final_count": 4,
-        "rewards": "Shoes of Fast Walk for 200 gp; illusion spell instruction per Scene 2.",
+        "final_description": "The leprechauns finally stop running the party in circles. They are ready to bargain, not to be looted like a monster room.",
+        "finale_mode": "vendor",
+        "finale_instruction": "Choose who buys magical shoes, whether the party buys enough pairs to make spell teaching free, and which single eligible character learns an illusion spell.",
+        "rewards": "Buy Shoes of Fast Walk for 200 gp per pair, up to one pair per character. One eligible character may learn one illusion spell for 100 gp, or free if at least three pairs of shoes were bought.",
         "final_prompt_actions": [
             {
-                "label": "Buy shoes",
-                "tooltip": "Prefill purchase of Shoes of Fast Walk; Amount is number of pairs.",
+                "label": "Buy Shoes of Fast Walk",
+                "tooltip": "Buy up to one pair per character for 200 gp each. Only characters who can use magic items, and hirelings, may use them; animal companions may not.",
                 "action_type": "branch",
                 "action_value": "leprechaun_shoes",
                 "reference": "Scene 2 Shoes of Fast Walk",
@@ -903,13 +904,14 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
             },
             {
                 "label": "Learn illusion spell",
-                "tooltip": "Prefill leprechaun illusion spell lesson; Reference can include free if three shoe pairs were bought.",
+                "tooltip": "One eligible character learns one illusion spell automatically for 100 gp, or free if the party bought at least three pairs of magical shoes.",
                 "action_type": "branch",
                 "action_value": "leprechaun_illusion_spell",
-                "reference": "Scene 2 illusion spell",
+                "reference": "Scene 2 illusion spell - choose spell",
+                "amount": 100,
             },
         ],
-        "rules": ["Installed combat is only a hostile-scene proxy."],
+        "rules": ["Scene 2 is a bargain/vendor scene; no proxy combat is required unless the table deliberately turns the encounter hostile."],
     },
     7: {
         "title": "The Stair Under Tamas Zeya",
@@ -5068,6 +5070,57 @@ def _extend_prompt_actions(prompt: dict[str, object], actions: object) -> None:
             prompt_actions.append(clean)
 
 
+def _tag_finale_mode(profile: dict[str, object]) -> str:
+    return str(profile.get("finale_mode") or "combat").strip().lower()
+
+
+def _tag_profile_actions(profile: dict[str, object], key: str) -> list[dict[str, object]]:
+    actions = profile.get(key)
+    if not isinstance(actions, list):
+        return []
+    return [_tag_prompt_action_from_profile(action) for action in actions if _tag_prompt_action_from_profile(action)]
+
+
+def _tag_final_prompt_body(profile: dict[str, object], finale_guidance: str) -> str:
+    mode = _tag_finale_mode(profile)
+    instruction = str(profile.get("finale_instruction") or "").strip()
+    rewards = str(profile.get("rewards") or "").strip()
+    if mode == "vendor":
+        return (
+            f"{profile.get('final_description') or 'The final scene is a bargain, service, or purchase opportunity.'} "
+            f"{instruction or 'Choose the purchase or service the party wants, pick the receiving character, and confirm payment before leaving.'} "
+            f"{finale_guidance}".strip()
+        )
+    if mode in {"social", "choice", "procedure"}:
+        return (
+            f"{profile.get('final_description') or 'The final scene is resolved by a printed choice or procedure.'} "
+            f"{instruction or 'Use the scene-specific buttons for the decision that is actually happening now.'} "
+            f"{finale_guidance}".strip()
+        )
+    capture_actions = [
+        action for action in _tag_profile_actions(profile, "final_prompt_actions")
+        if "alive" in str(action.get("action_value", "")).lower() or "capture" in str(action.get("action_value", "")).lower()
+    ]
+    capture_text = ""
+    if capture_actions:
+        capture_text = "If this scene requires the foe alive, tick Subdual damage before Resolve Round, then use the capture/reward action shown here. "
+    return (
+        f"{profile.get('final_description') or 'Resolve the final foe or printed procedure.'} "
+        f"{capture_text}"
+        f"{instruction or 'Use the buttons shown here for this lead; review rewards, XP, Guild share, banking/storage, and closeout after the scene is resolved.'} "
+        f"{finale_guidance} "
+        f"{rewards}".strip()
+    )
+
+
+def _tag_final_prompt_title(profile: dict[str, object]) -> str:
+    if profile.get("final_prompt_title"):
+        return str(profile["final_prompt_title"])
+    if _tag_finale_mode(profile) == "vendor":
+        return "Bargain choices"
+    return str(profile.get("final_title") or "Final scene")
+
+
 def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object]) -> dict[str, object]:
     profile_title = str(profile.get("title") or lead_detail)
     base_ref = title or profile_title
@@ -5082,6 +5135,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     lead_result_label = str(profile.get("lead_result_label") or "printed rumor/result")
     clue_cost = max(0, int(profile.get("clue_gate_cost") or 0))
     clue_label = str(profile.get("clue_gate_label") or "Unlock Clue route")
+    final_actions = _tag_profile_actions(profile, "final_prompt_actions")
     prompts: dict[str, object] = {
         "tag-lead-entry": {
             "title": "Lead entry choices",
@@ -5145,7 +5199,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             "body": (
                 f"{profile.get('complication') or 'The lead tightens here: a bargain can sour, a shortcut can close, or a fight can turn the room into evidence.'} "
                 f"{complication_guidance} "
-                "This is where the lead stops being simple travel. If this room shows a scene-specific button, resolve that choice now. If it only points toward the finale, keep moving and let the next scene present the actual bargain, fight, Clue spend, reward, or route choice."
+                "If this room has no scene-specific button, no procedure is due here; keep moving and let the next scene surface the actual bargain, fight, Clue spend, reward, or route choice."
             ),
             "checklist": [
                 "Resolve only the branch, Clue cost, or procedure that the current printed scene actually asks for.",
@@ -5186,20 +5240,15 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             ],
         },
         "tag-final-scene": {
-            "title": "Final scene closeout",
-            "body": (
-                "The trail tightens into its last chamber, witness, bargain, or monster. Check final foe, route, reward, and XP text before closing the generated TAG lead. "
-                "If the scene offers capture alive, tick Subdual damage before Resolve Round; then record Capture alive and any special reward in TAG Actions. "
-                f"{finale_guidance} "
-                f"Reward note: {profile.get('rewards') or 'see source scene.'}"
-            ),
+            "title": _tag_final_prompt_title(profile),
+            "body": _tag_final_prompt_body(profile, finale_guidance),
             "checklist": [
-                "Confirm final foe/procedure and any special scene restrictions.",
-                "Record final route, reward, item, bounty, or capture-alive result.",
-                "Mark or award scene XP, then review Guild, banking, and closeout tasks.",
+                "Resolve only the choice, purchase, combat, or procedure that this lead actually offers.",
+                "Use the scene-specific action button for the receiving character, amount, route, XP, or reward.",
+                "After the scene is resolved, review Guild, banking/storage, XP, and closeout tasks.",
                 *signoff_checks,
             ],
-            "actions": [
+            "actions": final_actions or [
                 _tag_prompt_action(
                     "Final route",
                     "Prefill a final-route marker such as capture, kill, parley, escape, or solo restriction.",
@@ -5249,7 +5298,6 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         },
     }
     _extend_prompt_actions(prompts["tag-complication"], profile.get("complication_prompt_actions"))
-    _extend_prompt_actions(prompts["tag-final-scene"], profile.get("final_prompt_actions"))
     return prompts
 
 
@@ -5272,14 +5320,16 @@ def _tag_manifest(
         profile = _tag_enrich_treasure_map_profile(profile, lead_detail)
     if lead_type == "thematic_dungeon":
         profile = _tag_enrich_thematic_profile(profile, lead_detail)
-    final_foe = str(profile.get("final_foe") or "Wraith")
-    final_count = max(1, int(profile.get("final_count") or 1))
+    finale_mode = _tag_finale_mode(profile)
+    noncombat_finale = finale_mode in {"vendor", "social", "choice", "procedure"} and not profile.get("final_foe")
+    final_foe = "" if noncombat_finale else str(profile.get("final_foe") or "Wraith")
+    final_count = 0 if noncombat_finale else max(1, int(profile.get("final_count") or 1))
     final_extra_foes = [
         {"name": str(foe.get("name")), "count": max(1, int(foe.get("count", 1)))}
         for foe in profile.get("final_extra_foes", [])
         if isinstance(foe, dict) and foe.get("name")
     ]
-    final_foes = [{"name": final_foe, "count": final_count}, *final_extra_foes]
+    final_foes = ([] if noncombat_finale else [{"name": final_foe, "count": final_count}]) + final_extra_foes
     source_parameters = {
         "origin": "Tales from the Adventurers' Guild",
         "lead_type": lead_type,
@@ -5302,6 +5352,8 @@ def _tag_manifest(
             "rewards": profile.get("rewards", ""),
             "side_reward_note": profile.get("side_reward_note", ""),
             "final_reward_note": profile.get("final_reward_note", ""),
+            "finale_mode": finale_mode,
+            "finale_instruction": profile.get("finale_instruction", ""),
             "final_foe_proxy": final_foe,
             "final_foe_count": final_count,
             "final_foes": final_foes,
@@ -5327,6 +5379,9 @@ def _tag_manifest(
             "objective_text": objective,
             "giver_room_id": "tag-lead-entry",
             "complete_when": {
+                "type": "room_reached",
+                "room_id": "tag-final-scene",
+            } if noncombat_finale else {
                 "type": "boss_defeated",
                 "boss_name": final_foe,
                 "room_id": "tag-final-scene",
@@ -5402,7 +5457,7 @@ def _tag_manifest(
                 "title": "Complication",
                 "description": (
                     f"{profile.get('complication') or 'Local troublemakers have reached the lead first.'} "
-                    "The lead stops behaving like a route and starts behaving like a problem: someone has lied, blocked the passage, demanded a price, sprung a trap, or made violence feel cheaper than caution. Resolve the printed branch before treating the finale as ordinary exploration."
+                    f"{profile.get('complication_guidance') or 'The pressure rises here, but no bookkeeping is needed unless this room presents a specific choice, roll, or procedure.'}"
                 ),
                 "exits": [
                     {
@@ -5432,7 +5487,6 @@ def _tag_manifest(
                         "when": "on_enter",
                         "once": True,
                         "log": f"TAG source {profile.get('pdf_pages') or 'page ?'}: {profile.get('complication') or 'Resolve the lead complication.'}",
-                        "encounter": {"foes": [{"name": "Goblins", "count": 4}]},
                     }
                 ],
             },
@@ -5457,8 +5511,8 @@ def _tag_manifest(
                     {
                         "when": "on_enter",
                         "once": True,
-                        "log": f"TAG final guidance: {profile.get('final_reward_note') or profile.get('rewards') or 'Apply printed reward text after victory.'}",
-                        "encounter": {"foes": final_foes},
+                        "log": str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions."),
+                        **({} if noncombat_finale else {"encounter": {"foes": final_foes}}),
                     }
                 ],
             },
@@ -5480,7 +5534,7 @@ def _tag_manifest(
             },
         ],
         "ending": {
-            "victory_text": f"The party returns to the settlement with the TAG lead resolved. Reward note: {profile.get('rewards') or 'see source scene.'}",
+            "victory_text": f"The party returns to the settlement with the TAG lead resolved. Review any scene choices, rewards, XP, Guild share, banking/storage, and closeout tasks before starting another lead.",
             "defeat_text": "The TAG lead remains unresolved in the settlement records.",
         },
     }
