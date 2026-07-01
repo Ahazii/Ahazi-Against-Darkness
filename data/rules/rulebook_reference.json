@@ -3285,7 +3285,7 @@
         "party sheets"
       ],
       "summary": "Exploration renames the live log to Narrative and adds panel toggles for crowded play screens.",
-      "body": "The live adventure text stream is labelled Narrative. Header controls can show or hide Current Objective, Ongoing Quests, Text Commands, Exits, and Character Sheets, with all helper panels defaulting off for a cleaner map/Narrative view. The right-side immediate-control column is the Action Rail. Current Objective remains the place where supported automation is surfaced: combat/trap priority, ordinary Claim Treasure, TAG room target progress, and quest reward readiness. The app should automate fixed rolls/procedures it already understands, while player choices remain explicit where the source says choose.",
+      "body": "The live adventure text stream is labelled Narrative. Header controls can show or hide Current Objective, Ongoing Quests, Text Commands, Exits, and Character Sheets, with all helper panels defaulting off for a cleaner map/Narrative view. Text Commands opens as a slim bottom command palette over the play surface instead of a bulky panel; examples stay behind the ? button and Escape closes the palette. The right-side immediate-control column is the Action Rail. Current Objective remains the place where supported automation is surfaced: combat/trap priority, ordinary Claim Treasure, TAG room target progress, and quest reward readiness. The app should automate fixed rolls/procedures it already understands, while player choices remain explicit where the source says choose.",
       "implementation_status": "implemented"
     },
     {
@@ -3363,7 +3363,7 @@
         "controls"
       ],
       "summary": "Tables documents the Narrative and exploration panel controls.",
-      "body": "The modern Tables page includes exploration_narrative_layout_table. It documents the Narrative stream, Action Rail naming, and the Current Objective, Ongoing Quests, Text Commands, Exits, and Character Sheets controls, including what each affects and which app automation it exposes.",
+      "body": "The modern Tables page includes exploration_narrative_layout_table. It documents the Narrative stream, Action Rail naming, and the Current Objective, Ongoing Quests, slim Text Commands palette, Exits, and Character Sheets controls, including what each affects and which app automation it exposes.",
       "implementation_status": "implemented"
     },
     {
@@ -3437,7 +3437,7 @@
         "playtest"
       ],
       "summary": "The live objective surface now explains target, next action, app handling, and reward status.",
-      "body": "Current Objective now adds an action-plan block: Target, Next, Handled by app, and Quest reward status when applicable. This is app-owned guidance built from current session state. It is allowed to explain what the app will do next, but it must not invent printed rule outcomes; exact source-dependent choices still route to explicit controls, Rules Reference links, or PDF verification.",
+      "body": "Current Objective now adds an action-plan block: Target, Next, Handled by app, and Quest reward status when applicable. This is app-owned guidance built from current session state. It is allowed to explain what the app will do next, but it must not invent printed rule outcomes; exact source-dependent choices still route to explicit controls, Rules Reference links, or PDF verification. For generated Adventures Guild complication rooms, the app now distinguishes a real current-room choice from setup text that merely points to the next scene: if the specific bargain, reward, spell, fight, or Clue choice happens in the finale, Current Objective tells the player to move to that scene instead of asking for premature route bookkeeping. Older generated modules with malformed prompt metadata can fall back to manifest and quest text so the player still sees practical next-step guidance.",
       "implementation_status": "implemented"
     },
     {
@@ -3452,7 +3452,7 @@
         "narrative"
       ],
       "summary": "Tables documents the Current Objective, Quest Details, and Narrative chip clarity model.",
-      "body": "The modern Tables page includes exploration_objective_clarity_table. It documents which exploration surfaces explain target, next action, automation, and reward state.",
+      "body": "The modern Tables page includes exploration_objective_clarity_table. It documents which exploration surfaces explain target, next action, automation, reward state, and generated Adventures Guild complication rooms that should simply move to the next scene-specific choice.",
       "implementation_status": "implemented"
     },
     {

@@ -29,7 +29,7 @@ function writeModernPrefs(patch) {
 }
 
 const PAGE_META = {
-  home: ["New Home Dashboard", "Start from the major play areas: manage rosters and world records, generate or import adventure modules, launch play, review rules/tables, and open developer tools when maintaining assets or metadata."],
+  home: ["Dashboard", "Start from the major play areas: manage rosters and world records, generate or import adventure modules, launch play, review rules/tables, and open developer tools when maintaining assets or metadata."],
   characters: ["Character Management", "Create and maintain the full roster: class, level, Life, gold, clues, equipment slots, inventory, spells, campaign, Guild, troupe, party, and home-settlement context before a hero enters play."],
   troupes: ["Troupe Management", "Manage the troupe as the campaign's travelling roster: assign members, review the selected member sheet, see linked parties, confirm the home settlement, and record travel or membership changes."],
   guild: ["Guild Management", "Run The Adventures Guild layer: membership, coffers, finance, jobs, benefits, closeout obligations, and searchable member records tied back to the campaign world."],
@@ -1615,7 +1615,7 @@ function renderPageCompanion(page) {
     worldSettlements("troublesome").length,
   ];
   const definitions = {
-    home: ["Dashboard Snapshot", [
+    home: ["Dashboard", [
       ["Active sessions", `${activeSessions.length} in progress`, "Resume or close sessions before reusing locked characters."],
       ["Open guidance", `${openGuidanceTasks().length} task(s)`, "Collapsed dashboard checks are at the bottom of the page."],
       ["Modules", `${modernState.adventures.length} installed`, "Adventure Management now owns generated, imported, and AI-authored modules."],
@@ -1802,21 +1802,57 @@ function renderNeedsAttention() {
   return panel;
 }
 
+function renderDashboardStatusIcons() {
+  const activeSessions = (modernState.sessions || []).filter((session) => session.mode !== "complete");
+  const injured = modernState.characters.filter((character) => character.current_life > 0 && character.current_life < character.max_life);
+  const fallen = modernState.characters.filter((character) => character.current_life <= 0);
+  const closeouts = closeoutTasksFor([]);
+  const guidance = openGuidanceTasks();
+  const modulesInUse = moduleInUseCount();
+  const items = [
+    ["▶", "Active", `${activeSessions.length} session(s)`, "/modern/go-adventure", "Resume active games or finish closeout before reusing locked characters."],
+    ["!", "Attention", `${guidance.length + closeouts.length} task(s)`, "#dashboard-needs-attention", "Open guidance and closeout tasks that should be reviewed before the next adventure."],
+    ["♥", "Roster", `${injured.length} injured · ${fallen.length} fallen`, "/modern/characters", "Review character health, equipment, and assignment warnings."],
+    ["◆", "Modules", `${modernState.adventures.length} installed · ${modulesInUse} in use`, "/modern/adventure-management", "Manage generated, imported, and AI adventure modules."],
+  ];
+  const panel = el("section", "modern-dashboard-status-icons");
+  panel.setAttribute("aria-label", "Dashboard status");
+  for (const [icon, label, value, href, tooltip] of items) {
+    const item = document.createElement("a");
+    item.href = href;
+    item.className = "modern-dashboard-status-icon";
+    item.title = tooltip;
+    item.append(el("span", "modern-dashboard-status-symbol", icon), el("strong", "", label), el("span", "muted", value));
+    panel.appendChild(item);
+  }
+  return panel;
+}
+
 async function renderHome() {
   await loadArtwork();
+  rootEl.appendChild(renderDashboardStatusIcons());
   const grid = el("div", "modern-home-grid");
   for (const [page, meta] of Object.entries(PAGE_META)) {
     if (page === "home") continue;
     const section = card(meta[0], meta[1]);
     const art = primaryApplicationArtworkForPage(page);
-    if (art) section.prepend(renderArtworkFigure(art, "modern-home-tile-artwork"));
+    if (art) {
+      const artLink = document.createElement("a");
+      artLink.href = `/modern/${page}`;
+      artLink.className = "modern-home-tile-artwork-link";
+      artLink.title = `Open ${meta[0]}.`;
+      artLink.appendChild(renderArtworkFigure(art, "modern-home-tile-artwork"));
+      section.prepend(artLink);
+    }
     const row = actions();
     row.appendChild(link("Open", `/modern/${page}`, `Open ${meta[0]}.`, "link-button"));
     section.appendChild(row);
     grid.appendChild(section);
   }
   rootEl.appendChild(grid);
-  rootEl.appendChild(collapseCard(renderNeedsAttention(), "Dashboard safety checks, open guidance, active sessions, closeout prompts, and roster warnings."));
+  const needs = collapseCard(renderNeedsAttention(), "Dashboard safety checks, open guidance, active sessions, closeout prompts, and roster warnings.");
+  needs.id = "dashboard-needs-attention";
+  rootEl.appendChild(needs);
   rootEl.appendChild(collapseCard(renderAdventureCloseoutCockpit("Dashboard"), "Generated lead, route marker, XP, Guild, banking/storage, and guidance review before the next adventure."));
 }
 

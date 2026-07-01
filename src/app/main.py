@@ -2232,8 +2232,8 @@ def _rules_tables_payload() -> dict:
         {
             "control": "Text Commands",
             "affects": "Typed exploration command entry.",
-            "player_use": "Use commands such as look, search, claim, rest, or go north 1.",
-            "automation": "Commands call the same session actions as buttons.",
+            "player_use": "Toggles a slim bottom command palette. Use commands such as look, search, claim, rest, or go north 1; press ? for examples and Escape to close.",
+            "automation": "Commands call the same session actions as buttons while the palette overlays the play surface instead of taking map height.",
         },
         {
             "control": "Exits",
@@ -2390,7 +2390,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Current Objective",
             "shows": "Target, Next, Handled by app, and Quest reward status when relevant.",
-            "player_use": "Use it to answer what you are trying to do, what button to press next, and what the app will update.",
+            "player_use": "Use it to answer what you are trying to do, what button to press next, what the app will update, or when an Adventures Guild complication is just telling you to move to the next scene-specific choice.",
             "rules_boundary": "The app explains current state and supported automation; source-specific player choices remain explicit.",
         },
         {

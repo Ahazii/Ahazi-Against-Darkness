@@ -520,6 +520,7 @@ const explorationCommandBar = document.getElementById("exploration-command-bar")
 const explorationCommandForm = document.getElementById("exploration-command-form");
 const explorationCommandInput = document.getElementById("exploration-command-input");
 const explorationCommandHints = document.getElementById("exploration-command-hints");
+const explorationCommandHelp = document.getElementById("exploration-command-help");
 const toggleCurrentObjectiveBtn = document.getElementById("toggle-current-objective");
 const toggleOngoingQuestsBtn = document.getElementById("toggle-ongoing-quests");
 const toggleTextCommandsBtn = document.getElementById("toggle-text-commands");
@@ -17755,6 +17756,9 @@ function currentObjectiveForSession(session) {
     const actions = Array.isArray(generated.promptData?.actions)
       ? generated.promptData.actions.filter((action) => action?.label && action.action_type)
       : [];
+    const complicationNext = generated.room?.id === "tag-complication"
+      ? generatedTagComplicationNextStep(generated.tagReference, generated.promptData || {})
+      : null;
     if (session.active_quest?.completed && !generatedTagLeadSignedOff(session)) {
       return {
         title: "Current objective: TAG closeout signoff",
@@ -17762,6 +17766,17 @@ function currentObjectiveForSession(session) {
           "The generated TAG objective is complete. Review route markers, rewards, XP, Guild share, banking/storage, and any closeout tasks before starting another lead.",
         tone: "tag",
         action: { label: "Sign off TAG lead", kind: "tag-lead-signoff" },
+      };
+    }
+    if (complicationNext && director) {
+      return {
+        title: `Current objective: ${director.phase}`,
+        body:
+          `${director.instruction} The app has not applied a route or reward here because this is movement/scene setup, not a fixed roll or automatic reward.`,
+        tone: "tag",
+        next: `Use the visible exits to enter ${complicationNext.title}.`,
+        handled: `When you reach that scene, the app will surface ${complicationNext.choices.join(" / ")} as the relevant choices.`,
+        secondaryAction: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
       };
     }
     if (!actions.length && director) {
@@ -22716,6 +22731,9 @@ function setExplorationPanelVisibility(key, open) {
   state.explorationPanels = { ...(state.explorationPanels || {}), [key]: Boolean(open) };
   applyExplorationPanelVisibility();
   saveLayoutPrefs();
+  if (key === "commands" && open) {
+    window.requestAnimationFrame(() => explorationCommandInput?.focus());
+  }
 }
 
 function tagReferenceForGeneratedAdventure(session) {
@@ -22723,10 +22741,85 @@ function tagReferenceForGeneratedAdventure(session) {
   const source = manifest.source || {};
   const params = source.parameters || {};
   const adventureIds = new Set(state.campaign?.tag_generated_adventure_ids || []);
-  if (params.tag_reference) return params.tag_reference;
-  if (params.origin === "Tales from the Adventurers' Guild") return params;
-  if (session?.adventure_id && adventureIds.has(session.adventure_id)) return params.tag_reference || params || {};
+  if (params.tag_reference && typeof params.tag_reference === "object") {
+    return normalizeGeneratedTagReference(session, params.tag_reference, params);
+  }
+  if (params.origin === "Tales from the Adventurers' Guild") return buildFallbackGeneratedTagReference(session, params);
+  if (session?.adventure_id && adventureIds.has(session.adventure_id)) {
+    if (params.tag_reference && typeof params.tag_reference === "object") {
+      return normalizeGeneratedTagReference(session, params.tag_reference, params);
+    }
+    return buildFallbackGeneratedTagReference(session, params);
+  }
   return null;
+}
+
+function normalizeGeneratedTagReference(session, tagReference = {}, params = {}) {
+  if (tagReference?.room_prompts && Object.keys(tagReference.room_prompts || {}).length) return tagReference;
+  const fallback = buildFallbackGeneratedTagReference(session, params);
+  return {
+    ...fallback,
+    ...tagReference,
+    prompt_repair_note: tagReference.prompt_repair_note || fallback.prompt_repair_note,
+    room_prompts: fallback.room_prompts,
+  };
+}
+
+function fallbackFinalPromptActions(session = state.session) {
+  const objective = String(session?.active_quest?.description || session?.imported_manifest?.quest?.objective_text || "").toLowerCase();
+  const actions = [];
+  if (objective.includes("shoes of fast walk") || objective.includes("buy shoes")) {
+    actions.push({
+      label: "Buy shoes",
+      tooltip: "Open Adventures Guild Actions for the Scene 2 Shoes of Fast Walk purchase. Confirm the exact cost and buyer from the PDF/player decision before applying.",
+      action_type: "branch",
+      action_value: "leprechaun_shoes",
+      reference: "Scene 2 Shoes of Fast Walk",
+      amount: 1,
+    });
+  }
+  if (objective.includes("illusion spell") || objective.includes("learn their illusion")) {
+    actions.push({
+      label: "Learn illusion spell",
+      tooltip: "Open Adventures Guild Actions for the Scene 2 illusion spell lesson. Confirm the exact eligibility/cost from the PDF/player decision before applying.",
+      action_type: "branch",
+      action_value: "leprechaun_illusion_spell",
+      reference: "Scene 2 illusion spell",
+    });
+  }
+  return actions;
+}
+
+function buildFallbackGeneratedTagReference(session, params = {}) {
+  const manifest = session?.imported_manifest || {};
+  const rooms = Array.isArray(manifest.rooms) ? manifest.rooms : [];
+  const roomById = (id) => rooms.find((room) => room.id === id) || {};
+  const objective = session?.active_quest?.description || manifest.quest?.objective_text || manifest.synopsis || "";
+  const title = manifest.title || params.lead_detail || "Generated Adventures Guild lead";
+  const finalRoom = roomById("tag-final-scene");
+  const complicationRoom = roomById("tag-complication");
+  const finalActions = fallbackFinalPromptActions(session);
+  return {
+    title,
+    lead_type: params.lead_type || "generated",
+    lead_detail: params.lead_detail || title,
+    scene: params.scene || "",
+    pdf_pages: params.pdf_pages || "",
+    objective,
+    prompt_repair_note: "Fallback prompt metadata inferred from an older generated module. Confirm exact printed values before applying choices.",
+    room_prompts: {
+      "tag-complication": {
+        title: "Complication route",
+        body: complicationRoom.description || objective,
+        actions: [],
+      },
+      "tag-final-scene": {
+        title: finalRoom.title || "Final scene",
+        body: finalRoom.description || objective,
+        actions: finalActions,
+      },
+    },
+  };
 }
 
 function tagCurrentImportedRoomId(session, tile) {
@@ -23102,11 +23195,45 @@ function generatedTagRecommendedAction(promptData = {}) {
   return actions[0];
 }
 
+const TAG_GENERIC_COMPLICATION_ACTIONS = new Set([
+  "parley_success",
+  "parley_failed",
+  "clue_gate_unlocked",
+  "clue_gate_blocked",
+  "final_route",
+  "claim_reward",
+  "mark_scene_xp",
+  "unlock_scene",
+]);
+
+function generatedTagSpecificActions(promptData = {}) {
+  return (Array.isArray(promptData.actions) ? promptData.actions : []).filter((action) => {
+    if (!action?.label) return false;
+    const value = String(action.action_value || action.value || "");
+    if (!value) return false;
+    return !TAG_GENERIC_COMPLICATION_ACTIONS.has(value);
+  });
+}
+
+function generatedTagComplicationNextStep(tagReference = {}, promptData = {}) {
+  const currentSpecific = generatedTagSpecificActions(promptData);
+  if (currentSpecific.length) return null;
+  const finalPrompt = tagReference?.room_prompts?.["tag-final-scene"] || {};
+  const finalSpecific = generatedTagSpecificActions(finalPrompt);
+  if (!finalSpecific.length) return null;
+  const manifestFinalRoom = (state.session?.imported_manifest?.rooms || []).find((room) => room?.id === "tag-final-scene");
+  return {
+    title: manifestFinalRoom?.title || finalPrompt.title || tagReference.final_title || "Final scene",
+    choices: finalSpecific.map((action) => action.label).filter(Boolean).slice(0, 4),
+  };
+}
+
 function generatedTagDirectorStep(session = state.session) {
   const { tagReference, room, promptData } = tagCurrentPromptData(session);
   if (!tagReference) return null;
   const roomId = room?.id || "";
-  const recommended = generatedTagRecommendedAction(promptData || {});
+  const complicationNext = roomId === "tag-complication" ? generatedTagComplicationNextStep(tagReference, promptData || {}) : null;
+  const recommended = complicationNext ? null : generatedTagRecommendedAction(promptData || {});
   const lead = tagLeadLabel(tagReference);
   const playbook = generatedTagLeadPlaybook(tagReference);
   if (session?.active_quest?.completed && !generatedTagLeadSignedOff(session)) {
@@ -23144,12 +23271,14 @@ function generatedTagDirectorStep(session = state.session) {
   if (roomId === "tag-complication") {
     return {
       phase: "Complication",
-      heading: "Director: choose the branch before the finale",
-      instruction:
-        "This is the decision point. Resolve the parley, hostile turn, clue gate, blocked path, or special procedure now so the finale is not treated like a generic room.",
+      heading: complicationNext ? "Director: move to the scene-specific choice" : "Director: choose the branch before the finale",
+      instruction: complicationNext
+        ? `This room is flagging the lead's pressure point, but the scene-specific choices are in ${complicationNext.title}. Continue through the available exit to that scene; then choose ${complicationNext.choices.join(" or ")} if the printed scene and your party decision make one of those options apply.`
+        : "This is the decision point. Resolve the parley, hostile turn, clue gate, blocked path, or special procedure now so the finale is not treated like a generic room.",
       playbook,
       recommended,
-      actionType: recommended?.action_type || "route",
+      actionType: recommended?.action_type || (complicationNext ? "move" : "route"),
+      nextStep: complicationNext,
     };
   }
   if (roomId === "tag-final-scene") {
@@ -23247,6 +23376,19 @@ function renderTagRelevantActions(session = state.session) {
     const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated TAG director");
     if (directorBox) tagRelevantActions.appendChild(directorBox);
   }
+  if (director?.nextStep) {
+    const callout = node("div", "tag-relevant-recommendation");
+    callout.appendChild(node("strong", "", `Next: go to ${director.nextStep.title}`));
+    callout.appendChild(
+      node(
+        "span",
+        "",
+        `No Adventures Guild action is required in this room unless the printed scene asks for one. The next scene will offer ${director.nextStep.choices.join(" / ")} if those choices apply.`
+      )
+    );
+    tagRelevantActions.appendChild(callout);
+    return;
+  }
   tagRelevantActions.appendChild(
     node(
       "span",
@@ -23294,6 +23436,20 @@ function renderTagRelevantActions(session = state.session) {
 
 function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
   if (!promptData || !Array.isArray(promptData.actions)) return false;
+  const { tagReference, room } = tagCurrentPromptData(state.session);
+  const complicationNext = room?.id === "tag-complication"
+    ? generatedTagComplicationNextStep(tagReference || {}, promptData)
+    : null;
+  if (complicationNext) {
+    const note = node(
+      "div",
+      "tag-context-checklist",
+      `Next: move to ${complicationNext.title}. No Adventures Guild action is required in this room unless the printed scene asks for one; the next scene will offer ${complicationNext.choices.join(" / ")} if those choices apply.`
+    );
+    setTooltip(note, "This avoids recording a generic route marker before the scene-specific TAG choice actually happens.");
+    parent.appendChild(note);
+    return true;
+  }
   const row = node("div", "tag-context-actions-row");
   for (const action of promptData.actions) {
     if (!action?.label) continue;
@@ -29912,9 +30068,18 @@ function buildLogColourKey() {
 }
 
 function buildLogEntryLine(entry, session, baseClass = "") {
-  const classes = [baseClass, logEntryToneClass(entry, session)].filter(Boolean).join(" ");
-  const line = node("div", classes, entry);
+  const displayEntry = normalizeLogEntryForDisplay(entry);
+  const classes = ["log-line", baseClass, logEntryToneClass(displayEntry, session)].filter(Boolean).join(" ");
+  const line = node("div", classes, displayEntry);
   return line;
+}
+
+function normalizeLogEntryForDisplay(entry) {
+  const line = String(entry || "");
+  return line.replace(
+    "Resolve the printed branch before treating the finale as ordinary exploration.",
+    "If a specific choice is due in this room, use the Current Objective or Adventures Guild Actions. If the choice belongs to the next scene, move there and let the app surface that bargain, reward, spell, fight, Clue spend, or route choice."
+  );
 }
 
 function logEntryToneClass(entry, session) {
@@ -30462,6 +30627,13 @@ function renderExplorationCommandBar(session) {
         ? CAMP_COMMAND_HINT
         : EXPLORATION_COMMAND_HINT;
   }
+  if (explorationCommandHelp) {
+    explorationCommandHelp.title = combat
+      ? "Show combat text command examples."
+      : campedExplore
+        ? "Show camp text command examples."
+        : "Show exploration text command examples.";
+  }
   const busy = Boolean(state.sessionActionPending);
   if (explorationCommandInput) {
     explorationCommandInput.title = combat
@@ -30473,6 +30645,14 @@ function renderExplorationCommandBar(session) {
   }
   const submit = explorationCommandForm?.querySelector('button[type="submit"]');
   if (submit) submit.disabled = busy;
+}
+
+function toggleExplorationCommandHints(forceOpen = null) {
+  if (!explorationCommandBar || !explorationCommandHints || !explorationCommandHelp) return;
+  const open = forceOpen === null ? explorationCommandHints.hidden : Boolean(forceOpen);
+  explorationCommandHints.hidden = !open;
+  explorationCommandBar.classList.toggle("hints-open", open);
+  explorationCommandHelp.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
 function parseExitCommandTokens(input) {
@@ -30781,6 +30961,14 @@ explorationCommandForm?.addEventListener("submit", (event) => {
   const value = explorationCommandInput?.value || "";
   if (explorationCommandInput) explorationCommandInput.value = "";
   executeExplorationCommand(value).catch(handleError);
+});
+explorationCommandHelp?.addEventListener("click", () => toggleExplorationCommandHints());
+explorationCommandInput?.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  event.preventDefault();
+  toggleExplorationCommandHints(false);
+  setExplorationPanelVisibility("commands", false);
+  toggleTextCommandsBtn?.focus();
 });
 searchTreasureBtn?.addEventListener("click", () => advance("search", { search_choice: "hidden_treasure" }));
 searchDoorBtn?.addEventListener("click", () => advance("search", { search_choice: "secret_door" }));

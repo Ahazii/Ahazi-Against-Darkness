@@ -391,8 +391,62 @@ def test_tag_adventure_manifest_generation_validates() -> None:
         assert tag_reference["how_to"]
         assert tag_reference["mood"]
         assert "handoff from settlement rumor" in tag_reference["room_prompts"]["tag-lead-entry"]["body"]
-        assert "stops being travel and becomes a decision" in tag_reference["room_prompts"]["tag-complication"]["body"]
+        assert "stops being simple travel" in tag_reference["room_prompts"]["tag-complication"]["body"]
+        assert "If it only points toward the finale" in tag_reference["room_prompts"]["tag-complication"]["body"]
         assert "Adventure section" in entry.result_text
+
+
+def test_all_tag_generation_options_have_structured_prompt_metadata(monkeypatch) -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    monkeypatch.setattr(tag_campaign, "roll_d12", lambda: 6)
+    cases = {
+        "rumor": [str(i) for i in range(1, 13)],
+        "treasure_map": [str(i) for i in range(1, 7)],
+        "thematic_dungeon": [str(i) for i in range(1, 7)],
+        "guild_job": [str(i) for i in range(1, 7)],
+    }
+    generic_actions = {
+        "parley_success",
+        "parley_failed",
+        "clue_gate_unlocked",
+        "clue_gate_blocked",
+        "final_route",
+        "claim_reward",
+        "mark_scene_xp",
+        "unlock_scene",
+    }
+    finale_choice_cases = set()
+
+    for lead_type, details in cases.items():
+        for detail in details:
+            campaign = default_campaign()
+            manifest, _ = build_tag_adventure_manifest(campaign, lead_type=lead_type, detail=detail)
+            result = validate_adventure_manifest(manifest, rules_repo=repo)
+            assert result.valid, (lead_type, detail, result.errors)
+            reference = manifest["source"]["parameters"]["tag_reference"]
+            assert isinstance(reference, dict), (lead_type, detail)
+            prompts = reference.get("room_prompts")
+            assert isinstance(prompts, dict) and prompts, (lead_type, detail)
+            assert {"tag-complication", "tag-final-scene"} <= set(prompts), (lead_type, detail)
+            complication_actions = prompts["tag-complication"].get("actions") or []
+            final_actions = prompts["tag-final-scene"].get("actions") or []
+            complication_specific = [
+                action
+                for action in complication_actions
+                if action.get("action_value") and action.get("action_value") not in generic_actions
+            ]
+            final_specific = [
+                action
+                for action in final_actions
+                if action.get("action_value") and action.get("action_value") not in generic_actions
+            ]
+            if final_specific and not complication_specific:
+                finale_choice_cases.add((lead_type, detail))
+
+    assert ("rumor", "6") in finale_choice_cases
+    assert ("thematic_dungeon", "2") in finale_choice_cases
+    assert ("guild_job", "5") in finale_choice_cases
 
 
 def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:

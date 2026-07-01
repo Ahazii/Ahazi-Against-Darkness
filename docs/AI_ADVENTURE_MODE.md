@@ -667,7 +667,7 @@ The adventure dropdown and map-size selector also have setup tooltips (`SETUP_TO
 
 ### Exploration command bar (play UI)
 
-During **exploration**, a command field appears below the session log (random and imported adventures). Type a command and press **Enter** or **Go**. Exit numbers match the map labels (**North 1**, **East 2**, compact **N1**, **E2**).
+During **exploration**, the **Text Commands** button opens a slim bottom command palette over the play surface. Type a command and press **Enter** or **Go**. Press **?** for examples and **Escape** to close the palette. Exit numbers match the map labels (**North 1**, **East 2**, compact **N1**, **E2**).
 
 | Command | Action |
 |---------|--------|

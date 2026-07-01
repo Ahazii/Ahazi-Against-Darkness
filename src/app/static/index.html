@@ -1182,8 +1182,15 @@
             <div id="combat-hero-chips" class="combat-hero-chips hidden" aria-label="Party quick view"></div>
             <div id="combat-party-strip" class="combat-party-strip hidden" aria-label="Party sheets"></div>
             <div id="exploration-command-bar" class="exploration-command-bar bottom-command-bar hidden" aria-label="Exploration commands">
-              <p id="exploration-command-hints" class="exploration-command-hints muted"></p>
               <form id="exploration-command-form" class="exploration-command-form" autocomplete="off">
+                <button
+                  id="exploration-command-help"
+                  type="button"
+                  class="secondary exploration-command-help"
+                  aria-expanded="false"
+                  aria-controls="exploration-command-hints"
+                  title="Show or hide text command examples."
+                >?</button>
                 <input
                   id="exploration-command-input"
                   class="exploration-command-input"
@@ -1194,6 +1201,7 @@
                 />
                 <button type="submit" class="secondary">Go</button>
               </form>
+              <p id="exploration-command-hints" class="exploration-command-hints muted" hidden></p>
             </div>
           </div>
 

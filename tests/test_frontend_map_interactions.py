@@ -1204,6 +1204,9 @@ def test_log_colour_key_and_semantic_classes_are_present() -> None:
 
     assert "function logEntryToneClass(entry, session)" in APP_JS
     assert "buildLogEntryLine(entry, session" in APP_JS
+    assert '["log-line", baseClass, logEntryToneClass(displayEntry, session)]' in APP_JS
+    assert "function normalizeLogEntryForDisplay(entry)" in APP_JS
+    assert "If the choice belongs to the next scene, move there" in APP_JS
     assert "buildLogColourKey()" in _function_body("renderCombatRailLog", APP_JS)
     assert "regenerates?" in APP_JS
     assert "log-line-party-damage" in STYLES_CSS
@@ -1813,18 +1816,30 @@ def test_failed_scout_panel_exposes_reaction_rush_and_flee_controls() -> None:
 
 def test_exploration_command_bar_stays_visible_and_typable() -> None:
     """
-    Command input must sit below the scrollable log (not clipped by overflow:hidden)
-    and stay enabled while session actions run so players can queue the next command.
+    Command input must stay available as a slim overlay palette rather than
+    consuming map/Narrative height, and it stays enabled while session actions run.
     """
     assert 'id="exploration-command-input"' in INDEX_HTML
     assert 'id="exploration-command-bar"' in INDEX_HTML
+    assert 'id="exploration-command-help"' in INDEX_HTML
+    assert 'hidden></p>' in INDEX_HTML
     assert "function renderExplorationCommandBar(session)" in APP_JS
+    assert "function toggleExplorationCommandHints(forceOpen = null)" in APP_JS
     assert "function executeExplorationCommand(rawInput)" in APP_JS
     assert "explorationCommandForm?.addEventListener(\"submit\"" in APP_JS
+    assert "explorationCommandHelp?.addEventListener(\"click\"" in APP_JS
+    assert 'event.key !== "Escape"' in APP_JS
+    assert 'setExplorationPanelVisibility("commands", false)' in APP_JS
+    assert "explorationCommandInput?.focus()" in APP_JS
     render_body = _function_body("renderExplorationCommandBar", APP_JS)
     assert "explorationCommandInput.disabled" not in render_body
     assert "flex: 1 1 0%" in STYLES_CSS.split(".map-log {", 1)[1].split("}", 1)[0]
-    assert "flex-shrink: 0" in STYLES_CSS.split(".exploration-command-bar {", 1)[1].split("}", 1)[0]
+    command_css = STYLES_CSS.split(".exploration-command-bar {", 1)[1].split("}", 1)[0]
+    assert "position: absolute" in command_css
+    assert "bottom: 12px" in command_css
+    assert "pointer-events: none" in command_css
+    assert ".exploration-command-help" in STYLES_CSS
+    assert "backdrop-filter: blur(5px)" in STYLES_CSS
 
 
 def test_exploration_panels_can_be_toggled_from_header() -> None:
@@ -1899,6 +1914,12 @@ def test_application_artwork_manager_and_slots_are_wired() -> None:
     assert "modern-page-artwork-figure" in MODERN_PAGES_JS
     assert "modern-nav-artwork-figure" in MODERN_PAGES_JS
     assert "modern-home-tile-artwork" in MODERN_PAGES_JS
+    assert "modern-home-tile-artwork-link" in MODERN_PAGES_JS
+    assert "function renderDashboardStatusIcons()" in MODERN_PAGES_JS
+    assert "modern-dashboard-status-icons" in MODERN_PAGES_JS
+    assert 'home: ["Dashboard"' in MODERN_PAGES_JS
+    assert "New Home Dashboard" not in MODERN_HTML
+    assert "New home dashboard" not in MODERN_HTML
     assert 'entry.category !== "app_assets"' in MODERN_PAGES_JS
     assert '"ai-adventures"' not in MODERN_PAGES_JS
     assert "featureApplication" in MODERN_PAGES_JS
@@ -1909,6 +1930,10 @@ def test_application_artwork_manager_and_slots_are_wired() -> None:
     assert ".modern-page-companion" in STYLES_CSS
     assert ".modern-page-head.has-artwork #modern-page-help" in STYLES_CSS
     assert ".modern-page-artwork-figure" in STYLES_CSS
+    assert ".modern-page-artwork-figure img" in STYLES_CSS
+    assert "object-fit: contain" in STYLES_CSS
+    assert ".modern-dashboard-status-icons" in STYLES_CSS
+    assert ".modern-home-tile-artwork-link" in STYLES_CSS
     assert ".modern-nav-artwork-figure" in STYLES_CSS
     assert ".modern-home-tile-artwork" in STYLES_CSS
     assert "aspect-ratio: 16 / 9" in STYLES_CSS
@@ -1933,6 +1958,27 @@ def test_playtest_objective_and_adventure_browser_wiring() -> None:
     assert "exploration_objective_clarity_table" in MAIN_PY
     assert "adventure_management_browser_table" in MAIN_PY
     assert "artwork_expansion_plan_table" in MAIN_PY
+
+
+def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_choices() -> None:
+    assert "function generatedTagComplicationNextStep" in APP_JS
+    assert "function buildFallbackGeneratedTagReference(session, params = {})" in APP_JS
+    assert "function normalizeGeneratedTagReference(session, tagReference = {}, params = {})" in APP_JS
+    assert "return normalizeGeneratedTagReference(session, params.tag_reference, params);" in APP_JS
+    assert "function fallbackFinalPromptActions(session = state.session)" in APP_JS
+    assert 'typeof params.tag_reference === "object"' in APP_JS
+    assert "Fallback prompt metadata inferred from an older generated module" in APP_JS
+    assert "Scene 2 Shoes of Fast Walk" in APP_JS
+    assert "Scene 2 illusion spell" in APP_JS
+    assert "TAG_GENERIC_COMPLICATION_ACTIONS" in APP_JS
+    assert '"final_route"' in APP_JS
+    assert '"claim_reward"' in APP_JS
+    assert '"mark_scene_xp"' in APP_JS
+    assert "manifestFinalRoom?.title" in APP_JS
+    assert "Director: move to the scene-specific choice" in APP_JS
+    assert "No Adventures Guild action is required in this room unless the printed scene asks for one" in APP_JS
+    assert "The app has not applied a route or reward here because this is movement/scene setup" in APP_JS
+    assert "If it only points toward the finale, keep moving" in Path("src/app/engine/tag_campaign.py").read_text(encoding="utf-8")
 
 
 def test_modern_dashboard_status_and_developer_tools_are_demoted() -> None:

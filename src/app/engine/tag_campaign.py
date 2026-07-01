@@ -5145,10 +5145,11 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             "body": (
                 f"{profile.get('complication') or 'The lead tightens here: a bargain can sour, a shortcut can close, or a fight can turn the room into evidence.'} "
                 f"{complication_guidance} "
-                "This is where the lead stops being travel and becomes a decision. Resolve the printed social, combat, Clue, or blocked-route branch before the party treats the finale as ordinary room-clearing."
+                "This is where the lead stops being simple travel. If this room shows a scene-specific button, resolve that choice now. If it only points toward the finale, keep moving and let the next scene present the actual bargain, fight, Clue spend, reward, or route choice."
             ),
             "checklist": [
-                "Resolve the printed branch, Clue cost, or procedure before moving to the finale.",
+                "Resolve only the branch, Clue cost, or procedure that the current printed scene actually asks for.",
+                "If no current-scene choice is due, move to the finale and make the scene-specific choice there.",
                 "Use route markers for peaceful, hostile, blocked, skipped, or unlocked paths.",
             ],
             "actions": [
