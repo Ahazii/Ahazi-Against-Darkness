@@ -29,24 +29,23 @@ function writeModernPrefs(patch) {
 }
 
 const PAGE_META = {
-  home: ["New Home Dashboard", "Separate pages for campaign setup, The Adventures Guild management, rules, guides, and developer tools."],
-  characters: ["Character Management", "Create, maintain, level, heal, delete, and review roster characters."],
-  troupes: ["Troupe Management", "Manage The Adventures Guild troupe roster, active party selection, travel, and home settlement."],
-  guild: ["Guild Management", "Manage Adventurers Guild membership, coffers, upkeep, benefits, and obligations."],
-  parties: ["Party Management", "Create, heal, delete, and review four-character parties."],
-  equipment: ["Equipment Shop", "Buy and sell equipment for a selected character without returning to the legacy home page."],
-  banking: ["Banking and Finance", "The Adventures Guild bank accounts, hidden treasure troves, robbery recovery, and finance actions."],
-  settlement: ["Settlement Management", "Maintain The Adventures Guild settlement name, size, notes, services, travel, and availability rolls."],
-  campaign: ["Campaign Management", "World, hex map, and settlement-map planning surface."],
-  settings: ["Settings / Options", "Ruleset profiles, campaign options, map limits, and Adventures Guild banking preferences."],
-  "adventure-management": ["Adventure Management", "Import, export, delete, generate, and review playable adventure modules."],
-  "ai-adventures": ["AI Adventure Generation", "Generate prompts, validate imports, and install AI-authored modules."],
-  "go-adventure": ["Go Adventure!", "Select a party, adventure type, ruleset, and start a session."],
-  "rules-reference": ["Rules Reference", "Search and inspect curated implementation references."],
-  tables: ["Tables List", "Browse structured rules and data tables."],
-  library: ["Credits / History / Background", "Open owned PDFs and maintain signoff-safe background notes."],
-  guides: ["Game Guides", "Player guides and workflow documents."],
-  developer: ["Developer Section", "Password-gated tooling for module import, editors, and validation."],
+  home: ["New Home Dashboard", "Start from the major play areas: manage rosters and world records, generate or import adventure modules, launch play, review rules/tables, and open developer tools when maintaining assets or metadata."],
+  characters: ["Character Management", "Create and maintain the full roster: class, level, Life, gold, clues, equipment slots, inventory, spells, campaign, Guild, troupe, party, and home-settlement context before a hero enters play."],
+  troupes: ["Troupe Management", "Manage the troupe as the campaign's travelling roster: assign members, review the selected member sheet, see linked parties, confirm the home settlement, and record travel or membership changes."],
+  guild: ["Guild Management", "Run The Adventures Guild layer: membership, coffers, finance, jobs, benefits, closeout obligations, and searchable member records tied back to the campaign world."],
+  parties: ["Party Management", "Build and maintain four-hero adventuring parties, keep party members aligned with their troupe, heal or bank for the group, and check assignment warnings before starting a session."],
+  equipment: ["Equipment Shop", "Buy and sell gear for roster characters, review prices and resale handling, and keep carried equipment aligned with the character sheet before the next adventure."],
+  banking: ["Banking and Finance", "Track The Adventures Guild accounts, hidden treasure troves, robbed accounts, inheritance, loans, storage risks, and recovery tasks that can affect closeout and future play."],
+  settlement: ["Settlement Management", "Maintain friendly settlements, size modifiers, services, travel notes, availability checks, and campaign assignment for the places your troupes use between adventures."],
+  campaign: ["Campaign Management", "Keep the app-owned world-builder records together: campaign description, assigned Guild, troupes, friendly settlements, troublesome-town placeholders, chronicle, and future map hooks."],
+  settings: ["Settings / Options", "Control ruleset profiles, enabled rule families, map limits, campaign options, and Adventures Guild preferences without changing the underlying rule data."],
+  "adventure-management": ["Adventure Management", "Manage every playable module in one place: generated Adventures Guild modules, imported modules, AI-authored modules, export packages, delete safe modules, and review in-use/completed status."],
+  "go-adventure": ["Go Adventure!", "Choose the party and module, review readiness warnings, start or resume play, and let supported adventure objectives drive the exploration guidance automatically."],
+  "rules-reference": ["Rules Reference", "Search curated implementation notes with source references, app-owned boundaries, TAG automation explanations, and links from controls that need rules context."],
+  tables: ["Tables List", "Browse structured rule and app tables, filter by family or artwork links, and inspect the data that powers rules lookups, validation, and dashboard references."],
+  library: ["Credits / History / Background", "Open owned PDFs, maintain signoff-safe background notes, and keep artwork/PDF boundaries clear for personal-use and publication-safe content."],
+  guides: ["Game Guides", "Open player-facing workflow guides, test checklists, and future quick-start material for using the app during setup, play, closeout, and TAG procedures."],
+  developer: ["Developer Section", "Password-gated maintenance tools for module import scaffolding, map and icon editors, artwork status, validation helpers, and content pipeline checks."],
 };
 
 const PDF_LINKS = [
@@ -70,7 +69,6 @@ const PAGE_HELP_QUERIES = {
   campaign: "campaign world builder",
   settings: "settings ruleset profile",
   "adventure-management": "adventure management import export generated module",
-  "ai-adventures": "ai adventure import",
   "go-adventure": "go adventure closeout gates start override",
   "rules-reference": "rules artwork registry",
   tables: "artwork table source page",
@@ -680,6 +678,22 @@ function renderGuidanceLog() {
     panel.appendChild(row);
   }
   return panel;
+}
+
+function collapseCard(panel, summaryHint = "") {
+  const collapsed = document.createElement("details");
+  collapsed.className = "modern-card modern-collapsible";
+  const title = panel.querySelector("h3")?.textContent || "Details";
+  const body = panel.querySelector(":scope > p.muted")?.textContent || summaryHint;
+  const summary = document.createElement("summary");
+  summary.title = `Show or hide ${title}.`;
+  summary.append(el("strong", "", title), el("span", "muted", body));
+  collapsed.appendChild(summary);
+  for (const child of Array.from(panel.childNodes)) {
+    if (child.nodeType === Node.ELEMENT_NODE && ["H3", "P"].includes(child.tagName)) continue;
+    collapsed.appendChild(child);
+  }
+  return collapsed;
 }
 
 function renderCampaignChronicle(title = "Campaign Chronicle", limit = 12) {
@@ -1657,8 +1671,6 @@ function renderNeedsAttention() {
 
 async function renderHome() {
   await loadArtwork();
-  rootEl.appendChild(renderNeedsAttention());
-  rootEl.appendChild(renderAdventureCloseoutCockpit("Dashboard"));
   const grid = el("div", "modern-home-grid");
   for (const [page, meta] of Object.entries(PAGE_META)) {
     if (page === "home") continue;
@@ -1671,6 +1683,8 @@ async function renderHome() {
     grid.appendChild(section);
   }
   rootEl.appendChild(grid);
+  rootEl.appendChild(collapseCard(renderNeedsAttention(), "Dashboard safety checks, open guidance, active sessions, closeout prompts, and roster warnings."));
+  rootEl.appendChild(collapseCard(renderAdventureCloseoutCockpit("Dashboard"), "Generated lead, route marker, XP, Guild, banking/storage, and guidance review before the next adventure."));
 }
 
 function renderCharacters() {
@@ -3840,16 +3854,21 @@ async function renderDeveloper() {
   const gate = card("Developer Unlock", "Enter password 7979 to show developer tools.");
   const pw = input("password", "modern-dev-pw", "Developer password. Default is 7979.");
   const tools = el("div", "modern-dev-tools hidden");
+  const artworkMount = el("div", "modern-dev-artwork-manager hidden");
   const row = actions();
   row.append(
     link("Adventure PDF Import", "/modern/developer", "Placeholder for future PDF adventure module import."),
     link("Adventure Module Editor", "/modern/developer", "Placeholder for future adventure module editor."),
     link("Adventure Module Creator", "/modern/developer", "Placeholder for future adventure-from-scratch creator."),
     link("Map Elements Editor", "/static/tile-editor.html", "Open the existing map element editor as its own page."),
-    link("Icon Editor", "/static/icon-editor.html", "Open the existing icon editor as its own page.")
+    link("Icon Editor", "/static/icon-editor.html", "Open the existing icon editor as its own page."),
+    button("Artwork Manager", "Show or hide the artwork slot manager for DATA_DIR/assets paths, missing files, and linked Rules Reference entries.", async () => {
+      if (!artworkMount.childElementCount) artworkMount.appendChild(renderArtworkManager());
+      artworkMount.classList.toggle("hidden");
+    })
   );
   tools.appendChild(row);
-  tools.appendChild(renderArtworkManager());
+  tools.appendChild(artworkMount);
   if (window.sessionStorage.getItem("ahazi-modern-dev-unlocked") === "1") tools.classList.remove("hidden");
   const unlock = button("Unlock", "Show developer tools when password is 7979.", async () => {
     if (pw.value !== "7979") throw new Error("Incorrect developer password.");
@@ -3895,7 +3914,6 @@ function renderPage() {
     campaign: renderCampaign,
     settings: renderSettings,
     "adventure-management": renderAdventureManagement,
-    "ai-adventures": renderAiAdventures,
     "go-adventure": renderGoAdventure,
     "rules-reference": renderRulesReference,
     tables: renderTables,

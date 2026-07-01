@@ -1895,15 +1895,29 @@ def test_application_artwork_manager_and_slots_are_wired() -> None:
     assert "modern-nav-artwork-figure" in MODERN_PAGES_JS
     assert "modern-home-tile-artwork" in MODERN_PAGES_JS
     assert 'entry.category !== "app_assets"' in MODERN_PAGES_JS
+    assert '"ai-adventures"' not in MODERN_PAGES_JS
     assert "featureApplication" in MODERN_PAGES_JS
     assert "modern-art-card-feature" in MODERN_PAGES_JS
     assert ".modern-art-card-feature" in STYLES_CSS
     assert ".modern-page-head.has-artwork" in STYLES_CSS
+    assert ".modern-page-head.has-artwork #modern-page-help" in STYLES_CSS
     assert ".modern-page-artwork-figure" in STYLES_CSS
     assert ".modern-nav-artwork-figure" in STYLES_CSS
     assert ".modern-home-tile-artwork" in STYLES_CSS
     assert "aspect-ratio: 16 / 9" in STYLES_CSS
     assert "application_artwork_slots_table" in MAIN_PY
+
+
+def test_modern_dashboard_status_and_developer_tools_are_demoted() -> None:
+    home_start = MODERN_PAGES_JS.index("async function renderHome()")
+    grid_append = MODERN_PAGES_JS.index("rootEl.appendChild(grid);", home_start)
+    needs_append = MODERN_PAGES_JS.index("collapseCard(renderNeedsAttention()", home_start)
+    closeout_append = MODERN_PAGES_JS.index("collapseCard(renderAdventureCloseoutCockpit", home_start)
+    assert grid_append < needs_append < closeout_append
+    assert "function collapseCard(panel" in MODERN_PAGES_JS
+    assert "const artworkMount = el(\"div\", \"modern-dev-artwork-manager hidden\")" in MODERN_PAGES_JS
+    assert "button(\"Artwork Manager\"" in MODERN_PAGES_JS
+    assert "tools.appendChild(artworkMount)" in MODERN_PAGES_JS
 
 
 def test_mass_blessing_ui_sends_targets_and_conditions() -> None:

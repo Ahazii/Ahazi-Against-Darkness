@@ -310,6 +310,20 @@ h2 {
   flex: 0 0 auto;
 }
 
+.modern-page-head.has-artwork #modern-page-help {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  z-index: 2;
+  margin: 8px;
+}
+
+.modern-page-head.has-artwork #modern-page-artwork {
+  grid-column: 3;
+  grid-row: 1;
+}
+
 #modern-page-artwork:empty {
   display: none;
 }
@@ -840,6 +854,22 @@ h2 {
   .modern-page-head,
   .modern-page-head.has-artwork {
     grid-template-columns: 1fr;
+  }
+
+  .modern-page-head.has-artwork #modern-page-help,
+  .modern-page-head.has-artwork #modern-page-artwork {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .modern-page-head.has-artwork #modern-page-help {
+    justify-self: end;
+    margin: 8px;
+    grid-row: 2;
+  }
+
+  .modern-page-head.has-artwork #modern-page-artwork {
+    grid-row: 2;
   }
 }
 
