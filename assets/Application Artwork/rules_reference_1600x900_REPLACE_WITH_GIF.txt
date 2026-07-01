@@ -1,0 +1,4 @@
+Slot: rules_reference_1600x900.gif
+Recommended size: 1600 x 900 pixels
+Used by: Rules Reference Relevant Artwork
+Replace this text file with: rules_reference_1600x900.gif

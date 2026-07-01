@@ -1869,6 +1869,27 @@ def test_user_artwork_placeholders_are_documented_slots() -> None:
     assert "DATA_DIR/assets" in MODERN_PAGES_JS
 
 
+def test_application_artwork_manager_and_slots_are_wired() -> None:
+    for path in [
+        "assets/Application Artwork/README.md",
+        "assets/Application Artwork/troupe_management_1600x900_REPLACE_WITH_GIF.txt",
+        "assets/Application Artwork/guild_management_1600x900_REPLACE_WITH_GIF.txt",
+        "assets/Application Artwork/go_adventure_1600x900_REPLACE_WITH_GIF.txt",
+        "assets/Application Artwork/developer_section_1600x900_REPLACE_WITH_GIF.txt",
+    ]:
+        assert Path(path).exists()
+    registry = Path("data/rules/artwork_registry.json").read_text(encoding="utf-8")
+    assert "Application Artwork/troupe_management_1600x900.gif" in registry
+    assert '"dashboard_pages": ["troupes"]' in registry
+    assert "application_artwork_slots_table" in registry
+    assert "function assetUrl(assetPath)" in MODERN_PAGES_JS
+    assert "encodeURIComponent" in MODERN_PAGES_JS
+    assert "function renderArtworkManager()" in MODERN_PAGES_JS
+    assert "Artwork Manager" in MODERN_PAGES_JS
+    assert "DATA_DIR/assets/Application Artwork" in MODERN_PAGES_JS
+    assert "application_artwork_slots_table" in MAIN_PY
+
+
 def test_mass_blessing_ui_sends_targets_and_conditions() -> None:
     assert "function appendMassBlessingTargeting(container, session, member)" in APP_JS
     assert "mass_blessing_target_ids" in APP_JS

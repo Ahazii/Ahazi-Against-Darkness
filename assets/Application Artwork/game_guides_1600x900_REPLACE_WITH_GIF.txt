@@ -1,0 +1,4 @@
+Slot: game_guides_1600x900.gif
+Recommended size: 1600 x 900 pixels
+Used by: Game Guides Relevant Artwork
+Replace this text file with: game_guides_1600x900.gif

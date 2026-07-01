@@ -76,6 +76,14 @@ from your PC. The play screen uses these definitions for marker hover text and
 the Map Icon Key. Existing `icons.json` rows override generated defaults; leave
 generated rows unassigned when a CSS fallback glyph is enough.
 
+Modern dashboard page artwork is separate from map icons. Page-level Relevant
+Artwork slots are registered in `data/rules/artwork_registry.json` and seeded as
+dimension-labelled text placeholders under `DATA_DIR/assets/Application Artwork`.
+Replace the placeholder text file with the matching image filename, for example
+`troupe_management_1600x900.gif`. The Developer section Artwork Manager shows
+which slots are missing or present and links the related Rules Reference entry.
+Keep copied PDF art local unless publication rights are secured.
+
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
 `span`, and optional `dungeon_exit` flag. Direction means the side of the grid

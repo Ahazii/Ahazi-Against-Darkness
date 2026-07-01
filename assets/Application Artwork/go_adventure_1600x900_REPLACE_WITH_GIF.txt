@@ -1,0 +1,4 @@
+Slot: go_adventure_1600x900.gif
+Recommended size: 1600 x 900 pixels
+Used by: Go Adventure Relevant Artwork
+Replace this text file with: go_adventure_1600x900.gif

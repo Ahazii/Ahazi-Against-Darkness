@@ -1,0 +1,4 @@
+Slot: equipment_shop_1600x900.gif
+Recommended size: 1600 x 900 pixels
+Used by: Equipment and Shop Relevant Artwork
+Replace this text file with: equipment_shop_1600x900.gif

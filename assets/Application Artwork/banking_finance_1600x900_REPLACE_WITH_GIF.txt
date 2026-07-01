@@ -1,0 +1,4 @@
+Slot: banking_finance_1600x900.gif
+Recommended size: 1600 x 900 pixels
+Used by: Banking and Finance Relevant Artwork
+Replace this text file with: banking_finance_1600x900.gif

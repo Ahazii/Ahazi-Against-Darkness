@@ -55,9 +55,12 @@ APP_ONLY_REFERENCE_IDS = {
     "go_adventure_tabbed_workflow",
     "exploration_narrative_layout",
     "user_artwork_placeholders",
+    "application_artwork_slots",
+    "artwork_manager",
     "go_adventure_tabbed_workflow_table",
     "exploration_narrative_layout_table",
     "user_artwork_placeholders_table",
+    "application_artwork_slots_table",
     "rules_artwork_registry",
     "pdf_artwork_boundary",
 }

@@ -73,6 +73,7 @@ def _seed_user_asset_folders(settings: Settings) -> None:
     """Create user-facing asset folders beside game.db without overwriting edits."""
     for relative in [
         "artwork/user",
+        "Application Artwork",
         "icons/user",
         "tiles/user",
         "adventures",
@@ -83,7 +84,11 @@ def _seed_user_asset_folders(settings: Settings) -> None:
         settings.packaged_assets_dir / "artwork" / "user",
         settings.user_assets_dir / "artwork" / "user",
     )
-    icon_readme = settings.packaged_assets_dir / "icons" / "user" / "README.md"
-    target_icon_readme = settings.user_assets_dir / "icons" / "user" / "README.md"
-    if icon_readme.exists() and not target_icon_readme.exists():
-        shutil.copy2(icon_readme, target_icon_readme)
+    _copy_tree_without_overwrite(
+        settings.packaged_assets_dir / "Application Artwork",
+        settings.user_assets_dir / "Application Artwork",
+    )
+    _copy_tree_without_overwrite(
+        settings.packaged_assets_dir / "icons" / "user",
+        settings.user_assets_dir / "icons" / "user",
+    )

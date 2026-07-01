@@ -1,0 +1,4 @@
+Slot: character_management_1600x900.gif
+Recommended size: 1600 x 900 pixels
+Used by: Character Management Relevant Artwork
+Replace this text file with: character_management_1600x900.gif

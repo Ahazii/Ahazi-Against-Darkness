@@ -251,6 +251,12 @@ bundled `assets`. This keeps built-in tiles/icons available while allowing
 user-provided artwork, icons, tiles, and module assets to live in the appdata
 folder.
 
+Application page artwork uses `DATA_DIR/assets/Application Artwork` and is
+declared in `data/rules/artwork_registry.json`. The Developer Artwork Manager
+reads that registry, reports missing/present status, and links present files
+through `/assets/...`. Map icons remain managed separately by the Icon Editor
+under `DATA_DIR/assets/icons/user`.
+
 Map element metadata is separate from image files. Starting elements are
 `01-06`; generated elements use two d6 faces as `11-66`. Fill in `tiles.json`
 as rows are validated from the rulebook.

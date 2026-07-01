@@ -111,6 +111,8 @@ src/app/static/           Browser UI
 data/rules/               Packaged starter rule data
 assets/                   Bundled fallback image/icon/tile assets
 DATA_DIR/assets/          User-facing artwork, icons, tiles, and module assets
+DATA_DIR/assets/Application Artwork/
+                           Modern dashboard page artwork slots
 docs/                     Architecture, roadmap, and content pipeline docs
 tools/                    Offline PDF/content helper scripts
 Rules/                    Local rule PDFs, ignored by git
@@ -120,6 +122,9 @@ Adventures/               Local adventure PDFs, ignored by git
 Runtime user data that should be backed up lives under `DATA_DIR`, including
 `game.db`, `Adventures/`, `rules/`, and `assets/`. In Docker/Unraid this is the
 appdata share, for example `\\TOWER\appdata\ahazi-against-darkness`.
+Use `DATA_DIR/assets/Application Artwork` for the modern dashboard Relevant
+Artwork slots, `DATA_DIR/assets/artwork/user` for adventure/scene/portrait
+artwork, and `DATA_DIR/assets/icons/user` for Icon Editor files.
 
 ## Documentation
 

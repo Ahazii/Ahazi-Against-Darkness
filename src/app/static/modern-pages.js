@@ -1515,8 +1515,13 @@ async function loadArtwork() {
   return modernState.artwork;
 }
 
+function assetUrl(assetPath) {
+  if (!assetPath) return "";
+  return `/assets/${String(assetPath).split("/").map(encodeURIComponent).join("/")}`;
+}
+
 function artAssetUrl(entry) {
-  return entry?.asset_path ? `/assets/${entry.asset_path}` : "";
+  return assetUrl(entry?.asset_path);
 }
 
 function artworkForPage(page) {
@@ -1578,7 +1583,7 @@ async function renderPageArtwork(page, title = "Relevant Artwork") {
   await loadArtwork();
   const entries = artworkForPage(page);
   if (!entries.length) return null;
-  const panel = card(title, "Local artwork slots and licensed/private-use PDF crops relevant to this section. Missing files are expected until you populate DATA_DIR/assets/rules_art/local/.");
+  const panel = card(title, "Local artwork slots and licensed/private-use PDF crops relevant to this section. Missing files are expected until you populate DATA_DIR/assets, including DATA_DIR/assets/Application Artwork.");
   panel.appendChild(renderArtworkRows(entries));
   return panel;
 }
@@ -3585,7 +3590,8 @@ async function renderTables() {
   const search = input("search", "modern-table-search", "Search by table name or entry text.");
   const params = new URLSearchParams(window.location.search);
   const helpQuery = params.get("help");
-  if (helpQuery) search.value = helpQuery;
+  const searchQuery = params.get("search");
+  if (searchQuery || helpQuery) search.value = searchQuery || helpQuery;
   const families = [...new Set(Object.keys(modernState.tables).map(modernTableFamily))].sort();
   const family = select("modern-table-family", "Filter by table family.", [["", "All table families"], ...families.map((item) => [item, item])]);
   const artworkFilter = select("modern-table-artwork", "Filter tables by whether they have local artwork slots.", [["", "All artwork states"], ["with", "With artwork slot"], ["without", "Without artwork slot"]]);
@@ -3696,6 +3702,81 @@ async function renderLibrary() {
   rootEl.append(panel, notes, artwork);
 }
 
+function renderArtworkManager() {
+  const panel = card("Artwork Manager", "Developer status for local artwork slots. User-facing files live beside game.db under DATA_DIR/assets; application-page artwork uses DATA_DIR/assets/Application Artwork.");
+  const search = input("search", "modern-artwork-manager-search", "Filter artwork slots by title, page, category, path, source PDF, or summary.");
+  search.placeholder = "Search artwork slots...";
+  const status = select("modern-artwork-manager-status", "Filter by whether the configured asset file exists in DATA_DIR/assets or bundled fallback assets.", [
+    ["", "All slots"],
+    ["missing", "Missing files"],
+    ["present", "Present files"],
+    ["app_assets", "Application artwork"],
+  ]);
+  const summary = el("div", "modern-status-grid");
+  const results = el("div", "modern-list");
+  const draw = () => {
+    const needle = search.value.trim().toLowerCase();
+    const chosen = status.value;
+    const entries = modernState.artwork.filter((entry) => {
+      const text = [
+        entry.id,
+        entry.title,
+        entry.category,
+        entry.asset_path,
+        entry.source_pdf,
+        entry.summary,
+        ...(entry.dashboard_pages || []),
+        ...(entry.reference_ids || []),
+        ...(entry.table_keys || []),
+      ].join(" ").toLowerCase();
+      const matchesNeedle = !needle || text.includes(needle);
+      const exists = entry.asset_exists !== false;
+      const matchesStatus =
+        !chosen ||
+        (chosen === "missing" && !exists) ||
+        (chosen === "present" && exists) ||
+        (chosen === "app_assets" && entry.category === "app_assets");
+      return matchesNeedle && matchesStatus;
+    });
+    const appSlots = modernState.artwork.filter((entry) => entry.category === "app_assets");
+    const missing = modernState.artwork.filter((entry) => entry.asset_exists === false);
+    summary.replaceChildren(
+      modernStatusRow("Application Artwork", `${appSlots.length} slot(s)`, "Dashboard and management-screen artwork slots under DATA_DIR/assets/Application Artwork."),
+      modernStatusRow("Missing files", `${missing.length} slot(s)`, "Missing means the configured asset path is not present in DATA_DIR/assets or bundled fallback assets."),
+      modernStatusRow("Visible now", `${modernState.artwork.length - missing.length} slot(s)`, "Present files are available through the /assets route, preferring DATA_DIR/assets first."),
+    );
+    results.replaceChildren();
+    for (const entry of entries) {
+      const exists = entry.asset_exists !== false;
+      const row = el("div", "modern-list-row");
+      row.title = entry.hover || entry.summary || "Artwork slot.";
+      const body = el("div", "modern-stack");
+      const pages = (entry.dashboard_pages || []).join(", ") || "No dashboard page";
+      body.appendChild(el("strong", "", entry.title || entry.id));
+      body.appendChild(el("span", "muted", `${entry.category || "uncategorized"} · ${pages} · ${exists ? `present (${entry.asset_source || "asset"})` : "missing"}`));
+      body.appendChild(el("span", "muted", `DATA_DIR/assets/${entry.asset_path || ""}`));
+      if (entry.summary) body.appendChild(el("span", "muted", entry.summary));
+      const rowActions = actions();
+      if (exists) rowActions.appendChild(link("View", artAssetUrl(entry), `Open ${entry.title || entry.id} through the /assets route.`, "link-button secondary"));
+      rowActions.appendChild(link("Rules Ref", ruleReferenceHref((entry.reference_ids || [])[0], entry.title || entry.id), "Open the first linked Rules Reference entry for this artwork slot.", "link-button secondary"));
+      row.append(body, rowActions);
+      results.appendChild(row);
+    }
+    if (!entries.length) results.appendChild(el("p", "modern-home-status in-progress", "No artwork slots match the current filter."));
+  };
+  search.addEventListener("input", draw);
+  status.addEventListener("change", draw);
+  const row = actions();
+  row.append(
+    link("Artwork Rules Reference", ruleReferenceHref("artwork_manager", "artwork manager"), "Open the Artwork Manager reference entry.", "link-button secondary"),
+    link("Application Artwork Table", "/modern/tables?search=application_artwork_slots_table", "Open the table that lists application artwork slots.", "link-button secondary"),
+    link("Artwork Registry Table", "/modern/tables?search=artwork_registry_table", "Open the full artwork registry table.", "link-button secondary")
+  );
+  panel.append(field("Search", search), field("Status", status), row, summary, results);
+  draw();
+  return panel;
+}
+
 function renderGuides() {
   const panel = card("Game Guides", "Standalone guide links and future player-facing guide list.");
   const row = actions();
@@ -3711,7 +3792,8 @@ function renderGuides() {
   rootEl.appendChild(panel);
 }
 
-function renderDeveloper() {
+async function renderDeveloper() {
+  await loadArtwork();
   const gate = card("Developer Unlock", "Enter password 7979 to show developer tools.");
   const pw = input("password", "modern-dev-pw", "Developer password. Default is 7979.");
   const tools = el("div", "modern-dev-tools hidden");
@@ -3724,6 +3806,7 @@ function renderDeveloper() {
     link("Icon Editor", "/static/icon-editor.html", "Open the existing icon editor as its own page.")
   );
   tools.appendChild(row);
+  tools.appendChild(renderArtworkManager());
   if (window.sessionStorage.getItem("ahazi-modern-dev-unlocked") === "1") tools.classList.remove("hidden");
   const unlock = button("Unlock", "Show developer tools when password is 7979.", async () => {
     if (pw.value !== "7979") throw new Error("Incorrect developer password.");

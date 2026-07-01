@@ -1,0 +1,4 @@
+Slot: settlement_management_1600x900.gif
+Recommended size: 1600 x 900 pixels
+Used by: Settlement Management Relevant Artwork
+Replace this text file with: settlement_management_1600x900.gif

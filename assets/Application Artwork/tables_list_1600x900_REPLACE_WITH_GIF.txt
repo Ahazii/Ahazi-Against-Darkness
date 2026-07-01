@@ -1,0 +1,4 @@
+Slot: tables_list_1600x900.gif
+Recommended size: 1600 x 900 pixels
+Used by: Tables List Relevant Artwork
+Replace this text file with: tables_list_1600x900.gif

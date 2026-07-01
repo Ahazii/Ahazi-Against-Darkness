@@ -1,0 +1,4 @@
+Slot: settings_options_1600x900.gif
+Recommended size: 1600 x 900 pixels
+Used by: Settings / Options Relevant Artwork
+Replace this text file with: settings_options_1600x900.gif

@@ -19,6 +19,7 @@ fi
 mkdir -p "${DATA_DIR}"
 mkdir -p "${RULES_DIR}"
 mkdir -p "${ASSETS_DIR}/artwork/user"
+mkdir -p "${ASSETS_DIR}/Application Artwork"
 mkdir -p "${ASSETS_DIR}/icons/user"
 mkdir -p "${ASSETS_DIR}/tiles/user"
 mkdir -p "${ASSETS_DIR}/adventures"
@@ -34,8 +35,14 @@ if [ -d "/app/assets/artwork/user" ]; then
   cp -Rn /app/assets/artwork/user/. "${ASSETS_DIR}/artwork/user/" 2>/dev/null || true
 fi
 
-if [ -f "/app/assets/icons/user/README.md" ] && [ ! -f "${ASSETS_DIR}/icons/user/README.md" ]; then
-  cp /app/assets/icons/user/README.md "${ASSETS_DIR}/icons/user/README.md" 2>/dev/null || true
+if [ -d "/app/assets/Application Artwork" ]; then
+  # Seed dashboard/application artwork placeholders beside game.db without overwriting local art.
+  cp -Rn "/app/assets/Application Artwork/." "${ASSETS_DIR}/Application Artwork/" 2>/dev/null || true
+fi
+
+if [ -d "/app/assets/icons/user" ]; then
+  # Seed starter user-facing map icons beside game.db without overwriting local art.
+  cp -Rn /app/assets/icons/user/. "${ASSETS_DIR}/icons/user/" 2>/dev/null || true
 fi
 
 chown -R "${APP_UID}:${APP_GID}" "${DATA_DIR}"
