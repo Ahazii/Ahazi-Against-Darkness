@@ -2155,7 +2155,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert INDEX_HTML.index('id="tag-open-adventure-actions"') > INDEX_HTML.index('id="session-panel"')
     assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html"' in INDEX_HTML
     assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html#manual-test-generated-tag-adventures"' in INDEX_HTML
-    assert "TAG Generated Test Checklist" in MODERN_PAGES_JS
+    assert "Adventures Guild Test Checklist" in MODERN_PAGES_JS
     assert "#manual-test-generated-tag-adventures" in MODERN_PAGES_JS
     assert "adventure.name || adventure.title || adventureId" in MODERN_PAGES_JS
     assert "adventureSource === \"rules\"" in MODERN_PAGES_JS
@@ -2163,9 +2163,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     tag_guide_html = Path("docs/Checking/TAG_SECTION_GUIDE.html").read_text(encoding="utf-8")
     tag_guide_md = Path("docs/Checking/TAG_SECTION_GUIDE.md").read_text(encoding="utf-8")
     for guide_text in [tag_guide_html, tag_guide_md]:
-        assert "Manual Test Generated TAG Adventures" in guide_text
+        assert "Manual Test Generated Adventures Guild Modules" in guide_text
         assert "Hover every prompt button" in guide_text
-        assert "TAG scene prompt" in guide_text
+        assert "Adventures Guild scene prompt" in guide_text
     for endpoint in [
         "/api/campaign/tag/troupe",
         "/api/campaign/tag/store-treasure",
@@ -2327,7 +2327,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "function repairGeneratedTagGuidance" in APP_JS
     assert "tag-repair-guidance" in APP_JS
     assert "I think you are here" in APP_JS
-    assert "Advanced TAG controls" in APP_JS
+    assert "Advanced Adventures Guild controls" in APP_JS
     assert "tag-repair" in APP_JS
     assert "tag-repair-guidance" in APP_JS
     assert "function tagCaveTargetProgress" in APP_JS
@@ -2336,9 +2336,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "the app is counting rooms automatically" in APP_JS
     assert "1. Objective" in APP_JS
     assert "4. Guild / banking / guidance" in APP_JS
-    assert "Generated TAG closeout" in APP_JS
+    assert "Generated Adventures Guild closeout" in APP_JS
     assert "tag-generated-lead-signoff" in APP_JS
-    assert "Current objective: TAG closeout signoff" in APP_JS
+    assert "Current objective: Adventures Guild closeout signoff" in APP_JS
     assert "tag-prompt-action" in APP_JS
     assert ".tag-relevant-actions" in STYLES_CSS
     assert ".tag-lifecycle-strip" in STYLES_CSS
@@ -2356,7 +2356,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Hidden Treasure Trove" in MODERN_PAGES_JS
     assert "Guild Jobs and Members" in MODERN_PAGES_JS
     assert "function appendTagContextualActions" in APP_JS
-    assert "TAG scene prompt" in APP_JS
+    assert "Adventures Guild scene prompt" in APP_JS
     assert "openTagActionsWithDefaults" in APP_JS
     assert "runTagBranchActionWithDefaults" in APP_JS
     assert "DIRECT_TAG_BRANCH_ACTIONS" in APP_JS
@@ -2402,7 +2402,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG Thematic Dungeon Leads" in MODERN_PAGES_JS
     assert "Thematic Dungeon Signoff Checklist" in MODERN_PAGES_JS
     assert "tag_thematic_dungeon_playthrough_audit" in MODERN_PAGES_JS
-    assert "TAG Action Log" in MODERN_PAGES_JS
+    assert "Adventures Guild Action Log" in MODERN_PAGES_JS
     assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
     assert "Start\", \"Start a fresh adventure" in MODERN_PAGES_JS
     assert "Resume\", \"Resume active adventures" in MODERN_PAGES_JS

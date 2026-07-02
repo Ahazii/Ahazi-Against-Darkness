@@ -59,6 +59,11 @@ current with every rules or content change.
 - Item and gold transfer between heroes (home roster and in-adventure party sheet)
 - In-game map icon key with hover text and attribution/license display
 - PDF adventure discovery with imported adventures marked as needing manifests
+- Developer Rules PDF Import for owned Tales from The Adventures Guild PDFs:
+  uploaded PDFs live in `DATA_DIR/rules`, extracted local narrative lives in
+  `DATA_DIR/tag_scene_narrative_overrides.json`, and generated Adventures Guild
+  modules can refresh older saved sessions from that local-only prose without
+  committing copied PDF text to the repository
 
 ## Preserved Source Material
 

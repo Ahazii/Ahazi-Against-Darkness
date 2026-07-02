@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import re
 from typing import Any
@@ -414,6 +415,46 @@ def _resolve_user_rule_pdf(filename: str) -> Path:
     return resolved
 
 
+def _tag_narrative_override_status() -> dict[str, Any]:
+    path = tag_narrative_overrides_path()
+    status: dict[str, Any] = {
+        "path": str(path),
+        "exists": path.exists(),
+        "modified_at": "",
+        "rumors": 0,
+        "scenes": 0,
+        "scene_branches": 0,
+        "schema_version": 0,
+        "note": "",
+        "error": "",
+    }
+    if not path.exists():
+        return status
+    try:
+        from datetime import datetime, timezone
+
+        stat = path.stat()
+        status["modified_at"] = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        status["error"] = str(exc)
+        return status
+    tag = data.get("tag") if isinstance(data, dict) else {}
+    rumor = tag.get("rumor") if isinstance(tag, dict) else {}
+    scene = tag.get("scene") if isinstance(tag, dict) else {}
+    status["schema_version"] = data.get("schema_version", 0) if isinstance(data, dict) else 0
+    status["note"] = str(data.get("note") or "") if isinstance(data, dict) else ""
+    status["rumors"] = len(rumor) if isinstance(rumor, dict) else 0
+    status["scenes"] = len(scene) if isinstance(scene, dict) else 0
+    if isinstance(scene, dict):
+        status["scene_branches"] = sum(
+            len(item.get("branches") or [])
+            for item in scene.values()
+            if isinstance(item, dict) and isinstance(item.get("branches"), list)
+        )
+    return status
+
+
 @app.get("/assets/{asset_path:path}")
 async def serve_asset(asset_path: str) -> FileResponse:
     resolved, _source = _resolve_asset_file(asset_path)
@@ -448,6 +489,7 @@ async def list_rule_pdfs() -> dict[str, Any]:
         "packaged": packaged,
         "rules_dir": str(settings.rules_dir),
         "override_path": str(tag_narrative_overrides_path()),
+        "override_status": _tag_narrative_override_status(),
     }
 
 
@@ -491,6 +533,7 @@ async def extract_tag_narrative(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         **result,
         "overwrite": overwrite,
+        "override_status": _tag_narrative_override_status(),
         "message": f"Extracted TAG narrative from {pdf_path.name} into DATA_DIR/{tag_narrative_overrides_path().name}.",
     }
 
@@ -2404,7 +2447,7 @@ def _rules_tables_payload() -> dict:
         },
         {
             "tab": "Generate",
-            "contains": "TAG Workflow Summary, TAG lead creation, and Rumor, Treasure Map, and Thematic Dungeon audit/signoff panels.",
+            "contains": "TAG Workflow Summary, Adventures Guild lead creation, and Rumor, Treasure Map, and Thematic Dungeon audit/signoff panels.",
             "player_use": "Use Random to let the app choose the lead family and result, or uncheck it to choose the family and let the app roll within that family.",
             "rules_boundary": "The app rolls fixed lead family/result values when requested; printed choices remain player choices.",
         },
@@ -2416,7 +2459,7 @@ def _rules_tables_payload() -> dict:
         },
         {
             "tab": "Reference",
-            "contains": "Closeout, generated-lead signoff, TAG Action Log, Rules Reference, and Tables links.",
+            "contains": "Closeout, generated-lead signoff, Adventures Guild Action Log, Rules Reference, and Tables links.",
             "player_use": "Review after play or before creating another lead.",
             "rules_boundary": "Reference links point to implementation notes and source pages; they do not copy full PDF text.",
         },
@@ -2432,13 +2475,13 @@ def _rules_tables_payload() -> dict:
             "control": "Current Objective",
             "affects": "The next-step guidance banner.",
             "player_use": "Show it when you want the app to say what to do next; hide it when the map needs more room.",
-            "automation": "For supported TAG procedures it can run stored/idempotent rolls or show the exact next play-state target.",
+            "automation": "For supported Adventures Guild procedures it can run stored/idempotent rolls or show the exact next play-state target.",
         },
         {
             "control": "Ongoing Quests",
             "affects": "Quest cards in the Action Rail.",
-            "player_use": "Open when checking active objectives, source, turn-in state, TAG procedure progress, and reward buttons.",
-            "automation": "Quest cards expose supported reward, TAG procedure, and signoff actions while keeping player choices explicit.",
+            "player_use": "Open when checking active objectives, source, turn-in state, Adventures Guild procedure progress, and reward buttons.",
+            "automation": "Quest cards expose supported reward, Adventures Guild procedure, and signoff actions while keeping player choices explicit.",
         },
         {
             "control": "Text Commands",
@@ -2606,7 +2649,7 @@ def _rules_tables_payload() -> dict:
         },
         {
             "surface": "Quest Details",
-            "shows": "Quest title/source, guidance, journal rows, TAG procedure panel, closeout checklist, and reward button state.",
+            "shows": "Quest title/source, guidance, journal rows, Adventures Guild procedure panel, closeout checklist, and reward button state.",
             "player_use": "Open when the compact Narrative chip is not enough.",
             "rules_boundary": "Exact PDF procedure text remains referenced by source/page or Rules Reference rather than copied wholesale.",
         },
@@ -2651,7 +2694,7 @@ def _rules_tables_payload() -> dict:
             "use": "Settlement records and campaign world-builder views.",
         },
         {
-            "slot": "TAG lead-family art",
+            "slot": "Adventures Guild lead-family art",
             "path": "DATA_DIR/assets/artwork/user/adventures/tag_<lead_family>_1600x900.*",
             "use": "Rumor, Treasure Map, Thematic Dungeon, and Guild Job generation/signoff panels.",
         },
@@ -2703,7 +2746,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "TAG Workflow Summary",
             "shown_on": "Troupe, Guild, Banking, Settlement, and Go Adventure modern pages.",
-            "tracks": "Troupe membership/active count, Guild benefits/coffers, bank accounts, robbed accounts, hidden trove, generated TAG leads, route markers, XP markers, closeout prompts, guidance tasks.",
+            "tracks": "Troupe membership/active count, Guild benefits/coffers, bank accounts, robbed accounts, hidden trove, generated Adventures Guild leads, route markers, XP markers, closeout prompts, guidance tasks.",
             "player_use": "First scan before and after TAG adventures.",
         },
         {
@@ -2734,23 +2777,23 @@ def _rules_tables_payload() -> dict:
     data["tag_generated_adventure_signoff_table"] = [
         {
             "checkpoint": "Lead created",
-            "review": "Confirm the generated TAG module came from the intended Rumor, Treasure Map, Thematic Dungeon, or Guild Job.",
+            "review": "Confirm the generated Adventures Guild module came from the intended Rumor, Treasure Map, Thematic Dungeon, or Guild Job.",
             "where": "Go Adventure, Guild Job Lead, TAG guide.",
         },
         {
             "checkpoint": "Room prompt used",
-            "review": "Use the generated TAG director, room prompt buttons, the Current Objective banner, lifecycle strip, or TAG Actions Relevant Now shortcuts to prefill branch, reward, route, XP, or finance markers; confirm exact printed amount/result manually where needed.",
-            "where": "Exploration TAG prompt, Current Objective banner, and TAG Actions dialog.",
+            "review": "Use the generated Adventures Guild director, room prompt buttons, the Current Objective banner, lifecycle strip, or Adventures Guild Actions Relevant Now shortcuts to prefill branch, reward, route, XP, or finance markers; confirm exact printed amount/result manually where needed.",
+            "where": "Exploration TAG prompt, Current Objective banner, and Adventures Guild Actions dialog.",
         },
         {
             "checkpoint": "Director step",
-            "review": "Read the phase-specific director text first. It explains whether the current room is Entry, Side lead, Complication, Finale, Unlocked scene, or Closeout, says what kind of TAG action matters now, and links to the matching Rules Reference/Tables workflow entry.",
-            "where": "Exploration TAG prompt, Current Objective banner, TAG Actions Relevant Now, and Ongoing Quest closeout panel.",
+            "review": "Read the phase-specific director text first. It explains whether the current room is Entry, Side lead, Complication, Finale, Unlocked scene, or Closeout, says what kind of Adventures Guild action matters now, and links to the matching Rules Reference/Tables workflow entry.",
+            "where": "Exploration prompt, Current Objective banner, Adventures Guild Actions Relevant Now, and Ongoing Quest closeout panel.",
         },
         {
             "checkpoint": "Recovery / repair",
-            "review": "For old or resumed generated modules, check the I think you are here recovery line. If prompt metadata is missing, use Repair guidance to rebuild generic app prompts and normalize legacy log wording.",
-            "where": "Current Objective banner, generated TAG Director panels, and /api/sessions/{id}/tag-repair-guidance.",
+            "review": "For old or resumed generated modules, check the I think you are here recovery line. Use Refresh narrative to reload local PDF-derived scene text, rebuild missing app prompts, normalize legacy log wording, and report what changed.",
+            "where": "Current Objective banner, generated Adventures Guild Director panels, and /api/sessions/{id}/tag-repair-guidance.",
         },
         {
             "checkpoint": "Lifecycle visible",
@@ -2772,13 +2815,13 @@ def _rules_tables_payload() -> dict:
         {
             "check": "Generated lead",
             "status_source": "CampaignState.tag_generated_adventure_ids",
-            "action": "Create a TAG module from Go Adventure or Guild Management, then confirm it is the intended lead.",
+            "action": "Create an Adventures Guild module from Go Adventure or Guild Management, then confirm it is the intended lead.",
             "rules_boundary": "App records the lead id; the player/PDF remains authority for exact scene interpretation.",
         },
         {
             "check": "Route / branch marker",
             "status_source": "CampaignState.tag_adventure_routes",
-            "action": "Use TAG Actions to record parley, Clue gates, skipped scenes, unlocked scenes, final route, or solo restrictions.",
+            "action": "Use Adventures Guild Actions to record parley, Clue gates, skipped scenes, unlocked scenes, final route, or solo restrictions.",
             "rules_boundary": "Markers summarize the branch choice; they do not replace printed room text.",
         },
         {
@@ -2809,7 +2852,7 @@ def _rules_tables_payload() -> dict:
     data["tag_generated_prompt_playtest_table"] = [
         {
             "surface": "Generated room prompt guide",
-            "shown_in": "Exploration TAG scene prompt panel and Current Objective banner.",
+            "shown_in": "Exploration Adventures Guild scene prompt panel and Current Objective banner.",
             "player_use": "Explains why the lead exists, how to use the room prompt, which immediate action matters, and which Adventures Guild Action buttons can prefill the exact branch, route, XP, reward, service, purchase, or finance state for that lead. The director panel gives phase-specific next-step guidance and a lead-type playbook; the lifecycle strip shows entry, side lead, complication, finale, route, reward, XP, and closeout status.",
             "pdf_boundary": "Guide text is app-authored; exact printed scene text and reward values stay with the PDF/player signoff.",
         },
@@ -2820,6 +2863,12 @@ def _rules_tables_payload() -> dict:
             "pdf_boundary": "The committed app seeds a template only. Exact copied PDF prose belongs in the user's local DATA_DIR file and is not redistributed by the repository.",
         },
         {
+            "surface": "Rules PDF extraction status",
+            "shown_in": "Developer > Rules PDF Import.",
+            "player_use": "Shows uploaded PDF count, override-file path, extracted rumor count, extracted scene count, extracted branch count, last override-file modified time, and whether the local file has a parse error.",
+            "pdf_boundary": "The status reads local user data beside game.db. Exact copied PDF prose is not committed, bundled, or redistributed.",
+        },
+        {
             "surface": "Extracted scene branch buttons",
             "shown_in": "Generated Adventures Guild room prompts, Current Objective, and Relevant Now actions.",
             "player_use": "When local scene_graph metadata contains go-to Scene branches, the final/current scene prompt shows those branches as route buttons. Clicking a branch records the route, updates the active session manifest, opens or refreshes the unlocked scene room with the extracted target Scene text, and exposes any next branches from that target scene.",
@@ -2827,7 +2876,7 @@ def _rules_tables_payload() -> dict:
         },
         {
             "surface": "Prompt action buttons and Relevant Now shortcuts",
-            "shown_in": "Generated TAG rooms and TAG Actions dialog.",
+            "shown_in": "Generated Adventures Guild rooms and Adventures Guild Actions dialog.",
             "player_use": "Prefills Adventures Guild Actions for lead-specific choices, purchases, services, side rewards, Clue gates, route rewrites, XP markers, and profile-specific procedure rolls. Specific lead actions now replace generic final-route/reward/XP boilerplate when the profile knows what the scene offers; older modules still get repaired fallback metadata.",
             "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
         },
@@ -2839,24 +2888,24 @@ def _rules_tables_payload() -> dict:
         },
         {
             "surface": "Recovery and repair",
-            "shown_in": "Current Objective banner and generated TAG Director panels.",
-            "player_use": "Shows I think you are here with confidence, warns when generic prompt metadata was repaired, and offers Repair guidance for older generated modules.",
-            "pdf_boundary": "Repair rebuilds app prompt metadata and log wording only; it does not invent printed scene text or resolve rewards.",
+            "shown_in": "Current Objective banner and generated Adventures Guild Director panels.",
+            "player_use": "Shows I think you are here with confidence, warns when generic prompt metadata was repaired, and offers Refresh narrative for older generated modules. Refresh reports whether local PDF narrative, prompt metadata, scene branches, contact text, or legacy log wording changed.",
+            "pdf_boundary": "Refresh uses only the local override file and app metadata. It does not choose printed branches, invent scene text, or resolve rewards.",
         },
         {
             "surface": "Generated lead signoff",
-            "shown_in": "Current Objective banner and Ongoing Quest generated closeout panel after generated TAG objective completion.",
+            "shown_in": "Current Objective banner and Ongoing Quest generated closeout panel after generated Adventures Guild objective completion.",
             "player_use": "Records player review of route, reward, XP, Guild share, banking/storage, and closeout checks before another lead is started. The closeout panel is a five-step wizard; if route, XP, guidance, or closeout work remains, signoff records warnings instead of silently pretending the lead is clean.",
             "pdf_boundary": "Signoff records app/player review only; it does not resolve printed-rule decisions without player confirmation.",
         },
         {
-            "surface": "Generated TAG Leads panel",
+            "surface": "Generated Adventures Guild Leads panel",
             "shown_in": "Go Adventure.",
-            "player_use": "Lists installed TAG modules with lead type, source detail, prompt count, route markers, open closeout, and pending XP before selecting a module.",
+            "player_use": "Lists installed Adventures Guild modules with lead type, source detail, prompt count, route markers, open closeout, and pending XP before selecting a module.",
             "pdf_boundary": "Shows metadata from generated manifests, not copied rule text.",
         },
         {
-            "surface": "TAG Action Log filter",
+            "surface": "Adventures Guild Action Log filter",
             "shown_in": "Go Adventure.",
             "player_use": "Searches and filters route, XP, finance, Guild, branch, generated-lead, and signoff events during generated-adventure review.",
             "pdf_boundary": "Displays app logs and player-entered notes.",
@@ -2865,7 +2914,7 @@ def _rules_tables_payload() -> dict:
     data["tag_rumor_playthrough_audit_table"] = [
         {
             "surface": "Rumor audit metadata",
-            "shown_in": "Generated TAG Rumor manifests and exploration prompt panels.",
+            "shown_in": "Generated Adventures Guild Rumor manifests and exploration prompt panels.",
             "player_use": "Carries rumor number, play focus, entry guidance, complication narrative, finale mode, scene-specific action buttons, and signoff reminders for all twelve Rumor Scene leads.",
             "pdf_boundary": "App-authored atmosphere and workflow notes only; exact scene text, rolls, rewards, and consequences remain with the PDF/player signoff.",
         },
@@ -2879,19 +2928,19 @@ def _rules_tables_payload() -> dict:
             "surface": "Rumor Signoff Checklist",
             "shown_in": "Go Adventure.",
             "player_use": "Guides the post-adventure review: entry choice, complication branch, final reward, XP, Guild obligations, banking/storage, and closeout tasks.",
-            "pdf_boundary": "Checklist points to what the player should verify; it does not quote or replace the printed TAG scene.",
+            "pdf_boundary": "Checklist points to what the player should verify; it does not quote or replace the printed Adventures Guild scene.",
         },
         {
             "surface": "Prompt checklist",
             "shown_in": "Exploration room detail panel.",
-            "player_use": "Shows room-specific reminders beside TAG Action buttons so the player knows why a branch, Clue cost, route rewrite, reward, or XP marker matters.",
+            "player_use": "Shows room-specific reminders beside Adventures Guild Action buttons so the player knows why a branch, Clue cost, route rewrite, reward, or XP marker matters.",
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]
     data["tag_treasure_map_playthrough_audit_table"] = [
         {
             "surface": "Treasure Map audit metadata",
-            "shown_in": "Generated TAG Treasure Map manifests and exploration prompt panels.",
+            "shown_in": "Generated Adventures Guild Treasure Map manifests and exploration prompt panels.",
             "player_use": "Carries destination number, play focus, entry guidance, complication guidance, finale guidance, destination procedure reminders, closeout checks, player-facing separation between current-room Claim Treasure and Map Leads To procedure handling, and compatibility translation for older generated notes.",
             "pdf_boundary": "App-authored atmosphere and workflow notes only; exact map results, room counts, rewards, and special procedures remain with the PDF/player signoff.",
         },
@@ -2910,7 +2959,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Destination prompt checklist",
             "shown_in": "Exploration room detail panel.",
-            "player_use": "Shows room-specific reminders beside TAG Action buttons for cave count, temple reward, camp approach, deferred structure treasure, boss-only conversion, lich setup, and whether ordinary room treasure should simply be claimed. Safe procedure prompts can run directly from the room prompt while TAG Actions remains available for edits.",
+            "player_use": "Shows room-specific reminders beside Adventures Guild Action buttons for cave count, temple reward, camp approach, deferred structure treasure, boss-only conversion, lich setup, and whether ordinary room treasure should simply be claimed. Safe procedure prompts can run directly from the room prompt while Adventures Guild Actions remains available for edits.",
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
         {
@@ -2929,7 +2978,7 @@ def _rules_tables_payload() -> dict:
     data["tag_thematic_dungeon_playthrough_audit_table"] = [
         {
             "surface": "Thematic Dungeon audit metadata",
-            "shown_in": "Generated TAG Thematic Dungeon manifests and exploration prompt panels.",
+            "shown_in": "Generated Adventures Guild Thematic Dungeon manifests and exploration prompt panels.",
             "player_use": "Carries theme number, play focus, entry guidance, complication guidance, finale guidance, target-room procedure reminders, and closeout checks for all six Thematic Dungeon results.",
             "pdf_boundary": "App-authored atmosphere and workflow notes only; exact room targets, replacement rolls, rewards, and special procedures remain with the PDF/player signoff.",
         },
@@ -2948,7 +2997,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Theme prompt checklist",
             "shown_in": "Exploration room detail panel.",
-            "player_use": "Shows room-specific reminders beside TAG Action buttons for cave-ins, undead replacement, boulder throw, dragon reveal, prisoner table, maze checks, stolen goods, and capture-alive choices.",
+            "player_use": "Shows room-specific reminders beside Adventures Guild Action buttons for cave-ins, undead replacement, boulder throw, dragon reveal, prisoner table, maze checks, stolen goods, and capture-alive choices.",
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]
@@ -2989,7 +3038,7 @@ def _rules_tables_payload() -> dict:
             "check": "Adventure module",
             "blocking": "Imported or AI adventure type selected without an installed module.",
             "warning": "",
-            "resolution": "Select an installed module or create a TAG lead first.",
+            "resolution": "Select an installed module or create an Adventures Guild lead first.",
         },
         {
             "check": "Character state",
@@ -4283,7 +4332,7 @@ TAG_TREASURE_MAP_DESTINATIONS: dict[str, dict[str, Any]] = {
     "map_humanoid_stealth": {
         "destination": 3,
         "label": "Hostile camp stealth raid",
-        "next_action": "Apply the stealth raid outcome from TAG Actions, then record any loot, danger, or XP consequences before the quest reward.",
+        "next_action": "Apply the stealth raid outcome from Adventures Guild Actions, then record any loot, danger, or XP consequences before the quest reward.",
     },
     "map_humanoid_forces": {
         "destination": 3,
@@ -4476,14 +4525,14 @@ async def session_tag_generated_lead_signoff(session_id: str, payload: dict[str,
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     if not _is_generated_tag_session(session):
-        raise HTTPException(status_code=400, detail="This session is not a generated TAG lead.")
+        raise HTTPException(status_code=400, detail="This session is not a generated Adventures Guild lead.")
     quest = session.active_quest
     if quest is None:
-        raise HTTPException(status_code=400, detail="No active generated TAG quest is available for signoff.")
+        raise HTTPException(status_code=400, detail="No active generated Adventures Guild quest is available for signoff.")
     params = ((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}
     tag_ref = params.get("tag_reference") if isinstance(params, dict) else {}
     lead_type = str((tag_ref or {}).get("lead_type") or params.get("lead_type") or "generated_tag")
-    lead_detail = str((tag_ref or {}).get("lead_detail") or params.get("lead_detail") or session.imported_title or "TAG lead")
+    lead_detail = str((tag_ref or {}).get("lead_detail") or params.get("lead_detail") or session.imported_title or "Adventures Guild lead")
     state = dict(quest.tag_generated_lead_state or {})
     note = str(payload.get("note") or "").strip()[:300]
     result = note or "Player confirmed route, reward, XP, Guild share, banking/storage, and closeout checks."
@@ -4514,7 +4563,7 @@ async def session_tag_generated_lead_signoff(session_id: str, payload: dict[str,
         "warnings": warnings,
         "updated_at": now_utc(),
     }
-    state["next_action"] = "Generated TAG lead signed off. Return to the Dashboard/Go Adventure closeout panels before starting another lead."
+    state["next_action"] = "Generated Adventures Guild lead signed off. Return to the Dashboard/Go Adventure closeout panels before starting another lead."
     quest.tag_generated_lead_state = state
     quest.tag_generated_lead_signoff = True
     if quest.completed:
@@ -4535,22 +4584,38 @@ async def session_tag_repair_guidance(session_id: str) -> SessionState:
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     if not _is_generated_tag_session(session):
-        raise HTTPException(status_code=400, detail="This session is not a generated TAG lead.")
+        raise HTTPException(status_code=400, detail="This session is not a generated Adventures Guild lead.")
     changed = False
+    repair_details: list[str] = []
     if isinstance(session.imported_manifest, dict):
         before = repr(session.imported_manifest)
         session.imported_manifest = upgrade_tag_manifest(session.imported_manifest)
         changed = changed or repr(session.imported_manifest) != before
-    changed = normalize_tag_log_lines(session.log) or changed
+        params = session.imported_manifest.get("source", {}).get("parameters", {})
+        tag_ref = params.get("tag_reference") if isinstance(params, dict) else {}
+        if isinstance(tag_ref, dict):
+            fields = tag_ref.get("local_narrative_override_changed_fields")
+            if isinstance(fields, list) and fields:
+                repair_details.append("local PDF narrative: " + ", ".join(str(field) for field in fields[:8]))
+                if len(fields) > 8:
+                    repair_details[-1] += f", +{len(fields) - 8} more"
+            if tag_ref.get("prompt_repair_note"):
+                repair_details.append("prompt metadata repaired")
+    log_changed = normalize_tag_log_lines(session.log)
+    changed = log_changed or changed
+    if log_changed and not any("legacy log wording normalized" == item for item in repair_details):
+        repair_details.append("legacy log wording normalized")
     if session.active_quest is not None:
         state = dict(session.active_quest.tag_generated_lead_state or {})
         state["guidance_repaired"] = True
         state["repaired_at"] = now_utc()
-        state["next_action"] = "Generated TAG guidance repaired. Use the Director, Relevant Now shortcuts, and closeout wizard to continue from the current room."
+        state["repair_summary"] = repair_details or ["No stale generated narrative or prompt metadata needed changing."]
+        state["next_action"] = "Adventures Guild narrative refreshed. Continue from the Current Objective and use visible scene buttons before manual Actions."
         session.active_quest.tag_generated_lead_state = state
         changed = True
     session.log.append(
-        "TAG generated guidance repair: rebuilt missing prompt metadata where needed, normalized legacy log wording, and refreshed the current-room Director guidance."
+        "Adventures Guild narrative refresh: "
+        + ("; ".join(repair_details) if repair_details else "checked local PDF narrative, prompt metadata, and legacy log wording; no changes were needed.")
     )
     store.save("sessions", session)
     return enrich_session(session)
@@ -4570,7 +4635,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     stored = _stored_single_run_procedure(session, branch_action)
     if stored is not None and not payload.get("force_reroll"):
         result_text = (
-            f"{stored.get('label') or 'TAG procedure'} already recorded: {stored.get('result') or 'result stored'}. "
+            f"{stored.get('label') or 'Adventures Guild procedure'} already recorded: {stored.get('result') or 'result stored'}. "
             f"Next: {stored.get('next_action') or 'continue from the stored procedure result.'}"
         )
         if result_text not in session.log:
@@ -4605,7 +4670,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     _update_session_tag_procedure_state(session, branch_action, entry)
     _update_generated_tag_procedure_state(session, branch_action, entry)
     if entry.result_text and entry.result_text not in session.log:
-        session.log.append(f"TAG procedure: {entry.result_text}")
+        session.log.append(f"Adventures Guild procedure: {entry.result_text}")
     if branch_action == "map_cave_room_count":
         next_action = (
             session.active_quest.tag_generated_lead_state.get("next_action")
@@ -4684,7 +4749,7 @@ async def session_tag_scene_action(session_id: str, payload: dict[str, Any]) -> 
         _sync_character_to_session_party(session, character)
     campaign = save_campaign(store, campaign)
     if entry.result_text and entry.result_text not in session.log:
-        session.log.append(f"TAG scene: {entry.result_text}")
+        session.log.append(f"Adventures Guild scene: {entry.result_text}")
     store.save("sessions", session)
     return {"campaign": campaign, "character": character, "entry": entry, "session": enrich_session(session)}
 

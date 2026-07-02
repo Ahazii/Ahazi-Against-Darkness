@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import os
 import re
+from pathlib import Path
 from typing import Any
 
 
@@ -12,12 +15,12 @@ TREASURE_MAP_PROCEDURE_NOTES: dict[int, dict[str, str]] = {
     },
     2: {
         "title": "Forgotten temple",
-        "procedure": "Forgotten temple procedure: use Claim Treasure for ordinary room treasure. Separately, use TAG Actions to record idol value, leader scroll chance, cultist treasure, XP, and how the heavy idol is carried or stored when those steps become relevant.",
+        "procedure": "Forgotten temple procedure: use Claim Treasure for ordinary room treasure. Separately, use Adventures Guild Actions to record idol value, leader scroll chance, cultist treasure, XP, and how the heavy idol is carried or stored when those steps become relevant.",
         "final": "Forgotten temple closeout: confirm idol value, leader scroll chance, cultist treasure, XP, Guild share, banking, and storage.",
     },
     3: {
         "title": "Hostile humanoid camp",
-        "procedure": "Hostile humanoid camp procedure: choose report, stealth theft, or fight before reward and XP handling. Use TAG Actions to record that approach; Claim Treasure only handles ordinary room hoards.",
+        "procedure": "Hostile humanoid camp procedure: choose report, stealth theft, or fight before reward and XP handling. Use Adventures Guild Actions to record that approach; Claim Treasure only handles ordinary room hoards.",
         "final": "Hostile camp closeout: confirm report reward or theft/fight consequences, loot, reinforcements, XP, Guild share, banking, and storage.",
     },
     4: {
@@ -50,7 +53,7 @@ def treasure_map_note_for(roll: int | None, *, final: bool = False) -> str:
     if not note:
         return (
             "TAG guidance: Treasure Map destination procedure is separate from ordinary room treasure. "
-            "If the room says hidden treasure was found, use Claim Treasure. Use TAG Actions only to record the printed Map Leads To procedure, reward accounting, XP, Guild share, banking, and storage."
+            "If the room says hidden treasure was found, use Claim Treasure. Use Adventures Guild Actions only to record the printed Map Leads To procedure, reward accounting, XP, Guild share, banking, and storage."
         )
     body = note["final"] if final else note["procedure"]
     prefix = "TAG final guidance" if final else "TAG guidance"
@@ -83,17 +86,17 @@ def _generic_tag_prompt(title: str, body: str, *, action_type: str, action_value
         "body": body,
         "checklist": [
             "Confirm the printed TAG scene/result before changing state.",
-            "Use the generated TAG Director for the current phase, then record only the branch, route, reward, or XP that actually happened.",
+            "Use the generated Adventures Guild Director for the current phase, then record only the branch, route, reward, or XP that actually happened.",
         ],
         "actions": [
             {
-                "label": "Open TAG Actions",
-                "tooltip": "Open the full TAG Actions dialog without changing any values.",
+                "label": "Open Adventures Guild Actions",
+                "tooltip": "Open the full Adventures Guild Actions dialog without changing any values.",
                 "action_type": "dialog",
             },
             {
                 "label": title,
-                "tooltip": "Prefill TAG Actions from repaired generic prompt metadata. Confirm exact values from the PDF/player decision.",
+                "tooltip": "Prefill Adventures Guild Actions from repaired generic prompt metadata. Confirm exact values from the PDF/player decision.",
                 "action_type": action_type,
                 "action_value": action_value,
                 "reference": reference,
@@ -101,6 +104,129 @@ def _generic_tag_prompt(title: str, body: str, *, action_type: str, action_value
             },
         ],
     }
+
+
+def _local_tag_narrative_override(lead_type: str, detail: str) -> dict[str, Any]:
+    data_dir = Path(os.getenv("DATA_DIR", ".data"))
+    if not data_dir.is_absolute():
+        data_dir = (Path(__file__).resolve().parents[3] / data_dir).resolve()
+    path = data_dir / "tag_scene_narrative_overrides.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    tag = data.get("tag")
+    if not isinstance(tag, dict):
+        return {}
+    family = tag.get(lead_type)
+    if not isinstance(family, dict):
+        return {}
+    for key in {str(detail), str(detail).strip(), str(detail).strip().lower()}:
+        value = family.get(key)
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
+def _apply_local_tag_narrative_override(manifest: dict[str, Any], tag_reference: dict[str, Any]) -> bool:
+    lead_type = str(tag_reference.get("lead_type") or "").strip()
+    detail = str(tag_reference.get("lead_detail") or "").strip()
+    if not lead_type or not detail:
+        return False
+    override = _local_tag_narrative_override(lead_type, detail)
+    if not override:
+        return False
+    changed = False
+    changed_fields: list[str] = []
+
+    module_title = str(override.get("module_title") or "").strip()
+    if module_title and manifest.get("title") != module_title:
+        manifest["title"] = module_title
+        changed = True
+        changed_fields.append("module title")
+    objective = str(override.get("objective") or "").strip()
+    quest = manifest.get("quest")
+    if objective and isinstance(quest, dict) and quest.get("objective_text") != objective:
+        quest["objective_text"] = objective
+        changed = True
+        changed_fields.append("quest objective")
+
+    rooms_override = override.get("rooms")
+    if isinstance(rooms_override, dict):
+        rooms_by_id = {
+            str(room.get("id")): room
+            for room in manifest.get("rooms") or []
+            if isinstance(room, dict) and room.get("id")
+        }
+        prompts = tag_reference.setdefault("room_prompts", {})
+        if not isinstance(prompts, dict):
+            prompts = {}
+            tag_reference["room_prompts"] = prompts
+        for room_id, room_override in rooms_override.items():
+            if not isinstance(room_override, dict):
+                continue
+            title = str(room_override.get("title") or "").strip()
+            description = str(room_override.get("description") or "").strip()
+            log = str(room_override.get("log") or room_override.get("on_enter_log") or "").strip()
+            room = rooms_by_id.get(str(room_id))
+            if isinstance(room, dict):
+                if title and room.get("title") != title:
+                    room["title"] = title
+                    changed = True
+                    changed_fields.append(f"{room_id} title")
+                if description and room.get("description") != description:
+                    room["description"] = description
+                    changed = True
+                    changed_fields.append(f"{room_id} description")
+                for trigger in room.get("triggers") or []:
+                    if isinstance(trigger, dict) and log and trigger.get("log") != log:
+                        trigger["log"] = log
+                        changed = True
+                        changed_fields.append(f"{room_id} log")
+            prompt = prompts.get(room_id)
+            if isinstance(prompt, dict):
+                if title and prompt.get("title") != title:
+                    prompt["title"] = title
+                    changed = True
+                    changed_fields.append(f"{room_id} prompt title")
+                if description and prompt.get("body") != description:
+                    prompt["body"] = description
+                    changed = True
+                    changed_fields.append(f"{room_id} prompt body")
+
+        lead_entry = rooms_override.get("tag-lead-entry")
+        entry_description = (
+            str(lead_entry.get("description") or "").strip()
+            if isinstance(lead_entry, dict)
+            else ""
+        )
+        if entry_description:
+            for npc in manifest.get("npcs") or []:
+                if not isinstance(npc, dict) or npc.get("room_id") != "tag-lead-entry":
+                    continue
+                if npc.get("description") != entry_description:
+                    npc["description"] = entry_description
+                    changed = True
+                    changed_fields.append("Guild Contact description")
+                if objective and npc.get("dialogue") != objective:
+                    npc["dialogue"] = objective
+                    changed = True
+                    changed_fields.append("Guild Contact dialogue")
+
+    scene_graph = override.get("scene_graph")
+    if isinstance(scene_graph, dict) and tag_reference.get("scene_graph") != scene_graph:
+        tag_reference["scene_graph"] = scene_graph
+        changed = True
+        changed_fields.append("scene branches")
+    if changed:
+        tag_reference["local_narrative_override_applied"] = True
+        existing = tag_reference.get("local_narrative_override_changed_fields")
+        merged = list(existing) if isinstance(existing, list) else []
+        for field in changed_fields:
+            if field not in merged:
+                merged.append(field)
+        tag_reference["local_narrative_override_changed_fields"] = merged
+    return changed
 
 
 def tag_reference_from_manifest(manifest: dict[str, Any] | None) -> dict[str, Any]:
@@ -238,10 +364,10 @@ def _upgrade_leprechaun_vendor_manifest(manifest: dict[str, Any], tag_reference:
 
 
 def _repaired_room_prompts(tag_reference: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
-    title = str(tag_reference.get("title") or manifest.get("title") or "Generated TAG lead")
-    lead_type = str(tag_reference.get("lead_type") or "generated TAG lead").replace("_", " ")
+    title = str(tag_reference.get("title") or manifest.get("title") or "Generated Adventures Guild lead")
+    lead_type = str(tag_reference.get("lead_type") or "generated Adventures Guild lead").replace("_", " ")
     playbook = (
-        "Repaired prompt metadata: this older generated TAG module did not carry room prompts, so the app rebuilt generic phase guidance. "
+        "Repaired prompt metadata: this older generated Adventures Guild module did not carry room prompts, so the app rebuilt generic phase guidance. "
         "Use it as workflow help only; printed scene text, rewards, room counts, and exact outcomes still come from the PDF/player decision."
     )
     return {
@@ -305,10 +431,11 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(prompts, dict) or not prompts:
             tag_reference["room_prompts"] = _repaired_room_prompts(tag_reference, manifest)
             tag_reference["prompt_repair_note"] = (
-                "Generic generated TAG room prompts were rebuilt for this older module. "
+                "Generic generated Adventures Guild room prompts were rebuilt for this older module. "
                 "Use them as app workflow guidance only; exact printed text and rewards remain with the PDF/player."
             )
             prompts = tag_reference["room_prompts"]
+        _apply_local_tag_narrative_override(manifest, tag_reference)
         if is_treasure_map:
             if isinstance(prompts, dict):
                 for prompt in prompts.values():

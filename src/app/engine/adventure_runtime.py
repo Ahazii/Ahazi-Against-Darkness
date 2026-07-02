@@ -235,13 +235,13 @@ def update_imported_quest_on_combat_end(session: SessionState, defeated: list, t
                     quest.captured_boss_name = enemy.name
                     session.log.append(f"Quest complete: {enemy.name} has been subdued alive.")
                     session.log.append(
-                        "TAG guidance: if the printed scene has a capture-alive reward, open TAG Actions and use the capture/reward prompt before leaving."
+                        "Adventures Guild guidance: if the printed scene has a capture-alive reward, open Adventures Guild Actions and use the capture/reward prompt before leaving."
                     )
                 else:
                     quest.boss_head_acquired = True
                     session.log.append(f"Quest complete: {enemy.name} has been destroyed.")
                     session.log.append(
-                        "TAG guidance: if this generated TAG scene offered a kill/capture choice, record the final route in TAG Actions before applying rewards."
+                        "Adventures Guild guidance: if this generated Adventures Guild scene offered a kill/capture choice, record the final route in Adventures Guild Actions before applying rewards."
                     )
                 log_imported_quest_return_hint(session)
     elif quest.key == "imported_item":
@@ -301,7 +301,7 @@ def repair_imported_boss_quest_from_resolved_room(session: SessionState) -> None
         f"Quest complete: {quest.boss_target_name or 'the imported boss'} has been defeated; objective repaired from the resolved boss room."
     )
     session.log.append(
-        "TAG guidance: record the final route and printed reward in TAG Actions before applying closeout rewards."
+        "Adventures Guild guidance: record the final route and printed reward in Adventures Guild Actions before applying closeout rewards."
     )
     log_imported_quest_return_hint(session)
 
@@ -351,7 +351,7 @@ def _log_tag_room_action_guidance(session: SessionState, room_id: str) -> None:
         return
     prompts = tag_reference.get("room_prompts") if isinstance(tag_reference.get("room_prompts"), dict) else {}
     prompt = prompts.get(room_id) if isinstance(prompts.get(room_id), dict) else {}
-    title = str(prompt.get("title") or "TAG scene").strip()
+    title = str(prompt.get("title") or "Adventures Guild scene").strip()
     body = str(prompt.get("body") or "").strip()
     actions = prompt.get("actions") if isinstance(prompt.get("actions"), list) else []
     labels = [
@@ -360,12 +360,12 @@ def _log_tag_room_action_guidance(session: SessionState, room_id: str) -> None:
         if isinstance(action, dict) and str(action.get("label") or "").strip()
     ]
     if body:
-        session.log.append(f"TAG guidance — {title}: {body}")
+        session.log.append(f"Adventures Guild guidance - {title}: {body}")
     if labels:
         session.log.append(
-            "TAG Actions available here: "
+            "Adventures Guild actions here: "
             + ", ".join(labels[:5])
-            + ". Use these when the printed scene asks for that branch, Clue spend, route change, capture result, reward, or XP marker."
+            + ". Use one only when this scene asks for that branch, Clue spend, route change, capture result, reward, or XP marker."
         )
     if room_id == "tag-final-scene":
         session.log.append(

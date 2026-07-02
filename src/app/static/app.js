@@ -5646,7 +5646,7 @@ function renderCombatDeckSlim(session) {
       const subdual = node("label", "combat-deck-subdual inline-check");
       setTooltip(
         subdual,
-        "Tick this before Resolve Round when a TAG scene or quest asks you to capture a foe alive. The foe is knocked out at 0 Life instead of slain."
+        "Tick this before Resolve Round when an Adventures Guild scene or quest asks you to capture a foe alive. The foe is knocked out at 0 Life instead of slain."
       );
       const input = document.createElement("input");
       input.type = "checkbox";
@@ -8419,7 +8419,7 @@ function renderCombatStatus(session) {
 
   if (sessionHasCaptureAliveObjective(session)) {
     combatStatusEl.textContent =
-      "Capture-alive objective: tick Subdual damage before Resolve Round to knock the target out at 0 Life, then record the capture/reward in TAG Actions.";
+      "Capture-alive objective: tick Subdual damage before Resolve Round to knock the target out at 0 Life, then record the capture/reward in Adventures Guild Actions.";
     combatStatusEl.classList.remove("hidden");
     return;
   }
@@ -8561,7 +8561,7 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   summonLocker: "Roll 3d6 to summon this locker during an adventure; 6 or less causes a mishap.",
   mapCartographer: "Use the Adventurers Guild cartographer +1 map adjustment if Guild benefits are active.",
   followMap: "Roll on TAG Following the Treasure Map Table and, on a real map, The Map Leads To table.",
-  adventureLeadType: "Choose the TAG lead type to convert into a normal installed adventure module. Generated modules include TAG source pages, rewards, rule notes, and encounter proxies.",
+  adventureLeadType: "Choose the Adventures Guild lead type to convert into a normal installed adventure module. Generated modules include TAG source pages, rewards, rule notes, and encounter proxies.",
   adventureLeadDetail: "Optional result number: rumor 1-12, thematic dungeon 1-6, treasure-map destination 1-6, or guild job 1-6. Leave blank to roll where appropriate.",
   createAdventure: "Create a playable TAG adventure and add it to the normal Adventure section/dropdown with source-page notes for checking against the PDF.",
   actionCharacter: "Character used by TAG branch, trinket, Guild spell, or finance actions. Leave blank only where the action allows campaign-level logging.",
@@ -8569,10 +8569,10 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   branchReference: "Scene/page/result note saved into the TAG log so the branch can be checked against the PDF.",
   branchNumber: "Numeric field for branch, route, scene, and XP actions: Clue cost, variable-count modifier, reward gp, gargoyle count, XP, or training override.",
   resolveBranch: "Apply the selected TAG branch action and write a dated result into the campaign log.",
-  routeAction: "Track exact TAG scene routing: parley success/failure, Clue gates, peaceful/hostile branches, skipped/unlocked scenes, solo restrictions, and finale route. Generated TAG modules are updated where the route has a safe automatic effect.",
-  runRouteAction: "Apply the selected TAG route marker, spend Clues where required, update the latest generated TAG module, and preserve the result in campaign state and the TAG log.",
-  sceneAction: "Apply exact TAG scene rewards and outcomes such as Medusa pendant, gargoyle bounty, Gorungar bounty, Shaura reward, Agaratha, Deoldyn training, or dragon reveal.",
-  runSceneAction: "Apply the selected TAG scene result to the chosen character and write the exact reward or outcome into the campaign log.",
+  routeAction: "Track exact Adventures Guild scene routing: parley success/failure, Clue gates, peaceful/hostile branches, skipped/unlocked scenes, solo restrictions, and finale route. Generated Adventures Guild modules are updated where the route has a safe automatic effect.",
+  runRouteAction: "Apply the selected TAG route marker, spend Clues where required, update the latest generated Adventures Guild module, and preserve the result in campaign state and the TAG log.",
+  sceneAction: "Apply exact Adventures Guild scene rewards and outcomes such as Medusa pendant, gargoyle bounty, Gorungar bounty, Shaura reward, Agaratha, Deoldyn training, or dragon reveal.",
+  runSceneAction: "Apply the selected Adventures Guild scene result to the chosen character and write the exact reward or outcome into the campaign log.",
   xpAction: "Track TAG XP edge cases: pending scene XP, immediate XP awards, minor encounter counts, capture XP, and training XP-roll markers.",
   runXpAction: "Apply the selected TAG XP action, awarding XP immediately only when that option and an amount are chosen.",
   trinket: "TAG trinket to use. If the selected character carries the item, the app consumes it; otherwise it logs the manual use.",
@@ -8664,7 +8664,7 @@ const TAG_HELP_CONTENT = {
     lines: [
       "The TAG settlement panel is a town or village downtime layer, not the Camp Outside Dungeon. Use it to track the party's home settlement, troupe, guild state, services, storage, travel, Streetwise actions, and adventure leads.",
       "Most buttons write a dated result into the TAG log. Where the book requires a roll, the app logs the dice math so the result can be checked against the PDF.",
-      "The generated adventure controls create normal installed adventures in the Adventure section. Generated TAG modules now carry room-aware prompt metadata so exploration can prefill branch, route, reward, Clue, and XP actions for the current scene.",
+      "The generated adventure controls create normal installed adventures in the Adventure section. Generated Adventures Guild modules now carry room-aware prompt metadata so exploration can prefill branch, route, reward, Clue, and XP actions for the current scene.",
     ],
   },
   settlement: {
@@ -8735,8 +8735,8 @@ const TAG_HELP_CONTENT = {
     title: "Maps and Adventure Leads",
     lines: [
       "Follow map rolls the TAG treasure-map procedure and, on a real map, the Map Leads To result. Guild cartographer applies the guild map-adjustment option when enabled.",
-      "Create adventure converts a TAG lead into a normal installed adventure module. Choose Rumor Scene, Treasure Map, Thematic Dungeon, or Guild Job, then add an optional result number if you want to force a particular branch.",
-      "The new module is added to the Adventure section and selected automatically. During exploration, generated TAG rooms show contextual prompt buttons that open TAG Actions with the relevant branch, route, reward, Clue cost, or XP marker prefilled.",
+      "Create adventure converts an Adventures Guild lead into a normal installed adventure module. Choose Rumor Scene, Treasure Map, Thematic Dungeon, or Guild Job, then add an optional result number if you want to force a particular branch.",
+      "The new module is added to the Adventure section and selected automatically. During exploration, generated Adventures Guild rooms show contextual prompt buttons that open Adventures Guild Actions with the relevant branch, route, reward, Clue cost, or XP marker prefilled.",
     ],
   },
   actions: {
@@ -11523,7 +11523,7 @@ function syncTagAdvancedControls(hasDirector = false) {
   const grids = Array.from(tagAdventureActionsDialog.querySelectorAll(".tag-settlement-grid"));
   for (const grid of grids) {
     grid.classList.add("tag-advanced-controls");
-    setTooltip(grid, "Advanced TAG controls: the full toolbox for edge cases, manual PDF/player signoff, character-specific rewards, Guild, finance, XP, and route edits.");
+    setTooltip(grid, "Advanced Adventures Guild controls: the full toolbox for edge cases, manual PDF/player signoff, character-specific rewards, Guild, finance, XP, and route edits.");
   }
   tagAdventureActionsDialog.classList.toggle("has-director", Boolean(hasDirector));
   if (!hasDirector) tagAdventureActionsDialog.classList.remove("show-advanced");
@@ -11601,7 +11601,7 @@ async function runTagBranchActionWithDefaults(defaults = {}) {
     syncSessionListFromSession(state.session);
   }
   renderTagCampaignSettlementPanel(state.campaign);
-  setStatus(result.entry?.result_text || "TAG procedure logged.");
+  setStatus(result.entry?.result_text || "Adventures Guild procedure logged.");
 }
 
 async function runTagSceneActionWithDefaults(defaults = {}) {
@@ -11638,7 +11638,7 @@ async function runTagSceneActionWithDefaults(defaults = {}) {
     await reloadCharacters({ render: setupViewVisible() });
   }
   renderTagCampaignSettlementPanel(state.campaign);
-  setStatus(result.entry?.result_text || "TAG scene result applied.");
+  setStatus(result.entry?.result_text || "Adventures Guild scene result applied.");
 }
 
 async function runTagRouteActionWithDefaults(defaults = {}) {
@@ -12251,7 +12251,7 @@ function renderTagRouteXpSummary(campaign) {
   tagRouteXpSummary.replaceChildren();
   const routeItems = (campaign.tag_adventure_routes || []).slice(-3).map((item) => ({
     text: `Route ${item.resolved ? "applied" : "pending"}: ${item.result_text}`,
-    hint: "Structured TAG route marker. These markers can update generated TAG module notes and route state.",
+    hint: "Structured TAG route marker. These markers can update generated Adventures Guild module notes and route state.",
   }));
   const xpItems = (campaign.tag_xp_markers || []).slice(-3).map((item) => ({
     text: `XP ${item.applied ? "awarded" : "marked"}: ${item.result_text}`,
@@ -13003,11 +13003,11 @@ async function runTagRouteAction() {
   state.campaign = result.campaign;
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
-  setStatus(`${result.entry?.result_text || "TAG route action logged."} ${result.rewrite_result || ""}`.trim());
+  setStatus(`${result.entry?.result_text || "Adventures Guild route action logged."} ${result.rewrite_result || ""}`.trim());
 }
 
 async function runTagSceneAction() {
-  if (!tagActionCharacter?.value) throw new Error("Choose a character for the TAG scene result.");
+  if (!tagActionCharacter?.value) throw new Error("Choose a character for the Adventures Guild scene result.");
   const result = await api("/api/campaign/tag/scene-action", {
     method: "POST",
     body: JSON.stringify({
@@ -13019,7 +13019,7 @@ async function runTagSceneAction() {
   state.campaign = result.campaign;
   await reloadCharacters({ render: setupViewVisible() });
   renderTagCampaignSettlementPanel(state.campaign);
-  setStatus(`${result.entry?.result_text || "TAG scene result applied."} ${result.module_update || ""}`.trim());
+  setStatus(`${result.entry?.result_text || "Adventures Guild scene result applied."} ${result.module_update || ""}`.trim());
 }
 
 async function runTagXpAction() {
@@ -17127,7 +17127,7 @@ function appendLastAdventurePanel(parent, party) {
 function showAdventureCloseoutModal(report) {
   if (!adventureCloseoutDialog || !adventureCloseoutBody) return;
   adventureCloseoutNote.textContent =
-    "Roster sheets now show gold, loot, levels, and healed Life. Review closeout rewards, then return to the dashboard for TAG guidance and the next adventure.";
+    "Roster sheets now show gold, loot, levels, and healed Life. Review closeout rewards, then return to the dashboard for Adventures Guild guidance and the next adventure.";
   const tabApi = renderAdventureReportTabs(adventureCloseoutBody, report, { activeTab: "summary" });
   if (adventureCloseoutCopyBtn) {
     adventureCloseoutCopyBtn.onclick = async () => {
@@ -17786,7 +17786,7 @@ function tagTreasureMapQuestProcedures(quest) {
         branchAction: "map_humanoid_stealth",
         reference: "Map Leads To 3 camp stealth; mod=0",
         guidance:
-          "Use TAG Actions for this one because the worst group Stealth modifier matters. Prefill the camp raid and adjust the modifier before rolling.",
+          "Use Adventures Guild Actions for this one because the worst group Stealth modifier matters. Prefill the camp raid and adjust the modifier before rolling.",
         requiresReview: true,
       },
       {
@@ -17831,7 +17831,7 @@ function tagTreasureMapQuestProcedures(quest) {
         branchAction: "map_lich_death_magic",
         reference: "Map Leads To 6 death magic; mod=0",
         guidance:
-          "Use TAG Actions for this because the Save modifier depends on the entering character. Record the chill death-magic check before the lich is fought.",
+          "Use Adventures Guild Actions for this because the Save modifier depends on the entering character. Record the chill death-magic check before the lich is fought.",
         requiresReview: true,
       },
       {
@@ -17840,7 +17840,7 @@ function tagTreasureMapQuestProcedures(quest) {
         branchAction: "map_lich_life",
         reference: "Map Leads To 6 lich Life",
         guidance:
-          "Use TAG Actions after death magic is resolved; enter Life lost as Amount so the app can calculate the lich's Life total.",
+          "Use Adventures Guild Actions after death magic is resolved; enter Life lost as Amount so the app can calculate the lich's Life total.",
         requiresReview: true,
       },
       {
@@ -17860,7 +17860,7 @@ function tagTreasureMapQuestProcedures(quest) {
       branchAction: "treasure_map_follow",
       reference: "Treasure Map destination",
       guidance:
-        "This Treasure Map quest needs its Map Leads To destination identified. Open TAG Actions, choose the matching destination branch, and record the result before claiming the quest reward.",
+        "This Treasure Map quest needs its Map Leads To destination identified. Open Adventures Guild Actions, choose the matching destination branch, and record the result before claiming the quest reward.",
       requiresReview: true,
     },
   ];
@@ -17937,7 +17937,7 @@ function appendTagTreasureMapQuestActions(actions, quest) {
       run,
       done
         ? "This procedure has already been logged for the active quest. Use Edit if you need to review or rerun it deliberately."
-        : `${procedure.guidance} ${procedure.requiresReview ? "Opens TAG Actions because this needs a modifier, amount, or player choice." : "Runs now and records the result in the live adventure log and TAG campaign log."}`
+        : `${procedure.guidance} ${procedure.requiresReview ? "Opens Adventures Guild Actions because this needs a modifier, amount, or player choice." : "Runs now and records the result in the live adventure log and TAG campaign log."}`
     );
     run.addEventListener("click", async () => {
       try {
@@ -17958,7 +17958,7 @@ function appendTagTreasureMapQuestActions(actions, quest) {
     row.appendChild(run);
     const edit = node("button", "secondary", "Edit");
     edit.type = "button";
-    setButtonTooltip(edit, "Open TAG Actions with this procedure prefilled so you can adjust Reference, Amount, character, or rerun deliberately.");
+    setButtonTooltip(edit, "Open Adventures Guild Actions with this procedure prefilled so you can adjust Reference, Amount, character, or rerun deliberately.");
     edit.addEventListener("click", () =>
       openTagActionsWithDefaults({
         branchAction: procedure.branchAction,
@@ -18079,7 +18079,7 @@ function currentObjectiveForSession(session) {
         "This looks like the destination room for the recorded Map Leads To 1 target. Resolve the final Boss with +2 Life and double maximum treasure, then close out reward, XP, Guild share, banking/storage, and signoff. If this room still has ordinary treasure after the fight, use Claim Treasure.",
       tone: "tag",
       action: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
-      secondaryAction: { label: "Sign off TAG lead", kind: "tag-lead-signoff" },
+      secondaryAction: { label: "Sign off Adventures Guild lead", kind: "tag-lead-signoff" },
     };
   }
   const hasTreasure = !tile.treasure_claimed && (Boolean(tile.treasure_gold) || (tile.treasure_items || []).length > 0);
@@ -18135,11 +18135,11 @@ function currentObjectiveForSession(session) {
       : null;
     if (session.active_quest?.completed && !generatedTagLeadSignedOff(session)) {
       return {
-        title: "Current objective: TAG closeout signoff",
+        title: "Current objective: Adventures Guild closeout signoff",
         body:
-          "The generated TAG objective is complete. Review route markers, rewards, XP, Guild share, banking/storage, and any closeout tasks before starting another lead.",
+          "The generated Adventures Guild objective is complete. Review route markers, rewards, XP, Guild share, banking/storage, and any closeout tasks before starting another lead.",
         tone: "tag",
-        action: { label: "Sign off TAG lead", kind: "tag-lead-signoff" },
+        action: { label: "Sign off Adventures Guild lead", kind: "tag-lead-signoff" },
       };
     }
     if (complicationNext && director) {
@@ -18156,9 +18156,9 @@ function currentObjectiveForSession(session) {
     if (!actions.length && director) {
       return {
         title: `Current objective: ${director.phase}`,
-        body: `${director.instruction} ${director.playbook} If this resumed module has no Relevant Now buttons, run Repair guidance to rebuild generic prompt metadata.`,
+        body: `${director.instruction} ${director.playbook} If this resumed module has no Relevant Now buttons, run Refresh narrative to reload local Adventures Guild scene text and prompt metadata.`,
         tone: "tag",
-        action: { label: "Repair guidance", kind: "tag-repair" },
+        action: { label: "Refresh narrative", kind: "tag-repair" },
         secondaryAction: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
       };
     }
@@ -18167,15 +18167,15 @@ function currentObjectiveForSession(session) {
         ? [director.recommended, ...actions.filter((action) => action !== director.recommended)]
         : actions;
       return {
-        title: `Current objective: ${director?.phase || generated.promptData.title || "TAG room prompt"}`,
+        title: `Current objective: ${director?.phase || generated.promptData.title || "Adventures Guild room prompt"}`,
         body:
-          `${director?.instruction || `${leadLabel}. ${generated.promptData.body || "Use the current generated TAG room prompt to decide which branch, route, reward, XP, or closeout marker applies."}`} ${director?.playbook || ""}`,
+          `${director?.instruction || `${leadLabel}. ${generated.promptData.body || "Use the current generated Adventures Guild room prompt to decide which branch, route, reward, XP, or closeout marker applies."}`} ${director?.playbook || ""}`,
         tone: "tag",
         actions: orderedActions.slice(0, 5).map((promptAction) => ({
           label: String(promptAction.label || "Open Adventures Guild Actions"),
           kind: "tag-prompt-action",
           promptAction,
-          fallbackReference: `${generated.tagReference.title || "TAG lead"}: ${generated.promptData.title || generated.room?.id || "room prompt"}`,
+          fallbackReference: `${generated.tagReference.title || "Adventures Guild lead"}: ${generated.promptData.title || generated.room?.id || "room prompt"}`,
           tagReference: generated.tagReference,
         })),
         secondaryAction: null,
@@ -18217,7 +18217,7 @@ function appendCurrentObjectiveButton(parent, action) {
       btn.addEventListener("click", () => advance(action.advanceAction));
       break;
     case "tag-run":
-      setButtonTooltip(btn, `${action.procedure?.guidance || "Run the next TAG procedure."} Records the result and updates the active quest tracker.`);
+      setButtonTooltip(btn, `${action.procedure?.guidance || "Run the next Adventures Guild procedure."} Records the result and updates the active quest tracker.`);
       btn.addEventListener("click", () =>
         runTagBranchActionWithDefaults({
           branchAction: action.procedure.branchAction,
@@ -18275,13 +18275,13 @@ function appendCurrentObjectiveButton(parent, action) {
       btn.addEventListener("click", () => openTagAdventureActions());
       break;
     case "tag-lead-signoff":
-      setButtonTooltip(btn, "Sign off generated TAG lead closeout after reviewing route, reward, XP, Guild, banking/storage, and guidance tasks.");
+      setButtonTooltip(btn, "Sign off generated Adventures Guild lead closeout after reviewing route, reward, XP, Guild, banking/storage, and guidance tasks.");
       btn.addEventListener("click", () =>
-        signOffGeneratedTagLead("Player confirmed generated TAG lead route, reward, XP, Guild, banking/storage, and closeout checks.").catch(handleError)
+        signOffGeneratedTagLead("Player confirmed generated Adventures Guild lead route, reward, XP, Guild, banking/storage, and closeout checks.").catch(handleError)
       );
       break;
     case "tag-repair":
-      setButtonTooltip(btn, "Repair generated TAG guidance for an older/resumed module by rebuilding generic prompt metadata and normalizing legacy log wording.");
+      setButtonTooltip(btn, "Refresh an older/resumed Adventures Guild module from local PDF narrative overrides, rebuild missing prompt metadata, and normalize legacy log wording.");
       btn.addEventListener("click", () => repairGeneratedTagGuidance().catch(handleError));
       break;
     default:
@@ -18518,11 +18518,11 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
   const panel = node("div", "tag-generated-closeout-panel");
   setTooltip(
     panel,
-    "Generated TAG closeout panel: action-first review of route markers, rewards, XP, Guild, banking/storage, guidance, and final signoff for this lead."
+    "Generated Adventures Guild closeout panel: action-first review of route markers, rewards, XP, Guild, banking/storage, guidance, and final signoff for this lead."
   );
-  panel.appendChild(node("strong", "", "Generated TAG closeout"));
+  panel.appendChild(node("strong", "", "Generated Adventures Guild closeout"));
   if (director) {
-    const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated TAG closeout director");
+    const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated Adventures Guild closeout director");
     if (directorBox) panel.appendChild(directorBox);
   }
   panel.appendChild(
@@ -18530,7 +18530,7 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
       "div",
       "ongoing-quest-guidance",
       quest.completed
-        ? "The lead objective is complete. Work down this checklist, then sign off the generated TAG lead before starting another one."
+        ? "The lead objective is complete. Work down this checklist, then sign off the generated Adventures Guild lead before starting another one."
         : "This lead is still live. Use the current-room prompt and lifecycle strip to see what kind of TAG decision the room is asking for."
     )
   );
@@ -18587,7 +18587,7 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
     {
       label: "Pending XP",
       value: status.pendingXp.length ? `${status.pendingXp.length} marker(s) need resolution` : "No pending XP markers",
-      hint: "XP markers are created from TAG scene prompts and should be awarded, dismissed, or manually signed off during closeout.",
+      hint: "XP markers are created from Adventures Guild scene prompts and should be awarded, dismissed, or manually signed off during closeout.",
     },
     {
       label: "Closeout tasks",
@@ -18597,7 +18597,7 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
     {
       label: "Guidance",
       value: status.openGuidance.length ? `${status.openGuidance.length} open guidance item(s)` : "No open guidance",
-      hint: "Guidance items are app-authored reminders. Use them to finish bookkeeping that the generated TAG lead created.",
+      hint: "Guidance items are app-authored reminders. Use them to finish bookkeeping that the generated Adventures Guild lead created.",
     },
   ];
   const journal = node("div", "quest-journal");
@@ -18620,17 +18620,17 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
   setButtonTooltip(tagActions, "Open Adventures Guild Actions with the current-room Relevant Now shortcuts visible at the top.");
   tagActions.addEventListener("click", () => openTagAdventureActions());
   actions.appendChild(tagActions);
-  const signoff = node("button", quest.completed ? "primary" : "secondary", "Sign off TAG lead");
+  const signoff = node("button", quest.completed ? "primary" : "secondary", "Sign off Adventures Guild lead");
   signoff.type = "button";
   signoff.disabled = !quest.completed;
   setButtonTooltip(
     signoff,
     quest.completed
-      ? "Record player/app closeout signoff for this generated TAG lead. The backend will also store warnings for unresolved route, XP, guidance, or closeout work."
+      ? "Record player/app closeout signoff for this generated Adventures Guild lead. The backend will also store warnings for unresolved route, XP, guidance, or closeout work."
       : "Complete the lead objective first; then sign off route, reward, XP, Guild, banking/storage, and closeout checks."
   );
   signoff.addEventListener("click", () =>
-    signOffGeneratedTagLead("Player confirmed generated TAG lead lifecycle, route, reward, XP, Guild, banking/storage, and closeout checks.").catch(handleError)
+    signOffGeneratedTagLead("Player confirmed generated Adventures Guild lead lifecycle, route, reward, XP, Guild, banking/storage, and closeout checks.").catch(handleError)
   );
   actions.appendChild(signoff);
   panel.appendChild(actions);
@@ -23282,7 +23282,7 @@ function tagStoredProcedureRecord(branchAction) {
 function appendTagDirectProcedureButton(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
   if (!directTagBranchAllowed(defaults)) return false;
-  const label = String(action.label || "TAG procedure");
+  const label = String(action.label || "Adventures Guild procedure");
   const stored = tagStoredProcedureRecord(defaults.branchAction);
   if (stored) {
     const btn = node("button", "secondary", `Recorded ${label}`);
@@ -23291,7 +23291,7 @@ function appendTagDirectProcedureButton(parent, action, fallbackReference) {
     const total = stored.total !== undefined && stored.total !== null ? ` Target: ${stored.total}.` : "";
     setButtonTooltip(
       btn,
-      `${stored.result || "This TAG procedure has already been recorded."}${total} Next: ${stored.next_action || state.session?.active_quest?.tag_generated_lead_state?.next_action || state.session?.active_quest?.tag_procedure_state?.next_action || "continue from the stored result."}`
+      `${stored.result || "This Adventures Guild procedure has already been recorded."}${total} Next: ${stored.next_action || state.session?.active_quest?.tag_generated_lead_state?.next_action || state.session?.active_quest?.tag_procedure_state?.next_action || "continue from the stored result."}`
     );
     parent.appendChild(btn);
     parent.appendChild(
@@ -23304,7 +23304,7 @@ function appendTagDirectProcedureButton(parent, action, fallbackReference) {
     appendTagContextualButton(
       parent,
       `Review ${label}`,
-      "Open TAG Actions with this recorded procedure prefilled if you need to inspect the Reference/Amount fields. The run button will not reroll the stored target.",
+      "Open Adventures Guild Actions with this recorded procedure prefilled if you need to inspect the Reference/Amount fields. The run button will not reroll the stored target.",
       defaults
     );
     return true;
@@ -23313,7 +23313,7 @@ function appendTagDirectProcedureButton(parent, action, fallbackReference) {
   btn.type = "button";
   setButtonTooltip(
     btn,
-    `${action.tooltip || "Run this TAG procedure now."} This records the roll/result immediately; no character is required unless the action says so.`
+    `${action.tooltip || "Run this Adventures Guild procedure now."} This records the roll/result immediately; no character is required unless the action says so.`
   );
   btn.addEventListener("click", async () => {
     try {
@@ -23326,7 +23326,7 @@ function appendTagDirectProcedureButton(parent, action, fallbackReference) {
   appendTagContextualButton(
     parent,
     `Edit ${label}`,
-    "Open TAG Actions with this procedure prefilled if you need to change Reference, Amount, or character first.",
+    "Open Adventures Guild Actions with this procedure prefilled if you need to change Reference, Amount, or character first.",
     defaults
   );
   return true;
@@ -23438,7 +23438,7 @@ const TAG_GENERATED_LIFECYCLE_STEPS = [
     key: "entry_seen",
     label: "Entry",
     roomId: "tag-lead-entry",
-    tooltip: "The lead handoff room has been reached. This proves the app introduced the TAG lead before asking for route/reward decisions.",
+    tooltip: "The lead handoff room has been reached. This proves the app introduced the Adventures Guild lead before asking for route/reward decisions.",
   },
   {
     key: "side_seen",
@@ -23451,13 +23451,13 @@ const TAG_GENERATED_LIFECYCLE_STEPS = [
     key: "complication_seen",
     label: "Complication",
     roomId: "tag-complication",
-    tooltip: "The generated TAG lead has reached its pressure point: branch, clue gate, route rewrite, or special procedure.",
+    tooltip: "The generated Adventures Guild lead has reached its pressure point: branch, clue gate, route rewrite, or special procedure.",
   },
   {
     key: "finale_seen",
     label: "Finale",
     roomId: "tag-final-scene",
-    tooltip: "The final generated TAG scene has been reached. Review reward, XP, Guild, banking/storage, and route consequences before signoff.",
+    tooltip: "The final generated Adventures Guild scene has been reached. Review reward, XP, Guild, banking/storage, and route consequences before signoff.",
   },
   {
     key: "route_recorded",
@@ -23477,12 +23477,12 @@ const TAG_GENERATED_LIFECYCLE_STEPS = [
   {
     key: "closeout_signed",
     label: "Closeout",
-    tooltip: "Generated TAG lead closeout has been signed off by the player/app workflow.",
+    tooltip: "Generated Adventures Guild lead closeout has been signed off by the player/app workflow.",
   },
 ];
 
 function tagLeadLabel(tagReference = {}) {
-  const type = String(tagReference.lead_type || "generated TAG lead").replace(/_/g, " ");
+  const type = String(tagReference.lead_type || "generated Adventures Guild lead").replace(/_/g, " ");
   const detail = String(tagReference.lead_detail || tagReference.title || "").trim();
   return detail ? `${type}: ${detail}` : type;
 }
@@ -23548,7 +23548,7 @@ function renderGeneratedTagLifecycleStrip(session = state.session) {
   if (!tagReferenceForGeneratedAdventure(session)) return null;
   const status = generatedTagCloseoutStatus(session);
   const strip = node("div", "tag-lifecycle-strip");
-  setTooltip(strip, "Generated TAG lead lifecycle: shows whether the lead has reached entry, complication, finale, route/reward/XP review, and closeout signoff.");
+  setTooltip(strip, "Generated Adventures Guild lead lifecycle: shows whether the lead has reached entry, complication, finale, route/reward/XP review, and closeout signoff.");
   for (const step of TAG_GENERATED_LIFECYCLE_STEPS) {
     const done = Boolean(status.lifecycle[step.key]);
     const marker = done ? "OK" : step.optional ? "-" : "!";
@@ -23596,7 +23596,7 @@ function generatedTagLeadPlaybook(tagReference = {}) {
   if (type === "guild_job") {
     return "Guild Job playbook: the Guild wants proof and bookkeeping, not just a cleared room. Track the job condition, payment or bounty, Guild obligations, and any banking/storage consequence.";
   }
-  return "Generated TAG playbook: follow the room prompt, record only the branch/reward/XP/route that actually happened, then finish closeout before starting another lead.";
+  return "Generated Adventures Guild playbook: follow the room prompt, record only the branch/reward/XP/route that actually happened, then finish closeout before starting another lead.";
 }
 
 function generatedTagReferenceTargets(tagReference = {}) {
@@ -23621,7 +23621,7 @@ function generatedTagReferenceTargets(tagReference = {}) {
   return {
     rules: "tag_generated_prompt_playtest",
     table: "tag_generated_adventure_signoff_table",
-    label: "Generated TAG reference",
+    label: "Generated Adventures Guild reference",
   };
 }
 
@@ -23669,7 +23669,12 @@ async function repairGeneratedTagGuidance() {
   state.session = result;
   renderSession();
   syncSessionListFromSession(state.session);
-  setStatus("Generated TAG guidance repaired for this session.");
+  const summary = state.session?.active_quest?.tag_generated_lead_state?.repair_summary;
+  setStatus(
+    Array.isArray(summary) && summary.length
+      ? `Adventures Guild narrative refreshed: ${summary.slice(0, 3).join("; ")}`
+      : "Adventures Guild narrative refreshed for this session."
+  );
 }
 
 function generatedTagRecommendedAction(promptData = {}) {
@@ -23727,7 +23732,7 @@ function generatedTagDirectorStep(session = state.session) {
   if (session?.active_quest?.completed && !generatedTagLeadSignedOff(session)) {
     return {
       phase: "Closeout",
-      heading: "Director: close out the generated TAG lead",
+      heading: "Director: close out the generated Adventures Guild lead",
       instruction:
         "The objective is complete. Do not start another generated lead yet: review route, reward, XP, Guild share, banking/storage, guidance, and unresolved closeout tasks, then sign off.",
       playbook,
@@ -23806,14 +23811,14 @@ function generatedTagDirectorStep(session = state.session) {
   return {
     phase: "Generated lead",
     heading: "Director: use the current TAG prompt",
-    instruction: "Use the current generated prompt only for the decision that is happening now. Leave unrelated TAG Actions alone unless the printed scene calls for them.",
+    instruction: "Use the current generated prompt only for the decision that is happening now. Leave unrelated Adventures Guild Actions alone unless the printed scene calls for them.",
     playbook,
     recommended,
     actionType: recommended?.action_type || "branch",
   };
 }
 
-function createGeneratedTagDirectorPanel(director, tagReference, session = state.session, title = "Generated TAG director") {
+function createGeneratedTagDirectorPanel(director, tagReference, session = state.session, title = "Generated Adventures Guild director") {
   if (!director) return null;
   const directorBox = node("div", "tag-director-panel");
   setTooltip(directorBox, `${title}: app-authored phase guidance for the current generated room. It narrows the next action without replacing printed TAG rules.`);
@@ -23831,9 +23836,9 @@ function createGeneratedTagDirectorPanel(director, tagReference, session = state
     directorBox.appendChild(recoveryLine);
   }
   appendGeneratedTagDirectorLinks(directorBox, tagReference);
-  const repair = node("button", "secondary tag-repair-guidance", "Repair guidance");
+  const repair = node("button", "secondary tag-repair-guidance", "Refresh narrative");
   repair.type = "button";
-  setButtonTooltip(repair, "Rebuild missing generated TAG prompt metadata for older sessions and normalize legacy log wording. This does not change PDF/player outcomes.");
+  setButtonTooltip(repair, "Refresh this Adventures Guild module from local PDF narrative overrides, rebuild missing prompt metadata for older sessions, and normalize legacy log wording. This does not choose branches or change PDF/player outcomes.");
   repair.addEventListener("click", () => repairGeneratedTagGuidance().catch(handleError));
   directorBox.appendChild(repair);
   return directorBox;
@@ -23848,7 +23853,7 @@ async function signOffGeneratedTagLead(note = "") {
   state.session = result;
   renderSession();
   syncSessionListFromSession(state.session);
-  setStatus("Generated TAG lead signed off.");
+  setStatus("Generated Adventures Guild lead signed off.");
 }
 
 function generatedTagPromptActionDefaults(action = {}, fallbackReference = "", tagReference = {}) {
@@ -23873,7 +23878,7 @@ function renderTagRelevantActions(session = state.session) {
   const director = generatedTagDirectorStep(session);
   syncTagAdvancedControls(Boolean(director));
   if (director) {
-    const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated TAG director");
+    const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated Adventures Guild director");
     if (directorBox) tagRelevantActions.appendChild(directorBox);
   }
   if (director?.nextStep) {
@@ -23893,11 +23898,11 @@ function renderTagRelevantActions(session = state.session) {
     node(
       "span",
       "",
-      `${promptData.title || room?.id || "Current TAG room"}: these are the current-room choices. Start with the recommendation, then use the full controls below only for edge cases.`
+      `${promptData.title || room?.id || "Current Adventures Guild room"}: these are the current-room choices. Start with the recommendation, then use the full controls below only for edge cases.`
     )
   );
   const row = node("div", "tag-relevant-actions-row");
-  const fallback = `${tagReference.title || "TAG lead"}: ${promptData.title || room?.id || "room prompt"}`;
+  const fallback = `${tagReference.title || "Adventures Guild lead"}: ${promptData.title || room?.id || "room prompt"}`;
   const recommended = director?.recommended || generatedTagRecommendedAction(promptData) || actions[0];
   if (recommended) {
     const callout = node("div", "tag-relevant-recommendation");
@@ -23906,14 +23911,14 @@ function renderTagRelevantActions(session = state.session) {
     tagRelevantActions.appendChild(callout);
   }
   if (director && tagAdventureActionsDialog) {
-    const toggle = node("button", "secondary tag-advanced-toggle", "Advanced TAG controls");
+    const toggle = node("button", "secondary tag-advanced-toggle", "Advanced Adventures Guild controls");
     toggle.type = "button";
-    setButtonTooltip(toggle, "Show or hide the full TAG Actions toolbox. Use it for edge cases, manual edits, finance, Guild, XP, and character-specific decisions not covered by Relevant Now.");
+    setButtonTooltip(toggle, "Show or hide the full Adventures Guild Actions toolbox. Use it for edge cases, manual edits, finance, Guild, XP, and character-specific decisions not covered by Relevant Now.");
     toggle.addEventListener("click", () => {
       tagAdventureActionsDialog.classList.toggle("show-advanced");
       toggle.textContent = tagAdventureActionsDialog.classList.contains("show-advanced")
         ? "Hide advanced controls"
-        : "Advanced TAG controls";
+        : "Advanced Adventures Guild controls";
     });
     tagRelevantActions.appendChild(toggle);
   }
@@ -23925,7 +23930,7 @@ function renderTagRelevantActions(session = state.session) {
     if (appendLeprechaunGuidedAction(row, action, fallback)) continue;
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
-    const tooltip = String(action.tooltip || "Prefill TAG Actions from the current generated-room prompt.");
+    const tooltip = String(action.tooltip || "Prefill Adventures Guild Actions from the current generated-room prompt.");
     const defaults = generatedTagPromptActionDefaults(action, fallback, tagReference);
     setButtonTooltip(btn, `${tooltip} ${generatedTagPromptActionExplanation(promptData, action)} Confirm the PDF/player choice before applying.`);
     btn.addEventListener("click", () => {
@@ -23973,7 +23978,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
     appendTagContextualButton(
       row,
       String(action.label),
-      String(action.tooltip || "Open the TAG Actions dialog with this generated-scene prompt prefilled."),
+      String(action.tooltip || "Open the Adventures Guild Actions dialog with this generated-scene prompt prefilled."),
       defaults
     );
   }
@@ -23985,7 +23990,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
 function appendTagPromptChecklist(parent, checklist = []) {
   if (!Array.isArray(checklist) || !checklist.length) return false;
   const box = node("div", "tag-context-checklist");
-  setTooltip(box, "Generated TAG prompt checklist: app-owned signoff reminders for route, reward, XP, Guild, banking, and closeout review. Check the printed scene for exact rules.");
+  setTooltip(box, "Generated Adventures Guild prompt checklist: app-owned signoff reminders for route, reward, XP, Guild, banking, and closeout review. Check the printed scene for exact rules.");
   box.appendChild(subline("Prompt checklist"));
   for (const item of checklist.slice(0, 7)) {
     const line = subline(`- ${String(item)}`);
@@ -24003,7 +24008,7 @@ function appendTagModuleProfile(parent, moduleProfile) {
   const signoffChecks = Array.isArray(moduleProfile.signoff_checks) ? moduleProfile.signoff_checks : [];
   if (!targetRooms && !procedure.length && !signoffChecks.length) return;
   const profile = node("div", "tag-context-module-profile");
-  setTooltip(profile, "Generated TAG module profile: target room count, special procedure notes, and signoff checks from the indexed TAG lead profile.");
+  setTooltip(profile, "Generated Adventures Guild module profile: target room count, special procedure notes, and signoff checks from the indexed Adventures Guild lead profile.");
   if (targetRooms) profile.appendChild(subline(`Target: ${targetRooms}`));
   for (const item of procedure.slice(0, 3)) {
     profile.appendChild(subline(`Procedure: ${item}`));
@@ -24023,7 +24028,7 @@ function appendTagLeadUseGuide(parent, tagReference) {
   const guide = node("div", "tag-context-use-guide");
   setTooltip(
     guide,
-    "Generated TAG lead guide: app-authored play guidance that explains how to use the room prompt without replacing the printed TAG rules."
+    "Generated Adventures Guild lead guide: app-authored play guidance that explains how to use the room prompt without replacing the printed TAG rules."
   );
   if (leadType) guide.appendChild(subline(`Lead type: ${String(leadType).replace(/_/g, " ")}`));
   if (mood) guide.appendChild(subline(`Scene tone: ${mood}`));
@@ -24049,25 +24054,25 @@ function appendTagContextualActions(parent, session, tile) {
   if (!tagReference || session?.mode !== "exploration") return;
   const room = tagRoomForCurrentTile(session, tile);
   const roomId = room?.id || "";
-  const roomTitle = room?.title || tile?.title || "Current TAG scene";
-  const referenceTitle = tagReference.title || tagReference.reference || "Generated TAG adventure";
+  const roomTitle = room?.title || tile?.title || "Current Adventures Guild scene";
+  const referenceTitle = tagReference.title || tagReference.reference || "Generated Adventures Guild adventure";
   const pages = tagReference.pdf_pages ? ` · ${tagReference.pdf_pages}` : "";
   const promptData = tagReference.room_prompts?.[roomId] || null;
   const fallbackReference = `${referenceTitle}: ${roomTitle}`;
   const block = node("div", "tag-context-actions");
   const heading = node("div", "tag-context-actions-title");
-  heading.appendChild(node("strong", "", promptData?.title || "TAG scene prompt"));
+  heading.appendChild(node("strong", "", promptData?.title || "Adventures Guild scene prompt"));
   heading.appendChild(subline(`${referenceTitle}${pages} · ${roomTitle}`));
   block.appendChild(heading);
   const prompt = subline(
     promptData?.body ||
-      "Use these room-aware shortcuts to prefill TAG Actions for the current generated scene, then confirm the exact branch, reward, Clue spend, or XP marker."
+      "Use these room-aware shortcuts to prefill Adventures Guild Actions for the current generated scene, then confirm the exact branch, reward, Clue spend, or XP marker."
   );
-  setTooltip(prompt, "Generated TAG modules can contain printed choices that the app cannot infer automatically from movement alone. Use the buttons to prefill state, then confirm exact results from the PDF/player decision.");
+  setTooltip(prompt, "Generated Adventures Guild modules can contain printed choices that the app cannot infer automatically from movement alone. Use the buttons to prefill state, then confirm exact results from the PDF/player decision.");
   block.appendChild(prompt);
   const director = generatedTagDirectorStep(session);
   if (director) {
-    const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated TAG room director");
+    const directorBox = createGeneratedTagDirectorPanel(director, tagReference, session, "Generated Adventures Guild room director");
     if (directorBox) block.appendChild(directorBox);
   }
   appendTagLeadUseGuide(block, tagReference);
@@ -24088,7 +24093,7 @@ function appendTagContextualActions(parent, session, tile) {
     appendTagContextualButton(
       actionsRow,
       "Record lead choice",
-      "Prefill a social/approach branch marker for this TAG lead scene.",
+      "Prefill a social/approach branch marker for this Adventures Guild lead scene.",
       { branchAction: "social_choice", reference: `${referenceTitle}: lead entry`, amount: 0 }
     );
     appendTagContextualButton(
@@ -24101,13 +24106,13 @@ function appendTagContextualActions(parent, session, tile) {
     appendTagContextualButton(
       actionsRow,
       "Claim printed reward",
-      "Prefill a TAG scene reward action. Edit the amount and character before confirming.",
+      "Prefill an Adventures Guild scene reward action. Edit the amount and character before confirming.",
       { branchAction: "claim_reward", reference: `${referenceTitle}: side clue reward`, amount: 0 }
     );
     appendTagContextualButton(
       actionsRow,
       "Mark scene XP",
-      "Prefill a TAG scene XP marker for this optional scene.",
+      "Prefill an Adventures Guild scene XP marker for this optional scene.",
       { xpAction: "mark_scene_xp", reference: `${referenceTitle}: side clue XP`, amount: 0 }
     );
   } else if (roomId === "tag-complication") {
@@ -24164,7 +24169,7 @@ function appendTagContextualActions(parent, session, tile) {
     appendTagContextualButton(
       actionsRow,
       "Claim unlocked reward",
-      "Prefill a TAG scene reward action for the unlocked branch.",
+      "Prefill an Adventures Guild scene reward action for the unlocked branch.",
       { branchAction: "claim_reward", reference: `${referenceTitle}: unlocked reward`, amount: 0 }
     );
   } else {

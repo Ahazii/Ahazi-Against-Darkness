@@ -48,6 +48,7 @@ from app.engine.tag_campaign import (
     withdraw_tag_stored_gold,
 )
 from app.engine.adventure_manifest import validate_adventure_manifest
+from app.engine.tag_compat import upgrade_tag_manifest
 from app.engine.equipment_shop import buy_equipment
 from app.rules.repository import RulesRepository
 from app.schemas import Character, TagXpMarkerState
@@ -390,7 +391,7 @@ def test_tag_adventure_manifest_generation_validates() -> None:
         assert tag_reference["lead_type"] == lead_type
         assert tag_reference["how_to"]
         assert tag_reference["mood"]
-        assert "handoff from settlement rumor" in tag_reference["room_prompts"]["tag-lead-entry"]["body"]
+        assert "lead handoff" in tag_reference["room_prompts"]["tag-lead-entry"]["body"]
         assert "If this room has no scene-specific button" in tag_reference["room_prompts"]["tag-complication"]["body"]
         assert "Adventure section" in entry.result_text
 
@@ -540,9 +541,176 @@ def test_tag_manifest_uses_user_editable_narrative_overrides(tmp_path, monkeypat
     assert finale["title"] == "Edited Finale"
     assert finale["description"] == "Edited finale narrative."
     assert finale["triggers"][0]["log"] == "Edited finale log."
+    contact = next(npc for npc in manifest["npcs"] if npc["id"] == "tag-contact")
+    assert contact["description"] == "Edited opening narrative."
+    prompts = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]
+    assert prompts["tag-lead-entry"]["body"] == "Edited opening narrative."
+    assert "lead handoff" not in prompts["tag-lead-entry"]["body"]
+    assert prompts["tag-final-scene"]["body"] == "Edited finale narrative."
     assert manifest["source"]["parameters"]["tag_reference"]["scene_graph"]["scenes"]["Scene 11"]["branches"][0]["target_scene"] == "Scene 18"
     final_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]["actions"]
     assert any(action["action_type"] == "route" and action["action_value"] == "unlock_scene" for action in final_actions)
+
+
+def test_tag_manifest_upgrade_repairs_stale_prompts_from_local_narrative_overrides(tmp_path, monkeypatch) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    (data_dir / "tag_scene_narrative_overrides.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "tag": {
+                    "rumor": {
+                        "12": {
+                            "module_title": "The Adventures Guild Rumor 12: Shinta and Agaratha",
+                            "objective": "Accept Shinta's request and recover Agaratha.",
+                            "scene_graph": {
+                                "start_scenes": ["Scene 4"],
+                                "scenes": {
+                                    "Scene 4": {
+                                        "description": "Choose a worthy sword user, then go to Scene 7.",
+                                        "branches": [{"label": "Go to Scene 7", "target_scene": "Scene 7"}],
+                                    }
+                                },
+                            },
+                            "rooms": {
+                                "tag-lead-entry": {
+                                    "title": "Shinta and Agaratha",
+                                    "description": "Since she lost her husband, Shinta has lost the will to adventure.",
+                                    "log": "Objective: recover Agaratha.",
+                                },
+                                "tag-final-scene": {
+                                    "title": "Agaratha's Quest",
+                                    "description": "You may accept a quest from the paladin with a single character.",
+                                    "log": "Choose the character who accepts Shinta's quest.",
+                                },
+                            },
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    manifest = {
+        "title": "Generated TAG Rumor 12",
+        "quest": {"objective_text": "Old objective"},
+        "npcs": [
+            {
+                "id": "tag-contact",
+                "name": "Guild Contact",
+                "room_id": "tag-lead-entry",
+                "description": "Shinta's story starts as a request and ends at a bandit hideout.",
+                "dialogue": "Old dialogue",
+            }
+        ],
+        "rooms": [
+            {
+                "id": "tag-lead-entry",
+                "title": "Lead Trail",
+                "description": "The last warmth of the home settlement is behind them now.",
+                "triggers": [],
+            },
+            {
+                "id": "tag-final-scene",
+                "title": "Finale",
+                "description": "This is where the lead comes due.",
+                "triggers": [{"log": "Old finale log"}],
+            },
+        ],
+        "source": {
+            "parameters": {
+                "tag_reference": {
+                    "lead_type": "rumor",
+                    "lead_detail": "12",
+                    "room_prompts": {
+                        "tag-lead-entry": {
+                            "title": "Lead entry choices",
+                            "body": "The rumor has teeth now. This is the handoff from settlement rumor.",
+                            "actions": [],
+                        },
+                        "tag-final-scene": {
+                            "title": "Final scene",
+                            "body": "Check final foe, route, reward, and XP text.",
+                            "actions": [],
+                        },
+                    },
+                }
+            }
+        },
+    }
+
+    upgraded = upgrade_tag_manifest(manifest)
+    tag_reference = upgraded["source"]["parameters"]["tag_reference"]
+    assert upgraded["title"] == "The Adventures Guild Rumor 12: Shinta and Agaratha"
+    assert upgraded["quest"]["objective_text"] == "Accept Shinta's request and recover Agaratha."
+    assert upgraded["rooms"][0]["description"] == "Since she lost her husband, Shinta has lost the will to adventure."
+    assert upgraded["npcs"][0]["description"] == "Since she lost her husband, Shinta has lost the will to adventure."
+    assert tag_reference["room_prompts"]["tag-lead-entry"]["body"] == "Since she lost her husband, Shinta has lost the will to adventure."
+    assert "rumor has teeth" not in tag_reference["room_prompts"]["tag-lead-entry"]["body"].lower()
+    assert tag_reference["room_prompts"]["tag-final-scene"]["body"] == "You may accept a quest from the paladin with a single character."
+    assert tag_reference["scene_graph"]["scenes"]["Scene 4"]["branches"][0]["target_scene"] == "Scene 7"
+    assert tag_reference["local_narrative_override_applied"] is True
+
+
+def test_tag_scene_graph_defers_profile_reward_actions_until_terminal_scene(tmp_path, monkeypatch) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    (data_dir / "tag_scene_narrative_overrides.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "tag": {
+                    "rumor": {
+                        "12": {
+                            "rooms": {
+                                "tag-lead-entry": {
+                                    "title": "Shinta and Agaratha",
+                                    "description": "Shinta offers Agaratha to a worthy character. If interested, go to Scene 4.",
+                                },
+                                "tag-final-scene": {
+                                    "title": "Choose Shinta's Champion",
+                                    "description": "Choose a sword-using character and go to Scene 7.",
+                                },
+                            },
+                            "scene_graph": {
+                                "start_scenes": ["Scene 4"],
+                                "scenes": {
+                                    "Scene 4": {
+                                        "description": "Choose a sword-using character and go to Scene 7.",
+                                        "branches": [{"label": "Go to Scene 7", "target_scene": "Scene 7"}],
+                                    },
+                                    "Scene 7": {"description": "Complete the single-character bandit hideout quest.", "branches": []},
+                                },
+                            },
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    campaign = default_campaign()
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="12")
+    tag_reference = manifest["source"]["parameters"]["tag_reference"]
+
+    final_labels = [action["label"] for action in tag_reference["room_prompts"]["tag-final-scene"]["actions"]]
+    assert any("Scene 7" in label for label in final_labels)
+    assert "Apply Agaratha" not in final_labels
+    assert [action["label"] for action in tag_reference["scene_graph_terminal_actions"]] == ["Apply Agaratha"]
+
+    tag_campaign.resolve_tag_route_action(
+        campaign,
+        route_action="unlock_scene",
+        reference="Scene 4 -> Scene 7: Go to Scene 7",
+    )
+    tag_campaign.apply_tag_route_to_manifest(manifest, campaign)
+    unlocked_prompt = tag_reference["room_prompts"]["tag-unlocked-scene"]
+    unlocked_labels = [action["label"] for action in unlocked_prompt["actions"]]
+    assert "Apply Agaratha" in unlocked_labels
+    assert "Apply scene reward" not in unlocked_labels
 
 
 def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkeypatch) -> None:
@@ -1496,7 +1664,7 @@ def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
     repaired_reference = repaired["source"]["parameters"]["tag_reference"]
     assert repaired_reference["prompt_repair_note"]
     assert repaired_reference["room_prompts"]["tag-complication"]["actions"][1]["action_type"] == "route"
-    assert "older generated TAG module" in repaired_reference["room_prompts"]["tag-final-scene"]["body"]
+    assert "older generated Adventures Guild module" in repaired_reference["room_prompts"]["tag-final-scene"]["body"]
 
 
 def test_tag_theme_procedure_branch_actions_roll_exact_tables(monkeypatch) -> None:

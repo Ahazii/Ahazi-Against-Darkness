@@ -160,6 +160,13 @@ def _apply_tag_narrative_override(
             merged[key] = override[key]
     if isinstance(override.get("rooms"), dict):
         merged["room_narrative_overrides"] = override["rooms"]
+        rooms = override["rooms"]
+        entry = rooms.get("tag-lead-entry")
+        if isinstance(entry, dict) and str(entry.get("description") or "").strip():
+            merged["entry"] = str(entry["description"]).strip()
+        final = rooms.get("tag-final-scene")
+        if isinstance(final, dict) and str(final.get("description") or "").strip():
+            merged["final_description"] = str(final["description"]).strip()
     if isinstance(override.get("scene_graph"), dict):
         merged["scene_graph"] = override["scene_graph"]
     if isinstance(override.get("npcs"), dict):
@@ -190,6 +197,11 @@ def _room_description(profile: dict[str, object], room_id: str, fallback: str) -
 def _room_log(profile: dict[str, object], room_id: str, fallback: str) -> str:
     override = _room_override(profile, room_id)
     return str(override.get("log") or override.get("on_enter_log") or fallback)
+
+
+def _room_override_text(profile: dict[str, object], room_id: str, key: str = "description") -> str:
+    override = _room_override(profile, room_id)
+    return str(override.get(key) or "").strip()
 
 
 def _clean_pdf_text(text: str) -> str:
@@ -762,7 +774,7 @@ TAG_SETTLEMENT_SERVICES = [
         "min_size": -3,
         "cost": "Not normally purchased; used for small-party starts and loot substitutions.",
         "summary": "Minor magic items for small parties: scrolls, healing potion, Power Cookie, enchanted shot, spheres, candy, and bauble.",
-        "automation": "Use TAG Actions > Trinket to consume carried trinkets and apply safe healing/status markers.",
+        "automation": "Use Adventures Guild Actions > Trinket to consume carried trinkets and apply safe healing/status markers.",
     },
     {
         "key": "guild_spells",
@@ -771,7 +783,7 @@ TAG_SETTLEMENT_SERVICES = [
         "min_size": -3,
         "cost": "Learn or find as basic Guild spell scrolls when allowed by TAG.",
         "summary": "Guild spell table: Speedy Recovery, Temporary Weapon Enchantment, Troupe Switch, Look Tough, Silence of the Mouse, Wizard's Luck.",
-        "automation": "Use TAG Actions > Guild spell to consume scrolls or log known-spell casts with status markers.",
+        "automation": "Use Adventures Guild Actions > Guild spell to consume scrolls or log known-spell casts with status markers.",
     },
     {
         "key": "tag_special_foes",
@@ -4407,7 +4419,12 @@ def _tag_scene_graph_node(tag_reference: dict[str, Any], scene_key: str) -> dict
     return node if isinstance(node, dict) else None
 
 
-def _tag_unlocked_scene_prompt(scene_key: str, scene_node: dict[str, Any] | None, route: TagAdventureRouteState) -> dict[str, Any]:
+def _tag_unlocked_scene_prompt(
+    scene_key: str,
+    scene_node: dict[str, Any] | None,
+    route: TagAdventureRouteState,
+    tag_reference: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if scene_node is None:
         return {
             "title": "Unlocked scene",
@@ -4445,24 +4462,32 @@ def _tag_unlocked_scene_prompt(scene_key: str, scene_node: dict[str, Any] | None
         for branch in branches
         if isinstance(branch, dict) and branch.get("target_scene")
     ]
-    actions.extend(
-        [
-            _tag_prompt_action(
-                "Mark scene resolved",
-                "Record that this extracted Adventures Guild scene has been resolved at the table.",
-                action_type="route",
-                action_value="final_route",
-                reference=f"{scene_key}: resolved",
-            ),
+    terminal_actions = []
+    if not actions and isinstance(tag_reference, dict):
+        values = tag_reference.get("scene_graph_terminal_actions")
+        if isinstance(values, list):
+            terminal_actions = [action for action in values if isinstance(action, dict)]
+    if terminal_actions:
+        actions.extend(terminal_actions)
+    actions.append(
+        _tag_prompt_action(
+            "Mark scene resolved",
+            "Record that this extracted Adventures Guild scene has been resolved at the table.",
+            action_type="route",
+            action_value="final_route",
+            reference=f"{scene_key}: resolved",
+        )
+    )
+    if not terminal_actions:
+        actions.append(
             _tag_prompt_action(
                 "Apply scene reward",
                 "Prefill the printed reward action if this extracted scene grants gp, items, or another reward.",
                 action_type="branch",
                 action_value="claim_reward",
                 reference=f"{scene_key}: reward",
-            ),
-        ]
-    )
+            )
+        )
     return {
         "title": scene_key,
         "body": str(scene_node.get("description") or "Resolve the extracted Adventures Guild scene."),
@@ -4482,7 +4507,7 @@ def _ensure_unlocked_scene_room(
 ) -> bool:
     scene_key = _scene_key_from_route_reference(route.reference)
     scene_node = _tag_scene_graph_node(tag_reference, scene_key) if scene_key else None
-    prompt = _tag_unlocked_scene_prompt(scene_key or "Unlocked scene", scene_node, route)
+    prompt = _tag_unlocked_scene_prompt(scene_key or "Unlocked scene", scene_node, route, tag_reference)
     description = str(scene_node.get("description") if isinstance(scene_node, dict) else "") or (
         "A follow-up scene is now available because of an Adventures Guild branch choice. "
         f"{route.result_text}"
@@ -5407,7 +5432,7 @@ def _tag_enrich_rumor_profile(profile: dict[str, object], lead_detail: str) -> d
     title = str(profile.get("title") or lead_detail)
     signoff_checks = [
         "Confirm the printed scene/result was checked before accepting any generated-room shortcut.",
-        "Record the chosen route, blocked route, Clue spend, or social result in TAG Actions.",
+        "Record the chosen route, blocked route, Clue spend, or social result in Adventures Guild Actions.",
         "Review reward, XP, Guild/finance, and closeout tasks before starting the next lead.",
     ]
     module_profile = dict(profile.get("module_profile") or {})
@@ -5425,7 +5450,7 @@ def _tag_enrich_rumor_profile(profile: dict[str, object], lead_detail: str) -> d
         "playthrough_focus": guidance.get("focus", f"Audit {title} as a settlement rumor handoff with visible route, reward, and XP signoff."),
         "entry_guidance": guidance.get("entry", "Open with settlement evidence and a player-facing reason to follow this rumor now."),
         "side_guidance": "Use the side room as a clue, witness, or pressure beat; if it changes reward, Clues, or XP, record that before moving on.",
-        "complication_guidance": guidance.get("complication", "Resolve the printed branch deliberately and log the player choice in TAG Actions."),
+        "complication_guidance": guidance.get("complication", "Resolve the printed branch deliberately and log the player choice in Adventures Guild Actions."),
         "finale_guidance": guidance.get("finale", "Before closing the lead, verify final foe/procedure, reward, XP, and campaign closeout state."),
         "signoff_checks": signoff_checks,
         "module_profile": module_profile,
@@ -5489,7 +5514,7 @@ def _tag_enrich_treasure_map_profile(profile: dict[str, object], lead_detail: st
     guidance = TAG_TREASURE_MAP_AUDIT_GUIDANCE.get(map_roll, TAG_TREASURE_MAP_AUDIT_GUIDANCE[1])
     signoff_checks = [
         "Confirm the Follow Treasure Map result and destination number were checked before using the generated module.",
-        "Record destination procedure rolls, deferred treasure, report/stealth choices, or death-magic setup in TAG Actions.",
+        "Record destination procedure rolls, deferred treasure, report/stealth choices, or death-magic setup in Adventures Guild Actions.",
         "Review reward, XP, Guild share, banking/storage, and closeout tasks before creating another map lead.",
     ]
     module_profile = dict(profile.get("module_profile") or {})
@@ -5583,7 +5608,7 @@ def _tag_enrich_thematic_profile(profile: dict[str, object], lead_detail: str) -
     guidance = TAG_THEMATIC_DUNGEON_AUDIT_GUIDANCE.get(theme_number, TAG_THEMATIC_DUNGEON_AUDIT_GUIDANCE[1])
     signoff_checks = [
         "Confirm the Thematic Dungeon result and target-room procedure before treating the generated module like a normal dungeon.",
-        "Record theme-specific procedure rolls, route changes, Clue spends, replacement checks, or treasure handling in TAG Actions.",
+        "Record theme-specific procedure rolls, route changes, Clue spends, replacement checks, or treasure handling in Adventures Guild Actions.",
         "Review final reward, XP, Guild share, banking/storage, and closeout tasks before creating another lead.",
     ]
     module_profile = dict(profile.get("module_profile") or {})
@@ -5614,7 +5639,7 @@ def _tag_prompt_action_from_profile(action: object) -> dict[str, object] | None:
         return None
     return _tag_prompt_action(
         str(action.get("label") or "TAG action"),
-        str(action.get("tooltip") or "Open TAG Actions with this generated-module prompt prefilled."),
+        str(action.get("tooltip") or "Open Adventures Guild Actions with this generated-module prompt prefilled."),
         action_type=str(action.get("action_type") or "dialog"),
         action_value=str(action.get("action_value") or ""),
         reference=str(action.get("reference") or ""),
@@ -5752,24 +5777,41 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     clue_cost = max(0, int(profile.get("clue_gate_cost") or 0))
     clue_label = str(profile.get("clue_gate_label") or "Unlock Clue route")
     graph_actions = _tag_scene_graph_actions(profile)
-    final_actions = [*_tag_profile_actions(profile, "final_prompt_actions"), *graph_actions]
+    profile_final_actions = _tag_profile_actions(profile, "final_prompt_actions")
+    final_actions = graph_actions or profile_final_actions
+    entry_override_body = _room_override_text(profile, "tag-lead-entry")
+    side_override_body = _room_override_text(profile, "tag-side-clue")
+    complication_override_body = _room_override_text(profile, "tag-complication")
+    final_override_body = _room_override_text(profile, "tag-final-scene")
+    entry_body = entry_override_body or (
+        f"{mood} {how_to} {entry_guidance} "
+        "This is the lead handoff: decide why the party trusts the lead, what they risk by following it, and whether any visible scene branch should be chosen before ordinary exploration continues."
+    )
+    side_body = side_override_body or (
+        f"{profile.get('side') or 'The side path offers a useful clue, but it should feel like a choice rather than housekeeping.'} "
+        f"{side_guidance} "
+        "Check the printed scene for reward, Clue, route, or XP handling before confirming an action."
+    )
+    complication_body = complication_override_body or (
+        f"{profile.get('complication') or 'The lead tightens here: a bargain can sour, a shortcut can close, or a fight can turn the room into evidence.'} "
+        f"{complication_guidance} "
+        "If this room has no scene-specific button, no procedure is due here; keep moving and let the next scene surface the actual bargain, fight, Clue spend, reward, or route choice."
+    )
+    final_body = final_override_body or _tag_final_prompt_body(profile, finale_guidance)
     prompts: dict[str, object] = {
         "tag-lead-entry": {
             "title": "Lead entry choices",
-            "body": (
-                f"{mood} {how_to} {entry_guidance} "
-                "This is the handoff from settlement rumor, job, map, or patron into a playable dungeon thread: decide why the party trusts the lead, what they risk by following it, and which printed approach or refusal should be recorded before the doors start closing behind them."
-            ),
+            "body": entry_body.strip(),
             "checklist": [
                 f"Confirm which {lead_result_label} produced this module.",
-                "Record the party's first approach or refusal in TAG Actions.",
-                "Check whether a side scene or Clue route should be pursued before the complication.",
+                "Use the visible scene branch buttons when the PDF text says to go to another scene.",
+                "Only open Adventures Guild Actions if a value, route, reward, XP, or payment must be recorded.",
             ],
             "actions": [
-                _tag_prompt_action("TAG Actions", "Open the full TAG Actions dialog without changing any values."),
+                _tag_prompt_action("Adventures Guild Actions", "Open the full Adventures Guild Actions dialog without changing any values."),
                 _tag_prompt_action(
                     "Record lead choice",
-                    "Prefill a social/choice branch marker for this TAG lead.",
+                    "Prefill a social/choice branch marker for this Adventures Guild lead.",
                     action_type="branch",
                     action_value="social_choice",
                     reference=f"{base_ref}: lead choice",
@@ -5785,11 +5827,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         },
         "tag-side-clue": {
             "title": "Side clue and reward",
-            "body": (
-                f"{profile.get('side') or 'The side path offers a useful clue, but it should feel like a choice rather than housekeeping.'} "
-                f"{side_guidance} "
-                "Treat this as the lead breathing at the edge of the map: a torn sign, nervous witness, half-hidden cache, or too-clean footprint that tells the players this job has teeth. Check the printed scene for reward, Clue, or XP handling before confirming an action."
-            ),
+            "body": side_body.strip(),
             "checklist": [
                 "Check whether the side clue changes Clues, reward, XP, or route options.",
                 "Record any reward or skipped-scene decision before leaving the room.",
@@ -5813,11 +5851,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         },
         "tag-complication": {
             "title": "Complication route",
-            "body": (
-                f"{profile.get('complication') or 'The lead tightens here: a bargain can sour, a shortcut can close, or a fight can turn the room into evidence.'} "
-                f"{complication_guidance} "
-                "If this room has no scene-specific button, no procedure is due here; keep moving and let the next scene surface the actual bargain, fight, Clue spend, reward, or route choice."
-            ),
+            "body": complication_body.strip(),
             "checklist": [
                 "Resolve only the branch, Clue cost, or procedure that the current printed scene actually asks for.",
                 "If no current-scene choice is due, move to the finale and make the scene-specific choice there.",
@@ -5858,7 +5892,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         },
         "tag-final-scene": {
             "title": _tag_final_prompt_title(profile),
-            "body": _tag_final_prompt_body(profile, finale_guidance),
+            "body": final_body.strip(),
             "checklist": [
                 "Resolve only the choice, purchase, combat, or procedure that this lead actually offers.",
                 "Use the scene-specific action button for the receiving character, amount, route, XP, or reward.",
@@ -5972,6 +6006,7 @@ def _tag_manifest(
                 "thematic_dungeon_number": profile.get("thematic_dungeon_number", 0),
                 "playthrough_focus": profile.get("playthrough_focus", ""),
                 "signoff_checks": profile.get("signoff_checks", []),
+                "scene_graph_terminal_actions": _tag_profile_actions(profile, "final_prompt_actions"),
             "rules": profile.get("rules", []),
             "rewards": profile.get("rewards", ""),
             "side_reward_note": profile.get("side_reward_note", ""),
@@ -6513,7 +6548,7 @@ def add_adventure_closeout_tasks(campaign: CampaignState, session: SessionState 
             category="xp",
             task_action="tag_xp_closeout",
             title="Resolve pending TAG XP markers",
-            result_text="One or more TAG XP markers are still pending. Use TAG Actions or the printed scene text to award, roll, or dismiss them before starting the next adventure.",
+            result_text="One or more TAG XP markers are still pending. Use Adventures Guild Actions or the printed scene text to award, roll, or dismiss them before starting the next adventure.",
             reference="TAG scene XP closeout.",
         )
         if created_task is not None:

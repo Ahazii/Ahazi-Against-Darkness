@@ -44,7 +44,7 @@ const PAGE_META = {
   "rules-reference": ["Rules Reference", "Search curated implementation notes with source references, app-owned boundaries, TAG automation explanations, and links from controls that need rules context."],
   tables: ["Tables List", "Browse structured rule and app tables, filter by family or artwork links, and inspect the data that powers rules lookups, validation, and dashboard references."],
   library: ["Credits / History / Background", "Open owned PDFs, maintain signoff-safe background notes, and keep artwork/PDF boundaries clear for personal-use and publication-safe content."],
-  guides: ["Game Guides", "Open player-facing workflow guides, test checklists, and future quick-start material for using the app during setup, play, closeout, and TAG procedures."],
+  guides: ["Game Guides", "Open player-facing workflow guides, test checklists, and future quick-start material for using the app during setup, play, closeout, and Adventures Guild procedures."],
   developer: ["Developer Section", "Password-gated maintenance tools for module import scaffolding, map and icon editors, artwork status, validation helpers, and content pipeline checks."],
 };
 
@@ -590,7 +590,7 @@ function closeoutChecklistRows() {
   const latestRoute = (campaign.tag_adventure_routes || []).slice(-1)[0];
   const latestLead = (campaign.tag_generated_adventure_ids || []).slice(-1)[0];
   return [
-    ["Generated lead", latestLead || "No generated TAG lead recorded.", latestLead ? "ok" : "warn", "Confirm the latest generated module came from the intended Rumor, Treasure Map, Thematic Dungeon, or Guild Job."],
+    ["Generated lead", latestLead || "No generated Adventures Guild lead recorded.", latestLead ? "ok" : "warn", "Confirm the latest generated module came from the intended Rumor, Treasure Map, Thematic Dungeon, or Guild Job."],
     ["Route / branch marker", latestRoute ? latestRoute.result_text : "No route marker recorded.", latestRoute ? "ok" : "warn", "Record parley, Clue gates, skipped scenes, unlocked scenes, final route, or solo restrictions when the generated adventure uses them."],
     ["XP markers", `${pendingXp.length} pending marker(s).`, pendingXp.length ? "block" : "ok", "Pending XP markers should be awarded, rolled, or intentionally dismissed before the next adventure."],
     ["Guild obligations", `${openTasks.filter((task) => task.category === "guild").length} open task(s).`, openTasks.some((task) => task.category === "guild") ? "block" : "ok", "Resolve Guild loot share, upkeep, availability reroll reset, leaving restrictions, and other Guild obligations."],
@@ -618,7 +618,7 @@ function renderAdventureCloseoutCockpit(context = "Dashboard") {
   const row = actions();
   row.append(
     field("Review note", note),
-    button("Mark Signoff Reviewed", "Record a generated TAG adventure signoff review. This logs open closeout and XP counts; it only completes broad review guidance when no open closeout or XP markers remain.", () => recordTagSignoffReview(note.value), ""),
+    button("Mark Signoff Reviewed", "Record a generated Adventures Guild adventure signoff review. This logs open closeout and XP counts; it only completes broad review guidance when no open closeout or XP markers remain.", () => recordTagSignoffReview(note.value), ""),
     link("Guild", "/modern/guild", "Resolve Guild closeout obligations.", "link-button secondary"),
     link("Banking", "/modern/banking", "Resolve banking and hidden-trove closeout obligations.", "link-button secondary"),
     link("Rules", ruleReferenceHref("tag_closeout_checklist_automation", "TAG closeout checklist automation"), "Open the Rules Reference entry for this closeout checklist.", "link-button secondary")
@@ -711,7 +711,7 @@ function renderGuidanceLog() {
     panel.appendChild(
       modernStatusRow(
         "No current prompts",
-        "Finish an adventure, create a TAG lead, use Guild jobs, travel, or perform settlement/banking actions and the latest guidance will appear here.",
+        "Finish an adventure, create an Adventures Guild lead, use Guild jobs, travel, or perform settlement/banking actions and the latest guidance will appear here.",
         "Dashboard guidance is generated from app state, closeout tasks, and TAG logs."
       )
     );
@@ -817,15 +817,15 @@ function renderTagWorkflowDashboard(context = "overview") {
 
 function renderTagSignoffPanel(context = "TAG Signoff") {
   const campaign = modernState.campaign || {};
-  const panel = card(context, "Checklist for generated TAG adventures: record branch/route choices, rewards, XP, Guild obligations, banking/storage consequences, and closeout resolution.");
+  const panel = card(context, "Checklist for generated Adventures Guild adventures: record branch/route choices, rewards, XP, Guild obligations, banking/storage consequences, and closeout resolution.");
   const route = (campaign.tag_adventure_routes || []).slice(-1)[0];
   const log = (campaign.tag_downtime_log || []).slice(-1)[0];
   const openCloseout = (campaign.tag_closeout_tasks || []).filter((task) => !task.resolved).length;
   const pendingXp = (campaign.tag_xp_markers || []).filter((marker) => !marker.applied).length;
   panel.append(
-    modernStatusRow("Generated lead", (campaign.tag_generated_adventure_ids || []).slice(-1)[0] || "No generated TAG lead yet.", "Create Rumor, Treasure Map, Thematic Dungeon, or Guild Job modules from Go Adventure or Guild Management."),
-    modernStatusRow("Latest route marker", route ? route.result_text : "No route marker recorded.", "TAG Actions during exploration records parley, Clue gates, skipped scenes, final route, solo restrictions, and generated-module route rewrites."),
-    modernStatusRow("Pending XP", `${pendingXp} marker(s)`, "Resolve pending TAG XP markers from TAG Actions or closeout before starting the next adventure."),
+    modernStatusRow("Generated lead", (campaign.tag_generated_adventure_ids || []).slice(-1)[0] || "No generated Adventures Guild lead yet.", "Create Rumor, Treasure Map, Thematic Dungeon, or Guild Job modules from Go Adventure or Guild Management."),
+    modernStatusRow("Latest route marker", route ? route.result_text : "No route marker recorded.", "Adventures Guild Actions during exploration records parley, Clue gates, skipped scenes, final route, solo restrictions, and generated-module route rewrites."),
+    modernStatusRow("Pending XP", `${pendingXp} marker(s)`, "Resolve pending TAG XP markers from Adventures Guild Actions or closeout before starting the next adventure."),
     modernStatusRow("Closeout prompts", `${openCloseout} open prompt(s)`, "Open closeout prompts must be resolved by the relevant Guild, Banking, storage, XP, or manual signoff workflow."),
     modernStatusRow("Latest TAG log", log ? `${modernTitleFromKey(log.action)} · ${log.result_text}` : "No TAG log entries yet.", "Recent TAG automation/log action. Open the TAG guide when checking generated-adventure signoff against the PDF.")
   );
@@ -833,8 +833,8 @@ function renderTagSignoffPanel(context = "TAG Signoff") {
   const row = actions();
   row.append(
     field("Signoff note", note),
-    button("Mark Reviewed", "Record that the latest generated TAG adventure signoff was reviewed. This does not resolve printed-rule decisions or open closeout tasks by itself.", () => recordTagSignoffReview(note.value), ""),
-    link("Go Adventure", "/modern/go-adventure", "Open Go Adventure to create TAG leads, select generated modules, and review closeout gates.", "link-button secondary"),
+    button("Mark Reviewed", "Record that the latest generated Adventures Guild adventure signoff was reviewed. This does not resolve printed-rule decisions or open closeout tasks by itself.", () => recordTagSignoffReview(note.value), ""),
+    link("Go Adventure", "/modern/go-adventure", "Open Go Adventure to create Adventures Guild leads, select generated modules, and review closeout gates.", "link-button secondary"),
     link("Guidance", "/modern/home", "Return to the Dashboard Guidance / Log for active task completion, deferral, or dismissal.", "link-button secondary"),
     link("TAG Guide", "/docs/Checking/TAG_SECTION_GUIDE.html", "Open generated-adventure manual checking and signoff guidance.", "link-button secondary")
   );
@@ -843,7 +843,7 @@ function renderTagSignoffPanel(context = "TAG Signoff") {
 }
 
 function renderTagActionLogExplorer() {
-  const panel = card("TAG Action Log", "Search and filter TAG route, XP, finance, Guild, branch, generated-module, and signoff events. Use this when checking what a generated lead changed before closeout.");
+  const panel = card("Adventures Guild Action Log", "Search and filter TAG route, XP, finance, Guild, branch, generated-module, and signoff events. Use this when checking what a generated lead changed before closeout.");
   const search = input("search", "modern-tag-log-search", "Search TAG action, character, result text, reference, cost, or roll.");
   const family = select("modern-tag-log-family", "Filter by TAG log family.", [
     ["", "All TAG logs"],
@@ -1245,7 +1245,7 @@ function tagRumorAuditRows(adventure) {
     ["Rumor result", number ? `Rumor ${number}` : "Generated Rumor lead", "Use this to confirm the intended TAG rumor result before starting or resuming the module."],
     ["Printed scene", adventure.tag_scene || adventure.tag_pdf_pages || "Check generated module metadata", "Scene/page metadata comes from the generated adventure manifest; exact rule text stays in the PDF/player signoff."],
     ["Play focus", "Entry choice -> complication branch -> final reward/XP closeout", "Rumor leads should be played as a short settlement story, not only as a combat room."],
-    ["Signoff", "Route, reward, XP, Guild/finance, and closeout review", "Use the TAG prompt buttons during exploration, then review TAG Action Log before starting another lead."],
+    ["Signoff", "Route, reward, XP, Guild/finance, and closeout review", "Use the TAG prompt buttons during exploration, then review Adventures Guild Action Log before starting another lead."],
   ];
 }
 
@@ -1297,9 +1297,9 @@ function renderRumorSignoffChecklist() {
   const panel = card("Rumor Signoff Checklist", "Use this app-owned checklist after a TAG Rumor module. It helps you remember what to review without replacing the printed scene rules.");
   const checks = [
     ["Entry choice", "Record the party's approach, refusal, stealth, parley, or direct confrontation.", "Entry state explains why later route markers exist."],
-    ["Complication", "Resolve Clue costs, red herrings, ambushes, peaceful/hostile branches, and profile-specific rolls.", "Use TAG Actions so the Campaign log shows why the route changed."],
+    ["Complication", "Resolve Clue costs, red herrings, ambushes, peaceful/hostile branches, and profile-specific rolls.", "Use Adventures Guild Actions so the Campaign log shows why the route changed."],
     ["Finale", "Confirm final foe/procedure, reward, item, bounty, capture-alive route, and any scene restriction.", "The generated room is a play aid; the printed result remains the authority."],
-    ["Closeout", "Review pending XP, Guild obligations, banking/storage, guidance tasks, and the TAG Action Log.", "Do this before creating the next lead so unresolved state is visible."],
+    ["Closeout", "Review pending XP, Guild obligations, banking/storage, guidance tasks, and the Adventures Guild Action Log.", "Do this before creating the next lead so unresolved state is visible."],
   ];
   for (const [title, body, hint] of checks) {
     panel.appendChild(modernStatusRow(title, body, hint));
@@ -1339,9 +1339,9 @@ function tagTreasureMapAuditRows(adventure) {
   return [
     ["Destination", number ? `Map Leads To ${number}` : "Generated Treasure Map destination", "Confirm this is the intended destination before Start Adventure; Follow Map and Map Leads To are separate signoff steps."],
     ["Procedure", tagTreasureMapDestinationGuidance(number), "Destination metadata comes from the generated manifest. Exact room count, reward, and procedure values remain with the PDF/player signoff."],
-    ["Current room treasure", "If exploration says hidden treasure was found, use Claim Treasure for that room. That does not replace the Map Leads To destination procedure.", "Claim Treasure handles the local room hoard; TAG Actions record map procedure and closeout decisions."],
+    ["Current room treasure", "If exploration says hidden treasure was found, use Claim Treasure for that room. That does not replace the Map Leads To destination procedure.", "Claim Treasure handles the local room hoard; Adventures Guild Actions record map procedure and closeout decisions."],
     ["Play focus", "Follow-map result -> destination procedure -> deferred/reward treasure -> closeout", "Treasure Map leads are about proving the map, choosing risk, and making reward accounting visible."],
-    ["Signoff", "Route, procedure rolls, treasure transfer, XP, Guild/finance, and storage review", "Use TAG Actions during exploration, then review TAG Action Log and banking/storage before starting another lead."],
+    ["Signoff", "Route, procedure rolls, treasure transfer, XP, Guild/finance, and storage review", "Use Adventures Guild Actions during exploration, then review Adventures Guild Action Log and banking/storage before starting another lead."],
   ];
 }
 
@@ -1393,9 +1393,9 @@ function renderTreasureMapSignoffChecklist() {
   const panel = card("Treasure Map Signoff Checklist", "Use this app-owned checklist after a TAG Treasure Map destination. It focuses on map verification, destination procedure, reward accounting, and closeout.");
   const checks = [
     ["Map result", "Confirm the Follow Treasure Map result, stored/Guild cartographer bonus, and Map Leads To destination.", "The purchased map roll and the generated destination are related but should both be visible in the log."],
-    ["Destination procedure", "Resolve destination-specific room count, report/stealth choice, deferred treasure, boss-only conversion, or death-magic setup.", "Use TAG Actions so the procedure is recorded before final reward handling."],
+    ["Destination procedure", "Resolve destination-specific room count, report/stealth choice, deferred treasure, boss-only conversion, or death-magic setup.", "Use Adventures Guild Actions so the procedure is recorded before final reward handling."],
     ["Treasure", "Move deferred treasure, idol value, report reward, lich treasure, magic items, or Boss treasure into the correct party/Guild/bank/storage workflow.", "Treasure Maps often need accounting after the fight, not just a combat victory."],
-    ["Closeout", "Review pending XP, Guild share, banking/storage, guidance tasks, and the TAG Action Log before creating another map lead.", "This avoids losing map bonuses, deferred treasure, or unpaid Guild obligations."],
+    ["Closeout", "Review pending XP, Guild share, banking/storage, guidance tasks, and the Adventures Guild Action Log before creating another map lead.", "This avoids losing map bonuses, deferred treasure, or unpaid Guild obligations."],
   ];
   for (const [title, body, hint] of checks) {
     panel.appendChild(modernStatusRow(title, body, hint));
@@ -1436,7 +1436,7 @@ function tagThematicAuditRows(adventure) {
     ["Theme result", number ? `Thematic Dungeon ${number}` : "Generated Thematic Dungeon", "Confirm this is the intended TAG thematic result before Start Adventure; themes change room count, monster logic, treasure, or final-room handling."],
     ["Procedure", adventure.tag_scene || adventure.tag_lead_detail || "Check generated module metadata", "Theme metadata comes from the generated manifest. Exact room count, replacement rolls, and special procedure values remain with the PDF/player signoff."],
     ["Play focus", "Target rooms -> theme procedure -> final-room exception -> reward/XP closeout", "Thematic Dungeons should be treated as altered dungeon engines, not just renamed random dungeons."],
-    ["Signoff", "Replacement rolls, Clue spends, route markers, reward, XP, Guild/finance, and storage review", "Use TAG Actions during exploration, then review TAG Action Log before starting another lead."],
+    ["Signoff", "Replacement rolls, Clue spends, route markers, reward, XP, Guild/finance, and storage review", "Use Adventures Guild Actions during exploration, then review Adventures Guild Action Log before starting another lead."],
   ];
 }
 
@@ -1488,9 +1488,9 @@ function renderThematicDungeonSignoffChecklist() {
   const panel = card("Thematic Dungeon Signoff Checklist", "Use this app-owned checklist after a TAG Thematic Dungeon. It focuses on target-room procedure, theme exceptions, reward handling, and closeout.");
   const checks = [
     ["Target and theme", "Confirm room target and core procedure: nine-room mine, HCL+5 giant/abyss, four-room dragon, d6+5 maze, or HCL+3 hideout.", "Theme target changes when the dungeon should end and what happens to unvisited exits."],
-    ["Procedure rolls", "Resolve undead replacement, cave-ins, boulder throw, dragon reveal, prisoner table, maze lost/event checks, stolen goods, or capture-alive choice.", "Use TAG Actions so the changed dungeon logic stays visible in the campaign log."],
+    ["Procedure rolls", "Resolve undead replacement, cave-ins, boulder throw, dragon reveal, prisoner table, maze lost/event checks, stolen goods, or capture-alive choice.", "Use Adventures Guild Actions so the changed dungeon logic stays visible in the campaign log."],
     ["Finale", "Confirm final-room size/route, final foe, special restrictions, reward, treasure conversion, and XP.", "Generated encounters are proxies where needed; the printed theme procedure remains the authority."],
-    ["Closeout", "Review pending XP, Guild share, banking/storage, guidance tasks, route markers, and the TAG Action Log before creating another lead.", "Thematic dungeons tend to leave more state behind than ordinary random dungeons."],
+    ["Closeout", "Review pending XP, Guild share, banking/storage, guidance tasks, route markers, and the Adventures Guild Action Log before creating another lead.", "Thematic dungeons tend to leave more state behind than ordinary random dungeons."],
   ];
   for (const [title, body, hint] of checks) {
     panel.appendChild(modernStatusRow(title, body, hint));
@@ -1498,7 +1498,7 @@ function renderThematicDungeonSignoffChecklist() {
   const panelActions = actions();
   panelActions.append(
     link("Theme Rules", ruleReferenceHref("tag_thematic_dungeon_playthrough_audit", "TAG thematic dungeon playthrough audit"), "Open the Rules Reference entry for Thematic Dungeon signoff guidance.", "link-button secondary"),
-    link("TAG Actions", "/modern/go-adventure", "Return to Go Adventure to review generated leads, closeout, signoff, and TAG Action Log state.", "link-button secondary")
+    link("Adventures Guild Actions", "/modern/go-adventure", "Return to Go Adventure to review generated leads, closeout, signoff, and Adventures Guild Action Log state.", "link-button secondary")
   );
   panel.appendChild(panelActions);
   return panel;
@@ -1762,7 +1762,7 @@ function renderPageCompanion(page) {
     guides: ["Guide Snapshot", [
       ["Available now", "TAG guide and checking docs", "Guides collect player workflow and manual test material."],
       ["Planned", "starter and closeout guides", "Guide content can grow without changing rule automation."],
-      ["Use case", "before, during, after play", "Good guides reduce log/action confusion during TAG procedures."],
+      ["Use case", "before, during, after play", "Good guides reduce log/action confusion during Adventures Guild procedures."],
     ]],
     developer: ["Developer Snapshot", [
       ["Artwork slots", `${modernState.artwork.length} registered`, "Artwork Manager shows missing/present DATA_DIR/assets paths."],
@@ -2506,7 +2506,7 @@ function renderGuild() {
     "Adventure completion creates closeout prompts for 50% monetary loot share, upkeep, availability-reroll reset, and leaving-restriction signoff.",
     "Run Upkeep and Apply 50% Loot Share clear their matching closeout prompts automatically.",
     "Free Guild ledger deposits, equipment discount, martial arts training, cartographer bonus, resurrection funding, and availability reroll require active benefits and coffers above 0 gp.",
-    "Guild Job Lead installs a playable Guild Job adventure module; Guild spell handling remains in TAG Actions during exploration.",
+    "Guild Job Lead installs a playable Guild Job adventure module; Guild spell handling remains in Adventures Guild Actions during exploration.",
     "Leaving Guild membership is blocked while coffers are below 5000 gp; restore coffers first, then turn Guild active off.",
   ].forEach((text) => list.appendChild(el("li", "", text)));
   benefits.appendChild(list);
@@ -4264,10 +4264,11 @@ async function renderRulePdfManager() {
   const status = el("div", "modern-list");
   const resultBox = el("div", "modern-list");
   function showRulePdfResult(kind, message, title = "Rules PDF Import") {
-    resultBox.replaceChildren(modernStatusRow(title, message, kind === "error" ? "Fix the issue shown here, then run Extract TAG Narrative again." : "This is the latest upload/extraction result."));
+    resultBox.replaceChildren(modernStatusRow(title, message, kind === "error" ? "Fix the issue shown here, then run Extract Adventures Guild Narrative again." : "This is the latest upload/extraction result."));
   }
   async function refreshList() {
     const payload = await api("/api/rules/pdfs");
+    const override = payload.override_status || {};
     uploadedSelect.replaceChildren(new Option("Choose uploaded PDF", ""));
     for (const item of payload.uploaded || []) {
       uploadedSelect.appendChild(new Option(`${item.filename} (${Math.round((item.size_bytes || 0) / 1024)} KB)`, item.filename));
@@ -4275,7 +4276,10 @@ async function renderRulePdfManager() {
     status.replaceChildren(
       modernStatusRow("Uploaded PDFs", `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, "These PDFs are user data beside game.db and can be backed up from the appdata folder."),
       modernStatusRow("Override file", payload.override_path || "DATA_DIR/tag_scene_narrative_overrides.json", "Generated modules use this local editable file for player-facing scene prose."),
-      modernStatusRow("Packaged PDFs", `${(payload.packaged || []).length} bundled/local Rules folder file(s) visible read-only`, "Upload copies into DATA_DIR/rules when you want extraction to write local override data.")
+      modernStatusRow("Extracted narrative", override.exists ? `${override.rumors || 0} rumor(s), ${override.scenes || 0} scene(s), ${override.scene_branches || 0} branch(es)` : "No local override file found", override.error || "Counts are read from DATA_DIR/tag_scene_narrative_overrides.json and show what generated Adventures Guild modules can use."),
+      modernStatusRow("Last extraction", override.modified_at || "Not extracted yet", "Timestamp is the local override file modified time on the server."),
+      modernStatusRow("Packaged PDFs", `${(payload.packaged || []).length} bundled/local Rules folder file(s) visible read-only`, "Upload copies into DATA_DIR/rules when you want extraction to write local override data."),
+      modernStatusRow("PDF boundary", "Local-only copied prose", "Exact PDF prose is written only to DATA_DIR/tag_scene_narrative_overrides.json and is not committed or redistributed by the app repository.")
     );
   }
   await refreshList();
@@ -4304,7 +4308,7 @@ async function renderRulePdfManager() {
       showRulePdfResult("ok", result.message || "PDF uploaded.", "Upload complete");
       await refreshList();
     }),
-    button("Extract TAG Narrative", "Extract supported Tales from The Adventures Guild Rumor/Scene prose from the selected uploaded PDF into DATA_DIR/tag_scene_narrative_overrides.json.", async () => {
+    button("Extract Adventures Guild Narrative", "Extract supported Tales from The Adventures Guild Rumor/Scene prose from the selected uploaded PDF into DATA_DIR/tag_scene_narrative_overrides.json.", async () => {
       try {
         const result = await api("/api/rules/extract-tag-narrative", {
           method: "POST",
@@ -4339,7 +4343,7 @@ function renderGuides() {
   const row = actions();
   row.append(
     link("TAG Section Guide", "/docs/Checking/TAG_SECTION_GUIDE.html", "Open the TAG workflow guide."),
-    link("TAG Generated Test Checklist", "/docs/Checking/TAG_SECTION_GUIDE.html#manual-test-generated-tag-adventures", "Open the manual test checklist for generated TAG adventures."),
+    link("Adventures Guild Test Checklist", "/docs/Checking/TAG_SECTION_GUIDE.html#manual-test-generated-tag-adventures", "Open the manual test checklist for generated Adventures Guild adventures."),
     link("Checking Docs", "/docs/Checking/", "Open the Checking docs folder where the server can list files if enabled.")
   );
   panel.appendChild(row);
@@ -4351,8 +4355,8 @@ function renderGuides() {
 
 async function renderDeveloper() {
   await loadArtwork();
-  const gate = card("Developer Unlock", "Enter password 7979 to show developer tools.");
-  const pw = input("password", "modern-dev-pw", "Developer password. Default is 7979.");
+  const gate = card("Developer Unlock", "Enter the developer password to show maintenance tools.");
+  const pw = input("password", "modern-dev-pw", "Developer password.");
   const tools = el("div", "modern-dev-tools hidden");
   const artworkMount = el("div", "modern-dev-artwork-manager hidden");
   const rulePdfMount = el("div", "modern-dev-rule-pdf-manager hidden");
@@ -4376,7 +4380,7 @@ async function renderDeveloper() {
   tools.appendChild(rulePdfMount);
   tools.appendChild(artworkMount);
   if (window.sessionStorage.getItem("ahazi-modern-dev-unlocked") === "1") tools.classList.remove("hidden");
-  const unlock = button("Unlock", "Show developer tools when password is 7979.", async () => {
+  const unlock = button("Unlock", "Show developer tools when the password is correct.", async () => {
     if (pw.value !== "7979") throw new Error("Incorrect developer password.");
     window.sessionStorage.setItem("ahazi-modern-dev-unlocked", "1");
     tools.classList.remove("hidden");
