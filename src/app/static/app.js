@@ -607,6 +607,7 @@ const withdrawBtn = document.getElementById("withdraw");
 const resolveTrapBtn = document.getElementById("resolve-trap");
 const claimTreasureBtn = document.getElementById("claim-treasure");
 const restBtn = document.getElementById("rest");
+const copyNarrativeDebugReportBtn = document.getElementById("copy-narrative-debug-report");
 const tagOpenAdventureActions = document.getElementById("tag-open-adventure-actions");
 const tagSessionDiagnosticsBtn = document.getElementById("tag-session-diagnostics");
 const tagCopyPlaytestReportBtn = document.getElementById("tag-copy-playtest-report");
@@ -11594,6 +11595,97 @@ async function copyGeneratedTagPlaytestReport() {
   }
 }
 
+function narrativeReportLines(session = state.session) {
+  return (session?.log || []).map((entry) => normalizeLogEntryForDisplay(entry));
+}
+
+function currentRoomDebugSummary(session = state.session) {
+  const tile = session ? currentTile(session) : null;
+  if (!tile) return ["Current room: none"];
+  const enemies = (tile.enemies || []).map((enemy) => `${enemy.name} ${enemy.life}/${enemy.max_life}`).join(", ") || "none";
+  const exits = (tile.exits || [])
+    .map((exit) => `${exit.direction || "?"} ${exit.kind || "exit"} ${exit.status || ""}`.trim())
+    .join(", ") || "none";
+  return [
+    `Current room: ${tile.title || tile.id || "unknown"}`,
+    `Tile id/key/content: ${tile.id || "?"} / ${tile.tile_key || "?"} / ${tile.content_key || "?"}`,
+    `Mode/camp: ${session?.mode || "unknown"} / ${session?.camped_outside ? "camped outside" : "inside"}`,
+    `Enemies: ${enemies}`,
+    `Treasure: ${tile.treasure_claimed ? "claimed" : tile.treasure_summary || `${tile.treasure_gold || 0}gp ${(tile.treasure_items || []).join(", ")}`.trim() || "none"}`,
+    `Trap: ${tile.trap_key ? `${tile.trap_key}${tile.trap_resolved ? " (resolved)" : " (active)"}` : "none"}`,
+    `Exits: ${exits}`,
+  ];
+}
+
+function questDebugSummary(session = state.session) {
+  const quest = session?.active_quest;
+  if (!quest) return ["Active quest: none"];
+  const claim = questClaimStatus(session, quest);
+  return [
+    `Active quest: ${questDisplayTitle(session, quest)}`,
+    `Description: ${quest.description || "none"}`,
+    `Completed/reward claimed: ${Boolean(quest.completed)} / ${Boolean(quest.reward_claimed)}`,
+    `Claim status: ${claim.ok ? "ready" : claim.reason}`,
+    `Generated lead signoff: ${Boolean(quest.tag_generated_lead_signoff)}`,
+    `Generated next action: ${quest.tag_generated_lead_state?.next_action || "none"}`,
+  ];
+}
+
+function buildNarrativeDebugReport(session = state.session) {
+  const { room, promptData, tagReference } = tagCurrentPromptData(session);
+  const diagnostics = generatedTagDiagnostics(session);
+  const narrativeLines = narrativeReportLines(session);
+  return [
+    "# Narrative Debug Report",
+    "",
+    "Use this file for playtest comments. The first section is the actual in-game Narrative text. Everything after `Debug context` is extra state added to help diagnose what the app thought was happening.",
+    "",
+    "## Actual Narrative",
+    "",
+    narrativeLines.length ? narrativeLines.map((line, index) => `${index + 1}. ${line}`).join("\n") : "No narrative lines were recorded.",
+    "",
+    "## Debug Context",
+    "",
+    "The following information is not player narrative. It is included for debugging only.",
+    "",
+    `Copied at: ${new Date().toISOString()}`,
+    `Session id: ${session?.id || "unknown"}`,
+    `Adventure: ${sessionAdventureTitleText(session) || session?.adventure_id || "unknown"}`,
+    `Adventure type: ${session?.adventure_type || "unknown"}`,
+    `Session mode: ${session?.mode || "unknown"}`,
+    `Ruleset: ${session?.ruleset || "ee"} / XP: ${session?.xp_system || "unknown"}`,
+    `Party: ${(session?.party || []).map((member) => `${member.name} L${member.level} ${member.current_life}/${member.max_life} Life ${member.gold || 0}gp`).join("; ") || "none"}`,
+    "",
+    "### Current Room",
+    currentRoomDebugSummary(session).map((line) => `- ${line}`).join("\n"),
+    "",
+    "### Quest State",
+    questDebugSummary(session).map((line) => `- ${line}`).join("\n"),
+    "",
+    "### Generated Adventures Guild Context",
+    tagReference
+      ? [
+          `- Lead: ${tagReference.lead_type || "unknown"} ${tagReference.lead_detail || ""}`.trim(),
+          `- Current generated room: ${room?.id || "unknown"} - ${room?.title || ""}`,
+          `- Prompt title: ${promptData?.title || "none"}`,
+          `- Prompt body: ${promptData?.body || "none"}`,
+          `- Prompt actions: ${(promptData?.actions || []).map((action) => _diagnosticPromptActionLabel(action)).join(", ") || "none"}`,
+          `- Diagnostics: ${diagnostics ? generatedTagDiagnosticsLines(session).join(" | ") : "none"}`,
+        ].join("\n")
+      : "- Not a generated Adventures Guild session.",
+  ].join("\n");
+}
+
+async function copyNarrativeDebugReport() {
+  const report = buildNarrativeDebugReport(state.session);
+  try {
+    await navigator.clipboard.writeText(report);
+    setStatus("Narrative debug report copied. Actual Narrative is first; debug context follows.");
+  } catch {
+    setStatus("Could not copy narrative debug report to clipboard.");
+  }
+}
+
 function syncTagAdvancedControls(hasDirector = false) {
   if (!tagAdventureActionsDialog) return;
   const grids = Array.from(tagAdventureActionsDialog.querySelectorAll(".tag-settlement-grid"));
@@ -17260,6 +17352,13 @@ function renderSession() {
   safeSessionRender("narrativeObjectiveChips", () => renderNarrativeObjectiveChips(session));
   safeSessionRender("explorationCommand", () => renderExplorationCommandBar(session));
   applyExplorationPanelVisibility();
+  if (copyNarrativeDebugReportBtn) {
+    copyNarrativeDebugReportBtn.classList.toggle("hidden", !session);
+    setButtonTooltip(
+      copyNarrativeDebugReportBtn,
+      "Copy a Markdown report. The Actual Narrative section is exactly what the player saw; Debug Context is extra state for diagnosing playtest issues."
+    );
+  }
   if (tagOpenAdventureActions || tagSessionDiagnosticsBtn || tagCopyPlaytestReportBtn) {
     const isTagGenerated =
       Boolean(session.tag_banking_enabled) ||
@@ -30710,9 +30809,22 @@ function buildLogColourKey() {
 
 function buildLogEntryLine(entry, session, baseClass = "") {
   const displayEntry = normalizeLogEntryForDisplay(entry);
-  const classes = ["log-line", baseClass, logEntryToneClass(displayEntry, session)].filter(Boolean).join(" ");
+  const classes = [
+    "log-line",
+    baseClass,
+    logEntryToneClass(displayEntry, session),
+    logEntryLayoutClass(displayEntry),
+  ].filter(Boolean).join(" ");
   const line = node("div", classes, displayEntry);
   return line;
+}
+
+function logEntryLayoutClass(entry) {
+  const line = String(entry || "");
+  if (/^(Adventure begins|Objective|Entered |The party (makes camp|enters the dungeon|leaves the dungeon)|Living heroes|Spells, prayers|Buy gear)/i.test(line)) {
+    return "log-line-section";
+  }
+  return "";
 }
 
 function normalizeLogEntryForDisplay(entry) {
@@ -30976,6 +31088,7 @@ tagOpenBankTransfer?.addEventListener("click", () => openTagBankTransferDialog()
 tagOpenAdventureActions?.addEventListener("click", () => openTagAdventureActions());
 tagSessionDiagnosticsBtn?.addEventListener("click", () => showGeneratedTagDiagnostics());
 tagCopyPlaytestReportBtn?.addEventListener("click", () => copyGeneratedTagPlaytestReport());
+copyNarrativeDebugReportBtn?.addEventListener("click", () => copyNarrativeDebugReport());
 tagCheckAvailability?.addEventListener("click", () => {
   checkTagAvailability().catch(handleError);
 });

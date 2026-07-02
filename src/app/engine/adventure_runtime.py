@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from ..schemas import ActiveQuestState, SessionState, TileState
 from .adventure_foes import spawn_manifest_foes
-from .tag_compat import normalize_tag_log_line
+from .tag_compat import normalize_tag_log_line, tag_reference_from_manifest
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
@@ -120,6 +120,7 @@ def announce_imported_npcs_on_enter(
     tile: TileState,
     manifest: dict[str, Any],
 ) -> None:
+    tag_reference = tag_reference_from_manifest(manifest)
     room_id = manifest_room_id(tile, manifest)
     if not room_id:
         return
@@ -128,6 +129,8 @@ def announce_imported_npcs_on_enter(
             continue
         npc_id = npc.get("id")
         if not isinstance(npc_id, str) or not npc_id.strip():
+            continue
+        if tag_reference and npc_id == "tag-contact":
             continue
         key = imported_npc_dialogue_key(npc_id)
         if key in session.imported_fired_triggers:
@@ -335,11 +338,7 @@ def _normalize_trigger_treasure(treasure: dict[str, Any]) -> tuple[int, list[str
 
 
 def _tag_reference_from_session(session: SessionState) -> dict[str, Any]:
-    manifest = session.imported_manifest or {}
-    source = manifest.get("source") if isinstance(manifest.get("source"), dict) else {}
-    parameters = source.get("parameters") if isinstance(source.get("parameters"), dict) else {}
-    tag_reference = parameters.get("tag_reference")
-    return tag_reference if isinstance(tag_reference, dict) else {}
+    return tag_reference_from_manifest(session.imported_manifest or {})
 
 
 def _log_tag_room_action_guidance(session: SessionState, room_id: str) -> None:
@@ -349,29 +348,8 @@ def _log_tag_room_action_guidance(session: SessionState, room_id: str) -> None:
     key = f"tag_guidance:{room_id}"
     if key in session.imported_fired_triggers:
         return
-    prompts = tag_reference.get("room_prompts") if isinstance(tag_reference.get("room_prompts"), dict) else {}
-    prompt = prompts.get(room_id) if isinstance(prompts.get(room_id), dict) else {}
-    title = str(prompt.get("title") or "Adventures Guild scene").strip()
-    body = str(prompt.get("body") or "").strip()
-    actions = prompt.get("actions") if isinstance(prompt.get("actions"), list) else []
-    labels = [
-        str(action.get("label") or "").strip()
-        for action in actions
-        if isinstance(action, dict) and str(action.get("label") or "").strip()
-    ]
-    if body:
-        session.log.append(f"Adventures Guild guidance - {title}: {body}")
-    if labels:
-        session.log.append(
-            "Adventures Guild actions here: "
-            + ", ".join(labels[:5])
-            + ". Use one only when this scene asks for that branch, Clue spend, route change, capture result, reward, or XP marker."
-        )
-    if room_id == "tag-final-scene":
-        session.log.append(
-            "TAG final-scene reminder: decide kill, capture, parley, escape, rewards, and XP before leaving. "
-            "To capture a foe alive, tick Subdual damage before Resolve Round."
-        )
+    # Current Objective, Quest Details, diagnostics, and direct prompt buttons now carry
+    # generated Adventures Guild workflow. Do not duplicate room prose in the Narrative.
     session.imported_fired_triggers.append(key)
 
 

@@ -219,6 +219,49 @@ def _clean_pdf_text(text: str) -> str:
     return "\n".join(line.strip() for line in joined.splitlines() if line.strip())
 
 
+def _tag_pdf_page_continues_previous(previous_page: str, next_page: str) -> bool:
+    import re
+
+    previous_lines = [line.strip() for line in previous_page.splitlines() if line.strip()]
+    next_lines = [line.strip() for line in next_page.splitlines() if line.strip()]
+    if not previous_lines or not next_lines:
+        return False
+    previous_tail = previous_lines[-1]
+    next_head = next_lines[0]
+    if previous_tail.endswith("-"):
+        return True
+    if previous_tail.endswith((".", "!", "?", ":", ";", ")", "]", "\"", "”")):
+        return False
+    if re.fullmatch(r"\d{1,3}", next_head):
+        return False
+    if re.fullmatch(r"(?i)Scene\s+\d+", next_head) and previous_tail.endswith((".", "!", "?")):
+        return False
+    if next_head.lower() in {
+        "scenes",
+        "rumors (d12)",
+        "thematic dungeons",
+        "treasure maps",
+        "the map leads to",
+        "red herring table (d6)",
+    }:
+        return False
+    return True
+
+
+def _join_tag_pdf_pages(page_texts: list[str]) -> str:
+    cleaned_pages = [_clean_pdf_text(page) for page in page_texts]
+    cleaned_pages = [page for page in cleaned_pages if page.strip()]
+    if not cleaned_pages:
+        return ""
+    combined = cleaned_pages[0]
+    for page in cleaned_pages[1:]:
+        if _tag_pdf_page_continues_previous(combined, page):
+            combined = combined.rstrip("- \n") + " " + page.lstrip()
+        else:
+            combined = combined.rstrip() + "\n" + page.lstrip()
+    return _clean_pdf_text(combined)
+
+
 def _extract_tag_pdf_text(pdf_path: Path) -> str:
     try:
         from pypdf import PdfReader
@@ -226,7 +269,7 @@ def _extract_tag_pdf_text(pdf_path: Path) -> str:
         raise RuntimeError("pypdf is required to extract uploaded rule PDF text.") from exc
     try:
         reader = PdfReader(str(pdf_path))
-        return _clean_pdf_text("\n".join(page.extract_text() or "" for page in reader.pages))
+        return _join_tag_pdf_pages([page.extract_text() or "" for page in reader.pages])
     except Exception as exc:  # noqa: BLE001
         message = str(exc)
         if "cryptography" in message.lower() or "aes" in message.lower():

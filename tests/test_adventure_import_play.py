@@ -86,6 +86,38 @@ def test_tag_generated_adventure_installs_under_adventure_section(repo: RulesRep
     assert "Adventure section" in entry.result_text
 
 
+def test_tag_generated_adventure_opening_log_is_player_facing(
+    engine: RandomDungeonEngine,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    campaign = default_campaign()
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="2")
+
+    session = create_session_from_manifest(
+        engine,
+        "tag-clean-opening",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+
+    joined = "\n".join(session.log)
+    assert "Adventure begins: The Adventures Guild Rumor 2: Medusa in the Hunter's Cabin." in joined
+    assert "Objective: Survive or talk down the assassins, then resolve the medusa Xasartha." in joined
+    assert "Entered Medusa in the Hunter's Cabin:" in joined or "Entered Lead Trail:" in joined
+    assert "Generated from The Adventures Guild campaign downtime" not in joined
+    assert "Imported adventure:" not in joined
+    assert "Campaign mode:" not in joined
+    assert "Fiendish Foes enabled" not in joined
+    assert "Adventures Guild guidance" not in joined
+    assert "Adventures Guild actions here" not in joined
+    assert "Guild Contact:" not in joined
+    assert "Guild Contact says" not in joined
+
+
 def test_tag_route_marker_rewrites_latest_generated_adventure(repo: RulesRepository, tmp_path: Path) -> None:
     data_dir = tmp_path / "appdata"
     data_dir.mkdir()

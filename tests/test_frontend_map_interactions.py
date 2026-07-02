@@ -1204,7 +1204,8 @@ def test_log_colour_key_and_semantic_classes_are_present() -> None:
 
     assert "function logEntryToneClass(entry, session)" in APP_JS
     assert "buildLogEntryLine(entry, session" in APP_JS
-    assert '["log-line", baseClass, logEntryToneClass(displayEntry, session)]' in APP_JS
+    assert "logEntryLayoutClass(displayEntry)" in APP_JS
+    assert "function logEntryLayoutClass(entry)" in APP_JS
     assert "function normalizeLogEntryForDisplay(entry)" in APP_JS
     assert "If this room has no scene-specific action, keep moving" in APP_JS
     assert "buildLogColourKey()" in _function_body("renderCombatRailLog", APP_JS)
@@ -2148,6 +2149,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-bank-transfer-dialog",
         "tag-bank-transfer-character",
         "tag-run-bank-transfer",
+        "copy-narrative-debug-report",
         "tag-session-diagnostics",
         "tag-copy-playtest-report",
         "tag-open-adventure-actions",
@@ -2329,6 +2331,12 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "function repairGeneratedTagGuidance" in APP_JS
     assert "function generatedTagDiagnostics" in APP_JS
     assert "function copyGeneratedTagPlaytestReport" in APP_JS
+    assert "function buildNarrativeDebugReport" in APP_JS
+    assert "function copyNarrativeDebugReport" in APP_JS
+    assert "## Actual Narrative" in APP_JS
+    assert "## Debug Context" in APP_JS
+    assert "The following information is not player narrative" in APP_JS
+    assert "Copy Narrative Debug Report" in INDEX_HTML
     assert "Advanced / Manual Actions" in INDEX_HTML
     assert "Copy Playtest Report" in INDEX_HTML
     assert "manual_fallback_needed" in APP_JS

@@ -93,6 +93,8 @@ def test_imported_session_defers_entrance_until_reenter() -> None:
     assert session.imported_entrance_pending is True
     assert not entrance.enemies
     assert not any("Entered Gate" in entry for entry in session.log)
+    assert any("makes camp outside the dungeon entrance" in entry for entry in session.log)
+    assert not any("explored 1 map element" in entry.lower() or "explored 5 map elements" in entry.lower() for entry in session.log)
 
     eng.advance(session, "return_to_dungeon")
     assert session.camped_outside is False

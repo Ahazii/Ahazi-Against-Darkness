@@ -6,6 +6,7 @@ from uuid import uuid4
 from ..db import now_utc
 from ..schemas import ActiveQuestState, ExitState, MapState, PartyMemberState, SessionState, TileState
 from .adventure_runtime import IMPORTED_ROOM_PREFIX, fire_imported_triggers, quest_from_manifest
+from .tag_compat import tag_reference_from_manifest
 from .experience import campaign_mode_label, normalize_unlimited_map_element_cap
 from .roster_sync import initial_xp_tally
 from .expert_skill_effects import prepare_adventure_expert_items
@@ -707,7 +708,7 @@ def apply_start_camped_outside(engine: RandomDungeonEngine, session: SessionStat
     session.mode = "exploration"
     session.camped_outside = True
     session.summary = []
-    session.log.append("The party makes camp outside the dungeon before entering.")
+    session.log.append("The party makes camp outside the dungeon entrance before entering.")
     session.log.append(
         "Hire retainers, bank gold, shop, or regroup, then (Re)enter Dungeon when ready."
     )
@@ -824,20 +825,30 @@ def create_session_from_manifest(
         map_height = max(28, map_height)
 
     party_xp = [member.xp for member in party]
-    log = [
-        f"Imported adventure: {manifest.get('title', adventure_id)}.",
-        manifest.get("synopsis", ""),
-        f"Campaign mode: {campaign_mode_label(chosen_xp)}.",
-    ]
+    tag_reference = tag_reference_from_manifest(manifest)
+    if tag_reference:
+        objective_text = str((manifest.get("quest") or {}).get("objective_text") or "").strip()
+        log = [
+            f"Adventure begins: {manifest.get('title', adventure_id)}.",
+        ]
+        if objective_text:
+            log.append(f"Objective: {objective_text}")
+    else:
+        log = [
+            f"Imported adventure: {manifest.get('title', adventure_id)}.",
+            manifest.get("synopsis", ""),
+            f"Campaign mode: {campaign_mode_label(chosen_xp)}.",
+        ]
     starting_clues = sum(max(0, member.clues) for member in party)
-    if starting_clues:
+    if starting_clues and not tag_reference:
         log.append(f"Party begins with {starting_clues} carried Clue(s).")
     prepare_adventure_expert_items(party, log)
     for member in party:
         snapshot_carry_baseline(member)
     chosen_fiendish = normalize_fiendish_foes_enabled(fiendish_foes_enabled)
     eligible = party_fiendish_foes_eligible(party)
-    log.append(fiendish_foes_session_label(chosen_fiendish, eligible=eligible) + ".")
+    if not tag_reference:
+        log.append(fiendish_foes_session_label(chosen_fiendish, eligible=eligible) + ".")
 
     timestamp = now_utc()
     entrance_tile = tile_by_id[entrance_tile_id]

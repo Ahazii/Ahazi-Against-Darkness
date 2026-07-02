@@ -807,6 +807,40 @@ def test_tag_pdf_rumor_parser_keeps_scene_10_and_continued_entries() -> None:
     assert "Trap text" not in " ".join(rumors.values())
 
 
+def test_tag_pdf_page_joiner_keeps_wrapped_rumor_paragraph_and_branch() -> None:
+    text = tag_campaign._join_tag_pdf_pages(
+        [
+            "\n".join(
+                [
+                    "Tales from the Adventurers' Guild",
+                    "Rumors (d12)",
+                    "2",
+                    "A medusa has taken residence in an old hunter's cabin in the nearby woods.",
+                    "She is said to wear an emerald necklace worth a fortune, and to be extremely",
+                    "easy to bribe, to the point that some members of an assassins' guild are",
+                    "trying to hire her for her",
+                ]
+            ),
+            "\n".join(
+                [
+                    "James Banner Order #123",
+                    "services. If you want to investigate, go to Scene 10.",
+                    "Scenes",
+                    "Scene 10",
+                    "As you come closer to the hunter's cabin, have all the characters perform a Stealth Save vs. L6.",
+                ]
+            ),
+        ]
+    )
+
+    rumors = tag_campaign._extract_tag_pdf_rumors(text)
+    scenes = tag_campaign._extract_tag_pdf_scenes(text)
+
+    assert "for her services. If you want to investigate, go to Scene 10." in rumors[2]
+    assert "Scene 10" in rumors[2]
+    assert 10 in scenes
+
+
 def test_tag_pdf_scene_parser_keeps_inline_scene_branches_inside_current_scene() -> None:
     text = "\n".join(
         [

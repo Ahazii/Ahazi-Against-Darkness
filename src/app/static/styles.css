@@ -3511,6 +3511,14 @@ button.modern-dashboard-status-icon {
   color: #f0d37a;
 }
 
+.log-line-section {
+  margin-top: 8px;
+}
+
+.log-line-section + .log-line-section {
+  margin-top: 3px;
+}
+
 .log-line-round-summary,
 .combat-log-round-summary {
   color: #f5ddb0;

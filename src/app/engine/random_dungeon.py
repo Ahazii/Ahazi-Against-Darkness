@@ -12907,11 +12907,17 @@ class RandomDungeonEngine:
         session.summary = []
         self._reset_between_foray_resources(session)
         healed_names = self._heal_living_party(session)
-        explored = len(session.map_state.tiles)
-        session.log.append(
-            f"The party leaves the dungeon and makes camp outside. The explored {explored} "
-            f"map element{'s' if explored != 1 else ''} remain ready for return."
-        )
+        visited = set(session.visited_tile_ids or [])
+        if session.map_state.current_tile_id:
+            visited.add(session.map_state.current_tile_id)
+        explored = max(1, len(visited))
+        if session.imported_entrance_pending or explored <= 1:
+            session.log.append("The party makes camp outside the dungeon entrance.")
+        else:
+            session.log.append(
+                f"The party leaves the dungeon and makes camp outside. The {explored} explored "
+                f"map element{'s' if explored != 1 else ''} remain ready for return."
+            )
         self._log_between_foray_refresh(session, healed_names)
         session.log.append("Buy gear, train, regroup, or use the home bank before re-entering the dungeon.")
 
