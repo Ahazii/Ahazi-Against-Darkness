@@ -911,6 +911,33 @@
                   </div>
                 </form>
               </dialog>
+              <dialog id="tag-illusion-spell-dialog" class="help-dialog transfer-dialog tag-illusion-dialog">
+                <form method="dialog" id="tag-illusion-spell-form">
+                  <div class="transfer-dialog-header">
+                    <h3>Learn Illusion Spell</h3>
+                    <p class="muted">Choose the character who receives the leprechaun lesson and the illusion spell to record. This is the Scene 2 bargain choice; the app will pay the lesson cost unless the free lesson condition is selected.</p>
+                  </div>
+                  <div class="tag-settlement-grid">
+                    <label for="tag-illusion-spell-character">
+                      <span>Character</span>
+                      <select id="tag-illusion-spell-character"></select>
+                    </label>
+                    <label for="tag-illusion-spell-select">
+                      <span>Illusion spell</span>
+                      <select id="tag-illusion-spell-select"></select>
+                    </label>
+                    <label class="checkbox-row" for="tag-illusion-spell-free">
+                      <input id="tag-illusion-spell-free" type="checkbox" />
+                      <span>Free lesson condition met</span>
+                    </label>
+                  </div>
+                  <p id="tag-illusion-spell-note" class="muted"></p>
+                  <div class="actions transfer-dialog-actions">
+                    <button id="tag-illusion-spell-confirm" type="button" class="primary">Learn spell</button>
+                    <button type="submit" value="cancel" class="secondary">Cancel</button>
+                  </div>
+                </form>
+              </dialog>
               <details class="tag-help-section">
                 <summary>
                   <span>Services and Log</span>
@@ -1014,7 +1041,7 @@
         <div id="session-main" class="session-main">
           <div class="panel map-panel map-panel-layout">
             <div class="panel-heading">
-              <h2>Adventure View</h2>
+              <h2>Adventure View <span id="session-adventure-title" class="session-adventure-title"></span></h2>
               <div class="panel-actions">
                 <span id="fd-map-mode" class="status fd-map-mode hidden" title="Current Forsaken Depths map layer"></span>
                 <span id="fd-river-type" class="status fd-river-type hidden" title="Rolled river type for this underground river"></span>

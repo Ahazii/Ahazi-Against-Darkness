@@ -229,12 +229,12 @@ def _upgrade_leprechaun_vendor_manifest(manifest: dict[str, Any], tag_reference:
             room["description"] = str(prompts["tag-complication"]["body"])
         if room.get("id") == "tag-final-scene":
             room["title"] = "Blackbird Hill Bargain"
-            room["description"] = "The leprechauns finally stop running the party in circles. They are ready to bargain, not to be looted like a monster room."
+            room["description"] = "The leprechaun rumor is real. Under the old oak at Blackbird Hill, the little folk are ready to bargain: shoes for gold, or one illusion lesson for a magically inclined hero."
             for trigger in room.get("triggers") or []:
                 if isinstance(trigger, dict):
                     trigger.pop("encounter", None)
                     if isinstance(trigger.get("log"), str):
-                        trigger["log"] = "Resolve the leprechaun bargain; use Buy Shoes of Fast Walk or Learn illusion spell if the party chooses those Scene 2 options."
+                        trigger["log"] = "The leprechaun bargain is ready: buy Shoes of Fast Walk or choose one illusion lesson before leaving Blackbird Hill."
 
 
 def _repaired_room_prompts(tag_reference: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:

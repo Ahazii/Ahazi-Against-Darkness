@@ -889,9 +889,9 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "complication": "Tiny footprints loop around the stones in impossible circles. A laugh skips from one side of the hill to the other, always just behind the party. Bright scraps of green cloth hang from thorn branches like deliberate bait, and somewhere ahead coins clink in a pouch no honest traveller is carrying.",
         "complication_guidance": "No purchase or spell choice is due in this room; continue to the bargain scene when ready.",
         "final_title": "Blackbird Hill Bargain",
-        "final_description": "The leprechauns finally stop running the party in circles. They are ready to bargain, not to be looted like a monster room.",
+        "final_description": "The leprechaun rumor is real. Under the old oak at Blackbird Hill, the little folk are ready to bargain: shoes for gold, or one illusion lesson for a magically inclined hero.",
         "finale_mode": "vendor",
-        "finale_instruction": "Choose who buys magical shoes, whether the party buys enough pairs to make spell teaching free, and which single eligible character learns an illusion spell.",
+        "finale_instruction": "Choose who buys magical shoes, whether the party bought enough pairs to make spell teaching free, and which single eligible character learns one illusion spell.",
         "rewards": "Buy Shoes of Fast Walk for 200 gp per pair, up to one pair per character. One eligible character may learn one illusion spell for 100 gp, or free if at least three pairs of shoes were bought.",
         "final_prompt_actions": [
             {

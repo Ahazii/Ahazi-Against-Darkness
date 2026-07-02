@@ -331,6 +331,12 @@ const tagFinanceNote = document.getElementById("tag-finance-note");
 const tagRunFinance = document.getElementById("tag-run-finance");
 const tagAdventureActionsDialog = document.getElementById("tag-adventure-actions-dialog");
 const tagRelevantActions = document.getElementById("tag-relevant-actions");
+const tagIllusionSpellDialog = document.getElementById("tag-illusion-spell-dialog");
+const tagIllusionSpellCharacter = document.getElementById("tag-illusion-spell-character");
+const tagIllusionSpellSelect = document.getElementById("tag-illusion-spell-select");
+const tagIllusionSpellFree = document.getElementById("tag-illusion-spell-free");
+const tagIllusionSpellNote = document.getElementById("tag-illusion-spell-note");
+const tagIllusionSpellConfirm = document.getElementById("tag-illusion-spell-confirm");
 const tagBankTransferDialog = document.getElementById("tag-bank-transfer-dialog");
 const tagBankTransferCharacter = document.getElementById("tag-bank-transfer-character");
 const tagBankTransferAll = document.getElementById("tag-bank-transfer-all");
@@ -384,6 +390,7 @@ const sessionPanel = document.getElementById("session-panel");
 const sessionMain = document.getElementById("session-main");
 const showSetupBtn = document.getElementById("show-setup");
 const sessionMode = document.getElementById("session-mode");
+const sessionAdventureTitle = document.getElementById("session-adventure-title");
 const fdMapMode = document.getElementById("fd-map-mode");
 const fdRiverType = document.getElementById("fd-river-type");
 const fdBoatStatus = document.getElementById("fd-boat-status");
@@ -2828,6 +2835,14 @@ function sessionDisplayTitle(session) {
     return `${partyNameById(session.party_id)} — ${importedTitle}`;
   }
   return `${partyNameById(session.party_id)} — ${session.adventure_id}`;
+}
+
+function sessionAdventureTitleText(session) {
+  if (!session) return "";
+  const manifestTitle = session.imported_title || session.imported_manifest?.title || session.imported_manifest?.name;
+  if (manifestTitle) return manifestTitle;
+  if (session.adventure_id) return questPrettyTitle(String(session.adventure_id).replace(/[-_]+/g, " "));
+  return "";
 }
 
 function massBlessingTargetId(target, kind) {
@@ -11102,6 +11117,92 @@ function tagDirectBranchCost(defaults = {}) {
   return 0;
 }
 
+function illusionistSpellRows() {
+  return (state.rulesTables?.illusionist_spells_table || [])
+    .map((row) => ({
+      spell: String(row.spell || row.name || "").trim(),
+      result: String(row.result || row.description || "").trim(),
+      roll: String(row.roll || "").trim(),
+    }))
+    .filter((row) => row.spell);
+}
+
+function populateIllusionSpellSelect(select, selectedSpell = "") {
+  if (!select) return;
+  select.replaceChildren();
+  const rows = illusionistSpellRows();
+  if (!rows.length) {
+    const option = document.createElement("option");
+    option.value = selectedSpell || "Illusion spell";
+    option.textContent = selectedSpell || "Illusion spell";
+    select.appendChild(option);
+    setTooltip(select, "Illusion spell table was not loaded; record the spell from the printed source.");
+    return;
+  }
+  for (const row of rows) {
+    const option = document.createElement("option");
+    option.value = row.spell;
+    option.textContent = row.roll ? `${row.roll}. ${row.spell}` : row.spell;
+    option.title = row.result;
+    if (selectedSpell && row.spell.toLowerCase() === selectedSpell.toLowerCase()) option.selected = true;
+    select.appendChild(option);
+  }
+  setTooltip(select, "Choose the illusion spell taught by the leprechauns. Hover each option for its table effect.");
+}
+
+function selectedIllusionSpellReference(spell, isFree) {
+  const chosen = String(spell || "illusion spell").trim();
+  return `Scene 2 illusion spell: ${chosen}${isFree ? " (free)" : ""}`;
+}
+
+function openLeprechaunSpellDialog(defaults = {}) {
+  if (!tagIllusionSpellDialog || !tagIllusionSpellCharacter || !tagIllusionSpellSelect || !tagIllusionSpellConfirm) {
+    openTagActionsWithDefaults(defaults);
+    return;
+  }
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  tagIllusionSpellCharacter.replaceChildren();
+  for (const member of living) {
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = `${member.name} (${tagMemberSpendableGold(member)}gp available)`;
+    option.title = `Pays from carried gold first, then banked gold if session payment is available.`;
+    tagIllusionSpellCharacter.appendChild(option);
+  }
+  const selectedFromReference = String(defaults.reference || "").replace(/^Scene 2 illusion spell:?\s*/i, "").replace(/\s*\(free\)\s*$/i, "").trim();
+  populateIllusionSpellSelect(tagIllusionSpellSelect, selectedFromReference);
+  if (tagIllusionSpellFree) {
+    tagIllusionSpellFree.checked = /\bfree\b/i.test(String(defaults.reference || ""));
+    setTooltip(tagIllusionSpellFree, "Tick only when the party has bought at least three pairs of magical shoes, making the leprechaun lesson free.");
+  }
+  if (tagIllusionSpellNote) {
+    tagIllusionSpellNote.textContent = "Scene 2: one eligible character may learn one illusion spell. The normal lesson cost is 100 gp unless the free condition is met.";
+  }
+  tagIllusionSpellConfirm.disabled = !living.length;
+  tagIllusionSpellConfirm.onclick = async () => {
+    tagIllusionSpellConfirm.disabled = true;
+    const originalText = tagIllusionSpellConfirm.textContent;
+    tagIllusionSpellConfirm.textContent = "Learning...";
+    try {
+      const free = Boolean(tagIllusionSpellFree?.checked);
+      await runTagBranchActionWithDefaults({
+        ...defaults,
+        branchAction: "leprechaun_illusion_spell",
+        characterId: tagIllusionSpellCharacter.value,
+        reference: selectedIllusionSpellReference(tagIllusionSpellSelect.value, free),
+        amount: free ? 0 : 100,
+      });
+      tagIllusionSpellDialog.close();
+    } catch (error) {
+      handleError(error);
+    } finally {
+      tagIllusionSpellConfirm.disabled = !living.length;
+      tagIllusionSpellConfirm.textContent = originalText;
+    }
+  };
+  if (typeof tagIllusionSpellDialog.showModal === "function") tagIllusionSpellDialog.showModal();
+}
+
 function tagDirectSceneCost(defaults = {}, member = null) {
   if (defaults.sceneAction === "deoldyn_training") {
     const level = Math.max(1, Number(member?.level || 1));
@@ -17013,6 +17114,11 @@ function renderSession() {
   showGameView();
   applyCombatFocusLayout(session);
   sessionMode.textContent = session.camped_outside ? "camp" : session.mode;
+  if (sessionAdventureTitle) {
+    const title = sessionAdventureTitleText(session);
+    sessionAdventureTitle.textContent = title ? `- ${title}` : "";
+    setTooltip(sessionAdventureTitle, title ? `Current adventure module: ${title}` : "Current adventure module title.");
+  }
   syncFdSessionBadges(session);
   updateLogModeControls();
 
@@ -18013,20 +18119,22 @@ function currentObjectiveForSession(session) {
       };
     }
     if (actions.length) {
-      const primary = director?.recommended || actions[0];
+      const orderedActions = director?.recommended
+        ? [director.recommended, ...actions.filter((action) => action !== director.recommended)]
+        : actions;
       return {
         title: `Current objective: ${director?.phase || generated.promptData.title || "TAG room prompt"}`,
         body:
           `${director?.instruction || `${leadLabel}. ${generated.promptData.body || "Use the current generated TAG room prompt to decide which branch, route, reward, XP, or closeout marker applies."}`} ${director?.playbook || ""}`,
         tone: "tag",
-        action: {
-          label: String(primary.label || "Open Adventures Guild Actions"),
+        actions: orderedActions.slice(0, 5).map((promptAction) => ({
+          label: String(promptAction.label || "Open Adventures Guild Actions"),
           kind: "tag-prompt-action",
-          promptAction: primary,
+          promptAction,
           fallbackReference: `${generated.tagReference.title || "TAG lead"}: ${generated.promptData.title || generated.room?.id || "room prompt"}`,
           tagReference: generated.tagReference,
-        },
-        secondaryAction: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
+        })),
+        secondaryAction: null,
       };
     }
   }
@@ -18103,7 +18211,9 @@ function appendCurrentObjectiveButton(parent, action) {
             : `${action.promptAction?.tooltip || "Use this current-room Adventures Guild prompt action."} Opens Adventures Guild Actions prefilled; confirm exact PDF/player values before applying.`
         );
         btn.addEventListener("click", () => {
-          if (directBranch) {
+          if (defaults.branchAction === "leprechaun_illusion_spell") {
+            openLeprechaunSpellDialog(defaults);
+          } else if (directBranch) {
             runTagBranchActionWithDefaults(defaults).catch(handleError);
           } else if (directScene) {
             runTagSceneActionWithDefaults(defaults).catch(handleError);
@@ -18146,12 +18256,12 @@ function renderCurrentObjectiveBanner(session) {
     return;
   }
   currentObjectiveBanner.className = `current-objective-banner ${objective.tone || "neutral"}`;
-  const copy = node("div", "current-objective-copy");
-  copy.appendChild(node("strong", "", objective.title));
-  copy.appendChild(node("span", "", objective.body));
+  setTooltip(currentObjectiveBanner, objective.body || objective.title || "Current objective.");
+  const copy = node("div", "current-objective-copy current-objective-compact");
+  copy.appendChild(node("strong", "", objective.title.replace(/^Current objective:\s*/i, "")));
   currentObjectiveBanner.appendChild(copy);
-  currentObjectiveBanner.appendChild(renderObjectiveActionPlan(session, objective));
   const actions = node("div", "current-objective-actions");
+  for (const action of objective.actions || []) appendCurrentObjectiveButton(actions, action);
   appendCurrentObjectiveButton(actions, objective.action);
   appendCurrentObjectiveButton(actions, objective.secondaryAction);
   if (actions.childElementCount) currentObjectiveBanner.appendChild(actions);
@@ -23195,20 +23305,32 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
     select.appendChild(option);
   }
   wrap.appendChild(select);
-  const input = document.createElement("input");
-  input.type = defaults.branchAction === "leprechaun_shoes" ? "number" : "text";
+  const input =
+    defaults.branchAction === "leprechaun_shoes" ? document.createElement("input") : document.createElement("select");
   if (defaults.branchAction === "leprechaun_shoes") {
+    input.type = "number";
     input.min = "1";
     input.max = "4";
     input.step = "1";
     input.value = String(defaults.amount || 1);
     setTooltip(input, "Number of shoe pairs to buy. Each pair costs 200 gp and gives the wearer +Tier to Defense when withdrawing or fleeing melee.");
   } else {
-    input.placeholder = "Spell name, or include free";
-    input.value = defaults.reference || "Scene 2 illusion spell - choose spell";
-    setTooltip(input, "Enter the illusion spell name. Include the word free if three shoe pairs were bought and the lesson costs 0 gp.");
+    const selectedFromReference = String(defaults.reference || "").replace(/^Scene 2 illusion spell:?\s*/i, "").replace(/\s*\(free\)\s*$/i, "").trim();
+    populateIllusionSpellSelect(input, selectedFromReference);
   }
   wrap.appendChild(input);
+  const freeLabel = defaults.branchAction === "leprechaun_illusion_spell" ? document.createElement("label") : null;
+  let freeInput = null;
+  if (freeLabel) {
+    freeLabel.className = "checkbox-row";
+    freeInput = document.createElement("input");
+    freeInput.type = "checkbox";
+    freeInput.checked = /\bfree\b/i.test(String(defaults.reference || ""));
+    setTooltip(freeLabel, "Tick only when the party has bought at least three pairs of magical shoes, making the leprechaun lesson free.");
+    freeLabel.appendChild(freeInput);
+    freeLabel.appendChild(document.createElement("span")).textContent = "Free lesson";
+    wrap.appendChild(freeLabel);
+  }
   const btn = node("button", "primary", defaults.branchAction === "leprechaun_shoes" ? "Buy" : "Record spell");
   btn.type = "button";
   setButtonTooltip(btn, `${action.tooltip || "Apply this leprechaun Scene 2 result to the selected character."} ${rewardTooltip}`);
@@ -23221,8 +23343,8 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
       await runTagBranchActionWithDefaults({
         branchAction: defaults.branchAction,
         characterId: select.value,
-        reference: defaults.branchAction === "leprechaun_shoes" ? defaults.reference : input.value,
-        amount: defaults.branchAction === "leprechaun_shoes" ? Number(input.value || 1) : defaults.amount,
+        reference: defaults.branchAction === "leprechaun_shoes" ? defaults.reference : selectedIllusionSpellReference(input.value, Boolean(freeInput?.checked)),
+        amount: defaults.branchAction === "leprechaun_shoes" ? Number(input.value || 1) : freeInput?.checked ? 0 : 100,
       });
     } catch (error) {
       handleError(error);
@@ -30410,6 +30532,12 @@ function normalizeLogEntryForDisplay(entry) {
   }
   if (line.startsWith("TAG final guidance: Shoes of Fast Walk")) {
     return "The leprechauns are ready to bargain. You may buy Shoes of Fast Walk for 200 gp per pair, and one eligible character may learn one illusion spell for 100 gp, or free if the party bought at least three pairs of shoes.";
+  }
+  if (line.includes("Resolve the leprechaun bargain; fight only if your table turns the scene hostile")) {
+    return "The leprechaun rumor is real. Under the old oak at Blackbird Hill, the little folk are ready to bargain: shoes for gold, or one illusion lesson for a magically inclined hero.";
+  }
+  if (line.includes("Resolve the leprechaun bargain; use Buy Shoes of Fast Walk or Learn illusion spell")) {
+    return "The leprechaun bargain is ready: buy Shoes of Fast Walk or choose one illusion lesson before leaving Blackbird Hill.";
   }
   return line.replace(
     "Resolve the printed branch before treating the finale as ordinary exploration.",

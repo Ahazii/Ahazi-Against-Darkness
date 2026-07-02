@@ -1030,6 +1030,18 @@ h2 {
   margin-bottom: 12px;
 }
 
+.session-adventure-title {
+  display: inline-block;
+  max-width: min(46vw, 640px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: baseline;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.78em;
+  font-weight: 700;
+}
+
 .abyss-campaign-status {
   display: grid;
   gap: 4px;
@@ -1086,7 +1098,7 @@ h2 {
 
 .tag-context-guided-action {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(150px, 190px) minmax(110px, 150px) auto;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 190px) minmax(130px, 190px) minmax(90px, auto) auto;
   align-items: center;
   gap: 6px;
   width: 100%;
@@ -1095,6 +1107,10 @@ h2 {
   border: 1px solid rgba(184, 138, 58, 0.38);
   border-radius: 6px;
   background: rgba(24, 22, 14, 0.72);
+}
+
+.tag-illusion-dialog {
+  width: min(720px, calc(100vw - 32px));
 }
 
 .tag-context-guided-action select,
@@ -3572,13 +3588,13 @@ button.modern-dashboard-status-icon {
 }
 
 .current-objective-banner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   flex: 0 0 auto;
   margin: 8px 0 0;
-  padding: 9px 10px;
+  padding: 7px 8px;
   border: 1px solid rgba(201, 162, 39, 0.34);
   border-radius: 6px;
   background: rgba(24, 24, 18, 0.96);
@@ -3626,8 +3642,9 @@ button.modern-dashboard-status-icon {
 }
 
 .current-objective-copy {
-  display: grid;
-  gap: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   font-size: 12px;
   line-height: 1.35;
@@ -3635,6 +3652,10 @@ button.modern-dashboard-status-icon {
 
 .current-objective-copy strong {
   color: var(--text);
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .current-objective-copy span {
@@ -3679,13 +3700,16 @@ button.modern-dashboard-status-icon {
   flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-start;
+  align-items: center;
 }
 
 .current-objective-actions button {
   width: auto;
   min-width: 0;
-  white-space: normal;
-  text-align: left;
+  min-height: 30px;
+  padding: 5px 9px;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .tag-lifecycle-strip {

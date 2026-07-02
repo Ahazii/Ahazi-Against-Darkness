@@ -1979,8 +1979,17 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "Scene 2 Shoes of Fast Walk" in APP_JS
     assert "Scene 2 illusion spell - choose spell" in APP_JS
     assert "function appendLeprechaunGuidedAction" in APP_JS
+    assert "function openLeprechaunSpellDialog" in APP_JS
+    assert "function populateIllusionSpellSelect" in APP_JS
+    assert "illusionist_spells_table" in APP_JS
+    assert 'id="tag-illusion-spell-dialog"' in INDEX_HTML
+    assert 'id="tag-illusion-spell-select"' in INDEX_HTML
+    assert 'id="tag-illusion-spell-free"' in INDEX_HTML
     assert "tag-context-guided-action" in APP_JS
     assert ".tag-context-guided-action" in STYLES_CSS
+    assert "for (const action of objective.actions || []) appendCurrentObjectiveButton(actions, action);" in APP_JS
+    assert "currentObjectiveBanner.appendChild(renderObjectiveActionPlan" not in APP_JS
+    assert "openLeprechaunSpellDialog(defaults)" in APP_JS
     assert '"leprechaun_shoes"' in APP_JS
     assert '"leprechaun_illusion_spell"' in APP_JS
     assert "+Tier to Defense when withdrawing or fleeing melee" in APP_JS
@@ -1993,6 +2002,8 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "No Adventures Guild action is required in this room unless the printed scene asks for one" in APP_JS
     assert "The app has not applied a route or reward here because this is movement/scene setup" in APP_JS
     assert "Generated Adventures Guild leads use their scene reward buttons and closeout signoff" in APP_JS
+    assert 'id="session-adventure-title"' in INDEX_HTML
+    assert "function sessionAdventureTitleText" in APP_JS
 
 
 def test_item_tooltip_helper_covers_shop_inventory_and_item_pickers() -> None:
