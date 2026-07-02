@@ -11084,6 +11084,71 @@ function directTagBranchAllowed(defaults = {}) {
   return DIRECT_TAG_BRANCH_ACTIONS.has(defaults.branchAction || "");
 }
 
+const DIRECT_TAG_SCENE_ACTIONS = new Set(["deoldyn_training"]);
+
+function directTagSceneAllowed(defaults = {}) {
+  return DIRECT_TAG_SCENE_ACTIONS.has(defaults.sceneAction || "");
+}
+
+function tagMemberSpendableGold(member) {
+  return Math.max(0, (member?.gold || 0) + (member?.bank_gold || 0));
+}
+
+function tagDirectBranchCost(defaults = {}) {
+  if (defaults.branchAction === "leprechaun_shoes") return Math.max(1, Number(defaults.amount || 1)) * 200;
+  if (defaults.branchAction === "leprechaun_illusion_spell") {
+    return /\bfree\b/i.test(String(defaults.reference || "")) ? 0 : 100;
+  }
+  return 0;
+}
+
+function tagDirectSceneCost(defaults = {}, member = null) {
+  if (defaults.sceneAction === "deoldyn_training") {
+    const level = Math.max(1, Number(member?.level || 1));
+    return Math.max(Number(defaults.amount || 0), 60 * level);
+  }
+  return 0;
+}
+
+function chooseTagDirectBranchCharacter(defaults = {}) {
+  if (defaults.characterId) return defaults.characterId;
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  if (!living.length) return "";
+  const cost = tagDirectBranchCost(defaults);
+  if (cost <= 0) return living[0].character_id;
+  const affordable = living.find((member) => tagMemberSpendableGold(member) >= cost);
+  return affordable?.character_id || "";
+}
+
+function chooseTagDirectSceneCharacter(defaults = {}) {
+  if (defaults.characterId) return defaults.characterId;
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  if (!living.length) return "";
+  const affordable = living.find((member) => tagMemberSpendableGold(member) >= tagDirectSceneCost(defaults, member));
+  return affordable?.character_id || living[0].character_id;
+}
+
+function tagDirectBranchBlockedReason(defaults = {}) {
+  if (!directTagBranchAllowed(defaults)) return "";
+  const cost = tagDirectBranchCost(defaults);
+  if (cost <= 0) return "";
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  if (!living.length) return "No living party member can receive this result.";
+  if (living.some((member) => tagMemberSpendableGold(member) >= cost)) return "";
+  const richest = living.reduce((best, member) => (tagMemberSpendableGold(member) > tagMemberSpendableGold(best) ? member : best), living[0]);
+  return `No living party member has ${cost} gp in hand or bank. Highest available: ${richest.name} has ${tagMemberSpendableGold(richest)} gp.`;
+}
+
+function tagDirectSceneBlockedReason(defaults = {}) {
+  if (!directTagSceneAllowed(defaults)) return "";
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  if (!living.length) return "No living party member can receive this result.";
+  const required = Math.min(...living.map((member) => tagDirectSceneCost(defaults, member)));
+  if (living.some((member) => tagMemberSpendableGold(member) >= tagDirectSceneCost(defaults, member))) return "";
+  const richest = living.reduce((best, member) => (tagMemberSpendableGold(member) > tagMemberSpendableGold(best) ? member : best), living[0]);
+  return `No living party member has enough gold in hand or bank for this paid scene. Minimum needed: ${required} gp. Highest available: ${richest.name} has ${tagMemberSpendableGold(richest)} gp.`;
+}
+
 function setupViewVisible() {
   return Boolean(setupPanel && !setupPanel.classList.contains("hidden"));
 }
@@ -11397,13 +11462,16 @@ async function runTagBranchActionWithDefaults(defaults = {}) {
     setStatus("This Adventures Guild procedure needs a character, amount, or player choice; review it in Adventures Guild Actions before running.");
     return;
   }
+  const blocked = tagDirectBranchBlockedReason(defaults);
+  if (blocked) throw new Error(blocked);
+  const characterId = defaults.characterId || chooseTagDirectBranchCharacter(defaults);
   const endpoint = state.session?.id
     ? `/api/sessions/${encodeURIComponent(state.session.id)}/tag-branch-action`
     : "/api/campaign/tag/branch-action";
   const result = await api(endpoint, {
     method: "POST",
     body: JSON.stringify({
-      character_id: defaults.characterId || "",
+      character_id: characterId || "",
       branch_action: branchAction,
       reference: defaults.reference || "",
       clue_cost: Number(defaults.amount || 0),
@@ -11423,6 +11491,43 @@ async function runTagBranchActionWithDefaults(defaults = {}) {
   }
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG procedure logged.");
+}
+
+async function runTagSceneActionWithDefaults(defaults = {}) {
+  if (!directTagSceneAllowed(defaults)) {
+    openTagActionsWithDefaults(defaults);
+    setStatus("This Adventures Guild scene needs review; it has been opened in Adventures Guild Actions.");
+    return;
+  }
+  const blocked = tagDirectSceneBlockedReason(defaults);
+  if (blocked) throw new Error(blocked);
+  const characterId = defaults.characterId || chooseTagDirectSceneCharacter(defaults);
+  const endpoint = state.session?.id
+    ? `/api/sessions/${encodeURIComponent(state.session.id)}/tag-scene-action`
+    : "/api/campaign/tag/scene-action";
+  const result = await api(endpoint, {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: characterId || "",
+      scene_action: defaults.sceneAction || "",
+      amount: Number(defaults.amount || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  if (result.character) {
+    const index = state.characters.findIndex((character) => character.id === result.character.id);
+    if (index >= 0) state.characters[index] = result.character;
+    else state.characters.push(result.character);
+  }
+  if (result.session) {
+    state.session = result.session;
+    renderSession();
+    syncSessionListFromSession(state.session);
+  } else {
+    await reloadCharacters({ render: setupViewVisible() });
+  }
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG scene result applied.");
 }
 
 function classImageUrl(profile) {
@@ -17987,12 +18092,26 @@ function appendCurrentObjectiveButton(parent, action) {
       );
       break;
     case "tag-prompt-action":
-      setButtonTooltip(btn, `${action.promptAction?.tooltip || "Use this current-room Adventures Guild prompt action."} Opens Adventures Guild Actions prefilled; confirm exact PDF/player values before applying.`);
-      btn.addEventListener("click", () =>
-        openTagActionsWithDefaults(
-          generatedTagPromptActionDefaults(action.promptAction, action.fallbackReference, action.tagReference)
-        )
-      );
+      {
+        const defaults = generatedTagPromptActionDefaults(action.promptAction, action.fallbackReference, action.tagReference);
+        const directBranch = directTagBranchAllowed(defaults);
+        const directScene = directTagSceneAllowed(defaults);
+        setButtonTooltip(
+          btn,
+          directBranch || directScene
+            ? `${action.promptAction?.tooltip || "Use this current-room Adventures Guild prompt action."} Runs directly from Current Objective; the app chooses an eligible payer/receiver when the action has an item cost.`
+            : `${action.promptAction?.tooltip || "Use this current-room Adventures Guild prompt action."} Opens Adventures Guild Actions prefilled; confirm exact PDF/player values before applying.`
+        );
+        btn.addEventListener("click", () => {
+          if (directBranch) {
+            runTagBranchActionWithDefaults(defaults).catch(handleError);
+          } else if (directScene) {
+            runTagSceneActionWithDefaults(defaults).catch(handleError);
+          } else {
+            openTagActionsWithDefaults(defaults);
+          }
+        });
+      }
       break;
     case "tag-actions":
       setButtonTooltip(btn, "Open Adventures Guild Actions with relevant current-room shortcuts shown at the top.");

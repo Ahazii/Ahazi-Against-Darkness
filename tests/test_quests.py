@@ -506,6 +506,69 @@ def test_session_tag_branch_action_syncs_live_party_character(client) -> None:
     assert "buys 1 pair" in payload["entry"]["result_text"]
 
 
+def test_session_tag_purchase_uses_live_party_bank_gold(client) -> None:
+    character = Character(
+        id="banked",
+        name="Banked Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=203,
+        max_life=3,
+        current_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=[],
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    session = base_session(
+        id="tag-bank-sync",
+        adventure_id="tag",
+        adventure_type="imported",
+        party=[
+            PartyMemberState(
+                character_id="banked",
+                name="Banked Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=3,
+                bank_gold=200,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+                inventory=[],
+            )
+        ],
+    )
+    main.store.save("characters", character)
+    main.store.save("sessions", session)
+
+    response = client.post(
+        "/api/sessions/tag-bank-sync/tag-branch-action",
+        json={
+            "character_id": "banked",
+            "branch_action": "leprechaun_shoes",
+            "reference": "Scene 2 Shoes of Fast Walk",
+            "clue_cost": 1,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    hero = payload["session"]["party"][0]
+    assert hero["gold"] == 3
+    assert hero["bank_gold"] == 0
+    assert "Shoes of Fast Walk" in hero["inventory"]
+    assert payload["character"]["gold"] == 3
+
+
 def test_enchanted_weapon_reward_marks_adventure_status(monkeypatch) -> None:
     eng = engine()
     session = base_session()

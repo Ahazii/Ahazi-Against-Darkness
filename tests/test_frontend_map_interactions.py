@@ -2007,6 +2007,27 @@ def test_item_tooltip_helper_covers_shop_inventory_and_item_pickers() -> None:
     assert "transferItemOptions" in APP_JS
     assert "optionWithItemTooltip(item)" in APP_JS
     assert ".inventory-tooltip-item" in STYLES_CSS
+
+
+def test_current_objective_runs_direct_tag_purchase_actions_without_modal() -> None:
+    assert "function runTagSceneActionWithDefaults" in APP_JS
+    assert "chooseTagDirectBranchCharacter" in APP_JS
+    assert "tagDirectBranchBlockedReason" in APP_JS
+    assert "directTagSceneAllowed" in APP_JS
+    assert 'DIRECT_TAG_SCENE_ACTIONS = new Set(["deoldyn_training"])' in APP_JS
+    assert "runTagBranchActionWithDefaults(defaults).catch(handleError)" in APP_JS
+    assert "runTagSceneActionWithDefaults(defaults).catch(handleError)" in APP_JS
+    assert 'openTagActionsWithDefaults(defaults);' in APP_JS
+    assert "No living party member has ${cost} gp in hand or bank" in APP_JS
+
+
+def test_current_objective_and_tag_actions_dialog_layout_is_not_squeezed() -> None:
+    assert ".current-objective-banner" in STYLES_CSS
+    assert "grid-template-columns: minmax(0, 1fr);" in STYLES_CSS
+    assert "justify-content: flex-start;" in STYLES_CSS
+    assert ".tag-action-dialog" in STYLES_CSS
+    assert "width: min(1040px, calc(100vw - 32px));" in STYLES_CSS
+    assert "resize: both;" in STYLES_CSS
     assert "If this room has no scene-specific button" in Path("src/app/engine/tag_campaign.py").read_text(encoding="utf-8")
 
 

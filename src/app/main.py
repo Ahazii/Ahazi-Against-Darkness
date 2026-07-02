@@ -1540,6 +1540,59 @@ def _sync_character_to_session_party(session: SessionState, character: Character
         break
 
 
+TAG_SESSION_PAYMENT_BRANCHES = {"leprechaun_shoes", "leprechaun_illusion_spell"}
+TAG_SESSION_PAYMENT_SCENE_ACTIONS = {"deoldyn_training"}
+
+
+def _prepare_session_tag_payment_character(
+    session: SessionState,
+    character: Character | None,
+    branch_action: str,
+) -> tuple[PartyMemberState | None, int]:
+    if character is None or branch_action not in TAG_SESSION_PAYMENT_BRANCHES | TAG_SESSION_PAYMENT_SCENE_ACTIONS:
+        return None, 0
+    member = next((item for item in session.party if item.character_id == character.id), None)
+    if member is None:
+        return None, 0
+    carried_gold = max(0, member.gold)
+    character.gold = max(0, member.gold) + max(0, member.bank_gold)
+    character.clues = member.clues
+    character.secrets = list(member.secrets)
+    character.current_life = member.current_life
+    character.max_life = member.max_life
+    character.inventory = list(member.inventory)
+    character.spells = list(member.spells)
+    character.statuses = list(member.statuses)
+    character.default_melee_weapon = member.default_melee_weapon
+    character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
+    character.default_missile_weapon = member.default_missile_weapon
+    return member, carried_gold
+
+
+def _sync_session_tag_payment_character(
+    session: SessionState,
+    character: Character | None,
+    member: PartyMemberState | None,
+    carried_gold_before: int,
+) -> None:
+    if character is None or member is None:
+        return
+    total_gold = max(0, character.gold)
+    member.gold = min(max(0, carried_gold_before), total_gold)
+    member.bank_gold = max(0, total_gold - member.gold)
+    member.clues = character.clues
+    member.secrets = list(character.secrets)
+    member.current_life = character.current_life
+    member.max_life = character.max_life
+    member.inventory = list(character.inventory)
+    member.spells = list(character.spells)
+    member.statuses = list(character.statuses)
+    member.default_melee_weapon = character.default_melee_weapon
+    member.default_melee_weapon_secondary = character.default_melee_weapon_secondary
+    member.default_missile_weapon = character.default_missile_weapon
+    prune_weapon_defaults(member)
+
+
 @app.post("/api/campaign/tag/branch-action")
 async def campaign_tag_branch_action(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, resolve_tag_branch_action, save_campaign
@@ -4404,6 +4457,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
     branch_action = str(payload.get("branch_action") or "social_choice")
+    payment_member, carried_gold_before = _prepare_session_tag_payment_character(session, character, branch_action)
     stored = _stored_single_run_procedure(session, branch_action)
     if stored is not None and not payload.get("force_reroll"):
         result_text = (
@@ -4434,7 +4488,10 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     )
     if character is not None:
         store.save("characters", character)
-        _sync_character_to_session_party(session, character)
+        if payment_member is not None:
+            _sync_session_tag_payment_character(session, character, payment_member, carried_gold_before)
+        else:
+            _sync_character_to_session_party(session, character)
     campaign = save_campaign(store, campaign)
     _update_session_tag_procedure_state(session, branch_action, entry)
     _update_generated_tag_procedure_state(session, branch_action, entry)
@@ -4452,6 +4509,37 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         )
         if next_action:
             session.log.append(f"TAG next: {next_action}")
+    store.save("sessions", session)
+    return {"campaign": campaign, "character": character, "entry": entry, "session": enrich_session(session)}
+
+
+@app.post("/api/sessions/{session_id}/tag-scene-action")
+async def session_tag_scene_action(session_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, resolve_tag_scene_action, save_campaign
+
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    character = _optional_campaign_character(payload)
+    if character is None:
+        raise HTTPException(status_code=400, detail="Character is required.")
+    scene_action = str(payload.get("scene_action") or "")
+    payment_member, carried_gold_before = _prepare_session_tag_payment_character(session, character, scene_action)
+    campaign = load_campaign(store)
+    entry = resolve_tag_scene_action(
+        campaign,
+        character,
+        scene_action=scene_action,
+        amount=int(payload.get("amount") or 0),
+    )
+    store.save("characters", character)
+    if payment_member is not None:
+        _sync_session_tag_payment_character(session, character, payment_member, carried_gold_before)
+    else:
+        _sync_character_to_session_party(session, character)
+    campaign = save_campaign(store, campaign)
+    if entry.result_text and entry.result_text not in session.log:
+        session.log.append(f"TAG scene: {entry.result_text}")
     store.save("sessions", session)
     return {"campaign": campaign, "character": character, "entry": entry, "session": enrich_session(session)}
 
