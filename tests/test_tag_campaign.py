@@ -494,6 +494,21 @@ def test_tag_manifest_uses_user_editable_narrative_overrides(tmp_path, monkeypat
                         "3": {
                             "module_title": "The Adventures Guild Rumor 3: Edited Local Title",
                             "objective": "Edited local objective.",
+                            "scene_graph": {
+                                "start_scenes": ["Scene 11"],
+                                "scenes": {
+                                    "Scene 11": {
+                                        "description": "Edited local scene body.",
+                                        "branches": [
+                                            {
+                                                "label": "Return to town",
+                                                "target_scene": "Scene 18",
+                                                "target_scene_number": 18,
+                                            }
+                                        ],
+                                    }
+                                },
+                            },
                             "rooms": {
                                 "tag-lead-entry": {
                                     "title": "Edited Opening",
@@ -525,6 +540,7 @@ def test_tag_manifest_uses_user_editable_narrative_overrides(tmp_path, monkeypat
     assert finale["title"] == "Edited Finale"
     assert finale["description"] == "Edited finale narrative."
     assert finale["triggers"][0]["log"] == "Edited finale log."
+    assert manifest["source"]["parameters"]["tag_reference"]["scene_graph"]["scenes"]["Scene 11"]["branches"][0]["target_scene"] == "Scene 18"
 
 
 def test_tag_pdf_rumor_parser_keeps_scene_10_and_continued_entries() -> None:
@@ -556,6 +572,62 @@ def test_tag_pdf_rumor_parser_keeps_scene_10_and_continued_entries() -> None:
     assert rumors[7] == "Seventh rumor continues after the red herring table."
     assert rumors[8] == "Eighth rumor."
     assert "Trap text" not in " ".join(rumors.values())
+
+
+def test_tag_pdf_scene_parser_keeps_inline_scene_branches_inside_current_scene() -> None:
+    text = "\n".join(
+        [
+            "Scenes",
+            "Scene 9",
+            "Will you try to steal the object? If so, go to Scene 14.",
+            "Try to talk to the family? Go to Scene 17.",
+            "Scene 10",
+            "Once this encounter is over, you may reach the cabin by playing Scene 1 or go home.",
+            "Scene 14",
+            "If you fail, go to Scene 18. If you succeed, go to Scene 19.",
+            "Scene 17",
+            "If you insist, continue investigating by playing Scene 9.",
+            "Scene 18",
+            "The theft fails.",
+            "Scene 19",
+            "The object is stolen.",
+            "Thematic Dungeons",
+        ]
+    )
+
+    scenes = tag_campaign._extract_tag_pdf_scenes(text)
+
+    assert set(scenes) == {9, 10, 14, 17, 18, 19}
+    assert "Scene 14" in scenes[9]
+    assert "Scene 17" in scenes[9]
+    assert "Scene 1" in scenes[10]
+    assert "Scene 18" in scenes[14]
+    assert "Scene 19" in scenes[14]
+    assert [branch["target_scene"] for branch in tag_campaign._extract_tag_scene_branches(9, scenes[9])] == [
+        "Scene 14",
+        "Scene 17",
+    ]
+    assert [branch["target_scene"] for branch in tag_campaign._extract_tag_scene_branches(14, scenes[14])] == [
+        "Scene 18",
+        "Scene 19",
+    ]
+
+
+def test_tag_scene_graph_follows_reachable_scene_branches_from_profile() -> None:
+    scenes = {
+        9: "Will you steal the object? Go to Scene 14. Talk to the family? Go to Scene 17.",
+        14: "If you fail, go to Scene 18. If you succeed, go to Scene 19.",
+        17: "If you insist, continue investigating by playing Scene 9.",
+        18: "The theft fails.",
+        19: "The object is stolen.",
+    }
+
+    graph = tag_campaign._scene_graph_for_profile(tag_campaign.TAG_RUMOR_PROFILES[1], scenes, "Tales.pdf")
+
+    assert graph["start_scenes"] == ["Scene 9", "Scene 17", "Scene 14", "Scene 19"]
+    assert set(graph["scenes"]) == {"Scene 9", "Scene 14", "Scene 17", "Scene 18", "Scene 19"}
+    assert graph["scenes"]["Scene 9"]["branches"][0]["target_scene"] == "Scene 14"
+    assert graph["scenes"]["Scene 14"]["branches"][1]["target_scene"] == "Scene 19"
 
 
 def test_tag_leprechaun_rumor_is_vendor_scene_not_proxy_combat() -> None:

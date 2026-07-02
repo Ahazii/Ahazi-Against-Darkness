@@ -4310,7 +4310,7 @@ async function renderRulePdfManager() {
           method: "POST",
           body: JSON.stringify({ filename: uploadedSelect.value, overwrite: overwrite.checked }),
         });
-        const message = `${result.message} ${result.changed_fields || 0} field(s) changed; ${result.skipped_existing_fields || 0} preserved. Rumors found: ${result.rumors_found || 0}; scenes found: ${result.scenes_found || 0}.`;
+        const message = `${result.message} ${result.changed_fields || 0} field(s) changed; ${result.skipped_existing_fields || 0} preserved. Rumors found: ${result.rumors_found || 0}; scenes found: ${result.scenes_found || 0}; scene branches found: ${result.scene_branches_found || 0}.`;
         setStatus(message);
         showRulePdfResult("ok", message, "Extraction complete");
         await refreshList();

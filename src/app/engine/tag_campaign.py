@@ -160,6 +160,8 @@ def _apply_tag_narrative_override(
             merged[key] = override[key]
     if isinstance(override.get("rooms"), dict):
         merged["room_narrative_overrides"] = override["rooms"]
+    if isinstance(override.get("scene_graph"), dict):
+        merged["scene_graph"] = override["scene_graph"]
     if isinstance(override.get("npcs"), dict):
         merged["npc_narrative_overrides"] = override["npcs"]
     if override.get("module_title"):
@@ -286,20 +288,117 @@ def _extract_tag_pdf_scenes(text: str) -> dict[int, str]:
     import re
 
     scenes: dict[int, str] = {}
-    pattern = re.compile(r"(?is)\bScene\s+(\d+)\s+(.*?)(?=\bScene\s+\d+\b|\bThematic Dungeons\b|\bTreasure Maps\b|\bThe Map Leads To\b|\Z)")
-    for match in pattern.finditer(text):
+    heading_pattern = re.compile(r"(?im)^Scene\s+(\d+)\s*$")
+    headings = list(heading_pattern.finditer(text))
+    lower = text.lower()
+    hard_stops = [
+        index
+        for marker in ("\nthematic dungeons\n", "\ntreasure maps\n", "\nthe map leads to\n")
+        if (index := lower.find(marker)) >= 0
+    ]
+    hard_stop = min(hard_stops) if hard_stops else len(text)
+    for index, match in enumerate(headings):
         number = int(match.group(1))
-        body = " ".join(match.group(2).split()).strip()
+        start = match.end()
+        next_heading = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+        end = min(next_heading, hard_stop)
+        if start >= hard_stop:
+            continue
+        body = " ".join(text[start:end].split()).strip()
         if body:
             scenes[number] = body
     return scenes
 
 
-def _scene_number_from_profile(profile: dict[str, object]) -> int | None:
+def _scene_refs_from_text(text: str) -> list[int]:
     import re
 
-    match = re.search(r"Scene\s+(\d+)", str(profile.get("scene") or ""))
-    return int(match.group(1)) if match else None
+    refs: list[int] = []
+    for match in re.finditer(r"(?i)\bScene\s+(\d+)\b", text):
+        value = int(match.group(1))
+        if value not in refs:
+            refs.append(value)
+    return refs
+
+
+def _scene_number_from_profile(profile: dict[str, object]) -> int | None:
+    refs = _scene_refs_from_text(str(profile.get("scene") or ""))
+    return refs[0] if refs else None
+
+
+def _tag_scene_branch_label(text: str, start: int, end: int) -> str:
+    prefix = text[max(0, start - 180) : end].strip()
+    sentence_start = max(prefix.rfind(". "), prefix.rfind("? "), prefix.rfind("! "), prefix.rfind(": "))
+    label = prefix[sentence_start + 2 :].strip() if sentence_start >= 0 else prefix
+    return " ".join(label.split())[:180] or "Follow scene branch"
+
+
+def _extract_tag_scene_branches(scene_number: int, text: str) -> list[dict[str, Any]]:
+    import re
+
+    branches: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for match in re.finditer(r"(?i)\bScene\s+(\d+)\b", text):
+        target = int(match.group(1))
+        if target == scene_number or target in seen:
+            continue
+        seen.add(target)
+        branches.append(
+            {
+                "label": _tag_scene_branch_label(text, match.start(), match.end()),
+                "target_scene": f"Scene {target}",
+                "target_scene_number": target,
+            }
+        )
+    return branches
+
+
+def _scene_refs_from_profile(profile: dict[str, object]) -> list[int]:
+    refs = _scene_refs_from_text(str(profile.get("scene") or ""))
+    for key in ("final_prompt_actions", "complication_prompt_actions"):
+        actions = profile.get(key)
+        if not isinstance(actions, list):
+            continue
+        for action in actions:
+            if not isinstance(action, dict):
+                continue
+            for field in ("reference", "tooltip", "label"):
+                for ref in _scene_refs_from_text(str(action.get(field) or "")):
+                    if ref not in refs:
+                        refs.append(ref)
+    return refs
+
+
+def _tag_reachable_scene_numbers(start_refs: list[int], scenes: dict[int, str]) -> list[int]:
+    ordered: list[int] = []
+    pending = list(start_refs)
+    while pending:
+        scene_number = pending.pop(0)
+        if scene_number in ordered or scene_number not in scenes:
+            continue
+        ordered.append(scene_number)
+        for branch in _extract_tag_scene_branches(scene_number, scenes[scene_number]):
+            target = int(branch["target_scene_number"])
+            if target not in ordered and target not in pending:
+                pending.append(target)
+    return ordered
+
+
+def _scene_graph_for_profile(profile: dict[str, object], scenes: dict[int, str], pdf_name: str) -> dict[str, Any]:
+    start_refs = _scene_refs_from_profile(profile)
+    reachable = _tag_reachable_scene_numbers(start_refs, scenes)
+    graph_scenes: dict[str, Any] = {}
+    for scene_number in reachable:
+        scene_text = scenes.get(scene_number, "")
+        graph_scenes[f"Scene {scene_number}"] = {
+            "description": scene_text,
+            "branches": _extract_tag_scene_branches(scene_number, scene_text),
+            "source_pdf": pdf_name,
+        }
+    return {
+        "start_scenes": [f"Scene {number}" for number in start_refs if number in scenes],
+        "scenes": graph_scenes,
+    }
 
 
 def _set_if_overwrite(target: dict[str, Any], key: str, value: Any, overwrite: bool) -> bool:
@@ -332,6 +431,21 @@ def merge_tag_pdf_narrative_overrides(pdf_path: Path, *, overwrite: bool = False
     scene_section = tag.setdefault("scene", {})
     changed = 0
     skipped = 0
+    for scene_number, scene_text in scenes.items():
+        scene_key = f"Scene {scene_number}"
+        scene_item = scene_section.setdefault(scene_key, {})
+        if not isinstance(scene_item, dict):
+            scene_section[scene_key] = {}
+            scene_item = scene_section[scene_key]
+        for key, value in [
+            ("description", scene_text),
+            ("branches", _extract_tag_scene_branches(scene_number, scene_text)),
+            ("source_pdf", pdf_path.name),
+        ]:
+            if _set_if_overwrite(scene_item, key, value, overwrite):
+                changed += 1
+            else:
+                skipped += 1
     for rumor_number, profile in TAG_RUMOR_PROFILES.items():
         if not isinstance(profile, dict):
             continue
@@ -352,6 +466,12 @@ def merge_tag_pdf_narrative_overrides(pdf_path: Path, *, overwrite: bool = False
         objective = str(profile.get("objective") or rumor_text or scene_text)
         for key, value in [("module_title", module_title), ("objective", objective)]:
             if _set_if_overwrite(item, key, value, overwrite):
+                changed += 1
+            else:
+                skipped += 1
+        scene_graph = _scene_graph_for_profile(profile, scenes, pdf_path.name)
+        if scene_graph["scenes"]:
+            if _set_if_overwrite(item, "scene_graph", scene_graph, overwrite):
                 changed += 1
             else:
                 skipped += 1
@@ -383,20 +503,13 @@ def merge_tag_pdf_narrative_overrides(pdf_path: Path, *, overwrite: bool = False
                     changed += 1
                 else:
                     skipped += 1
-            scene_key = f"Scene {scene_number}"
-            scene_item = scene_section.setdefault(scene_key, {})
-            if isinstance(scene_item, dict):
-                for key, value in [("description", scene_text), ("source_pdf", pdf_path.name)]:
-                    if _set_if_overwrite(scene_item, key, value, overwrite):
-                        changed += 1
-                    else:
-                        skipped += 1
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return {
         "path": str(path),
         "pdf": pdf_path.name,
         "rumors_found": len(rumors),
         "scenes_found": len(scenes),
+        "scene_branches_found": sum(len(_extract_tag_scene_branches(number, body)) for number, body in scenes.items()),
         "changed_fields": changed,
         "skipped_existing_fields": skipped,
     }
@@ -5704,6 +5817,7 @@ def _tag_manifest(
             "tag_reference": {
                 "title": profile.get("title", lead_detail),
                 "scene": profile.get("scene", ""),
+                "scene_graph": profile.get("scene_graph", {}),
                 "pdf_pages": profile.get("pdf_pages", ""),
                 "lead_type": lead_type,
                 "lead_detail": lead_detail,

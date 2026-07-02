@@ -2816,7 +2816,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Local narrative override file",
             "shown_in": "Generated The Adventures Guild module creation.",
-            "player_use": "DATA_DIR/tag_scene_narrative_overrides.json can override generated objectives, room titles, room descriptions, and room logs with user-edited local text. Use it for exact private PDF scene prose or edited play-facing narrative without changing code.",
+            "player_use": "DATA_DIR/tag_scene_narrative_overrides.json can override generated objectives, room titles, room descriptions, and room logs with user-edited local text. It also stores all extracted Scenes separately, records inline go-to Scene branch targets, and can add a per-rumor scene_graph to generated modules so branch choices remain separate scenes instead of one flattened spoiler block.",
             "pdf_boundary": "The committed app seeds a template only. Exact copied PDF prose belongs in the user's local DATA_DIR file and is not redistributed by the repository.",
         },
         {

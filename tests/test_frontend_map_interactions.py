@@ -2010,6 +2010,7 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "tag_scene_narrative_overrides.json" in MODERN_PAGES_JS
     assert "Extraction failed" in MODERN_PAGES_JS
     assert "Rumors found" in MODERN_PAGES_JS
+    assert "scene branches found" in MODERN_PAGES_JS
     assert "cryptography Python package" in MODERN_PAGES_JS
 
 
