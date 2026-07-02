@@ -3576,7 +3576,7 @@
       "category": "tag",
       "status": "implemented",
       "summary": "User-editable local scene prose for generated The Adventures Guild modules.",
-      "body": "DATA_DIR/tag_scene_narrative_overrides.json is seeded as a non-overwriting template beside game.db. The Developer Section includes Rules PDF Import: upload an owned PDF into DATA_DIR/rules, then extract supported Tales from The Adventures Guild Rumor/Scene prose into this override file. You may also edit the JSON by hand. The file is user data and is not committed; generated modules prefer it over fallback app scaffolding when a matching lead type, result number, scene, or title is found. Use this for exact local/private wording, then edit dice-roll instructions or spoilers into cleaner table prose as desired.",
+      "body": "DATA_DIR/tag_scene_narrative_overrides.json is seeded as a non-overwriting template beside game.db. The Developer Section includes Rules PDF Import: upload an owned PDF into DATA_DIR/rules, then extract supported Tales from The Adventures Guild Rumor/Scene prose into this override file. You may also edit the JSON by hand. The file is user data and is not committed; generated modules prefer it over fallback app scaffolding when a matching lead type, result number, scene, or title is found. Use this for exact local/private wording, then edit dice-roll instructions or spoilers into cleaner table prose as desired. AES/protected PDFs require the running server image to include the cryptography Python package; rebuild/restart the container after updating requirements before extracting those PDFs.",
       "links": [],
       "source_page": 0,
       "keywords": [

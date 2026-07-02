@@ -2008,6 +2008,9 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "/api/rules/upload-pdf" in MODERN_PAGES_JS
     assert "/api/rules/extract-tag-narrative" in MODERN_PAGES_JS
     assert "tag_scene_narrative_overrides.json" in MODERN_PAGES_JS
+    assert "Extraction failed" in MODERN_PAGES_JS
+    assert "Rumors found" in MODERN_PAGES_JS
+    assert "cryptography Python package" in MODERN_PAGES_JS
 
 
 def test_item_tooltip_helper_covers_shop_inventory_and_item_pickers() -> None:

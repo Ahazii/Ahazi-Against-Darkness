@@ -31,6 +31,7 @@ def test_assets_route_prefers_data_dir_and_does_not_use_static_mount() -> None:
     main_py = read("src/app/main.py")
     config_py = read("src/app/config.py")
     entrypoint = read("entrypoint.sh")
+    requirements = read("requirements.txt")
 
     assert 'app.mount("/assets"' not in main_py
     assert "def _resolve_asset_file" in main_py
@@ -47,6 +48,7 @@ def test_assets_route_prefers_data_dir_and_does_not_use_static_mount() -> None:
     assert '@app.post("/api/rules/upload-pdf")' in main_py
     assert '@app.post("/api/rules/extract-tag-narrative")' in main_py
     assert "settings.rules_dir" in main_py
+    assert "cryptography" in requirements
 
     assert 'ASSETS_DIR="${DATA_DIR}/assets"' in entrypoint
     assert 'mkdir -p "${ASSETS_DIR}/artwork/user"' in entrypoint

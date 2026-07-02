@@ -210,8 +210,17 @@ def _extract_tag_pdf_text(pdf_path: Path) -> str:
         from pypdf import PdfReader
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("pypdf is required to extract uploaded rule PDF text.") from exc
-    reader = PdfReader(str(pdf_path))
-    return _clean_pdf_text("\n".join(page.extract_text() or "" for page in reader.pages))
+    try:
+        reader = PdfReader(str(pdf_path))
+        return _clean_pdf_text("\n".join(page.extract_text() or "" for page in reader.pages))
+    except Exception as exc:  # noqa: BLE001
+        message = str(exc)
+        if "cryptography" in message.lower() or "aes" in message.lower():
+            raise RuntimeError(
+                "This PDF uses AES encryption/protection. Install the cryptography Python package "
+                "in the running server image, then rebuild/restart the container and extract again."
+            ) from exc
+        raise
 
 
 def _extract_numbered_blocks(text: str, start_marker: str, stop_markers: tuple[str, ...]) -> dict[int, str]:

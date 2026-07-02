@@ -4262,6 +4262,10 @@ async function renderRulePdfManager() {
   const uploadedSelect = select("modern-rule-pdf-select", "Uploaded DATA_DIR/rules PDF to extract from.", [["", "Choose uploaded PDF"]]);
   const overwrite = input("checkbox", "modern-rule-pdf-overwrite", "Overwrite existing fields in DATA_DIR/tag_scene_narrative_overrides.json. Leave off to preserve local edits.");
   const status = el("div", "modern-list");
+  const resultBox = el("div", "modern-list");
+  function showRulePdfResult(kind, message, title = "Rules PDF Import") {
+    resultBox.replaceChildren(modernStatusRow(title, message, kind === "error" ? "Fix the issue shown here, then run Extract TAG Narrative again." : "This is the latest upload/extraction result."));
+  }
   async function refreshList() {
     const payload = await api("/api/rules/pdfs");
     uploadedSelect.replaceChildren(new Option("Choose uploaded PDF", ""));
@@ -4297,15 +4301,24 @@ async function renderRulePdfManager() {
       }
       const result = await response.json();
       setStatus(result.message || "PDF uploaded.");
+      showRulePdfResult("ok", result.message || "PDF uploaded.", "Upload complete");
       await refreshList();
     }),
     button("Extract TAG Narrative", "Extract supported Tales from The Adventures Guild Rumor/Scene prose from the selected uploaded PDF into DATA_DIR/tag_scene_narrative_overrides.json.", async () => {
-      const result = await api("/api/rules/extract-tag-narrative", {
-        method: "POST",
-        body: JSON.stringify({ filename: uploadedSelect.value, overwrite: overwrite.checked }),
-      });
-      setStatus(`${result.message} ${result.changed_fields || 0} field(s) changed; ${result.skipped_existing_fields || 0} preserved.`);
-      await refreshList();
+      try {
+        const result = await api("/api/rules/extract-tag-narrative", {
+          method: "POST",
+          body: JSON.stringify({ filename: uploadedSelect.value, overwrite: overwrite.checked }),
+        });
+        const message = `${result.message} ${result.changed_fields || 0} field(s) changed; ${result.skipped_existing_fields || 0} preserved. Rumors found: ${result.rumors_found || 0}; scenes found: ${result.scenes_found || 0}.`;
+        setStatus(message);
+        showRulePdfResult("ok", message, "Extraction complete");
+        await refreshList();
+      } catch (error) {
+        const message = error?.message || "Extraction failed.";
+        showRulePdfResult("error", message, "Extraction failed");
+        throw error;
+      }
     }),
     link("Narrative Override Reference", ruleReferenceHref("tag_local_narrative_overrides", "tag narrative overrides"), "Open the Rules Reference entry for local narrative overrides.", "link-button secondary")
   );
@@ -4314,8 +4327,9 @@ async function renderRulePdfManager() {
     field("Uploaded PDF", uploadedSelect),
     field("Overwrite local edits", overwrite),
     row,
+    resultBox,
     status,
-    el("p", "muted", "Extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
+    el("p", "muted", "Extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
   );
   return panel;
 }
