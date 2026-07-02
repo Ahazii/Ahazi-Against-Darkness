@@ -10986,6 +10986,8 @@ const DIRECT_TAG_BRANCH_ACTIONS = new Set([
   "sewers_minions",
   "monoceros_clue_encounter",
   "monoceros_hide",
+  "leprechaun_shoes",
+  "leprechaun_illusion_spell",
 ]);
 
 function directTagBranchAllowed(defaults = {}) {
@@ -22946,6 +22948,11 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
   const living = (state.session?.party || []).filter((member) => member.current_life > 0);
   const wrap = node("div", "tag-context-guided-action");
   const label = defaults.branchAction === "leprechaun_shoes" ? "Buy Shoes of Fast Walk" : "Learn illusion spell";
+  const rewardTooltip =
+    defaults.branchAction === "leprechaun_shoes"
+      ? "Shoes of Fast Walk cost 200 gp per pair. A wearer adds +Tier to Defense when withdrawing or fleeing melee."
+      : "One eligible character may learn one illusion spell from the leprechauns for 100 gp, or free if the party bought at least three pairs of magical shoes.";
+  setTooltip(wrap, rewardTooltip);
   wrap.appendChild(node("strong", "", label));
   const select = document.createElement("select");
   setTooltip(select, "Choose the character who pays for and receives this Scene 2 leprechaun result.");
@@ -22963,7 +22970,7 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
     input.max = "4";
     input.step = "1";
     input.value = String(defaults.amount || 1);
-    setTooltip(input, "Number of shoe pairs to buy. Each pair costs 200 gp.");
+    setTooltip(input, "Number of shoe pairs to buy. Each pair costs 200 gp and gives the wearer +Tier to Defense when withdrawing or fleeing melee.");
   } else {
     input.placeholder = "Spell name, or include free";
     input.value = defaults.reference || "Scene 2 illusion spell - choose spell";
@@ -22972,9 +22979,12 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
   wrap.appendChild(input);
   const btn = node("button", "primary", defaults.branchAction === "leprechaun_shoes" ? "Buy" : "Record spell");
   btn.type = "button";
-  setButtonTooltip(btn, action.tooltip || "Apply this leprechaun Scene 2 result to the selected character.");
+  setButtonTooltip(btn, `${action.tooltip || "Apply this leprechaun Scene 2 result to the selected character."} ${rewardTooltip}`);
   btn.disabled = !living.length;
   btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = defaults.branchAction === "leprechaun_shoes" ? "Buying..." : "Recording...";
     try {
       await runTagBranchActionWithDefaults({
         branchAction: defaults.branchAction,
@@ -22984,12 +22994,15 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
       });
     } catch (error) {
       handleError(error);
+    } finally {
+      btn.disabled = !living.length;
+      btn.textContent = originalText;
     }
   });
   wrap.appendChild(btn);
   const help =
     defaults.branchAction === "leprechaun_shoes"
-      ? "Costs 200 gp per pair and adds Shoes of Fast Walk to the selected character if they can pay."
+      ? "Costs 200 gp per pair. The wearer adds +Tier to Defense when withdrawing or fleeing melee."
       : "Costs 100 gp unless the reference says free; records a pending illusion spell lesson on the selected character.";
   wrap.appendChild(subline(help));
   parent.appendChild(wrap);
