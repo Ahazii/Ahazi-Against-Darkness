@@ -2367,6 +2367,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Edit ${label}" in APP_JS
     assert "map_cave_room_count" in APP_JS
     assert "tagPromptDefaultsFromAction" in APP_JS
+    assert "runTagRouteActionWithDefaults" in APP_JS
+    assert "directTagRouteAllowed" in APP_JS
+    assert "/tag-route-action" in APP_JS
+    assert "extracted PDF go-to Scene branch" in APP_JS
     assert "result.module_update" in APP_JS
     assert "appendTagMetadataPromptActions" in APP_JS
     assert "appendTagModuleProfile" in APP_JS

@@ -47,6 +47,7 @@ def test_assets_route_prefers_data_dir_and_does_not_use_static_mount() -> None:
     assert '"tag_scene_narrative_overrides.json"' in config_py
     assert '@app.post("/api/rules/upload-pdf")' in main_py
     assert '@app.post("/api/rules/extract-tag-narrative")' in main_py
+    assert '@app.post("/api/sessions/{session_id}/tag-route-action")' in main_py
     assert "settings.rules_dir" in main_py
     assert "cryptography" in requirements
 

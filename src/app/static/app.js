@@ -11103,6 +11103,12 @@ function directTagBranchAllowed(defaults = {}) {
   return DIRECT_TAG_BRANCH_ACTIONS.has(defaults.branchAction || "");
 }
 
+const DIRECT_TAG_ROUTE_ACTIONS = new Set(["unlock_scene", "skip_scene", "parley_success", "parley_failed", "peaceful_branch", "hostile_branch", "final_route", "solo_restriction"]);
+
+function directTagRouteAllowed(defaults = {}) {
+  return DIRECT_TAG_ROUTE_ACTIONS.has(defaults.routeAction || "") && !(defaults.routeAction === "clue_gate_unlocked" && Number(defaults.amount || 0) > 0);
+}
+
 const DIRECT_TAG_SCENE_ACTIONS = new Set(["deoldyn_training"]);
 
 function directTagSceneAllowed(defaults = {}) {
@@ -11633,6 +11639,40 @@ async function runTagSceneActionWithDefaults(defaults = {}) {
   }
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG scene result applied.");
+}
+
+async function runTagRouteActionWithDefaults(defaults = {}) {
+  if (!directTagRouteAllowed(defaults)) {
+    openTagActionsWithDefaults(defaults);
+    setStatus("This Adventures Guild route needs review; it has been opened in Adventures Guild Actions.");
+    return;
+  }
+  const endpoint = state.session?.id
+    ? `/api/sessions/${encodeURIComponent(state.session.id)}/tag-route-action`
+    : "/api/campaign/tag/route-action";
+  const result = await api(endpoint, {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: defaults.characterId || "",
+      route_action: defaults.routeAction || "parley_success",
+      reference: defaults.reference || "",
+      clue_cost: Number(defaults.amount || 0),
+    }),
+  });
+  state.campaign = result.campaign;
+  if (result.character) {
+    const index = state.characters.findIndex((character) => character.id === result.character.id);
+    if (index >= 0) state.characters[index] = result.character;
+    else state.characters.push(result.character);
+  }
+  if (result.session) {
+    state.session = result.session;
+    renderSession();
+    syncSessionListFromSession(state.session);
+  } else {
+    renderTagCampaignSettlementPanel(state.campaign);
+  }
+  setStatus(`${result.entry?.result_text || "Adventures Guild route action logged."} ${result.rewrite_result || ""}`.trim());
 }
 
 function classImageUrl(profile) {
@@ -18207,10 +18247,11 @@ function appendCurrentObjectiveButton(parent, action) {
       {
         const defaults = generatedTagPromptActionDefaults(action.promptAction, action.fallbackReference, action.tagReference);
         const directBranch = directTagBranchAllowed(defaults);
+        const directRoute = directTagRouteAllowed(defaults);
         const directScene = directTagSceneAllowed(defaults);
         setButtonTooltip(
           btn,
-          directBranch || directScene
+          directBranch || directRoute || directScene
             ? `${action.promptAction?.tooltip || "Use this current-room Adventures Guild prompt action."} Runs directly from Current Objective; the app chooses an eligible payer/receiver when the action has an item cost.`
             : `${action.promptAction?.tooltip || "Use this current-room Adventures Guild prompt action."} Opens Adventures Guild Actions prefilled; confirm exact PDF/player values before applying.`
         );
@@ -18219,6 +18260,8 @@ function appendCurrentObjectiveButton(parent, action) {
             openLeprechaunSpellDialog(defaults);
           } else if (directBranch) {
             runTagBranchActionWithDefaults(defaults).catch(handleError);
+          } else if (directRoute) {
+            runTagRouteActionWithDefaults(defaults).catch(handleError);
           } else if (directScene) {
             runTagSceneActionWithDefaults(defaults).catch(handleError);
           } else {
@@ -23522,6 +23565,9 @@ function generatedTagPromptActionExplanation(promptData = {}, action = {}) {
     return "Use this when this scene offers that exact choice; it opens the right Adventures Guild action instead of making you hunt through every selector.";
   }
   if (type === "route") {
+    if (action.action_value === "unlock_scene") {
+      return "This follows an extracted PDF go-to Scene branch and updates the active generated module to show the unlocked scene.";
+    }
     return "Use this only when this scene actually changes the lead's route, such as capture, parley, escape, skipped route, or blocked route.";
   }
   if (type === "xp") {
@@ -23880,9 +23926,14 @@ function renderTagRelevantActions(session = state.session) {
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
     const tooltip = String(action.tooltip || "Prefill TAG Actions from the current generated-room prompt.");
+    const defaults = generatedTagPromptActionDefaults(action, fallback, tagReference);
     setButtonTooltip(btn, `${tooltip} ${generatedTagPromptActionExplanation(promptData, action)} Confirm the PDF/player choice before applying.`);
     btn.addEventListener("click", () => {
-      openTagActionsWithDefaults(generatedTagPromptActionDefaults(action, fallback, tagReference));
+      if (directTagRouteAllowed(defaults)) {
+        runTagRouteActionWithDefaults(defaults).catch(handleError);
+      } else {
+        openTagActionsWithDefaults(defaults);
+      }
     });
     row.appendChild(btn);
   }
@@ -23910,11 +23961,20 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
     if (!action?.label) continue;
     if (appendLeprechaunGuidedAction(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
+    const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+    if (directTagRouteAllowed(defaults)) {
+      const btn = node("button", "secondary", String(action.label));
+      btn.type = "button";
+      setButtonTooltip(btn, `${String(action.tooltip || "Follow this extracted Adventures Guild route branch.")} Runs directly and updates the active generated module route.`);
+      btn.addEventListener("click", () => runTagRouteActionWithDefaults(defaults).catch(handleError));
+      row.appendChild(btn);
+      continue;
+    }
     appendTagContextualButton(
       row,
       String(action.label),
       String(action.tooltip || "Open the TAG Actions dialog with this generated-scene prompt prefilled."),
-      tagPromptDefaultsFromAction(action, fallbackReference)
+      defaults
     );
   }
   if (!row.childElementCount) return false;

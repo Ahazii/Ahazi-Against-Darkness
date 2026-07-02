@@ -4389,25 +4389,119 @@ def _remove_exits_to(room: dict[str, Any], to_room: str) -> int:
     return removed
 
 
+def _scene_key_from_route_reference(reference: str) -> str:
+    refs = _scene_refs_from_text(reference)
+    if not refs:
+        return ""
+    return f"Scene {refs[-1]}"
+
+
+def _tag_scene_graph_node(tag_reference: dict[str, Any], scene_key: str) -> dict[str, Any] | None:
+    graph = tag_reference.get("scene_graph")
+    if not isinstance(graph, dict):
+        return None
+    scenes = graph.get("scenes")
+    if not isinstance(scenes, dict):
+        return None
+    node = scenes.get(scene_key)
+    return node if isinstance(node, dict) else None
+
+
+def _tag_unlocked_scene_prompt(scene_key: str, scene_node: dict[str, Any] | None, route: TagAdventureRouteState) -> dict[str, Any]:
+    if scene_node is None:
+        return {
+            "title": "Unlocked scene",
+            "body": "This scene was unlocked by an Adventures Guild branch choice. Check the printed scene/reference before applying reward, XP, route, or combat consequences.",
+            "checklist": [
+                "Confirm which earlier branch unlocked this scene.",
+                "Record arrival, reward, XP, and any closeout note before moving on.",
+            ],
+            "actions": [
+                _tag_prompt_action(
+                    "Mark unlocked scene",
+                    "Prefill the route marker showing the unlocked scene has been reached.",
+                    action_type="route",
+                    action_value="unlock_scene",
+                    reference=route.reference,
+                ),
+                _tag_prompt_action(
+                    "Apply unlocked reward",
+                    "Prefill the printed reward action for the unlocked branch.",
+                    action_type="branch",
+                    action_value="claim_reward",
+                    reference=route.reference,
+                ),
+            ],
+        }
+    branches = scene_node.get("branches") if isinstance(scene_node.get("branches"), list) else []
+    actions = [
+        _tag_prompt_action(
+            str(branch.get("label") or f"Follow {branch.get('target_scene')}"),
+            f"Follow the extracted PDF branch from {scene_key} to {branch.get('target_scene')}.",
+            action_type="route",
+            action_value="unlock_scene",
+            reference=f"{scene_key} -> {branch.get('target_scene')}: {branch.get('label') or 'Follow scene branch'}",
+        )
+        for branch in branches
+        if isinstance(branch, dict) and branch.get("target_scene")
+    ]
+    actions.extend(
+        [
+            _tag_prompt_action(
+                "Mark scene resolved",
+                "Record that this extracted Adventures Guild scene has been resolved at the table.",
+                action_type="route",
+                action_value="final_route",
+                reference=f"{scene_key}: resolved",
+            ),
+            _tag_prompt_action(
+                "Apply scene reward",
+                "Prefill the printed reward action if this extracted scene grants gp, items, or another reward.",
+                action_type="branch",
+                action_value="claim_reward",
+                reference=f"{scene_key}: reward",
+            ),
+        ]
+    )
+    return {
+        "title": scene_key,
+        "body": str(scene_node.get("description") or "Resolve the extracted Adventures Guild scene."),
+        "checklist": [
+            "Read only this unlocked scene text and choose one of its extracted branches if it offers one.",
+            "If the scene has no branch, resolve its printed reward, XP, combat, or return-to-town consequence.",
+            "Use the scene reward/resolved buttons only after the table has made the printed choice.",
+        ],
+        "actions": actions,
+    }
+
+
 def _ensure_unlocked_scene_room(
     rooms: list[Any],
     route: TagAdventureRouteState,
     tag_reference: dict[str, Any],
 ) -> bool:
+    scene_key = _scene_key_from_route_reference(route.reference)
+    scene_node = _tag_scene_graph_node(tag_reference, scene_key) if scene_key else None
+    prompt = _tag_unlocked_scene_prompt(scene_key or "Unlocked scene", scene_node, route)
+    description = str(scene_node.get("description") if isinstance(scene_node, dict) else "") or (
+        "A follow-up scene is now available because of an Adventures Guild branch choice. "
+        f"{route.result_text}"
+    )
+    title = scene_key or "Unlocked Adventures Guild Scene"
+    tag_reference.setdefault("room_prompts", {})["tag-unlocked-scene"] = prompt
     if _tag_room_by_id(rooms, "tag-unlocked-scene") is not None:
         room = _tag_room_by_id(rooms, "tag-unlocked-scene")
         if room is not None:
+            room["title"] = title
+            room["description"] = description
             _append_room_note(room, f"TAG route update: {route.result_text}")
         return False
     rooms.append(
         {
             "id": "tag-unlocked-scene",
             "tile_key": "13",
-            "title": "Unlocked TAG Scene",
-            "description": (
-                "A follow-up scene is now available because of a TAG branch choice. "
-                f"{route.result_text}"
-            ),
+            "title": title,
+            "description": description,
             "environment": "dungeon",
             "exits": [
                 {
@@ -4430,7 +4524,7 @@ def _ensure_unlocked_scene_room(
                     "when": "on_enter",
                     "once": True,
                     "log": (
-                        "TAG unlocked scene: resolve the printed follow-up, clue gate, or branch before the finale. "
+                        f"Adventures Guild unlocked {title}: resolve the printed follow-up, clue gate, or branch before the finale. "
                         f"Source: {tag_reference.get('pdf_pages') or route.reference}."
                     ),
                 }
@@ -4458,16 +4552,10 @@ def _latest_tag_manifest_path(data_dir: Path, campaign: CampaignState) -> tuple[
     return adventure_id, manifest_path
 
 
-def apply_latest_tag_route_to_adventure(data_dir: Path, campaign: CampaignState) -> str:
+def apply_tag_route_to_manifest(manifest: dict[str, Any], campaign: CampaignState) -> str:
     route = campaign.tag_adventure_routes[-1] if campaign.tag_adventure_routes else None
     if route is None:
         return "No TAG route marker is available to apply to a generated adventure."
-    adventure_id, manifest_path = _latest_tag_manifest_path(data_dir, campaign)
-    if not adventure_id:
-        return "No generated TAG adventure is available for route rewrite."
-    if manifest_path is None:
-        return f"Generated TAG adventure {adventure_id} is not installed yet; route marker was saved only in campaign state."
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     source = manifest.setdefault("source", {})
     parameters = source.setdefault("parameters", {})
     tag_reference = parameters.setdefault("tag_reference", {})
@@ -4542,6 +4630,20 @@ def apply_latest_tag_route_to_adventure(data_dir: Path, campaign: CampaignState)
         markers[-1]["rewrite"] = changed_detail
     if "Module update:" not in route.result_text:
         route.result_text = f"{route.result_text} Module update: {changed_detail}."
+    return changed_detail
+
+
+def apply_latest_tag_route_to_adventure(data_dir: Path, campaign: CampaignState) -> str:
+    route = campaign.tag_adventure_routes[-1] if campaign.tag_adventure_routes else None
+    if route is None:
+        return "No TAG route marker is available to apply to a generated adventure."
+    adventure_id, manifest_path = _latest_tag_manifest_path(data_dir, campaign)
+    if not adventure_id:
+        return "No generated TAG adventure is available for route rewrite."
+    if manifest_path is None:
+        return f"Generated TAG adventure {adventure_id} is not installed yet; route marker was saved only in campaign state."
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    changed_detail = apply_tag_route_to_manifest(manifest, campaign)
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return f"Applied route marker to {adventure_id}: {changed_detail}."
 
@@ -5520,6 +5622,45 @@ def _tag_prompt_action_from_profile(action: object) -> dict[str, object] | None:
     )
 
 
+def _tag_scene_graph_actions(profile: dict[str, object], scene_key: str | None = None) -> list[dict[str, object]]:
+    scene_graph = profile.get("scene_graph")
+    if not isinstance(scene_graph, dict):
+        return []
+    scenes = scene_graph.get("scenes")
+    if not isinstance(scenes, dict):
+        return []
+    if scene_key is None:
+        start_scenes = scene_graph.get("start_scenes")
+        if isinstance(start_scenes, list) and start_scenes:
+            scene_key = str(start_scenes[0])
+        else:
+            scene_key = next(iter(scenes), "")
+    scene = scenes.get(scene_key)
+    if not isinstance(scene, dict):
+        return []
+    branches = scene.get("branches")
+    if not isinstance(branches, list):
+        return []
+    actions: list[dict[str, object]] = []
+    for branch in branches:
+        if not isinstance(branch, dict):
+            continue
+        target = str(branch.get("target_scene") or "").strip()
+        if not target:
+            continue
+        label = str(branch.get("label") or f"Follow {target}").strip()
+        actions.append(
+            _tag_prompt_action(
+                label if label.lower().startswith("go to") else f"{target}: {label}",
+                f"Follow the extracted PDF branch from {scene_key} to {target}. The generated module will open/update the unlocked scene room with the target scene text.",
+                action_type="route",
+                action_value="unlock_scene",
+                reference=f"{scene_key} -> {target}: {label}",
+            )
+        )
+    return actions
+
+
 def _extend_prompt_actions(prompt: dict[str, object], actions: object) -> None:
     if not isinstance(actions, list):
         return
@@ -5610,7 +5751,8 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     lead_result_label = str(profile.get("lead_result_label") or "printed rumor/result")
     clue_cost = max(0, int(profile.get("clue_gate_cost") or 0))
     clue_label = str(profile.get("clue_gate_label") or "Unlock Clue route")
-    final_actions = _tag_profile_actions(profile, "final_prompt_actions")
+    graph_actions = _tag_scene_graph_actions(profile)
+    final_actions = [*_tag_profile_actions(profile, "final_prompt_actions"), *graph_actions]
     prompts: dict[str, object] = {
         "tag-lead-entry": {
             "title": "Lead entry choices",
@@ -5720,6 +5862,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             "checklist": [
                 "Resolve only the choice, purchase, combat, or procedure that this lead actually offers.",
                 "Use the scene-specific action button for the receiving character, amount, route, XP, or reward.",
+                *([] if not graph_actions else ["Use extracted Scene branch buttons when the PDF says to go to another Scene."]),
                 "After the scene is resolved, review Guild, banking/storage, XP, and closeout tasks.",
                 *signoff_checks,
             ],

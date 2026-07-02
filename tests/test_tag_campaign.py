@@ -541,6 +541,71 @@ def test_tag_manifest_uses_user_editable_narrative_overrides(tmp_path, monkeypat
     assert finale["description"] == "Edited finale narrative."
     assert finale["triggers"][0]["log"] == "Edited finale log."
     assert manifest["source"]["parameters"]["tag_reference"]["scene_graph"]["scenes"]["Scene 11"]["branches"][0]["target_scene"] == "Scene 18"
+    final_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]["actions"]
+    assert any(action["action_type"] == "route" and action["action_value"] == "unlock_scene" for action in final_actions)
+
+
+def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkeypatch) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    (data_dir / "tag_scene_narrative_overrides.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "tag": {
+                    "rumor": {
+                        "1": {
+                            "scene_graph": {
+                                "start_scenes": ["Scene 9"],
+                                "scenes": {
+                                    "Scene 9": {
+                                        "description": "Opening choice text.",
+                                        "branches": [
+                                            {
+                                                "label": "Steal the star object",
+                                                "target_scene": "Scene 14",
+                                                "target_scene_number": 14,
+                                            }
+                                        ],
+                                    },
+                                    "Scene 14": {
+                                        "description": "Thievery Save vs L6 text.",
+                                        "branches": [
+                                            {
+                                                "label": "If you fail, go to Scene 18",
+                                                "target_scene": "Scene 18",
+                                                "target_scene_number": 18,
+                                            }
+                                        ],
+                                    },
+                                    "Scene 18": {"description": "The theft fails.", "branches": []},
+                                },
+                            }
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    campaign = default_campaign()
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="1")
+
+    tag_campaign.resolve_tag_route_action(
+        campaign,
+        route_action="unlock_scene",
+        reference="Scene 9 -> Scene 14: Steal the star object",
+    )
+    change = tag_campaign.apply_tag_route_to_manifest(manifest, campaign)
+
+    assert change == "follow-up scene inserted and route opened"
+    unlocked = next(room for room in manifest["rooms"] if room["id"] == "tag-unlocked-scene")
+    assert unlocked["title"] == "Scene 14"
+    assert unlocked["description"].startswith("Thievery Save vs L6")
+    prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-unlocked-scene"]
+    assert prompt["title"] == "Scene 14"
+    assert any(action["reference"].startswith("Scene 14 -> Scene 18") for action in prompt["actions"])
 
 
 def test_tag_pdf_rumor_parser_keeps_scene_10_and_continued_entries() -> None:

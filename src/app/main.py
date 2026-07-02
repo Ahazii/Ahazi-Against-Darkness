@@ -2820,6 +2820,12 @@ def _rules_tables_payload() -> dict:
             "pdf_boundary": "The committed app seeds a template only. Exact copied PDF prose belongs in the user's local DATA_DIR file and is not redistributed by the repository.",
         },
         {
+            "surface": "Extracted scene branch buttons",
+            "shown_in": "Generated Adventures Guild room prompts, Current Objective, and Relevant Now actions.",
+            "player_use": "When local scene_graph metadata contains go-to Scene branches, the final/current scene prompt shows those branches as route buttons. Clicking a branch records the route, updates the active session manifest, opens or refreshes the unlocked scene room with the extracted target Scene text, and exposes any next branches from that target scene.",
+            "pdf_boundary": "The app follows the branch the player selected; it does not auto-choose between printed options. Exact rewards, saves, combat consequences, and optional choices still require the player/PDF decision.",
+        },
+        {
             "surface": "Prompt action buttons and Relevant Now shortcuts",
             "shown_in": "Generated TAG rooms and TAG Actions dialog.",
             "player_use": "Prefills Adventures Guild Actions for lead-specific choices, purchases, services, side rewards, Clue gates, route rewrites, XP markers, and profile-specific procedure rolls. Specific lead actions now replace generic final-route/reward/XP boilerplate when the profile knows what the scene offers; older modules still get repaired fallback metadata.",
@@ -4614,6 +4620,42 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
             session.log.append(f"TAG next: {next_action}")
     store.save("sessions", session)
     return {"campaign": campaign, "character": character, "entry": entry, "session": enrich_session(session)}
+
+
+@app.post("/api/sessions/{session_id}/tag-route-action")
+async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import apply_tag_route_to_manifest, load_campaign, resolve_tag_route_action, save_campaign
+
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    campaign = load_campaign(store)
+    character = _optional_campaign_character(payload)
+    entry = resolve_tag_route_action(
+        campaign,
+        character,
+        route_action=str(payload.get("route_action") or "parley_success"),
+        reference=str(payload.get("reference") or ""),
+        clue_cost=int(payload.get("clue_cost") or 0),
+    )
+    rewrite_result = ""
+    if isinstance(session.imported_manifest, dict):
+        changed_detail = apply_tag_route_to_manifest(session.imported_manifest, campaign)
+        rewrite_result = f"Applied route marker to active session: {changed_detail}."
+    if character is not None:
+        store.save("characters", character)
+        _sync_character_to_session_party(session, character)
+    campaign = save_campaign(store, campaign)
+    if entry.result_text and entry.result_text not in session.log:
+        session.log.append(f"TAG route: {entry.result_text}")
+    store.save("sessions", session)
+    return {
+        "campaign": campaign,
+        "character": character,
+        "entry": entry,
+        "rewrite_result": rewrite_result,
+        "session": enrich_session(session),
+    }
 
 
 @app.post("/api/sessions/{session_id}/tag-scene-action")
