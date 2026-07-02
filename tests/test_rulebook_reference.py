@@ -68,6 +68,7 @@ APP_ONLY_REFERENCE_IDS = {
     "exploration_objective_clarity_table",
     "adventure_management_browser_table",
     "artwork_expansion_plan_table",
+    "item_tooltip_coverage_table",
     "rules_artwork_registry",
     "pdf_artwork_boundary",
 }

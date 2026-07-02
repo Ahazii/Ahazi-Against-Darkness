@@ -8807,6 +8807,96 @@ function setButtonTooltip(button, text) {
   syncButtonTooltip(button);
 }
 
+const ITEM_TOOLTIP_RULES = [
+  [/shoes of fast walk/i, "Shoes of Fast Walk: 200 gp per pair from the leprechaun bargain. The wearer adds +Tier to Defense when withdrawing or fleeing melee."],
+  [/potion of healing/i, "Potion of Healing: drink when allowed to recover Life. Barbarians cannot use magic potions; transfer it to an eligible ally."],
+  [/food ration/i, "Food ration: eaten to reset a hero's hunger timer. Track carried rations against food limits where those rules are active."],
+  [/bandage/i, "Bandage: recovery supply used by the app's healing/recovery prompts when the rules permit field treatment."],
+  [/holy water/i, "Holy water vial: anti-undead/holy supply. Only eligible classes may buy/use it where the rules call for holy water."],
+  [/flammable oil|flask of flammable oil/i, "Flammable oil: thrown or used where the app offers oil actions; check the prompt for fire, breakage, and target handling."],
+  [/lantern hook/i, "Lantern hook: utility gear for carrying/using a lantern while keeping hands freer when the relevant gear rules apply."],
+  [/lantern(?! oil)/i, "Lantern: light source. Some dark-dwelling foes suffer penalties against light; the app tracks extinguished lantern states in combat."],
+  [/torch/i, "Torch: light source and fire source. Can matter for darkness, webs, mummies, and other fire/light prompts."],
+  [/rope/i, "Rope: utility gear for pits, climbing, bodies, and dungeon hazards when the prompt asks for rope."],
+  [/10'? foot pole|ten foot pole|10' pole/i, "10' pole: utility gear for probing, traps, and settlement-service/tag prompts where a pole is checked."],
+  [/good lock-?picks/i, "Good lock-picks: +1 style lockpicking aid where the app offers a lockpick/door interaction that checks them."],
+  [/\bcrowbar\b/i, "Crowbar: lets eligible heroes bash stuck/locked doors and can improve door-forcing prompts."],
+  [/\bshield\b/i, "Shield: defensive gear. Counts against shield carrying limits and may be blocked by class/equipment rules."],
+  [/light armor|hide armor/i, "Light armor: improves protection for classes allowed to wear it; lower burden than heavy armor."],
+  [/heavy armor/i, "Heavy armor: stronger protection but class-restricted and usually fitted to the buyer."],
+  [/bow/i, "Bow: missile weapon. Requires arrows; some class features, such as outdoor ranger fire, care about the default bow."],
+  [/crossbow/i, "Crossbow: missile weapon. Use as the selected/default missile weapon if the hero can use it."],
+  [/sling/i, "Sling: missile weapon; eligible small/casting classes may use it where allowed."],
+  [/arrow/i, "Arrows: ammunition for bows. Keep some in inventory if a bow is your default missile weapon."],
+  [/two-handed weapon|heavy weapon|staff/i, "Two-handed weapon: melee weapon using two weapon slots. Often stronger but occupies both hands."],
+  [/light hand weapon|dagger|knife|stake|throwing star/i, "Light hand weapon: one-slot/light weapon. Useful for classes restricted to light weapons and for dual-wield/off-hand rules."],
+  [/hand weapon|sword|axe|mace|spear|hammer|club|flail|whip|scimitar/i, "Hand weapon: standard melee weapon. Assign it as default melee gear so combat uses the intended weapon."],
+  [/silver/i, "Silvered weapon/service: applies silvering where permitted; useful against foes that require or care about silvered weapons."],
+  [/gild/i, "Gilded weapon/service: applies gilding where permitted; useful against foes or effects that care about gilded weapons."],
+  [/handgun/i, "Handgun: firearm weapon. Only classes with firearm permission can use it; assign as default missile gear if carried."],
+  [/black powder rifle/i, "Black powder rifle: firearm weapon. Strong but class-restricted; assign as default missile gear if carried."],
+  [/blessing spell scroll/i, "Blessing spell scroll: magic scroll. Eligible readers can use scroll/spell prompts; non-magic users may be blocked."],
+  [/scroll/i, "Scroll: spell item. Eligible readers can cast or spend it where the app offers scroll actions."],
+  [/wand of power/i, "Wand of Power: charged magic item. The app tracks charges and offers the relevant wand action when usable."],
+  [/wand|staff .*charges|\(\d+\s*charges?\)/i, "Charged magic item: casts the named spell while charges remain; class restrictions may apply."],
+  [/amulet/i, "Amulet: magic item. Keep in inventory; app prompts apply specific amulet effects where implemented."],
+  [/talisman/i, "Talisman: magic item. Keep in inventory; app prompts apply specific talisman effects where implemented."],
+  [/herbal tonic/i, "Herbal tonic: herbal remedy used by exploration recovery prompts when available."],
+  [/gremlin repellant/i, "Gremlin repellant: remedy/tool used when the app offers a gremlin-related protection prompt."],
+  [/wolfsbane/i, "Wolfsbane: herbal remedy relevant to werecreatures and similar prompts."],
+  [/berserker'?s mushroom/i, "Berserker's Mushroom: mushroom remedy that can affect the next combat when the relevant action is used."],
+  [/mushroom|truffle|chanterelle|morel|amanita|puffball|xicthul/i, "Rare mushroom: special food/remedy/valuable item. Use or sell through the matching fungal prompts when offered."],
+  [/bag of nails/i, "Bag of nails: dungeon utility item used by door/rest/secure-room prompts where nails are allowed."],
+  [/chicken blood/i, "Jar of chicken blood: odd supply item used by specific creature, ritual, or table prompts when called for."],
+  [/scroll tube/i, "Scroll tube: protective carrying gear for scrolls and paper items."],
+  [/resurrection ritual/i, "Resurrection ritual: settlement/service purchase used to restore a fallen character when the rules and cost allow."],
+  [/magic locker/i, "Magic locker: Adventures Guild storage service. Used for remote storage/summoning when the Guild service is active."],
+  [/bank account|banked gold|bank/i, "Banking item/account: Adventures Guild finance/storage state. Banked gold is safer than carried gold but follows service rules."],
+  [/treasure map|map fragment/i, "Treasure map/map fragment: adventure lead or map clue. Use the current objective/adventure lead prompt rather than treating it as ordinary gear."],
+  [/clue/i, "Clue: spendable investigation resource for secrets, searches, special choices, and Adventures Guild procedures."],
+  [/gem|jewel|jewelry|ruby|sapphire|emerald|diamond|pearl/i, "Gem/jewel/jewelry: valuable treasure. Sell through the shop/buyer prompts; some Secrets can change payout."],
+  [/leafsteel armor/i, "Leafsteel armor: temporary special armor. The app tracks remaining adventures and removes it when it decays."],
+  [/illusion spell pending|leprechaun illusion/i, "Leprechaun illusion lesson: pending record that one eligible character learned or is choosing an illusion spell from Scene 2."],
+];
+
+function normalizeItemTooltipName(itemName) {
+  return String(itemName || "")
+    .replace(/\s*\((?:silvered|gilded|poisoned)\)\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function itemTooltip(itemName, context = {}) {
+  const raw = String(itemName || "").trim();
+  if (!raw) return "";
+  const clean = normalizeItemTooltipName(raw);
+  const lower = clean.toLowerCase();
+  const parts = [clean];
+  if (context.priceGp != null) parts.push(`${context.priceGp} gp to buy.`);
+  if (context.sellGp != null) parts.push(`${context.sellGp} gp listed sale value.`);
+  if (context.category) parts.push(`Category: ${titleFromKey(context.category)}.`);
+  if (context.sourcePage) parts.push(`Rules source/page: ${context.sourcePage}.`);
+  const rule = ITEM_TOOLTIP_RULES.find(([pattern]) => pattern.test(clean) || pattern.test(raw));
+  if (rule) parts.push(rule[1]);
+  else if (context.magic) parts.push("Magic item: keep it in inventory; the app exposes exact use prompts when the relevant rule or scene applies.");
+  else if (/weapon/i.test(lower)) parts.push("Weapon: assign as default melee or missile gear so combat uses the intended item.");
+  else if (/armor/i.test(lower)) parts.push("Armor: defensive gear; class restrictions and carrying rules may apply.");
+  else parts.push("Inventory item: keep, transfer, sell, or use it when a scene/action specifically asks for this item.");
+  if (context.allowed === false) parts.push("This character/class cannot currently buy or use this item here.");
+  if (context.note) parts.push(context.note);
+  return [...new Set(parts.filter(Boolean))].join(" ");
+}
+
+function setItemTooltip(element, itemName, context = {}) {
+  setTooltip(element, itemTooltip(itemName, context));
+}
+
+function optionWithItemTooltip(itemName, value = itemName, context = {}) {
+  const option = new Option(itemName, value);
+  option.title = itemTooltip(itemName, context);
+  return option;
+}
+
 function syncButtonTooltip(button) {
   if (!button || button.tagName !== "BUTTON") return;
   const text = button.dataset.tooltip || "";
@@ -13690,10 +13780,7 @@ function appendFdCyclopeanIdolActions(parent, session, tile) {
       const select = document.createElement("select");
       select.className = "fd-sacrifice-select";
       for (const item of items) {
-        const option = document.createElement("option");
-        option.value = item;
-        option.textContent = item;
-        select.appendChild(option);
+        select.appendChild(optionWithItemTooltip(item));
       }
       row.appendChild(select);
       const sacrificeBtn = node("button", "secondary", "Sacrifice (1 Clue + Quest)");
@@ -13814,10 +13901,7 @@ function appendFdQuestActions(parent, session, tile, quest) {
       const select = document.createElement("select");
       select.className = "fd-quest-turnin-select";
       for (const item of items) {
-        const option = document.createElement("option");
-        option.value = item;
-        option.textContent = item;
-        select.appendChild(option);
+        select.appendChild(optionWithItemTooltip(item));
       }
       turnInRow.appendChild(select);
       const turnInBtn = node("button", "secondary", "Turn in magic item");
@@ -14919,7 +15003,7 @@ function renderCharacters() {
       body.appendChild(subline(characterAdventureLabel(character)));
     }
     if (character.id === state.selectedCharacterId) {
-      body.appendChild(subline(`Stored gear: ${character.inventory.join(", ") || "none"}`));
+      appendInventoryTooltipLine(body, "Stored gear", character.inventory, character);
       appendSpellSubline(body, character.spells);
       appendPendingSecretPrompts(body, character, activeSessionMemberForCharacter(character) ? state.session : null);
       appendSheetRulesNotes(body, character);
@@ -15748,6 +15832,7 @@ const RULES_TABLE_ORDER = [
   "experience_slower_table",
   "economy_services_table",
   "equipment_shop_table",
+  "item_tooltip_coverage_table",
   "class_profiles_table",
   "swashbuckler_traits_table",
   "expert_skills_table",
@@ -17190,6 +17275,25 @@ function formatMemberInventory(member) {
       item.toLowerCase().includes("potion of healing") ? `${item} (cannot drink — transfer to ally)` : item
     )
     .join(", ");
+}
+
+function appendInventoryTooltipLine(parent, labelText, items, member = null) {
+  const line = node("div", "subline inventory-tooltip-line");
+  line.appendChild(document.createTextNode(`${labelText}: `));
+  const list = items || [];
+  if (!list.length) {
+    line.appendChild(document.createTextNode("none"));
+    parent.appendChild(line);
+    return line;
+  }
+  list.forEach((itemName, index) => {
+    if (index > 0) line.appendChild(document.createTextNode(", "));
+    const chip = node("span", "inventory-tooltip-item", itemName);
+    setItemTooltip(chip, itemName, { note: member?.class_id === "barbarian" && /potion of healing/i.test(itemName) ? "This barbarian cannot drink it; transfer it to an eligible ally." : "" });
+    line.appendChild(chip);
+  });
+  parent.appendChild(line);
+  return line;
 }
 
 function renderRecoveryChoices(session) {
@@ -20015,7 +20119,7 @@ function openInventoryPickerDialog({ title, note, items, onConfirm }) {
   if (inventoryPickerNote) inventoryPickerNote.textContent = note || "";
   inventoryPickerSelect.replaceChildren();
   for (const item of items) {
-    inventoryPickerSelect.appendChild(new Option(item, item));
+    inventoryPickerSelect.appendChild(optionWithItemTooltip(item));
   }
   inventoryPickerDialog.showModal();
 }
@@ -21415,7 +21519,7 @@ function updateEquipmentShopTargetWeaponPanel() {
     const option = document.createElement("option");
     option.value = weapon;
     option.textContent = weapon;
-    option.title = `Apply ${item.name} to this weapon.`;
+    option.title = `${itemTooltip(weapon)} Apply ${item.name} to this weapon.`;
     equipmentShopTargetWeapon.appendChild(option);
   }
 }
@@ -21551,7 +21655,15 @@ async function refreshEquipmentShopDialog() {
     if (equipmentShopQuantityInput) equipmentShopQuantityInput.value = "1";
     for (const item of payload.items || []) {
       const row = node("label", `equipment-shop-row${item.allowed ? "" : " disabled"}`);
-      const rowTips = [`${item.name}: ${item.price_gp}gp.`];
+      const itemTip = itemTooltip(item.name, {
+        priceGp: item.price_gp,
+        sellGp: item.sell_gp,
+        category: item.category,
+        magic: item.magic,
+        allowed: item.allowed,
+        note: item.price_note,
+      });
+      const rowTips = [itemTip];
       const radio = document.createElement("input");
       radio.type = "radio";
       radio.name = "equipment-shop-buy";
@@ -21580,6 +21692,7 @@ async function refreshEquipmentShopDialog() {
       }
       row.title = rowTips.join(" ");
       radio.title = row.title;
+      text.title = row.title;
       row.append(radio, text);
       equipmentShopBuyList.appendChild(row);
     }
@@ -21589,7 +21702,7 @@ async function refreshEquipmentShopDialog() {
         const option = document.createElement("option");
         option.value = item;
         option.textContent = item;
-        option.title = "Select this carried item to see its sale rule and payout.";
+        option.title = `${itemTooltip(item)} Select this carried item to see its sale rule and payout.`;
         equipmentShopSellItem.appendChild(option);
       }
     }
@@ -26324,7 +26437,7 @@ function appendCampCoatingControls(
     itemSelect.appendChild(new Option("Choose item…", ""));
     const member = selectedMember();
     for (const item of professionalCoatingEligibleItems(member)) {
-      itemSelect.appendChild(new Option(item, item));
+      itemSelect.appendChild(optionWithItemTooltip(item));
     }
     if (previous && [...itemSelect.options].some((option) => option.value === previous)) {
       itemSelect.value = previous;
@@ -26767,7 +26880,7 @@ function appendTrainedProfessionalCampPanel(panel, session) {
         itemSelect.replaceChildren(new Option("Weapon or arrow…", ""));
         const hero = (session.party || []).find((item) => item.character_id === heroSelect.value);
         for (const item of professionalCoatingEligibleItems(hero || {})) {
-          itemSelect.appendChild(new Option(item, item));
+          itemSelect.appendChild(optionWithItemTooltip(item));
         }
       };
       heroSelect.addEventListener("change", refreshItems);
@@ -27372,7 +27485,7 @@ function appendCampHirelingsPanel(parent, session) {
           itemSelect.replaceChildren();
           itemSelect.appendChild(new Option("Choose item…", ""));
           for (const item of professionalCoatingEligibleItems(selectedMember())) {
-            itemSelect.appendChild(new Option(item, item));
+            itemSelect.appendChild(optionWithItemTooltip(item));
           }
           if (previous && [...itemSelect.options].some((option) => option.value === previous)) {
             itemSelect.value = previous;
@@ -28023,7 +28136,9 @@ function updateTransferItemAvailability(fromMember, toMember) {
     radio.disabled = blocked;
     const label = radio.closest("label");
     if (label && itemName) {
-      label.title = blocked ? blockReason : `Transfer ${itemName} to ${toMember?.name || "the selected hero"}.`;
+      label.title = blocked
+        ? `${blockReason} ${itemTooltip(itemName)}`
+        : `${itemTooltip(itemName)} Transfer to ${toMember?.name || "the selected hero"}.`;
       const textNode = radio.nextSibling;
       if (textNode) {
         textNode.textContent = blocked ? `${itemName} (${blockReason})` : itemName;
@@ -28099,7 +28214,9 @@ function refreshTransferDialog(fromChanged = false) {
         const blockReason = toMember ? memberReceiveItemBlockReason(toMember, itemName, transferSessionContext()) : "";
         const blocked = Boolean(blockReason);
         radio.disabled = blocked;
-        label.title = blocked ? blockReason : `Transfer ${itemName} to ${toMember?.name || "the selected hero"}.`;
+        label.title = blocked
+          ? `${blockReason} ${itemTooltip(itemName)}`
+          : `${itemTooltip(itemName)} Transfer to ${toMember?.name || "the selected hero"}.`;
         radio.addEventListener("change", () => {
           rememberTransferPayloadSelection();
           syncTransferGoldControls(fromMember, toMember);
@@ -28337,8 +28454,10 @@ function buildMemberInventoryPanel(member, session = null) {
     const label = node("span", "member-inventory-label", itemName);
     const lexTooltip = lexItemTooltip(session, member, itemName);
     const blossomsTooltip = blossomsItemInventoryTooltip(itemName);
-    if (lexTooltip) setTooltip(label, lexTooltip);
-    else if (blossomsTooltip) setTooltip(label, blossomsTooltip);
+    const baseTooltip = itemTooltip(itemName);
+    if (lexTooltip) setTooltip(label, `${baseTooltip} ${lexTooltip}`);
+    else if (blossomsTooltip) setTooltip(label, `${baseTooltip} ${blossomsTooltip}`);
+    else setTooltip(label, baseTooltip);
     if (member.class_id === "barbarian" && itemName.toLowerCase().includes("potion of healing")) {
       label.textContent = `${itemName} (transfer to ally)`;
     }
@@ -28841,10 +28960,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       stashRow.appendChild(document.createTextNode("Stash in compartment:"));
       const stashSelect = document.createElement("select");
       for (const item of stashable) {
-        const option = document.createElement("option");
-        option.value = item;
-        option.textContent = item;
-        stashSelect.appendChild(option);
+        stashSelect.appendChild(optionWithItemTooltip(item));
       }
       stashRow.appendChild(stashSelect);
       actions.appendChild(stashRow);
@@ -28865,10 +28981,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       retrieveRow.appendChild(document.createTextNode("Retrieve from compartment:"));
       const retrieveSelect = document.createElement("select");
       for (const item of compartment) {
-        const option = document.createElement("option");
-        option.value = item;
-        option.textContent = item;
-        retrieveSelect.appendChild(option);
+        retrieveSelect.appendChild(optionWithItemTooltip(item));
       }
       retrieveRow.appendChild(retrieveSelect);
       actions.appendChild(retrieveRow);

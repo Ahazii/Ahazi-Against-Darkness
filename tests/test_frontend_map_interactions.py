@@ -912,7 +912,7 @@ def test_home_bank_button_and_roster_bank_labels_are_present() -> None:
     assert "Bank:" in APP_JS
     assert "Home bank gold" not in APP_JS
     assert "Banked XP rolls" in APP_JS
-    assert "Stored gear:" in APP_JS
+    assert 'appendInventoryTooltipLine(body, "Stored gear", character.inventory, character);' in APP_JS
     assert "depositAllCarriedGoldForCharacter(character.id)" in APP_JS
     assert "Bank carried gold" in APP_JS
     assert "function transferMemberGoldLabel(member)" in APP_JS
@@ -1758,7 +1758,8 @@ def test_transfer_dialog_explains_item_capacity_blocks() -> None:
     assert "function memberReceiveItemBlockReason(member, itemName, session = null)" in APP_JS
     assert "has ${used}/${weaponCap} weapon slots used" in APP_JS
     assert "needs ${slots}" in APP_JS
-    assert "label.title = blocked ? blockReason" in APP_JS
+    assert "label.title = blocked" in APP_JS
+    assert "itemTooltip(itemName)" in APP_JS
     assert "recipient full" not in APP_JS
 
 
@@ -1992,6 +1993,20 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "No Adventures Guild action is required in this room unless the printed scene asks for one" in APP_JS
     assert "The app has not applied a route or reward here because this is movement/scene setup" in APP_JS
     assert "Generated Adventures Guild leads use their scene reward buttons and closeout signoff" in APP_JS
+
+
+def test_item_tooltip_helper_covers_shop_inventory_and_item_pickers() -> None:
+    assert "const ITEM_TOOLTIP_RULES" in APP_JS
+    assert "function itemTooltip" in APP_JS
+    assert "function optionWithItemTooltip" in APP_JS
+    assert "Shoes of Fast Walk: 200 gp per pair" in APP_JS
+    assert "+Tier to Defense when withdrawing or fleeing melee" in APP_JS
+    assert "equipmentShopBuyList" in APP_JS
+    assert "equipmentShopSellItem" in APP_JS
+    assert "appendInventoryTooltipLine" in APP_JS
+    assert "transferItemOptions" in APP_JS
+    assert "optionWithItemTooltip(item)" in APP_JS
+    assert ".inventory-tooltip-item" in STYLES_CSS
     assert "If this room has no scene-specific button" in Path("src/app/engine/tag_campaign.py").read_text(encoding="utf-8")
 
 

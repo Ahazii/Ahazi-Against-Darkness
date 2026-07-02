@@ -1965,6 +1965,32 @@ def _rules_tables_payload() -> dict:
         }
     )
     data["equipment_shop_table"] = rows
+    data["item_tooltip_coverage_table"] = [
+        {
+            "surface": "Equipment Shop buy list",
+            "hover_behavior": "Rows explain price, category, class block, sale value, and known mechanical use for the item before purchase.",
+            "player_use": "Check what an item affects before spending gold.",
+            "rules_boundary": "App summary only; exact printed item text remains in the relevant Rules Reference/source pages.",
+        },
+        {
+            "surface": "Equipment Shop sell list",
+            "hover_behavior": "Carried item options explain item purpose plus the sale-quote rule shown beside the selector.",
+            "player_use": "Avoid selling a tool, weapon, magic item, or clue-bearing item without understanding its use.",
+            "rules_boundary": "Sell payout still comes from the backend shop/resale resolver.",
+        },
+        {
+            "surface": "Character and party inventory",
+            "hover_behavior": "Inventory labels and stored-gear spans explain common equipment, magic/charged items, valuables, TAG rewards, and known special items.",
+            "player_use": "Browse a sheet and understand what carried items do without opening a separate lookup first.",
+            "rules_boundary": "Hover text is explanatory guidance, not a replacement for PDF-specific scene text.",
+        },
+        {
+            "surface": "Item choice dialogs",
+            "hover_behavior": "Transfer, stash/retrieve, sacrifice, professional coating, and generic inventory pickers attach the same item descriptions to their options.",
+            "player_use": "Understand the consequence of choosing an item during play.",
+            "rules_boundary": "Backend validation remains authoritative for whether the chosen item can be used.",
+        },
+    ]
     data["class_profiles_table"] = class_profiles_table_rows(rules.classes())
     data["expert_skills_table"] = expert_skills_table_rows(expert_catalog)
     data["expert_spells_table"] = expert_spells_table_rows(expert_catalog)

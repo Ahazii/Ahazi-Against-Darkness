@@ -10035,3 +10035,10 @@ textarea {
 .member-inventory-label {
   flex: 1 1 auto;
 }
+
+.inventory-tooltip-item,
+.member-inventory-label {
+  cursor: help;
+  text-decoration: underline dotted rgba(245, 213, 122, 0.55);
+  text-underline-offset: 3px;
+}
