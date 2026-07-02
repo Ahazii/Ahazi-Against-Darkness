@@ -1609,7 +1609,7 @@ def test_tag_treasure_map_branch_actions_roll_destination_procedures(monkeypatch
 
 
 def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
-    from app.engine.tag_compat import normalize_tag_log_line, upgrade_tag_manifest
+    from app.engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_line, upgrade_tag_manifest
 
     old_line = "TAG note: Apply The Map Leads To 1 reward/procedure text for Underground caves; confirm exact amounts and treasure handling from the PDF/player signoff."
     translated = normalize_tag_log_line(old_line)
@@ -1663,8 +1663,54 @@ def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
     repaired = upgrade_tag_manifest(old_manifest)
     repaired_reference = repaired["source"]["parameters"]["tag_reference"]
     assert repaired_reference["prompt_repair_note"]
-    assert repaired_reference["room_prompts"]["tag-complication"]["actions"][1]["action_type"] == "route"
+    assert repaired_reference["room_prompts"]["tag-complication"]["actions"][0]["action_type"] == "route"
     assert "older generated Adventures Guild module" in repaired_reference["room_prompts"]["tag-final-scene"]["body"]
+
+    diagnostics = generated_tag_manifest_diagnostics(
+        repaired,
+        current_room_id="tag-complication",
+        active_quest_state={"next_action": "Use visible room buttons first."},
+    )
+    assert diagnostics["is_generated"] is True
+    assert diagnostics["current_prompt_found"] is True
+    assert diagnostics["manual_fallback_needed"] is False
+    assert diagnostics["prompt_count"] >= 4
+
+
+def test_generated_tag_diagnostics_flags_missing_current_prompt_and_scene_target() -> None:
+    from app.engine.tag_compat import generated_tag_manifest_diagnostics
+
+    manifest = {
+        "title": "Broken Generated Lead",
+        "source": {
+            "parameters": {
+                "tag_reference": {
+                    "lead_type": "rumor",
+                    "lead_detail": "12",
+                    "room_prompts": {
+                        "tag-lead-entry": {
+                            "title": "Entry",
+                            "body": "Start here.",
+                            "actions": [],
+                        }
+                    },
+                    "scene_graph": {
+                        "scenes": {
+                            "Scene 4": {
+                                "branches": [{"label": "Go to missing scene", "target_scene": "Scene 7"}]
+                            }
+                        }
+                    },
+                }
+            }
+        },
+        "rooms": [{"id": "tag-lead-entry"}, {"id": "tag-final-scene"}],
+    }
+    diagnostics = generated_tag_manifest_diagnostics(manifest, current_room_id="tag-final-scene")
+    assert diagnostics["is_generated"] is True
+    assert diagnostics["manual_fallback_needed"] is True
+    assert any("tag-final-scene" in error for error in diagnostics["errors"])
+    assert any("Scene 4->Scene 7" in error for error in diagnostics["errors"])
 
 
 def test_tag_theme_procedure_branch_actions_roll_exact_tables(monkeypatch) -> None:

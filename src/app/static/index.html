@@ -703,8 +703,8 @@
               <dialog id="tag-adventure-actions-dialog" class="help-dialog transfer-dialog tag-action-dialog">
                 <form method="dialog" id="tag-adventure-actions-form">
                   <div class="transfer-dialog-header">
-                    <h3>The Adventures Guild Actions</h3>
-                    <p class="muted">Resolve The Adventures Guild scene branches, route choices, rewards, XP markers, Guild spell timing, and finance notes while playing the adventure. Use this when a room prompt from The Adventures Guild, printed scene, quest closeout, or log reminder says a decision cannot be inferred from movement or combat alone.</p>
+                    <h3>Advanced / Manual Adventures Guild Actions</h3>
+                    <p class="muted">Manual backstop for edge cases: use direct Current Objective, Quest Details, and room-prompt buttons first. Open this only when diagnostics, a printed scene choice, or a playtest repair path says the app cannot infer the route, reward, XP, Guild, or finance decision safely.</p>
                   </div>
                   <div class="tag-action-guide" title="Use these controls during exploration when a generated adventure from The Adventures Guild asks you to make a branch, route, Clue, reward, XP, Guild spell, or finance decision that the app cannot infer automatically.">
                     <strong>Workflow</strong>
@@ -715,7 +715,7 @@
                     <span>5. Use Reference for a short note such as "Map Leads To 1" or "Scene 10"; use Amount only when the selected action hint asks for a number.</span>
                     <span>6. For capture-alive text, tick Subdual damage during combat first; after the foe is subdued, record Capture alive and any printed reward here.</span>
                   </div>
-                  <div id="tag-relevant-actions" class="tag-relevant-actions hidden" title="Context-aware shortcuts from the current generated The Adventures Guild room prompt. These prefill The Adventures Guild Actions and do not replace PDF/player signoff."></div>
+                  <div id="tag-relevant-actions" class="tag-relevant-actions hidden" title="Context-aware shortcuts from the current generated The Adventures Guild room prompt. These are manual fallback shortcuts; normal play should use visible Current Objective and Quest Details buttons first."></div>
                   <div class="tag-settlement-grid">
                     <label for="tag-action-character">
                       <span>Character</span>
@@ -1292,7 +1292,9 @@
                 <button id="resolve-trap" type="button" class="secondary exploration-only">Resolve Trap</button>
                 <button id="claim-treasure" type="button" class="secondary exploration-only">Claim Treasure</button>
                 <button id="rest" type="button" class="exploration-only">Rest</button>
-                <button id="tag-open-adventure-actions" type="button" class="secondary exploration-only hidden">The Adventures Guild Actions</button>
+                <button id="tag-session-diagnostics" type="button" class="secondary exploration-only hidden">Diagnostics</button>
+                <button id="tag-copy-playtest-report" type="button" class="secondary exploration-only hidden">Copy Playtest Report</button>
+                <button id="tag-open-adventure-actions" type="button" class="secondary exploration-only hidden">Advanced / Manual Actions</button>
               </div>
             </div>
             <div class="side-panel-body">

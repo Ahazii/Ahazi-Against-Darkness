@@ -608,6 +608,8 @@ const resolveTrapBtn = document.getElementById("resolve-trap");
 const claimTreasureBtn = document.getElementById("claim-treasure");
 const restBtn = document.getElementById("rest");
 const tagOpenAdventureActions = document.getElementById("tag-open-adventure-actions");
+const tagSessionDiagnosticsBtn = document.getElementById("tag-session-diagnostics");
+const tagCopyPlaytestReportBtn = document.getElementById("tag-copy-playtest-report");
 const restChoicesEl = document.getElementById("rest-choices");
 const saveSessionBtn = document.getElementById("save-session");
 const logModeSummaryBtn = document.getElementById("log-mode-summary");
@@ -8587,7 +8589,7 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   financeAmount: "Gold amount for finance actions: deposit, withdraw, loan, reward, recovery, or storage handling.",
   financeNote: "Optional heir, debt, bank, robber, or ruling note stored in the TAG log.",
   runFinance: "Run the selected TAG finance action and log the result.",
-  openAdventureActions: "Open TAG adventure actions: scene branches, route markers, rewards, XP, Guild spells, and finance timing while exploring.",
+  openAdventureActions: "Advanced/manual Adventures Guild actions: fallback controls for scene branches, route markers, rewards, XP, Guild spells, and finance timing when direct play buttons cannot infer the decision.",
   services: "Refresh TAG treasure/service rows for the current settlement size.",
   routeXpSummary: "Recent structured TAG signoff state: route decisions, generated-module rewrites, XP markers, and per-character TAG bank account balances.",
   serviceAvailability: "Roll this service/item availability using d6 plus settlement size, then log the result.",
@@ -11484,7 +11486,7 @@ document.addEventListener(
 
 function openTagAdventureActions() {
   if (!tagAdventureActionsDialog) {
-    setStatus("Adventures Guild Actions dialog is not available on this screen.");
+    setStatus("Advanced Adventures Guild Actions are not available on this screen.");
     return;
   }
   if (tagAdventureActionsDialog.parentElement !== document.body) {
@@ -11505,16 +11507,90 @@ function openTagAdventureActions() {
     }
     tagAdventureActionsDialog.scrollTop = 0;
     tagBranchAction?.focus();
-    setStatus("Adventures Guild Actions opened.");
+    setStatus("Advanced Adventures Guild Actions opened.");
   } catch (error) {
     handleError(error);
     try {
       tagAdventureActionsDialog.setAttribute("open", "");
       tagBranchAction?.focus();
-      setStatus("Adventures Guild Actions opened without modal support.");
+      setStatus("Advanced Adventures Guild Actions opened without modal support.");
     } catch {
-      setStatus("Could not open Adventures Guild Actions.");
+      setStatus("Could not open Advanced Adventures Guild Actions.");
     }
+  }
+}
+
+function generatedTagDiagnostics(session = state.session) {
+  const diagnostics = session?.generated_tag_diagnostics || {};
+  return diagnostics?.is_generated ? diagnostics : null;
+}
+
+function generatedTagDiagnosticsLines(session = state.session) {
+  const diagnostics = generatedTagDiagnostics(session);
+  if (!diagnostics) return ["No generated Adventures Guild diagnostics are active for this session."];
+  const lines = [
+    `Module: ${diagnostics.title || sessionAdventureTitleText(session) || "Generated Adventures Guild lead"}`,
+    `Lead: ${diagnostics.lead_type || "unknown"} ${diagnostics.lead_detail || ""}`.trim(),
+    `Room: ${diagnostics.current_room_id || "unknown"} (${diagnostics.current_prompt_found ? "prompt found" : "prompt missing"})`,
+    `Coverage: ${diagnostics.prompt_count || 0} prompt(s), ${diagnostics.prompt_action_count || 0} action(s), ${diagnostics.scene_count || 0} extracted scene(s), ${diagnostics.scene_branch_count || 0} branch(es).`,
+  ];
+  if (Array.isArray(diagnostics.current_actions) && diagnostics.current_actions.length) {
+    lines.push(`Visible actions: ${diagnostics.current_actions.join(", ")}`);
+  }
+  if (diagnostics.quest_next_action) lines.push(`Quest next action: ${diagnostics.quest_next_action}`);
+  for (const error of diagnostics.errors || []) lines.push(`ERROR: ${error}`);
+  for (const warning of diagnostics.warnings || []) lines.push(`Warning: ${warning}`);
+  for (const reason of diagnostics.manual_fallback_reasons || []) lines.push(`Manual fallback: ${reason}`);
+  for (const fix of diagnostics.suggested_fixes || []) lines.push(`Suggested fix: ${fix}`);
+  if (!diagnostics.errors?.length && !diagnostics.warnings?.length) {
+    lines.push("No generated-module diagnostics are currently warning.");
+  }
+  return lines;
+}
+
+function showGeneratedTagDiagnostics() {
+  const lines = generatedTagDiagnosticsLines(state.session);
+  const message = lines.join("\n");
+  window.alert(message);
+}
+
+function buildGeneratedTagPlaytestReport(session = state.session) {
+  const { room, promptData, tagReference } = tagCurrentPromptData(session);
+  const logTail = (session?.log || []).slice(-24).join("\n");
+  return [
+    "# Generated Adventures Guild Playtest Report",
+    "",
+    `Session: ${session?.id || "unknown"}`,
+    `Adventure: ${sessionAdventureTitleText(session) || session?.adventure_id || "unknown"}`,
+    `Mode: ${session?.mode || "unknown"}`,
+    `Current room: ${room?.id || "unknown"} - ${room?.title || ""}`,
+    `Lead: ${tagReference?.lead_type || ""} ${tagReference?.lead_detail || ""}`.trim(),
+    "",
+    "## Diagnostics",
+    generatedTagDiagnosticsLines(session).map((line) => `- ${line}`).join("\n"),
+    "",
+    "## Current Prompt",
+    `Title: ${promptData?.title || "none"}`,
+    `Body: ${promptData?.body || "none"}`,
+    `Actions: ${(promptData?.actions || []).map((action) => _diagnosticPromptActionLabel(action)).join(", ") || "none"}`,
+    "",
+    "## Last Narrative Lines",
+    logTail || "No narrative log lines.",
+  ].join("\n");
+}
+
+function _diagnosticPromptActionLabel(action) {
+  if (!action) return "";
+  return action.label || action.action_value || action.action_type || "";
+}
+
+async function copyGeneratedTagPlaytestReport() {
+  const report = buildGeneratedTagPlaytestReport(state.session);
+  try {
+    await navigator.clipboard.writeText(report);
+    setStatus("Generated Adventures Guild playtest report copied.");
+  } catch {
+    setStatus("Could not copy playtest report to clipboard.");
   }
 }
 
@@ -17184,12 +17260,37 @@ function renderSession() {
   safeSessionRender("narrativeObjectiveChips", () => renderNarrativeObjectiveChips(session));
   safeSessionRender("explorationCommand", () => renderExplorationCommandBar(session));
   applyExplorationPanelVisibility();
-  if (tagOpenAdventureActions) {
+  if (tagOpenAdventureActions || tagSessionDiagnosticsBtn || tagCopyPlaytestReportBtn) {
     const isTagGenerated =
       Boolean(session.tag_banking_enabled) ||
       Boolean(state.campaign?.tag_banking_enabled) ||
       Boolean(session.adventure_id && (state.campaign?.tag_generated_adventure_ids || []).includes(session.adventure_id));
-    tagOpenAdventureActions.classList.toggle("hidden", session.mode !== "exploration" || !isTagGenerated);
+    const diagnostics = generatedTagDiagnostics(session);
+    const showGeneratedTools = session.mode === "exploration" && (isTagGenerated || Boolean(diagnostics)) && Boolean(diagnostics);
+    if (tagSessionDiagnosticsBtn) {
+      tagSessionDiagnosticsBtn.classList.toggle("hidden", !showGeneratedTools);
+      setButtonTooltip(
+        tagSessionDiagnosticsBtn,
+        "Show generated-adventure diagnostics: prompt coverage, current-room actions, extraction status, and any warnings that still need a manual fallback."
+      );
+    }
+    if (tagCopyPlaytestReportBtn) {
+      tagCopyPlaytestReportBtn.classList.toggle("hidden", !showGeneratedTools);
+      setButtonTooltip(
+        tagCopyPlaytestReportBtn,
+        "Copy a concise playtest report with diagnostics, current prompt metadata, and recent Narrative lines."
+      );
+    }
+    if (tagOpenAdventureActions) {
+      const needsManualFallback = showGeneratedTools && Boolean(diagnostics?.manual_fallback_needed);
+      tagOpenAdventureActions.classList.toggle("hidden", !needsManualFallback);
+      setButtonTooltip(
+        tagOpenAdventureActions,
+        needsManualFallback
+          ? "Advanced/manual backstop is visible because diagnostics found a missing prompt, missing branch target, or manual-only action."
+          : "Hidden during normal generated-adventure play. Use Current Objective, Quest Details, and room-prompt buttons first."
+      );
+    }
   }
 
   const tile = currentTile(session);
@@ -18078,8 +18179,7 @@ function currentObjectiveForSession(session) {
       body:
         "This looks like the destination room for the recorded Map Leads To 1 target. Resolve the final Boss with +2 Life and double maximum treasure, then close out reward, XP, Guild share, banking/storage, and signoff. If this room still has ordinary treasure after the fight, use Claim Treasure.",
       tone: "tag",
-      action: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
-      secondaryAction: { label: "Sign off Adventures Guild lead", kind: "tag-lead-signoff" },
+      action: { label: "Sign off Adventures Guild lead", kind: "tag-lead-signoff" },
     };
   }
   const hasTreasure = !tile.treasure_claimed && (Boolean(tile.treasure_gold) || (tile.treasure_items || []).length > 0);
@@ -18150,7 +18250,7 @@ function currentObjectiveForSession(session) {
         tone: "tag",
         next: `Use the visible exits to enter ${complicationNext.title}.`,
         handled: `When you reach that scene, the app will surface ${complicationNext.choices.join(" / ")} as the relevant choices.`,
-        secondaryAction: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
+        secondaryAction: null,
       };
     }
     if (!actions.length && director) {
@@ -18159,7 +18259,7 @@ function currentObjectiveForSession(session) {
         body: `${director.instruction} ${director.playbook} If this resumed module has no Relevant Now buttons, run Refresh narrative to reload local Adventures Guild scene text and prompt metadata.`,
         tone: "tag",
         action: { label: "Refresh narrative", kind: "tag-repair" },
-        secondaryAction: { label: "Open Adventures Guild Actions", kind: "tag-actions" },
+        secondaryAction: { label: "Copy Playtest Report", kind: "tag-copy-report" },
       };
     }
     if (actions.length) {
@@ -18271,8 +18371,12 @@ function appendCurrentObjectiveButton(parent, action) {
       }
       break;
     case "tag-actions":
-      setButtonTooltip(btn, "Open Adventures Guild Actions with relevant current-room shortcuts shown at the top.");
+      setButtonTooltip(btn, "Open the advanced/manual Adventures Guild fallback controls.");
       btn.addEventListener("click", () => openTagAdventureActions());
+      break;
+    case "tag-copy-report":
+      setButtonTooltip(btn, "Copy generated-adventure diagnostics, current prompt metadata, and recent Narrative lines for playtest debugging.");
+      btn.addEventListener("click", () => copyGeneratedTagPlaytestReport());
       break;
     case "tag-lead-signoff":
       setButtonTooltip(btn, "Sign off generated Adventures Guild lead closeout after reviewing route, reward, XP, Guild, banking/storage, and guidance tasks.");
@@ -18615,11 +18719,19 @@ function appendGeneratedTagCloseoutPanel(parent, session, quest) {
     panel.appendChild(missing);
   }
   const actions = node("div", "ongoing-quest-actions");
-  const tagActions = node("button", "secondary", "Open Adventures Guild Actions");
-  tagActions.type = "button";
-  setButtonTooltip(tagActions, "Open Adventures Guild Actions with the current-room Relevant Now shortcuts visible at the top.");
-  tagActions.addEventListener("click", () => openTagAdventureActions());
-  actions.appendChild(tagActions);
+  const diagnostics = generatedTagDiagnostics(session);
+  const diagnosticsBtn = node("button", "secondary", "Diagnostics");
+  diagnosticsBtn.type = "button";
+  setButtonTooltip(diagnosticsBtn, "Show generated-adventure prompt/action coverage and warnings for this lead.");
+  diagnosticsBtn.addEventListener("click", () => showGeneratedTagDiagnostics());
+  actions.appendChild(diagnosticsBtn);
+  if (diagnostics?.manual_fallback_needed) {
+    const tagActions = node("button", "secondary", "Advanced / Manual Actions");
+    tagActions.type = "button";
+    setButtonTooltip(tagActions, "Manual fallback only: diagnostics found a missing prompt, missing branch target, or manual-only action.");
+    tagActions.addEventListener("click", () => openTagAdventureActions());
+    actions.appendChild(tagActions);
+  }
   const signoff = node("button", quest.completed ? "primary" : "secondary", "Sign off Adventures Guild lead");
   signoff.type = "button";
   signoff.disabled = !quest.completed;
@@ -24083,12 +24195,20 @@ function appendTagContextualActions(parent, session, tile) {
     return;
   }
   const actionsRow = node("div", "tag-context-actions-row");
-  appendTagContextualButton(
-    actionsRow,
-    "Adventures Guild Actions",
-    "Open the full Adventures Guild Actions dialog without changing any values.",
-    {}
-  );
+  const diagnostics = generatedTagDiagnostics(session);
+  const diagnosticBtn = node("button", "secondary", "Diagnostics");
+  diagnosticBtn.type = "button";
+  setButtonTooltip(diagnosticBtn, "Show prompt/action coverage and warnings for this generated Adventures Guild room.");
+  diagnosticBtn.addEventListener("click", () => showGeneratedTagDiagnostics());
+  actionsRow.appendChild(diagnosticBtn);
+  if (diagnostics?.manual_fallback_needed) {
+    appendTagContextualButton(
+      actionsRow,
+      "Advanced / Manual Actions",
+      "Manual fallback only: diagnostics found a missing prompt, missing branch target, or manual-only action.",
+      {}
+    );
+  }
   if (roomId === "tag-lead-entry") {
     appendTagContextualButton(
       actionsRow,
@@ -30854,6 +30974,8 @@ tagRefreshServices?.addEventListener("click", () => {
 tagOpenTroupeManager?.addEventListener("click", () => openTagTroupeDialog());
 tagOpenBankTransfer?.addEventListener("click", () => openTagBankTransferDialog());
 tagOpenAdventureActions?.addEventListener("click", () => openTagAdventureActions());
+tagSessionDiagnosticsBtn?.addEventListener("click", () => showGeneratedTagDiagnostics());
+tagCopyPlaytestReportBtn?.addEventListener("click", () => copyGeneratedTagPlaytestReport());
 tagCheckAvailability?.addEventListener("click", () => {
   checkTagAvailability().catch(handleError);
 });

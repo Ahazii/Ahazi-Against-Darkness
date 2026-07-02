@@ -90,13 +90,8 @@ def _generic_tag_prompt(title: str, body: str, *, action_type: str, action_value
         ],
         "actions": [
             {
-                "label": "Open Adventures Guild Actions",
-                "tooltip": "Open the full Adventures Guild Actions dialog without changing any values.",
-                "action_type": "dialog",
-            },
-            {
                 "label": title,
-                "tooltip": "Prefill Adventures Guild Actions from repaired generic prompt metadata. Confirm exact values from the PDF/player decision.",
+                "tooltip": "Use this repaired prompt action only when the printed scene/player decision matches it. Confirm exact values from the PDF/player decision.",
                 "action_type": action_type,
                 "action_value": action_value,
                 "reference": reference,
@@ -240,6 +235,133 @@ def tag_reference_from_manifest(manifest: dict[str, Any] | None) -> dict[str, An
 
 def is_generated_tag_manifest(manifest: dict[str, Any] | None) -> bool:
     return bool(tag_reference_from_manifest(manifest))
+
+
+def _diagnostic_action_label(action: Any) -> str:
+    if not isinstance(action, dict):
+        return ""
+    label = str(action.get("label") or "").strip()
+    value = str(action.get("action_value") or action.get("value") or "").strip()
+    action_type = str(action.get("action_type") or "").strip()
+    return label or value or action_type
+
+
+def generated_tag_manifest_diagnostics(
+    manifest: dict[str, Any] | None,
+    *,
+    current_room_id: str = "",
+    active_quest_state: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return player-facing health checks for generated Adventures Guild modules."""
+    tag_reference = tag_reference_from_manifest(manifest)
+    if not tag_reference:
+        return {"is_generated": False, "warnings": [], "errors": [], "manual_fallback_needed": False}
+
+    rooms = manifest.get("rooms") if isinstance(manifest, dict) else []
+    room_ids = {
+        str(room.get("id"))
+        for room in rooms or []
+        if isinstance(room, dict) and room.get("id")
+    }
+    prompts = tag_reference.get("room_prompts")
+    prompts = prompts if isinstance(prompts, dict) else {}
+    scene_graph = tag_reference.get("scene_graph")
+    scene_graph = scene_graph if isinstance(scene_graph, dict) else {}
+    scenes = scene_graph.get("scenes")
+    scenes = scenes if isinstance(scenes, dict) else {}
+    warnings: list[str] = []
+    errors: list[str] = []
+    suggested_fixes: list[str] = []
+
+    expected_prompt_ids = [room_id for room_id in room_ids if room_id.startswith("tag-")]
+    missing_prompts = sorted(room_id for room_id in expected_prompt_ids if room_id not in prompts)
+    if missing_prompts:
+        errors.append(f"Missing room prompt metadata for: {', '.join(missing_prompts[:6])}.")
+        suggested_fixes.append("Refresh narrative, then regenerate the module if prompts are still missing.")
+
+    current_prompt = prompts.get(current_room_id) if current_room_id else None
+    if current_room_id and current_room_id.startswith("tag-") and not isinstance(current_prompt, dict):
+        errors.append(f"Current room {current_room_id} has no prompt/action metadata.")
+        suggested_fixes.append("Use Refresh narrative. If it remains missing, report this module with Copy Playtest Report.")
+
+    stale_markers = ("Repaired prompt metadata", "older generated Adventures Guild module")
+    stale_prompts = [
+        room_id
+        for room_id, prompt in prompts.items()
+        if isinstance(prompt, dict)
+        and any(marker in str(prompt.get("body") or "") for marker in stale_markers)
+    ]
+    if stale_prompts:
+        warnings.append(f"Generic repaired wording still present in: {', '.join(stale_prompts[:6])}.")
+        suggested_fixes.append("Refresh narrative from the local PDF extraction file.")
+
+    dialog_actions: list[str] = []
+    prompt_action_count = 0
+    for room_id, prompt in prompts.items():
+        if not isinstance(prompt, dict):
+            continue
+        actions = prompt.get("actions")
+        if not isinstance(actions, list):
+            warnings.append(f"{room_id} has no visible action list.")
+            continue
+        prompt_action_count += len([action for action in actions if isinstance(action, dict)])
+        for action in actions:
+            if not isinstance(action, dict):
+                continue
+            label = _diagnostic_action_label(action)
+            if action.get("action_type") == "dialog" or "Actions" in label:
+                dialog_actions.append(f"{room_id}: {label or 'manual dialog'}")
+
+    missing_scene_targets: list[str] = []
+    for scene_key, scene in scenes.items():
+        if not isinstance(scene, dict):
+            continue
+        for branch in scene.get("branches") or []:
+            if not isinstance(branch, dict):
+                continue
+            target = str(branch.get("target_scene") or "").strip()
+            if target and target not in scenes:
+                missing_scene_targets.append(f"{scene_key}->{target}")
+    if missing_scene_targets:
+        errors.append(f"Scene branch target missing from local extraction: {', '.join(missing_scene_targets[:6])}.")
+        suggested_fixes.append("Re-extract the rules PDF or edit tag_scene_narrative_overrides.json to include the target scene.")
+
+    manual_fallback_needed = bool(errors or dialog_actions)
+    current_actions = []
+    if isinstance(current_prompt, dict):
+        current_actions = [
+            _diagnostic_action_label(action)
+            for action in current_prompt.get("actions") or []
+            if _diagnostic_action_label(action)
+        ]
+
+    quest_state = active_quest_state if isinstance(active_quest_state, dict) else {}
+    return {
+        "is_generated": True,
+        "title": str((manifest or {}).get("title") or tag_reference.get("title") or "Generated Adventures Guild lead"),
+        "lead_type": str(tag_reference.get("lead_type") or ""),
+        "lead_detail": str(tag_reference.get("lead_detail") or ""),
+        "current_room_id": current_room_id,
+        "current_prompt_found": isinstance(current_prompt, dict),
+        "current_actions": current_actions,
+        "prompt_count": len(prompts),
+        "prompt_action_count": prompt_action_count,
+        "room_count": len(room_ids),
+        "scene_count": len(scenes),
+        "scene_branch_count": sum(
+            len(scene.get("branches") or [])
+            for scene in scenes.values()
+            if isinstance(scene, dict)
+        ),
+        "local_narrative_active": bool(tag_reference.get("local_narrative_override_applied")),
+        "refresh_summary": list(tag_reference.get("local_narrative_override_changed_fields") or [])[:12],
+        "quest_next_action": str(quest_state.get("next_action") or ""),
+        "warnings": warnings,
+        "errors": errors,
+        "manual_fallback_needed": manual_fallback_needed,
+        "manual_fallback_reasons": dialog_actions[:8],
+        "suggested_fixes": suggested_fixes,
+    }
 
 
 def _leprechaun_scene_actions() -> list[dict[str, Any]]:

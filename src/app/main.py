@@ -48,7 +48,7 @@ from .engine.roster_sync import (
     sync_party_members_to_roster,
     unlock_characters_for_session,
 )
-from .engine.tag_compat import normalize_tag_log_lines, upgrade_tag_manifest
+from .engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_lines, upgrade_tag_manifest
 from .engine.tag_campaign import merge_tag_pdf_narrative_overrides, tag_narrative_overrides_path
 from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import (
@@ -269,6 +269,16 @@ def enrich_session(session: SessionState) -> SessionState:
     if isinstance(session.imported_manifest, dict):
         session.imported_manifest = upgrade_tag_manifest(session.imported_manifest)
     tile = random_engine._current_tile(session)
+    active_tag_state = (
+        dict(session.active_quest.tag_generated_lead_state or {})
+        if session.active_quest is not None
+        else {}
+    )
+    session.generated_tag_diagnostics = generated_tag_manifest_diagnostics(
+        session.imported_manifest,
+        current_room_id=_imported_room_id_for_tile(session, tile),
+        active_quest_state=active_tag_state,
+    )
     ok, reason = rest_eligibility(session, tile)
     session.rest_available = ok
     session.rest_block_reason = reason
@@ -283,6 +293,41 @@ def enrich_session(session: SessionState) -> SessionState:
     ctx = resolve_play_context(tile, session)
     session.play_context = PlayContextView(**ctx.as_dict())
     return session
+
+
+def _imported_room_id_for_tile(session: SessionState, tile: TileState | None) -> str:
+    if tile is None:
+        return ""
+    content_key = str(tile.content_key or "")
+    if content_key.startswith("imported:"):
+        return content_key.removeprefix("imported:")
+    if content_key == "entrance" and isinstance(session.imported_manifest, dict):
+        return str(session.imported_manifest.get("entrance_room_id") or "")
+    return ""
+
+
+def _refresh_generated_tag_manifest_on_resume(session: SessionState) -> bool:
+    if not _is_generated_tag_session(session) or not isinstance(session.imported_manifest, dict):
+        return False
+    before = repr(session.imported_manifest)
+    session.imported_manifest = upgrade_tag_manifest(session.imported_manifest)
+    changed = repr(session.imported_manifest) != before
+    log_changed = normalize_tag_log_lines(session.log)
+    changed = changed or log_changed
+    if session.active_quest is not None:
+        state = dict(session.active_quest.tag_generated_lead_state or {})
+        if changed:
+            tag_ref = ((session.imported_manifest.get("source") or {}).get("parameters") or {}).get("tag_reference") or {}
+            fields = tag_ref.get("local_narrative_override_changed_fields") if isinstance(tag_ref, dict) else []
+            summary = [str(field) for field in fields[:8]] if isinstance(fields, list) else []
+            state["auto_refreshed_at"] = now_utc()
+            state["repair_summary"] = summary or ["Generated Adventures Guild narrative and prompt metadata refreshed on resume."]
+            state["next_action"] = "Continue from Current Objective; use visible scene buttons first and manual actions only if diagnostics ask for them."
+            session.active_quest.tag_generated_lead_state = state
+        elif "auto_refresh_checked_at" not in state:
+            state["auto_refresh_checked_at"] = now_utc()
+            session.active_quest.tag_generated_lead_state = state
+    return changed
 
 
 def session_to_summary(session: SessionState) -> SessionListSummary:
@@ -2889,8 +2934,14 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Recovery and repair",
             "shown_in": "Current Objective banner and generated Adventures Guild Director panels.",
-            "player_use": "Shows I think you are here with confidence, warns when generic prompt metadata was repaired, and offers Refresh narrative for older generated modules. Refresh reports whether local PDF narrative, prompt metadata, scene branches, contact text, or legacy log wording changed.",
+            "player_use": "Shows I think you are here with confidence, warns when generic prompt metadata was repaired, and offers Refresh narrative for older generated modules. Refresh reports whether local PDF narrative, prompt metadata, scene branches, contact text, or legacy log wording changed. Resumed sessions auto-refresh generated Adventures Guild prompt metadata where safe.",
             "pdf_boundary": "Refresh uses only the local override file and app metadata. It does not choose printed branches, invent scene text, or resolve rewards.",
+        },
+        {
+            "surface": "Generated adventure diagnostics",
+            "shown_in": "Adventure View toolbar and Ongoing Quest generated closeout panel.",
+            "player_use": "Shows prompt coverage, current room prompt/action status, local narrative extraction status, scene-branch counts, missing prompt errors, missing branch-target errors, and why the Advanced / Manual Actions fallback is visible. Copy Playtest Report copies diagnostics, current prompt metadata, and recent Narrative lines for debugging.",
+            "pdf_boundary": "Diagnostics report app metadata only. They do not reveal copied PDF prose or choose between printed branch options.",
         },
         {
             "surface": "Generated lead signoff",
@@ -2909,6 +2960,12 @@ def _rules_tables_payload() -> dict:
             "shown_in": "Go Adventure.",
             "player_use": "Searches and filters route, XP, finance, Guild, branch, generated-lead, and signoff events during generated-adventure review.",
             "pdf_boundary": "Displays app logs and player-entered notes.",
+        },
+        {
+            "surface": "Advanced / Manual Actions fallback",
+            "shown_in": "Adventure View toolbar only when generated-adventure diagnostics find a missing prompt, missing scene branch target, or manual-only action.",
+            "player_use": "Keeps the old full toolbox available for recovery and ambiguous PDF/player decisions, but hides it during normal play so direct Current Objective, Quest Details, and room-prompt buttons remain the primary workflow.",
+            "pdf_boundary": "Manual fallback records player/app decisions; it does not automate a PDF choice that says choose.",
         },
     ]
     data["tag_rumor_playthrough_audit_table"] = [
@@ -4259,6 +4316,8 @@ async def get_session(session_id: str) -> SessionState:
         raise HTTPException(status_code=404, detail="Session not found.")
     session, changed = random_engine.normalize_session(session)
     if _restore_missing_recovery_members(session):
+        changed = True
+    if _refresh_generated_tag_manifest_on_resume(session):
         changed = True
     if session.mode != "complete":
         lock_characters_for_session(session, store)

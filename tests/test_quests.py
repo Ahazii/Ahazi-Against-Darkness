@@ -149,7 +149,7 @@ def test_generated_tag_guidance_repair_endpoint_rebuilds_prompt_metadata(client)
     payload = response.json()
     reference = payload["imported_manifest"]["source"]["parameters"]["tag_reference"]
     assert reference["prompt_repair_note"]
-    assert reference["room_prompts"]["tag-complication"]["actions"][1]["action_type"] == "route"
+    assert reference["room_prompts"]["tag-complication"]["actions"][0]["action_type"] == "route"
     assert "Apply The Map Leads To" not in " ".join(payload["log"])
     assert payload["active_quest"]["tag_generated_lead_state"]["guidance_repaired"] is True
 

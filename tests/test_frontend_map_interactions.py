@@ -2148,6 +2148,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-bank-transfer-dialog",
         "tag-bank-transfer-character",
         "tag-run-bank-transfer",
+        "tag-session-diagnostics",
+        "tag-copy-playtest-report",
         "tag-open-adventure-actions",
         "tag-adventure-actions-dialog",
     ]:
@@ -2325,6 +2327,11 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "tag-director-panel" in APP_JS
     assert "tag-closeout-wizard" in APP_JS
     assert "function repairGeneratedTagGuidance" in APP_JS
+    assert "function generatedTagDiagnostics" in APP_JS
+    assert "function copyGeneratedTagPlaytestReport" in APP_JS
+    assert "Advanced / Manual Actions" in INDEX_HTML
+    assert "Copy Playtest Report" in INDEX_HTML
+    assert "manual_fallback_needed" in APP_JS
     assert "tag-repair-guidance" in APP_JS
     assert "I think you are here" in APP_JS
     assert "Advanced Adventures Guild controls" in APP_JS
