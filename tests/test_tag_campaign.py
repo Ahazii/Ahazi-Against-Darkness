@@ -457,7 +457,7 @@ def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
 
     assert result.valid, result.errors
     reference = manifest["source"]["parameters"]["tag_reference"]
-    assert manifest["title"] == "TAG Rumor 2: Medusa in the Hunter's Cabin"
+    assert manifest["title"] == "The Adventures Guild Rumor 2: Medusa in the Hunter's Cabin"
     assert reference["scene"] == "Scene 10 leading to Scene 1"
     assert reference["pdf_pages"] == "TAG pp.22, 25-26"
     assert reference["final_foe_proxy"] == "Medusa"
@@ -479,6 +479,83 @@ def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
     )
     final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
     assert final_room["triggers"][0]["encounter"]["foes"] == [{"name": "Medusa", "count": 1}]
+
+
+def test_tag_manifest_uses_user_editable_narrative_overrides(tmp_path, monkeypatch) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    (data_dir / "tag_scene_narrative_overrides.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "tag": {
+                    "rumor": {
+                        "3": {
+                            "module_title": "The Adventures Guild Rumor 3: Edited Local Title",
+                            "objective": "Edited local objective.",
+                            "rooms": {
+                                "tag-lead-entry": {
+                                    "title": "Edited Opening",
+                                    "description": "Edited opening narrative.",
+                                    "log": "Edited opening log.",
+                                },
+                                "tag-final-scene": {
+                                    "title": "Edited Finale",
+                                    "description": "Edited finale narrative.",
+                                    "log": "Edited finale log.",
+                                },
+                            },
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="3")
+
+    assert manifest["title"] == "The Adventures Guild Rumor 3: Edited Local Title"
+    assert manifest["quest"]["objective_text"] == "Edited local objective."
+    opening = next(room for room in manifest["rooms"] if room["id"] == "tag-lead-entry")
+    finale = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+    assert opening["title"] == "Edited Opening"
+    assert opening["description"] == "Edited opening narrative."
+    assert finale["title"] == "Edited Finale"
+    assert finale["description"] == "Edited finale narrative."
+    assert finale["triggers"][0]["log"] == "Edited finale log."
+
+
+def test_tag_pdf_rumor_parser_keeps_scene_10_and_continued_entries() -> None:
+    text = "\n".join(
+        [
+            "Rumors (d12)",
+            "1",
+            "First rumor. Go to Scene 9.",
+            "2",
+            "Second rumor. Go to Scene 10.",
+            "Red Herring Table (d6)",
+            "1-2)",
+            "Trap text that should not be appended.",
+            "24",
+            "7",
+            "Seventh rumor continues after the red herring table.",
+            "8",
+            "Eighth rumor.",
+            "3",
+            "Third rumor. Go to Scene 11.",
+            "Scenes",
+        ]
+    )
+
+    rumors = tag_campaign._extract_tag_pdf_rumors(text)
+
+    assert rumors[2] == "Second rumor. Go to Scene 10."
+    assert rumors[3] == "Third rumor. Go to Scene 11."
+    assert rumors[7] == "Seventh rumor continues after the red herring table."
+    assert rumors[8] == "Eighth rumor."
+    assert "Trap text" not in " ".join(rumors.values())
 
 
 def test_tag_leprechaun_rumor_is_vendor_scene_not_proxy_combat() -> None:
@@ -561,7 +638,7 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     dragon_result = validate_adventure_manifest(dragon, rules_repo=repo)
     assert dragon_result.valid, dragon_result.errors
     dragon_ref = dragon["source"]["parameters"]["tag_reference"]
-    assert dragon["title"] == "TAG Thematic Dungeon: Dragon's Lair"
+    assert dragon["title"] == "The Adventures Guild Thematic Dungeon: Dragon's Lair"
     assert dragon_ref["pdf_pages"] == "TAG pp.39-40"
     assert dragon_ref["final_foe_proxy"] == "Young Dragon"
     assert dragon_ref["module_profile"]["target_rooms"] == "4-room dungeon"
@@ -590,7 +667,7 @@ def test_tag_thematic_and_guild_job_manifests_use_profiles(monkeypatch) -> None:
     job_result = validate_adventure_manifest(job, rules_repo=repo)
     assert job_result.valid, job_result.errors
     job_ref = job["source"]["parameters"]["tag_reference"]
-    assert job["title"] == "TAG Guild Job 1: Gorungar the Mighty"
+    assert job["title"] == "The Adventures Guild Job 1: Gorungar the Mighty"
     assert job_ref["pdf_pages"] == "TAG p.55"
     assert job_ref["final_foe_proxy"] == "Gorungar the Mighty"
     assert "50 gp for his head" in job_ref["rewards"]

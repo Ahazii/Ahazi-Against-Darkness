@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from math import ceil
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -48,10 +49,350 @@ DEFAULT_WORLD_CAMPAIGN_NAME = "Norindaal"
 DEFAULT_WORLD_GUILD_NAME = "Adventurers Guild"
 DEFAULT_WORLD_TROUPE_NAME = "Troupe1"
 DEFAULT_WORLD_SETTLEMENT_NAME = "Hearthmere"
+TAG_NARRATIVE_OVERRIDES_FILENAME = "tag_scene_narrative_overrides.json"
 TAG_LOG_LIMIT = 20
 CAMPAIGN_CHRONICLE_LIMIT = 120
 GUIDANCE_TASK_LIMIT = 80
 TAG_GUILD_STARTING_COFFERS_GP = 5000
+
+
+def _data_dir() -> Path:
+    data_dir = Path(os.getenv("DATA_DIR", ".data"))
+    if data_dir.is_absolute():
+        return data_dir
+    return (Path(__file__).resolve().parents[3] / data_dir).resolve()
+
+
+def tag_narrative_overrides_path() -> Path:
+    return _data_dir() / TAG_NARRATIVE_OVERRIDES_FILENAME
+
+
+def load_tag_narrative_overrides() -> dict[str, Any]:
+    path = tag_narrative_overrides_path()
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _profile_override_candidates(lead_type: str, label: str, lead_detail: str, profile: dict[str, object]) -> list[str]:
+    values = [
+        profile.get("rumor_number"),
+        profile.get("map_roll"),
+        profile.get("thematic_dungeon_number"),
+        profile.get("scene"),
+        profile.get("title"),
+        label,
+        lead_detail,
+    ]
+    candidates: list[str] = []
+    for value in values:
+        text = str(value or "").strip()
+        if not text:
+            continue
+        candidates.append(text)
+        digits = "".join(ch for ch in text if ch.isdigit())
+        if digits:
+            candidates.append(digits)
+    if lead_type == "guild_job":
+        scene = str(profile.get("scene") or "").strip()
+        if scene:
+            candidates.append(scene)
+    seen: set[str] = set()
+    unique: list[str] = []
+    for candidate in candidates:
+        key = candidate.lower()
+        if key not in seen:
+            unique.append(candidate)
+            seen.add(key)
+    return unique
+
+
+def _lookup_tag_narrative_override(lead_type: str, label: str, lead_detail: str, profile: dict[str, object]) -> dict[str, Any]:
+    data = load_tag_narrative_overrides()
+    tag_data = data.get("tag", {}) if isinstance(data.get("tag", {}), dict) else {}
+    candidates = _profile_override_candidates(lead_type, label, lead_detail, profile)
+    sections = [tag_data.get(lead_type, {})]
+    if lead_type == "guild_job":
+        sections.extend(tag_data.get(name, {}) for name in ("rumor", "thematic_dungeon", "treasure_map"))
+    scene_overrides = tag_data.get("scene", {})
+    if isinstance(scene_overrides, dict):
+        sections.append(scene_overrides)
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        for candidate in candidates:
+            value = section.get(candidate) or section.get(candidate.lower())
+            if isinstance(value, dict):
+                return value
+    return {}
+
+
+def _apply_tag_narrative_override(
+    profile: dict[str, object],
+    *,
+    lead_type: str,
+    label: str,
+    lead_detail: str,
+) -> dict[str, object]:
+    override = _lookup_tag_narrative_override(lead_type, label, lead_detail, profile)
+    if not override:
+        return profile
+    merged: dict[str, object] = {**profile}
+    for key in [
+        "title",
+        "objective",
+        "entry",
+        "side",
+        "complication",
+        "complication_guidance",
+        "final_title",
+        "final_description",
+        "finale_instruction",
+        "rewards",
+        "side_reward_note",
+        "final_reward_note",
+    ]:
+        if key in override:
+            merged[key] = override[key]
+    if isinstance(override.get("rooms"), dict):
+        merged["room_narrative_overrides"] = override["rooms"]
+    if isinstance(override.get("npcs"), dict):
+        merged["npc_narrative_overrides"] = override["npcs"]
+    if override.get("module_title"):
+        merged["module_title"] = override["module_title"]
+    return merged
+
+
+def _room_override(profile: dict[str, object], room_id: str) -> dict[str, Any]:
+    overrides = profile.get("room_narrative_overrides", {})
+    if not isinstance(overrides, dict):
+        return {}
+    value = overrides.get(room_id)
+    return value if isinstance(value, dict) else {}
+
+
+def _room_title(profile: dict[str, object], room_id: str, fallback: str) -> str:
+    override = _room_override(profile, room_id)
+    return str(override.get("title") or fallback)
+
+
+def _room_description(profile: dict[str, object], room_id: str, fallback: str) -> str:
+    override = _room_override(profile, room_id)
+    return str(override.get("description") or fallback)
+
+
+def _room_log(profile: dict[str, object], room_id: str, fallback: str) -> str:
+    override = _room_override(profile, room_id)
+    return str(override.get("log") or override.get("on_enter_log") or fallback)
+
+
+def _clean_pdf_text(text: str) -> str:
+    lines: list[str] = []
+    for raw in text.replace("\r\n", "\n").replace("\r", "\n").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if "James Banner" in line and "Order #" in line:
+            continue
+        if line in {"Tales from the Adventurers' Guild", "Tales from the Adventurers’ Guild"}:
+            continue
+        lines.append(line)
+    joined = "\n".join(lines).replace("-\n", "")
+    return "\n".join(line.strip() for line in joined.splitlines() if line.strip())
+
+
+def _extract_tag_pdf_text(pdf_path: Path) -> str:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("pypdf is required to extract uploaded rule PDF text.") from exc
+    reader = PdfReader(str(pdf_path))
+    return _clean_pdf_text("\n".join(page.extract_text() or "" for page in reader.pages))
+
+
+def _extract_numbered_blocks(text: str, start_marker: str, stop_markers: tuple[str, ...]) -> dict[int, str]:
+    start = text.lower().find(start_marker.lower())
+    if start < 0:
+        return {}
+    end = len(text)
+    lower = text.lower()
+    for marker in stop_markers:
+        found = lower.find(marker.lower(), start + len(start_marker))
+        if found >= 0:
+            end = min(end, found)
+    blocks: dict[int, list[str]] = {}
+    current: int | None = None
+    for line in text[start:end].splitlines():
+        clean = line.strip()
+        if clean.isdigit():
+            value = int(clean)
+            if 1 <= value <= 12:
+                current = value
+                blocks.setdefault(current, [])
+            else:
+                current = None
+            continue
+        if current is not None:
+            blocks[current].append(clean)
+    return {key: " ".join(value).strip() for key, value in blocks.items() if " ".join(value).strip()}
+
+
+def _extract_tag_pdf_rumors(text: str) -> dict[int, str]:
+    start = text.lower().find("rumors (d12)")
+    if start < 0:
+        return {}
+    lower = text.lower()
+    end = lower.find("\nscenes\n", start)
+    if end < 0:
+        end = len(text)
+    blocks: dict[int, list[str]] = {}
+    current: int | None = None
+    for line in text[start:end].splitlines():
+        clean = line.strip()
+        if not clean:
+            continue
+        if clean.lower() == "scenes":
+            break
+        if clean.lower().startswith("red herring table"):
+            current = None
+            continue
+        if clean.isdigit():
+            value = int(clean)
+            if 1 <= value <= 12:
+                current = value
+                blocks.setdefault(current, [])
+            else:
+                current = None
+            continue
+        if current is not None:
+            blocks[current].append(clean)
+    return {key: " ".join(value).strip() for key, value in blocks.items() if " ".join(value).strip()}
+
+
+def _extract_tag_pdf_scenes(text: str) -> dict[int, str]:
+    import re
+
+    scenes: dict[int, str] = {}
+    pattern = re.compile(r"(?is)\bScene\s+(\d+)\s+(.*?)(?=\bScene\s+\d+\b|\bThematic Dungeons\b|\bTreasure Maps\b|\bThe Map Leads To\b|\Z)")
+    for match in pattern.finditer(text):
+        number = int(match.group(1))
+        body = " ".join(match.group(2).split()).strip()
+        if body:
+            scenes[number] = body
+    return scenes
+
+
+def _scene_number_from_profile(profile: dict[str, object]) -> int | None:
+    import re
+
+    match = re.search(r"Scene\s+(\d+)", str(profile.get("scene") or ""))
+    return int(match.group(1)) if match else None
+
+
+def _set_if_overwrite(target: dict[str, Any], key: str, value: Any, overwrite: bool) -> bool:
+    if value in (None, ""):
+        return False
+    if overwrite or key not in target or target.get(key) in (None, ""):
+        target[key] = value
+        return True
+    return False
+
+
+def merge_tag_pdf_narrative_overrides(pdf_path: Path, *, overwrite: bool = False) -> dict[str, Any]:
+    """Extract local TAG scene prose into the user-editable narrative override file."""
+    text = _extract_tag_pdf_text(pdf_path)
+    rumors = _extract_tag_pdf_rumors(text)
+    scenes = _extract_tag_pdf_scenes(text)
+    path = tag_narrative_overrides_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = load_tag_narrative_overrides() or {"schema_version": 1}
+    data.setdefault("schema_version", 1)
+    data.setdefault(
+        "note",
+        "User-editable local narrative overrides generated from uploaded local rule PDFs. This file lives beside game.db and is not committed.",
+    )
+    tag = data.setdefault("tag", {})
+    if not isinstance(tag, dict):
+        data["tag"] = {}
+        tag = data["tag"]
+    rumor_section = tag.setdefault("rumor", {})
+    scene_section = tag.setdefault("scene", {})
+    changed = 0
+    skipped = 0
+    for rumor_number, profile in TAG_RUMOR_PROFILES.items():
+        if not isinstance(profile, dict):
+            continue
+        scene_number = _scene_number_from_profile(profile)
+        rumor_text = rumors.get(rumor_number, "")
+        scene_text = scenes.get(scene_number or -1, "")
+        if not rumor_text and not scene_text:
+            continue
+        item = rumor_section.setdefault(str(rumor_number), {})
+        if not isinstance(item, dict):
+            rumor_section[str(rumor_number)] = {}
+            item = rumor_section[str(rumor_number)]
+        room_overrides = item.setdefault("rooms", {})
+        if not isinstance(room_overrides, dict):
+            item["rooms"] = {}
+            room_overrides = item["rooms"]
+        module_title = f"The Adventures Guild Rumor {rumor_number}: {_profile_title(profile, TAG_RUMORS.get(rumor_number, str(rumor_number)))}"
+        objective = str(profile.get("objective") or rumor_text or scene_text)
+        for key, value in [("module_title", module_title), ("objective", objective)]:
+            if _set_if_overwrite(item, key, value, overwrite):
+                changed += 1
+            else:
+                skipped += 1
+        if rumor_text:
+            entry = room_overrides.setdefault("tag-lead-entry", {})
+            if not isinstance(entry, dict):
+                room_overrides["tag-lead-entry"] = {}
+                entry = room_overrides["tag-lead-entry"]
+            for key, value in [
+                ("title", str(profile.get("title") or "Lead")),
+                ("description", rumor_text),
+                ("log", f"Objective: {objective}"),
+            ]:
+                if _set_if_overwrite(entry, key, value, overwrite):
+                    changed += 1
+                else:
+                    skipped += 1
+        if scene_text:
+            final = room_overrides.setdefault("tag-final-scene", {})
+            if not isinstance(final, dict):
+                room_overrides["tag-final-scene"] = {}
+                final = room_overrides["tag-final-scene"]
+            for key, value in [
+                ("title", str(profile.get("final_title") or f"Scene {scene_number}")),
+                ("description", scene_text),
+                ("log", scene_text),
+            ]:
+                if _set_if_overwrite(final, key, value, overwrite):
+                    changed += 1
+                else:
+                    skipped += 1
+            scene_key = f"Scene {scene_number}"
+            scene_item = scene_section.setdefault(scene_key, {})
+            if isinstance(scene_item, dict):
+                for key, value in [("description", scene_text), ("source_pdf", pdf_path.name)]:
+                    if _set_if_overwrite(scene_item, key, value, overwrite):
+                        changed += 1
+                    else:
+                        skipped += 1
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    return {
+        "path": str(path),
+        "pdf": pdf_path.name,
+        "rumors_found": len(rumors),
+        "scenes_found": len(scenes),
+        "changed_fields": changed,
+        "skipped_existing_fields": skipped,
+    }
+
+
 TAG_SETTLEMENT_SERVICES = [
     {
         "key": "bank_account",
@@ -5332,6 +5673,11 @@ def _tag_manifest(
         profile = _tag_enrich_treasure_map_profile(profile, lead_detail)
     if lead_type == "thematic_dungeon":
         profile = _tag_enrich_thematic_profile(profile, lead_detail)
+    profile = _apply_tag_narrative_override(profile, lead_type=lead_type, label=title, lead_detail=lead_detail)
+    title = str(profile.get("module_title") or title)
+    objective = str(profile.get("objective") or objective)
+    final_room_title = str(profile.get("final_title") or final_room_title)
+    final_room_description = str(profile.get("final_description") or final_room_description)
     finale_mode = _tag_finale_mode(profile)
     noncombat_finale = finale_mode in {"vendor", "service", "social", "choice", "procedure"} and not profile.get("final_foe")
     final_foe = "" if noncombat_finale else str(profile.get("final_foe") or "Wraith")
@@ -5412,12 +5758,12 @@ def _tag_manifest(
             {
                 "id": "tag-lead-entry",
                 "tile_key": "02",
-                "title": "Lead Trail",
-                "description": (
+                "title": _room_title(profile, "tag-lead-entry", "Lead Trail"),
+                "description": _room_description(profile, "tag-lead-entry", (
                     f"{profile.get('entry') or 'The party follows a TAG campaign lead out of the settlement.'} "
                     "The last warmth of the home settlement is behind them now: boot-mud, market smoke, and the contact's warning all narrow into one uneasy trail. "
                     "The main lead presses north, while a side clue lies east for players who want leverage before the trouble shows its teeth."
-                ),
+                )),
                 "environment": "dungeon",
                 "exits": [
                     {
@@ -5440,11 +5786,11 @@ def _tag_manifest(
             {
                 "id": "tag-side-clue",
                 "tile_key": "12",
-                "title": "Side Clue",
-                "description": (
+                "title": _room_title(profile, "tag-side-clue", "Side Clue"),
+                "description": _room_description(profile, "tag-side-clue", (
                     f"{profile.get('side') or 'Discarded gear and frightened local gossip confirm that the lead is real.'} "
                     "This is not the heart of the job; it is the thing half-buried beside it. A torn strap, sour candle smoke, a nervous witness mark, or a cache tucked too neatly away can turn a blind advance into an informed risk."
-                ),
+                )),
                 "exits": [
                     {
                         "id": "tag-side-clue-west",
@@ -5458,7 +5804,7 @@ def _tag_manifest(
                     {
                         "when": "on_search",
                         "once": True,
-                        "log": f"TAG guidance: {profile.get('side_reward_note') or profile.get('rewards') or 'Record any printed reward from the source scene.'}",
+                        "log": _room_log(profile, "tag-side-clue", f"TAG guidance: {profile.get('side_reward_note') or profile.get('rewards') or 'Record any printed reward from the source scene.'}"),
                         "treasure": {"gold": 12, "items": []},
                     }
                 ],
@@ -5466,11 +5812,11 @@ def _tag_manifest(
             {
                 "id": "tag-complication",
                 "tile_key": "13",
-                "title": "Complication",
-                "description": (
+                "title": _room_title(profile, "tag-complication", "Complication"),
+                "description": _room_description(profile, "tag-complication", (
                     f"{profile.get('complication') or 'Local troublemakers have reached the lead first.'} "
                     f"{profile.get('complication_guidance') or 'The pressure rises here, but no bookkeeping is needed unless this room presents a specific choice, roll, or procedure.'}"
-                ),
+                )),
                 "exits": [
                     {
                         "id": "tag-complication-south",
@@ -5498,18 +5844,18 @@ def _tag_manifest(
                     {
                         "when": "on_enter",
                         "once": True,
-                        "log": f"TAG source {profile.get('pdf_pages') or 'page ?'}: {profile.get('complication') or 'Resolve the lead complication.'}",
+                        "log": _room_log(profile, "tag-complication", f"TAG source {profile.get('pdf_pages') or 'page ?'}: {profile.get('complication') or 'Resolve the lead complication.'}"),
                     }
                 ],
             },
             {
                 "id": "tag-final-scene",
                 "tile_key": "11",
-                "title": final_room_title,
-                "description": (
+                "title": _room_title(profile, "tag-final-scene", final_room_title),
+                "description": _room_description(profile, "tag-final-scene", (
                     f"{final_room_description} "
                     "This is where the lead comes due: steel, spell, bargain, capture, or proof must turn into a recorded result before the party drags the story back to town."
-                ),
+                )),
                 "exits": [
                     {
                         "id": "tag-final-scene-south",
@@ -5523,7 +5869,7 @@ def _tag_manifest(
                     {
                         "when": "on_enter",
                         "once": True,
-                        "log": str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions."),
+                        "log": _room_log(profile, "tag-final-scene", str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions.")),
                         **({} if noncombat_finale else {"encounter": {"foes": final_foes}}),
                     }
                 ],
@@ -5531,8 +5877,8 @@ def _tag_manifest(
             {
                 "id": "tag-return-road",
                 "tile_key": "06",
-                "title": "Return Road",
-                "description": "The road back to the settlement is quiet in the wrong way: every coin, clue, oath, injury, rumor, and Guild expectation from this lead now has to survive the journey home and the accounting that follows.",
+                "title": _room_title(profile, "tag-return-road", "Return Road"),
+                "description": _room_description(profile, "tag-return-road", "The road back to the settlement is quiet in the wrong way: every coin, clue, oath, injury, rumor, and Guild expectation from this lead now has to survive the journey home and the accounting that follows."),
                 "exits": [
                     {
                         "id": "tag-return-road-east",
@@ -5559,7 +5905,7 @@ def _profile_title(profile: dict[str, object], fallback: str) -> str:
 def _profile_synopsis(campaign: CampaignState, lead_detail: str, profile: dict[str, object]) -> str:
     pages = profile.get("pdf_pages")
     page_text = f" Source: {pages}." if pages else ""
-    return f"Generated from TAG campaign downtime in {campaign.settlement_name}: {lead_detail}.{page_text}"
+    return f"Generated from The Adventures Guild campaign downtime in {campaign.settlement_name}: {lead_detail}.{page_text}"
 
 
 def _treasure_map_prompt_actions(map_roll: int) -> list[dict[str, object]]:
@@ -5700,7 +6046,7 @@ def build_tag_adventure_manifest(
         profile = TAG_RUMOR_PROFILES[rumor_number]
         lead_detail = f"{_profile_title(profile, TAG_RUMORS[rumor_number])}: {profile.get('scene', 'TAG scene')}"
         campaign.tag_used_rumor_numbers = sorted(set(campaign.tag_used_rumor_numbers + [rumor_number]))
-        title = f"TAG {label}: {_profile_title(profile, TAG_RUMORS[rumor_number])}"
+        title = f"The Adventures Guild {label}: {_profile_title(profile, TAG_RUMORS[rumor_number])}"
         objective = str(profile.get("objective") or f"Investigate TAG {label} from the settlement rumor list.")
         final_title = str(profile.get("final_title") or f"{label} Resolution")
         final_description = str(profile.get("final_description") or f"This room represents the playable handoff for {lead_detail}")
@@ -5732,7 +6078,7 @@ def build_tag_adventure_manifest(
             "final_prompt_actions": _treasure_map_prompt_actions(map_roll),
             "rules": ["This generator uses The Map Leads To destinations, not the preliminary fake-map outcomes."],
         }
-        title = f"TAG Treasure Map {map_roll}: {destination_title}"
+        title = f"The Adventures Guild Treasure Map {map_roll}: {destination_title}"
         objective = str(profile["objective"])
         final_title = str(profile["final_title"])
         final_description = str(profile["final_description"])
@@ -5742,13 +6088,14 @@ def build_tag_adventure_manifest(
         lead_detail = TAG_THEMATIC_DUNGEONS[theme_roll]
         profile = TAG_THEMATIC_DUNGEON_PROFILES[theme_roll]
         label = lead_detail
-        title = f"TAG Thematic Dungeon: {_profile_title(profile, lead_detail)}"
+        title = f"The Adventures Guild Thematic Dungeon: {_profile_title(profile, lead_detail)}"
         objective = str(profile.get("objective") or f"Resolve the TAG thematic dungeon lead: {lead_detail}.")
         final_title = str(profile.get("final_title") or lead_detail)
         final_description = str(profile.get("final_description") or f"This is the TAG adventure handoff for {lead_detail}.")
     else:
         label, lead_detail, profile = _guild_job_profile(campaign, clean_detail)
-        title = f"TAG {label}: {_profile_title(profile, lead_detail)}"
+        player_label = label.replace("Guild Job", "Job")
+        title = f"The Adventures Guild {player_label}: {_profile_title(profile, lead_detail)}"
         objective = str(profile.get("objective") or "Complete the work assigned by the Adventurers Guild job table.")
         final_title = str(profile.get("final_title") or label)
         final_description = str(profile.get("final_description") or lead_detail)

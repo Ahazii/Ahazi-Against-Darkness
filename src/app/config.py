@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -52,6 +53,7 @@ def load_settings() -> Settings:
     settings.installed_adventures_dir.mkdir(parents=True, exist_ok=True)
     settings.user_assets_dir.mkdir(parents=True, exist_ok=True)
     _seed_user_asset_folders(settings)
+    _seed_user_narrative_override_template(settings)
     return settings
 
 
@@ -92,3 +94,35 @@ def _seed_user_asset_folders(settings: Settings) -> None:
         settings.packaged_assets_dir / "icons" / "user",
         settings.user_assets_dir / "icons" / "user",
     )
+
+
+def _seed_user_narrative_override_template(settings: Settings) -> None:
+    """Expose the editable local narrative override file without committing rulebook text."""
+    path = settings.data_dir / "tag_scene_narrative_overrides.json"
+    if path.exists():
+        return
+    template = {
+        "schema_version": 1,
+        "note": "User-editable local narrative overrides. Add PDF scene text you own locally, room titles, and play-facing narrative here. This file lives beside game.db and is not committed.",
+        "tag": {
+            "rumor": {
+                "3": {
+                    "module_title": "The Adventures Guild Rumor 3: The Paladin's Sword",
+                    "objective": "Investigate the old miller's farm and discover whether the story about the stolen paladin's sword is true.",
+                    "rooms": {
+                        "tag-lead-entry": {
+                            "title": "The Old Miller's Farm",
+                            "description": "Paste or edit the opening rumor text here.",
+                            "log": "State the player-facing objective here.",
+                        },
+                        "tag-final-scene": {
+                            "title": "No Well, No Sword",
+                            "description": "Paste or edit the Scene 11 resolution text here.",
+                            "log": "State the return-road/closeout instruction here.",
+                        },
+                    },
+                },
+            },
+        },
+    }
+    path.write_text(json.dumps(template, indent=2), encoding="utf-8")

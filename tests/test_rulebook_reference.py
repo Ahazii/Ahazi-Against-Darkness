@@ -27,6 +27,7 @@ APP_ONLY_REFERENCE_IDS = {
     "tag_generated_adventure_signoff",
     "tag_closeout_checklist_automation",
     "tag_generated_prompt_playtest",
+    "tag_local_narrative_overrides",
     "tag_rumor_playthrough_audit",
     "tag_treasure_map_playthrough_audit",
     "tag_thematic_dungeon_playthrough_audit",

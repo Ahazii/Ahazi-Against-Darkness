@@ -42,6 +42,11 @@ def test_assets_route_prefers_data_dir_and_does_not_use_static_mount() -> None:
     assert 'user_assets_dir = data_dir / "assets"' in config_py
     assert 'packaged_assets_dir = root_dir / "assets"' in config_py
     assert "_seed_user_asset_folders(settings)" in config_py
+    assert "_seed_user_narrative_override_template(settings)" in config_py
+    assert '"tag_scene_narrative_overrides.json"' in config_py
+    assert '@app.post("/api/rules/upload-pdf")' in main_py
+    assert '@app.post("/api/rules/extract-tag-narrative")' in main_py
+    assert "settings.rules_dir" in main_py
 
     assert 'ASSETS_DIR="${DATA_DIR}/assets"' in entrypoint
     assert 'mkdir -p "${ASSETS_DIR}/artwork/user"' in entrypoint

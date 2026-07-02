@@ -4255,6 +4255,71 @@ function renderArtworkManager() {
   return panel;
 }
 
+async function renderRulePdfManager() {
+  const panel = card("Rules PDF Upload and Text Extraction", "Upload owned rules PDFs into DATA_DIR/rules, then extract supported The Adventures Guild scene prose into the local narrative override file beside game.db.");
+  const file = input("file", "modern-rule-pdf-upload", "Choose an owned rules PDF from your computer to upload to the server.");
+  file.accept = "application/pdf,.pdf";
+  const uploadedSelect = select("modern-rule-pdf-select", "Uploaded DATA_DIR/rules PDF to extract from.", [["", "Choose uploaded PDF"]]);
+  const overwrite = input("checkbox", "modern-rule-pdf-overwrite", "Overwrite existing fields in DATA_DIR/tag_scene_narrative_overrides.json. Leave off to preserve local edits.");
+  const status = el("div", "modern-list");
+  async function refreshList() {
+    const payload = await api("/api/rules/pdfs");
+    uploadedSelect.replaceChildren(new Option("Choose uploaded PDF", ""));
+    for (const item of payload.uploaded || []) {
+      uploadedSelect.appendChild(new Option(`${item.filename} (${Math.round((item.size_bytes || 0) / 1024)} KB)`, item.filename));
+    }
+    status.replaceChildren(
+      modernStatusRow("Uploaded PDFs", `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, "These PDFs are user data beside game.db and can be backed up from the appdata folder."),
+      modernStatusRow("Override file", payload.override_path || "DATA_DIR/tag_scene_narrative_overrides.json", "Generated modules use this local editable file for player-facing scene prose."),
+      modernStatusRow("Packaged PDFs", `${(payload.packaged || []).length} bundled/local Rules folder file(s) visible read-only`, "Upload copies into DATA_DIR/rules when you want extraction to write local override data.")
+    );
+  }
+  await refreshList();
+  const row = actions();
+  row.append(
+    button("Upload PDF", "Upload the selected PDF into DATA_DIR/rules on the server.", async () => {
+      const chosen = file.files?.[0];
+      if (!chosen) throw new Error("Choose a PDF file first.");
+      const response = await fetch(`/api/rules/upload-pdf?filename=${encodeURIComponent(chosen.name)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/pdf" },
+        body: await chosen.arrayBuffer(),
+      });
+      if (!response.ok) {
+        let detail = response.statusText;
+        try {
+          const payload = await response.json();
+          detail = payload.detail || detail;
+        } catch {
+          /* keep status text */
+        }
+        throw new Error(detail);
+      }
+      const result = await response.json();
+      setStatus(result.message || "PDF uploaded.");
+      await refreshList();
+    }),
+    button("Extract TAG Narrative", "Extract supported Tales from The Adventures Guild Rumor/Scene prose from the selected uploaded PDF into DATA_DIR/tag_scene_narrative_overrides.json.", async () => {
+      const result = await api("/api/rules/extract-tag-narrative", {
+        method: "POST",
+        body: JSON.stringify({ filename: uploadedSelect.value, overwrite: overwrite.checked }),
+      });
+      setStatus(`${result.message} ${result.changed_fields || 0} field(s) changed; ${result.skipped_existing_fields || 0} preserved.`);
+      await refreshList();
+    }),
+    link("Narrative Override Reference", ruleReferenceHref("tag_local_narrative_overrides", "tag narrative overrides"), "Open the Rules Reference entry for local narrative overrides.", "link-button secondary")
+  );
+  panel.append(
+    field("Rules PDF", file),
+    field("Uploaded PDF", uploadedSelect),
+    field("Overwrite local edits", overwrite),
+    row,
+    status,
+    el("p", "muted", "Extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
+  );
+  return panel;
+}
+
 function renderGuides() {
   const panel = card("Game Guides", "Standalone guide links and future player-facing guide list.");
   const row = actions();
@@ -4276,6 +4341,7 @@ async function renderDeveloper() {
   const pw = input("password", "modern-dev-pw", "Developer password. Default is 7979.");
   const tools = el("div", "modern-dev-tools hidden");
   const artworkMount = el("div", "modern-dev-artwork-manager hidden");
+  const rulePdfMount = el("div", "modern-dev-rule-pdf-manager hidden");
   const row = actions();
   row.append(
     link("Adventure PDF Import", "/modern/developer", "Placeholder for future PDF adventure module import."),
@@ -4283,12 +4349,17 @@ async function renderDeveloper() {
     link("Adventure Module Creator", "/modern/developer", "Placeholder for future adventure-from-scratch creator."),
     link("Map Elements Editor", "/static/tile-editor.html", "Open the existing map element editor as its own page."),
     link("Icon Editor", "/static/icon-editor.html", "Open the existing icon editor as its own page."),
+    button("Rules PDF Import", "Show or hide the rules PDF upload and local TAG narrative extraction tool.", async () => {
+      if (!rulePdfMount.childElementCount) rulePdfMount.appendChild(await renderRulePdfManager());
+      rulePdfMount.classList.toggle("hidden");
+    }),
     button("Artwork Manager", "Show or hide the artwork slot manager for DATA_DIR/assets paths, missing files, and linked Rules Reference entries.", async () => {
       if (!artworkMount.childElementCount) artworkMount.appendChild(renderArtworkManager());
       artworkMount.classList.toggle("hidden");
     })
   );
   tools.appendChild(row);
+  tools.appendChild(rulePdfMount);
   tools.appendChild(artworkMount);
   if (window.sessionStorage.getItem("ahazi-modern-dev-unlocked") === "1") tools.classList.remove("hidden");
   const unlock = button("Unlock", "Show developer tools when password is 7979.", async () => {

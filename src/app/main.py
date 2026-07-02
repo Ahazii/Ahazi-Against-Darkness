@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -47,6 +48,7 @@ from .engine.roster_sync import (
     unlock_characters_for_session,
 )
 from .engine.tag_compat import normalize_tag_log_lines, upgrade_tag_manifest
+from .engine.tag_campaign import merge_tag_pdf_narrative_overrides, tag_narrative_overrides_path
 from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import (
     expert_skills_catalog_with_summaries,
@@ -355,6 +357,7 @@ def _restore_missing_recovery_members(session: SessionState) -> bool:
 
 
 ICON_FILE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
+RULE_PDF_EXTENSIONS = {".pdf"}
 
 
 app = FastAPI(title="Ahazi Against Darkness", version="0.26.0")
@@ -390,12 +393,106 @@ def _asset_exists(asset_path: str) -> bool:
     return resolved is not None
 
 
+def _safe_rule_pdf_filename(filename: str) -> str:
+    name = Path(filename or "").name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Missing PDF filename.")
+    stem = re.sub(r"[^A-Za-z0-9._ -]+", "_", Path(name).stem).strip(" ._")
+    if not stem:
+        stem = "uploaded_rules"
+    return f"{stem[:120]}.pdf"
+
+
+def _resolve_user_rule_pdf(filename: str) -> Path:
+    safe = _safe_rule_pdf_filename(filename)
+    base = settings.rules_dir.resolve()
+    resolved = (base / safe).resolve()
+    if not resolved.is_relative_to(base):
+        raise HTTPException(status_code=400, detail="Invalid PDF path.")
+    if not resolved.is_file():
+        raise HTTPException(status_code=404, detail="Uploaded rule PDF not found.")
+    return resolved
+
+
 @app.get("/assets/{asset_path:path}")
 async def serve_asset(asset_path: str) -> FileResponse:
     resolved, _source = _resolve_asset_file(asset_path)
     if resolved is None:
         raise HTTPException(status_code=404, detail="Asset not found.")
     return FileResponse(resolved)
+
+
+@app.get("/api/rules/pdfs")
+async def list_rule_pdfs() -> dict[str, Any]:
+    settings.rules_dir.mkdir(parents=True, exist_ok=True)
+    uploaded = [
+        {
+            "filename": path.name,
+            "size_bytes": path.stat().st_size,
+            "source": "DATA_DIR/rules",
+        }
+        for path in sorted(settings.rules_dir.glob("*.pdf"))
+        if path.is_file()
+    ]
+    packaged = [
+        {
+            "filename": path.name,
+            "size_bytes": path.stat().st_size,
+            "source": "Rules",
+        }
+        for path in sorted((settings.root_dir / "Rules").glob("*.pdf"))
+        if path.is_file()
+    ]
+    return {
+        "uploaded": uploaded,
+        "packaged": packaged,
+        "rules_dir": str(settings.rules_dir),
+        "override_path": str(tag_narrative_overrides_path()),
+    }
+
+
+@app.post("/api/rules/upload-pdf")
+async def upload_rule_pdf(request: Request) -> dict[str, Any]:
+    raw_filename = request.query_params.get("filename") or request.headers.get("x-filename") or "rules.pdf"
+    if Path(raw_filename).suffix.lower() not in RULE_PDF_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Upload a .pdf file.")
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Uploaded PDF is empty.")
+    filename = _safe_rule_pdf_filename(raw_filename)
+    settings.rules_dir.mkdir(parents=True, exist_ok=True)
+    target = (settings.rules_dir / filename).resolve()
+    if not target.is_relative_to(settings.rules_dir.resolve()):
+        raise HTTPException(status_code=400, detail="Invalid PDF target.")
+    target.write_bytes(body)
+    return {
+        "filename": filename,
+        "size_bytes": target.stat().st_size,
+        "rules_dir": str(settings.rules_dir),
+        "message": f"Uploaded {filename} to DATA_DIR/rules.",
+    }
+
+
+@app.post("/api/rules/extract-tag-narrative")
+async def extract_tag_narrative(payload: dict[str, Any]) -> dict[str, Any]:
+    filename = str(payload.get("filename") or "").strip()
+    overwrite = bool(payload.get("overwrite"))
+    if not filename:
+        candidates = sorted(settings.rules_dir.glob("*Tales*Adventurers*Guild*.pdf")) or sorted(settings.rules_dir.glob("*.pdf"))
+        if not candidates:
+            raise HTTPException(status_code=404, detail="Upload Tales_from_the_adventurers_guild.pdf first.")
+        pdf_path = candidates[0]
+    else:
+        pdf_path = _resolve_user_rule_pdf(filename)
+    try:
+        result = merge_tag_pdf_narrative_overrides(pdf_path, overwrite=overwrite)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Could not extract TAG narrative: {exc}") from exc
+    return {
+        **result,
+        "overwrite": overwrite,
+        "message": f"Extracted TAG narrative from {pdf_path.name} into DATA_DIR/{tag_narrative_overrides_path().name}.",
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -2715,6 +2812,12 @@ def _rules_tables_payload() -> dict:
             "shown_in": "Exploration TAG scene prompt panel and Current Objective banner.",
             "player_use": "Explains why the lead exists, how to use the room prompt, which immediate action matters, and which Adventures Guild Action buttons can prefill the exact branch, route, XP, reward, service, purchase, or finance state for that lead. The director panel gives phase-specific next-step guidance and a lead-type playbook; the lifecycle strip shows entry, side lead, complication, finale, route, reward, XP, and closeout status.",
             "pdf_boundary": "Guide text is app-authored; exact printed scene text and reward values stay with the PDF/player signoff.",
+        },
+        {
+            "surface": "Local narrative override file",
+            "shown_in": "Generated The Adventures Guild module creation.",
+            "player_use": "DATA_DIR/tag_scene_narrative_overrides.json can override generated objectives, room titles, room descriptions, and room logs with user-edited local text. Use it for exact private PDF scene prose or edited play-facing narrative without changing code.",
+            "pdf_boundary": "The committed app seeds a template only. Exact copied PDF prose belongs in the user's local DATA_DIR file and is not redistributed by the repository.",
         },
         {
             "surface": "Prompt action buttons and Relevant Now shortcuts",

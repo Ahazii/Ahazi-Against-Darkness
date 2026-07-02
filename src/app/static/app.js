@@ -4138,13 +4138,17 @@ function canClaimQuestReward(session, quest) {
   return questClaimStatus(session, quest).ok;
 }
 
+function isGeneratedTagQuest(session) {
+  const tagReference = session?.imported_manifest?.source?.parameters?.tag_reference;
+  return Boolean(tagReference && typeof tagReference === "object");
+}
+
 function questClaimStatus(session, quest) {
   if (!quest || quest.reward_claimed) return { ok: false, reason: "Quest reward already handled." };
   const tile = currentTile(session);
   const onQuestTile = tile?.id === quest.tile_id;
   const partyGold = partyGoldTotal(session);
-  const tagReference = session?.imported_manifest?.source?.parameters?.tag_reference;
-  if (tagReference && typeof tagReference === "object") {
+  if (isGeneratedTagQuest(session)) {
     return {
       ok: false,
       reason:
@@ -19089,10 +19093,11 @@ function renderOngoingQuests(session) {
       card.appendChild(node("div", "ongoing-quest-guidance", `Quest-giver tile: ${giverTile.title}`));
     }
     if (quest.completed) {
-      const completeText =
-        quest.key === "bring_alive" && quest.captured_boss_name
-          ? `Objective complete — ${quest.captured_boss_name} was subdued. Claim your Epic reward.`
-          : "Objective complete — claim your Epic reward.";
+      const completeText = isGeneratedTagQuest(session)
+        ? "Objective complete - report the lead outcome, resolve any scene procedure, and sign off this Adventures Guild lead."
+        : quest.key === "bring_alive" && quest.captured_boss_name
+          ? `Objective complete - ${quest.captured_boss_name} was subdued. Claim your Epic reward.`
+          : "Objective complete - claim your Epic reward.";
       card.appendChild(node("div", "ongoing-quest-guidance", completeText));
     }
     const claimStatus = questClaimStatus(session, quest);
@@ -19145,7 +19150,7 @@ function renderOngoingQuests(session) {
         advance("claim_fd_quest_reward", { fd_quest_id: quest.quest_id })
       );
       actions.appendChild(claim);
-    } else {
+    } else if (!isGeneratedTagQuest(session)) {
       const claim = document.createElement("button");
       claim.type = "button";
       claim.className = "secondary";
