@@ -938,6 +938,32 @@
                   </div>
                 </form>
               </dialog>
+              <dialog id="tag-deoldyn-training-dialog" class="help-dialog transfer-dialog tag-illusion-dialog">
+                <form method="dialog" id="tag-deoldyn-training-form">
+                  <div class="transfer-dialog-header">
+                    <h3>Deoldyn's Archery Training</h3>
+                    <p class="muted">Scene 3 is a trainer lead, not a dungeon. Choose a bow-capable trainee and the archery skill to attempt; the app pays 60 gp x Level, rolls the training XP check, and records the skill only on success.</p>
+                  </div>
+                  <div class="tag-settlement-grid">
+                    <label for="tag-deoldyn-training-character">
+                      <span>Character</span>
+                      <select id="tag-deoldyn-training-character"></select>
+                    </label>
+                    <label for="tag-deoldyn-training-skill">
+                      <span>Training choice</span>
+                      <select id="tag-deoldyn-training-skill">
+                        <option value="deadly_accuracy">Deadly Accuracy</option>
+                        <option value="dead_shot">Dead Shot</option>
+                      </select>
+                    </label>
+                  </div>
+                  <p id="tag-deoldyn-training-note" class="muted"></p>
+                  <div class="actions transfer-dialog-actions">
+                    <button id="tag-deoldyn-training-confirm" type="button" class="primary">Train</button>
+                    <button type="submit" value="cancel" class="secondary">Cancel</button>
+                  </div>
+                </form>
+              </dialog>
               <details class="tag-help-section">
                 <summary>
                   <span>Services and Log</span>

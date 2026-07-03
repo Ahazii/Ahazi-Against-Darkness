@@ -1981,6 +1981,11 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "Scene 2 illusion spell - choose spell" in APP_JS
     assert "function appendLeprechaunGuidedAction" in APP_JS
     assert "function openLeprechaunSpellDialog" in APP_JS
+    assert "function openDeoldynTrainingDialog" in APP_JS
+    assert 'id="tag-deoldyn-training-dialog"' in INDEX_HTML
+    assert 'id="tag-deoldyn-training-skill"' in INDEX_HTML
+    assert "Scene 3 Deoldyn training" in APP_JS
+    assert "TAG_BOW_CAPABLE_CLASS_IDS" in APP_JS
     assert "function populateIllusionSpellSelect" in APP_JS
     assert "illusionist_spells_table" in APP_JS
     assert 'id="tag-illusion-spell-dialog"' in INDEX_HTML
@@ -1991,6 +1996,7 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "for (const action of objective.actions || []) appendCurrentObjectiveButton(actions, action);" in APP_JS
     assert "currentObjectiveBanner.appendChild(renderObjectiveActionPlan" not in APP_JS
     assert "openLeprechaunSpellDialog(defaults)" in APP_JS
+    assert "openDeoldynTrainingDialog(defaults)" in APP_JS
     assert '"leprechaun_shoes"' in APP_JS
     assert '"leprechaun_illusion_spell"' in APP_JS
     assert "+Tier to Defense when withdrawing or fleeing melee" in APP_JS
@@ -2043,6 +2049,15 @@ def test_current_objective_runs_direct_tag_purchase_actions_without_modal() -> N
     assert "runTagSceneActionWithDefaults(defaults).catch(handleError)" in APP_JS
     assert 'openTagActionsWithDefaults(defaults);' in APP_JS
     assert "No living party member has ${cost} gp in hand or bank" in APP_JS
+
+
+def test_xp_learning_ui_splits_skills_and_spells_and_hides_ineligible_options() -> None:
+    assert "function appendExpertAdvancementDetails" in APP_JS
+    assert '"Learn expert skill"' in APP_JS
+    assert '"Learn expert spell"' in APP_JS
+    assert "const availableOptions = (options || []).filter((option) => !option.disabled);" in APP_JS
+    assert "only choices currently eligible" in APP_JS
+    assert "Learn expert skill or spell" not in APP_JS
 
 
 def test_current_objective_and_tag_actions_dialog_layout_is_not_squeezed() -> None:

@@ -337,6 +337,11 @@ const tagIllusionSpellSelect = document.getElementById("tag-illusion-spell-selec
 const tagIllusionSpellFree = document.getElementById("tag-illusion-spell-free");
 const tagIllusionSpellNote = document.getElementById("tag-illusion-spell-note");
 const tagIllusionSpellConfirm = document.getElementById("tag-illusion-spell-confirm");
+const tagDeoldynTrainingDialog = document.getElementById("tag-deoldyn-training-dialog");
+const tagDeoldynTrainingCharacter = document.getElementById("tag-deoldyn-training-character");
+const tagDeoldynTrainingSkill = document.getElementById("tag-deoldyn-training-skill");
+const tagDeoldynTrainingNote = document.getElementById("tag-deoldyn-training-note");
+const tagDeoldynTrainingConfirm = document.getElementById("tag-deoldyn-training-confirm");
 const tagBankTransferDialog = document.getElementById("tag-bank-transfer-dialog");
 const tagBankTransferCharacter = document.getElementById("tag-bank-transfer-character");
 const tagBankTransferAll = document.getElementById("tag-bank-transfer-all");
@@ -667,7 +672,7 @@ const ACTION_TOOLTIPS = {
   buyPotion: "Pay 50gp for a Potion of Healing added to this hero (once per hero per adventure).",
   buyPoison: "Pay 30gp for blade poison added to this hero (once per hero per adventure).",
   xpRoll:
-    "Spend 1 pending XP roll. Basic heroes roll d6 to level up. Expert-trained heroes may choose Level up or Learn expert skill/spell; tier dice apply (d8+2 … d20+10).",
+    "Spend 1 pending XP roll. Basic heroes roll d6 to level up. Expert-trained heroes may choose Level up, Learn expert skill, or Learn expert spell; tier dice apply (d8+2 etc.).",
   learnExpertSkill:
     "Spend 1 pending XP roll to attempt learning an expert skill or spell instead of gaining a Level. Requires Expert tier training first.",
   enterExpertTier:
@@ -1525,13 +1530,16 @@ function eligibleLegendarySkillOptions(member) {
 }
 
 function appendSkillLearnDetails(parent, label, options, fork, member, advanceAction = "xp_roll", xpSpent = null, submitFn = null) {
-  if (!options.length) return;
+  const availableOptions = (options || []).filter((option) => !option.disabled);
+  if (!availableOptions.length) return;
   const details = document.createElement("details");
   const summary = document.createElement("summary");
   summary.textContent = label;
   details.appendChild(summary);
+  const hint = node("p", "muted", `${label}: only choices currently eligible for ${member.name} are shown. Hover a choice for the rule effect and source table detail.`);
+  details.appendChild(hint);
   const skillRow = node("div", "level-up-spell-pick-actions");
-  for (const option of options) {
+  for (const option of availableOptions) {
     const skillBtn = node("button", "secondary", option.label);
     skillBtn.type = "button";
     skillBtn.disabled = Boolean(option.disabled);
@@ -1568,6 +1576,30 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
   }
   details.appendChild(skillRow);
   parent.appendChild(details);
+}
+
+function appendExpertAdvancementDetails(parent, member, advanceAction = "xp_roll", xpSpent = null, submitFn = null) {
+  const options = eligibleExpertSkillOptions(member);
+  appendSkillLearnDetails(
+    parent,
+    "Learn expert skill",
+    options.filter((option) => option.kind !== "spell"),
+    "learn_expert_skill",
+    member,
+    advanceAction,
+    xpSpent,
+    submitFn
+  );
+  appendSkillLearnDetails(
+    parent,
+    "Learn expert spell",
+    options.filter((option) => option.kind === "spell"),
+    "learn_expert_skill",
+    member,
+    advanceAction,
+    xpSpent,
+    submitFn
+  );
 }
 
 function skillTableMechanic(option, fork) {
@@ -2311,7 +2343,7 @@ function appendXpAdvancementChoices(item, session, member) {
     advance("xp_roll", { character_id: member.character_id, advancement_fork: "level_up" })
   );
   row.appendChild(levelBtn);
-  appendSkillLearnDetails(row, "Learn expert skill or spell", eligibleExpertSkillOptions(member), "learn_expert_skill", member);
+  appendExpertAdvancementDetails(row, member);
   if ((member.level || 1) >= 10) {
     appendSkillLearnDetails(row, "Learn heroic skill", eligibleHeroicSkillOptions(member), "learn_heroic_skill", member);
   }
@@ -2376,14 +2408,7 @@ function appendBankedXpAdvancementChoices(item, session, member) {
     advance("spend_banked_xp", { character_id: member.character_id, advancement_fork: "level_up" })
   );
   row.appendChild(levelBtn);
-  appendSkillLearnDetails(
-    row,
-    "Learn expert skill or spell",
-    eligibleExpertSkillOptions(member),
-    "learn_expert_skill",
-    member,
-    "spend_banked_xp"
-  );
+  appendExpertAdvancementDetails(row, member, "spend_banked_xp");
   if ((member.level || 1) >= 10) {
     appendSkillLearnDetails(
       row,
@@ -2450,15 +2475,7 @@ function appendSlowerAdvancementChoices(item, session, member) {
     })
   );
   row.appendChild(levelBtn);
-  appendSkillLearnDetails(
-    row,
-    "Learn expert skill or spell",
-    eligibleExpertSkillOptions(member),
-    "learn_expert_skill",
-    member,
-    "slower_xp_spend",
-    minimum
-  );
+  appendExpertAdvancementDetails(row, member, "slower_xp_spend", minimum);
   if ((member.level || 1) >= 10) {
     appendSkillLearnDetails(
       row,
@@ -11135,6 +11152,13 @@ function tagMemberSpendableGold(member) {
   return Math.max(0, (member?.gold || 0) + (member?.bank_gold || 0));
 }
 
+const TAG_BOW_CAPABLE_CLASS_IDS = new Set(["warrior", "barbarian", "ranger", "dwarf", "elf"]);
+
+function tagCanWieldBow(member) {
+  const classId = String(member?.class_id || "").toLowerCase();
+  return TAG_BOW_CAPABLE_CLASS_IDS.has(classId);
+}
+
 function tagDirectBranchCost(defaults = {}) {
   if (defaults.branchAction === "leprechaun_shoes") return Math.max(1, Number(defaults.amount || 1)) * 200;
   if (defaults.branchAction === "leprechaun_illusion_spell") {
@@ -11227,6 +11251,83 @@ function openLeprechaunSpellDialog(defaults = {}) {
     }
   };
   if (typeof tagIllusionSpellDialog.showModal === "function") tagIllusionSpellDialog.showModal();
+}
+
+const TAG_DEOLDYN_SKILL_OPTIONS = {
+  deadly_accuracy: {
+    label: "Deadly Accuracy",
+    summary: "Scene 3 training choice. On a successful training XP roll, records Deadly Accuracy in the character's learned expert skills.",
+  },
+  dead_shot: {
+    label: "Dead Shot",
+    summary: "Scene 3 training choice. On a successful training XP roll, records Dead Shot in the character's learned expert skills.",
+  },
+};
+
+function selectedDeoldynReference(skillId) {
+  const skill = TAG_DEOLDYN_SKILL_OPTIONS[skillId] || TAG_DEOLDYN_SKILL_OPTIONS.deadly_accuracy;
+  return `Scene 3 Deoldyn training: ${skill.label}`;
+}
+
+function populateDeoldynSkillSelect() {
+  if (!tagDeoldynTrainingSkill) return;
+  tagDeoldynTrainingSkill.replaceChildren();
+  for (const [id, skill] of Object.entries(TAG_DEOLDYN_SKILL_OPTIONS)) {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = skill.label;
+    option.title = skill.summary;
+    tagDeoldynTrainingSkill.appendChild(option);
+  }
+  setTooltip(tagDeoldynTrainingSkill, "Choose which Scene 3 archery skill Deoldyn trains. The app rolls the XP check after payment and records the skill only on success.");
+}
+
+function openDeoldynTrainingDialog(defaults = {}) {
+  if (!tagDeoldynTrainingDialog || !tagDeoldynTrainingCharacter || !tagDeoldynTrainingSkill || !tagDeoldynTrainingConfirm) {
+    openTagActionsWithDefaults(defaults);
+    return;
+  }
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0 && tagCanWieldBow(member));
+  tagDeoldynTrainingCharacter.replaceChildren();
+  for (const member of living) {
+    const cost = 60 * Math.max(1, Number(member.level || 1));
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = `${member.name} (${cost} gp, ${tagMemberSpendableGold(member)} gp available)`;
+    option.title = `Scene 3 cost is 60 gp x Level ${member.level || 1}. Payment uses carried gold first, then banked gold if session payment is available.`;
+    option.disabled = tagMemberSpendableGold(member) < cost;
+    tagDeoldynTrainingCharacter.appendChild(option);
+  }
+  populateDeoldynSkillSelect();
+  const firstEnabled = Array.from(tagDeoldynTrainingCharacter.options).find((option) => !option.disabled);
+  if (firstEnabled) tagDeoldynTrainingCharacter.value = firstEnabled.value;
+  if (tagDeoldynTrainingNote) {
+    tagDeoldynTrainingNote.textContent = living.length
+      ? "Only bow-capable living characters are listed. Deoldyn's Scene 3 service costs 60 gp x Level; the money is spent even if the training XP roll fails."
+      : "No living party member can currently wield a bow for Deoldyn's Scene 3 training.";
+  }
+  tagDeoldynTrainingConfirm.disabled = !firstEnabled;
+  setButtonTooltip(tagDeoldynTrainingConfirm, "Pay Deoldyn, roll the printed Scene 3 training XP check, and record the selected archery skill only if the roll succeeds.");
+  tagDeoldynTrainingConfirm.onclick = async () => {
+    tagDeoldynTrainingConfirm.disabled = true;
+    const originalText = tagDeoldynTrainingConfirm.textContent;
+    tagDeoldynTrainingConfirm.textContent = "Training...";
+    try {
+      await runTagSceneActionWithDefaults({
+        ...defaults,
+        sceneAction: "deoldyn_training",
+        characterId: tagDeoldynTrainingCharacter.value,
+        reference: selectedDeoldynReference(tagDeoldynTrainingSkill.value),
+      });
+      tagDeoldynTrainingDialog.close();
+    } catch (error) {
+      handleError(error);
+    } finally {
+      tagDeoldynTrainingConfirm.disabled = !Array.from(tagDeoldynTrainingCharacter.options).some((option) => !option.disabled);
+      tagDeoldynTrainingConfirm.textContent = originalText;
+    }
+  };
+  if (typeof tagDeoldynTrainingDialog.showModal === "function") tagDeoldynTrainingDialog.showModal();
 }
 
 function tagDirectSceneCost(defaults = {}, member = null) {
@@ -11799,6 +11900,7 @@ async function runTagSceneActionWithDefaults(defaults = {}) {
       character_id: characterId || "",
       scene_action: defaults.sceneAction || "",
       amount: Number(defaults.amount || 0),
+      reference: defaults.reference || "",
     }),
   });
   state.campaign = result.campaign;
@@ -15322,11 +15424,8 @@ function appendRosterBankedXpActions(actions, character) {
   });
   actions.appendChild(levelBtn);
   if (character.level >= 5 && character.expert_trained) {
-    appendSkillLearnDetails(
+    appendExpertAdvancementDetails(
       actions,
-      "Spend banked XP: expert skill/spell",
-      eligibleExpertSkillOptions(character),
-      "learn_expert_skill",
       character,
       "spend_banked_xp",
       null,
@@ -18459,6 +18558,8 @@ function appendCurrentObjectiveButton(parent, action) {
         btn.addEventListener("click", () => {
           if (defaults.branchAction === "leprechaun_illusion_spell") {
             openLeprechaunSpellDialog(defaults);
+          } else if (defaults.sceneAction === "deoldyn_training") {
+            openDeoldynTrainingDialog(defaults);
           } else if (directBranch) {
             runTagBranchActionWithDefaults(defaults).catch(handleError);
           } else if (directRoute) {
@@ -24147,7 +24248,9 @@ function renderTagRelevantActions(session = state.session) {
     const defaults = generatedTagPromptActionDefaults(action, fallback, tagReference);
     setButtonTooltip(btn, `${tooltip} ${generatedTagPromptActionExplanation(promptData, action)} Confirm the PDF/player choice before applying.`);
     btn.addEventListener("click", () => {
-      if (directTagBranchAllowed(defaults)) {
+      if (defaults.sceneAction === "deoldyn_training") {
+        openDeoldynTrainingDialog(defaults);
+      } else if (directTagBranchAllowed(defaults)) {
         runTagBranchActionWithDefaults(defaults).catch(handleError);
       } else if (directTagRouteAllowed(defaults)) {
         runTagRouteActionWithDefaults(defaults).catch(handleError);
@@ -24184,6 +24287,14 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
     if (appendLeprechaunGuidedAction(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+    if (defaults.sceneAction === "deoldyn_training") {
+      const btn = node("button", "secondary", String(action.label));
+      btn.type = "button";
+      setButtonTooltip(btn, `${String(action.tooltip || "Open Deoldyn's Scene 3 training picker.")} Choose an eligible trainee and archery skill before paying.`);
+      btn.addEventListener("click", () => openDeoldynTrainingDialog(defaults));
+      row.appendChild(btn);
+      continue;
+    }
     if (directTagRouteAllowed(defaults)) {
       const btn = node("button", "secondary", String(action.label));
       btn.type = "button";
@@ -28162,7 +28273,7 @@ function appendCampXpPanel(parent, session) {
   panel.appendChild(node("strong", "", `${pending} pending XP roll${pending === 1 ? "" : "s"}`));
   panel.appendChild(
     subline(
-      "Assign each earned party roll to a hero before completing or abandoning this dungeon. You can also spend a roll immediately on level-up, expert skill/spell learning, or tier entry where eligible."
+      "Assign each earned party roll to a hero before completing or abandoning this dungeon. You can also spend a roll immediately on level-up, eligible expert skill learning, eligible expert spell learning, or tier entry."
     )
   );
   if (session.level_up_spell_pending_character_id) {

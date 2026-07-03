@@ -1850,6 +1850,7 @@ async def campaign_tag_scene_action(payload: dict[str, Any]) -> dict[str, Any]:
         character,
         scene_action=str(payload.get("scene_action") or ""),
         amount=int(payload.get("amount") or 0),
+        reference=str(payload.get("reference") or ""),
     )
     module_update = ""
     if str(payload.get("scene_action") or "") == "dragon_type_reveal" and entry.roll:
@@ -2970,6 +2971,50 @@ def _rules_tables_payload() -> dict:
             "shown_in": "Adventure View toolbar only when generated-adventure diagnostics find a missing prompt, missing scene branch target, or manual-only action.",
             "player_use": "Keeps the old full toolbox available for recovery and ambiguous PDF/player decisions, but hides it during normal play so direct Current Objective, Quest Details, and room-prompt buttons remain the primary workflow.",
             "pdf_boundary": "Manual fallback records player/app decisions; it does not automate a PDF choice that says choose.",
+        },
+    ]
+    data["tag_generated_lead_structure_table"] = [
+        {
+            "structure": "dungeon",
+            "when_to_use": "The PDF result tells the party to explore a dungeon, lair, cave, hideout, mine, maze, sewer, castle, or fixed room count.",
+            "required_profile_fields": "module_profile.target_rooms, module_profile.procedure, final foes where printed, final_prompt_actions for rewards/capture/XP.",
+            "ui_expectation": "Adventure View may use map exploration, room counters, final foe automation, and closeout signoff.",
+            "checking_notes": "Verify target room count, final foe groups, treasure/reward source, and whether the objective completes by boss defeat or procedure.",
+        },
+        {
+            "structure": "scene_chain",
+            "when_to_use": "The PDF says choose/go to another Scene and the route can branch before any dungeon exists.",
+            "required_profile_fields": "scene_graph, room_prompts, route actions, terminal scene actions.",
+            "ui_expectation": "Current Objective and room prompts show branch buttons; the app follows selected routes but does not choose for the player.",
+            "checking_notes": "Check extracted Scene targets for page-wrap completeness and keep branch choices separate, not flattened into spoilers.",
+        },
+        {
+            "structure": "procedure",
+            "when_to_use": "The PDF gives a compact resolution procedure rather than a normal dungeon, vendor, trainer, or handoff.",
+            "required_profile_fields": "finale_mode procedure, module_profile procedure/signoff notes, prompt actions for each supported roll/check/reward.",
+            "ui_expectation": "Current Objective shows the procedure buttons and status, while Narrative explains the situation without pretending every step is a room crawl.",
+            "checking_notes": "Use for red herrings, escorts, clue spends, return-road checks, and other printed procedures that should not spawn fake proxy foes.",
+        },
+        {
+            "structure": "vendor",
+            "when_to_use": "The PDF offers items, spells, or paid bargains such as Shoes of Fast Walk or an illusion lesson.",
+            "required_profile_fields": "finale_mode vendor, exact purchase actions, item/spell choice UI, cost/free-condition hover text.",
+            "ui_expectation": "No proxy combat. Buttons open guided purchase/spell pickers and pay/apply only after the player confirms the choice.",
+            "checking_notes": "Check item effects, price, maximum quantity, eligible receiver, and whether any free condition is printed.",
+        },
+        {
+            "structure": "trainer",
+            "when_to_use": "The PDF leads to a trainer/service rather than an exploration site, such as Deoldyn Scene 3.",
+            "required_profile_fields": "lead_structure trainer, finale_mode service, entry_prompt_actions, final_prompt_actions, cost formula, eligible character rule, skill/spell choices.",
+            "ui_expectation": "Training is offered immediately in the first prompt; the app filters eligible characters, pays the service cost, rolls the printed check, and applies only successful choices.",
+            "checking_notes": "For Deoldyn, check TAG Scene 3: bow-capable trainee, 60 gp x Level, once per character between adventures, Deadly Accuracy or Dead Shot choice, and money spent even on failure.",
+        },
+        {
+            "structure": "handoff",
+            "when_to_use": "The PDF result tells the player to generate or play a separate adventure/dungeon outside the compact lead.",
+            "required_profile_fields": "module_profile.target_rooms, handoff action, route/signoff checks, no fake proxy finale.",
+            "ui_expectation": "The generated lead records the handoff and closeout state; the actual expanded dungeon is generated or played separately.",
+            "checking_notes": "Do not collapse a handoff dungeon into one room unless the PDF says the compact scene itself resolves the objective.",
         },
     ]
     data["tag_rumor_playthrough_audit_table"] = [
@@ -4843,6 +4888,7 @@ async def session_tag_scene_action(session_id: str, payload: dict[str, Any]) -> 
         character,
         scene_action=scene_action,
         amount=int(payload.get("amount") or 0),
+        reference=str(payload.get("reference") or ""),
     )
     store.save("characters", character)
     if payment_member is not None:

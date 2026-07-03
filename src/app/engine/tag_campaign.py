@@ -34,7 +34,9 @@ from ..schemas import (
     WorldTroupeRecord,
 )
 from .abyss_tables import is_abyss_profile
-from .dice import roll_d6
+from .dice import roll_advancement, roll_d6
+from .experience import advancement_succeeds
+from .magic_weapons import can_member_wield_weapon
 from .tier_advancement import level_tier_band
 
 if TYPE_CHECKING:
@@ -1145,6 +1147,60 @@ TAG_SCENE_ACTIONS: dict[str, str] = {
     "dragon_type_reveal": "Dragon type reveal",
 }
 
+TAG_DEOLDYN_SKILLS: dict[str, dict[str, str]] = {
+    "deadly_accuracy": {
+        "name": "Deadly Accuracy",
+        "summary": "Scene 3 archery training option. Existing combat rules apply when the character attacks with eligible missile weapons.",
+    },
+    "dead_shot": {
+        "name": "Dead Shot",
+        "summary": "Scene 3 archery training option. Existing combat rules let the character reroll one declared failed ranged attack where applicable.",
+    },
+}
+
+
+def _deoldyn_skill_from_reference(reference: str) -> str:
+    text = str(reference or "").lower()
+    for skill_id, skill in TAG_DEOLDYN_SKILLS.items():
+        if skill_id in text or skill["name"].lower() in text:
+            return skill_id
+    return ""
+
+
+def _character_can_train_with_deoldyn(character: Character) -> tuple[bool, str]:
+    allowed, message = can_member_wield_weapon(character, "Bow")
+    if not allowed:
+        return False, message or f"{character.name} cannot wield a bow."
+    return True, ""
+
+
+def _apply_deoldyn_training(character: Character, *, amount: int, reference: str) -> str:
+    skill_id = _deoldyn_skill_from_reference(reference)
+    if skill_id not in TAG_DEOLDYN_SKILLS:
+        return "Choose Deadly Accuracy or Dead Shot for Deoldyn's Scene 3 archery training."
+    allowed, blocked = _character_can_train_with_deoldyn(character)
+    if not allowed:
+        return blocked
+    cost = max(60 * max(1, character.level), amount)
+    if character.gold < cost:
+        return f"{character.name} needs {cost} gp for Deoldyn's archery training."
+    character.gold -= cost
+    result = roll_advancement(character.level, member=character, purpose="level_up")
+    skill_name = TAG_DEOLDYN_SKILLS[skill_id]["name"]
+    roll_text = (
+        f"{result.die_label}={result.natural}"
+        + (f"+{result.modifier}={result.total}" if result.modifier else "")
+        + f" vs Level {character.level}"
+    )
+    if advancement_succeeds(result, character.level):
+        learned_ids = [item.split(":", 1)[0] for item in character.learned_expert_skills]
+        if skill_id not in learned_ids:
+            character.learned_expert_skills.append(skill_id)
+        if skill_name not in character.abilities:
+            character.abilities.append(skill_name)
+        return f"{character.name} pays {cost} gp to Deoldyn and succeeds at the Scene 3 training XP roll ({roll_text}); {skill_name} learned."
+    return f"{character.name} pays {cost} gp to Deoldyn but fails the Scene 3 training XP roll ({roll_text}); {skill_name} is not learned."
+
 TAG_XP_ACTIONS: dict[str, str] = {
     "mark_scene_xp": "Mark scene XP pending",
     "award_scene_xp": "Award scene XP",
@@ -1631,22 +1687,46 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "title": "Deoldyn's Archery Training",
         "scene": "Scene 3",
         "pdf_pages": "TAG pp.24, 25",
+        "lead_structure": "trainer",
         "objective": "Meet Deoldyn and decide who pays for elven archery training.",
         "entry": "Targets split cleanly on Deoldyn's practice range.",
         "side": "The training is expensive but can unlock archery advancement.",
         "complication": "Training costs 60 gp x level and grants one XP roll for Deadly Accuracy or Dead Shot.",
         "final_title": "Deoldyn's Range",
-        "final_description": "Resolve payment and training; the encounter is only used if the meeting is interrupted.",
+        "final_description": "Deoldyn is a special trainer, not a dungeon foe. Resolve payment, choose Deadly Accuracy or Dead Shot, then roll the printed training XP check.",
         "finale_mode": "service",
-        "finale_instruction": "Choose the trainee, calculate the 60 gp x level payment, then mark the one qualifying archery XP roll.",
-        "rewards": "One qualifying XP roll for the listed archery benefits.",
-        "final_prompt_actions": [
+        "finale_instruction": "Choose one bow-capable trainee, choose Deadly Accuracy or Dead Shot, pay 60 gp x current level, then roll the one qualifying XP check.",
+        "rewards": "One paid Scene 3 training XP roll for Deadly Accuracy or Dead Shot; elves may instead use the roll to attempt normal level advancement if the table chooses that printed option.",
+        "module_profile": {
+            "target_rooms": "trainer downtime scene",
+            "procedure": [
+                "This Rumor is not a dungeon crawl. Deoldyn offers paid archery training between sessions.",
+                "Each character may train once between adventures.",
+                "Cost is 60 gp x the character's current Level.",
+                "After payment, roll one XP check for the selected archery result.",
+            ],
+            "signoff_checks": [
+                "Confirm the trainee could wield a bow.",
+                "Confirm 60 gp x Level was paid.",
+                "Record whether Deadly Accuracy, Dead Shot, or an elf level-up attempt succeeded.",
+            ],
+        },
+        "entry_prompt_actions": [
             {
-                "label": "Pay Deoldyn training",
-                "tooltip": "Prefill Deoldyn's 60 gp x level training payment and XP-roll marker.",
+                "label": "Train with Deoldyn",
+                "tooltip": "Scene 3 trainer lead: choose a bow-capable trainee and Deadly Accuracy or Dead Shot, pay 60 gp x Level, then roll the printed XP check.",
                 "action_type": "scene",
                 "action_value": "deoldyn_training",
-                "reference": "Scene 3 Deoldyn training",
+                "reference": "Scene 3 Deoldyn training: choose skill",
+            }
+        ],
+        "final_prompt_actions": [
+            {
+                "label": "Train with Deoldyn",
+                "tooltip": "Scene 3 trainer lead: choose a bow-capable trainee and Deadly Accuracy or Dead Shot, pay 60 gp x Level, then roll the printed XP check.",
+                "action_type": "scene",
+                "action_value": "deoldyn_training",
+                "reference": "Scene 3 Deoldyn training: choose skill",
             },
             {
                 "label": "Mark training XP roll",
@@ -1656,7 +1736,7 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
                 "reference": "Scene 3 archery training XP roll",
             },
         ],
-        "rules": ["This is a paid training service; no proxy interruption fight is installed."],
+        "rules": ["This is a paid training service, not a dungeon. No proxy interruption fight is installed."],
     },
     12: {
         "title": "Shinta and Agaratha",
@@ -4937,6 +5017,7 @@ def resolve_tag_scene_action(
     *,
     scene_action: str,
     amount: int = 0,
+    reference: str = "",
 ) -> TagDowntimeLogEntry:
     action = scene_action if scene_action in TAG_SCENE_ACTIONS else "medusa_pendant"
     value = max(0, int(amount))
@@ -4985,13 +5066,7 @@ def resolve_tag_scene_action(
         character.statuses.append("TAG Agaratha Luck-on-major-kill")
         result = f"{character.name} receives Agaratha, a magic masterwork sword; Luck-on-major-kill marker added."
     elif action == "deoldyn_training":
-        cost = max(60 * max(1, character.level), value)
-        if character.gold < cost:
-            result = f"{character.name} needs {cost} gp for Deoldyn's archery training."
-        else:
-            character.gold -= cost
-            character.statuses.append("TAG Deoldyn archery XP roll pending")
-            result = f"{character.name} pays {cost} gp for Deoldyn training; archery XP roll marker added."
+        result = _apply_deoldyn_training(character, amount=value, reference=reference)
     elif action == "dragon_type_reveal":
         if character.clues < 2:
             result = f"{character.name} needs 2 Clues to reveal the TAG Dragon's Lair type."
@@ -6052,8 +6127,31 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             ],
         },
     }
+    _extend_prompt_actions(prompts["tag-lead-entry"], profile.get("entry_prompt_actions"))
     _extend_prompt_actions(prompts["tag-complication"], profile.get("complication_prompt_actions"))
     return prompts
+
+
+def _tag_lead_structure(lead_type: str, profile: dict[str, object]) -> str:
+    explicit = str(profile.get("lead_structure") or "").strip().lower()
+    if explicit:
+        return explicit
+    mode = _tag_finale_mode(profile)
+    if mode == "vendor":
+        return "vendor"
+    if mode == "service":
+        return "trainer"
+    if mode in {"choice", "social"}:
+        return "scene_chain"
+    if mode == "procedure":
+        return "procedure"
+    module_profile = profile.get("module_profile") if isinstance(profile.get("module_profile"), dict) else {}
+    target = str(module_profile.get("target_rooms") or "").lower() if isinstance(module_profile, dict) else ""
+    if "handoff" in target or "temple dungeon" in target:
+        return "handoff"
+    if lead_type in {"treasure_map", "thematic_dungeon"}:
+        return "dungeon"
+    return "dungeon"
 
 
 def _tag_manifest(
@@ -6105,6 +6203,7 @@ def _tag_manifest(
                 "how_to": profile.get("how_to") or _tag_lead_how_to(lead_type),
                 "mood": profile.get("mood") or _tag_scene_mood(lead_type, profile, lead_detail),
                 "audit_family": profile.get("audit_family", ""),
+                "lead_structure": _tag_lead_structure(lead_type, profile),
                 "rumor_number": profile.get("rumor_number", 0),
                 "treasure_map_destination": profile.get("treasure_map_destination", 0),
                 "thematic_dungeon_number": profile.get("thematic_dungeon_number", 0),

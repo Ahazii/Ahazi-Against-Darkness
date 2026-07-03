@@ -48,6 +48,7 @@ from app.engine.tag_campaign import (
     withdraw_tag_stored_gold,
 )
 from app.engine.adventure_manifest import validate_adventure_manifest
+from app.engine.dice import AdvancementRollResult
 from app.engine.tag_compat import upgrade_tag_manifest
 from app.engine.equipment_shop import buy_equipment
 from app.rules.repository import RulesRepository
@@ -993,6 +994,13 @@ def test_tag_generated_noncombat_finales_do_not_install_proxy_fights(monkeypatch
         assert actions <= {action["action_value"] for action in final_prompt["actions"]}
         assert not any(action["action_value"] == "claim_reward" for action in final_prompt["actions"])
 
+    deoldyn, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="11")
+    deoldyn_ref = deoldyn["source"]["parameters"]["tag_reference"]
+    assert deoldyn_ref["lead_structure"] == "trainer"
+    assert deoldyn_ref["module_profile"]["target_rooms"] == "trainer downtime scene"
+    entry_actions = deoldyn_ref["room_prompts"]["tag-lead-entry"]["actions"]
+    assert any(action["action_value"] == "deoldyn_training" for action in entry_actions)
+
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
     portrait, _entry = build_tag_adventure_manifest(campaign, lead_type="guild_job", detail="1")
     portrait_result = validate_adventure_manifest(portrait, rules_repo=repo)
@@ -1588,6 +1596,47 @@ def test_tag_scene_rewards_and_bank_ledgers(monkeypatch) -> None:
     assert heir.gold == 80
     assert campaign.tag_bank_accounts[0].gold_gp == 0
     assert "20 gp inheritance tax" in transfer.result_text
+
+
+def test_deoldyn_training_pays_rolls_and_applies_selected_archery_skill(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(class_id="warrior", class_name="Warrior", level=3, gold=200, inventory=[])
+
+    monkeypatch.setattr(
+        tag_campaign,
+        "roll_advancement",
+        lambda level, member=None, purpose="level_up": AdvancementRollResult(
+            natural=6, total=6, sides=6, purpose=purpose
+        ),
+    )
+
+    result = resolve_tag_scene_action(
+        campaign,
+        hero,
+        scene_action="deoldyn_training",
+        reference="Scene 3 Deoldyn training: Dead Shot",
+    )
+
+    assert hero.gold == 20
+    assert "dead_shot" in hero.learned_expert_skills
+    assert "Dead Shot" in hero.abilities
+    assert "succeeds" in result.result_text
+
+
+def test_deoldyn_training_rejects_non_bow_capable_character(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(class_id="rogue", class_name="Rogue", level=3, gold=200, inventory=[])
+
+    result = resolve_tag_scene_action(
+        campaign,
+        hero,
+        scene_action="deoldyn_training",
+        reference="Scene 3 Deoldyn training: Deadly Accuracy",
+    )
+
+    assert hero.gold == 200
+    assert "deadly_accuracy" not in hero.learned_expert_skills
+    assert "cannot" in result.result_text.lower() or "not" in result.result_text.lower()
 
 
 def test_tag_bandit_stolen_goods_branch_rolls_room_goods(monkeypatch) -> None:
