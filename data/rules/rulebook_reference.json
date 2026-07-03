@@ -3367,7 +3367,24 @@
         "placeholders"
       ],
       "summary": "Modern dashboard pages have explicit artwork slots under DATA_DIR/assets/Application Artwork.",
-      "body": "Each modern dashboard page can show a Relevant Artwork slot from DATA_DIR/assets/Application Artwork. The bundled placeholder text files name the expected replacement file and recommended dimensions, for example troupe_management_1600x900.gif for Troupe Management. Runtime /assets URLs resolve DATA_DIR/assets first and then bundled assets, so user-supplied art survives image rebuilds and stays backup-friendly beside game.db.",
+      "body": "Each modern dashboard page can show a Relevant Artwork slot from DATA_DIR/assets/Application Artwork. The bundled placeholder text files name the expected replacement file and recommended dimensions, for example troupe_management_1600x900.gif for Troupe Management. The Camp screen has a wider camp_screen_2400x1000.gif slot because it is a full play-state view rather than a page header. Runtime /assets URLs resolve DATA_DIR/assets first and then bundled assets, so user-supplied art survives image rebuilds and stays backup-friendly beside game.db.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "camp_screen",
+      "title": "Camp Screen",
+      "category": "app_assets",
+      "source_page": 0,
+      "keywords": [
+        "camp",
+        "camped outside",
+        "dungeon entrance",
+        "artwork",
+        "party transfer",
+        "banking"
+      ],
+      "summary": "Camp is a separate play-state screen between settlement and dungeon exploration.",
+      "body": "When a session is camped outside the dungeon, the Adventure View switches to a dedicated Camp screen instead of showing the camp as if it were the entrance room. The Camp screen uses the existing validated camp actions: re-enter the dungeon, abandon/complete and return to settlement, transfer items between eligible heroes, bank carried gold, shop, edit the active party when allowed, handle food, hirelings, pending XP, and recovery/resurrection controls surfaced by the session. Camp party editing is restricted to the current party's troupe; broader troupe reassignment belongs in Party/Troupe Management. This is app-owned presentation and state clarity; PDF mechanics still come from the underlying session actions.",
       "implementation_status": "implemented"
     },
     {

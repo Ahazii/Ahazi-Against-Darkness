@@ -435,6 +435,7 @@ const combatMinimapEl = document.getElementById("combat-minimap");
 const combatPartyStripEl = document.getElementById("combat-party-strip");
 const combatCommandRailEl = document.getElementById("combat-command-rail");
 const combatCommandRailResizerEl = document.getElementById("combat-command-rail-resizer");
+const combatWorkspaceEl = document.getElementById("combat-workspace");
 const combatSideRailEl = document.getElementById("combat-side-rail");
 const combatSideRailResizerEl = document.getElementById("combat-side-rail-resizer");
 const combatStageColumnEl = document.getElementById("combat-stage-column");
@@ -459,6 +460,11 @@ const partyState = document.getElementById("party-state");
 const partySheetsPanel = document.getElementById("party-sheets-panel");
 const partySheetsExpandBtn = document.getElementById("party-sheets-expand");
 const partySheetsCollapseBtn = document.getElementById("party-sheets-collapse");
+const campScreen = document.getElementById("camp-screen");
+const campArtwork = document.getElementById("camp-artwork");
+const campControls = document.getElementById("camp-controls");
+const campRecoveryChoicesEl = document.getElementById("camp-recovery-choices");
+const campPartySheets = document.getElementById("camp-party-sheets");
 const campPanel = document.getElementById("camp-panel");
 const tagSettlementPanel = document.getElementById("tag-settlement-panel");
 const transferItemsSetupBtn = document.getElementById("transfer-items-setup");
@@ -5833,6 +5839,7 @@ function renderMapEncounterBanner(session) {
 }
 
 function partyStateTarget(session) {
+  if (session?.mode === "exploration" && session.camped_outside && campPartySheets) return campPartySheets;
   return partyState;
 }
 
@@ -11256,9 +11263,18 @@ function tagIsDemonUndeadOrChaos(member) {
   return /\b(demon|undead|chaos|chaos-tainted|chaos tainted)\b/.test(`${classText} ${statusText}`);
 }
 
+function tagHasEdgedHandWeapon(member) {
+  const text = [
+    member?.default_melee_weapon,
+    member?.default_melee_weapon_secondary,
+    ...(member?.inventory || []),
+  ].join(" ").toLowerCase();
+  return /\b(sword|shortsword|longsword|scimitar|sabre|saber|dagger|knife|axe|hand axe|battleaxe|rapier|blade|edged)\b/.test(text);
+}
+
 function tagCanAcceptShintaQuest(member) {
   const classId = String(member?.class_id || "").toLowerCase();
-  return TAG_EDGED_HAND_WEAPON_CLASS_IDS.has(classId) && !tagIsDemonUndeadOrChaos(member);
+  return (TAG_EDGED_HAND_WEAPON_CLASS_IDS.has(classId) || tagHasEdgedHandWeapon(member)) && !tagIsDemonUndeadOrChaos(member);
 }
 
 function tagDirectBranchCost(defaults = {}) {
@@ -17578,11 +17594,37 @@ function showAdventureCloseoutModal(report) {
   }
 }
 
+function applyCampScreenLayout(session) {
+  const camped = Boolean(session?.mode === "exploration" && session.camped_outside);
+  sessionMain?.classList.toggle("camp-mode", camped);
+  campScreen?.classList.toggle("hidden", !camped);
+  mapLogRow?.classList.toggle("hidden", camped);
+  logMapResizer?.classList.toggle("hidden", camped);
+  if (camped) {
+    combatCommandRailEl?.classList.add("hidden");
+    combatCommandRailResizerEl?.classList.add("hidden");
+  }
+  if (combatWorkspaceEl) combatWorkspaceEl.classList.toggle("hidden", camped);
+  if (explorationCommandBar) explorationCommandBar.classList.toggle("hidden", camped || !state.explorationPanels?.commands);
+  if (campArtwork && !campArtwork.dataset.campHandlersBound) {
+    campArtwork.dataset.campHandlersBound = "1";
+    campArtwork.addEventListener("error", () => {
+      campArtwork.classList.add("missing");
+      campScreen?.classList.add("missing-artwork");
+    });
+    campArtwork.addEventListener("load", () => {
+      campArtwork.classList.remove("missing");
+      campScreen?.classList.remove("missing-artwork");
+    });
+  }
+}
+
 function renderSession() {
   const session = state.session;
   if (!session) return;
   showGameView();
   applyCombatFocusLayout(session);
+  applyCampScreenLayout(session);
   sessionMode.textContent = session.camped_outside ? "camp" : session.mode;
   if (sessionAdventureTitle) {
     const title = sessionAdventureTitleText(session);
@@ -18003,10 +18045,22 @@ function appendInventoryTooltipLine(parent, labelText, items, member = null) {
 }
 
 function renderRecoveryChoices(session) {
-  if (!recoveryChoicesEl) return;
-  recoveryChoicesEl.replaceChildren();
-  if (session.mode !== "exploration") {
+  const target =
+    session?.mode === "exploration" && session.camped_outside && campRecoveryChoicesEl
+      ? campRecoveryChoicesEl
+      : recoveryChoicesEl;
+  if (!target) return;
+  target.replaceChildren();
+  if (recoveryChoicesEl && recoveryChoicesEl !== target) {
+    recoveryChoicesEl.replaceChildren();
     recoveryChoicesEl.classList.add("hidden");
+  }
+  if (campRecoveryChoicesEl && campRecoveryChoicesEl !== target) {
+    campRecoveryChoicesEl.replaceChildren();
+    campRecoveryChoicesEl.classList.add("hidden");
+  }
+  if (session.mode !== "exploration") {
+    target.classList.add("hidden");
     return;
   }
   const tile = currentTile(session);
@@ -18021,12 +18075,12 @@ function renderRecoveryChoices(session) {
   const hasDrop = Boolean(session.carried_body_id);
   const hasResurrect = outside.length > 0;
   if (!hasCarry && !hasDrop && !hasResurrect) {
-    recoveryChoicesEl.classList.add("hidden");
+    target.classList.add("hidden");
     return;
   }
-  recoveryChoicesEl.classList.remove("hidden");
+  target.classList.remove("hidden");
   if (hasCarry) {
-    recoveryChoicesEl.appendChild(node("span", "search-label", "Fallen heroes (p.44):"));
+    target.appendChild(node("span", "search-label", "Fallen heroes (p.44):"));
     for (const fallen of fallenHere) {
       for (const carrier of living) {
         const button = document.createElement("button");
@@ -18040,7 +18094,7 @@ function renderRecoveryChoices(session) {
         button.addEventListener("click", () =>
           advance("carry_body", { character_id: carrier.character_id, target_character_id: fallen.character_id })
         );
-        recoveryChoicesEl.appendChild(button);
+        target.appendChild(button);
       }
     }
   }
@@ -18053,16 +18107,16 @@ function renderRecoveryChoices(session) {
     button.textContent = `Set down ${body?.name || "body"}`;
     setButtonTooltip(button, "Leave the body on this map element.");
     button.addEventListener("click", () => advance("drop_body"));
-    recoveryChoicesEl.appendChild(button);
+    target.appendChild(button);
     if (carrier && body) {
-      recoveryChoicesEl.appendChild(
+      target.appendChild(
         subline(`${carrier.name} is carrying ${body.name}. Exit the dungeon at the entrance to deliver the body outside.`)
       );
     }
   }
   if (hasResurrect) {
-    recoveryChoicesEl.appendChild(node("span", "search-label", "Resurrection Ritual (1000gp; L6+ automatic):"));
-    recoveryChoicesEl.appendChild(
+    target.appendChild(node("span", "search-label", "Resurrection Ritual (1000gp; L6+ automatic):"));
+    target.appendChild(
       subline(`Outside funds: ${partyGold}/1000gp. Home bank funds are available outside the dungeon.`)
     );
     for (const fallen of outside) {
@@ -18080,7 +18134,7 @@ function renderRecoveryChoices(session) {
       button.addEventListener("click", () =>
         advance("attempt_resurrection", { target_character_id: fallen.character_id })
       );
-      recoveryChoicesEl.appendChild(button);
+      target.appendChild(button);
       const lossButton = document.createElement("button");
       lossButton.type = "button";
       lossButton.className = "danger-button";
@@ -18089,7 +18143,7 @@ function renderRecoveryChoices(session) {
       lossButton.addEventListener("click", () =>
         advance("accept_fallen_loss", { target_character_id: fallen.character_id })
       );
-      recoveryChoicesEl.appendChild(lossButton);
+      target.appendChild(lossButton);
     }
   }
 }
@@ -28520,26 +28574,29 @@ async function completeCampedDungeon(session) {
 }
 
 function renderCampPanel(session) {
-  if (!campPanel) return;
-  campPanel.replaceChildren();
+  const target = session?.mode === "exploration" && session.camped_outside && campControls ? campControls : campPanel;
+  if (!target) return;
+  target.replaceChildren();
+  if (campPanel && campPanel !== target) campPanel.replaceChildren();
   const show = session.mode === "exploration" && session.camped_outside;
-  campPanel.classList.toggle("hidden", !show);
+  campPanel?.classList.toggle("hidden", campPanel !== target || !show);
+  campControls?.classList.toggle("hidden", campControls !== target || !show);
   if (!show) return;
 
   const living = livingPartyMembers(session);
   const explored = session.map_state?.tiles?.length || 0;
   const carried = living.reduce((total, member) => total + (member.gold || 0), 0);
   const banked = campBankGoldTotal(session);
-  campPanel.appendChild(node("h2", "", "Camp Outside Dungeon"));
+  target.appendChild(node("h2", "", "Camp Outside Dungeon"));
   const summary = node("div", "camp-panel-summary");
   summary.appendChild(node("span", "", `${explored} map element${explored === 1 ? "" : "s"}`));
   summary.appendChild(node("span", "", `${carried}gp carried`));
   summary.appendChild(node("span", "", `${banked}gp banked`));
   summary.appendChild(node("span", "", `${countFoodRations(session.party)} ration(s)`));
   summary.appendChild(node("span", "", `${living.length} ready`));
-  campPanel.appendChild(summary);
-  appendCampXpPanel(campPanel, session);
-  appendCampHirelingsPanel(campPanel, session);
+  target.appendChild(summary);
+  appendCampXpPanel(target, session);
+  appendCampHirelingsPanel(target, session);
 
   const actions = node("div", "camp-panel-actions");
   if (session.party_editable) {
@@ -28616,8 +28673,8 @@ function renderCampPanel(session) {
   abandonBtn.addEventListener("click", () => completeCampedDungeon(session));
   actions.appendChild(abandonBtn);
 
-  campPanel.appendChild(actions);
-  refreshButtonTooltips(campPanel);
+  target.appendChild(actions);
+  refreshButtonTooltips(target);
 }
 
 function renderTagSettlementPanel(session) {
@@ -29524,6 +29581,11 @@ function characterAvailableForSession(character, sessionId) {
   return character.active_session_id === sessionId;
 }
 
+function sessionTroupeId(session) {
+  if (!session?.party_id) return "";
+  return state.parties.find((party) => party.id === session.party_id)?.troupe_id || "";
+}
+
 function openEditPartyDialog(session) {
   if (!session.party_editable) return;
   let dialog = document.getElementById("edit-party-dialog");
@@ -29542,14 +29604,27 @@ function openEditPartyDialog(session) {
     node(
       "p",
       "edit-party-instruction",
-      "Choose four different heroes from your home roster for the next foray. Replaced heroes return to the roster; fallen bodies and explored map state stay in the dungeon."
+      "Choose four different heroes from the current troupe for the next foray. Replaced heroes return to the roster; fallen bodies and explored map state stay in the dungeon."
     )
   );
   const ordered = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
   const slotIds = ordered.map((member) => member.character_id);
   while (slotIds.length < 4) slotIds.push("");
   const selects = [];
-  const rosterChoices = state.characters.filter((character) => characterAvailableForSession(character, session.id));
+  const troupeId = sessionTroupeId(session);
+  const rosterChoices = state.characters.filter(
+    (character) =>
+      characterAvailableForSession(character, session.id) && (!troupeId || character.troupe_id === troupeId)
+  );
+  if (troupeId) {
+    form.appendChild(
+      node(
+        "p",
+        "edit-party-instruction",
+        "Camp regroup is restricted to the troupe assigned to this party; use Troupe or Party Management outside the session to move heroes between troupes."
+      )
+    );
+  }
   const slots = node("div", "party-regroup-slots");
   for (let index = 0; index < 4; index += 1) {
     const row = node("div", "combat-target-row");
@@ -31010,6 +31085,7 @@ function renderPartyState(session) {
   const target = partyStateTarget(session);
   if (!target) return;
   if (partyState && partyState !== target) partyState.replaceChildren();
+  if (campPartySheets && campPartySheets !== target) campPartySheets.replaceChildren();
   target.replaceChildren();
   target.classList.remove("party-sheet-strip");
   const capturePanel = renderCapturePanel(session);

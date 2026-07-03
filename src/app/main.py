@@ -2650,6 +2650,13 @@ def _rules_tables_payload() -> dict:
             "use": "Start, resume, and generation workflow artwork.",
         },
         {
+            "page": "Camp Screen",
+            "slot": "camp_screen_2400x1000.gif",
+            "path": "DATA_DIR/assets/Application Artwork/camp_screen_2400x1000.gif",
+            "recommended_size": "2400x1000",
+            "use": "Large camp screen artwork while the party is camped outside a dungeon.",
+        },
+        {
             "page": "Rules Reference",
             "slot": "rules_reference_1600x900.gif",
             "path": "DATA_DIR/assets/Application Artwork/rules_reference_1600x900.gif",

@@ -169,6 +169,20 @@
       "hover": "Used by Go Adventure. Automation still follows source boundaries: app rolls fixed rolls, player chooses printed choices."
     },
     {
+      "id": "app_camp_screen",
+      "title": "Camp Screen Artwork",
+      "category": "app_assets",
+      "dashboard_pages": ["go-adventure"],
+      "reference_ids": ["application_artwork_slots", "camp_screen"],
+      "table_keys": ["application_artwork_slots_table", "artwork_registry_table"],
+      "source_pdf": "App-owned",
+      "source_page": 0,
+      "asset_path": "Application Artwork/camp_screen_2400x1000.gif",
+      "status": "local_slot",
+      "summary": "Large camp artwork shown while the party is camped outside a dungeon.",
+      "hover": "Used by the Camp screen between settlement and dungeon play. Replace DATA_DIR/assets/Application Artwork/camp_screen_2400x1000_REPLACE_WITH_GIF.txt with camp_screen_2400x1000.gif."
+    },
+    {
       "id": "app_rules_reference",
       "title": "Rules Reference Artwork",
       "category": "app_assets",

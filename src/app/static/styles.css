@@ -6055,6 +6055,138 @@ button.door-destroy-spell {
   color: var(--muted);
 }
 
+.session-main.camp-mode {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.session-main.camp-mode > .side-panel,
+.session-main.camp-mode > .layout-resizer-vertical {
+  display: none;
+}
+
+.session-main.camp-mode .map-panel-layout {
+  min-height: calc(100vh - 152px);
+}
+
+.session-main.camp-mode .exploration-panel-toggle {
+  display: none;
+}
+
+.camp-screen {
+  display: grid;
+  grid-template-rows: minmax(280px, 52vh) minmax(0, auto);
+  gap: 12px;
+  min-height: calc(100vh - 220px);
+}
+
+.camp-artwork-stage {
+  position: relative;
+  min-height: 280px;
+  overflow: hidden;
+  border: 1px solid rgba(198, 143, 59, 0.42);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(16, 17, 14, 0.12), rgba(16, 17, 14, 0.82)),
+    radial-gradient(circle at 28% 74%, rgba(198, 143, 59, 0.32), transparent 34%),
+    #10110e;
+}
+
+.camp-artwork-stage img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.camp-artwork-stage img.missing {
+  display: none;
+}
+
+.camp-artwork-fallback {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(16, 17, 14, 0.08), rgba(16, 17, 14, 0.9)),
+    radial-gradient(circle at 50% 72%, rgba(198, 143, 59, 0.36), transparent 18%),
+    linear-gradient(120deg, #141711, #25251c 55%, #11130f);
+}
+
+.camp-artwork-stage img:not(.missing) + .camp-artwork-fallback {
+  display: none;
+}
+
+.camp-artwork-caption {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  max-width: 760px;
+  color: var(--text);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.62);
+}
+
+.camp-artwork-caption h3 {
+  margin: 2px 0 5px;
+  font-size: clamp(24px, 4vw, 48px);
+  line-height: 1;
+}
+
+.camp-artwork-caption p {
+  margin: 0;
+  max-width: 54rem;
+  color: #efe5ca;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.camp-eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.camp-bottom {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.42fr) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.camp-left-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  max-height: 42vh;
+  overflow: auto;
+}
+
+.camp-controls,
+.camp-party-sheets {
+  min-width: 0;
+  max-height: 42vh;
+  overflow: auto;
+}
+
+.camp-left-column .camp-controls,
+.camp-left-column .camp-recovery-choices {
+  max-height: none;
+}
+
+.camp-party-sheets {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(198, 143, 59, 0.28);
+  border-radius: 8px;
+  background: rgba(16, 17, 14, 0.52);
+}
+
 .camp-panel {
   display: grid;
   gap: 8px;
@@ -6086,13 +6218,13 @@ button.door-destroy-spell {
 }
 
 .camp-panel-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .camp-panel-actions button {
-  min-width: 0;
+  min-width: 9rem;
 }
 
 .tag-settlement-panel {
@@ -8441,6 +8573,20 @@ input[type="radio"] {
   .workspace,
   .session-main {
     grid-template-columns: 1fr;
+  }
+
+  .camp-screen {
+    grid-template-rows: minmax(220px, 38vh) auto;
+  }
+
+  .camp-bottom {
+    grid-template-columns: 1fr;
+  }
+
+  .camp-left-column,
+  .camp-controls,
+  .camp-party-sheets {
+    max-height: none;
   }
 
   .layout-resizer-vertical {

@@ -59,6 +59,7 @@ APP_ONLY_REFERENCE_IDS = {
     "exploration_narrative_layout",
     "user_artwork_placeholders",
     "application_artwork_slots",
+    "camp_screen",
     "artwork_manager",
     "developer_playtest_preferences",
     "playtest_triage_workflow",

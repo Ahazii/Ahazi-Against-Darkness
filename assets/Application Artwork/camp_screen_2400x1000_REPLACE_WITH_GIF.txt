@@ -1,0 +1,19 @@
+Replace this placeholder with:
+
+camp_screen_2400x1000.gif
+
+Recommended dimensions:
+2400 x 1000 pixels
+
+Purpose:
+Large Camp screen artwork shown while the party is camped outside a dungeon, between settlement and dungeon play.
+
+Suggested content:
+The party resting around a camp fire on the road or just outside a dungeon approach, with enough visual room for a wide cinematic crop.
+
+Placement:
+Put the final image in the user-facing Docker data folder:
+DATA_DIR/assets/Application Artwork/camp_screen_2400x1000.gif
+
+On James's Unraid share this is normally:
+\\TOWER\appdata\ahazi-against-darkness\assets\Application Artwork\camp_screen_2400x1000.gif

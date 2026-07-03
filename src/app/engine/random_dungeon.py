@@ -12910,7 +12910,7 @@ class RandomDungeonEngine:
         visited = set(session.visited_tile_ids or [])
         if session.map_state.current_tile_id:
             visited.add(session.map_state.current_tile_id)
-        explored = max(1, len(visited))
+        explored = max(1, len(visited), len(session.map_state.tiles or []))
         if session.imported_entrance_pending or explored <= 1:
             session.log.append("The party makes camp outside the dungeon entrance.")
         else:

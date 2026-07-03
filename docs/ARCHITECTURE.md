@@ -210,6 +210,12 @@ class resources while preserving the explored dungeon map and quest state.
 Roster services for active heroes are blocked unless their session is camped
 outside.
 
+The frontend treats `session.camped_outside` as a separate Camp screen state, not
+as a dungeon entrance tile. The camp screen hides dungeon exploration panels,
+shows the large user-facing camp artwork slot, and gathers re-enter, abandon,
+bank, shop, transfer, recovery/resurrection, and troupe-restricted party regroup
+controls beside the active party sheets.
+
 Default melee/missile weapons and combat swap live in `weapons.py` and
 `random_dungeon.py` (`set_default_weapon`, `swap_weapon` actions).
 

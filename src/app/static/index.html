@@ -1106,6 +1106,29 @@
                 <button id="toggle-party-sheets-panel" type="button" class="secondary exploration-panel-toggle" aria-pressed="false" title="Show or hide party character sheets. The sheets show current Life, equipment, inventory, abilities, spells, statuses, and actions.">Character Sheets</button>
               </div>
             </div>
+            <div id="camp-screen" class="camp-screen hidden" aria-label="Camp outside the dungeon">
+              <section class="camp-artwork-stage" aria-label="Camp artwork">
+                <img
+                  id="camp-artwork"
+                  src="/assets/Application%20Artwork/camp_screen_2400x1000.gif"
+                  alt="Party camped beside the road before entering the dungeon"
+                  loading="lazy"
+                />
+                <div class="camp-artwork-fallback" aria-hidden="true"></div>
+                <div class="camp-artwork-caption">
+                  <span class="camp-eyebrow">Roadside Camp</span>
+                  <h3>Between settlement and dungeon</h3>
+                  <p>Regroup, bank, trade gear, recover fallen companions, and decide whether to enter the dark again or return home.</p>
+                </div>
+              </section>
+              <section class="camp-bottom">
+                <div class="camp-left-column">
+                  <div id="camp-controls" class="camp-controls"></div>
+                  <div id="camp-recovery-choices" class="search-choices camp-recovery-choices hidden"></div>
+                </div>
+                <div id="camp-party-sheets" class="camp-party-sheets" aria-label="Camp party sheets"></div>
+              </section>
+            </div>
             <div id="combat-command-rail" class="combat-command-rail hidden" aria-label="Combat command rail">
               <div class="combat-command-rail-head">
                 <div class="combat-command-tabs" role="tablist" aria-label="Combat right pane">

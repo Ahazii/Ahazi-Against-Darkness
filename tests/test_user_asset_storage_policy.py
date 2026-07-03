@@ -114,6 +114,7 @@ def test_application_artwork_templates_do_not_gain_committed_media() -> None:
     ]
     assert committed_media == []
     assert (app_art_root / "troupe_management_1600x900_REPLACE_WITH_GIF.txt").exists()
+    assert (app_art_root / "camp_screen_2400x1000_REPLACE_WITH_GIF.txt").exists()
 
 
 def test_local_rules_art_committed_media_is_explicitly_allowlisted() -> None:

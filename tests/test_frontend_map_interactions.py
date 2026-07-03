@@ -2074,10 +2074,36 @@ def test_shinta_guided_champion_picker_and_dynamic_quest_marker_labels() -> None
     assert 'id="tag-shinta-champion-dialog"' in INDEX_HTML
     assert "tagCanAcceptShintaQuest" in APP_JS
     assert "TAG_EDGED_HAND_WEAPON_CLASS_IDS" in APP_JS
+    assert "function tagHasEdgedHandWeapon" in APP_JS
     assert "Scene 4 Shinta champion -> Scene 7 solo Bandit Hideout" in APP_JS
     assert "function questMapMarkerLabel" in APP_JS
     assert "Quest from Lady in White —" not in APP_JS
     assert "Agaratha: masterwork magical edged hand weapon" in APP_JS
+
+
+def test_camped_outside_uses_dedicated_camp_screen() -> None:
+    assert 'id="camp-screen"' in INDEX_HTML
+    assert 'id="camp-artwork"' in INDEX_HTML
+    assert "camp_screen_2400x1000.gif" in INDEX_HTML
+    assert 'id="camp-controls"' in INDEX_HTML
+    assert 'id="camp-recovery-choices"' in INDEX_HTML
+    assert 'id="camp-party-sheets"' in INDEX_HTML
+    assert "const campScreen" in APP_JS
+    assert "const campRecoveryChoicesEl" in APP_JS
+    assert "function applyCampScreenLayout" in APP_JS
+    assert 'sessionMain?.classList.toggle("camp-mode", camped)' in APP_JS
+    assert 'mapLogRow?.classList.toggle("hidden", camped)' in APP_JS
+    assert 'combatCommandRailEl?.classList.add("hidden")' in APP_JS
+    assert 'session?.mode === "exploration" && session.camped_outside && campPartySheets' in APP_JS
+    assert 'session?.mode === "exploration" && session.camped_outside && campRecoveryChoicesEl' in APP_JS
+    assert 'const target = session?.mode === "exploration" && session.camped_outside && campControls ? campControls : campPanel;' in APP_JS
+    assert "function sessionTroupeId" in APP_JS
+    assert "Camp regroup is restricted to the troupe assigned to this party" in APP_JS
+    assert ".camp-screen" in STYLES_CSS
+    assert ".session-main.camp-mode" in STYLES_CSS
+    assert ".session-main.camp-mode .exploration-panel-toggle" in STYLES_CSS
+    assert ".camp-artwork-stage" in STYLES_CSS
+    assert ".camp-left-column" in STYLES_CSS
 
 
 def test_current_objective_and_tag_actions_dialog_layout_is_not_squeezed() -> None:
