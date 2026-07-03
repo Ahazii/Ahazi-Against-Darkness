@@ -2785,8 +2785,8 @@ def _rules_tables_payload() -> dict:
         },
         {
             "field": "Assessment",
-            "records": "File name, title guess, page count, encryption flag, text extractability, likely module type, confidence, warnings, and recommended conversion path.",
-            "purpose": "Decide whether the PDF needs a room-manifest converter, collection split, campaign bundle, scene route, hex-crawl workflow, or manual review.",
+            "records": "File name, title guess, page count, encryption flag, text extractability, likely module type, package signals, confidence, warnings, and recommended conversion path.",
+            "purpose": "Decide whether the PDF needs a room-manifest converter, collection split, campaign bundle, scene route, hex-crawl workflow, map pins, package tables/foes/classes, or manual review.",
             "pdf_boundary": "Detected type is a workflow hint, not a rules ruling.",
         },
         {
@@ -2794,6 +2794,33 @@ def _rules_tables_payload() -> dict:
             "records": "PDF source rows stay playable=false until a validated adventure.json manifest exists.",
             "purpose": "Prevent source PDFs from appearing as broken modules in Go Adventure.",
             "pdf_boundary": "A reviewed manifest remains the source of playable room graph data.",
+        },
+    ]
+    data["adventure_package_schema_table"] = [
+        {
+            "area": "Declarative package",
+            "purpose": "Adds local PDF module content as data: foes, classes, items, tables, trackers, map assets, and pins.",
+            "safety": "Packages do not execute scripts; they use engine-approved operations only.",
+        },
+        {
+            "area": "Map assets and pins",
+            "purpose": "Stores imported PDF map images under DATA_DIR assets and ties rooms, hexes, or locations to percentage-based map pins.",
+            "safety": "The PDF remains the source of truth; pins are reviewable metadata, not hidden rules.",
+        },
+        {
+            "area": "Local tables and foes",
+            "purpose": "Lets an imported module bring its own roll tables, monsters, rewards, and item references without changing global rulebooks.",
+            "safety": "Rows must keep source page references and stay inside the package unless explicitly promoted later.",
+        },
+        {
+            "area": "Trackers and procedures",
+            "purpose": "Models common adventure logic such as doom clocks, route counters, save checks, table rolls, and branch transitions.",
+            "safety": "Only allowlisted operation names are valid; arbitrary code is intentionally excluded.",
+        },
+        {
+            "area": "Class extensions",
+            "purpose": "Records candidate new character classes from module PDFs for later rules review and UI support.",
+            "safety": "Classes stay experimental until every ability, equipment rule, and advancement hook is checked against the PDF.",
         },
     ]
     data["artwork_expansion_plan_table"] = [
@@ -4150,6 +4177,12 @@ async def list_adventures() -> list[AdventureDescriptor]:
                     pdf_text_extractable=bool(assessment.get("text_extractable") or False),
                     pdf_source_kind=str(assessment.get("source_kind") or source_kind),
                     pdf_warnings=[str(item) for item in assessment.get("warnings", []) if item],
+                    pdf_map_signals=int(assessment.get("map_signals") or 0),
+                    pdf_table_signals=int(assessment.get("table_signals") or 0),
+                    pdf_foe_signals=int(assessment.get("foe_signals") or 0),
+                    pdf_class_signals=int(assessment.get("class_signals") or 0),
+                    pdf_numbered_location_signals=int(assessment.get("numbered_location_signals") or 0),
+                    pdf_package_recommendation=str(assessment.get("package_recommendation") or ""),
                 )
             )
     return adventures

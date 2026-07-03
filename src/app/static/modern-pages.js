@@ -3321,6 +3321,10 @@ function adventureModuleTags(adventure) {
   const tags = [adventureModuleKind(adventure)];
   if (adventure.playable === false) tags.push("Not playable");
   if (adventure.pdf_source && adventure.pdf_detected_type) tags.push(String(adventure.pdf_detected_type).replaceAll("_", " "));
+  if (adventure.pdf_source && adventure.pdf_map_signals) tags.push("Maps");
+  if (adventure.pdf_source && adventure.pdf_table_signals) tags.push("Tables");
+  if (adventure.pdf_source && adventure.pdf_foe_signals) tags.push("Foes");
+  if (adventure.pdf_source && adventure.pdf_class_signals) tags.push("Classes");
   if (adventure.pdf_source && adventure.pdf_conversion_status === "source_pdf_unscanned") tags.push("Unscanned");
   if (adventureModuleCompleted(adventure.id)) tags.push("Completed");
   if (adventureModuleInUse(adventure.id).length) tags.push("In use");
@@ -3332,11 +3336,12 @@ function renderAdventurePdfSourceScanner() {
   const unscanned = pdfSources.filter((adventure) => adventure.pdf_conversion_status === "source_pdf_unscanned").length;
   const panel = card(
     "PDF Adventure Sources",
-    "Scan source PDFs before conversion. The scanner records title, pages, extractability, likely module type, and recommended conversion path; it does not turn a PDF into a playable module without a reviewed manifest."
+    "Scan source PDFs before conversion. The scanner records title, pages, extractability, likely module type, package/map signals, and recommended conversion path; it does not turn a PDF into a playable module without a reviewed manifest."
   );
   panel.append(
     modernStatusRow("Source folder", "DATA_DIR/Adventure PDFs", "Place new owned adventure PDFs here in the user-facing appdata folder. The legacy repo Adventures folder is also scanned for existing local PDFs."),
-    modernStatusRow("Assessed PDFs", `${pdfSources.length} source PDF(s) · ${unscanned} unscanned`, "PDF sources stay non-playable until a validated adventure.json manifest is created and imported.")
+    modernStatusRow("Assessed PDFs", `${pdfSources.length} source PDF(s) · ${unscanned} unscanned`, "PDF sources stay non-playable until a validated adventure.json manifest is created and imported."),
+    modernStatusRow("Package layer", "Maps, pins, tables, foes, classes", "Odd modules should become declarative adventure packages: local data and map pins, not executable scripts.")
   );
   const row = actions();
   row.appendChild(
@@ -3466,6 +3471,9 @@ function renderAdventureModuleBrowser() {
       detail.append(
         modernStatusRow("PDF assessment", `${adventure.pdf_page_count || 0} page(s) · ${adventure.pdf_text_extractable ? "text extractable" : "text review needed"}`, "Source PDF assessment from Scan new PDFs. The PDF remains non-playable until converted to a reviewed manifest."),
         modernStatusRow("Detected type", adventure.pdf_detected_type ? `${String(adventure.pdf_detected_type).replaceAll("_", " ")} · ${adventure.pdf_confidence || "unknown"} confidence` : "Not scanned", "Used to choose the correct future converter: room graph, scene route, collection split, campaign bundle, or hex-crawl workflow."),
+        modernStatusRow("Package signals", `tables ${adventure.pdf_table_signals || 0} · foes ${adventure.pdf_foe_signals || 0} · classes ${adventure.pdf_class_signals || 0}`, "Signals that the PDF may add local roll tables, monsters, items, or character options before it can be played faithfully."),
+        modernStatusRow("Map/pin signals", `maps ${adventure.pdf_map_signals || 0} · numbered locations ${adventure.pdf_numbered_location_signals || 0}`, "Signals that the PDF likely needs imported map images with pinned rooms, hexes, or locations."),
+        modernStatusRow("Package recommendation", adventure.pdf_package_recommendation || "No package recommendation yet; run Scan new PDFs after adding or changing the source PDF.", "Package advice only. Source pages still need manual review before generated pins, tables, or foes are trusted."),
         modernStatusRow("Recommended next step", adventure.pdf_recommended_action || "Run Scan new PDFs, then manually review the PDF before creating a manifest.", "Scanner advice only; exact rules and adventure structure still require PDF review.")
       );
       if (adventure.pdf_warnings?.length) {

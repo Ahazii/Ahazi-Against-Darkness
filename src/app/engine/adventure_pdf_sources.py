@@ -27,6 +27,12 @@ class AdventurePdfAssessment:
     confidence: str
     conversion_status: str
     recommended_action: str
+    map_signals: int
+    table_signals: int
+    foe_signals: int
+    class_signals: int
+    numbered_location_signals: int
+    package_recommendation: str
     warnings: list[str]
     sample: str
     size_bytes: int
@@ -48,6 +54,12 @@ class AdventurePdfAssessment:
             "confidence": self.confidence,
             "conversion_status": self.conversion_status,
             "recommended_action": self.recommended_action,
+            "map_signals": self.map_signals,
+            "table_signals": self.table_signals,
+            "foe_signals": self.foe_signals,
+            "class_signals": self.class_signals,
+            "numbered_location_signals": self.numbered_location_signals,
+            "package_recommendation": self.package_recommendation,
             "warnings": self.warnings,
             "sample": self.sample,
             "size_bytes": self.size_bytes,
@@ -184,6 +196,76 @@ def _classify_pdf(text: str, page_count: int) -> tuple[str, str, str, list[str]]
     return detected, confidence, action, warnings
 
 
+def _count_signal(text: str, patterns: tuple[str, ...]) -> int:
+    lower = text.lower()
+    return sum(len(re.findall(pattern, lower, flags=re.MULTILINE)) for pattern in patterns)
+
+
+def _package_signals(text: str, detected_type: str) -> dict[str, int | str]:
+    map_signals = _count_signal(
+        text,
+        (
+            r"\bmap\b",
+            r"\bhex-?map\b",
+            r"\bnumbered hexes\b",
+            r"\bnumbered locations\b",
+            r"\bmap of\b",
+        ),
+    )
+    table_signals = _count_signal(text, (r"\btable\b", r"\bd6\b", r"\b2d6\b", r"\bd66\b", r"\broll\b"))
+    foe_signals = _count_signal(
+        text,
+        (
+            r"\bvermin table\b",
+            r"\bminion table\b",
+            r"\bboss table\b",
+            r"\bweird monster table\b",
+            r"\bfinal boss\b",
+            r"\bhcl\b",
+            r"\blife points\b",
+            r"\bmorale\b",
+        ),
+    )
+    class_signals = _count_signal(
+        text,
+        (
+            r"\bnew character class\b",
+            r"\bnew class\b",
+            r"^\s*class\s*:",
+            r"\bclass abilities\b",
+            r"\bstarting equipment\b",
+        ),
+    )
+    numbered_location_signals = _count_signal(
+        text,
+        (
+            r"^\s*\d{1,3}\s*[\).:-]",
+            r"\bnumbered hexes\b",
+            r"\bnumbered locations\b",
+            r"\broom\s+\d{1,3}\b",
+            r"\barea\s+\d{1,3}\b",
+        ),
+    )
+    if class_signals:
+        recommendation = "Needs adventure-package support for local classes before full conversion."
+    elif map_signals and numbered_location_signals:
+        recommendation = "Good candidate for PDF map-image import plus room/location pins."
+    elif detected_type == "hex_crawl":
+        recommendation = "Needs a map package with pinned hexes/locations before it becomes playable."
+    elif table_signals or foe_signals:
+        recommendation = "Needs adventure-package tables and foe/item additions before a playable manifest."
+    else:
+        recommendation = "Likely manifest-only after manual PDF review; no package signals found in scanned pages."
+    return {
+        "map_signals": map_signals,
+        "table_signals": table_signals,
+        "foe_signals": foe_signals,
+        "class_signals": class_signals,
+        "numbered_location_signals": numbered_location_signals,
+        "package_recommendation": recommendation,
+    }
+
+
 def assess_adventure_pdf(path: Path, *, root_dir: Path, source_kind: str) -> AdventurePdfAssessment:
     try:
         from pypdf import PdfReader
@@ -213,6 +295,7 @@ def assess_adventure_pdf(path: Path, *, root_dir: Path, source_kind: str) -> Adv
     if not text_extractable:
         warnings.append("Low extracted text volume; this may be scanned/image-heavy or need manual OCR/review.")
     detected_type, confidence, action, classification_warnings = _classify_pdf(text, page_count)
+    package_signals = _package_signals(text, detected_type)
     warnings.extend(classification_warnings)
     try:
         source_path = str(path.relative_to(root_dir)).replace("\\", "/")
@@ -233,6 +316,12 @@ def assess_adventure_pdf(path: Path, *, root_dir: Path, source_kind: str) -> Adv
         confidence=confidence,
         conversion_status="source_pdf_assessed",
         recommended_action=action,
+        map_signals=int(package_signals["map_signals"]),
+        table_signals=int(package_signals["table_signals"]),
+        foe_signals=int(package_signals["foe_signals"]),
+        class_signals=int(package_signals["class_signals"]),
+        numbered_location_signals=int(package_signals["numbered_location_signals"]),
+        package_recommendation=str(package_signals["package_recommendation"]),
         warnings=warnings,
         sample=_clean_sample(text),
         size_bytes=stat.st_size,

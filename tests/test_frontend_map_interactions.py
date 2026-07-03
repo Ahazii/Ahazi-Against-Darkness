@@ -2114,6 +2114,10 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "function renderAdventurePdfSourceScanner" in MODERN_PAGES_JS
     assert "PDF Adventure Sources" in MODERN_PAGES_JS
     assert "adventure.pdf_source" in MODERN_PAGES_JS
+    assert "Package signals" in MODERN_PAGES_JS
+    assert "Map/pin signals" in MODERN_PAGES_JS
+    assert "adventure.pdf_map_signals" in MODERN_PAGES_JS
+    assert "adventure.pdf_package_recommendation" in MODERN_PAGES_JS
     assert "source_pdf_unscanned" in MODERN_PAGES_JS
     assert ".modern-warning-list" in STYLES_CSS
 

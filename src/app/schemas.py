@@ -1721,6 +1721,12 @@ class AdventureDescriptor(BaseModel):
     pdf_text_extractable: bool = False
     pdf_source_kind: str = ""
     pdf_warnings: list[str] = Field(default_factory=list)
+    pdf_map_signals: int = 0
+    pdf_table_signals: int = 0
+    pdf_foe_signals: int = 0
+    pdf_class_signals: int = 0
+    pdf_numbered_location_signals: int = 0
+    pdf_package_recommendation: str = ""
     tag_lead_type: str = ""
     tag_lead_detail: str = ""
     tag_scene: str = ""

@@ -14,6 +14,7 @@ data/adventures/
   allowlists.json                    ← exported snapshot (regenerate with tools/export_adventure_allowlists.py); runtime prompts use live rules, not this file
   schema/
     adventure_manifest.v1.json       ← JSON Schema for validation
+    adventure_package.v1.json        ← Declarative package schema for module-local maps, pins, tables, foes, classes, trackers, and procedures
   examples/
     crypt-of-whispers/
       adventure.json                 ← golden example for authors and tests
@@ -29,7 +30,7 @@ DATA_DIR/Adventures/                 ← runtime install location (beside game.d
 ```
 
 **Export (v1):** a single `adventure.json` file (same schema as installed modules).  
-**Export (future v2):** `.zip` containing `adventure.json` plus optional `assets/`.
+**Export (future v2):** `.zip` containing `adventure.json`, optional package JSON, and optional `assets/`.
 
 **Do not** add test or personal modules under `data/adventures/{id}/` — only shipped examples and `examples/` belong here. User imports install to `DATA_DIR/Adventures/` beside `game.db`.
 
@@ -77,7 +78,9 @@ Template: `examples/crypt-of-whispers/adventure.json`
 
 ## PDF-authored adventures
 
-Owned PDFs stay in the local `Adventures/` folder (not committed). Human reviewers extract data into the **same manifest format** ([`docs/CONTENT_PIPELINE.md`](../../docs/CONTENT_PIPELINE.md)). Set `source.type` to `"pdf"`.
+Owned PDFs stay in `DATA_DIR/Adventure PDFs` or the local `Adventures/` folder (not committed). Use Adventure Management -> Modules -> **Scan new PDFs** to assess the source before conversion. Human reviewers extract playable room/scene data into the **same manifest format** ([`docs/CONTENT_PIPELINE.md`](../../docs/CONTENT_PIPELINE.md)). Set `source.type` to `"pdf"`.
+
+Use `schema/adventure_package.v1.json` when the PDF adds module-local material that does not belong in the base manifest: imported map images, room/hex/location pins, local roll tables, foes, items, class candidates, doom/event trackers, or allowlisted procedures. Package assets belong in the user-facing data folder, for example `DATA_DIR/assets/adventures/<package_id>/maps/`.
 
 First PDF target: `caves-of-the-kobold-slave-masters.pdf`.
 
@@ -88,6 +91,7 @@ First PDF target: `caves-of-the-kobold-slave-masters.pdf`.
 | Item | Status |
 |------|--------|
 | Manifest schema | `data/adventures/schema/adventure_manifest.v1.json` |
+| Package schema | `data/adventures/schema/adventure_package.v1.json` |
 | Validator | `adventure_manifest.py` + `tools/validate_adventure_manifest.py` |
 | Allowlists | `build_adventure_allowlists()` + `tools/export_adventure_allowlists.py` → snapshot `allowlists.json` |
 | Prompt builder | Home → **AI Adventure (build prompt)** |

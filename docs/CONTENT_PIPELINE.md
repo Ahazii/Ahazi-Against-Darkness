@@ -253,11 +253,12 @@ resolves all dice and combat.
 
 ### PDF extraction pipeline
 
-0. Place owned source PDFs in `DATA_DIR/Adventure PDFs` (the legacy repo `Adventures/` folder is still scanned for local development copies), then use Adventure Management -> Modules -> **Scan new PDFs**. The scan writes metadata only to `DATA_DIR/adventure_pdf_sources.json`: title guess, page count, encryption/text-extraction status, likely module type, confidence, warnings, and recommended conversion path.
+0. Place owned source PDFs in `DATA_DIR/Adventure PDFs` (the legacy repo `Adventures/` folder is still scanned for local development copies), then use Adventure Management -> Modules -> **Scan new PDFs**. The scan writes metadata only to `DATA_DIR/adventure_pdf_sources.json`: title guess, page count, encryption/text-extraction status, likely module type, map/pin signals, table/foe/class package signals, confidence, warnings, and recommended conversion path.
 1. Inventory PDF pages, text length, and embedded images.
-2. Extract map images into a local working folder (reference only until asset zip support).
-3. Extract room/key text.
-4. Create a manifest matching the v1 schema:
+2. If the PDF adds module-local content, create a declarative package matching `data/adventures/schema/adventure_package.v1.json`. Packages can record local tables, foes, items, class candidates, trackers, procedures, imported map assets, and map pins. They cannot execute scripts.
+3. Extract map images into `DATA_DIR/assets/adventures/<package_id>/maps/` and tie room/hex/location ids to percent-based map pins in the package. Keep the source PDF and source page on every map/pin set so the player can audit it.
+4. Extract room/key text.
+5. Create a manifest matching the v1 schema:
 
 ```json
 {
@@ -279,9 +280,16 @@ resolves all dice and combat.
 }
 ```
 
-5. Review the manifest manually.
-6. Run automated validation (`validate_adventure_manifest()`).
-7. Make the adventure playable only after validation passes.
+6. Review the manifest and any package data manually against the source PDF.
+7. Run automated validation (`validate_adventure_manifest()` and package schema validation once implemented server-side).
+8. Make the adventure playable only after validation passes.
+
+Package notes:
+
+- Use an adventure package when a PDF introduces its own maps, numbered locations, custom roll tables, new foes, new items, new classes, doom/event trackers, or branch procedures that do not fit the base manifest.
+- Keep package assets in the user-facing data folder. Do not store user-supplied map images or private PDF-derived artwork inside the container image.
+- Use percent coordinates for pins so a map can be resized without losing room/area alignment.
+- If a PDF says the player chooses, represent that as a visible choice. If the PDF says to roll, let the app roll and report the result.
 
 ## First Adventure Target
 

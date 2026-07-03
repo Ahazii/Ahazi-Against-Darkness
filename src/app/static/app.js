@@ -16327,7 +16327,22 @@ function renderAdventures() {
       if (adventure.pdf_page_count) meta.appendChild(node("span", "", `${adventure.pdf_page_count} pages`));
       meta.appendChild(node("span", "", type));
       meta.appendChild(node("span", "", adventure.pdf_text_extractable ? "text extractable" : "text review needed"));
+      if (adventure.pdf_map_signals || adventure.pdf_numbered_location_signals) {
+        const mapSignals = node("span", "", `maps ${adventure.pdf_map_signals || 0} / pins ${adventure.pdf_numbered_location_signals || 0}`);
+        setTooltip(mapSignals, "PDF scanner signal: this source may need imported map images and pinned rooms, hexes, or locations.");
+        meta.appendChild(mapSignals);
+      }
+      if (adventure.pdf_table_signals || adventure.pdf_foe_signals || adventure.pdf_class_signals) {
+        const packageSignals = node("span", "", `package tables ${adventure.pdf_table_signals || 0} / foes ${adventure.pdf_foe_signals || 0} / classes ${adventure.pdf_class_signals || 0}`);
+        setTooltip(packageSignals, "PDF scanner signal: this source may add local tables, foes, items, or class rules before it can become a faithful playable module.");
+        meta.appendChild(packageSignals);
+      }
       item.appendChild(meta);
+      if (adventure.pdf_package_recommendation) {
+        const packageAction = subline(adventure.pdf_package_recommendation);
+        setTooltip(packageAction, "Adventure package recommendation. Packages are declarative data only: map pins, local tables, foes, items, classes, trackers, and allowlisted procedures.");
+        item.appendChild(packageAction);
+      }
       if (adventure.pdf_recommended_action) {
         const action = subline(adventure.pdf_recommended_action);
         setTooltip(action, "Recommended conversion path from the PDF scanner. This does not replace manual PDF review.");

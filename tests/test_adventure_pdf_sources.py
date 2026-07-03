@@ -76,6 +76,12 @@ def test_scan_new_adventure_pdfs_classifies_hex_crawl_text(monkeypatch, tmp_path
             confidence=confidence,
             conversion_status="source_pdf_assessed",
             recommended_action=action,
+            map_signals=2,
+            table_signals=0,
+            foe_signals=0,
+            class_signals=0,
+            numbered_location_signals=1,
+            package_recommendation="Good candidate for PDF map-image import plus room/location pins.",
             warnings=warnings,
             sample="Hex crawl sample.",
             size_bytes=pdf_path.stat().st_size,
@@ -88,3 +94,43 @@ def test_scan_new_adventure_pdfs_classifies_hex_crawl_text(monkeypatch, tmp_path
 
     assert result["scanned"][0]["detected_type"] == "hex_crawl"
     assert "hex-crawl importer" in result["scanned"][0]["recommended_action"]
+    assert result["scanned"][0]["map_signals"] == 2
+    assert result["scanned"][0]["numbered_location_signals"] == 1
+    assert "map-image import" in result["scanned"][0]["package_recommendation"]
+
+
+def test_package_signals_identify_maps_tables_foes_and_classes() -> None:
+    from app.engine import adventure_pdf_sources
+
+    signals = adventure_pdf_sources._package_signals(
+        """
+        Map of the ruins. Numbered locations:
+        1) Gatehouse
+        2) Chapel
+        Roll d6 on the minion table. The final boss has HCL+2 life points.
+        New character class: Cave Scout. Starting equipment follows.
+        """,
+        "programmed_dungeon",
+    )
+
+    assert signals["map_signals"] >= 2
+    assert signals["numbered_location_signals"] >= 2
+    assert signals["table_signals"] >= 2
+    assert signals["foe_signals"] >= 2
+    assert signals["class_signals"] >= 2
+    assert "local classes" in signals["package_recommendation"]
+
+
+def test_adventure_package_schema_is_declarative_and_map_pin_ready() -> None:
+    schema_path = Path("data/adventures/schema/adventure_package.v1.json")
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    procedure_op = (
+        schema["properties"]["procedures"]["items"]["properties"]["steps"]["items"]["properties"]["op"]["enum"]
+    )
+
+    assert "maps" in schema["properties"]
+    assert "pins" in schema["properties"]["capabilities"]["items"]["enum"]
+    assert "pin_location" in procedure_op
+    assert "script" not in procedure_op
+    assert "javascript" not in procedure_op
+    assert "python" not in procedure_op
