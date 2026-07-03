@@ -58,7 +58,7 @@ Use this workflow when playtesting the generated Adventures Guild modules agains
 Before generating fresh modules, use **Developer > Rules PDF Import** to extract your owned Adventures Guild PDF into `DATA_DIR/tag_scene_narrative_overrides.json`. The extraction status should show 12 Rumors, 19 Scenes, and 0 suspected cut-off warnings. If warnings appear, inspect or repair the named local override entries before using them for playtesting.
 
 1. **Prepare a clean test party**: create or choose four living characters, enable TAG banking if you want finance prompts, and save the active party.
-2. **Create the lead**: New Dashboard -> Go Adventure! -> Generate -> Create TAG Adventure Lead. Leave **Random** checked to let the app choose both the lead type and result, or uncheck it to choose the lead type and let the app roll that family's result. The legacy route still works from Home -> Adventure -> TAG Settlement -> Maps and Adventure Leads. For targeted legacy/testing calls, use these detail ranges:
+2. **Create the lead**: New Dashboard -> Go Adventure! -> Generate -> Create TAG Adventure Lead. Use **Random** for normal rules play, or choose a numbered result in the **Result** selector when retesting a specific PDF branch. The legacy route still works from Home -> Adventure -> TAG Settlement -> Maps and Adventure Leads. For targeted testing, use these result ranges:
    - Rumor Scene: 1-12.
    - Thematic Dungeon: 1-6.
    - Treasure Map destination: 1-6.
@@ -77,7 +77,7 @@ Suggested coverage order:
 
 | Group | What to generate | What to check |
 |---|---|---|
-| Rumors | Details 1-12 | Scene title/pages, final prompt, choice/procedure/service/vendor mode for 1/3/6/9/11, printed reward or purchase action, route/Clue prompt where present |
+| Rumors | Results 1-12 | Scene title/pages, final prompt, choice/procedure/service/vendor/handoff mode for 1/3/4/6/9/11/12, printed reward or purchase action, route/Clue prompt where present. Rumor 4 is a hypnosis/rescue/ration procedure; do not spawn a proxy Final Boss because the printed fish have no combat stats. |
 | Thematic dungeons | Details 1-6 | Dragon reveal, Ghastly Mine rolls, Giant boulder/treasure handling, Fiendish prisoner table, Minotaur Maze rolls, Bandit stolen goods, Go Adventure Thematic Dungeon audit/signoff panels |
 | Guild Jobs | Details 1-6 | Castle pay, Gorungar rewards, Griffin eggs, Portrait persuasion/snatch, Sewers disease/Clues, Monoceros tracking/capture |
 | Treasure Maps | Details 1-6 | Map Leads To notes, generated target, cave/temple/camp/structure/lich prompt behavior, TAG reference metadata, Go Adventure Treasure Map audit/signoff panels |

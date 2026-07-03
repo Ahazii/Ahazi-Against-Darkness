@@ -1121,6 +1121,7 @@ def test_tag_rumor_manifests_include_contextual_scene_procedure_prompts() -> Non
         manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail=detail)
         assert validate_adventure_manifest(manifest, rules_repo=repo).valid
         prompts = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]
+        assert "tag-return-road" in prompts
         found = {
             str(action.get("action_value"))
             for prompt in prompts.values()
@@ -1132,6 +1133,18 @@ def test_tag_rumor_manifests_include_contextual_scene_procedure_prompts() -> Non
     temple, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="7")
     reference = temple["source"]["parameters"]["tag_reference"]
     assert reference["module_profile"]["target_rooms"] == "seven-room temple dungeon"
+
+
+def test_mutant_fish_rumor_is_hypnosis_procedure_not_proxy_boss() -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    assert reference["finale_mode"] == "procedure"
+    assert reference["final_foes"] == []
+    assert manifest["quest"]["complete_when"] == {"type": "room_reached", "room_id": "tag-final-scene"}
+    final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+    assert "encounter" not in final_room["triggers"][0]
+    assert "no combat stats" in final_room["description"]
+    assert "bridge pool scene is active" in final_room["triggers"][0]["log"].lower()
 
 
 def test_all_tag_rumor_manifests_include_playthrough_audit_guidance() -> None:

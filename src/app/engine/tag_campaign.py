@@ -198,7 +198,11 @@ def _room_description(profile: dict[str, object], room_id: str, fallback: str) -
 
 def _room_log(profile: dict[str, object], room_id: str, fallback: str) -> str:
     override = _room_override(profile, room_id)
-    return str(override.get("log") or override.get("on_enter_log") or fallback)
+    log_text = str(override.get("log") or override.get("on_enter_log") or "")
+    description = str(override.get("description") or "")
+    if log_text and description and log_text.strip() == description.strip() and fallback.strip() != description.strip():
+        return fallback
+    return log_text or fallback
 
 
 def _room_override_text(profile: dict[str, object], room_id: str, key: str = "description") -> str:
@@ -1461,11 +1465,13 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "objective": "Face the mutant fish's hypnosis at the bridge.",
         "entry": "The stream under the bridge is unnaturally still.",
         "side": "The banks show signs of travellers walking willingly into the water.",
-        "complication": "All characters Save vs L5 hypnosis; chaos-tainted characters fail automatically.",
+        "complication": "The chanting grows clearer near the bridge; do not roll the hypnosis Save until the party reaches the pool scene.",
+        "complication_guidance": "This is approach tension only. The actual L5 hypnosis Save, rescue timing, ration reward, and XP count are handled at The Bridge Pool.",
         "final_title": "The Bridge Pool",
-        "final_description": "Resolve the mutant fish hypnosis and rescue timing from TAG Scene 12 before ending the scene.",
-        "final_foe": "Mutant Fish",
-        "final_count": 1,
+        "final_description": "Resolve the mutant fish hypnosis and rescue timing from TAG Scene 12. The fish have no combat stats; this is a hazard and reward procedure, not a normal Final Boss fight.",
+        "finale_mode": "procedure",
+        "finale_instruction": "Roll the Scene 12 hypnosis Saves, resolve rescue turns if anyone is dragged into the water, then use Fish rations and Mark two minion XP if the party survives.",
+        "final_log": "The bridge pool scene is active: resolve hypnosis Saves and rescue timing before taking the ration reward or XP marker.",
         "rewards": "If the party survives, d6+3 food rations; counts as two minion encounters for XP.",
         "final_prompt_actions": [
             {
@@ -6186,6 +6192,23 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
                     action_type="branch",
                     action_value="claim_reward",
                     reference=f"{base_ref}: unlocked reward",
+                ),
+            ],
+        },
+        "tag-return-road": {
+            "title": "Return to settlement",
+            "body": "This is the route back to settlement bookkeeping. No new Adventures Guild scene choice is due here unless a previous room left an unresolved reward, XP marker, Guild obligation, banking/storage consequence, or closeout signoff.",
+            "checklist": [
+                "Confirm final room rewards, XP, route markers, and any Guild or banking consequences are complete.",
+                "Return to camp or settlement play before starting another generated lead.",
+            ],
+            "actions": [
+                _tag_prompt_action(
+                    "Closeout review",
+                    "Open the generated-lead closeout tools if rewards, route, XP, Guild, or banking signoff still needs attention.",
+                    action_type="dialog",
+                    action_value="generated_closeout",
+                    reference=f"{base_ref}: return-road closeout",
                 ),
             ],
         },

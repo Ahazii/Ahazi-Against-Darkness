@@ -8584,8 +8584,8 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   summonLocker: "Roll 3d6 to summon this locker during an adventure; 6 or less causes a mishap.",
   mapCartographer: "Use the Adventurers Guild cartographer +1 map adjustment if Guild benefits are active.",
   followMap: "Roll on TAG Following the Treasure Map Table and, on a real map, The Map Leads To table.",
-  adventureLeadType: "Choose the Adventures Guild lead type to convert into a normal installed adventure module. Generated modules include TAG source pages, rewards, rule notes, and encounter proxies.",
-  adventureLeadDetail: "Optional result number: rumor 1-12, thematic dungeon 1-6, treasure-map destination 1-6, or guild job 1-6. Leave blank to roll where appropriate.",
+  adventureLeadType: "Choose the Adventures Guild lead type to convert into a normal installed adventure module. Generated modules include Adventures Guild source pages, rewards, rule notes, and procedure prompts.",
+  adventureLeadDetail: "Playtest/fixed-result selector. Use Random for normal rules play, or choose a numbered Rumor, Treasure Map, Thematic Dungeon, or Guild Job result when retesting a specific PDF branch.",
   createAdventure: "Create a playable TAG adventure and add it to the normal Adventure section/dropdown with source-page notes for checking against the PDF.",
   actionCharacter: "Character used by TAG branch, trinket, Guild spell, or finance actions. Leave blank only where the action allows campaign-level logging.",
   branchAction: "Resolve or log a TAG generated-adventure branch: social choice, Clue spend, variable count, Ghastly Mine, Fiendish Abyss, Minotaur Maze, Guild Job procedure rolls, Bandit stolen-goods check, capture-alive result, or reward claim.",
@@ -8622,6 +8622,70 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   flammableOilThrow: "Roll the flammable-oil throw result: friend splash, wasted flask, or fire damage.",
   aspergillumBreak: "Roll the aspergillum's 2-in-6 break chance after an Attack roll of natural 1.",
 };
+
+const TAG_ADVENTURE_FIXED_RESULTS = {
+  rumor: [
+    ["1", "Rumor 1 - Bofuto's trouble"],
+    ["2", "Rumor 2 - Medusa in the Hunter's Cabin"],
+    ["3", "Rumor 3 - Paladin sword red herring"],
+    ["4", "Rumor 4 - Mutant Fish Under the Bridge"],
+    ["5", "Rumor 5 - Dragon in Disguise"],
+    ["6", "Rumor 6 - Leprechauns at Blackbird Hill"],
+    ["7", "Rumor 7 - Tamas Zeya temple handoff"],
+    ["8", "Rumor 8 - Shaura and the gargoyles"],
+    ["9", "Rumor 9 - Daroc's cat"],
+    ["10", "Rumor 10 - White gargoyles"],
+    ["11", "Rumor 11 - Deoldyn archery training"],
+    ["12", "Rumor 12 - Shinta and Agaratha"],
+  ],
+  treasure_map: [
+    ["1", "Map 1 - Underground caves"],
+    ["2", "Map 2 - Underground temple"],
+    ["3", "Map 3 - Humanoid camp"],
+    ["4", "Map 4 - Underground structure"],
+    ["5", "Map 5 - Boss-only structure"],
+    ["6", "Map 6 - Lich chamber"],
+  ],
+  thematic_dungeon: [
+    ["1", "Theme 1 - Cavern"],
+    ["2", "Theme 2 - Monster lair"],
+    ["3", "Theme 3 - Dragon's Lair"],
+    ["4", "Theme 4 - Undead crypt"],
+    ["5", "Theme 5 - Sewers"],
+    ["6", "Theme 6 - Bandit Hideout"],
+  ],
+  guild_job: [
+    ["1", "Guild Job 1 - Minor quest table"],
+    ["2", "Guild Job 2 - Minor quest table"],
+    ["3", "Guild Job 3 - Minor quest table"],
+    ["4", "Guild Job 4 - Rumor table"],
+    ["5", "Guild Job 5 - Rumor table"],
+    ["6", "Guild Job 6 - Thematic Dungeon table"],
+  ],
+};
+
+function syncTagAdventureLeadDetailOptions() {
+  if (!tagAdventureLeadDetail) return;
+  const leadType = tagAdventureLeadType?.value || "rumor";
+  const current = tagAdventureLeadDetail.value || "";
+  const options = TAG_ADVENTURE_FIXED_RESULTS[leadType] || TAG_ADVENTURE_FIXED_RESULTS.rumor;
+  tagAdventureLeadDetail.replaceChildren();
+  const random = document.createElement("option");
+  random.value = "";
+  random.textContent = leadType === "rumor" ? "Random - roll d12" : "Random - roll table";
+  random.title = "Normal rules play: let the app roll the Adventures Guild result.";
+  tagAdventureLeadDetail.appendChild(random);
+  for (const [value, label] of options) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    option.title = `Playtest override: generate fixed result ${value} instead of rolling.`;
+    tagAdventureLeadDetail.appendChild(option);
+  }
+  tagAdventureLeadDetail.value = [...tagAdventureLeadDetail.options].some((option) => option.value === current)
+    ? current
+    : "";
+}
 
 const TAG_BRANCH_ACTION_HINTS = {
   social_choice: "Reference: printed choice/page. Amount: leave 0. Logs the selected social or branch outcome.",
@@ -11738,8 +11802,11 @@ function generatedTagDiagnosticsLines(session = state.session) {
 
 function showGeneratedTagDiagnostics() {
   const lines = generatedTagDiagnosticsLines(state.session);
-  const message = lines.join("\n");
-  window.alert(message);
+  copyTextToClipboard(
+    lines.join("\n"),
+    "Generated adventure diagnostics copied to clipboard.",
+    "Could not copy diagnostics. Use Copy Narrative Report for the same diagnostic context."
+  ).catch(handleError);
 }
 
 function _diagnosticPromptActionLabel(action) {
@@ -31360,6 +31427,9 @@ tagRunStreetwise?.addEventListener("click", () => {
 tagFollowMap?.addEventListener("click", () => {
   followTagTreasureMap().catch(handleError);
 });
+tagAdventureLeadType?.addEventListener("change", () => {
+  syncTagAdventureLeadDetailOptions();
+});
 tagCreateAdventure?.addEventListener("click", () => {
   createTagAdventureLead().catch(handleError);
 });
@@ -32158,4 +32228,5 @@ setButtonTooltip(bankDepositBtn, "Move carried gold into this hero's home bank."
 setButtonTooltip(bankWithdrawBtn, "Withdraw banked gold up to this hero's carry limit.");
 setButtonTooltip(bankDepositPartyBtn, "Each living party member deposits all carried gold.");
 
+syncTagAdventureLeadDetailOptions();
 loadAll();

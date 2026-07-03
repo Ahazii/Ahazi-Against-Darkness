@@ -2931,9 +2931,15 @@ def _rules_tables_payload() -> dict:
             "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
         },
         {
+            "surface": "Fixed-result playtest selector",
+            "shown_in": "The Adventures Guild Maps and Adventure Leads generator.",
+            "player_use": "Result defaults to Random for normal rules play. During playtesting, choose a specific Rumor 1-12, Treasure Map 1-6, Thematic Dungeon 1-6, or Guild Job 1-6 to regenerate the exact PDF branch being checked.",
+            "pdf_boundary": "This is a testing convenience only. Random remains the rules-faithful default, and printed choices inside the selected result are still explicit player/PDF decisions.",
+        },
+        {
             "surface": "Finale mode profiles",
             "shown_in": "Generated Rumor and Guild Job modules.",
-            "player_use": "Marks choice, procedure, service, and vendor finales so Bofto's star object, the false paladin-sword trail, Daroc's familiar, Deoldyn's training, the leprechaun bargain, and A Portrait in Red resolve through scene-specific buttons instead of proxy foes. Sewer Search now uses the named thief final boss instead of a sewer-danger proxy. Generated Adventures Guild imports block the core Epic Rewards table; use the scene reward/action buttons and closeout signoff instead.",
+            "player_use": "Marks choice, procedure, service, and vendor finales so Bofto's star object, the false paladin-sword trail, Mutant Fish Under the Bridge, Daroc's familiar, Deoldyn's training, the leprechaun bargain, and A Portrait in Red resolve through scene-specific buttons instead of proxy foes. Sewer Search now uses the named thief final boss instead of a sewer-danger proxy. Generated Adventures Guild imports block the core Epic Rewards table; use the scene reward/action buttons and closeout signoff instead.",
             "pdf_boundary": "The app may name supported choices and checked costs from indexed scene metadata, but the player still confirms receiver, spell, eligibility, exact optional ambush/hostile turns, and any printed consequence before applying it. Do not add a core Epic Reward unless a non-TAG quest source explicitly grants one.",
         },
         {
