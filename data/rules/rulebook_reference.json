@@ -2920,7 +2920,7 @@
         "profile editing"
       ],
       "summary": "Tables documents how to classify, edit, and check generated Adventures Guild lead profiles.",
-      "body": "The modern Tables page includes tag_generated_lead_structure_table. It documents when to use dungeon, scene_chain, procedure, vendor, trainer, and handoff structures; which profile fields are required; what UI the player should see; and which PDF checks must be made when editing generated lead profiles. For Deoldyn, the table points to TAG Scene 3: bow-capable trainee, 60 gp x Level, once between adventures, Deadly Accuracy or Dead Shot choice, and payment even on a failed training XP roll.",
+      "body": "The modern Tables page includes tag_generated_lead_structure_table. It documents when to use dungeon, scene_chain, procedure, vendor, trainer, and handoff structures; which profile fields are required; what UI the player should see; and which PDF checks must be made when editing generated lead profiles. For Deoldyn, the table points to TAG Scene 3: bow-capable trainee, 60 gp x Level, once between adventures, Deadly Accuracy or Dead Shot choice, and payment even on a failed training XP roll. For Shinta/Agaratha, the table points to TAG Scene 4 and Scene 7: choose one sword-capable champion who is not demon, undead, or chaos-tainted, then resolve a solo ten-room Bandit Hideout handoff with minion counts reduced by 1 minimum 1 and a Riff-Raff Final Boss roll without count reduction.",
       "implementation_status": "implemented"
     },
     {

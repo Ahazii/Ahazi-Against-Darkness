@@ -623,7 +623,7 @@ def test_quest_panel_shows_disabled_turn_in_reason() -> None:
     assert "Cannot claim yet: ${claimStatus.reason}" in render
     assert "function openMapQuestMenu(session, tile, anchorEl)" in APP_JS
     assert "function collectQuestMenuItems(session, tile)" in APP_JS
-    assert "Quest turn-in ready" in APP_JS
+    assert "turn-in ready" in APP_JS
     assert "openMapQuestMenu(session, tile, marker)" in APP_JS
     assert ".quest-journal" in STYLES_CSS
     assert ".map-content-marker.quest-ready" in STYLES_CSS
@@ -2058,6 +2058,17 @@ def test_xp_learning_ui_splits_skills_and_spells_and_hides_ineligible_options() 
     assert "const availableOptions = (options || []).filter((option) => !option.disabled);" in APP_JS
     assert "only choices currently eligible" in APP_JS
     assert "Learn expert skill or spell" not in APP_JS
+
+
+def test_shinta_guided_champion_picker_and_dynamic_quest_marker_labels() -> None:
+    assert "function openShintaChampionDialog" in APP_JS
+    assert 'id="tag-shinta-champion-dialog"' in INDEX_HTML
+    assert "tagCanAcceptShintaQuest" in APP_JS
+    assert "TAG_EDGED_HAND_WEAPON_CLASS_IDS" in APP_JS
+    assert "Scene 4 Shinta champion -> Scene 7 solo Bandit Hideout" in APP_JS
+    assert "function questMapMarkerLabel" in APP_JS
+    assert "Quest from Lady in White —" not in APP_JS
+    assert "Agaratha: masterwork magical edged hand weapon" in APP_JS
 
 
 def test_current_objective_and_tag_actions_dialog_layout_is_not_squeezed() -> None:

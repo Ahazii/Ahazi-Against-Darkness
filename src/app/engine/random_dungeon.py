@@ -12949,6 +12949,8 @@ class RandomDungeonEngine:
             from .adventure_session import enter_imported_entrance_tile
 
             enter_imported_entrance_tile(self, session, entrance, show_rolls=True)
+        elif session.adventure_type == "imported":
+            session.log.append(f"Entered {entrance.title}: {entrance.description}")
         session.log.append("The party enters the dungeon at the entrance.")
 
     def _steal_from_unattended_bodies(self, session: SessionState, *, show_rolls: bool) -> None:

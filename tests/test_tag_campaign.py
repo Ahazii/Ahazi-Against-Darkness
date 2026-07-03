@@ -699,6 +699,11 @@ def test_tag_scene_graph_defers_profile_reward_actions_until_terminal_scene(tmp_
     manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="12")
     tag_reference = manifest["source"]["parameters"]["tag_reference"]
 
+    assert tag_reference["lead_structure"] == "handoff"
+    assert "tag-side-clue" not in {room["id"] for room in manifest["rooms"]}
+    assert all(exit_def.get("to") != "tag-side-clue" for exit_def in manifest["rooms"][0]["exits"])
+    assert tag_reference["module_profile"]["target_rooms"] == "10-room solo Bandit Hideout handoff"
+
     final_labels = [action["label"] for action in tag_reference["room_prompts"]["tag-final-scene"]["actions"]]
     assert any("Scene 7" in label for label in final_labels)
     assert "Apply Agaratha" not in final_labels
@@ -1565,14 +1570,14 @@ def test_tag_route_and_xp_actions_persist_structured_signoff_state() -> None:
 
 def test_tag_scene_rewards_and_bank_ledgers(monkeypatch) -> None:
     campaign = default_campaign()
-    hero = _character(gold=500, clues=3, level=2, inventory=[], statuses=[])
+    hero = _character(class_id="warrior", class_name="Warrior", gold=500, clues=3, level=2, inventory=[], statuses=[])
 
     bounty = resolve_tag_scene_action(campaign, hero, scene_action="gargoyle_bounty", amount=3)
     assert hero.gold == 545
     assert "45 gp" in bounty.result_text
 
     agaratha = resolve_tag_scene_action(campaign, hero, scene_action="agaratha")
-    assert "Agaratha" in hero.inventory
+    assert any(item.startswith("Agaratha") for item in hero.inventory)
     assert "TAG Agaratha Luck-on-major-kill" in hero.statuses
     assert "Luck-on-major-kill" in agaratha.result_text
 
@@ -1596,6 +1601,38 @@ def test_tag_scene_rewards_and_bank_ledgers(monkeypatch) -> None:
     assert heir.gold == 80
     assert campaign.tag_bank_accounts[0].gold_gp == 0
     assert "20 gp inheritance tax" in transfer.result_text
+
+
+def test_shinta_solo_route_requires_valid_sword_capable_champion() -> None:
+    campaign = default_campaign()
+    rogue = _character(class_id="rogue", class_name="Rogue")
+    blocked = resolve_tag_route_action(
+        campaign,
+        rogue,
+        route_action="solo_restriction",
+        reference="Scene 4 Shinta champion -> Scene 7 solo Bandit Hideout",
+    )
+    assert campaign.tag_adventure_routes[-1].resolved is False
+    assert "may not use this type of equipment" in blocked.result_text
+
+    paladin = _character(class_id="paladin", class_name="Paladin")
+    accepted = resolve_tag_route_action(
+        campaign,
+        paladin,
+        route_action="solo_restriction",
+        reference="Scene 4 Shinta champion -> Scene 7 solo Bandit Hideout",
+    )
+    assert campaign.tag_adventure_routes[-1].resolved is True
+    assert "single-character quest" in accepted.result_text
+    assert "solo ten-room Bandit Hideout" in accepted.result_text
+
+
+def test_agaratha_rejects_invalid_wielder() -> None:
+    campaign = default_campaign()
+    rogue = _character(class_id="rogue", class_name="Rogue")
+    result = resolve_tag_scene_action(campaign, rogue, scene_action="agaratha")
+    assert not any(item.startswith("Agaratha") for item in rogue.inventory)
+    assert "may not use this type of equipment" in result.result_text
 
 
 def test_deoldyn_training_pays_rolls_and_applies_selected_archery_skill(monkeypatch) -> None:

@@ -342,6 +342,10 @@ const tagDeoldynTrainingCharacter = document.getElementById("tag-deoldyn-trainin
 const tagDeoldynTrainingSkill = document.getElementById("tag-deoldyn-training-skill");
 const tagDeoldynTrainingNote = document.getElementById("tag-deoldyn-training-note");
 const tagDeoldynTrainingConfirm = document.getElementById("tag-deoldyn-training-confirm");
+const tagShintaChampionDialog = document.getElementById("tag-shinta-champion-dialog");
+const tagShintaChampionCharacter = document.getElementById("tag-shinta-champion-character");
+const tagShintaChampionNote = document.getElementById("tag-shinta-champion-note");
+const tagShintaChampionConfirm = document.getElementById("tag-shinta-champion-confirm");
 const tagBankTransferDialog = document.getElementById("tag-bank-transfer-dialog");
 const tagBankTransferCharacter = document.getElementById("tag-bank-transfer-character");
 const tagBankTransferAll = document.getElementById("tag-bank-transfer-all");
@@ -8859,6 +8863,7 @@ const ITEM_TOOLTIP_RULES = [
   [/10'? foot pole|ten foot pole|10' pole/i, "10' pole: utility gear for probing, traps, and settlement-service/tag prompts where a pole is checked."],
   [/good lock-?picks/i, "Good lock-picks: +1 style lockpicking aid where the app offers a lockpick/door interaction that checks them."],
   [/\bcrowbar\b/i, "Crowbar: lets eligible heroes bash stuck/locked doors and can improve door-forcing prompts."],
+  [/agaratha/i, "Agaratha: masterwork magical edged hand weapon. Grants +1 Attack, +1 Defense, improves Attack explosion chance by +1, and grants 1 Luck point when it deals the final blow to a major foe. Cannot be wielded by chaos-tainted, demon, or undead characters; sale value 450 gp."],
   [/\bshield\b/i, "Shield: defensive gear. Counts against shield carrying limits and may be blocked by class/equipment rules."],
   [/light armor|hide armor/i, "Light armor: improves protection for classes allowed to wear it; lower burden than heavy armor."],
   [/heavy armor/i, "Heavy armor: stronger protection but class-restricted and usually fitted to the buyer."],
@@ -11159,6 +11164,31 @@ function tagCanWieldBow(member) {
   return TAG_BOW_CAPABLE_CLASS_IDS.has(classId);
 }
 
+const TAG_EDGED_HAND_WEAPON_CLASS_IDS = new Set([
+  "warrior",
+  "cleric",
+  "barbarian",
+  "ranger",
+  "dwarf",
+  "elf",
+  "assassin",
+  "bulwark",
+  "light_gladiator",
+  "paladin",
+  "swashbuckler",
+]);
+
+function tagIsDemonUndeadOrChaos(member) {
+  const classText = `${member?.class_id || ""} ${member?.class_name || ""}`.toLowerCase();
+  const statusText = (member?.statuses || []).join(" ").toLowerCase();
+  return /\b(demon|undead|chaos|chaos-tainted|chaos tainted)\b/.test(`${classText} ${statusText}`);
+}
+
+function tagCanAcceptShintaQuest(member) {
+  const classId = String(member?.class_id || "").toLowerCase();
+  return TAG_EDGED_HAND_WEAPON_CLASS_IDS.has(classId) && !tagIsDemonUndeadOrChaos(member);
+}
+
 function tagDirectBranchCost(defaults = {}) {
   if (defaults.branchAction === "leprechaun_shoes") return Math.max(1, Number(defaults.amount || 1)) * 200;
   if (defaults.branchAction === "leprechaun_illusion_spell") {
@@ -11328,6 +11358,49 @@ function openDeoldynTrainingDialog(defaults = {}) {
     }
   };
   if (typeof tagDeoldynTrainingDialog.showModal === "function") tagDeoldynTrainingDialog.showModal();
+}
+
+function openShintaChampionDialog(defaults = {}) {
+  if (!tagShintaChampionDialog || !tagShintaChampionCharacter || !tagShintaChampionConfirm) {
+    openTagActionsWithDefaults(defaults);
+    return;
+  }
+  const eligible = (state.session?.party || []).filter((member) => member.current_life > 0 && tagCanAcceptShintaQuest(member));
+  tagShintaChampionCharacter.replaceChildren();
+  for (const member of eligible) {
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = `${member.name} (${member.class_name || titleCase(member.class_id || "hero")})`;
+    option.title = "Scene 4: choose one character who can use a sword/edged hand weapon and is not demon, undead, or chaos-tainted.";
+    tagShintaChampionCharacter.appendChild(option);
+  }
+  if (tagShintaChampionNote) {
+    tagShintaChampionNote.textContent = eligible.length
+      ? "Scene 4: choose the single champion. Scene 7 then becomes a solo ten-room Bandit Hideout handoff; the rest of the party may lend items but may not help."
+      : "No living party member currently qualifies: Shinta requires a sword-capable character who is not demon, undead, or chaos-tainted.";
+  }
+  tagShintaChampionConfirm.disabled = !eligible.length;
+  setButtonTooltip(tagShintaChampionConfirm, "Record Shinta's single-character acceptance route. The generated lead will update to the Scene 7 solo Bandit Hideout handoff.");
+  tagShintaChampionConfirm.onclick = async () => {
+    tagShintaChampionConfirm.disabled = true;
+    const originalText = tagShintaChampionConfirm.textContent;
+    tagShintaChampionConfirm.textContent = "Recording...";
+    try {
+      await runTagRouteActionWithDefaults({
+        ...defaults,
+        routeAction: "solo_restriction",
+        characterId: tagShintaChampionCharacter.value,
+        reference: defaults.reference || "Scene 4 Shinta champion -> Scene 7 solo Bandit Hideout",
+      });
+      tagShintaChampionDialog.close();
+    } catch (error) {
+      handleError(error);
+    } finally {
+      tagShintaChampionConfirm.disabled = !eligible.length;
+      tagShintaChampionConfirm.textContent = originalText;
+    }
+  };
+  if (typeof tagShintaChampionDialog.showModal === "function") tagShintaChampionDialog.showModal();
 }
 
 function tagDirectSceneCost(defaults = {}, member = null) {
@@ -18560,6 +18633,8 @@ function appendCurrentObjectiveButton(parent, action) {
             openLeprechaunSpellDialog(defaults);
           } else if (defaults.sceneAction === "deoldyn_training") {
             openDeoldynTrainingDialog(defaults);
+          } else if (defaults.routeAction === "solo_restriction" && /shinta|agaratha|scene 4|scene 7/i.test(String(defaults.reference || ""))) {
+            openShintaChampionDialog(defaults);
           } else if (directBranch) {
             runTagBranchActionWithDefaults(defaults).catch(handleError);
           } else if (directRoute) {
@@ -18814,6 +18889,17 @@ function questSourceLabel(session, quest) {
     return `Imported adventure - ${title}`;
   }
   return giverTile?.title ? `From ${giverTile.title}` : "From Lady in White";
+}
+
+function questMapMarkerLabel(session, quest) {
+  const claimStatus = questClaimStatus(session, quest);
+  if (claimStatus.ok) return `${questDisplayTitle(session, quest)} - turn-in ready`;
+  const source = questSourceLabel(session, quest)
+    .replace(/^From\s+/i, "")
+    .replace(/\s+-\s+.*$/, "")
+    .trim();
+  const title = questDisplayTitle(session, quest);
+  return `${title}${source ? ` from ${source}` : ""} - ${claimStatus.reason}`;
 }
 
 function appendGeneratedTagCloseoutPanel(parent, session, quest) {
@@ -22791,7 +22877,7 @@ function tileContentMarkers(tile, session, width, height) {
     markers.push(
       interactiveContentMarker(
         "quest",
-        claimStatus.ok ? "Quest turn-in ready" : `Quest from Lady in White — ${claimStatus.reason}`,
+        questMapMarkerLabel(session, session.active_quest),
         canInteract,
         (marker) => openMapQuestMenu(session, tile, marker),
         0,
@@ -24248,10 +24334,12 @@ function renderTagRelevantActions(session = state.session) {
     const defaults = generatedTagPromptActionDefaults(action, fallback, tagReference);
     setButtonTooltip(btn, `${tooltip} ${generatedTagPromptActionExplanation(promptData, action)} Confirm the PDF/player choice before applying.`);
     btn.addEventListener("click", () => {
-      if (defaults.sceneAction === "deoldyn_training") {
-        openDeoldynTrainingDialog(defaults);
-      } else if (directTagBranchAllowed(defaults)) {
-        runTagBranchActionWithDefaults(defaults).catch(handleError);
+          if (defaults.sceneAction === "deoldyn_training") {
+            openDeoldynTrainingDialog(defaults);
+          } else if (defaults.routeAction === "solo_restriction" && /shinta|agaratha|scene 4|scene 7/i.test(String(defaults.reference || ""))) {
+            openShintaChampionDialog(defaults);
+          } else if (directTagBranchAllowed(defaults)) {
+            runTagBranchActionWithDefaults(defaults).catch(handleError);
       } else if (directTagRouteAllowed(defaults)) {
         runTagRouteActionWithDefaults(defaults).catch(handleError);
       } else if (directTagSceneAllowed(defaults)) {
@@ -24292,6 +24380,14 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
       btn.type = "button";
       setButtonTooltip(btn, `${String(action.tooltip || "Open Deoldyn's Scene 3 training picker.")} Choose an eligible trainee and archery skill before paying.`);
       btn.addEventListener("click", () => openDeoldynTrainingDialog(defaults));
+      row.appendChild(btn);
+      continue;
+    }
+    if (defaults.routeAction === "solo_restriction" && /shinta|agaratha|scene 4|scene 7/i.test(String(defaults.reference || ""))) {
+      const btn = node("button", "secondary", String(action.label));
+      btn.type = "button";
+      setButtonTooltip(btn, `${String(action.tooltip || "Choose Shinta's single champion.")} Lists only living sword-capable characters who are not demon, undead, or chaos-tainted.`);
+      btn.addEventListener("click", () => openShintaChampionDialog(defaults));
       row.appendChild(btn);
       continue;
     }

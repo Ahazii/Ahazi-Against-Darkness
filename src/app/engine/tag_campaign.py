@@ -1174,6 +1174,26 @@ def _character_can_train_with_deoldyn(character: Character) -> tuple[bool, str]:
     return True, ""
 
 
+def _character_blocked_from_shinta_quest(character: Character) -> str:
+    text = f"{character.class_id} {character.class_name} {' '.join(character.statuses or [])}".lower()
+    if any(marker in text for marker in ("demon", "undead", "chaos-tainted", "chaos tainted")):
+        return f"{character.name} cannot accept Shinta's quest because Scene 4 excludes demon, undead, or chaos-tainted characters."
+    allowed, message = can_member_wield_weapon(character, "Sword")
+    if not allowed:
+        return message or f"{character.name} cannot use a sword/edged hand weapon for Shinta's quest."
+    return ""
+
+
+def _character_blocked_from_agaratha(character: Character) -> str:
+    text = f"{character.class_id} {character.class_name} {' '.join(character.statuses or [])}".lower()
+    if any(marker in text for marker in ("demon", "undead", "chaos-tainted", "chaos tainted")):
+        return f"{character.name} cannot wield Agaratha because the sword rejects demon, undead, or chaos-tainted characters."
+    allowed, message = can_member_wield_weapon(character, "Sword")
+    if not allowed:
+        return message or f"{character.name} cannot wield Agaratha as an edged hand weapon."
+    return ""
+
+
 def _apply_deoldyn_training(character: Character, *, amount: int, reference: str) -> str:
     skill_id = _deoldyn_skill_from_reference(reference)
     if skill_id not in TAG_DEOLDYN_SKILLS:
@@ -1742,34 +1762,59 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "title": "Shinta and Agaratha",
         "scene": "Scene 4, then Scene 7",
         "pdf_pages": "TAG pp.24, 26-29",
+        "lead_structure": "handoff",
         "objective": "Accept Shinta's request and recover the magic sword Agaratha from the bandit hideout.",
-        "entry": "Shinta's story starts as a request and ends at a bandit hideout.",
-        "side": "Agaratha is recovered through a solo ten-room Bandit Hideout quest in the printed scene.",
-        "complication": "Scene 7 is a special solo quest with the Bandit Hideout theme.",
-        "final_title": "Agaratha's Hideout",
-        "final_description": "Bandits hold Agaratha. Use Scene 7 for the solo-quest restrictions and sword reward.",
-        "final_foe": "Goblins",
-        "final_count": 6,
-        "rewards": "Agaratha, a magic masterwork sword with the printed Luck-on-major-kill rule.",
-        "complication_prompt_actions": [
+        "entry": "Shinta the paladin has lost the will to adventure after her husband's death and may pass Agaratha to a worthy person.",
+        "side": "There is no optional side lead for this rumor; Scene 4 is the single-character acceptance gate.",
+        "complication": "Choose one sword-capable character who is not demon, undead, or chaos-tainted before the Scene 7 solo quest starts.",
+        "final_title": "Scene 7: Solo Bandit Hideout Handoff",
+        "final_description": "The chosen champion must eradicate the criminal organization alone. The rest of the party may lend items but may not interfere or help.",
+        "finale_mode": "procedure",
+        "defer_final_encounter": True,
+        "suppress_side_clue": True,
+        "rewards": "Agaratha: masterwork magic edged hand weapon, +1 Attack, +1 Defense, +1 explosion chance, Luck-on-major-kill, 450 gp sale value; barred to chaos-tainted, demon, or undead wielders.",
+        "module_profile": {
+            "target_rooms": "10-room solo Bandit Hideout handoff",
+            "procedure": [
+                "Scene 4: choose one character who can use a sword/edged hand weapon and is not demon or undead.",
+                "Scene 7: play a random dungeon of 10 rooms using Four Against Darkness tiles and the Bandit Hideout rules from this book.",
+                "Reduce all minion-count rolls by 1, minimum 1 per encounter.",
+                "For the Final Boss, roll on the Riff-Raff Table without reducing the number of foes; the Final Boss may be a minion group for this quest.",
+            ],
+            "signoff_checks": [
+                "Confirm only the chosen champion acts in the hideout; allies may lend items only.",
+                "Confirm the Final Boss is defeated before returning to Shinta.",
+                "Award Agaratha only to an eligible wielder.",
+            ],
+        },
+        "entry_prompt_actions": [
             {
-                "label": "Record solo quest",
-                "tooltip": "Prefill the printed solo restriction for Scene 7.",
+                "label": "Choose Shinta's champion",
+                "tooltip": "Scene 4: choose one sword-capable living character who is not demon, undead, or chaos-tainted. This records the solo restriction and opens the Scene 7 handoff.",
                 "action_type": "route",
                 "action_value": "solo_restriction",
-                "reference": "Scene 7 Agaratha solo quest",
+                "reference": "Scene 4 Shinta champion -> Scene 7 solo Bandit Hideout",
+            }
+        ],
+        "complication_prompt_actions": [
+            {
+                "label": "Choose Shinta's champion",
+                "tooltip": "Scene 4: choose the single character who accepts Shinta's dangerous solo quest.",
+                "action_type": "route",
+                "action_value": "solo_restriction",
+                "reference": "Scene 4 Shinta champion -> Scene 7 solo Bandit Hideout",
             }
         ],
         "final_prompt_actions": [
             {
                 "label": "Apply Agaratha",
-                "tooltip": "Prefill Agaratha reward and Luck-on-major-kill marker.",
+                "tooltip": "Award Agaratha only after the chosen champion defeats the Scene 7 solo Bandit Hideout Final Boss and returns to Shinta.",
                 "action_type": "scene",
                 "action_value": "agaratha",
                 "reference": "Scene 7 Agaratha reward",
             }
         ],
-        "rules": ["This generated module supports normal party play; enforce solo restrictions manually if desired."],
+        "rules": ["This is a solo Bandit Hideout handoff, not a normal party dungeon and not an optional side clue."],
     },
 }
 
@@ -4493,7 +4538,18 @@ def resolve_tag_route_action(
     elif action == "unlock_scene":
         parts.append("Follow-up scene is now unlocked for this TAG adventure.")
     elif action == "solo_restriction":
-        parts.append("Printed solo restriction recorded; enforce it before starting or continuing the generated module if desired.")
+        if character is None:
+            resolved = False
+            parts.append("Choose Shinta's single champion before the Scene 7 solo Bandit Hideout handoff.")
+        else:
+            blocked = _character_blocked_from_shinta_quest(character)
+            if blocked:
+                resolved = False
+                parts.append(blocked)
+            else:
+                parts.append(
+                    f"{character.name} accepts Shinta's single-character quest. Scene 7 is a solo ten-room Bandit Hideout: the rest of the party may lend items, but may not help."
+                )
     else:
         parts.append("Finale route selected; use the final foe/reward profile in the generated adventure reference.")
     result = " ".join(parts)
@@ -5061,10 +5117,17 @@ def resolve_tag_scene_action(
         character.inventory.extend(["Food ration"] * total)
         result = f"{character.name} receives {total} food ration(s) from the mutant fish scene; count the scene as two minion encounters for XP."
     elif action == "agaratha":
-        if "Agaratha" not in character.inventory:
-            character.inventory.append("Agaratha")
-        character.statuses.append("TAG Agaratha Luck-on-major-kill")
-        result = f"{character.name} receives Agaratha, a magic masterwork sword; Luck-on-major-kill marker added."
+        blocked = _character_blocked_from_agaratha(character)
+        if blocked:
+            result = blocked
+        else:
+            item = "Agaratha (masterwork magic edged hand weapon, +1 Attack, +1 Defense, +1 explosion chance, 450 gp)"
+            if not any(str(entry).lower().startswith("agaratha") for entry in character.inventory):
+                character.inventory.append(item)
+            marker = "TAG Agaratha Luck-on-major-kill"
+            if marker not in character.statuses:
+                character.statuses.append(marker)
+            result = f"{character.name} receives Agaratha, a masterwork magic edged hand weapon; +1 Attack, +1 Defense, +1 explosion chance, and Luck-on-major-kill marker added."
     elif action == "deoldyn_training":
         result = _apply_deoldyn_training(character, amount=value, reference=reference)
     elif action == "dragon_type_reveal":
@@ -6410,6 +6473,26 @@ def _profile_synopsis(campaign: CampaignState, lead_detail: str, profile: dict[s
     return f"Generated from The Adventures Guild campaign downtime in {campaign.settlement_name}: {lead_detail}.{page_text}"
 
 
+def _suppress_optional_side_scene(manifest: dict[str, object]) -> None:
+    rooms = manifest.get("rooms")
+    if not isinstance(rooms, list):
+        return
+    manifest["rooms"] = [room for room in rooms if not isinstance(room, dict) or room.get("id") != "tag-side-clue"]
+    entry = _tag_room_by_id(manifest["rooms"], "tag-lead-entry")
+    if isinstance(entry, dict):
+        entry["exits"] = [
+            exit_def
+            for exit_def in entry.get("exits", [])
+            if not isinstance(exit_def, dict) or exit_def.get("to") != "tag-side-clue"
+        ]
+    source = manifest.get("source")
+    parameters = source.get("parameters") if isinstance(source, dict) else None
+    tag_reference = parameters.get("tag_reference") if isinstance(parameters, dict) else None
+    prompts = tag_reference.get("room_prompts") if isinstance(tag_reference, dict) else None
+    if isinstance(prompts, dict):
+        prompts.pop("tag-side-clue", None)
+
+
 def _treasure_map_prompt_actions(map_roll: int) -> list[dict[str, object]]:
     if map_roll == 1:
         return [
@@ -6613,6 +6696,8 @@ def build_tag_adventure_manifest(
         final_room_title=final_title,
         final_room_description=final_description,
     )
+    if profile.get("suppress_side_clue"):
+        _suppress_optional_side_scene(manifest)
     campaign.tag_generated_adventure_ids.append(adventure_id)
     entry = append_tag_log(
         campaign,

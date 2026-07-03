@@ -3014,7 +3014,7 @@ def _rules_tables_payload() -> dict:
             "when_to_use": "The PDF result tells the player to generate or play a separate adventure/dungeon outside the compact lead.",
             "required_profile_fields": "module_profile.target_rooms, handoff action, route/signoff checks, no fake proxy finale.",
             "ui_expectation": "The generated lead records the handoff and closeout state; the actual expanded dungeon is generated or played separately.",
-            "checking_notes": "Do not collapse a handoff dungeon into one room unless the PDF says the compact scene itself resolves the objective.",
+            "checking_notes": "For Shinta/Agaratha, check Scene 4 champion eligibility and Scene 7 solo ten-room Bandit Hideout procedure: minion counts -1 minimum 1, Riff-Raff Final Boss with no count reduction, and Agaratha only after return.",
         },
     ]
     data["tag_rumor_playthrough_audit_table"] = [
