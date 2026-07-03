@@ -6240,6 +6240,94 @@ def _tag_lead_structure(lead_type: str, profile: dict[str, object]) -> str:
     return "dungeon"
 
 
+TAG_REWARD_POLICY_CLASSES = {
+    "no_loot",
+    "scene_reward_button",
+    "purchase_or_service",
+    "compact_module_no_random_loot",
+    "handoff_dungeon_has_own_loot",
+}
+
+
+def _tag_reward_action_labels(profile: dict[str, object]) -> list[str]:
+    labels: list[str] = []
+    for key in ("entry_prompt_actions", "complication_prompt_actions", "final_prompt_actions"):
+        for action in profile.get(key) or []:
+            if not isinstance(action, dict):
+                continue
+            action_type = str(action.get("action_type") or "")
+            action_value = str(action.get("action_value") or "")
+            label = str(action.get("label") or action_value or action_type).strip()
+            if not label:
+                continue
+            text = f"{label} {action_type} {action_value}".lower()
+            if any(token in text for token in ("reward", "bounty", "pay", "treasure", "rations", "shoes", "spell", "training", "agaratha", "pendant", "egg", "cleanup")):
+                labels.append(label)
+    return labels
+
+
+def _tag_reward_policy(
+    *,
+    lead_type: str,
+    profile: dict[str, object],
+    lead_structure: str,
+    finale_mode: str,
+    final_foes: list[dict[str, object]],
+) -> dict[str, object]:
+    explicit = profile.get("reward_policy")
+    if isinstance(explicit, dict) and explicit.get("class"):
+        policy = dict(explicit)
+    else:
+        rewards = str(profile.get("rewards") or "").strip()
+        reward_lower = rewards.lower()
+        action_labels = _tag_reward_action_labels(profile)
+        module_profile = profile.get("module_profile") if isinstance(profile.get("module_profile"), dict) else {}
+        procedure_text = " ".join(str(item) for item in module_profile.get("procedure") or [])
+        signoff_text = " ".join(str(item) for item in module_profile.get("signoff_checks") or [])
+        combined = f"{rewards} {procedure_text} {signoff_text}".lower()
+        if lead_structure == "handoff":
+            policy_class = "handoff_dungeon_has_own_loot"
+            expectation = "This lead hands play to a separate or expanded dungeon/procedure. Do not expect ordinary room loot from the compact generated shell; resolve loot in the handoff dungeon and then return for signoff."
+        elif finale_mode in {"vendor", "service"}:
+            policy_class = "purchase_or_service"
+            expectation = "This result is a purchase, spell lesson, training, or service. It spends or teaches rather than rolling ordinary treasure."
+        elif "no sword" in reward_lower or reward_lower.startswith("no ") or "no proxy" in combined:
+            policy_class = "no_loot"
+            expectation = rewards or "No loot is granted by this compact result unless a later printed branch creates one."
+        elif action_labels:
+            policy_class = "scene_reward_button"
+            expectation = f"Use the visible scene reward/procedure button(s): {', '.join(action_labels[:4])}."
+        elif final_foes or lead_type in {"treasure_map", "thematic_dungeon", "guild_job"}:
+            policy_class = "compact_module_no_random_loot"
+            expectation = "This compact imported module does not roll ordinary 4AD combat treasure automatically. Use the printed scene/procedure reward, module signoff, or separate handoff dungeon loot if the PDF result grants one."
+        else:
+            policy_class = "scene_reward_button" if rewards else "no_loot"
+            expectation = rewards or "No reward is indexed for this compact result."
+        policy = {
+            "class": policy_class,
+            "expectation": expectation,
+        }
+    policy_class = str(policy.get("class") or "compact_module_no_random_loot")
+    if policy_class not in TAG_REWARD_POLICY_CLASSES:
+        policy_class = "compact_module_no_random_loot"
+    action_labels = _tag_reward_action_labels(profile)
+    return {
+        "class": policy_class,
+        "label": {
+            "no_loot": "No loot",
+            "scene_reward_button": "Scene reward button",
+            "purchase_or_service": "Purchase/service only",
+            "compact_module_no_random_loot": "No automatic room loot",
+            "handoff_dungeon_has_own_loot": "Handoff dungeon loot",
+        }[policy_class],
+        "expectation": str(policy.get("expectation") or "").strip(),
+        "source": str(profile.get("pdf_pages") or "Generated Adventures Guild profile"),
+        "reward_text": str(profile.get("rewards") or "").strip(),
+        "actions": action_labels,
+        "normal_random_loot": policy_class == "handoff_dungeon_has_own_loot",
+    }
+
+
 def _tag_manifest(
     *,
     adventure_id: str,
@@ -6275,6 +6363,14 @@ def _tag_manifest(
         if isinstance(foe, dict) and foe.get("name")
     ]
     final_foes = ([] if noncombat_finale else [{"name": final_foe, "count": final_count}]) + final_extra_foes
+    lead_structure = _tag_lead_structure(lead_type, profile)
+    reward_policy = _tag_reward_policy(
+        lead_type=lead_type,
+        profile=profile,
+        lead_structure=lead_structure,
+        finale_mode=finale_mode,
+        final_foes=final_foes,
+    )
     source_parameters = {
         "origin": "Tales from the Adventurers' Guild",
         "lead_type": lead_type,
@@ -6289,7 +6385,8 @@ def _tag_manifest(
                 "how_to": profile.get("how_to") or _tag_lead_how_to(lead_type),
                 "mood": profile.get("mood") or _tag_scene_mood(lead_type, profile, lead_detail),
                 "audit_family": profile.get("audit_family", ""),
-                "lead_structure": _tag_lead_structure(lead_type, profile),
+                "lead_structure": lead_structure,
+                "reward_policy": reward_policy,
                 "rumor_number": profile.get("rumor_number", 0),
                 "treasure_map_destination": profile.get("treasure_map_destination", 0),
                 "thematic_dungeon_number": profile.get("thematic_dungeon_number", 0),

@@ -2227,6 +2227,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "function recoverHiddenTrove" in APP_JS
     assert "function saveModernGuild" in APP_JS
     assert "function syncTagAdventureLeadDetailOptions" in APP_JS
+    assert "function appendTagRewardPolicy" in APP_JS
+    assert "Reward audit for this generated Adventures Guild module" in APP_JS
+    assert "Reward policy:" in APP_JS
     assert "Rumor 4 - Mutant Fish Under the Bridge" in APP_JS
     assert "Rumor 12 - Shinta and Agaratha" in APP_JS
     assert "Playtest/fixed-result selector" in APP_JS

@@ -11886,6 +11886,7 @@ function buildNarrativeDebugReport(session = state.session) {
       ? [
           `- Lead: ${tagReference.lead_type || "unknown"} ${tagReference.lead_detail || ""}`.trim(),
           `- Current generated room: ${room?.id || "unknown"} - ${room?.title || ""}`,
+          `- Reward policy: ${tagReference.reward_policy?.label || "unknown"} - ${tagReference.reward_policy?.expectation || "none"}`,
           `- Prompt title: ${promptData?.title || "none"}`,
           `- Prompt body: ${promptData?.body || "none"}`,
           `- Prompt actions: ${(promptData?.actions || []).map((action) => _diagnosticPromptActionLabel(action)).join(", ") || "none"}`,
@@ -24510,6 +24511,23 @@ function appendTagModuleProfile(parent, moduleProfile) {
   parent.appendChild(profile);
 }
 
+function appendTagRewardPolicy(parent, rewardPolicy) {
+  if (!rewardPolicy || typeof rewardPolicy !== "object") return;
+  const label = rewardPolicy.label || rewardPolicy.class || "Reward handling";
+  const expectation = rewardPolicy.expectation || rewardPolicy.reward_text || "";
+  const actions = Array.isArray(rewardPolicy.actions) ? rewardPolicy.actions.filter(Boolean) : [];
+  if (!label && !expectation && !actions.length) return;
+  const box = node("div", "tag-context-module-profile");
+  setTooltip(
+    box,
+    "Reward audit for this generated Adventures Guild module. Compact imported modules do not roll ordinary random combat treasure unless the profile says the result hands off to a separate dungeon."
+  );
+  box.appendChild(subline(`Reward: ${label}`));
+  if (expectation) box.appendChild(subline(`Expected: ${expectation}`));
+  if (actions.length) box.appendChild(subline(`Buttons: ${actions.slice(0, 4).join(", ")}`));
+  parent.appendChild(box);
+}
+
 function appendTagLeadUseGuide(parent, tagReference) {
   if (!tagReference || typeof tagReference !== "object") return;
   const howTo = tagReference.how_to || "";
@@ -24568,6 +24586,7 @@ function appendTagContextualActions(parent, session, tile) {
   }
   appendTagLeadUseGuide(block, tagReference);
   appendTagModuleProfile(block, tagReference.module_profile);
+  appendTagRewardPolicy(block, tagReference.reward_policy);
   appendTagPromptChecklist(block, promptData?.checklist || tagReference.signoff_checks || []);
   if (appendTagMetadataPromptActions(block, promptData, fallbackReference)) {
     parent.appendChild(block);

@@ -2955,6 +2955,12 @@ def _rules_tables_payload() -> dict:
             "pdf_boundary": "Diagnostics report app metadata only. They do not reveal copied PDF prose or choose between printed branch options.",
         },
         {
+            "surface": "Generated reward policy",
+            "shown_in": "Exploration Adventures Guild scene prompt panel and Copy Narrative Report.",
+            "player_use": "Every generated Adventures Guild module declares one reward class: No loot, Scene reward button, Purchase/service only, No automatic room loot, or Handoff dungeon loot. This makes it clear when a compact imported module will not roll ordinary 4AD combat treasure and which visible button or handoff should supply the reward instead.",
+            "pdf_boundary": "The policy is an app-authored audit label. It does not invent rewards; exact treasure, gp, item, XP, purchase, or service outcomes still come from the PDF/player choice.",
+        },
+        {
             "surface": "Generated lead signoff",
             "shown_in": "Current Objective banner and Ongoing Quest generated closeout panel after generated Adventures Guild objective completion.",
             "player_use": "Records player review of route, reward, XP, Guild share, banking/storage, and closeout checks before another lead is started. The closeout panel is a five-step wizard; if route, XP, guidance, or closeout work remains, signoff records warnings instead of silently pretending the lead is clean.",

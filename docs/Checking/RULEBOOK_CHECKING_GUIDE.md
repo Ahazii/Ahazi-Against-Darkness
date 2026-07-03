@@ -501,6 +501,7 @@ Use the home Adventure setup TAG settlement panel.
 | 12d.9 | Create adventure from Rumor Scene, Treasure Map, Thematic Dungeon, and Guild Job | Each creates a removable installed module in the normal Adventure section/dropdown and selects it |
 | 12d.10 | Start a generated TAG adventure | Normal imported-adventure flow starts, quest objective is visible, and completion returns through normal adventure closeout |
 | 12d.11 | Use generated lead Result selector | Random is the normal rules-play default; fixed numbered results are available for targeted playtesting. Rumor 4 should resolve as the printed hypnosis/rescue/ration procedure, not as a proxy Final Boss combat |
+| 12d.12 | Inspect generated reward policy | Each generated module shows No loot, Scene reward button, Purchase/service only, No automatic room loot, or Handoff dungeon loot; compact imported modules must not imply ordinary random combat treasure unless a separate handoff dungeon is being played |
 | 12c.3 | Brew with missing ingredients | Log blocks the brew with missing ingredient/material message |
 | 12c.4 | Brew with valid ingredients/materials | Ingredients/gp are consumed, d6+L rolls when required, and the brewed `(Apothecary` item is added to the brewer inventory |
 

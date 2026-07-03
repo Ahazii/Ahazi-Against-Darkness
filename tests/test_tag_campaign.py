@@ -1308,6 +1308,13 @@ def test_all_generated_tag_modules_have_playable_scene_actions_and_clean_room_co
         "final_route",
         "unlock_scene",
     }
+    reward_policy_classes = {
+        "no_loot",
+        "scene_reward_button",
+        "purchase_or_service",
+        "compact_module_no_random_loot",
+        "handoff_dungeon_has_own_loot",
+    }
 
     for lead_type, details in cases.items():
         for detail in details:
@@ -1320,6 +1327,11 @@ def test_all_generated_tag_modules_have_playable_scene_actions_and_clean_room_co
             result = validate_adventure_manifest(manifest, rules_repo=repo)
             assert result.valid, (lead_type, detail, result.errors)
             reference = manifest["source"]["parameters"]["tag_reference"]
+            reward_policy = reference.get("reward_policy")
+            assert isinstance(reward_policy, dict), (lead_type, detail)
+            assert reward_policy["class"] in reward_policy_classes, (lead_type, detail, reward_policy)
+            assert reward_policy["label"], (lead_type, detail, reward_policy)
+            assert reward_policy["expectation"], (lead_type, detail, reward_policy)
             prompts = reference["room_prompts"]
             room_text = " ".join(
                 " ".join(
@@ -1347,6 +1359,23 @@ def test_all_generated_tag_modules_have_playable_scene_actions_and_clean_room_co
             if lead_type == "rumor" and detail == "2":
                 final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
                 assert "encounter" not in final_room["triggers"][0]
+
+
+def test_generated_tag_reward_policy_boundaries_are_explicit() -> None:
+    rumor4, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
+    fish_policy = rumor4["source"]["parameters"]["tag_reference"]["reward_policy"]
+    assert fish_policy["class"] == "scene_reward_button"
+    assert "Fish rations" in fish_policy["actions"]
+    assert "ordinary" not in fish_policy["expectation"].lower()
+
+    rumor11, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="11")
+    trainer_policy = rumor11["source"]["parameters"]["tag_reference"]["reward_policy"]
+    assert trainer_policy["class"] == "purchase_or_service"
+
+    rumor12, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="12")
+    handoff_policy = rumor12["source"]["parameters"]["tag_reference"]["reward_policy"]
+    assert handoff_policy["class"] == "handoff_dungeon_has_own_loot"
+    assert handoff_policy["normal_random_loot"] is True
 
 
 def test_tag_remaining_guild_jobs_carry_pdf_module_profiles(monkeypatch) -> None:
