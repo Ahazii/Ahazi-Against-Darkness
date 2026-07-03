@@ -200,6 +200,7 @@ const aiImportAdventureBtn = document.getElementById("ai-import-adventure");
 const aiImportOverwriteEl = document.getElementById("ai-import-overwrite");
 const aiImportFileEl = document.getElementById("ai-import-file");
 const aiImportFileBtn = document.getElementById("ai-import-file-btn");
+const scanAdventurePdfsBtn = document.getElementById("scan-adventure-pdfs");
 const aiImportPreviewEl = document.getElementById("ai-import-preview");
 const adventuresEl = document.getElementById("adventures");
 const rulesTablesEl = document.getElementById("rules-tables");
@@ -8878,6 +8879,8 @@ const AI_ADVENTURE_TOOLTIPS = {
   importAdventure: "Install a valid manifest under data/adventures/ so it appears in the adventure dropdown.",
   importOverwrite: "Replace an existing installed module with the same adventure id.",
   uploadImportFile: "Load adventure.json from disk into the import text area.",
+  scanAdventurePdfs:
+    "Scan new PDFs in DATA_DIR/Adventure PDFs and the legacy Adventures folder. This assesses source PDFs only; a reviewed adventure.json manifest is still required before play.",
 };
 
 const MAP_TOOLTIPS = {
@@ -10898,6 +10901,7 @@ function applyAiAdventureTooltips() {
   setButtonTooltip(aiValidateImportBtn, AI_ADVENTURE_TOOLTIPS.validateImport);
   setButtonTooltip(aiImportAdventureBtn, AI_ADVENTURE_TOOLTIPS.importAdventure);
   setButtonTooltip(aiImportFileBtn, AI_ADVENTURE_TOOLTIPS.uploadImportFile);
+  setButtonTooltip(scanAdventurePdfsBtn, AI_ADVENTURE_TOOLTIPS.scanAdventurePdfs);
   const overwriteLabel = aiImportOverwriteEl?.closest("label");
   if (overwriteLabel) setTooltip(overwriteLabel, AI_ADVENTURE_TOOLTIPS.importOverwrite);
 }
@@ -16152,6 +16156,31 @@ function showImportFailure(message) {
   setStatus("Import check failed — see errors below Validate.");
 }
 
+async function scanAdventurePdfs() {
+  if (!scanAdventurePdfsBtn) return;
+  scanAdventurePdfsBtn.disabled = true;
+  try {
+    const result = await api("/api/adventures/pdf-sources/scan", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    state.adventures = await api("/api/adventures");
+    renderAdventures();
+    const scanned = result.scanned?.length || 0;
+    const skipped = result.skipped?.length || 0;
+    const errors = result.errors?.length || 0;
+    setStatus(
+      errors
+        ? `Scanned ${scanned} new PDF source(s), skipped ${skipped}; ${errors} scanner issue(s) need review.`
+        : `Scanned ${scanned} new PDF source(s); ${skipped} already assessed.`
+    );
+  } catch (error) {
+    handleError(error);
+  } finally {
+    scanAdventurePdfsBtn.disabled = false;
+  }
+}
+
 async function validateAdventureImport() {
   try {
     const manifest = parseImportManifestText();
@@ -16291,6 +16320,25 @@ function renderAdventures() {
     const item = node("div", "item");
     item.appendChild(node("strong", "", adventure.name));
     item.appendChild(subline(adventure.notes));
+    if (adventure.pdf_source) {
+      const meta = node("div", "item-meta");
+      const type = adventure.pdf_detected_type ? adventure.pdf_detected_type.replaceAll("_", " ") : "unscanned source PDF";
+      meta.appendChild(node("span", "", "PDF source"));
+      if (adventure.pdf_page_count) meta.appendChild(node("span", "", `${adventure.pdf_page_count} pages`));
+      meta.appendChild(node("span", "", type));
+      meta.appendChild(node("span", "", adventure.pdf_text_extractable ? "text extractable" : "text review needed"));
+      item.appendChild(meta);
+      if (adventure.pdf_recommended_action) {
+        const action = subline(adventure.pdf_recommended_action);
+        setTooltip(action, "Recommended conversion path from the PDF scanner. This does not replace manual PDF review.");
+        item.appendChild(action);
+      }
+      if (adventure.pdf_warnings?.length) {
+        const warnings = subline(`Warnings: ${adventure.pdf_warnings.join(" ")}`);
+        warnings.classList.add("warning-text");
+        item.appendChild(warnings);
+      }
+    }
     if (adventure.playable && adventure.id !== "random" && adventure.id !== "ai-adventure") {
       const actions = node("div", "item-actions");
       const exportJsonBtn = node("button", "secondary", "Export JSON");
@@ -31421,6 +31469,9 @@ aiImportAdventureBtn?.addEventListener("click", () => {
   importAdventureManifest().catch(handleError);
 });
 aiImportFileBtn?.addEventListener("click", () => aiImportFileEl?.click());
+scanAdventurePdfsBtn?.addEventListener("click", () => {
+  scanAdventurePdfs().catch(handleError);
+});
 aiImportFileEl?.addEventListener("change", () => {
   loadImportFile(aiImportFileEl.files?.[0]).catch(handleError);
 });

@@ -51,6 +51,7 @@ def load_settings() -> Settings:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.rules_dir.mkdir(parents=True, exist_ok=True)
     settings.installed_adventures_dir.mkdir(parents=True, exist_ok=True)
+    (settings.data_dir / "Adventure PDFs").mkdir(parents=True, exist_ok=True)
     settings.user_assets_dir.mkdir(parents=True, exist_ok=True)
     _seed_user_asset_folders(settings)
     _seed_user_narrative_override_template(settings)

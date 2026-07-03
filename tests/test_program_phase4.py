@@ -187,6 +187,7 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         "playtest_triage_workflow_table",
         "exploration_objective_clarity_table",
         "adventure_management_browser_table",
+        "adventure_pdf_source_scan_table",
         "artwork_expansion_plan_table",
         "application_artwork_slots_table",
         "developer_preferences_table",

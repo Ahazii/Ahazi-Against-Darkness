@@ -1712,6 +1712,15 @@ class AdventureDescriptor(BaseModel):
     playable: bool
     notes: str
     removable: bool = False
+    pdf_source: bool = False
+    pdf_detected_type: str = ""
+    pdf_confidence: str = ""
+    pdf_conversion_status: str = ""
+    pdf_recommended_action: str = ""
+    pdf_page_count: int = 0
+    pdf_text_extractable: bool = False
+    pdf_source_kind: str = ""
+    pdf_warnings: list[str] = Field(default_factory=list)
     tag_lead_type: str = ""
     tag_lead_detail: str = ""
     tag_scene: str = ""

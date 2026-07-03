@@ -3302,6 +3302,7 @@ function renderAiAdventures() {
 function adventureModuleKind(adventure) {
   const id = String(adventure.id || "");
   const source = String(adventure.source || "").toLowerCase();
+  if (adventure.pdf_source) return "PDF source";
   if (id === "random" || source === "rules") return "Rules";
   if (id.startsWith("ai-") || source === "ai") return "AI";
   if (adventure.tag_lead_type || (modernState.campaign?.tag_generated_adventure_ids || []).includes(id)) return "The Adventures Guild";
@@ -3319,9 +3320,34 @@ function adventureModuleCompleted(adventureId) {
 function adventureModuleTags(adventure) {
   const tags = [adventureModuleKind(adventure)];
   if (adventure.playable === false) tags.push("Not playable");
+  if (adventure.pdf_source && adventure.pdf_detected_type) tags.push(String(adventure.pdf_detected_type).replaceAll("_", " "));
+  if (adventure.pdf_source && adventure.pdf_conversion_status === "source_pdf_unscanned") tags.push("Unscanned");
   if (adventureModuleCompleted(adventure.id)) tags.push("Completed");
   if (adventureModuleInUse(adventure.id).length) tags.push("In use");
   return tags;
+}
+
+function renderAdventurePdfSourceScanner() {
+  const pdfSources = (modernState.adventures || []).filter((adventure) => adventure.pdf_source);
+  const unscanned = pdfSources.filter((adventure) => adventure.pdf_conversion_status === "source_pdf_unscanned").length;
+  const panel = card(
+    "PDF Adventure Sources",
+    "Scan source PDFs before conversion. The scanner records title, pages, extractability, likely module type, and recommended conversion path; it does not turn a PDF into a playable module without a reviewed manifest."
+  );
+  panel.append(
+    modernStatusRow("Source folder", "DATA_DIR/Adventure PDFs", "Place new owned adventure PDFs here in the user-facing appdata folder. The legacy repo Adventures folder is also scanned for existing local PDFs."),
+    modernStatusRow("Assessed PDFs", `${pdfSources.length} source PDF(s) · ${unscanned} unscanned`, "PDF sources stay non-playable until a validated adventure.json manifest is created and imported.")
+  );
+  const row = actions();
+  row.appendChild(
+    button("Scan new PDFs", "Scan new or changed PDFs in DATA_DIR/Adventure PDFs and the legacy Adventures folder. This creates assessment metadata only.", async () => {
+      const result = await api("/api/adventures/pdf-sources/scan", { method: "POST", body: JSON.stringify({}) });
+      setStatus(`Scanned ${result.scanned?.length || 0} new PDF source(s); ${result.skipped?.length || 0} already assessed.`);
+      await refreshCoreAndRender();
+    })
+  );
+  panel.appendChild(row);
+  return panel;
 }
 
 function renderAdventureModuleManager() {
@@ -3436,6 +3462,18 @@ function renderAdventureModuleBrowser() {
       modernStatusRow("Usage", inUse.length ? `${inUse.length} active session(s)` : "Not currently in use", "Modules in active sessions cannot be deleted."),
       modernStatusRow("Cover art", `Planned: DATA_DIR/assets/artwork/user/adventures/${id}_cover_1600x900.*`, "Future module cover art slot. Keep copyrighted or AI-generated artwork local unless licensed for distribution.")
     );
+    if (adventure.pdf_source) {
+      detail.append(
+        modernStatusRow("PDF assessment", `${adventure.pdf_page_count || 0} page(s) · ${adventure.pdf_text_extractable ? "text extractable" : "text review needed"}`, "Source PDF assessment from Scan new PDFs. The PDF remains non-playable until converted to a reviewed manifest."),
+        modernStatusRow("Detected type", adventure.pdf_detected_type ? `${String(adventure.pdf_detected_type).replaceAll("_", " ")} · ${adventure.pdf_confidence || "unknown"} confidence` : "Not scanned", "Used to choose the correct future converter: room graph, scene route, collection split, campaign bundle, or hex-crawl workflow."),
+        modernStatusRow("Recommended next step", adventure.pdf_recommended_action || "Run Scan new PDFs, then manually review the PDF before creating a manifest.", "Scanner advice only; exact rules and adventure structure still require PDF review.")
+      );
+      if (adventure.pdf_warnings?.length) {
+        const warnings = el("ul", "modern-warning-list");
+        for (const warning of adventure.pdf_warnings) warnings.appendChild(el("li", "", warning));
+        detail.appendChild(warnings);
+      }
+    }
     const rowActions = actions();
     if (!protectedModule) {
       rowActions.append(
@@ -3466,7 +3504,7 @@ function renderAdventureModuleBrowser() {
       item.title = "Select this module to inspect status, export options, delete safety, and planned cover art.";
       item.append(
         el("strong", "", title),
-        el("span", "muted", `${adventureModuleKind(adventure)} · ${adventure.room_count || 0} room(s)${inUse.length ? " · in use" : ""}`)
+        el("span", "muted", adventure.pdf_source ? `${adventureModuleKind(adventure)} · ${adventure.pdf_detected_type ? String(adventure.pdf_detected_type).replaceAll("_", " ") : "unscanned"}${inUse.length ? " · in use" : ""}` : `${adventureModuleKind(adventure)} · ${adventure.room_count || 0} room(s)${inUse.length ? " · in use" : ""}`)
       );
       item.addEventListener("click", () => {
         selectedId = id;
@@ -3686,7 +3724,7 @@ function renderAdventureManagement() {
     panelEl.append(...nodes.filter(Boolean));
     panels[key] = panelEl;
   }
-  addAdventureTab("modules", "Modules", "Import, export, delete, and review all adventure module types.", [renderAdventureModuleImport(), renderAdventureModuleBrowser()]);
+  addAdventureTab("modules", "Modules", "Import, export, delete, and review all adventure module types.", [renderAdventurePdfSourceScanner(), renderAdventureModuleImport(), renderAdventureModuleBrowser()]);
   addAdventureTab("guild", "The Adventures Guild", "Generate Adventures Guild modules and review lead signoff support.", [
     renderTagModuleGeneration(),
     renderTagWorkflowDashboard("go"),

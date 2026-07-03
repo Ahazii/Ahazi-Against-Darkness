@@ -6177,6 +6177,17 @@ button.door-destroy-spell {
   max-height: none;
 }
 
+.warning-text,
+.modern-warning-list {
+  color: #f0c46a;
+}
+
+.modern-warning-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
 .camp-party-sheets {
   display: grid;
   align-content: start;

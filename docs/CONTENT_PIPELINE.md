@@ -253,6 +253,7 @@ resolves all dice and combat.
 
 ### PDF extraction pipeline
 
+0. Place owned source PDFs in `DATA_DIR/Adventure PDFs` (the legacy repo `Adventures/` folder is still scanned for local development copies), then use Adventure Management -> Modules -> **Scan new PDFs**. The scan writes metadata only to `DATA_DIR/adventure_pdf_sources.json`: title guess, page count, encryption/text-extraction status, likely module type, confidence, warnings, and recommended conversion path.
 1. Inventory PDF pages, text length, and embedded images.
 2. Extract map images into a local working folder (reference only until asset zip support).
 3. Extract room/key text.

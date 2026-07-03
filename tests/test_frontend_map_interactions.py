@@ -2106,6 +2106,18 @@ def test_camped_outside_uses_dedicated_camp_screen() -> None:
     assert ".camp-left-column" in STYLES_CSS
 
 
+def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable() -> None:
+    assert 'id="scan-adventure-pdfs"' in INDEX_HTML
+    assert "/api/adventures/pdf-sources/scan" in APP_JS
+    assert "Scan new PDFs" in INDEX_HTML
+    assert "source PDFs only" in APP_JS
+    assert "function renderAdventurePdfSourceScanner" in MODERN_PAGES_JS
+    assert "PDF Adventure Sources" in MODERN_PAGES_JS
+    assert "adventure.pdf_source" in MODERN_PAGES_JS
+    assert "source_pdf_unscanned" in MODERN_PAGES_JS
+    assert ".modern-warning-list" in STYLES_CSS
+
+
 def test_current_objective_and_tag_actions_dialog_layout_is_not_squeezed() -> None:
     assert ".current-objective-banner" in STYLES_CSS
     assert "grid-template-columns: minmax(0, 1fr);" in STYLES_CSS

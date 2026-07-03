@@ -32,6 +32,11 @@ from .engine.adventure_import import (
     load_installed_manifest,
     seed_bundled_adventures,
 )
+from .engine.adventure_pdf_sources import (
+    adventure_pdf_source_dirs,
+    load_adventure_pdf_assessments,
+    scan_new_adventure_pdfs,
+)
 from .engine.adventure_allowlists import build_adventure_allowlists
 from .engine.adventure_foes import spawn_manifest_foes
 from .engine.adventure_manifest import validate_adventure_manifest
@@ -2771,6 +2776,26 @@ def _rules_tables_payload() -> dict:
             "safety": "Generated modules still start from Go Adventure after readiness checks.",
         },
     ]
+    data["adventure_pdf_source_scan_table"] = [
+        {
+            "field": "Source folders",
+            "records": "DATA_DIR/Adventure PDFs plus the legacy repository Adventures folder.",
+            "purpose": "Find newly added owned PDF adventure sources without making them playable automatically.",
+            "pdf_boundary": "The scanner stores metadata only; it does not copy long PDF prose or rules text into app data.",
+        },
+        {
+            "field": "Assessment",
+            "records": "File name, title guess, page count, encryption flag, text extractability, likely module type, confidence, warnings, and recommended conversion path.",
+            "purpose": "Decide whether the PDF needs a room-manifest converter, collection split, campaign bundle, scene route, hex-crawl workflow, or manual review.",
+            "pdf_boundary": "Detected type is a workflow hint, not a rules ruling.",
+        },
+        {
+            "field": "Playable status",
+            "records": "PDF source rows stay playable=false until a validated adventure.json manifest exists.",
+            "purpose": "Prevent source PDFs from appearing as broken modules in Go Adventure.",
+            "pdf_boundary": "A reviewed manifest remains the source of playable room graph data.",
+        },
+    ]
     data["artwork_expansion_plan_table"] = [
         {
             "slot": "Module cover art",
@@ -4069,6 +4094,7 @@ async def heal_party(party_id: str) -> list[Character]:
 
 @app.get("/api/adventures")
 async def list_adventures() -> list[AdventureDescriptor]:
+    pdf_assessments = load_adventure_pdf_assessments(settings.data_dir)
     adventures = [
         AdventureDescriptor(
             id="random",
@@ -4093,17 +4119,49 @@ async def list_adventures() -> list[AdventureDescriptor]:
         ),
     ]
     adventures.extend(list_installed_adventures(settings.root_dir, settings.data_dir))
-    for pdf in sorted(settings.adventures_dir.glob("*.pdf")):
-        adventures.append(
-            AdventureDescriptor(
-                id=pdf.stem,
-                name=_title_from_pdf_name(pdf),
-                source=str(pdf.relative_to(settings.root_dir)).replace("\\", "/"),
-                playable=False,
-                notes="PDF found; a reviewed adventure manifest is still required.",
+    seen_pdf_ids: set[str] = set()
+    for source_kind, directory in adventure_pdf_source_dirs(settings.root_dir, settings.data_dir):
+        for pdf in sorted(directory.glob("*.pdf")):
+            key = f"{source_kind}:{pdf.name}"
+            assessment = pdf_assessments.get(key, {})
+            pdf_id = str(assessment.get("id") or _safe_pdf_adventure_id(pdf, source_kind))
+            if pdf_id in seen_pdf_ids:
+                continue
+            seen_pdf_ids.add(pdf_id)
+            notes = "PDF source found; scan it, then create a reviewed adventure manifest before play."
+            if assessment:
+                detected = str(assessment.get("detected_type") or "unknown").replace("_", " ")
+                status = str(assessment.get("conversion_status") or "source_pdf_assessed").replace("_", " ")
+                action = str(assessment.get("recommended_action") or "Create a reviewed manifest before play.")
+                notes = f"PDF source assessed: {detected} ({status}). {action}"
+            adventures.append(
+                AdventureDescriptor(
+                    id=pdf_id,
+                    name=str(assessment.get("title") or _title_from_pdf_name(pdf)),
+                    source=str(assessment.get("source_path") or _relative_source_path(pdf)),
+                    playable=False,
+                    notes=notes,
+                    pdf_source=True,
+                    pdf_detected_type=str(assessment.get("detected_type") or ""),
+                    pdf_confidence=str(assessment.get("confidence") or ""),
+                    pdf_conversion_status=str(assessment.get("conversion_status") or "source_pdf_unscanned"),
+                    pdf_recommended_action=str(assessment.get("recommended_action") or ""),
+                    pdf_page_count=int(assessment.get("page_count") or 0),
+                    pdf_text_extractable=bool(assessment.get("text_extractable") or False),
+                    pdf_source_kind=str(assessment.get("source_kind") or source_kind),
+                    pdf_warnings=[str(item) for item in assessment.get("warnings", []) if item],
+                )
             )
-        )
     return adventures
+
+
+@app.post("/api/adventures/pdf-sources/scan")
+async def scan_adventure_pdf_sources(payload: dict | None = None) -> dict[str, Any]:
+    force = bool((payload or {}).get("force"))
+    try:
+        return scan_new_adventure_pdfs(settings.root_dir, settings.data_dir, force=force)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.get("/api/adventures/tiles")
@@ -5317,3 +5375,17 @@ def _valid_tile_keys() -> set[str]:
 
 def _title_from_pdf_name(path: Path) -> str:
     return path.stem.replace("-", " ").replace("_", " ").title()
+
+
+def _safe_pdf_adventure_id(path: Path, source_kind: str) -> str:
+    base = re.sub(r"[^a-z0-9]+", "-", path.stem.lower()).strip("-") or "pdf-source"
+    return base if source_kind == "legacy" else f"{base}-pdf"
+
+
+def _relative_source_path(path: Path) -> str:
+    for base in (settings.root_dir, settings.data_dir):
+        try:
+            return str(path.relative_to(base)).replace("\\", "/")
+        except ValueError:
+            continue
+    return str(path)
