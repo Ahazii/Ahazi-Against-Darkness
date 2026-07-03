@@ -282,7 +282,7 @@ def generated_tag_manifest_diagnostics(
     current_prompt = prompts.get(current_room_id) if current_room_id else None
     if current_room_id and current_room_id.startswith("tag-") and not isinstance(current_prompt, dict):
         errors.append(f"Current room {current_room_id} has no prompt/action metadata.")
-        suggested_fixes.append("Use Refresh narrative. If it remains missing, report this module with Copy Playtest Report.")
+        suggested_fixes.append("Use Refresh narrative. If it remains missing, report this module with Copy Narrative Report.")
 
     stale_markers = ("Repaired prompt metadata", "older generated Adventures Guild module")
     stale_prompts = [

@@ -610,7 +610,6 @@ const restBtn = document.getElementById("rest");
 const copyNarrativeDebugReportBtn = document.getElementById("copy-narrative-debug-report");
 const tagOpenAdventureActions = document.getElementById("tag-open-adventure-actions");
 const tagSessionDiagnosticsBtn = document.getElementById("tag-session-diagnostics");
-const tagCopyPlaytestReportBtn = document.getElementById("tag-copy-playtest-report");
 const restChoicesEl = document.getElementById("rest-choices");
 const saveSessionBtn = document.getElementById("save-session");
 const logModeSummaryBtn = document.getElementById("log-mode-summary");
@@ -11555,44 +11554,9 @@ function showGeneratedTagDiagnostics() {
   window.alert(message);
 }
 
-function buildGeneratedTagPlaytestReport(session = state.session) {
-  const { room, promptData, tagReference } = tagCurrentPromptData(session);
-  const logTail = (session?.log || []).slice(-24).join("\n");
-  return [
-    "# Generated Adventures Guild Playtest Report",
-    "",
-    `Session: ${session?.id || "unknown"}`,
-    `Adventure: ${sessionAdventureTitleText(session) || session?.adventure_id || "unknown"}`,
-    `Mode: ${session?.mode || "unknown"}`,
-    `Current room: ${room?.id || "unknown"} - ${room?.title || ""}`,
-    `Lead: ${tagReference?.lead_type || ""} ${tagReference?.lead_detail || ""}`.trim(),
-    "",
-    "## Diagnostics",
-    generatedTagDiagnosticsLines(session).map((line) => `- ${line}`).join("\n"),
-    "",
-    "## Current Prompt",
-    `Title: ${promptData?.title || "none"}`,
-    `Body: ${promptData?.body || "none"}`,
-    `Actions: ${(promptData?.actions || []).map((action) => _diagnosticPromptActionLabel(action)).join(", ") || "none"}`,
-    "",
-    "## Last Narrative Lines",
-    logTail || "No narrative log lines.",
-  ].join("\n");
-}
-
 function _diagnosticPromptActionLabel(action) {
   if (!action) return "";
   return action.label || action.action_value || action.action_type || "";
-}
-
-async function copyGeneratedTagPlaytestReport() {
-  const report = buildGeneratedTagPlaytestReport(state.session);
-  try {
-    await navigator.clipboard.writeText(report);
-    setStatus("Generated Adventures Guild playtest report copied.");
-  } catch {
-    setStatus("Could not copy playtest report to clipboard.");
-  }
 }
 
 function narrativeReportLines(session = state.session) {
@@ -11678,12 +11642,43 @@ function buildNarrativeDebugReport(session = state.session) {
 
 async function copyNarrativeDebugReport() {
   const report = buildNarrativeDebugReport(state.session);
+  await copyTextToClipboard(
+    report,
+    "Narrative report copied. Actual Narrative is first; debug context follows.",
+    "Could not copy narrative report. Browser clipboard access may be blocked on this address."
+  );
+}
+
+async function copyTextToClipboard(text, successMessage, failureMessage) {
   try {
-    await navigator.clipboard.writeText(report);
-    setStatus("Narrative debug report copied. Actual Narrative is first; debug context follows.");
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      setStatus(successMessage);
+      return true;
+    }
   } catch {
-    setStatus("Could not copy narrative debug report to clipboard.");
+    // Fall back below; LAN HTTP origins often block navigator.clipboard.
   }
+  const fallback = document.createElement("textarea");
+  fallback.value = text;
+  fallback.setAttribute("readonly", "");
+  fallback.style.position = "fixed";
+  fallback.style.left = "-9999px";
+  fallback.style.top = "0";
+  document.body.appendChild(fallback);
+  fallback.focus();
+  fallback.select();
+  fallback.setSelectionRange(0, fallback.value.length);
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch {
+    copied = false;
+  } finally {
+    document.body.removeChild(fallback);
+  }
+  setStatus(copied ? successMessage : failureMessage);
+  return copied;
 }
 
 function syncTagAdvancedControls(hasDirector = false) {
@@ -17359,7 +17354,7 @@ function renderSession() {
       "Copy a Markdown report. The Actual Narrative section is exactly what the player saw; Debug Context is extra state for diagnosing playtest issues."
     );
   }
-  if (tagOpenAdventureActions || tagSessionDiagnosticsBtn || tagCopyPlaytestReportBtn) {
+  if (tagOpenAdventureActions || tagSessionDiagnosticsBtn) {
     const isTagGenerated =
       Boolean(session.tag_banking_enabled) ||
       Boolean(state.campaign?.tag_banking_enabled) ||
@@ -17371,13 +17366,6 @@ function renderSession() {
       setButtonTooltip(
         tagSessionDiagnosticsBtn,
         "Show generated-adventure diagnostics: prompt coverage, current-room actions, extraction status, and any warnings that still need a manual fallback."
-      );
-    }
-    if (tagCopyPlaytestReportBtn) {
-      tagCopyPlaytestReportBtn.classList.toggle("hidden", !showGeneratedTools);
-      setButtonTooltip(
-        tagCopyPlaytestReportBtn,
-        "Copy a concise playtest report with diagnostics, current prompt metadata, and recent Narrative lines."
       );
     }
     if (tagOpenAdventureActions) {
@@ -18358,7 +18346,7 @@ function currentObjectiveForSession(session) {
         body: `${director.instruction} ${director.playbook} If this resumed module has no Relevant Now buttons, run Refresh narrative to reload local Adventures Guild scene text and prompt metadata.`,
         tone: "tag",
         action: { label: "Refresh narrative", kind: "tag-repair" },
-        secondaryAction: { label: "Copy Playtest Report", kind: "tag-copy-report" },
+        secondaryAction: { label: "Copy Narrative Report", kind: "tag-copy-report" },
       };
     }
     if (actions.length) {
@@ -18474,8 +18462,8 @@ function appendCurrentObjectiveButton(parent, action) {
       btn.addEventListener("click", () => openTagAdventureActions());
       break;
     case "tag-copy-report":
-      setButtonTooltip(btn, "Copy generated-adventure diagnostics, current prompt metadata, and recent Narrative lines for playtest debugging.");
-      btn.addEventListener("click", () => copyGeneratedTagPlaytestReport());
+      setButtonTooltip(btn, "Copy the full Narrative Report: exact player-facing Narrative first, then generated-adventure diagnostics and current room context for debugging.");
+      btn.addEventListener("click", () => copyNarrativeDebugReport());
       break;
     case "tag-lead-signoff":
       setButtonTooltip(btn, "Sign off generated Adventures Guild lead closeout after reviewing route, reward, XP, Guild, banking/storage, and guidance tasks.");
@@ -31087,7 +31075,6 @@ tagOpenTroupeManager?.addEventListener("click", () => openTagTroupeDialog());
 tagOpenBankTransfer?.addEventListener("click", () => openTagBankTransferDialog());
 tagOpenAdventureActions?.addEventListener("click", () => openTagAdventureActions());
 tagSessionDiagnosticsBtn?.addEventListener("click", () => showGeneratedTagDiagnostics());
-tagCopyPlaytestReportBtn?.addEventListener("click", () => copyGeneratedTagPlaytestReport());
 copyNarrativeDebugReportBtn?.addEventListener("click", () => copyNarrativeDebugReport());
 tagCheckAvailability?.addEventListener("click", () => {
   checkTagAvailability().catch(handleError);

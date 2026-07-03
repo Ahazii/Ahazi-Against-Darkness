@@ -2151,7 +2151,6 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-run-bank-transfer",
         "copy-narrative-debug-report",
         "tag-session-diagnostics",
-        "tag-copy-playtest-report",
         "tag-open-adventure-actions",
         "tag-adventure-actions-dialog",
     ]:
@@ -2330,15 +2329,20 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "tag-closeout-wizard" in APP_JS
     assert "function repairGeneratedTagGuidance" in APP_JS
     assert "function generatedTagDiagnostics" in APP_JS
-    assert "function copyGeneratedTagPlaytestReport" in APP_JS
+    assert "function copyGeneratedTagPlaytestReport" not in APP_JS
     assert "function buildNarrativeDebugReport" in APP_JS
     assert "function copyNarrativeDebugReport" in APP_JS
+    assert "function copyTextToClipboard" in APP_JS
+    assert "document.execCommand(\"copy\")" in APP_JS
     assert "## Actual Narrative" in APP_JS
     assert "## Debug Context" in APP_JS
     assert "The following information is not player narrative" in APP_JS
-    assert "Copy Narrative Debug Report" in INDEX_HTML
+    assert "Copy Narrative Report" in INDEX_HTML
     assert "Advanced / Manual Actions" in INDEX_HTML
-    assert "Copy Playtest Report" in INDEX_HTML
+    assert "Copy Playtest Report" not in INDEX_HTML
+    assert "tag-copy-playtest-report" not in INDEX_HTML
+    assert 'writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: result.adventure_id || "" });' in MODERN_PAGES_JS
+    assert "It is selected in Go Adventure > Start" in MODERN_PAGES_JS
     assert "manual_fallback_needed" in APP_JS
     assert "tag-repair-guidance" in APP_JS
     assert "I think you are here" in APP_JS
@@ -2506,7 +2510,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "modern-tag-lead-random",
         "Random Adventures Guild lead: choose the lead family and table result randomly when the module is generated.",
         "Create Adventures Guild Module",
-        "Start it from Go Adventure > Start.",
+        "It is selected in Go Adventure > Start.",
         "latestSessionPerParty",
         "older session(s) hidden",
         "Shows the latest resumable or saved session for each party",

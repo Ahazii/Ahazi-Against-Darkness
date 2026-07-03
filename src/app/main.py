@@ -2940,7 +2940,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Generated adventure diagnostics",
             "shown_in": "Adventure View toolbar and Ongoing Quest generated closeout panel.",
-            "player_use": "Shows prompt coverage, current room prompt/action status, local narrative extraction status, scene-branch counts, missing prompt errors, missing branch-target errors, and why the Advanced / Manual Actions fallback is visible. Copy Playtest Report copies diagnostics, current prompt metadata, and recent Narrative lines for debugging.",
+            "player_use": "Shows prompt coverage, current room prompt/action status, local narrative extraction status, scene-branch counts, missing prompt errors, missing branch-target errors, and why the Advanced / Manual Actions fallback is visible. Copy Narrative Report copies the exact player-facing Narrative first and debugging context afterwards.",
             "pdf_boundary": "Diagnostics report app metadata only. They do not reveal copied PDF prose or choose between printed branch options.",
         },
         {

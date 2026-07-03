@@ -3529,12 +3529,12 @@ function renderTagModuleGeneration(selectedAdventureControl = null) {
     });
     modernState.campaign = result.campaign;
     modernState.adventures = await api("/api/adventures");
+    writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: result.adventure_id || "" });
     if (selectedAdventureControl) {
       selectedAdventureControl.replaceChildren(...optionRows(adventureOptions("imported")));
       selectedAdventureControl.value = result.adventure_id || "";
-      writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: result.adventure_id || "" });
     }
-    setStatus(`Created ${result.title || result.adventure_id}. Start it from Go Adventure > Start.`);
+    setStatus(`Created ${result.title || result.adventure_id}. It is selected in Go Adventure > Start.`);
     await refreshCoreAndRender();
   }));
   return tagLead;
@@ -3579,7 +3579,8 @@ function renderAiModuleGeneration() {
     }),
     button("Import JSON", "Import pasted AI adventure JSON as an installed module.", async () => {
       const result = await api("/api/adventures/import", { method: "POST", body: JSON.stringify({ manifest: JSON.parse(json.value), overwrite: false }) });
-      setStatus(result.message || `Imported ${result.title || result.adventure_id}.`);
+      writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: result.adventure_id || "" });
+      setStatus(result.message || `Imported ${result.title || result.adventure_id}. It is selected in Go Adventure > Start.`);
       await refreshCoreAndRender();
     })
   );
