@@ -77,10 +77,12 @@ Use this to validate **how the game behaves** — not to change `RULE_COVERAGE.m
 
 Use Home → Adventure → TAG Settlement → **Maps and Adventure Leads**. The **Adventure lead** dropdown has hover text for valid Detail ranges. After creating a lead, open the normal **Adventure** section/dropdown and start the generated module.
 
+Before testing generated Adventures Guild modules, run Developer → Rules PDF Import against the owned local PDF and confirm the extraction status reports 12 Rumors, 19 Scenes, and 0 suspected cut-off warnings.
+
 | # | Mechanic | PDF | How to trigger | Check |
 |---|----------|-----|----------------|-------|
 | TAG.1 | Rumor Scene install | TAG pp.22-24, scenes pp.25-31 | Select Rumor Scene; enter 1-12; Create adventure | Installed adventure title names the rumor; `source.parameters.tag_reference` has scene/page/reward notes; finale uses the TAG-specific foe profile where one is defined |
-| TAG.2 | Medusa rumor exact foe | TAG pp.22, 25-26 | Rumor Scene Detail `2` | Final room is Xasartha's cabin; foe spawn is Medusa; notes mention Scene 10 assassins, Scene 1 pendant, and source pages |
+| TAG.2 | Medusa rumor exact foe | TAG pp.22, 25-26 | Rumor Scene Detail `2` | Final room is Xasartha's cabin; Scene 10 approach and Scene 1 stealth/reaction choices appear before combat; Xasartha spawns only when the printed result says combat starts; notes mention Scene 1 pendant and source pages |
 | TAG.3 | Thematic Dungeon install | TAG pp.38-48 | Select Thematic Dungeon; enter 1-6 | Title and room text match the theme; tag reference lists target room count, special rules, final foe groups, rewards |
 | TAG.4 | Dragon's Lair theme | TAG pp.39-40 | Thematic Dungeon Detail `3` | Notes mention four-room target, 2-Clue dragon-type reveal, and Young Dragon/Young Red Dragon handling |
 | TAG.5 | Guild Job install | TAG pp.54-59 | Select Guild Job; enter 1-6 or leave blank | Guild table row is used; minor quests carry named source/reward notes; rumor/theme jobs reuse their profiles |

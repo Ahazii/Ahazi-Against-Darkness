@@ -4267,6 +4267,10 @@ async function renderRulePdfManager() {
   function showRulePdfResult(kind, message, title = "Rules PDF Import") {
     resultBox.replaceChildren(modernStatusRow(title, message, kind === "error" ? "Fix the issue shown here, then run Extract Adventures Guild Narrative again." : "This is the latest upload/extraction result."));
   }
+  function extractionWarningSummary(warnings) {
+    if (!Array.isArray(warnings) || !warnings.length) return "No suspected cut-off entries.";
+    return warnings.slice(0, 8).join(" ");
+  }
   async function refreshList() {
     const payload = await api("/api/rules/pdfs");
     const override = payload.override_status || {};
@@ -4278,6 +4282,7 @@ async function renderRulePdfManager() {
       modernStatusRow("Uploaded PDFs", `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, "These PDFs are user data beside game.db and can be backed up from the appdata folder."),
       modernStatusRow("Override file", payload.override_path || "DATA_DIR/tag_scene_narrative_overrides.json", "Generated modules use this local editable file for player-facing scene prose."),
       modernStatusRow("Extracted narrative", override.exists ? `${override.rumors || 0} rumor(s), ${override.scenes || 0} scene(s), ${override.scene_branches || 0} branch(es)` : "No local override file found", override.error || "Counts are read from DATA_DIR/tag_scene_narrative_overrides.json and show what generated Adventures Guild modules can use."),
+      modernStatusRow("Extraction warnings", `${(override.extraction_warnings || []).length} suspected issue(s)`, extractionWarningSummary(override.extraction_warnings)),
       modernStatusRow("Last extraction", override.modified_at || "Not extracted yet", "Timestamp is the local override file modified time on the server."),
       modernStatusRow("Packaged PDFs", `${(payload.packaged || []).length} bundled/local Rules folder file(s) visible read-only`, "Upload copies into DATA_DIR/rules when you want extraction to write local override data."),
       modernStatusRow("PDF boundary", "Local-only copied prose", "Exact PDF prose is written only to DATA_DIR/tag_scene_narrative_overrides.json and is not committed or redistributed by the app repository.")
@@ -4315,7 +4320,8 @@ async function renderRulePdfManager() {
           method: "POST",
           body: JSON.stringify({ filename: uploadedSelect.value, overwrite: overwrite.checked }),
         });
-        const message = `${result.message} ${result.changed_fields || 0} field(s) changed; ${result.skipped_existing_fields || 0} preserved. Rumors found: ${result.rumors_found || 0}; scenes found: ${result.scenes_found || 0}; scene branches found: ${result.scene_branches_found || 0}.`;
+        const warningCount = (result.extraction_warnings || []).length;
+        const message = `${result.message} ${result.changed_fields || 0} field(s) changed; ${result.skipped_existing_fields || 0} preserved. Rumors found: ${result.rumors_found || 0}; scenes found: ${result.scenes_found || 0}; scene branches found: ${result.scene_branches_found || 0}; extraction warnings: ${warningCount}.`;
         setStatus(message);
         showRulePdfResult("ok", message, "Extraction complete");
         await refreshList();

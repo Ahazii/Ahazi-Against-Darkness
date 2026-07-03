@@ -33,6 +33,7 @@ from .engine.adventure_import import (
     seed_bundled_adventures,
 )
 from .engine.adventure_allowlists import build_adventure_allowlists
+from .engine.adventure_foes import spawn_manifest_foes
 from .engine.adventure_manifest import validate_adventure_manifest
 from .engine.adventure_session import create_session_from_manifest
 from .engine.random_dungeon import RandomDungeonEngine
@@ -469,6 +470,7 @@ def _tag_narrative_override_status() -> dict[str, Any]:
         "rumors": 0,
         "scenes": 0,
         "scene_branches": 0,
+        "extraction_warnings": [],
         "schema_version": 0,
         "note": "",
         "error": "",
@@ -487,10 +489,12 @@ def _tag_narrative_override_status() -> dict[str, Any]:
     tag = data.get("tag") if isinstance(data, dict) else {}
     rumor = tag.get("rumor") if isinstance(tag, dict) else {}
     scene = tag.get("scene") if isinstance(tag, dict) else {}
+    extraction_warnings = tag.get("last_extraction_warnings") if isinstance(tag, dict) else []
     status["schema_version"] = data.get("schema_version", 0) if isinstance(data, dict) else 0
     status["note"] = str(data.get("note") or "") if isinstance(data, dict) else ""
     status["rumors"] = len(rumor) if isinstance(rumor, dict) else 0
     status["scenes"] = len(scene) if isinstance(scene, dict) else 0
+    status["extraction_warnings"] = extraction_warnings if isinstance(extraction_warnings, list) else []
     if isinstance(scene, dict):
         status["scene_branches"] = sum(
             len(item.get("branches") or [])
@@ -2910,7 +2914,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Rules PDF extraction status",
             "shown_in": "Developer > Rules PDF Import.",
-            "player_use": "Shows uploaded PDF count, override-file path, extracted rumor count, extracted scene count, extracted branch count, last override-file modified time, and whether the local file has a parse error.",
+            "player_use": "Shows uploaded PDF count, override-file path, extracted rumor count, extracted scene count, extracted branch count, suspected cut-off extraction warnings, last override-file modified time, and whether the local file has a parse error.",
             "pdf_boundary": "The status reads local user data beside game.db. Exact copied PDF prose is not committed, bundled, or redistributed.",
         },
         {
@@ -2940,7 +2944,7 @@ def _rules_tables_payload() -> dict:
         {
             "surface": "Generated adventure diagnostics",
             "shown_in": "Adventure View toolbar and Ongoing Quest generated closeout panel.",
-            "player_use": "Shows prompt coverage, current room prompt/action status, local narrative extraction status, scene-branch counts, missing prompt errors, missing branch-target errors, and why the Advanced / Manual Actions fallback is visible. Copy Narrative Report copies the exact player-facing Narrative first and debugging context afterwards.",
+            "player_use": "Shows prompt coverage, current room prompt/action status, local narrative extraction status, scene-branch counts, missing prompt errors, missing branch-target errors, and why the Advanced / Manual Actions fallback is visible. A recursive generated-module audit covers all 12 Rumors, 6 Treasure Maps, 6 Thematic Dungeons, and 6 Guild Jobs for scene-specific actions and stale duplicate text. Copy Narrative Report copies the exact player-facing Narrative first and debugging context afterwards.",
             "pdf_boundary": "Diagnostics report app metadata only. They do not reveal copied PDF prose or choose between printed branch options.",
         },
         {
@@ -4548,6 +4552,44 @@ def _update_generated_tag_procedure_state(session: SessionState, branch_action: 
     quest.tag_generated_lead_state = state
 
 
+def _spawn_generated_tag_foes_from_choice(session: SessionState, branch_action: str, entry: Any) -> bool:
+    if not _is_generated_tag_session(session):
+        return False
+    if branch_action not in {"medusa_stealth_approach", "medusa_reaction"}:
+        return False
+    tile = random_engine._current_tile(session)
+    room_id = _imported_room_id_for_tile(session, tile)
+    if room_id != "tag-final-scene" or any(enemy.life > 0 for enemy in tile.enemies):
+        return False
+    tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference") or {}
+    if not isinstance(tag_ref, dict) or int(tag_ref.get("rumor_number") or 0) != 2:
+        return False
+    should_fight = branch_action == "medusa_stealth_approach" or int(getattr(entry, "roll", 0) or 0) >= 3
+    if not should_fight:
+        return False
+    foes = tag_ref.get("final_foes") or [{"name": "Medusa", "count": 1}]
+    spawned = spawn_manifest_foes(random_engine.rules.monsters(), foes, random_engine._highest_character_level(session.party))
+    if not spawned:
+        return False
+    tile.enemies.extend(spawned)
+    tile.initial_enemy_count = len(tile.enemies)
+    session.log.append("Scene 1: Xasartha enters the fight after the printed approach/reaction result.")
+    random_engine._begin_combat(
+        session,
+        "Medusa combat begins from the printed Scene 1 result.",
+        tile=tile,
+        show_rolls=True,
+        allow_final_boss_check=False,
+        party_strikes_first=branch_action == "medusa_stealth_approach" and "success" in str(getattr(entry, "result_text", "")).lower(),
+    )
+    session.reaction_pending = False
+    session.reaction_checked = True
+    session.reaction_key = "fight_to_death" if int(getattr(entry, "roll", 0) or 0) == 6 else "fight"
+    if session.log and session.log[-1] == "Choose: Check Reactions, or attack immediately (Fight Round or any voluntary combat spell).":
+        session.log.pop()
+    return True
+
+
 @app.post("/api/sessions/{session_id}/tag-treasure-map-signoff")
 async def session_tag_treasure_map_signoff(session_id: str, payload: dict[str, Any]) -> SessionState:
     session = store.get("sessions", session_id, SessionState.model_validate)
@@ -4730,6 +4772,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     _update_generated_tag_procedure_state(session, branch_action, entry)
     if entry.result_text and entry.result_text not in session.log:
         session.log.append(f"Adventures Guild procedure: {entry.result_text}")
+    _spawn_generated_tag_foes_from_choice(session, branch_action, entry)
     if branch_action == "map_cave_room_count":
         next_action = (
             session.active_quest.tag_generated_lead_state.get("next_action")

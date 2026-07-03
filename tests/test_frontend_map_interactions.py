@@ -2034,7 +2034,11 @@ def test_current_objective_runs_direct_tag_purchase_actions_without_modal() -> N
     assert "chooseTagDirectBranchCharacter" in APP_JS
     assert "tagDirectBranchBlockedReason" in APP_JS
     assert "directTagSceneAllowed" in APP_JS
-    assert 'DIRECT_TAG_SCENE_ACTIONS = new Set(["deoldyn_training"])' in APP_JS
+    assert "const DIRECT_TAG_SCENE_ACTIONS = new Set([" in APP_JS
+    assert '"medusa_pendant"' in APP_JS
+    assert '"mutant_fish_rations"' in APP_JS
+    assert '"dragon_type_reveal"' in APP_JS
+    assert '"temple_dungeon_handoff"' in APP_JS
     assert "runTagBranchActionWithDefaults(defaults).catch(handleError)" in APP_JS
     assert "runTagSceneActionWithDefaults(defaults).catch(handleError)" in APP_JS
     assert 'openTagActionsWithDefaults(defaults);' in APP_JS

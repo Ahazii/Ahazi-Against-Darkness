@@ -463,6 +463,8 @@ def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
     assert reference["pdf_pages"] == "TAG pp.22, 25-26"
     assert reference["final_foe_proxy"] == "Medusa"
     assert "Pendant worth 260 gp" in reference["rewards"]
+    assert reference["finale_mode"] == "choice"
+    assert reference["final_foes"] == [{"name": "Medusa", "count": 1}]
     assert "room_prompts" in reference
     assert reference["room_prompts"]["tag-complication"]["actions"][0]["action_value"] == "parley_success"
     assert not any(action["action_value"] == "claim_reward" for action in reference["room_prompts"]["tag-final-scene"]["actions"])
@@ -479,7 +481,7 @@ def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
         for action in reference["room_prompts"]["tag-final-scene"]["actions"]
     )
     final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
-    assert final_room["triggers"][0]["encounter"]["foes"] == [{"name": "Medusa", "count": 1}]
+    assert "encounter" not in final_room["triggers"][0]
 
 
 def test_tag_manifest_uses_user_editable_narrative_overrides(tmp_path, monkeypatch) -> None:
@@ -841,6 +843,43 @@ def test_tag_pdf_page_joiner_keeps_wrapped_rumor_paragraph_and_branch() -> None:
     assert 10 in scenes
 
 
+def test_tag_pdf_cleaner_ignores_printed_page_numbers_inside_entries() -> None:
+    text = tag_campaign._clean_pdf_text(
+        "\n".join(
+            [
+                "Rumors (d12)",
+                "2",
+                "trying to hire her for her",
+                "23",
+                "services. If you want to investigate,",
+                "go to  Scene 10.",
+                "Scenes",
+            ]
+        )
+    )
+
+    rumors = tag_campaign._extract_tag_pdf_rumors(text)
+
+    assert rumors[2] == "trying to hire her for her services. If you want to investigate, go to Scene 10."
+    assert tag_campaign._audit_tag_pdf_extraction({2: rumors[2]}, {10: "Complete scene text."})[0].startswith("Missing Rumor")
+
+
+def test_bundled_tag_pdf_extraction_keeps_medusa_rumor_page_wrap() -> None:
+    pdf = Path("Rules/Tales_from_the_adventurers_guild.pdf")
+    if not pdf.exists():
+        return
+
+    text = tag_campaign._extract_tag_pdf_text(pdf)
+    rumors = tag_campaign._extract_tag_pdf_rumors(text)
+    scenes = tag_campaign._extract_tag_pdf_scenes(text)
+    warnings = tag_campaign._audit_tag_pdf_extraction(rumors, scenes)
+
+    assert "for her services. If you want to investigate, go to Scene 10." in rumors[2]
+    assert len(rumors) == 12
+    assert len(scenes) == 19
+    assert not [warning for warning in warnings if "may be cut off" in warning]
+
+
 def test_tag_pdf_scene_parser_keeps_inline_scene_branches_inside_current_scene() -> None:
     text = "\n".join(
         [
@@ -1059,6 +1098,7 @@ def test_tag_rumor_manifests_include_contextual_scene_procedure_prompts() -> Non
         "4": {"mutant_fish_hypnosis", "mutant_fish_rations", "mark_minor_encounters"},
         "5": {"dragon_type_reveal"},
         "6": {"leprechaun_shoes", "leprechaun_illusion_spell"},
+        "7": {"temple_dungeon_handoff"},
         "9": {"daroc_cat"},
         "10": {"gargoyle_count", "gargoyle_surprise", "gargoyle_skin", "gargoyle_bounty"},
         "11": {"deoldyn_training", "mark_training_xp_roll"},
@@ -1142,8 +1182,8 @@ def test_tag_treasure_map_manifests_include_destination_procedure_prompts() -> N
         assert any("Guild" in item or "banking" in item for item in reference["room_prompts"]["tag-final-scene"]["checklist"])
         assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in reference["room_prompts"].values())
         descriptions = " ".join(str(room.get("description", "")) for room in manifest["rooms"])
-        assert "last warmth of the home settlement" in descriptions
-        assert "comes due" in descriptions
+        assert "last warmth of the home settlement" not in descriptions
+        assert "This is where the lead comes due" not in descriptions
         assert "Apply The Map Leads To" not in reference["rewards"]
         assert "procedure" in reference["rewards"]
         assert reference["side_reward_note"]
@@ -1191,7 +1231,7 @@ def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
         descriptions = " ".join(str(room.get("description", "")) for room in manifest["rooms"])
         assert "lead stops behaving like a route" not in descriptions
         assert "Complication" in descriptions or keyword.lower() in descriptions.lower()
-        assert "comes due" in descriptions
+        assert "This is where the lead comes due" not in descriptions
         joined = " ".join(reference["module_profile"]["procedure"] + reference["module_profile"]["signoff_checks"])
         assert keyword.lower() in joined.lower()
         actions = reference["room_prompts"]["tag-complication"]["actions"] + reference["room_prompts"]["tag-final-scene"]["actions"]
@@ -1208,6 +1248,79 @@ def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
             assert {"minotaur_maze_lost_check", "minotaur_maze_wandering", "minotaur_maze_event", "unlock_scene"} <= action_values
         if detail == "6":
             assert {"bandit_stolen_goods_check", "capture_alive", "bandit_chieftain_capture"} <= action_values
+
+
+def test_all_generated_tag_modules_have_playable_scene_actions_and_clean_room_copy(monkeypatch) -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    cases = {
+        "rumor": [str(i) for i in range(1, 13)],
+        "treasure_map": [str(i) for i in range(1, 7)],
+        "thematic_dungeon": [str(i) for i in range(1, 7)],
+        "guild_job": [str(i) for i in range(1, 7)],
+    }
+    stale_phrases = [
+        "The lead stops behaving",
+        "TAG guidance",
+        "TAG source",
+        "Adventures Guild guidance",
+        "Adventures Guild actions here",
+        "Check final foe",
+        "Reward note:",
+        "you walk into a room",
+        "This is where the lead comes due",
+        "last warmth of the home settlement",
+    ]
+    generic_actions = {
+        "social_choice",
+        "skip_scene",
+        "claim_reward",
+        "mark_scene_xp",
+        "parley_success",
+        "parley_failed",
+        "clue_gate_unlocked",
+        "clue_gate_blocked",
+        "final_route",
+        "unlock_scene",
+    }
+
+    for lead_type, details in cases.items():
+        for detail in details:
+            campaign = default_campaign()
+            clean_detail = detail
+            if lead_type == "guild_job":
+                monkeypatch.setattr(tag_campaign, "roll_d6", lambda roll=int(detail): roll)
+                clean_detail = "1"
+            manifest, _entry = build_tag_adventure_manifest(campaign, lead_type=lead_type, detail=clean_detail)
+            result = validate_adventure_manifest(manifest, rules_repo=repo)
+            assert result.valid, (lead_type, detail, result.errors)
+            reference = manifest["source"]["parameters"]["tag_reference"]
+            prompts = reference["room_prompts"]
+            room_text = " ".join(
+                " ".join(
+                    [
+                        str(room.get("title", "")),
+                        str(room.get("description", "")),
+                        " ".join(str(trigger.get("log", "")) for trigger in room.get("triggers", []) if isinstance(trigger, dict)),
+                    ]
+                )
+                for room in manifest["rooms"]
+            )
+            prompt_text = " ".join(str(prompt.get("body", "")) for prompt in prompts.values())
+            for phrase in stale_phrases:
+                assert phrase.lower() not in room_text.lower(), (lead_type, detail, phrase)
+                assert phrase.lower() not in prompt_text.lower(), (lead_type, detail, phrase)
+
+            actions = prompts["tag-complication"]["actions"] + prompts["tag-final-scene"]["actions"]
+            specific = [
+                action.get("action_value")
+                for action in actions
+                if action.get("action_value") and action.get("action_value") not in generic_actions
+            ]
+            assert specific, (lead_type, detail)
+
+            if lead_type == "rumor" and detail == "2":
+                final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+                assert "encounter" not in final_room["triggers"][0]
 
 
 def test_tag_remaining_guild_jobs_carry_pdf_module_profiles(monkeypatch) -> None:

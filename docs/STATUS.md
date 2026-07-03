@@ -1,8 +1,11 @@
 # Current Status
 
-Last updated: 2026-07-02
+Last updated: 2026-07-03
 
 ## Summary
+
+- **Generated Adventures Guild recursive module audit pass (2026-07-03):** All 30 generated module cases (12 Rumors, 6 Treasure Maps, 6 Thematic Dungeons, 6 Guild Jobs) are now regression-audited for scene-specific prompt actions and stale duplicate generated prose. Shared generated-room copy no longer emits repeated TAG guidance/source/finale boilerplate in new modules. Rumor 2 now defers Xasartha's Medusa encounter until the printed Scene 1 stealth/reaction choice says combat starts, and the Scene 10/Scene 1 buttons run directly from prompt UI. Rumor 7 now has a dedicated Tamas Zeya temple-dungeon handoff action.
+- **Adventures Guild PDF extraction completeness pass (2026-07-03):** Rules PDF Import now strips standalone printed page numbers before parsing Rumor/Scene prose, fixing page-wrapped entries such as Rumor 2 ending `for her services. If you want to investigate, go to Scene 10.` Developer extraction status now reports suspected cut-off/missing-entry warnings from the local override metadata, and regression tests check the bundled PDF extracts all 12 Rumors, all 19 Scenes, and no cut-off Rumor/Scene endings.
 
 The project is a FastAPI + SQLite random dungeon with a browser UI, structured
 rule tables, visual map element editor, an advanced Expanded Edition procedural

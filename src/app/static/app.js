@@ -11067,7 +11067,9 @@ function handleError(error) {
 
 const DIRECT_TAG_BRANCH_ACTIONS = new Set([
   "tag_ambush_chance",
+  "temple_dungeon_handoff",
   "medusa_assassin_ambush",
+  "medusa_stealth_approach",
   "medusa_reaction",
   "gargoyle_count",
   "gargoyle_surprise",
@@ -11111,7 +11113,19 @@ function directTagRouteAllowed(defaults = {}) {
   return DIRECT_TAG_ROUTE_ACTIONS.has(defaults.routeAction || "") && !(defaults.routeAction === "clue_gate_unlocked" && Number(defaults.amount || 0) > 0);
 }
 
-const DIRECT_TAG_SCENE_ACTIONS = new Set(["deoldyn_training"]);
+const DIRECT_TAG_SCENE_ACTIONS = new Set([
+  "medusa_pendant",
+  "gargoyle_bounty",
+  "mutant_fish_rations",
+  "shaura_reward",
+  "daroc_cat",
+  "agaratha",
+  "deoldyn_training",
+  "dragon_type_reveal",
+  "bandit_chieftain_capture",
+  "gorungar_head",
+  "gorungar_alive",
+]);
 
 function directTagSceneAllowed(defaults = {}) {
   return DIRECT_TAG_SCENE_ACTIONS.has(defaults.sceneAction || "");
@@ -24133,8 +24147,12 @@ function renderTagRelevantActions(session = state.session) {
     const defaults = generatedTagPromptActionDefaults(action, fallback, tagReference);
     setButtonTooltip(btn, `${tooltip} ${generatedTagPromptActionExplanation(promptData, action)} Confirm the PDF/player choice before applying.`);
     btn.addEventListener("click", () => {
-      if (directTagRouteAllowed(defaults)) {
+      if (directTagBranchAllowed(defaults)) {
+        runTagBranchActionWithDefaults(defaults).catch(handleError);
+      } else if (directTagRouteAllowed(defaults)) {
         runTagRouteActionWithDefaults(defaults).catch(handleError);
+      } else if (directTagSceneAllowed(defaults)) {
+        runTagSceneActionWithDefaults(defaults).catch(handleError);
       } else {
         openTagActionsWithDefaults(defaults);
       }

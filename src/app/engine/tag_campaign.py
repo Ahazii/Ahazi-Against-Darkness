@@ -205,6 +205,8 @@ def _room_override_text(profile: dict[str, object], room_id: str, key: str = "de
 
 
 def _clean_pdf_text(text: str) -> str:
+    import re
+
     lines: list[str] = []
     for raw in text.replace("\r\n", "\n").replace("\r", "\n").splitlines():
         line = raw.strip()
@@ -213,6 +215,8 @@ def _clean_pdf_text(text: str) -> str:
         if "James Banner" in line and "Order #" in line:
             continue
         if line in {"Tales from the Adventurers' Guild", "Tales from the Adventurers’ Guild"}:
+            continue
+        if re.fullmatch(r"(1[3-9]|[2-9]\d|\d{3})", line):
             continue
         lines.append(line)
     joined = "\n".join(lines).replace("-\n", "")
@@ -280,6 +284,10 @@ def _extract_tag_pdf_text(pdf_path: Path) -> str:
         raise
 
 
+def _normalize_tag_pdf_body(text: str) -> str:
+    return " ".join(str(text or "").split()).strip()
+
+
 def _extract_numbered_blocks(text: str, start_marker: str, stop_markers: tuple[str, ...]) -> dict[int, str]:
     start = text.lower().find(start_marker.lower())
     if start < 0:
@@ -304,7 +312,7 @@ def _extract_numbered_blocks(text: str, start_marker: str, stop_markers: tuple[s
             continue
         if current is not None:
             blocks[current].append(clean)
-    return {key: " ".join(value).strip() for key, value in blocks.items() if " ".join(value).strip()}
+    return {key: _normalize_tag_pdf_body(" ".join(value)) for key, value in blocks.items() if _normalize_tag_pdf_body(" ".join(value))}
 
 
 def _extract_tag_pdf_rumors(text: str) -> dict[int, str]:
@@ -336,7 +344,7 @@ def _extract_tag_pdf_rumors(text: str) -> dict[int, str]:
             continue
         if current is not None:
             blocks[current].append(clean)
-    return {key: " ".join(value).strip() for key, value in blocks.items() if " ".join(value).strip()}
+    return {key: _normalize_tag_pdf_body(" ".join(value)) for key, value in blocks.items() if _normalize_tag_pdf_body(" ".join(value))}
 
 
 def _extract_tag_pdf_scenes(text: str) -> dict[int, str]:
@@ -359,7 +367,7 @@ def _extract_tag_pdf_scenes(text: str) -> dict[int, str]:
         end = min(next_heading, hard_stop)
         if start >= hard_stop:
             continue
-        body = " ".join(text[start:end].split()).strip()
+        body = _normalize_tag_pdf_body(text[start:end])
         if body:
             scenes[number] = body
     return scenes
@@ -406,6 +414,37 @@ def _extract_tag_scene_branches(scene_number: int, text: str) -> list[dict[str, 
             }
         )
     return branches
+
+
+def _tag_pdf_text_looks_cut_off(text: str) -> bool:
+    body = " ".join(str(text or "").split())
+    if not body:
+        return True
+    if body[-1] in ".!?\"”')]>":
+        return False
+    tail_words = body.rsplit(" ", 6)[-6:]
+    if any(word.lower().strip(".,;:!?\"'()[]") in {"scene", "gp", "xp"} for word in tail_words):
+        return True
+    return len(body) < 40
+
+
+def _audit_tag_pdf_extraction(rumors: dict[int, str], scenes: dict[int, str]) -> list[str]:
+    warnings: list[str] = []
+    missing_rumors = [number for number in range(1, 13) if number not in rumors]
+    if missing_rumors:
+        warnings.append(f"Missing Rumor entries: {', '.join(str(number) for number in missing_rumors)}.")
+    missing_scenes = [number for number in range(1, 20) if number not in scenes]
+    if missing_scenes:
+        warnings.append(f"Missing Scene entries: {', '.join(str(number) for number in missing_scenes)}.")
+    for number, body in sorted(rumors.items()):
+        if _tag_pdf_text_looks_cut_off(body):
+            warnings.append(f"Rumor {number} may be cut off: ends with {body[-80:]!r}.")
+        if not _scene_refs_from_text(body):
+            warnings.append(f"Rumor {number} has no extracted Scene reference.")
+    for number, body in sorted(scenes.items()):
+        if _tag_pdf_text_looks_cut_off(body):
+            warnings.append(f"Scene {number} may be cut off: ends with {body[-80:]!r}.")
+    return warnings
 
 
 def _scene_refs_from_profile(profile: dict[str, object]) -> list[int]:
@@ -470,6 +509,7 @@ def merge_tag_pdf_narrative_overrides(pdf_path: Path, *, overwrite: bool = False
     text = _extract_tag_pdf_text(pdf_path)
     rumors = _extract_tag_pdf_rumors(text)
     scenes = _extract_tag_pdf_scenes(text)
+    extraction_warnings = _audit_tag_pdf_extraction(rumors, scenes)
     path = tag_narrative_overrides_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     data = load_tag_narrative_overrides() or {"schema_version": 1}
@@ -482,6 +522,8 @@ def merge_tag_pdf_narrative_overrides(pdf_path: Path, *, overwrite: bool = False
     if not isinstance(tag, dict):
         data["tag"] = {}
         tag = data["tag"]
+    tag["last_extraction_warnings"] = extraction_warnings
+    tag["last_extraction_pdf"] = pdf_path.name
     rumor_section = tag.setdefault("rumor", {})
     scene_section = tag.setdefault("scene", {})
     changed = 0
@@ -565,6 +607,7 @@ def merge_tag_pdf_narrative_overrides(pdf_path: Path, *, overwrite: bool = False
         "rumors_found": len(rumors),
         "scenes_found": len(scenes),
         "scene_branches_found": sum(len(_extract_tag_scene_branches(number, body)) for number, body in scenes.items()),
+        "extraction_warnings": extraction_warnings,
         "changed_fields": changed,
         "skipped_existing_fields": skipped,
     }
@@ -1045,6 +1088,7 @@ TAG_BRANCH_ACTIONS: dict[str, str] = {
     "bandit_stolen_goods_check": "Bandit stolen-goods check",
     "bofto_scene_choice": "Bofto scene choice",
     "tag_ambush_chance": "TAG ambush chance",
+    "temple_dungeon_handoff": "Tamas Zeya temple dungeon handoff",
     "medusa_assassin_ambush": "Medusa assassin ambush",
     "medusa_stealth_approach": "Medusa stealth approach",
     "medusa_reaction": "Medusa reaction roll",
@@ -1269,6 +1313,9 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_foe": "Medusa",
         "final_count": 1,
         "rewards": "Pendant worth 260 gp and necros; trying it can grant Luck as described in Scene 1.",
+        "finale_mode": "choice",
+        "defer_final_encounter": True,
+        "finale_instruction": "Choose the printed Scene 1 approach before combat: sneak in to surprise Xasartha, or shout from outside and roll her reactions. If that result leads to combat, fight Xasartha using the Medusa profile.",
         "complication_prompt_actions": [
             {
                 "label": "Resolve assassin approach",
@@ -1302,8 +1349,8 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
             },
         ],
         "rules": [
-            "Assassin count and parley are not auto-rolled inside the module.",
-            "Use the Medusa combat profile for the final encounter.",
+            "Scene 10 approach and Scene 1 cabin choice must resolve before Xasartha is spawned.",
+            "Use Xasartha's printed Stealth/reaction options before combat; do not treat her as an automatic generic Final Boss.",
         ],
     },
     3: {
@@ -1455,6 +1502,15 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
                 "Record any temple-specific treasure or finale changes manually.",
             ],
         },
+        "final_prompt_actions": [
+            {
+                "label": "Record temple dungeon",
+                "tooltip": "Record that Scene 15 has become a seven-room temple dungeon handoff using 4AD or Lost Temples support rules.",
+                "action_type": "branch",
+                "action_value": "temple_dungeon_handoff",
+                "reference": "Scene 15 seven-room temple dungeon",
+            }
+        ],
         "rules": ["This module is a compact handoff; expand to seven rooms if playing the PDF literally."],
     },
     8: {
@@ -4095,6 +4151,10 @@ def resolve_tag_branch_action(
             parts.append(f"Ambush chance d6={roll} vs {target}-in-6: encounter occurs. Roll on {table}.")
         else:
             parts.append(f"Ambush chance d6={roll} vs {target}-in-6: no encounter.")
+    elif clean_action == "temple_dungeon_handoff":
+        parts.append(
+            "Scene 15 recorded: generate and play a seven-room temple dungeon using standard 4AD rooms, or Lost Temples of Qaarra if your table uses that book. Treat this generated module as the compact handoff and record treasure, XP, Guild share, and closeout after the expanded dungeon is resolved."
+        )
     elif clean_action == "medusa_assassin_ambush":
         failed = cost > 0
         if failed:
@@ -6022,6 +6082,7 @@ def _tag_manifest(
     final_room_description = str(profile.get("final_description") or final_room_description)
     finale_mode = _tag_finale_mode(profile)
     noncombat_finale = finale_mode in {"vendor", "service", "social", "choice", "procedure"} and not profile.get("final_foe")
+    defer_final_encounter = bool(profile.get("defer_final_encounter"))
     final_foe = "" if noncombat_finale else str(profile.get("final_foe") or "Wraith")
     final_count = 0 if noncombat_finale else max(1, int(profile.get("final_count") or 1))
     final_extra_foes = [
@@ -6105,8 +6166,7 @@ def _tag_manifest(
                 "title": _room_title(profile, "tag-lead-entry", "Lead Trail"),
                 "description": _room_description(profile, "tag-lead-entry", (
                     f"{profile.get('entry') or 'The party follows a TAG campaign lead out of the settlement.'} "
-                    "The last warmth of the home settlement is behind them now: boot-mud, market smoke, and the contact's warning all narrow into one uneasy trail. "
-                    "The main lead presses north, while a side clue lies east for players who want leverage before the trouble shows its teeth."
+                    "The trail opens from the settlement into the first hard choice of the lead. The main route presses north, while a side clue lies east for players who want leverage before the trouble shows its teeth."
                 )),
                 "environment": "dungeon",
                 "exits": [
@@ -6148,7 +6208,7 @@ def _tag_manifest(
                     {
                         "when": "on_search",
                         "once": True,
-                        "log": _room_log(profile, "tag-side-clue", f"TAG guidance: {profile.get('side_reward_note') or profile.get('rewards') or 'Record any printed reward from the source scene.'}"),
+                        "log": _room_log(profile, "tag-side-clue", f"Side clue: {profile.get('side_reward_note') or profile.get('rewards') or 'Record any printed reward from the source scene.'}"),
                         "treasure": {"gold": 12, "items": []},
                     }
                 ],
@@ -6188,7 +6248,7 @@ def _tag_manifest(
                     {
                         "when": "on_enter",
                         "once": True,
-                        "log": _room_log(profile, "tag-complication", f"TAG source {profile.get('pdf_pages') or 'page ?'}: {profile.get('complication') or 'Resolve the lead complication.'}"),
+                        "log": _room_log(profile, "tag-complication", str(profile.get("complication_log") or profile.get("complication") or "The lead tightens here; resolve any visible room choice, roll, or procedure before moving on.")),
                     }
                 ],
             },
@@ -6197,8 +6257,7 @@ def _tag_manifest(
                 "tile_key": "11",
                 "title": _room_title(profile, "tag-final-scene", final_room_title),
                 "description": _room_description(profile, "tag-final-scene", (
-                    f"{final_room_description} "
-                    "This is where the lead comes due: steel, spell, bargain, capture, or proof must turn into a recorded result before the party drags the story back to town."
+                    f"{final_room_description}"
                 )),
                 "exits": [
                     {
@@ -6214,7 +6273,7 @@ def _tag_manifest(
                         "when": "on_enter",
                         "once": True,
                         "log": _room_log(profile, "tag-final-scene", str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions.")),
-                        **({} if noncombat_finale else {"encounter": {"foes": final_foes}}),
+                        **({} if noncombat_finale or defer_final_encounter else {"encounter": {"foes": final_foes}}),
                     }
                 ],
             },
