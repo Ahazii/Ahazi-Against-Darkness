@@ -102,6 +102,11 @@ class IconDefinition(BaseModel):
     notes: str = ""
 
 
+class AppPreferences(BaseModel):
+    id: str = "ui"
+    show_tag_fixed_result_selector: bool = False
+
+
 class CharacterCreate(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     class_id: str = Field(min_length=1, max_length=40)

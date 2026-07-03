@@ -1102,6 +1102,15 @@ def test_party_sheet_styles_cover_nested_hirelings() -> None:
     assert ".edit-party-dialog" in styles
 
 
+def test_shared_button_design_baseline_is_wired() -> None:
+    assert "--button-min-height: 40px" in STYLES_CSS
+    assert "button:hover,\nbutton:focus-visible" in STYLES_CSS
+    assert ".link-button:hover,\n.link-button:focus-visible" in STYLES_CSS
+    assert ".danger-button:hover,\n.danger-button:focus-visible" in STYLES_CSS
+    assert ".map-controls button {\n  min-width: 22px;" in STYLES_CSS
+    assert ".nudge-button {\n  width: 34px;\n  min-width: 34px;" in STYLES_CSS
+
+
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:
     advance_body = _function_body("advance", APP_JS)
     assert "shouldConfirmAdventureSpell" not in APP_JS
@@ -2467,9 +2476,12 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Reference\", \"Review closeout" in MODERN_PAGES_JS
     assert ".modern-tabs" in STYLES_CSS
     assert "renderTagWorkflowDashboard(\"go\")," in MODERN_PAGES_JS
-    assert "modern-tag-lead-detail" not in MODERN_PAGES_JS
+    assert "modern-tag-lead-detail" in MODERN_PAGES_JS
+    assert "TAG_ADVENTURE_FIXED_RESULTS" in MODERN_PAGES_JS
+    assert "show_tag_fixed_result_selector" in MODERN_PAGES_JS
+    assert "Developer Playtest Preferences" in MODERN_PAGES_JS
     assert "leadTypes[Math.floor(Math.random() * leadTypes.length)]" in MODERN_PAGES_JS
-    assert "detail: \"\"" in MODERN_PAGES_JS
+    assert "detail: selectedDetail" in MODERN_PAGES_JS
     assert "go_adventure_tabbed_workflow_table" in MAIN_PY
     assert "exploration_narrative_layout_table" in MAIN_PY
     assert "user_artwork_placeholders_table" in MAIN_PY

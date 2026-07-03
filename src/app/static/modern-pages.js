@@ -10,9 +10,58 @@ const modernState = {
   rulesReference: [],
   artwork: [],
   tables: {},
+  preferences: {},
 };
 
 const MODERN_PREFS_KEY = "ahazi-modern-dashboard-prefs";
+
+const TAG_ADVENTURE_FIXED_RESULTS = {
+  rumor: [
+    ["1", "Rumor 1 - Bofuto's trouble"],
+    ["2", "Rumor 2 - Medusa in the Hunter's Cabin"],
+    ["3", "Rumor 3 - Paladin sword red herring"],
+    ["4", "Rumor 4 - Mutant Fish Under the Bridge"],
+    ["5", "Rumor 5 - Dragon in Disguise"],
+    ["6", "Rumor 6 - Leprechauns at Blackbird Hill"],
+    ["7", "Rumor 7 - Tamas Zeya temple handoff"],
+    ["8", "Rumor 8 - Shaura and the gargoyles"],
+    ["9", "Rumor 9 - Daroc's cat"],
+    ["10", "Rumor 10 - White gargoyles"],
+    ["11", "Rumor 11 - Deoldyn archery training"],
+    ["12", "Rumor 12 - Shinta and Agaratha"],
+  ],
+  treasure_map: [
+    ["1", "Map 1 - Underground caves"],
+    ["2", "Map 2 - Underground temple"],
+    ["3", "Map 3 - Humanoid camp"],
+    ["4", "Map 4 - Underground structure"],
+    ["5", "Map 5 - Boss-only structure"],
+    ["6", "Map 6 - Lich chamber"],
+  ],
+  thematic_dungeon: [
+    ["1", "Theme 1 - Cavern"],
+    ["2", "Theme 2 - Monster lair"],
+    ["3", "Theme 3 - Dragon's Lair"],
+    ["4", "Theme 4 - Undead crypt"],
+    ["5", "Theme 5 - Sewers"],
+    ["6", "Theme 6 - Bandit Hideout"],
+  ],
+  guild_job: [
+    ["1", "Guild Job 1 - Minor quest table"],
+    ["2", "Guild Job 2 - Minor quest table"],
+    ["3", "Guild Job 3 - Minor quest table"],
+    ["4", "Guild Job 4 - Rumor table"],
+    ["5", "Guild Job 5 - Rumor table"],
+    ["6", "Guild Job 6 - Thematic Dungeon table"],
+  ],
+};
+
+const TAG_ADVENTURE_LEAD_TYPES = [
+  ["rumor", "Rumor Scene"],
+  ["treasure_map", "Treasure Map destination"],
+  ["thematic_dungeon", "Thematic Dungeon"],
+  ["guild_job", "Guild Job"],
+];
 
 function readModernPrefs() {
   try {
@@ -1554,7 +1603,7 @@ function adventureReadinessBlocks(rows) {
 }
 
 async function loadCore() {
-  const [classes, characters, parties, adventures, sessions, campaign, profiles] = await Promise.all([
+  const [classes, characters, parties, adventures, sessions, campaign, profiles, preferences] = await Promise.all([
     api("/api/rules/classes"),
     api("/api/characters"),
     api("/api/parties"),
@@ -1562,6 +1611,7 @@ async function loadCore() {
     api("/api/sessions/summaries"),
     api("/api/campaign"),
     api("/api/rules/profiles"),
+    api("/api/preferences"),
   ]);
   modernState.classes = classes;
   modernState.characters = characters;
@@ -1570,6 +1620,7 @@ async function loadCore() {
   modernState.sessions = sessions;
   modernState.campaign = campaign;
   modernState.rulesProfiles = profiles;
+  modernState.preferences = preferences || {};
 }
 
 async function refreshCoreAndRender() {
@@ -3500,32 +3551,49 @@ function renderTagModuleGeneration(selectedAdventureControl = null) {
     "Generate The Adventures Guild Module",
     "Creates a normal playable adventure module from an Adventures Guild rumor, treasure map, thematic dungeon, or Guild job. Printed choices still belong to the player; fixed rolls are automated and reported in the Narrative."
   );
-  const tagLeadType = select("modern-tag-lead-type", "Choose which Adventures Guild lead table to generate from when Random is off.", [
-    ["rumor", "Rumor Scene"],
-    ["treasure_map", "Treasure Map destination"],
-    ["thematic_dungeon", "Thematic Dungeon"],
-    ["guild_job", "Guild Job"],
-  ]);
+  const tagLeadType = select("modern-tag-lead-type", "Choose which Adventures Guild lead table to generate from when Random is off.", TAG_ADVENTURE_LEAD_TYPES);
   const tagLeadRandom = input("checkbox", "modern-tag-lead-random", "Random Adventures Guild lead: choose the lead family and table result randomly when the module is generated.");
   tagLeadRandom.checked = true;
   const randomRow = el("label", "modern-check-row");
   randomRow.title = tagLeadRandom.title;
   randomRow.append(tagLeadRandom, el("span", "", "Random lead family"));
+  const fixedResult = select("modern-tag-lead-detail", "Developer playtest override: choose the exact printed table result instead of rolling. Hidden unless enabled in Developer.", []);
+  const fixedResultField = field("Fixed result", fixedResult);
+  fixedResultField.classList.add("modern-dev-only-control");
+  function syncFixedResults() {
+    const leadType = tagLeadType.value || "rumor";
+    const current = fixedResult.value || "";
+    fixedResult.replaceChildren(new Option(leadType === "rumor" ? "Random - roll d12" : "Random - roll table", ""));
+    for (const [value, label] of TAG_ADVENTURE_FIXED_RESULTS[leadType] || TAG_ADVENTURE_FIXED_RESULTS.rumor) {
+      const option = new Option(label, value);
+      option.title = `Developer playtest override: force ${label} instead of rolling from the printed table.`;
+      fixedResult.appendChild(option);
+    }
+    fixedResult.value = [...fixedResult.options].some((option) => option.value === current) ? current : "";
+  }
   const syncTagLeadRandom = () => {
     tagLeadType.disabled = tagLeadRandom.checked;
     tagLeadType.closest("label")?.classList.toggle("muted", tagLeadRandom.checked);
+    fixedResult.disabled = tagLeadRandom.checked;
+    fixedResultField.classList.toggle("muted", tagLeadRandom.checked);
   };
+  tagLeadType.addEventListener("change", syncFixedResults);
   tagLeadRandom.addEventListener("change", syncTagLeadRandom);
+  syncFixedResults();
   syncTagLeadRandom();
   tagLead.append(randomRow, field("Lead type", tagLeadType));
+  if (modernState.preferences?.show_tag_fixed_result_selector) tagLead.appendChild(fixedResultField);
   tagLead.appendChild(button("Create Adventures Guild Module", "Create and install an Adventures Guild lead as a playable imported adventure. With Random checked, the app chooses the lead family and table result.", async () => {
-    const leadTypes = ["rumor", "treasure_map", "thematic_dungeon", "guild_job"];
+    const leadTypes = TAG_ADVENTURE_LEAD_TYPES.map(([value]) => value);
     const selectedLeadType = tagLeadRandom.checked
       ? leadTypes[Math.floor(Math.random() * leadTypes.length)]
       : tagLeadType.value;
+    const selectedDetail = !tagLeadRandom.checked && modernState.preferences?.show_tag_fixed_result_selector
+      ? fixedResult.value
+      : "";
     const result = await api("/api/campaign/tag/create-adventure", {
       method: "POST",
-      body: JSON.stringify({ lead_type: selectedLeadType, detail: "" }),
+      body: JSON.stringify({ lead_type: selectedLeadType, detail: selectedDetail }),
     });
     modernState.campaign = result.campaign;
     modernState.adventures = await api("/api/adventures");
@@ -4345,6 +4413,28 @@ async function renderRulePdfManager() {
   return panel;
 }
 
+function renderDeveloperPreferences() {
+  const panel = card("Developer Playtest Preferences", "Developer-only switches for diagnostics and repeatable playtesting. Normal Adventures Guild play should leave fixed result selection off so the app rolls from the printed tables.");
+  const fixed = input("checkbox", "modern-dev-tag-fixed-result-selector", "Show fixed Adventures Guild result selectors in module generators. Use only for repeatable playtests; normal play should roll from the printed tables.");
+  fixed.checked = Boolean(modernState.preferences?.show_tag_fixed_result_selector);
+  const row = el("label", "modern-check-row");
+  row.title = fixed.title;
+  row.append(fixed, el("span", "", "Show Adventures Guild fixed-result selector"));
+  const status = el("p", "muted", fixed.checked ? "Fixed result selectors are visible in Adventure Management." : "Fixed result selectors are hidden; generators roll normally.");
+  fixed.addEventListener("change", async () => {
+    modernState.preferences = await api("/api/preferences", {
+      method: "PUT",
+      body: JSON.stringify({ show_tag_fixed_result_selector: fixed.checked }),
+    });
+    status.textContent = fixed.checked
+      ? "Fixed result selectors are visible in Adventure Management."
+      : "Fixed result selectors are hidden; generators roll normally.";
+    setStatus("Developer preference saved.");
+  });
+  panel.append(row, status);
+  return panel;
+}
+
 function renderGuides() {
   const panel = card("Game Guides", "Standalone guide links and future player-facing guide list.");
   const row = actions();
@@ -4384,6 +4474,7 @@ async function renderDeveloper() {
     })
   );
   tools.appendChild(row);
+  tools.appendChild(renderDeveloperPreferences());
   tools.appendChild(rulePdfMount);
   tools.appendChild(artworkMount);
   if (window.sessionStorage.getItem("ahazi-modern-dev-unlocked") === "1") tools.classList.remove("hidden");

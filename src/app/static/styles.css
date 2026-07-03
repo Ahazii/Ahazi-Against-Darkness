@@ -10,6 +10,15 @@
   --accent-2: #6f9b7a;
   --danger: #b95d4f;
   --cell: 116px;
+  --button-bg: #c68f3b;
+  --button-bg-hover: #d5a853;
+  --button-secondary-bg: #171814;
+  --button-secondary-hover: #23251e;
+  --button-border: #5a5747;
+  --button-radius: 6px;
+  --button-min-height: 40px;
+  --button-padding-x: 14px;
+  --button-padding-y: 7px;
 }
 
 * {
@@ -52,20 +61,21 @@ body.combat-focus-active {
 }
 
 .topbar-link {
-  min-height: 32px;
-  padding: 5px 9px;
-  font-size: 12px;
+  min-height: var(--button-min-height);
+  padding: var(--button-padding-y) var(--button-padding-x);
+  font-size: 13px;
 }
 
 .icon-button {
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #171814;
+  width: var(--button-min-height);
+  min-width: var(--button-min-height);
+  height: var(--button-min-height);
+  min-height: var(--button-min-height);
+  border: 1px solid var(--button-border);
+  border-radius: var(--button-radius);
+  background: var(--button-secondary-bg);
   color: var(--text);
   padding: 0;
   font: 700 16px/1 "Segoe UI", system-ui, sans-serif;
@@ -75,7 +85,7 @@ body.combat-focus-active {
 .icon-button:hover,
 .icon-button:focus-visible {
   border-color: var(--accent);
-  background: #2b2c24;
+  background: var(--button-secondary-hover);
   outline: none;
 }
 
@@ -2151,12 +2161,12 @@ h2 {
 input:not([type="checkbox"]):not([type="radio"]),
 select,
 button {
-  min-height: 32px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
+  min-height: var(--button-min-height);
+  border-radius: var(--button-radius);
+  border: 1px solid var(--button-border);
   background: #171814;
   color: var(--text);
-  padding: 5px 10px;
+  padding: var(--button-padding-y) var(--button-padding-x);
   font: 600 13px/1.25 "Segoe UI", system-ui, sans-serif;
 }
 
@@ -2166,10 +2176,24 @@ button {
   justify-content: center;
   gap: 6px;
   min-width: 72px;
-  border-color: transparent;
-  background: var(--accent);
+  width: auto;
+  max-width: 100%;
+  border-color: var(--button-bg);
+  background: var(--button-bg);
   color: #171814;
   cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+
+button:hover,
+button:focus-visible {
+  border-color: var(--button-bg-hover);
+  background: var(--button-bg-hover);
+  outline: 2px solid transparent;
+  box-shadow: 0 0 0 2px rgba(198, 143, 59, 0.26);
 }
 
 .tag-help-button {
@@ -2187,8 +2211,10 @@ button {
 
 button:disabled {
   background: #4a473b;
+  border-color: #4a473b;
   color: #938873;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 button.action-pending {
@@ -2222,8 +2248,17 @@ body.session-action-pending #save-session:not(.action-pending) {
 
 button.secondary,
 .secondary {
-  border-color: var(--line);
-  background: #171814;
+  border-color: var(--button-border);
+  background: var(--button-secondary-bg);
+  color: var(--text);
+}
+
+button.secondary:hover,
+button.secondary:focus-visible,
+.secondary:hover,
+.secondary:focus-visible {
+  border-color: var(--accent);
+  background: var(--button-secondary-hover);
   color: var(--text);
 }
 
@@ -2311,7 +2346,15 @@ button.modern-dashboard-status-icon {
 }
 
 .danger-button {
+  border-color: var(--danger);
   background: var(--danger);
+  color: #fff7ed;
+}
+
+.danger-button:hover,
+.danger-button:focus-visible {
+  border-color: #d0796a;
+  background: #d0796a;
   color: #fff7ed;
 }
 
@@ -3359,6 +3402,7 @@ button.modern-dashboard-status-icon {
 }
 
 .map-controls button {
+  min-width: 22px;
   min-height: 22px;
   padding: 2px 5px;
   font-size: 11px;
@@ -3866,6 +3910,7 @@ button.modern-dashboard-status-icon {
 }
 
 .log-mode-btn {
+  min-width: 0;
   min-height: 26px;
   border: 0;
   border-radius: 0;
@@ -3907,15 +3952,28 @@ button.modern-dashboard-status-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 38px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: #171814;
+  min-height: var(--button-min-height);
+  min-width: 72px;
+  max-width: 100%;
+  border-radius: var(--button-radius);
+  border: 1px solid var(--button-border);
+  background: var(--button-secondary-bg);
   color: var(--text);
-  padding: 8px 10px;
-  font: inherit;
-  font-weight: 700;
+  padding: var(--button-padding-y) var(--button-padding-x);
+  font: 700 13px/1.25 "Segoe UI", system-ui, sans-serif;
+  text-align: center;
   text-decoration: none;
+  white-space: normal;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.link-button:hover,
+.link-button:focus-visible {
+  border-color: var(--accent);
+  background: var(--button-secondary-hover);
+  color: var(--text);
+  outline: 2px solid transparent;
+  box-shadow: 0 0 0 2px rgba(198, 143, 59, 0.22);
 }
 
 .placed-tile {
@@ -9524,6 +9582,7 @@ input[type="radio"] {
 
 .nudge-button {
   width: 34px;
+  min-width: 34px;
   min-height: 34px;
   padding: 0;
   position: relative;
@@ -9758,6 +9817,7 @@ textarea {
 }
 
 .direction-button {
+  min-width: 0;
   min-height: 32px;
   padding: 4px 6px;
   border-color: var(--line);

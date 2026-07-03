@@ -55,10 +55,10 @@ Some Adventures Guild results are not dungeons. Use the lead-structure classific
 
 Use this workflow when playtesting the generated Adventures Guild modules against `Tales_from_the_adventurers_guild.pdf`.
 
-Before generating fresh modules, use **Developer > Rules PDF Import** to extract your owned Adventures Guild PDF into `DATA_DIR/tag_scene_narrative_overrides.json`. The extraction status should show 12 Rumors, 19 Scenes, and 0 suspected cut-off warnings. If warnings appear, inspect or repair the named local override entries before using them for playtesting.
+Before generating fresh modules, use **Developer > Rules PDF Import** to extract your owned Adventures Guild PDF into `DATA_DIR/tag_scene_narrative_overrides.json`. The extraction status should show 12 Rumors, 19 Scenes, and 0 suspected cut-off warnings. If warnings appear, inspect or repair the named local override entries before using them for playtesting. For repeatable targeted tests, unlock Developer and enable **Show Adventures Guild fixed-result selector**; leave it off for normal rules play so the app rolls from the printed tables.
 
 1. **Prepare a clean test party**: create or choose four living characters, enable TAG banking if you want finance prompts, and save the active party.
-2. **Create the lead**: New Dashboard -> Go Adventure! -> Generate -> Create TAG Adventure Lead. Use **Random** for normal rules play, or choose a numbered result in the **Result** selector when retesting a specific PDF branch. The legacy route still works from Home -> Adventure -> TAG Settlement -> Maps and Adventure Leads. For targeted testing, use these result ranges:
+2. **Create the lead**: New Dashboard -> Adventure Management -> The Adventures Guild -> Create Adventures Guild Module. Use **Random lead family** for normal rules play, or disable Random and choose a numbered **Fixed result** when the Developer playtest preference is enabled and you are retesting a specific PDF branch. The legacy route still works from Home -> Adventure -> TAG Settlement -> Maps and Adventure Leads. For targeted testing, use these result ranges:
    - Rumor Scene: 1-12.
    - Thematic Dungeon: 1-6.
    - Treasure Map destination: 1-6.

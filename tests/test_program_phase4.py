@@ -62,6 +62,20 @@ def test_campaign_api_updates_tag_settlement(client: TestClient) -> None:
     assert payload["settlement_notes"] == "Has a guild apothecary."
 
 
+def test_app_preferences_persist_developer_fixed_result_selector(client: TestClient) -> None:
+    response = client.get("/api/preferences")
+    assert response.status_code == 200
+    assert response.json()["show_tag_fixed_result_selector"] is False
+
+    saved = client.put("/api/preferences", json={"show_tag_fixed_result_selector": True})
+    assert saved.status_code == 200
+    assert saved.json()["show_tag_fixed_result_selector"] is True
+
+    reloaded = client.get("/api/preferences")
+    assert reloaded.status_code == 200
+    assert reloaded.json()["show_tag_fixed_result_selector"] is True
+
+
 def test_campaign_api_travels_to_new_tag_settlement(client: TestClient, monkeypatch) -> None:
     from app.engine import tag_campaign
 
@@ -175,6 +189,7 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         "adventure_management_browser_table",
         "artwork_expansion_plan_table",
         "application_artwork_slots_table",
+        "developer_preferences_table",
         "user_artwork_placeholders_table",
     ]:
         assert key in payload

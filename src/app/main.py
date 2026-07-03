@@ -76,6 +76,7 @@ from .schemas import (
     AdventurePromptParameters,
     AdventurePromptResponse,
     AdventureSkeletonResponse,
+    AppPreferences,
     CampaignState,
     Character,
     CharacterBuyEquipment,
@@ -683,6 +684,24 @@ async def get_campaign() -> CampaignState:
     from .engine.tag_campaign import load_campaign
 
     return load_campaign(store)
+
+
+def _load_app_preferences() -> AppPreferences:
+    return store.get("preferences", "ui", AppPreferences.model_validate) or AppPreferences()
+
+
+@app.get("/api/preferences")
+async def get_preferences() -> AppPreferences:
+    return _load_app_preferences()
+
+
+@app.put("/api/preferences")
+async def update_preferences(payload: dict[str, Any]) -> AppPreferences:
+    prefs = _load_app_preferences()
+    if "show_tag_fixed_result_selector" in payload:
+        prefs.show_tag_fixed_result_selector = _parse_bool(payload.get("show_tag_fixed_result_selector"))
+    store.save("preferences", prefs)
+    return prefs
 
 
 @app.put("/api/campaign")
@@ -2671,6 +2690,24 @@ def _rules_tables_payload() -> dict:
             "path": "DATA_DIR/assets/Application Artwork/developer_section_1600x900.gif",
             "recommended_size": "1600x900",
             "use": "Developer tooling and Artwork Manager artwork.",
+        },
+    ]
+    data["developer_preferences_table"] = [
+        {
+            "preference": "show_tag_fixed_result_selector",
+            "default": "false",
+            "stored_in": "game.db records/preferences/ui",
+            "developer_ui": "Developer Playtest Preferences",
+            "effect": "Shows the fixed Adventures Guild result selector in module generators for repeatable playtests.",
+            "rules_boundary": "Normal play should leave this off so generated Adventures Guild modules roll from the printed tables.",
+        },
+        {
+            "preference": "button_design_baseline",
+            "default": "shared CSS",
+            "stored_in": "src/app/static/styles.css",
+            "developer_ui": "All panels and screens",
+            "effect": "Normal command buttons share a 40px hit target, consistent padding, radius, focus, hover, disabled, primary, secondary, danger, and link-button styling.",
+            "rules_boundary": "UI-only; does not change any PDF mechanic.",
         },
     ]
     data["playtest_triage_workflow_table"] = [

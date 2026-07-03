@@ -93,6 +93,7 @@ const state = {
   sessionRenderCache: {},
   hirelingsCatalog: null,
   campaign: null,
+  preferences: {},
   tagActionContextNote: "",
 };
 
@@ -8685,6 +8686,10 @@ function syncTagAdventureLeadDetailOptions() {
   tagAdventureLeadDetail.value = [...tagAdventureLeadDetail.options].some((option) => option.value === current)
     ? current
     : "";
+  const detailField = tagAdventureLeadDetail.closest("label");
+  const showFixedSelector = Boolean(state.preferences?.show_tag_fixed_result_selector);
+  tagAdventureLeadDetail.disabled = !showFixedSelector;
+  detailField?.classList.toggle("hidden", !showFixedSelector);
 }
 
 const TAG_BRANCH_ACTION_HINTS = {
@@ -10982,7 +10987,7 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedSessionId ? "game" : requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, forsakenDepthsMapElements, forsakenDepthsRiversMapElements, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions, rulesetProfiles, campaign] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, forsakenDepthsMapElements, forsakenDepthsRiversMapElements, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions, rulesetProfiles, campaign, preferences] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
@@ -11003,6 +11008,7 @@ async function loadAll(options = {}) {
       api("/api/sessions/summaries"),
       api("/api/rules/profiles"),
       api("/api/campaign"),
+      api("/api/preferences"),
     ]);
     state.classes = classes;
     state.characters = characters;
@@ -11024,6 +11030,8 @@ async function loadAll(options = {}) {
     state.sessions = sessions;
     state.rulesetProfiles = rulesetProfiles;
     state.campaign = campaign;
+    state.preferences = preferences || {};
+    syncTagAdventureLeadDetailOptions();
     populateRulesetProfileSelect(rulesetProfiles, adventureSelect?.value || "random");
     if (campaignDaysHint && campaign) {
       campaignDaysHint.textContent = `Campaign time: ${campaign.days_passed} day(s) passed · ${campaign.adventures_completed} adventure(s) completed.`;
@@ -13358,11 +13366,12 @@ async function followTagTreasureMap() {
 }
 
 async function createTagAdventureLead() {
+  const fixedSelectorEnabled = Boolean(state.preferences?.show_tag_fixed_result_selector);
   const result = await api("/api/campaign/tag/create-adventure", {
     method: "POST",
     body: JSON.stringify({
       lead_type: tagAdventureLeadType?.value || "rumor",
-      detail: tagAdventureLeadDetail?.value || "",
+      detail: fixedSelectorEnabled ? (tagAdventureLeadDetail?.value || "") : "",
     }),
   });
   state.campaign = result.campaign;
