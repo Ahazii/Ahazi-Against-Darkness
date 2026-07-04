@@ -2131,11 +2131,19 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "Imported Content Browser" in MODERN_PAGES_JS
     assert "Location Preview" in MODERN_PAGES_JS
     assert "Location Editor" in MODERN_PAGES_JS
+    assert "Imported Record Editor" in MODERN_PAGES_JS
     assert "Linked Foes" in MODERN_PAGES_JS
     assert "Linked Items" in MODERN_PAGES_JS
     assert "Linked Procedures" in MODERN_PAGES_JS
+    assert "Save Record" in MODERN_PAGES_JS
+    assert "Extra JSON" in MODERN_PAGES_JS
+    assert "Rows JSON" in MODERN_PAGES_JS
+    assert "Steps JSON" in MODERN_PAGES_JS
+    assert "Used By Locations" in MODERN_PAGES_JS
     assert "Exits / Choices JSON" in MODERN_PAGES_JS
     assert "renderLocationPreview" in MODERN_PAGES_JS
+    assert "renderPackageRecordPreview" in MODERN_PAGES_JS
+    assert "renderAdventurePackageRecordEditor" in MODERN_PAGES_JS
     assert "packageNodeLinkedRecords" in MODERN_PAGES_JS
     assert "Extract Candidate Lists" in MODERN_PAGES_JS
     assert "Locations" in MODERN_PAGES_JS

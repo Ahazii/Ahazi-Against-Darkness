@@ -195,6 +195,52 @@ Use linked ids when possible. For example, if a location contains a Black Knight
 
 This composer-style data is intended to be reused by the future hand-authored adventure creator.
 
+## Foes, Items, Classes, Tables, Trackers, And Procedures
+
+The PDF Import Review Workspace also includes an Imported Record Editor for module-local records.
+
+Use it before editing raw JSON directly. It lets you review and edit:
+
+- foes
+- items, rewards, services, or special equipment
+- class candidates
+- roll tables
+- trackers
+- app procedures
+
+Foes, items, and classes use a flexible source-backed record:
+
+```json
+{
+  "id": "assassin-agent",
+  "name": "Assassin Agent",
+  "source_page": 25,
+  "notes": "HCL+2 minion armed with dagger.",
+  "review_status": "needs_pdf_check"
+}
+```
+
+Because different PDFs describe foes, classes, items, and services differently, extra fields are allowed. Use the editor's Extra JSON box for module-specific details such as `level`, `hcl`, `attack`, `life`, `treasure`, `price_gp`, `equipment_tags`, `skill_options`, `class_features`, or publisher wording that still needs checking.
+
+Tables should keep reviewed rows in `rows`:
+
+```json
+{
+  "id": "hidden-door-table",
+  "title": "Hidden Door Table",
+  "source_page": 12,
+  "dice": "d6",
+  "rows": [
+    { "result": "1-2", "outcome": "No hidden door found." }
+  ],
+  "review_status": "needs_pdf_check"
+}
+```
+
+Procedures are declarative app instructions only. They may use allowlisted operations such as `roll_table`, `spawn_foes`, `test_save`, `grant_gold`, `grant_item`, `set_tracker`, `advance_tracker`, `branch_if`, `transition_to_node`, `complete_objective`, `pin_location`, and `show_choice`. Do not add script code.
+
+Trackers are counters for local adventure state, for example doom, light, alarm, corruption, or elapsed turns. Keep the purpose in notes or app notes on the locations that use the tracker.
+
 ## Candidate Lists From PDFs
 
 The PDF Import Review Workspace can extract candidate records from the source PDF text. These are shown in clickable lists:

@@ -241,6 +241,35 @@ def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Pat
                     "original_list": "items",
                 }
             ],
+            "foes": [
+                {
+                    "id": "black-knight",
+                    "name": "Black Knight",
+                    "source_page": 2,
+                    "notes": "HCL+2 boss, 5 Life.",
+                    "review_status": "checked",
+                    "life": 5,
+                }
+            ],
+            "items": [
+                {
+                    "id": "emerald-necklace",
+                    "name": "Emerald Necklace",
+                    "source_page": 2,
+                    "notes": "Reward item.",
+                    "review_status": "needs_pdf_check",
+                    "value_gp": 250,
+                }
+            ],
+            "procedures": [
+                {
+                    "id": "opening-choice",
+                    "title": "Opening Choice",
+                    "source_page": 1,
+                    "steps": [{"op": "show_choice", "choices": ["Continue"]}],
+                    "review_status": "checked",
+                }
+            ],
         },
     )
 
@@ -256,6 +285,9 @@ def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Pat
     assert detail["nodes"][0]["foe_ids"] == ["black-knight"]
     assert detail["nodes"][0]["item_ids"] == ["emerald-necklace"]
     assert detail["nodes"][0]["procedure_ids"] == ["opening-choice"]
+    assert detail["foes"][0]["life"] == 5
+    assert detail["items"][0]["value_gp"] == 250
+    assert detail["procedures"][0]["steps"][0]["op"] == "show_choice"
     assert detail["ignored_records"][0]["original_list"] == "items"
     assert detail["review"]["notes"] == "Opening scene checked against the source PDF."
 

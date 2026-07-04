@@ -797,20 +797,27 @@ h2 {
 }
 
 .modern-location-preview,
-.modern-location-editor-mount {
+.modern-location-editor-mount,
+.modern-package-record-preview,
+.modern-package-record-editor,
+.modern-package-record-editor-mount {
   display: grid;
   gap: 10px;
   min-width: 0;
 }
 
-.modern-location-preview {
+.modern-location-preview,
+.modern-package-record-preview,
+.modern-package-record-editor {
   padding: 10px;
   border: 1px solid rgba(120, 114, 89, 0.45);
   border-radius: 7px;
   background: #151610;
 }
 
-.modern-location-preview h4 {
+.modern-location-preview h4,
+.modern-package-record-preview h4,
+.modern-package-record-editor h4 {
   margin: 0;
 }
 

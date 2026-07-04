@@ -3535,7 +3535,7 @@ function renderAdventurePackageReviewWorkspace(pkg, redraw) {
     setStatus(`Candidate extraction complete: locations ${changes.nodes || 0}, tables ${changes.tables || 0}, foes ${changes.foes || 0}, classes ${changes.classes || 0}, items ${changes.items || 0}, procedures ${changes.procedures || 0}.`);
     redraw();
   }));
-  panel.append(detailGrid, saveDetails, extractRow, renderAdventurePackageReviewBrowser(pkg), renderAdventurePackageNodeEditor(pkg, redraw), renderAdventurePackageSectionEditor(pkg, redraw));
+  panel.append(detailGrid, saveDetails, extractRow, renderAdventurePackageReviewBrowser(pkg), renderAdventurePackageNodeEditor(pkg, redraw), renderAdventurePackageRecordEditor(pkg, redraw), renderAdventurePackageSectionEditor(pkg, redraw));
   return panel;
 }
 
@@ -3544,6 +3544,17 @@ function packageRecordTitle(kind, record) {
   if (kind === "tables") return record.title || record.id || "Untitled table";
   if (kind === "procedures") return record.title || record.id || "Untitled procedure";
   return record.name || record.title || record.id || "Untitled record";
+}
+
+function packageRecordSingular(kind) {
+  return {
+    foes: "foe",
+    items: "item",
+    classes: "class",
+    tables: "table",
+    trackers: "tracker",
+    procedures: "procedure",
+  }[kind] || "record";
 }
 
 const PACKAGE_REVIEW_GROUPS = [
@@ -3678,9 +3689,63 @@ function renderLocationPreview(pkg, node) {
   return preview;
 }
 
+function packageRecordUsage(pkg, kind, record) {
+  const recordId = String(record?.id || record?.name || "").toLowerCase();
+  const recordName = String(record?.name || record?.title || record?.label || "").toLowerCase();
+  if (!recordId && !recordName) return [];
+  const idField = kind === "foes" ? "foe_ids" : kind === "items" ? "item_ids" : kind === "procedures" ? "procedure_ids" : "";
+  return (pkg.nodes || []).filter((node) => {
+    const ids = Array.isArray(node[idField]) ? node[idField].map((item) => String(item).toLowerCase()) : [];
+    const text = `${node.player_text || ""} ${node.app_notes || ""} ${node.source_text || ""}`.toLowerCase();
+    return ids.includes(recordId) || ids.includes(recordName) || (recordName && recordName.length > 2 && text.includes(recordName));
+  });
+}
+
+function renderPackageRecordPreview(pkg, kind, record) {
+  const preview = el("div", "modern-package-record-preview");
+  const title = packageRecordTitle("", record);
+  preview.appendChild(el("h4", "", `${MODERN_PACKAGE_CANDIDATE_GROUPS.find(([key]) => key === kind)?.[1] || "Record"} Preview: ${title}`));
+  const meta = el("div", "modern-chip-row");
+  for (const [label, value] of [
+    ["id", record.id],
+    ["page", record.source_page],
+    ["review", record.review_status],
+    ["dice", record.dice],
+  ]) {
+    if (value !== undefined && value !== "") meta.appendChild(el("span", "modern-tag", `${label}: ${value}`));
+  }
+  preview.appendChild(meta);
+  const grid = el("div", "modern-location-preview-grid");
+  const notes = el("div", "modern-location-preview-box");
+  notes.append(el("strong", "", "Notes / source text"), el("p", "muted", record.notes || record.source_text || "No notes recorded yet."));
+  grid.appendChild(notes);
+  if (kind === "tables") {
+    grid.appendChild(renderMiniRecordList("Rows", record.rows || [], "No rows recorded yet.", "Rows should preserve the printed dice result and reviewed outcome text."));
+  } else if (kind === "procedures") {
+    grid.appendChild(renderMiniRecordList("Steps", record.steps || [], "No procedure steps recorded yet.", "Procedure steps use allowlisted app operations only; no script code is executed."));
+  } else if (kind === "trackers") {
+    const tracker = el("div", "modern-location-preview-box");
+    tracker.append(
+      el("strong", "", "Tracker range"),
+      el("p", "muted", `Initial ${record.initial ?? 0} · min ${record.minimum ?? "none"} · max ${record.maximum ?? "none"}`)
+    );
+    grid.appendChild(tracker);
+  }
+  const usageKinds = ["foes", "items", "procedures"];
+  if (usageKinds.includes(kind)) {
+    const usedBy = packageRecordUsage(pkg, kind, record);
+    grid.appendChild(renderMiniRecordList("Used By Locations", usedBy, "No reviewed location links this record yet.", "Locations can link this record by id or can be detected by name in location text."));
+  }
+  const raw = el("details", "modern-raw-details");
+  raw.append(el("summary", "", "Raw JSON"), el("pre", "modern-json-preview", JSON.stringify(record, null, 2)));
+  preview.append(grid, raw);
+  return preview;
+}
+
 function packageRecordDetail(pkg, kind, record, redraw) {
   const wrap = el("div", "modern-package-detail");
   if (kind === "nodes") wrap.appendChild(renderLocationPreview(pkg, record));
+  else wrap.appendChild(renderPackageRecordPreview(pkg, kind, record));
   wrap.appendChild(el("h4", "", packageRecordTitle("", record)));
   const meta = el("div", "modern-chip-row");
   for (const key of ["id", "type", "source_page", "review_status", "dice"]) {
@@ -3979,6 +4044,178 @@ function renderAdventurePackageNodeEditor(pkg, redraw) {
   }
   panel.appendChild(nodeList);
   return panel;
+}
+
+function packageRecordKnownKeys(kind) {
+  if (kind === "tables") return ["id", "title", "source_page", "dice", "rows", "review_status", "source_text"];
+  if (kind === "trackers") return ["id", "label", "initial", "minimum", "maximum", "source_page"];
+  if (kind === "procedures") return ["id", "title", "source_page", "steps", "review_status", "source_text"];
+  return ["id", "name", "source_page", "notes", "source_text", "review_status"];
+}
+
+function packageRecordExtraJson(kind, record) {
+  const known = new Set(packageRecordKnownKeys(kind));
+  const extra = {};
+  for (const [key, value] of Object.entries(record || {})) {
+    if (!known.has(key)) extra[key] = value;
+  }
+  return JSON.stringify(extra, null, 2);
+}
+
+function parseJsonObjectField(control, label) {
+  try {
+    const parsed = control.value.trim() ? JSON.parse(control.value) : {};
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") throw new Error("Expected object");
+    return parsed;
+  } catch (error) {
+    throw new Error(`${label} must be a JSON object: ${error.message}`);
+  }
+}
+
+function renderAdventurePackageRecordEditor(pkg, redraw) {
+  const panel = el("div", "modern-package-record-editor");
+  panel.appendChild(el("h4", "", "Imported Record Editor"));
+  panel.appendChild(el("p", "muted", "Review and edit module-local records extracted from a PDF. Foes, items, classes, tables, trackers, and procedures remain package data until a playable manifest explicitly uses them."));
+  const editableKinds = [
+    ["foes", "Foes"],
+    ["items", "Items"],
+    ["classes", "Classes"],
+    ["tables", "Tables"],
+    ["trackers", "Trackers"],
+    ["procedures", "Procedures"],
+  ];
+  const kindSelect = select(`record-kind-${pkg.package_id}`, "Choose which imported record type to edit. Use Move Record in the candidate browser when the importer put something in the wrong list.", editableKinds);
+  const recordSelectMount = el("div", "modern-package-record-editor-mount");
+  const editorMount = el("div", "modern-package-record-editor-mount");
+  const drawRecordEditor = () => {
+    recordSelectMount.replaceChildren();
+    editorMount.replaceChildren();
+    const kind = kindSelect.value;
+    const records = Array.isArray(pkg[kind]) ? pkg[kind] : [];
+    const recordSelect = select(`record-select-${pkg.package_id}-${kind}`, "Choose an existing record to edit, or choose New Record to create one.", [["", "New Record"], ...records.map((record) => [record.id || record.name || record.title || record.label, packageRecordTitle("", record)])]);
+    recordSelectMount.appendChild(field("Edit Record", recordSelect));
+    const drawForm = () => {
+      editorMount.replaceChildren();
+      const recordKey = recordSelect.value;
+      const existing = records.find((record) => (record.id || record.name || record.title || record.label) === recordKey) || {};
+      const id = input("text", `record-id-${pkg.package_id}-${kind}`, "Stable lowercase id for links from locations, procedures, tables, and future adventure conversion.");
+      id.value = existing.id || "";
+      const nameLabel = kind === "tables" || kind === "procedures" ? "Title" : kind === "trackers" ? "Label" : "Name";
+      const name = input("text", `record-name-${pkg.package_id}-${kind}`, `${nameLabel} shown in the review workspace.`);
+      name.value = existing.title || existing.label || existing.name || "";
+      const page = input("number", `record-page-${pkg.package_id}-${kind}`, "PDF page number used as source reference.");
+      page.min = "0";
+      page.step = "1";
+      page.value = String(existing.source_page || 0);
+      const reviewStatus = select(`record-review-${pkg.package_id}-${kind}`, "Review status. Use Ready only after checking the source PDF and required app behavior.", [
+        ["candidate", "Candidate"],
+        ["needs_pdf_check", "Needs PDF check"],
+        ["draft", "Draft"],
+        ["checked", "Checked"],
+        ["ready_for_manifest", "Ready for manifest"],
+        ["wrong_type", "Wrong type"],
+        ["ignored", "Ignored"],
+      ]);
+      reviewStatus.value = existing.review_status || "needs_pdf_check";
+      const notes = textarea(`record-notes-${pkg.package_id}-${kind}`, "Reviewer notes, source text, rules handling, or explanation for this record.", 4);
+      notes.value = existing.notes || existing.source_text || "";
+      const extra = textarea(`record-extra-${pkg.package_id}-${kind}`, "Optional extra JSON object for module-specific fields. Use this for stats, prices, tags, equipment traits, class notes, or other data not covered above.", 5);
+      extra.value = packageRecordExtraJson(kind, existing);
+      const form = el("div", "modern-package-node-form");
+      form.append(field("Id", id), field(nameLabel, name), field("Source Page", page));
+      if (kind !== "trackers") form.appendChild(field("Review Status", reviewStatus));
+      if (kind === "tables") {
+        const dice = input("text", `record-dice-${pkg.package_id}`, "Dice expression printed for this table, for example d6 or 2d6.");
+        dice.value = existing.dice || "";
+        const rows = textarea(`record-rows-${pkg.package_id}`, "Rows JSON array. Each row should include at least result and the reviewed outcome text.", 7);
+        rows.value = JSON.stringify(existing.rows || [], null, 2);
+        form.append(field("Dice", dice), field("Rows JSON", rows), field("Source / Notes", notes), field("Extra JSON", extra));
+        editorMount.append(form, renderPackageRecordSaveRow(pkg, kind, records, existing, redraw, () => ({
+          ...parseJsonObjectField(extra, "Extra JSON"),
+          id: id.value.trim(),
+          title: name.value.trim() || id.value.trim(),
+          source_page: Number(page.value || 0),
+          dice: dice.value.trim(),
+          rows: parseJsonArrayField(rows, "Rows JSON"),
+          review_status: reviewStatus.value,
+          source_text: notes.value,
+        })));
+      } else if (kind === "procedures") {
+        const steps = textarea(`record-steps-${pkg.package_id}`, "Procedure steps JSON array using allowlisted operations such as roll_table, test_save, spawn_foes, grant_item, branch_if, or transition_to_node.", 7);
+        steps.value = JSON.stringify(existing.steps || [], null, 2);
+        form.append(field("Steps JSON", steps), field("Source / Notes", notes), field("Extra JSON", extra));
+        editorMount.append(form, renderPackageRecordSaveRow(pkg, kind, records, existing, redraw, () => ({
+          ...parseJsonObjectField(extra, "Extra JSON"),
+          id: id.value.trim(),
+          title: name.value.trim() || id.value.trim(),
+          source_page: Number(page.value || 0),
+          steps: parseJsonArrayField(steps, "Steps JSON"),
+          review_status: reviewStatus.value,
+          source_text: notes.value,
+        })));
+      } else if (kind === "trackers") {
+        const initial = input("number", `record-initial-${pkg.package_id}`, "Starting tracker value.");
+        const minimum = input("number", `record-min-${pkg.package_id}`, "Optional minimum tracker value.");
+        const maximum = input("number", `record-max-${pkg.package_id}`, "Optional maximum tracker value.");
+        initial.value = String(existing.initial ?? 0);
+        minimum.value = existing.minimum ?? "";
+        maximum.value = existing.maximum ?? "";
+        form.append(field("Initial", initial), field("Minimum", minimum), field("Maximum", maximum), field("Notes", notes), field("Extra JSON", extra));
+        editorMount.append(form, renderPackageRecordSaveRow(pkg, kind, records, existing, redraw, () => ({
+          ...parseJsonObjectField(extra, "Extra JSON"),
+          id: id.value.trim(),
+          label: name.value.trim() || id.value.trim(),
+          source_page: Number(page.value || 0),
+          initial: Number(initial.value || 0),
+          ...(minimum.value !== "" ? { minimum: Number(minimum.value) } : {}),
+          ...(maximum.value !== "" ? { maximum: Number(maximum.value) } : {}),
+        })));
+      } else {
+        form.append(field("Notes / Source Text", notes), field("Extra JSON", extra));
+        editorMount.append(form, renderPackageRecordSaveRow(pkg, kind, records, existing, redraw, () => ({
+          ...parseJsonObjectField(extra, "Extra JSON"),
+          id: id.value.trim(),
+          name: name.value.trim() || id.value.trim(),
+          source_page: Number(page.value || 0),
+          notes: notes.value,
+          source_text: notes.value,
+          review_status: reviewStatus.value,
+        })));
+      }
+      if (existing.id || existing.name || existing.title || existing.label) editorMount.appendChild(renderPackageRecordPreview(pkg, kind, existing));
+    };
+    recordSelect.addEventListener("change", drawForm);
+    drawForm();
+  };
+  kindSelect.addEventListener("change", drawRecordEditor);
+  panel.append(field("Record Type", kindSelect), recordSelectMount, editorMount);
+  drawRecordEditor();
+  return panel;
+}
+
+function renderPackageRecordSaveRow(pkg, kind, records, existing, redraw, buildRecord) {
+  const row = actions();
+  row.append(
+    button("Save Record", "Save this structured package record. This updates package.json only; rules/mechanics still need PDF review before conversion to playable data.", async () => {
+      const nextRecord = buildRecord();
+      const nextId = String(nextRecord.id || "").trim();
+      if (!nextId) throw new Error("Id is required.");
+      const existingId = String(existing.id || existing.name || existing.title || existing.label || nextId);
+      const nextRecords = records.filter((item) => String(item.id || item.name || item.title || item.label || "") !== existingId && String(item.id || "") !== nextId);
+      nextRecords.push(nextRecord);
+      const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review`, {
+        method: "POST",
+        body: JSON.stringify({ [kind]: nextRecords }),
+      });
+      replaceAdventurePackageInState(result.package);
+      setStatus(`Saved ${packageRecordSingular(kind)} ${nextId}.`);
+      redraw();
+    }),
+    button("Clear Editor", "Clear this editor so you can create a new record.", async () => {
+      redraw();
+    }, "secondary")
+  );
+  return row;
 }
 
 function renderAdventurePackageSectionEditor(pkg, redraw) {

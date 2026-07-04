@@ -2889,6 +2889,13 @@ def _rules_tables_payload() -> dict:
             "safety": "The editor saves explicit ids instead of copying full records into the node, keeping generated/imported package data reusable and easier to audit.",
         },
         {
+            "area": "Imported record editor",
+            "purpose": "Lets the user preview and edit module-local foes, items, classes, tables, trackers, and procedures without starting in raw JSON.",
+            "stored_in": "package.json foes[], items[], classes[], tables[], trackers[], procedures[]",
+            "fields": "id, name/title/label, source page, review status, notes/source text, table rows, tracker ranges, procedure steps, extra JSON",
+            "safety": "Records remain PDF-review package data until a manifest uses them; procedure steps are still sanitized to allowlisted operations only.",
+        },
+        {
             "area": "User guide",
             "purpose": "Documents the editable module-folder format for users and playtesters.",
             "stored_in": "docs/ADVENTURE_MODULE_FORMAT.md",
