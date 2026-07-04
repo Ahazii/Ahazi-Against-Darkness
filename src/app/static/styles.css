@@ -721,6 +721,40 @@ h2 {
   gap: 6px;
 }
 
+.modern-package-artwork-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.modern-package-artwork-card {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #3c3a30;
+  border-radius: 7px;
+  background: #151610;
+}
+
+.modern-package-artwork-frame {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  margin: 0;
+  border: 1px dashed rgba(201, 162, 39, 0.28);
+  border-radius: 6px;
+  background: #10110d;
+  overflow: hidden;
+}
+
+.modern-package-artwork-frame img {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+}
+
 .modern-package-diagnostics {
   display: grid;
   gap: 7px;

@@ -27,7 +27,7 @@ ALLOWED_PROCEDURE_OPS = {
     "pin_location",
     "show_choice",
 }
-PACKAGE_CAPABILITIES = {"foes", "classes", "items", "tables", "trackers", "procedures", "states", "rules", "maps", "pins"}
+PACKAGE_CAPABILITIES = {"foes", "classes", "items", "tables", "trackers", "procedures", "states", "rules", "maps", "pins", "artwork"}
 NODE_TYPES = {"room", "scene", "location", "hex", "camp", "settlement", "ending"}
 NODE_REVIEW_STATUSES = {"candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest", "wrong_type", "ignored"}
 MAP_PIN_ROLES = {"location", "room", "entrance", "exit", "stairs", "secret", "objective", "camp", "settlement", "other"}
@@ -146,6 +146,10 @@ def _asset_url_path(package_id: str, filename: str) -> str:
     return f"maps/{filename}"
 
 
+def _artwork_url_path(filename: str) -> str:
+    return f"artwork/extracted/{filename}"
+
+
 def package_map_asset_path(data_dir: Path, package_id: str, asset_path: str) -> Path:
     clean = str(asset_path or "").replace("\\", "/").lstrip("/")
     filename = Path(clean).name if "/" in clean else clean
@@ -156,6 +160,12 @@ def package_map_asset_path(data_dir: Path, package_id: str, asset_path: str) -> 
     if legacy.is_file():
         return legacy
     return current
+
+
+def package_artwork_asset_path(data_dir: Path, package_id: str, asset_path: str) -> Path:
+    clean = str(asset_path or "").replace("\\", "/").lstrip("/")
+    filename = Path(clean).name if "/" in clean else clean
+    return adventure_folder(data_dir, package_id) / "artwork" / "extracted" / filename
 
 
 def _extract_pdf_map_images(pdf_path: Path, data_dir: Path, package_id: str, *, max_pages: int = 12) -> list[dict[str, Any]]:
@@ -198,6 +208,46 @@ def _extract_pdf_map_images(pdf_path: Path, data_dir: Path, package_id: str, *, 
                 }
             )
     return maps
+
+
+def _extract_pdf_artwork_images(pdf_path: Path, data_dir: Path, package_id: str, *, max_pages: int = 120) -> list[dict[str, Any]]:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:  # pragma: no cover - dependency is present in app image/tests
+        raise RuntimeError("pypdf is required to extract PDF artwork images.") from exc
+
+    artwork_dir = adventure_folder(data_dir, package_id) / "artwork" / "extracted"
+    artwork_dir.mkdir(parents=True, exist_ok=True)
+    reader = PdfReader(str(pdf_path))
+    records: list[dict[str, Any]] = []
+    for page_index, page in enumerate(reader.pages[: min(max_pages, len(reader.pages))], start=1):
+        try:
+            images = list(page.images)
+        except Exception:  # noqa: BLE001 - image extraction support varies by PDF
+            images = []
+        for image_index, image in enumerate(images, start=1):
+            image_name = Path(str(getattr(image, "name", "") or f"image-{image_index}.bin")).name
+            extension = Path(image_name).suffix.lower() or ".bin"
+            filename = f"page-{page_index:03d}-image-{image_index:02d}{extension}"
+            output = artwork_dir / filename
+            data = getattr(image, "data", b"")
+            if not isinstance(data, bytes) or not data:
+                continue
+            output.write_bytes(data)
+            records.append(
+                {
+                    "id": f"art-page-{page_index:03d}-image-{image_index:02d}",
+                    "title": f"Page {page_index} image {image_index}",
+                    "source_pdf": str(pdf_path.name),
+                    "source_page": page_index,
+                    "asset_path": _artwork_url_path(filename),
+                    "kind": "unreviewed_pdf_image",
+                    "review_status": "needs_review",
+                    "use": "unassigned",
+                    "notes": "Extracted from a user-owned PDF into the local adventure artwork library. Review rights and usefulness before assigning it in the app.",
+                }
+            )
+    return records
 
 
 def _pdf_map_render_candidate_pages(reader: Any, assessment: dict[str, Any], *, max_pages: int = 12) -> list[int]:
@@ -672,6 +722,49 @@ def extract_adventure_package_candidates(root_dir: Path, data_dir: Path, package
     return detail
 
 
+def extract_adventure_package_artwork(root_dir: Path, data_dir: Path, package_id: str) -> dict[str, Any]:
+    package = load_adventure_package(data_dir, package_id)
+    if not package:
+        raise FileNotFoundError(f"Adventure package {package_id} was not found.")
+    source_pdf = str((package.get("source") or {}).get("source_pdf") or "")
+    pdf_path = _resolve_package_source_pdf(root_dir, data_dir, source_pdf)
+    if not pdf_path.is_file():
+        raise FileNotFoundError(f"Source PDF {source_pdf!r} was not found.")
+    existing = [item for item in package.get("artwork", []) if isinstance(item, dict)]
+    preserved = {str(item.get("id") or ""): item for item in existing}
+    extracted = _extract_pdf_artwork_images(pdf_path, data_dir, str(package.get("package_id") or package_id))
+    merged: list[dict[str, Any]] = []
+    changed = 0
+    for record in extracted:
+        old = preserved.get(str(record.get("id") or ""))
+        if old:
+            copy = dict(record)
+            for key in ("title", "kind", "review_status", "use", "notes", "tags", "assigned_to"):
+                if old.get(key):
+                    copy[key] = old[key]
+            merged.append(copy)
+        else:
+            merged.append(record)
+            changed += 1
+    old_ids = {str(item.get("id") or "") for item in extracted}
+    for old in existing:
+        if str(old.get("id") or "") not in old_ids:
+            merged.append(old)
+    package["artwork"] = merged
+    capabilities = set(package.get("capabilities") or [])
+    if merged:
+        capabilities.add("artwork")
+    package["capabilities"] = sorted(capabilities)
+    review = dict(package.get("review") or {})
+    review["last_artwork_extract"] = "local_pdf_image_scan"
+    review["artwork_extracted"] = len(extracted)
+    package["review"] = review
+    save_adventure_package(data_dir, package)
+    detail = _package_with_diagnostics(data_dir, package)
+    detail["artwork_changes"] = {"added": changed, "found": len(extracted), "total": len(merged)}
+    return detail
+
+
 def _resolve_package_source_pdf(root_dir: Path, data_dir: Path, source_pdf: str) -> Path:
     clean = source_pdf.replace("\\", "/").lstrip("/")
     candidates = [
@@ -756,6 +849,7 @@ def package_detail(data_dir: Path, package_id: str) -> dict[str, Any]:
 
 def package_summary(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
     maps = [item for item in package.get("maps", []) if isinstance(item, dict)]
+    artwork = [item for item in package.get("artwork", []) if isinstance(item, dict)]
     pins = sum(len(item.get("pins", [])) for item in maps)
     enriched_maps = []
     for item in maps:
@@ -769,6 +863,18 @@ def package_summary(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
             else ""
         )
         enriched_maps.append(copy)
+    enriched_artwork = []
+    for item in artwork:
+        copy = dict(item)
+        asset_path = str(copy.get("asset_path") or "")
+        asset_file = package_artwork_asset_path(data_dir, str(package.get("package_id") or ""), asset_path)
+        copy["asset_exists"] = bool(asset_path and asset_file.is_file())
+        copy["asset_url"] = (
+            f"/api/adventures/packages/{str(package.get('package_id') or '')}/artwork/{Path(asset_path).name}"
+            if asset_path
+            else ""
+        )
+        enriched_artwork.append(copy)
     return {
         "package_id": str(package.get("package_id") or ""),
         "title": str(package.get("title") or ""),
@@ -778,6 +884,8 @@ def package_summary(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
         "map_count": len(maps),
         "pin_count": pins,
         "maps": enriched_maps,
+        "artwork_count": len(artwork),
+        "artwork": enriched_artwork,
         "foe_count": len(package.get("foes", []) or []),
         "class_count": len(package.get("classes", []) or []),
         "item_count": len(package.get("items", []) or []),
@@ -887,6 +995,8 @@ def validate_adventure_package(package: dict[str, Any]) -> dict[str, Any]:
     for field in ("foes", "classes", "items", "states", "rules", "ignored_records", "tables", "trackers", "procedures"):
         if field in package and not isinstance(package.get(field), list):
             errors.append(f"{field} must be an array.")
+    if "artwork" in package and not isinstance(package.get("artwork"), list):
+        errors.append("artwork must be an array.")
     for procedure in package.get("procedures") or []:
         if not isinstance(procedure, dict):
             errors.append("procedures entries must be objects.")

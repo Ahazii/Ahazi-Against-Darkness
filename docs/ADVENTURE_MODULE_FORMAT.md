@@ -18,6 +18,7 @@ DATA_DIR/Adventures/<module_id>/
   package.json        # PDF/import review package, maps, pins, local additions
   maps/               # map images extracted from or supplied for the module
   artwork/            # local/private artwork for this module
+    extracted/        # raw image library extracted from the source PDF
   tables/             # optional user notes or table source files
   notes/              # reviewer notes, playtest notes, source notes
 ```
@@ -389,6 +390,22 @@ Use `role` to mark what the pin means during review:
 - `camp`, `settlement`, or `other` when the map includes overland or non-dungeon sites
 
 Pin roles are metadata until the reviewed location graph uses them. Do not infer playable exits from a marker unless the PDF text and reviewed node branches agree.
+
+## Extracted Artwork Library
+
+Raw extracted PDF artwork belongs in:
+
+```text
+DATA_DIR/Adventures/<module_id>/artwork/extracted/
+```
+
+Use Adventure Management -> PDF Module Importer -> Edit / Check -> Extracted Artwork Library -> Extract Artwork Library to copy every PDF-exposed image into that folder and register it in `package.json` under `artwork[]`.
+
+The extractor keeps the source PDF, page number, asset path, review status, intended use, and notes. Re-running extraction preserves reviewed labels for matching image ids.
+
+This library is intentionally raw. It may contain useful illustrations, cover art, maps, logos, masks, icons, and tiny page fragments. Review each image before assigning it to a cover, scene, foe, item, location, or app artwork slot.
+
+PDF-derived art should remain local/private unless you have publishing rights.
 
 ## Procedures
 

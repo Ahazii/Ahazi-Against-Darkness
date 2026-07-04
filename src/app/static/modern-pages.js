@@ -3406,6 +3406,7 @@ function renderAdventurePackageManager() {
       modernStatusRow("Storage", pkg.adventure_folder || "DATA_DIR/Adventures/<adventure_id>/", "Everything for this adventure lives together beside game.db: package.json, maps/, artwork/, tables/, notes/, and the future adventure.json.")
     );
     packageContainer.appendChild(renderAdventurePackageMaps(pkg));
+    packageContainer.appendChild(renderAdventurePackageArtworkLibrary(pkg));
     packageContainer.appendChild(renderAdventurePackageReviewWorkspace(pkg, () => renderPage()));
     packageContainer.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -4517,6 +4518,52 @@ function renderAdventurePackageMaps(pkg) {
     wrap.appendChild(cardEl);
   }
   panel.appendChild(wrap);
+  return panel;
+}
+
+function renderAdventurePackageArtworkLibrary(pkg) {
+  const panel = card(
+    "Extracted Artwork Library",
+    "Extract all images exposed by the source PDF into this adventure folder for private/local review. The library may include useful art, maps, covers, logos, masks, and tiny page furniture; review before assigning anything in the app."
+  );
+  const row = actions();
+  row.appendChild(button("Extract Artwork Library", "Extract every image exposed by the source PDF into DATA_DIR/Adventures/<module_id>/artwork/extracted. Existing review labels are preserved on re-run.", async () => {
+    const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/extract-artwork`, { method: "POST" });
+    replaceAdventurePackageInState(result.package);
+    const changes = result.package.artwork_changes || {};
+    setStatus(`Extracted artwork for ${result.package.title}: ${changes.found ?? result.package.artwork_count ?? 0} found, ${changes.added ?? 0} new.`);
+    renderPage();
+  }, "secondary"));
+  panel.appendChild(row);
+  const artwork = pkg.artwork || [];
+  if (!artwork.length) {
+    panel.appendChild(el("p", "muted", "No extracted artwork yet. Use Extract Artwork Library after creating the package from a PDF."));
+    return panel;
+  }
+  const grid = el("div", "modern-package-artwork-grid");
+  for (const item of artwork) {
+    const cardEl = el("div", "modern-package-artwork-card");
+    const frame = el("figure", "modern-package-artwork-frame");
+    if (item.asset_exists && item.asset_url) {
+      const img = document.createElement("img");
+      img.src = item.asset_url;
+      img.alt = item.title || item.id;
+      img.loading = "lazy";
+      img.title = `${item.title || item.id} from page ${item.source_page || "?"}. ${item.notes || "Review before use."}`;
+      frame.appendChild(img);
+    } else {
+      frame.appendChild(el("span", "muted", "Asset missing"));
+    }
+    const meta = el("div", "modern-row-copy");
+    meta.append(
+      el("strong", "", item.title || item.id),
+      el("span", "muted", `page ${item.source_page || "?"} · ${item.asset_path || "no path"}`),
+      el("span", "muted", `${item.review_status || "needs_review"} · ${item.use || "unassigned"}`)
+    );
+    cardEl.append(frame, meta);
+    grid.appendChild(cardEl);
+  }
+  panel.appendChild(grid);
   return panel;
 }
 

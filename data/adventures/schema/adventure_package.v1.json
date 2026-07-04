@@ -48,7 +48,7 @@
     "capabilities": {
       "type": "array",
       "items": {
-        "enum": ["foes", "classes", "items", "tables", "trackers", "procedures", "states", "rules", "maps", "pins"]
+        "enum": ["foes", "classes", "items", "tables", "trackers", "procedures", "states", "rules", "maps", "pins", "artwork"]
       },
       "uniqueItems": true
     },
@@ -83,6 +83,47 @@
       "description": "Module-local rules extracted from the source PDF. These remain review data until explicit app support or manifest conversion uses them.",
       "items": {
         "$ref": "#/$defs/sourcedRecord"
+      }
+    },
+    "artwork": {
+      "type": "array",
+      "description": "Local/private-use artwork extracted from the source PDF into DATA_DIR/Adventures/<module_id>/artwork/extracted for review and later assignment.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "title", "source_pdf", "source_page", "asset_path", "kind", "review_status", "use"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source_pdf": {
+            "type": "string"
+          },
+          "source_page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "asset_path": {
+            "type": "string",
+            "description": "Adventure-folder-relative local artwork path, for example artwork/extracted/page-004-image-01.png."
+          },
+          "kind": {
+            "type": "string"
+          },
+          "review_status": {
+            "type": "string"
+          },
+          "use": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
       }
     },
     "ignored_records": {

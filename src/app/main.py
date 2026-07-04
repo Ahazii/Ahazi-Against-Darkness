@@ -41,9 +41,11 @@ from .engine.adventure_packages import (
     create_or_refresh_package_from_pdf,
     delete_adventure_package,
     delete_map_pin,
+    extract_adventure_package_artwork,
     extract_adventure_package_candidates,
     list_adventure_packages,
     package_detail,
+    package_artwork_asset_path,
     package_map_asset_path,
     update_adventure_package_review,
     upsert_map_pin,
@@ -2810,7 +2812,7 @@ def _rules_tables_payload() -> dict:
     data["adventure_package_schema_table"] = [
         {
             "area": "Declarative package",
-            "purpose": "Adds local PDF module content as data: foes, classes, items, states, rules, tables, trackers, map assets, and pins.",
+            "purpose": "Adds local PDF module content as data: foes, classes, items, states, rules, tables, trackers, map assets, pins, and extracted artwork.",
             "safety": "Packages do not execute scripts; they use engine-approved operations only.",
         },
         {
@@ -2832,6 +2834,11 @@ def _rules_tables_payload() -> dict:
             "area": "Class extensions",
             "purpose": "Records candidate new character classes from module PDFs for later rules review and UI support.",
             "safety": "Classes stay experimental until every ability, equipment rule, and advancement hook is checked against the PDF.",
+        },
+        {
+            "area": "Artwork library",
+            "purpose": "Stores all PDF-exposed images under DATA_DIR/Adventures/<adventure_id>/artwork/extracted for local review and later assignment as cover, scene, foe, item, or location art.",
+            "safety": "Extracted PDF artwork is private/local data unless publishing rights are secured; images may include junk page furniture and must be reviewed before use.",
         },
     ]
     data["adventure_package_map_pinning_table"] = [
@@ -4320,6 +4327,17 @@ async def extract_adventure_package_candidate_records(package_id: str) -> dict[s
     return {"package": package}
 
 
+@app.post("/api/adventures/packages/{package_id}/extract-artwork")
+async def extract_adventure_package_artwork_library(package_id: str) -> dict[str, Any]:
+    try:
+        package = extract_adventure_package_artwork(settings.root_dir, settings.data_dir, package_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return {"package": package}
+
+
 @app.delete("/api/adventures/packages/{package_id}")
 async def remove_adventure_package_review(package_id: str) -> dict[str, Any]:
     try:
@@ -4381,6 +4399,24 @@ async def adventure_package_map_asset(package_id: str, filename: str) -> FileRes
         raise HTTPException(status_code=400, detail="Invalid map asset path.")
     if not resolved.is_file():
         raise HTTPException(status_code=404, detail="Map asset not found.")
+    return FileResponse(resolved)
+
+
+@app.get("/api/adventures/packages/{package_id}/artwork/{filename}")
+async def adventure_package_artwork_asset(package_id: str, filename: str) -> FileResponse:
+    safe_filename = Path(filename).name
+    path = package_artwork_asset_path(settings.data_dir, package_id, safe_filename)
+    try:
+        resolved = path.resolve()
+        adventure_root = (settings.installed_adventures_dir / package_id).resolve()
+    except OSError as exc:
+        raise HTTPException(status_code=404, detail="Artwork asset not found.") from exc
+    try:
+        resolved.relative_to(adventure_root)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid artwork asset path.") from exc
+    if not resolved.is_file():
+        raise HTTPException(status_code=404, detail="Artwork asset not found.")
     return FileResponse(resolved)
 
 

@@ -12,6 +12,7 @@ from app.engine.adventure_pdf_sources import (
 )
 from app.engine.adventure_packages import (
     create_or_refresh_package_from_pdf,
+    extract_adventure_package_artwork,
     extract_adventure_package_candidates,
     load_adventure_package,
     package_detail,
@@ -248,6 +249,50 @@ def test_adventure_package_schema_allows_role_marked_map_pins() -> None:
     assert "role" in pin_schema
     assert {"entrance", "exit", "stairs", "secret", "objective"}.issubset(set(pin_schema["role"]["enum"]))
     assert "notes" in pin_schema
+    assert "artwork" in schema["properties"]
+    assert "artwork" in schema["properties"]["capabilities"]["items"]["enum"]
+
+
+def test_extract_adventure_package_artwork_creates_local_library(monkeypatch, tmp_path: Path) -> None:
+    from app.engine import adventure_packages
+
+    root = tmp_path / "app"
+    data = tmp_path / "data"
+    root.mkdir()
+    data.mkdir()
+    pdf_dir = user_adventure_pdf_dir(data)
+    pdf_dir.mkdir(parents=True)
+    _write_blank_pdf(pdf_dir / "Artwork Module.pdf")
+    scan_new_adventure_pdfs(root, data)
+    create_or_refresh_package_from_pdf(root, data, "artwork-module-pdf")
+
+    def fake_artwork(pdf_path: Path, data_dir: Path, package_id: str, *, max_pages: int = 120):
+        artwork_dir = adventure_packages.adventure_folder(data_dir, package_id) / "artwork" / "extracted"
+        artwork_dir.mkdir(parents=True, exist_ok=True)
+        (artwork_dir / "page-004-image-01.png").write_bytes(b"fake image")
+        return [
+            {
+                "id": "art-page-004-image-01",
+                "title": "Page 4 image 1",
+                "source_pdf": pdf_path.name,
+                "source_page": 4,
+                "asset_path": "artwork/extracted/page-004-image-01.png",
+                "kind": "unreviewed_pdf_image",
+                "review_status": "needs_review",
+                "use": "unassigned",
+                "notes": "Extracted test art.",
+            }
+        ]
+
+    monkeypatch.setattr(adventure_packages, "_extract_pdf_artwork_images", fake_artwork)
+
+    detail = extract_adventure_package_artwork(root, data, "artwork-module-pdf")
+
+    assert detail["artwork_count"] == 1
+    assert "artwork" in detail["capabilities"]
+    assert detail["artwork"][0]["asset_exists"] is True
+    assert detail["artwork"][0]["asset_url"] == "/api/adventures/packages/artwork-module-pdf/artwork/page-004-image-01.png"
+    assert detail["artwork_changes"] == {"added": 1, "found": 1, "total": 1}
 
 
 def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Path) -> None:

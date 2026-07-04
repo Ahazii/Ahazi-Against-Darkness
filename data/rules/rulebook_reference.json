@@ -3612,10 +3612,11 @@
         "pdf",
         "package",
         "maps",
-        "pins"
+        "pins",
+        "artwork"
       ],
-      "summary": "Tables documents the declarative adventure package layer for PDFs that add local maps, pins, tables, foes, items, classes, trackers, or procedures.",
-      "body": "The modern Tables page includes adventure_package_schema_table. Adventure packages are reviewable JSON data linked to source PDFs: local map assets in DATA_DIR, percent-based room/location pins, local roll tables, foes, items, class candidates, states/conditions, module-local rules, trackers, and allowlisted procedure steps. Packages are not executable scripts and do not replace PDF review.",
+      "summary": "Tables documents the declarative adventure package layer for PDFs that add local maps, pins, artwork, tables, foes, items, classes, trackers, or procedures.",
+      "body": "The modern Tables page includes adventure_package_schema_table. Adventure packages are reviewable JSON data linked to source PDFs: local map assets in DATA_DIR, percent-based room/location pins, local extracted artwork libraries under DATA_DIR/Adventures/<adventure_id>/artwork/extracted, local roll tables, foes, items, class candidates, states/conditions, module-local rules, trackers, and allowlisted procedure steps. Packages are not executable scripts and do not replace PDF review. Extracted PDF artwork is private/local data unless publishing rights are secured.",
       "implementation_status": "implemented"
     },
     {
