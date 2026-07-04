@@ -2195,6 +2195,7 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "Pin Role" in MODERN_PAGES_JS
     assert "Dungeon Entrance" in MODERN_PAGES_JS
     assert "Dungeon Exit" in MODERN_PAGES_JS
+    assert "Re-extract Maps" in MODERN_PAGES_JS
     assert "Save Map Pin" in MODERN_PAGES_JS
     assert "modern-package-map-pin-marker" in MODERN_PAGES_JS
     assert "role: role.value" in MODERN_PAGES_JS

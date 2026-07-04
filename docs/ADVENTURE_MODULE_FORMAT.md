@@ -359,6 +359,8 @@ Map images belong in:
 DATA_DIR/Adventures/<module_id>/maps/
 ```
 
+The importer tries embedded PDF images first. If no image is exposed by the PDF structure, it can render likely map pages as PNG files, such as `page-004-render.png`, so the map review screen still has a graphical page to pin. Rendered pages may include surrounding text or page furniture; replace them with cleaner cropped map art later if needed.
+
 Pins use percent coordinates so they survive resizing:
 
 ```json

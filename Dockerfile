@@ -21,7 +21,7 @@ WORKDIR /app
 COPY --from=builder /wheels /wheels
 COPY requirements.txt .
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends gosu \
+  && apt-get install -y --no-install-recommends gosu poppler-utils \
   && rm -rf /var/lib/apt/lists/* \
   && pip install --no-cache-dir --no-deps /wheels/* \
   && groupadd --gid ${APP_GID} ${APP_USER} \

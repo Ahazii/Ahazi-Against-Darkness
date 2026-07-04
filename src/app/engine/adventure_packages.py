@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -196,6 +197,80 @@ def _extract_pdf_map_images(pdf_path: Path, data_dir: Path, package_id: str, *, 
                     "extraction_note": "Extracted embedded PDF image. Review against the source PDF before pinning rooms.",
                 }
             )
+    return maps
+
+
+def _pdf_map_render_candidate_pages(reader: Any, assessment: dict[str, Any], *, max_pages: int = 12) -> list[int]:
+    page_count = len(reader.pages)
+    limit = min(max_pages, page_count)
+    candidates: set[int] = set()
+    for page_index, page in enumerate(reader.pages[:limit], start=1):
+        try:
+            page_text = (page.extract_text() or "").lower()
+        except Exception:  # noqa: BLE001 - text extraction varies by PDF
+            page_text = ""
+        if any(signal in page_text for signal in ("map", "numbered locations", "numbered hexes", "map of")):
+            candidates.add(page_index)
+    detected_type = str(assessment.get("detected_type") or "")
+    map_signals = int(assessment.get("map_signals") or 0)
+    if page_count >= 4 and (map_signals or detected_type in {"programmed_dungeon", "programmed_plus_random", "campaign_multi_part"}):
+        candidates.add(4)
+    return sorted(page for page in candidates if 1 <= page <= page_count)
+
+
+def _render_pdf_map_pages(
+    pdf_path: Path,
+    data_dir: Path,
+    package_id: str,
+    assessment: dict[str, Any],
+    *,
+    max_pages: int = 12,
+) -> list[dict[str, Any]]:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:  # pragma: no cover - dependency is present in app image/tests
+        raise RuntimeError("pypdf is required to inspect PDF map pages before rendering.") from exc
+
+    pdftoppm = shutil.which("pdftoppm")
+    if not pdftoppm:
+        raise RuntimeError("pdftoppm is required to render PDF map pages; install poppler-utils in the container image.")
+    reader = PdfReader(str(pdf_path))
+    pages = _pdf_map_render_candidate_pages(reader, assessment, max_pages=max_pages)
+    asset_dir = adventure_package_asset_dir(data_dir, package_id)
+    maps: list[dict[str, Any]] = []
+    for page_index in pages:
+        filename = f"page-{page_index:03d}-render.png"
+        output_prefix = asset_dir / f"page-{page_index:03d}-render"
+        command = [
+            pdftoppm,
+            "-f",
+            str(page_index),
+            "-l",
+            str(page_index),
+            "-singlefile",
+            "-png",
+            "-r",
+            "150",
+            str(pdf_path),
+            str(output_prefix),
+        ]
+        result = subprocess.run(command, capture_output=True, text=True, check=False, timeout=30)
+        output = asset_dir / filename
+        if result.returncode != 0 or not output.is_file():
+            detail = (result.stderr or result.stdout or "no renderer output").strip()
+            raise RuntimeError(f"pdftoppm failed while rendering page {page_index}: {detail}")
+        maps.append(
+            {
+                "id": f"map-page-{page_index:03d}-render",
+                "title": f"Page {page_index} rendered map review",
+                "source_pdf": str(pdf_path.name),
+                "source_page": page_index,
+                "asset_path": _asset_url_path(package_id, filename),
+                "coordinate_system": "percent",
+                "pins": [],
+                "extraction_note": "Rendered full PDF page because no embedded map image was exposed. Crop or replace this image later if the page includes non-map text.",
+            }
+        )
     return maps
 
 
@@ -525,6 +600,11 @@ def create_or_refresh_package_from_pdf(
             maps = _extract_pdf_map_images(pdf_path, data_dir, package_id)
         except Exception as exc:  # noqa: BLE001 - extraction failure should still leave a package to edit
             extraction_warnings.append(f"Map image extraction failed: {type(exc).__name__}: {exc}")
+        if not maps:
+            try:
+                maps = _render_pdf_map_pages(pdf_path, data_dir, package_id, assessment)
+            except Exception as exc:  # noqa: BLE001 - page rendering is best-effort
+                extraction_warnings.append(f"Map page rendering failed: {type(exc).__name__}: {exc}")
     if not maps:
         _write_manual_map_readme(data_dir, package_id, pdf_path)
         maps = [_manual_map_slot(package_id, pdf_path)]

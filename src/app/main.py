@@ -2844,7 +2844,7 @@ def _rules_tables_payload() -> dict:
         {
             "area": "Map assets",
             "path": "DATA_DIR/Adventures/<adventure_id>/maps/",
-            "purpose": "Stores extracted or manually supplied map images from user-owned PDFs.",
+            "purpose": "Stores extracted embedded map images, rendered PDF map pages, or manually supplied map images from user-owned PDFs.",
             "boundary": "Keep private-use PDF-derived art local unless publishing rights are secured.",
         },
         {

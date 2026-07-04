@@ -198,6 +198,50 @@ def test_create_package_from_pdf_creates_manual_map_slot_and_preserves_pins(tmp_
     assert refreshed["maps"][0]["pins"][0]["role"] == "entrance"
 
 
+def test_create_package_from_pdf_renders_map_pages_when_embedded_images_are_missing(monkeypatch, tmp_path: Path) -> None:
+    from app.engine import adventure_packages
+
+    root = tmp_path / "app"
+    data = tmp_path / "data"
+    root.mkdir()
+    data.mkdir()
+    pdf_dir = user_adventure_pdf_dir(data)
+    pdf_dir.mkdir(parents=True)
+    _write_blank_pdf(pdf_dir / "Rendered Map Module.pdf")
+    scan_new_adventure_pdfs(root, data)
+
+    def fake_no_embedded_images(pdf_path: Path, data_dir: Path, package_id: str, *, max_pages: int = 12):
+        return []
+
+    def fake_render_pages(pdf_path: Path, data_dir: Path, package_id: str, assessment: dict, *, max_pages: int = 12):
+        asset_dir = adventure_packages.adventure_package_asset_dir(data_dir, package_id)
+        (asset_dir / "page-004-render.png").write_bytes(b"fake png")
+        return [
+            {
+                "id": "map-page-004-render",
+                "title": "Page 4 rendered map review",
+                "source_pdf": pdf_path.name,
+                "source_page": 4,
+                "asset_path": "maps/page-004-render.png",
+                "coordinate_system": "percent",
+                "pins": [],
+                "extraction_note": "Rendered full PDF page because no embedded map image was exposed.",
+            }
+        ]
+
+    monkeypatch.setattr(adventure_packages, "_extract_pdf_map_images", fake_no_embedded_images)
+    monkeypatch.setattr(adventure_packages, "_render_pdf_map_pages", fake_render_pages)
+
+    summary = create_or_refresh_package_from_pdf(root, data, "rendered-map-module-pdf")
+
+    assert summary["map_count"] == 1
+    assert summary["maps"][0]["id"] == "map-page-004-render"
+    assert summary["maps"][0]["source_page"] == 4
+    assert summary["maps"][0]["asset_exists"] is True
+    assert "page-004-render.png" in summary["maps"][0]["asset_url"]
+    assert (data / "Adventures" / "rendered-map-module-pdf" / "maps" / "page-004-render.png").is_file()
+
+
 def test_adventure_package_schema_allows_role_marked_map_pins() -> None:
     schema = json.loads(Path("data/adventures/schema/adventure_package.v1.json").read_text(encoding="utf-8"))
     pin_schema = schema["properties"]["maps"]["items"]["properties"]["pins"]["items"]["properties"]

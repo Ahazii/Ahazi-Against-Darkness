@@ -4474,8 +4474,21 @@ function renderAdventurePackageSectionEditor(pkg, redraw) {
 function renderAdventurePackageMaps(pkg) {
   const panel = card(
     "Map Review / Pin Locations",
-    "Review the extracted or manually supplied map image, then click the map to place percent-based markers. Use pin roles to mark rooms, the dungeon entrance, exits, stairs, secrets, objectives, camps, or settlements before converting the package into a playable graph."
+    "Review extracted PDF images or rendered map pages, then click the map to place percent-based markers. Use pin roles to mark rooms, the dungeon entrance, exits, stairs, secrets, objectives, camps, or settlements before converting the package into a playable graph."
   );
+  const sourceId = pkg.source?.pdf_assessment_id || pkg.package_id;
+  const mapActions = actions();
+  mapActions.appendChild(button("Re-extract Maps", "Run the PDF map extractor again for this package. Existing pins are preserved when map ids match. Use this when the package still shows only a manual map slot after a PDF scan/import update.", async () => {
+    const result = await api(`/api/adventures/pdf-sources/${encodeURIComponent(sourceId)}/package`, {
+      method: "POST",
+      body: JSON.stringify({ extract_maps: true }),
+    });
+    const detail = await api(`/api/adventures/packages/${encodeURIComponent(result.package.package_id)}`);
+    replaceAdventurePackageInState(detail.package);
+    setStatus(`Re-extracted maps for ${detail.package.title}.`);
+    renderPage();
+  }, "secondary"));
+  panel.appendChild(mapActions);
   const wrap = el("div", "modern-package-map-list");
   if (!(pkg.maps || []).length) {
     wrap.appendChild(el("p", "muted", "No map records yet. Create / Refresh will add a manual map slot when the PDF importer cannot extract a map image."));
