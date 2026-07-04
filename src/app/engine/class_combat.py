@@ -54,6 +54,7 @@ def attack_modifier(
         bonus += 1
     if any(status.lower() == "attack penalty (poison) -1" for status in member.statuses):
         bonus -= 1
+    bonus -= sum(1 for status in member.statuses if status.lower() == "fd lizardman horde poison -1 attack")
     if any(status.lower() == "attack penalty (magic) -1" for status in member.statuses):
         bonus -= 1
     if any(status.lower() == "tar in eyes -1" for status in member.statuses):

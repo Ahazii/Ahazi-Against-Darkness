@@ -45,7 +45,7 @@ Hover any badge for rulebook page references.
 | **Citadel of Dead** banner | Dead Things side sheet | Bandages only (hover) |
 | **MR suspended** badge | Magic Citadel side sheet | Spells ignore MR tiers |
 | **Treasure choice** buttons | Pending FD treasure choice on tile | `choose_treasure_outcome` |
-| **FD horde notes** | Horde combat | Opening Dark Elf/Goblin volleys, per-character horde attacks, Troll regeneration, Goblin Horde half-Life Level drop, and post-horde weapon salvage are handled by the app with FD p.42 log notes |
+| **FD horde notes** | Horde combat | Opening Dark Elf/Goblin volleys, per-character horde attacks, Troll regeneration, Lizardman wound-poison, Goblin Horde half-Life Level drop, and post-horde weapon salvage are handled by the app with FD p.42 log notes |
 | **Roll Demesne encounter** | `courtship_demesne_active`, exploration | `courtship_roll_encounter` |
 | **Woo / Fight / Giving / Withholding** | Pending woo or active wooing | `courtship_woo_encounter`, `courtship_fight_encounter`, `courtship_woo_giving`, `courtship_woo_withholding`, `courtship_woo_abort_fight` |
 | **Damsel penalty choice** | After Giving success vs Damsel of Teeming Roses | `courtship_damsel_penalty` (Life or Madness on next Withholding fail) |

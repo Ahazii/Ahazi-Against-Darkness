@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import random
+
 from ..schemas import EnemyState, PartyMemberState, SessionState, TileState
 from .combat import CombatContext, _defense_bonus, defense_succeeds, party_life_change_text
 from .dice import roll_exploding_for_level
@@ -10,6 +12,8 @@ from .party_life import apply_party_life_loss
 
 FD_HORDE_VOLLEY_USED_TAG = "fd_horde_opening_volley_used"
 FD_HORDE_WEAPON_SALVAGE_OBJECT = "FD horde weapons: light weapon and hand weapon for each party member"
+FD_LIZARDMAN_HORDE_POISON_TAG = "fd_horde_lizardman_poison"
+FD_LIZARDMAN_HORDE_POISON_STATUS = "FD Lizardman Horde poison -1 Attack"
 
 
 def _tags(enemy: EnemyState) -> set[str]:
@@ -102,3 +106,68 @@ def add_fd_horde_weapon_salvage(tile: TileState, defeated: list[EnemyState]) -> 
     return [
         "FD horde salvage: after defeating a Horde, the party may pick up one Light weapon and one hand weapon for each party member (FD p.42)."
     ]
+
+
+def lizardman_horde_poison_attack_penalty(member: PartyMemberState) -> int:
+    return sum(
+        1
+        for status in member.statuses
+        if status.strip().lower() == FD_LIZARDMAN_HORDE_POISON_STATUS.lower()
+    )
+
+
+def clear_lizardman_horde_poison_with_blessing(member: PartyMemberState) -> list[str]:
+    count = lizardman_horde_poison_attack_penalty(member)
+    if count <= 0:
+        return []
+    member.statuses = [
+        status
+        for status in member.statuses
+        if status.strip().lower() != FD_LIZARDMAN_HORDE_POISON_STATUS.lower()
+    ]
+    return [f"Blessing removes {count} cumulative Lizardman Horde poison Attack penalty from {member.name} (FD p.42)."]
+
+
+def apply_lizardman_horde_poison_after_party_turn(
+    session: SessionState,
+    enemies: list[EnemyState],
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    active_lizardman_horde = next(
+        (
+            enemy
+            for enemy in enemies
+            if enemy.life > 0
+            and "horde" in _tags(enemy)
+            and FD_LIZARDMAN_HORDE_POISON_TAG in _tags(enemy)
+        ),
+        None,
+    )
+    if active_lizardman_horde is None:
+        return []
+    wounded = [member for member in session.party if 0 < member.current_life < member.max_life]
+    if not wounded:
+        return []
+    target = random.choice(wounded)
+    hcl = max((member.level for member in session.party), default=max(1, active_lizardman_horde.level - 2))
+    total, rolls = roll_exploding_for_level(target, session=session)
+    from .class_combat import save_modifier
+
+    modifier = save_modifier(target, poison=True, save_label="Lizardman Horde poison", session=session)
+    final_total = total + modifier
+    log: list[str] = [
+        f"FD horde poison: {active_lizardman_horde.name} targets wounded {target.name} at the end of the party turn (FD p.42)."
+    ]
+    if show_rolls:
+        log.append(
+            f"Lizardman Horde poison Save: {target.name} rolls {' + '.join(str(value) for value in rolls)} + "
+            f"{modifier} = {final_total} vs HCL {hcl}."
+        )
+    if rolls[0] != 1 and final_total >= hcl:
+        log.append(f"{target.name} resists the poison.")
+        return log
+    target.statuses.append(FD_LIZARDMAN_HORDE_POISON_STATUS)
+    penalty = lizardman_horde_poison_attack_penalty(target)
+    log.append(f"{target.name} suffers cumulative -1 Attack from Lizardman Horde poison (now -{penalty}).")
+    return log

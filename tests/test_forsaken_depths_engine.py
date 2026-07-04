@@ -305,6 +305,7 @@ def test_fd_monster_tables_loaded() -> None:
     assert hordes["Horde of Deep Trolls"]["attacks"] == 1
     assert "regeneration" in hordes["Horde of Deep Trolls"]["tags"]
     assert hordes["Horde of Lizardmen of the Deep"]["attacks"] == 2
+    assert "fd_horde_lizardman_poison" in hordes["Horde of Lizardmen of the Deep"]["tags"]
     assert hordes["Horde of Goblins of the Deep"]["attacks"] == 1
     assert "half_life_level_drop:2" in hordes["Horde of Goblins of the Deep"]["tags"]
 
@@ -964,6 +965,75 @@ def test_fd_horde_salvage_marks_room_after_defeat() -> None:
 
     assert FD_HORDE_WEAPON_SALVAGE_OBJECT in tile.objects
     assert any("Light weapon" in entry and "hand weapon" in entry for entry in log)
+
+
+def test_fd_lizardman_horde_poison_is_cumulative_and_affects_attack(monkeypatch) -> None:
+    from app.engine.class_combat import attack_modifier
+    from app.engine.forsaken_depths_hordes import (
+        FD_LIZARDMAN_HORDE_POISON_STATUS,
+        apply_lizardman_horde_poison_after_party_turn,
+    )
+
+    eng = engine()
+    hero = _party_member()
+    hero.current_life = 8
+    session = eng.create_session(
+        "fd-lizardman-poison",
+        "party-1",
+        [hero],
+        ruleset="forsaken_depths",
+    )
+    session.party[0].current_life = 8
+    enemy = EnemyState(
+        id="lizard-horde",
+        name="Horde of Lizardmen of the Deep",
+        category="boss",
+        level=7,
+        life=5,
+        max_life=5,
+        attacks=2,
+        tags=["horde", "lizardman", "forsaken_depths", "fd_horde_lizardman_poison"],
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_hordes.random.choice", lambda choices: choices[0])
+    monkeypatch.setattr("app.engine.forsaken_depths_hordes.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+
+    first = apply_lizardman_horde_poison_after_party_turn(session, [enemy], show_rolls=True)
+    second = apply_lizardman_horde_poison_after_party_turn(session, [enemy], show_rolls=True)
+
+    assert session.party[0].statuses.count(FD_LIZARDMAN_HORDE_POISON_STATUS) == 2
+    assert attack_modifier(session.party[0], enemy) == session.party[0].level - 2
+    assert any("now -1" in entry for entry in first)
+    assert any("now -2" in entry for entry in second)
+
+
+def test_fd_lizardman_horde_poison_clears_with_blessing() -> None:
+    from app.engine.forsaken_depths_hordes import FD_LIZARDMAN_HORDE_POISON_STATUS
+    from app.engine.spells import _cast_blessing
+
+    eng = engine()
+    member = _party_member()
+    member.spells = ["Blessing"]
+    member.statuses.extend([FD_LIZARDMAN_HORDE_POISON_STATUS, FD_LIZARDMAN_HORDE_POISON_STATUS])
+    session = eng.create_session(
+        "fd-lizardman-blessing",
+        "party-1",
+        [member],
+        ruleset="forsaken_depths",
+    )
+    log: list[str] = []
+
+    _cast_blessing(
+        session.party[0],
+        session.party,
+        [],
+        session.party[0].character_id,
+        log,
+        session=session,
+        show_rolls=True,
+    )
+
+    assert FD_LIZARDMAN_HORDE_POISON_STATUS not in session.party[0].statuses
+    assert any("Lizardman Horde poison Attack penalty" in entry for entry in log)
 
 
 def test_fd_citadel_roll_on_etc(monkeypatch) -> None:

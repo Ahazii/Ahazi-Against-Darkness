@@ -3134,6 +3134,16 @@ def resolve_combat_round(
         )
         if drain_log:
             log.extend(drain_log)
+        if context.session is not None:
+            from .forsaken_depths_hordes import apply_lizardman_horde_poison_after_party_turn
+
+            log.extend(
+                apply_lizardman_horde_poison_after_party_turn(
+                    context.session,
+                    enemies,
+                    show_rolls=show_rolls,
+                )
+            )
         context.enemies_hit_this_round.clear()
 
     def run_foe_phase() -> None:

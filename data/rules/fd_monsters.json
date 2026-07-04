@@ -468,7 +468,7 @@
       "level_delta": 2,
       "life": "HCL",
       "attacks": 2,
-      "tags": ["boss", "horde", "lizardman", "forsaken_depths"],
+      "tags": ["boss", "horde", "lizardman", "forsaken_depths", "fd_horde_lizardman_poison"],
       "reactions": [{"roll": "1-4", "key": "bribe", "result": "The horde demands tribute."}, {"roll": "5-6", "key": "fight", "result": "The horde attacks!", "foes_first": true}],
       "notes": "HCL+2 horde (FD p.42)."
     },

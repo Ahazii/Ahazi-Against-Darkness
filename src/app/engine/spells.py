@@ -862,6 +862,9 @@ def _cast_blessing(
         from .forsaken_depths_content import clear_fd_hallucination_with_blessing
 
         log.extend(clear_fd_hallucination_with_blessing(target))
+        from .forsaken_depths_hordes import clear_lizardman_horde_poison_with_blessing
+
+        log.extend(clear_lizardman_horde_poison_with_blessing(target))
     if dark_plague_result is True:
         log.append("Dark Plague uses the Abyss d8+L cure check; other Blessing effects resolve normally.")
     return SpellOutcome(log, enemies, party, spell_consumed=True, curse_break_target_id=target.character_id)
