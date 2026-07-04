@@ -5,7 +5,7 @@ from pathlib import Path
 from app.engine import random_dungeon
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
-from app.schemas import EnemyState, ExitState, PartyMemberState, TileState
+from app.schemas import EnemyState, ExitState, PartyMemberState, SessionState, TileState
 
 
 def engine() -> RandomDungeonEngine:
@@ -1739,9 +1739,7 @@ def test_fd_magic_citadel_final_spawns_plus_life_guardian_and_idol(monkeypatch) 
     assert any("Weird Monster" in obj for obj in tile.objects)
 
 
-def test_fd_prisoners_escape_spends_clues() -> None:
-    from app.engine.forsaken_depths_citadel import escape_fd_prisoners_citadel
-
+def _prisoners_citadel_session() -> tuple[RandomDungeonEngine, SessionState, TileState, TileState, TileState]:
     eng = engine()
     session = eng.create_session(
         "fd-prisoners",
@@ -1750,18 +1748,99 @@ def test_fd_prisoners_escape_spends_clues() -> None:
         ruleset="forsaken_depths",
     )
     origin = _fd_ru_entry_tile(eng)
+    origin.id = "origin"
     origin.room_codes = ["ETC"]
-    session.map_state.tiles = [origin]
-    session.map_state.current_tile_id = origin.id
+    room1 = TileState(
+        id="prison-room-1",
+        x=1,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="First Prison Room",
+        description="Side sheet",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+    )
+    room2 = TileState(
+        id="prison-room-2",
+        x=2,
+        y=0,
+        tile_key="12",
+        tile_type="room",
+        title="Second Prison Room",
+        description="Side sheet",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+    )
+    session.map_state.tiles = [origin, room1, room2]
+    session.map_state.current_tile_id = room1.id
     session.fd_side_sheet_active = True
     session.fd_side_sheet_kind = "citadel"
     session.fd_citadel_type = "prisoners_citadel"
     session.fd_side_sheet_origin_tile_id = origin.id
+    session.fd_side_sheet_rooms_total = 2
+    session.fd_side_sheet_rooms_entered = 1
+    session.fd_side_sheet_visited_tile_ids = [room1.id]
     session.clues_found = 5
     session.party[0].clues = 5
+    return eng, session, origin, room1, room2
+
+
+def test_fd_prisoners_spends_clues_then_reveals_secret_exit_in_next_room(monkeypatch) -> None:
+    from app.engine.forsaken_depths_citadel import escape_fd_prisoners_citadel
+    from app.engine.forsaken_depths_side_sheet import apply_fd_side_sheet_room
+
+    eng, session, origin, _room1, room2 = _prisoners_citadel_session()
     assert escape_fd_prisoners_citadel(eng, session, show_rolls=False)
     assert session.clues_found == 1
+    assert session.fd_prisoners_secret_exit_pending
+    assert session.fd_side_sheet_active
+
+    monkeypatch.setattr(
+        eng,
+        "_roll_fd_content",
+        lambda session, tile_type, hcl: {"key": "fd_empty", "description": "Empty", "objects": [], "enemies": []},
+    )
+    session.map_state.current_tile_id = room2.id
+    apply_fd_side_sheet_room(eng, session, room2, show_rolls=False)
+
+    assert not session.fd_prisoners_secret_exit_pending
+    assert session.fd_prisoners_secret_exit_tile_id == room2.id
+    assert "Secret Exit" in room2.objects
+
+    assert escape_fd_prisoners_citadel(eng, session, show_rolls=False)
     assert not session.fd_side_sheet_active
+    assert session.map_state.current_tile_id == origin.id
+
+
+def test_fd_prisoners_all_rooms_visited_exit_only_in_first_room() -> None:
+    from app.engine.forsaken_depths_citadel import escape_fd_prisoners_citadel
+
+    eng, session, origin, room1, room2 = _prisoners_citadel_session()
+    session.fd_side_sheet_rooms_entered = 2
+    session.fd_side_sheet_visited_tile_ids = [room1.id, room2.id]
+    session.map_state.current_tile_id = room2.id
+
+    assert not escape_fd_prisoners_citadel(eng, session, show_rolls=False)
+    assert session.clues_found == 1
+    assert session.fd_prisoners_secret_exit_tile_id == room1.id
+    assert "Secret Exit" in room1.objects
+    assert session.fd_side_sheet_active
+
+    session.map_state.current_tile_id = room1.id
+    assert escape_fd_prisoners_citadel(eng, session, show_rolls=False)
+    assert not session.fd_side_sheet_active
+    assert session.map_state.current_tile_id == origin.id
+
+
+def test_fd_prisoners_blocks_generic_side_sheet_exit() -> None:
+    from app.engine.forsaken_depths_side_sheet import exit_fd_side_sheet
+
+    eng, session, _origin, _room1, _room2 = _prisoners_citadel_session()
+
+    assert not exit_fd_side_sheet(eng, session, show_rolls=False)
+    assert session.fd_side_sheet_active
+    assert any("locks the exit" in entry for entry in session.log)
 
 
 def test_fd_citadel_of_dead_blocks_rest_healing() -> None:

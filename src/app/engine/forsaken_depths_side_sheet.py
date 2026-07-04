@@ -87,9 +87,10 @@ def apply_fd_side_sheet_room(
 
         apply_ruins_room_content(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
     else:
-        from .forsaken_depths_citadel import apply_fd_citadel_room
+        from .forsaken_depths_citadel import apply_fd_citadel_room, maybe_mark_fd_prisoners_secret_exit
 
         apply_fd_citadel_room(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
+        maybe_mark_fd_prisoners_secret_exit(session, tile, show_rolls=show_rolls)
     if session.fd_side_sheet_rooms_entered >= session.fd_side_sheet_rooms_total:
         if kind == "dark_pits":
             _maybe_complete_fd_dark_pits(session, tile, show_rolls=show_rolls)
@@ -177,6 +178,9 @@ def enter_fd_side_sheet(
     session.fd_side_sheet_rooms_total = rooms
     session.fd_side_sheet_rooms_entered = 0
     session.fd_side_sheet_visited_tile_ids = []
+    session.fd_prisoners_secret_exit_pending = False
+    session.fd_prisoners_secret_exit_tile_id = None
+    session.fd_prisoners_secret_exit_clues_spent = False
     tile.fd_side_sheet_entry_used = True
     if chosen == "citadel" and session.fd_citadel_type == "magic_citadel":
         session.fd_magic_citadel_mr_active = True
@@ -223,6 +227,15 @@ def exit_fd_side_sheet(
     if not session.fd_side_sheet_active:
         session.log.append("The party is not on a side dungeon sheet.")
         return False
+    if session.fd_side_sheet_kind == "citadel" and session.fd_citadel_type == "prisoners_citadel":
+        from .forsaken_depths_citadel import fd_prisoners_secret_exit_status
+
+        status = fd_prisoners_secret_exit_status(session, engine._current_tile(session))
+        if status != "ready_here":
+            session.log.append(
+                "Prisoners of the Citadel locks the exit. Spend 4 Clues and open the marked Secret Exit room to leave (FD p.60)."
+            )
+            return False
     origin_id = session.fd_side_sheet_origin_tile_id
     if not origin_id:
         session.log.append("Side sheet origin is unknown.")
@@ -233,6 +246,9 @@ def exit_fd_side_sheet(
         return False
     session.fd_side_sheet_active = False
     session.fd_magic_citadel_mr_active = False
+    session.fd_prisoners_secret_exit_pending = False
+    session.fd_prisoners_secret_exit_tile_id = None
+    session.fd_prisoners_secret_exit_clues_spent = False
     session.map_state.current_tile_id = origin.id
     session.current_tile_entry_exit_id = None
     if show_rolls:

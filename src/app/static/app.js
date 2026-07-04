@@ -794,7 +794,7 @@ const ACTION_TOOLTIPS = {
     "Enter the citadel or river ruins side dungeon on a separate sheet (FD p.39–40 / p.60). Procedural rooms use Forsaken Ruins or citadel rules.",
   exitFdSideSheet: "Leave the side dungeon sheet and return to the main map element where you entered.",
   fdPrisonersEscape:
-    "Prisoners of the Citadel: spend 4 Clues to escape the side sheet and return to the main map (FD p.60).",
+    "Prisoners of the Citadel (FD p.60): spend 4 Clues to locate the Secret Exit. It appears in the next room entered; if all rooms are already visited, open it from the first Citadel room.",
   fdSecretPassageUnlock:
     "Forsaken Ruins secret passage (FD p.56): spend 3 held Clues to open the passage to the Abyss, Netherworld, or Citadel.",
   fdSecretPassageAbyss:
@@ -11927,6 +11927,7 @@ function forsakenDepthsDebugSummary(session = state.session) {
     `River: ${fdRiverTypeDisplay(session) || "none"}; ${fdTravelModeDisplay(session) || "travel n/a"}; ${fdBoatStatusDisplay(session) || "boat n/a"}`,
     `Citadel: ${fdCitadelDisplay(session) || "none"}; modifier: ${fdCitadelModifierLine(session) || "none"}`,
     `Side sheet: ${fdSideSheetDisplay(session) || "none"}; active=${Boolean(session.fd_side_sheet_active)}; origin=${session.fd_side_sheet_origin_tile_id || "none"}`,
+    `Prisoners Secret Exit: spent=${Boolean(session.fd_prisoners_secret_exit_clues_spent)}; pending=${Boolean(session.fd_prisoners_secret_exit_pending)}; tile=${session.fd_prisoners_secret_exit_tile_id || "none"}`,
     `Rare event state: Stirs=${session.fd_stirs_in_darkness_remaining || 0}; Flood bow penalty rooms=${session.fd_flood_bow_penalty_rooms || 0}; Portal tile=${session.fd_portal_tile_id || "none"}`,
     `Pending FD choices: ${pending.length ? pending.join("; ") : "none"}`,
   ];
@@ -13779,7 +13780,7 @@ function fdCitadelModifierLine(session) {
     ghost_citadel: "Final room: Citadel Weird Final Boss (FD p.60).",
     crowded_citadel: "Double minion counts; −1 Reaction (FD p.60).",
     citadel_of_traps: "Minions often replaced by traps with treasure (FD p.60).",
-    prisoners_citadel: "Escape with 4 Clues (map panel button, FD p.60).",
+    prisoners_citadel: "Spend 4 Clues to reveal the Secret Exit in the next room; if all rooms are visited, return to the first room (FD p.60).",
     citadel_of_dead: "No healing except bandages (FD p.60).",
     magic_citadel: "Magic resistance suspended; idols/altars; final Cyclopean Idol (FD p.60).",
   };
@@ -13803,9 +13804,29 @@ function appendFdCitadelSideSheetActions(parent, session) {
     parent.appendChild(deadLine);
   }
   if (!fdPrisonersEscapeAvailable(session)) return;
-  const escapeBtn = node("button", "secondary", "Escape citadel (4 Clues)");
+  const tile = currentTile(session);
+  const readyHere = Boolean(session.fd_prisoners_secret_exit_tile_id && tile?.id === session.fd_prisoners_secret_exit_tile_id);
+  const readyElsewhere = Boolean(session.fd_prisoners_secret_exit_tile_id && tile?.id !== session.fd_prisoners_secret_exit_tile_id);
+  const pending = Boolean(session.fd_prisoners_secret_exit_pending);
+  const label = readyHere
+    ? "Open Secret Exit"
+    : readyElsewhere
+    ? "Secret Exit location"
+    : pending
+    ? "Secret Exit pending"
+    : "Spend 4 Clues";
+  const escapeBtn = node("button", "secondary", label);
   escapeBtn.type = "button";
-  setButtonTooltip(escapeBtn, ACTION_TOOLTIPS.fdPrisonersEscape);
+  setButtonTooltip(
+    escapeBtn,
+    readyHere
+      ? "Open the Prisoners of the Citadel Secret Exit in this room and return to the main map (FD p.60)."
+      : readyElsewhere
+      ? "The Secret Exit is already marked in another Citadel room. Click to log the location reminder."
+      : pending
+      ? "The 4 Clues have already been spent. Enter the next unvisited Citadel room to reveal the Secret Exit."
+      : ACTION_TOOLTIPS.fdPrisonersEscape
+  );
   escapeBtn.addEventListener("click", () => advance("fd_prisoners_escape"));
   parent.appendChild(escapeBtn);
 }
@@ -19005,12 +19026,25 @@ function currentObjectiveForSession(session) {
       const kind = session.fd_side_sheet_kind === "citadel" ? fdCitadelDisplay(session) || "Citadel" : fdSideSheetDisplay(session) || "Forsaken Ruins";
       const entered = session.fd_side_sheet_rooms_entered || 0;
       const total = session.fd_side_sheet_rooms_total || 0;
+      const prisonersExit = session.fd_citadel_type === "prisoners_citadel"
+        ? session.fd_prisoners_secret_exit_tile_id
+          ? currentTile(session)?.id === session.fd_prisoners_secret_exit_tile_id
+            ? " The Secret Exit is here; open it when ready."
+            : " The Secret Exit has been found in another Citadel room; return there to leave."
+          : session.fd_prisoners_secret_exit_pending
+          ? " The 4 Clues are spent; enter the next unvisited room to reveal the Secret Exit."
+          : " Spend 4 Clues when you want to begin locating the Secret Exit."
+        : "";
       return {
         title: `Current objective: ${kind}`,
         body:
-          `Explore the separate side sheet room budget (${entered}/${total}). Resolve room content, traps, foes, treasure choices, and Citadel modifiers before returning to the main map.`,
+          `Explore the separate side sheet room budget (${entered}/${total}). Resolve room content, traps, foes, treasure choices, and Citadel modifiers before returning to the main map.${prisonersExit}`,
         tone: "quest",
-        action: entered >= total ? { label: "Return to main map", kind: "advance", advanceAction: "exit_fd_side_sheet" } : null,
+        action: session.fd_citadel_type === "prisoners_citadel" && currentTile(session)?.id === session.fd_prisoners_secret_exit_tile_id
+          ? { label: "Open Secret Exit", kind: "advance", advanceAction: "fd_prisoners_escape" }
+          : entered >= total && session.fd_citadel_type !== "prisoners_citadel"
+          ? { label: "Return to main map", kind: "advance", advanceAction: "exit_fd_side_sheet" }
+          : null,
         secondaryAction: { label: "Copy FD Playtest Report", kind: "tag-copy-report" },
       };
     }

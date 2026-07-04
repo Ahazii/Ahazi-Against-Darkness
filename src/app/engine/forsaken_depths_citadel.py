@@ -86,6 +86,36 @@ def fd_prisoners_escape_available(session: SessionState) -> bool:
     )
 
 
+def fd_prisoners_secret_exit_status(session: SessionState, tile: TileState | None) -> str:
+    if not fd_prisoners_escape_available(session):
+        return ""
+    if session.fd_prisoners_secret_exit_tile_id:
+        if tile is not None and tile.id == session.fd_prisoners_secret_exit_tile_id:
+            return "ready_here"
+        return "ready_elsewhere"
+    if session.fd_prisoners_secret_exit_pending:
+        return "pending_next_room"
+    return "needs_clues"
+
+
+def maybe_mark_fd_prisoners_secret_exit(
+    session: SessionState,
+    tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    if not fd_prisoners_escape_available(session) or not session.fd_prisoners_secret_exit_pending:
+        return
+    session.fd_prisoners_secret_exit_pending = False
+    session.fd_prisoners_secret_exit_tile_id = tile.id
+    if "Secret Exit" not in tile.objects:
+        tile.objects.append("Secret Exit")
+    if show_rolls:
+        session.log.append(
+            f"Prisoners of the Citadel: the 4-Clue search reveals the Secret Exit in {tile.title} (FD p.60)."
+        )
+
+
 def apply_fd_ghost_citadel_entry(
     engine: RandomDungeonEngine,
     session: SessionState,
@@ -205,7 +235,8 @@ def apply_fd_citadel_room(
 
     if citadel_key == "prisoners_citadel" and show_rolls and session.fd_side_sheet_rooms_entered == 1:
         session.log.append(
-            f"Prisoners of the Citadel: spend {PRISONERS_ESCAPE_CLUES} Clues on the map panel to escape (FD p.60)."
+            f"Prisoners of the Citadel: spend {PRISONERS_ESCAPE_CLUES} Clues to locate the Secret Exit. "
+            "It appears in the next room entered, or in the first room if all rooms are already visited (FD p.60)."
         )
 
 
@@ -218,6 +249,24 @@ def escape_fd_prisoners_citadel(
     if not fd_prisoners_escape_available(session):
         session.log.append("Prisoners escape is only available in the Prisoners of the Citadel side sheet.")
         return False
+    tile = engine._current_tile(session)
+    if session.fd_prisoners_secret_exit_tile_id:
+        if tile is None or tile.id != session.fd_prisoners_secret_exit_tile_id:
+            exit_tile = engine._tile_by_id(session, session.fd_prisoners_secret_exit_tile_id)
+            label = exit_tile.title if exit_tile is not None else "the marked Secret Exit room"
+            session.log.append(f"Prisoners of the Citadel: return to {label} to open the Secret Exit (FD p.60).")
+            return False
+        if show_rolls:
+            session.log.append(f"The party opens the Secret Exit in {tile.title} and escapes the citadel (FD p.60).")
+        from .forsaken_depths_side_sheet import exit_fd_side_sheet
+
+        return exit_fd_side_sheet(engine, session, show_rolls=show_rolls)
+    if session.fd_prisoners_secret_exit_pending:
+        session.log.append(
+            "Prisoners of the Citadel: the 4 Clues have already been spent. "
+            "Enter the next unvisited Citadel room to reveal the Secret Exit (FD p.60)."
+        )
+        return False
     if session.clues_found < PRISONERS_ESCAPE_CLUES:
         session.log.append(
             f"Need {PRISONERS_ESCAPE_CLUES} Clues to escape the citadel (party has {session.clues_found}, FD p.60)."
@@ -228,13 +277,36 @@ def escape_fd_prisoners_citadel(
             f"Need {PRISONERS_ESCAPE_CLUES} Clues to escape the citadel (party has {session.clues_found})."
         )
         return False
+    session.fd_prisoners_secret_exit_clues_spent = True
+    first_room_id = session.fd_side_sheet_visited_tile_ids[0] if session.fd_side_sheet_visited_tile_ids else (tile.id if tile else None)
+    all_rooms_visited = bool(session.fd_side_sheet_rooms_total and session.fd_side_sheet_rooms_entered >= session.fd_side_sheet_rooms_total)
+    if all_rooms_visited and first_room_id:
+        session.fd_prisoners_secret_exit_tile_id = first_room_id
+        exit_tile = engine._tile_by_id(session, first_room_id)
+        if exit_tile is not None and "Secret Exit" not in exit_tile.objects:
+            exit_tile.objects.append("Secret Exit")
+        if tile is not None and tile.id == first_room_id:
+            if show_rolls:
+                session.log.append(
+                    f"Prisoners of the Citadel: all rooms are visited, so the Secret Exit opens in the first room "
+                    f"({tile.title}) after spending {PRISONERS_ESCAPE_CLUES} Clues (FD p.60)."
+                )
+            from .forsaken_depths_side_sheet import exit_fd_side_sheet
+
+            return exit_fd_side_sheet(engine, session, show_rolls=show_rolls)
+        label = exit_tile.title if exit_tile is not None else "the first Citadel room"
+        session.log.append(
+            f"Prisoners of the Citadel: {PRISONERS_ESCAPE_CLUES} Clues spent. "
+            f"All rooms are visited, so the Secret Exit can be opened only in {label} (FD p.60)."
+        )
+        return False
+    session.fd_prisoners_secret_exit_pending = True
     if show_rolls:
         session.log.append(
-            f"The party escapes the citadel with secret knowledge ({PRISONERS_ESCAPE_CLUES} Clues spent, FD p.60)."
+            f"Prisoners of the Citadel: {PRISONERS_ESCAPE_CLUES} Clues spent. "
+            "The Secret Exit will be found in the next Citadel room entered (FD p.60)."
         )
-    from .forsaken_depths_side_sheet import exit_fd_side_sheet
-
-    return exit_fd_side_sheet(engine, session, show_rolls=show_rolls)
+    return True
 
 
 def _double_minion_enemies(tile: TileState) -> None:

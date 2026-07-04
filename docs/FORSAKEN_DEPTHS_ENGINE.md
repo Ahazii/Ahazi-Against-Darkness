@@ -47,7 +47,7 @@ Hover any badge for rulebook page references.
 | **Soulbinding choices** | Bound hero enters another area | `resolve_fd_soulbinding_choice` (1 Life or 1 Madness per area away) |
 | **Room status line / Current Objective** | Unresolved FD trap, event, treasure, or chamber reward | Display/action guide only; blocks unrelated actions while a printed player choice is pending |
 | **Secret passage** | Ruins roll 12 tile | `fd_secret_passage_unlock_clues` / `choose_fd_secret_passage_destination` |
-| **Escape citadel (4 Clues)** | Prisoners citadel side sheet | `fd_prisoners_escape` |
+| **Spend 4 Clues / Open Secret Exit** | Prisoners citadel side sheet | `fd_prisoners_escape` |
 | **Citadel of Dead** banner | Dead Things side sheet | Bandages only (hover) |
 | **MR suspended** badge | Magic Citadel side sheet | Spells ignore MR tiers |
 | **Treasure choice** buttons | Pending FD treasure choice on tile | `choose_treasure_outcome` |
@@ -120,7 +120,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `forsaken_depths_traps.py` | Exact FD p.58 trap saves, item-sacrifice choices, soulbinding area checks, and Winds of Despair choice prompts |
 | `forsaken_depths_hordes.py` | FD p.42 horde opening volleys and post-horde weapon salvage |
 | `random_dungeon.py` | FD content rolls, trap seeding, tile generation |
-| `forsaken_depths_citadel.py` | Citadel type modifiers (crowded, traps, prisoners escape, dead healing, magic MR, final bosses) |
+| `forsaken_depths_citadel.py` | Citadel type modifiers (crowded, traps, prisoners Secret Exit, dead healing, magic MR, final bosses) |
 | `forsaken_depths_side_sheet.py` | Citadel / river ruins side-dungeon entry, room budget, return to main map |
 | `forsaken_depths_ruins.py` | Ruins Complex Machinery and Psychic Residue choice workflows (FD p.56) |
 | `forsaken_depths_secret_passage.py` | Ruins secret passage unlock (Clues / traps / weirds) and destination choice |
@@ -188,7 +188,14 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 - **fd_event** rolls d10 on `fd_event_table` when the tile is first entered. **The Passage** rolls the Citadel type/room count immediately, logs the Tier-in-6 trap chance result, and exposes **Enter Citadel sheet** on that tile.
 - **fd_hallucination** rolls `fd_hallucination_table`; roll 1 **Surrounded by Foes** records the affected hero and the d3+1 duration, then ticks it down after combat rounds; roll 2 **My Fingers are Worms** blocks that hero from weapon/held-item use until encounter end, damage, or Blessing; roll 3 **There is No Danger Here** forces the next dangerous Save failure or attack hit and clears after the damaging event; roll 4 **Horrors from Beyond** applies Madness equal to Tier; roll 5–6 grants a **Revelation** (party sheet / room panel buttons). After two hallucinations in one adventure, roll 4 redirects to an Event.
 - **fd_weird** (roll 9): d6 1–3 → `fd_weird_table`, 4–6 → `fd_citadel_weird_table`.
-- **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Citadel entry pre-generates the full room budget** on the side sheet; explore to enter each room for content. **Ghost Citadel** applies entry Madness plus the HCL+6 hallucination Save and still prefers oversized map elements (40+ cells). **Return to main map** when done. Room budget blocks further expansion when exhausted. Citadel types apply their FD p.60 modifiers (crowded double minions/−1 Reaction, traps replacing Minions/Hordes on 4-in-6 with 3-in-6 trap-guarded treasure, prisoners direct 4-Clue escape backstop, dead-citadel bandages-only healing, magic citadel MR suspended, ghost final boss; **magic citadel final** places a Cyclopean Idol guarded by a Weird Monster with +1 Life and altar-spell immunity). Dungeon **ETC** tiles roll citadel type on first entry (same as river ETC). Current Objective exposes **Copy FD Playtest Report** during FD side sheets and unresolved FD treasure/hidden-chamber states.
+- **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Citadel entry pre-generates the full room budget** on the side sheet; explore to enter each room for content. **Ghost Citadel** applies entry Madness plus the HCL+6 hallucination Save and still prefers oversized map elements (40+ cells). **Return to main map** when done, except **Prisoners of the Citadel**, which locks return until the Secret Exit is found. Room budget blocks further expansion when exhausted. Citadel types apply their FD p.60 modifiers (crowded double minions/−1 Reaction, traps replacing Minions/Hordes on 4-in-6 with 3-in-6 trap-guarded treasure, prisoners 4-Clue Secret Exit tracking, dead-citadel bandages-only healing, magic citadel MR suspended, ghost final boss; **magic citadel final** places a Cyclopean Idol guarded by a Weird Monster with +1 Life and altar-spell immunity). Dungeon **ETC** tiles roll citadel type on first entry (same as river ETC). Current Objective exposes **Copy FD Playtest Report** during FD side sheets and unresolved FD treasure/hidden-chamber states.
+
+### Prisoners of the Citadel Secret Exit (FD p.60)
+
+- The generic side-sheet return is blocked while the Prisoners citadel is active.
+- **Spend 4 Clues** consumes the Clues and starts the Secret Exit search; it does not immediately return the party to the main map.
+- If unvisited Citadel rooms remain, the next room entered is marked with **Secret Exit**. Open it from that room to return.
+- If all Citadel rooms are already visited, the Secret Exit is marked in the first Citadel room and can only be opened there.
 
 ## Portal → Courtship Demesne (TCOTFD)
 

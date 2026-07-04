@@ -1123,6 +1123,9 @@ class SessionState(BaseModel):
     fd_side_sheet_rooms_total: int = Field(default=0, ge=0)
     fd_side_sheet_rooms_entered: int = Field(default=0, ge=0)
     fd_side_sheet_visited_tile_ids: list[str] = Field(default_factory=list)
+    fd_prisoners_secret_exit_pending: bool = False
+    fd_prisoners_secret_exit_tile_id: str | None = None
+    fd_prisoners_secret_exit_clues_spent: bool = False
     fd_secret_passage_tile_id: str | None = None
     fd_secret_passage_traps_cleared: int = Field(default=0, ge=0)
     fd_secret_passage_weird_defeated: int = Field(default=0, ge=0)

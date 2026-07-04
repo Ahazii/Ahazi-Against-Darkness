@@ -312,7 +312,7 @@
     {"roll": "1", "key": "ghost_citadel", "name": "Ghost Citadel", "room_count": "3d6", "summary": "3d6 oversized rooms; entry Madness and HCL+6 hallucination Save; final room Citadel Weird Final Boss (FD p.60).", "source_page": 60},
     {"roll": "2", "key": "crowded_citadel", "name": "Crowded Citadel", "room_count": "4d6", "summary": "4d6 rooms; double minion counts; −1 Reaction (FD p.60).", "source_page": 60},
     {"roll": "3", "key": "citadel_of_traps", "name": "Citadel of Traps", "room_count": "10+2d6", "summary": "10+2d6 rooms; Minions/Hordes have 4-in-6 trap replacement; trap-guarded rooms have 3-in-6 treasure (FD p.60).", "source_page": 60},
-    {"roll": "4", "key": "prisoners_citadel", "name": "Prisoners of the Citadel", "room_count": "3d6", "summary": "3d6 rooms; escape with 4 Clues (FD p.60).", "source_page": 60},
+    {"roll": "4", "key": "prisoners_citadel", "name": "Prisoners of the Citadel", "room_count": "3d6", "summary": "3d6 rooms; gates lock. Spend 4 Clues to reveal the Secret Exit in the next room entered; if all rooms are visited, open it from the first room (FD p.60).", "source_page": 60},
     {"roll": "5", "key": "citadel_of_dead", "name": "Citadel of Dead Things", "room_count": "2d6+6", "summary": "2d6+6 rooms; no healing except bandages (FD p.60).", "source_page": 60},
     {"roll": "6", "key": "magic_citadel", "name": "Magic Citadel", "room_count": "3d6", "summary": "3d6 rooms; MR suspended; 1-in-6 idols/altars; final Cyclopean Idol guarded by Weird +1 Life immune to Citadel altar spells (FD p.60).", "source_page": 60}
   ],
