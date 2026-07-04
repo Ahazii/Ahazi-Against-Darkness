@@ -2129,6 +2129,14 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "function renderAdventurePackageReviewWorkspace" in MODERN_PAGES_JS
     assert "PDF Import Review Workspace" in MODERN_PAGES_JS
     assert "Imported Content Browser" in MODERN_PAGES_JS
+    assert "Location Preview" in MODERN_PAGES_JS
+    assert "Location Editor" in MODERN_PAGES_JS
+    assert "Linked Foes" in MODERN_PAGES_JS
+    assert "Linked Items" in MODERN_PAGES_JS
+    assert "Linked Procedures" in MODERN_PAGES_JS
+    assert "Exits / Choices JSON" in MODERN_PAGES_JS
+    assert "renderLocationPreview" in MODERN_PAGES_JS
+    assert "packageNodeLinkedRecords" in MODERN_PAGES_JS
     assert "Extract Candidate Lists" in MODERN_PAGES_JS
     assert "Locations" in MODERN_PAGES_JS
     assert "Tables" in MODERN_PAGES_JS
@@ -2140,7 +2148,8 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "Mark Wrong / Ignore" in MODERN_PAGES_JS
     assert "original_extraction" in MODERN_PAGES_JS
     assert "Load Editable Package" in MODERN_PAGES_JS
-    assert "Add / Update Node" in MODERN_PAGES_JS
+    assert "Save Location" in MODERN_PAGES_JS
+    assert "Clear Editor" in MODERN_PAGES_JS
     assert "Save Structured Sections" in MODERN_PAGES_JS
     assert "Create / Update Package from PDF" in MODERN_PAGES_JS
     assert "Reload Package List" in MODERN_PAGES_JS
@@ -2150,6 +2159,8 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert ".modern-package-node-form" in STYLES_CSS
     assert ".modern-package-browser-body" in STYLES_CSS
     assert ".modern-package-correction-panel" in STYLES_CSS
+    assert ".modern-location-preview-stage" in STYLES_CSS
+    assert ".modern-location-preview-grid" in STYLES_CSS
     assert "/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review" in MODERN_PAGES_JS
     assert "/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/extract-candidates" in MODERN_PAGES_JS
 

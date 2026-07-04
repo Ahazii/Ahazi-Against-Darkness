@@ -216,6 +216,9 @@ def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Pat
                     "source_page": 1,
                     "player_text": "The reviewed opening text.",
                     "app_notes": "Ask for a choice before branching.",
+                    "foe_ids": ["black-knight"],
+                    "item_ids": ["emerald-necklace"],
+                    "procedure_ids": ["opening-choice"],
                     "branches": [{"label": "Continue", "to": "scene-2"}],
                     "review_status": "ready_for_manifest",
                 },
@@ -250,6 +253,9 @@ def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Pat
     assert updated["diagnostics"]["errors"] == []
     detail = package_detail(data, "review-module-pdf")
     assert detail["nodes"][0]["id"] == "scene-1"
+    assert detail["nodes"][0]["foe_ids"] == ["black-knight"]
+    assert detail["nodes"][0]["item_ids"] == ["emerald-necklace"]
+    assert detail["nodes"][0]["procedure_ids"] == ["opening-choice"]
     assert detail["ignored_records"][0]["original_list"] == "items"
     assert detail["review"]["notes"] == "Opening scene checked against the source PDF."
 

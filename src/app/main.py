@@ -2876,10 +2876,17 @@ def _rules_tables_payload() -> dict:
         },
         {
             "area": "Review nodes",
-            "purpose": "Human-reviewed rooms, scenes, hexes, locations, camps, settlements, and endings extracted from the source PDF.",
+            "purpose": "Human-reviewed rooms, scenes, hexes, locations, camps, settlements, and endings extracted from the source PDF. The Location Preview shows player text, app notes, exits, linked foes/items/procedures, and any linked map pin or room image.",
             "stored_in": "package.json nodes[]",
-            "fields": "id, type, title, source_page, player_text, app_notes, branches, review_status",
-            "safety": "Branches should point to reviewed node ids; source_page remains visible for PDF audit.",
+            "fields": "id, type, title, source_page, player_text, app_notes, branches, foe_ids, item_ids, procedure_ids, map_pin_id, review_status",
+            "safety": "Branches and linked ids should point to reviewed package records; source_page remains visible for PDF audit.",
+        },
+        {
+            "area": "Location editor",
+            "purpose": "Lets a reviewer create or update a single room/scene/location in a structured form that can later be reused by the hand-authored Create Module workflow.",
+            "stored_in": "package.json nodes[] plus linked package lists",
+            "fields": "linked foes, linked items, linked procedures, map pin id, exits/choices JSON, player description, app/rules notes",
+            "safety": "The editor saves explicit ids instead of copying full records into the node, keeping generated/imported package data reusable and easier to audit.",
         },
         {
             "area": "User guide",

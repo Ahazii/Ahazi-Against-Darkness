@@ -111,6 +111,18 @@
           "map_pin_id": {
             "type": "string"
           },
+          "foe_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "item_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "procedure_ids": {
             "type": "array",
             "items": {

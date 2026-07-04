@@ -3443,6 +3443,13 @@ function parseJsonArrayField(control, label) {
   }
 }
 
+function commaList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function replaceAdventurePackageInState(pkg) {
   modernState.adventurePackages = (modernState.adventurePackages || []).filter((item) => item.package_id !== pkg.package_id);
   modernState.adventurePackages.push(pkg);
@@ -3590,8 +3597,90 @@ function packageRecordSubtitle(kind, record) {
   return bits.join(" · ") || "candidate";
 }
 
+function packageNodeLinkedRecords(pkg, node) {
+  const nodeId = packageRecordId(node);
+  const text = `${node?.player_text || ""} ${node?.app_notes || ""} ${node?.source_text || ""}`.toLowerCase();
+  const linkedById = (records, ids = []) => (records || []).filter((record) => ids.includes(record.id) || ids.includes(record.name));
+  const linkedByText = (records) => (records || []).filter((record) => {
+    const name = String(record.name || record.title || record.id || "").toLowerCase();
+    return name && name.length > 2 && text.includes(name);
+  });
+  const mapPins = [];
+  for (const map of pkg.maps || []) {
+    for (const pin of map.pins || []) {
+      if (pin.node_id === nodeId || pin.id === node?.map_pin_id) mapPins.push({ ...pin, map_title: map.title, asset_url: map.asset_url, asset_exists: map.asset_exists });
+    }
+  }
+  return {
+    foes: [...new Map([...linkedById(pkg.foes, node.foe_ids || []), ...linkedByText(pkg.foes)].map((item) => [item.id || item.name, item])).values()],
+    items: [...new Map([...linkedById(pkg.items, node.item_ids || []), ...linkedByText(pkg.items)].map((item) => [item.id || item.name, item])).values()],
+    procedures: [...new Map([...linkedById(pkg.procedures, node.procedure_ids || []), ...linkedByText(pkg.procedures)].map((item) => [item.id || item.title, item])).values()],
+    mapPins,
+  };
+}
+
+function renderMiniRecordList(title, records, emptyText, titleHint) {
+  const box = el("div", "modern-location-preview-box");
+  box.appendChild(el("strong", "", title));
+  box.title = titleHint || "";
+  if (!records.length) {
+    box.appendChild(el("p", "muted", emptyText));
+    return box;
+  }
+  const list = el("ul", "modern-warning-list");
+  for (const record of records) {
+    list.appendChild(el("li", "", `${record.name || record.title || record.label || record.id}${record.source_page !== undefined ? ` · page ${record.source_page}` : ""}`));
+  }
+  box.appendChild(list);
+  return box;
+}
+
+function renderLocationPreview(pkg, node) {
+  const linked = packageNodeLinkedRecords(pkg, node);
+  const preview = el("div", "modern-location-preview");
+  preview.appendChild(el("h4", "", `Location Preview: ${node.title || node.id || "Untitled"}`));
+  const meta = el("div", "modern-chip-row");
+  for (const [label, value] of [
+    ["id", node.id],
+    ["type", node.type || "location"],
+    ["page", node.source_page],
+    ["review", node.review_status || "needs_pdf_check"],
+  ]) {
+    if (value !== undefined && value !== "") meta.appendChild(el("span", "modern-tag", `${label}: ${value}`));
+  }
+  preview.appendChild(meta);
+  const stage = el("div", "modern-location-preview-stage");
+  const art = el("div", "modern-location-preview-art");
+  const pinWithImage = linked.mapPins.find((pin) => pin.asset_exists && pin.asset_url);
+  if (pinWithImage) {
+    const img = document.createElement("img");
+    img.src = pinWithImage.asset_url;
+    img.alt = `${pinWithImage.map_title || "Map"} linked to ${node.title || node.id}`;
+    img.title = "Map image linked by a package pin. This is the full map asset for now; future work can crop to the pin rectangle.";
+    art.appendChild(img);
+  } else {
+    art.appendChild(el("span", "muted", "No linked room graphic or map pin image yet."));
+  }
+  const prose = el("div", "modern-location-preview-prose");
+  prose.append(el("strong", "", "Player description"), el("p", "muted", node.player_text || "No reviewed player-facing description yet."));
+  prose.append(el("strong", "", "App / rules notes"), el("p", "muted", node.app_notes || "No app notes yet. Add saves, rolls, rewards, branch rules, or automation notes here."));
+  stage.append(art, prose);
+  preview.appendChild(stage);
+  const grid = el("div", "modern-location-preview-grid");
+  grid.append(
+    renderMiniRecordList("Foes", linked.foes, "No linked foes. If a foe appears in the text, link or move it into Foes before conversion.", "Foes linked by node foe_ids or detected by name in the location text."),
+    renderMiniRecordList("Items / Rewards", linked.items, "No linked items or rewards. Add item_ids or move detected records into Items.", "Items linked by node item_ids or detected by name in the location text."),
+    renderMiniRecordList("Exits / Choices", node.branches || [], "No exits or choices recorded yet.", "Branches are printed choices, scene jumps, doors, save outcomes, routes, or endings."),
+    renderMiniRecordList("Procedures", linked.procedures, "No linked procedures. Add procedure_ids for saves, rolls, table lookups, or special handling.", "Procedures linked by node procedure_ids or detected by title in the location text."),
+    renderMiniRecordList("Map Pins", linked.mapPins, "No map pin linked to this location yet.", "Pins connect this node id to a package map image.")
+  );
+  preview.appendChild(grid);
+  return preview;
+}
+
 function packageRecordDetail(pkg, kind, record, redraw) {
   const wrap = el("div", "modern-package-detail");
+  if (kind === "nodes") wrap.appendChild(renderLocationPreview(pkg, record));
   wrap.appendChild(el("h4", "", packageRecordTitle("", record)));
   const meta = el("div", "modern-chip-row");
   for (const key of ["id", "type", "source_page", "review_status", "dice"]) {
@@ -3769,9 +3858,112 @@ function renderAdventurePackageReviewBrowser(pkg) {
 
 function renderAdventurePackageNodeEditor(pkg, redraw) {
   const panel = el("div", "modern-package-node-editor");
-  panel.appendChild(el("h4", "", "Rooms / Scenes / Locations"));
-  panel.appendChild(el("p", "muted", "Use nodes for the human-reviewed structure extracted from the PDF. A node can be a room, scene, hex, location, camp, settlement, or ending. Branches should point to other node ids."));
+  panel.appendChild(el("h4", "", "Location Editor"));
+  panel.appendChild(el("p", "muted", "Create or edit a reviewed location/node. This editor is intentionally reusable for the future Create Module screen: title, description, app notes, linked foes/items/procedures, choices, and map-pin references all live in the package node."));
   const nodes = Array.isArray(pkg.nodes) ? pkg.nodes : [];
+  const selectedNodeId = select(`node-select-${pkg.package_id}`, "Choose an existing reviewed location to edit, or choose New Location to create one.", [["", "New Location"], ...nodes.map((node) => [node.id, `${node.title || node.id} (${node.type || "location"})`])]);
+  const editMount = el("div", "modern-location-editor-mount");
+  const drawEditor = () => {
+    editMount.replaceChildren();
+    const existing = nodes.find((node) => node.id === selectedNodeId.value) || {};
+    const id = input("text", `node-id-${pkg.package_id}`, "Lowercase id for this room, scene, hex, or location. Existing ids are used by map pins and future adventure conversion.");
+    id.value = existing.id || "";
+    const type = select(`node-type-${pkg.package_id}`, "What kind of reviewed content this node represents.", [
+      ["room", "Room"],
+      ["scene", "Scene"],
+      ["location", "Location"],
+      ["hex", "Hex"],
+      ["camp", "Camp"],
+      ["settlement", "Settlement"],
+      ["ending", "Ending"],
+    ]);
+    type.value = existing.type || "location";
+    const title = input("text", `node-title-${pkg.package_id}`, "Player-facing location title.");
+    title.value = existing.title || "";
+    const page = input("number", `node-page-${pkg.package_id}`, "PDF page number used as source reference.");
+    page.min = "0";
+    page.step = "1";
+    page.value = String(existing.source_page || 0);
+    const reviewStatus = select(`node-review-${pkg.package_id}`, "Node review status. Use Ready only after PDF text, choices, foes, rewards, and map link have been checked.", [
+      ["needs_pdf_check", "Needs PDF check"],
+      ["draft", "Draft"],
+      ["checked", "Checked"],
+      ["ready_for_manifest", "Ready for manifest"],
+      ["wrong_type", "Wrong type"],
+      ["ignored", "Ignored"],
+    ]);
+    reviewStatus.value = existing.review_status || "needs_pdf_check";
+    const text = textarea(`node-text-${pkg.package_id}`, "Reviewed player-facing narrative/location text for this node.", 5);
+    text.value = existing.player_text || "";
+    const appNotes = textarea(`node-notes-${pkg.package_id}`, "App notes: saves, rolls, foes, rewards, choices, rules handling, or branch requirements.", 4);
+    appNotes.value = existing.app_notes || "";
+    const foeIds = input("text", `node-foes-${pkg.package_id}`, "Comma-separated foe ids or names linked to this location. Use ids from the Foes list.");
+    foeIds.value = (existing.foe_ids || []).join(", ");
+    const itemIds = input("text", `node-items-${pkg.package_id}`, "Comma-separated item/reward ids or names linked to this location. Use ids from the Items list.");
+    itemIds.value = (existing.item_ids || []).join(", ");
+    const procedureIds = input("text", `node-procedures-${pkg.package_id}`, "Comma-separated procedure ids linked to this location. Use ids from the Procedures list.");
+    procedureIds.value = (existing.procedure_ids || []).join(", ");
+    const mapPinId = input("text", `node-map-pin-${pkg.package_id}`, "Optional map pin id linked to this location. Map pins can also link by node id.");
+    mapPinId.value = existing.map_pin_id || "";
+    const branches = textarea(`node-branches-${pkg.package_id}`, "JSON array of exits/choices, e.g. [{\"label\":\"Open the north door\",\"to\":\"room-2\",\"condition\":\"door choice\"}].", 4);
+    branches.value = JSON.stringify(existing.branches || [], null, 2);
+    const form = el("div", "modern-package-node-form");
+    form.append(
+      field("Node Id", id),
+      field("Type", type),
+      field("Title", title),
+      field("Source Page", page),
+      field("Review Status", reviewStatus),
+      field("Linked Foes", foeIds),
+      field("Linked Items", itemIds),
+      field("Linked Procedures", procedureIds),
+      field("Map Pin Id", mapPinId),
+      field("Player Description", text),
+      field("App / Rules Notes", appNotes),
+      field("Exits / Choices JSON", branches)
+    );
+    const row = actions();
+    row.append(
+      button("Save Location", "Save this reviewed location into package.json. This does not make it playable until conversion creates adventure.json.", async () => {
+        const nodeId = id.value.trim();
+        if (!nodeId) throw new Error("Node Id is required.");
+        const nextNode = {
+          ...existing,
+          id: nodeId,
+          type: type.value,
+          title: title.value.trim() || nodeId,
+          source_page: Number(page.value || 0),
+          player_text: text.value,
+          app_notes: appNotes.value,
+          foe_ids: commaList(foeIds.value),
+          item_ids: commaList(itemIds.value),
+          procedure_ids: commaList(procedureIds.value),
+          map_pin_id: mapPinId.value.trim(),
+          branches: parseJsonArrayField(branches, "Exits / Choices JSON"),
+          review_status: reviewStatus.value,
+        };
+        const nextNodes = nodes.filter((item) => item.id !== (existing.id || nodeId));
+        nextNodes.push(nextNode);
+        const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review`, {
+          method: "POST",
+          body: JSON.stringify({ nodes: nextNodes }),
+        });
+        replaceAdventurePackageInState(result.package);
+        setStatus(`Saved location ${nodeId}.`);
+        redraw();
+      }),
+      button("Clear Editor", "Clear the editor so you can create a new location.", async () => {
+        selectedNodeId.value = "";
+        drawEditor();
+      }, "secondary")
+    );
+    editMount.append(form, row);
+    if (existing.id) editMount.appendChild(renderLocationPreview(pkg, existing));
+  };
+  selectedNodeId.addEventListener("change", drawEditor);
+  panel.appendChild(field("Edit Location", selectedNodeId));
+  panel.appendChild(editMount);
+  drawEditor();
   const nodeList = el("div", "modern-package-node-list");
   if (!nodes.length) nodeList.appendChild(el("p", "muted", "No reviewed nodes yet. Add one from the source PDF before converting this package to a playable module."));
   for (const node of nodes) {
@@ -3785,66 +3977,7 @@ function renderAdventurePackageNodeEditor(pkg, redraw) {
     );
     nodeList.appendChild(row);
   }
-  const id = input("text", `node-id-${pkg.package_id}`, "Lowercase id for this room, scene, hex, or location.");
-  const type = select(`node-type-${pkg.package_id}`, "What kind of reviewed content this node represents.", [
-    ["room", "Room"],
-    ["scene", "Scene"],
-    ["location", "Location"],
-    ["hex", "Hex"],
-    ["camp", "Camp"],
-    ["settlement", "Settlement"],
-    ["ending", "Ending"],
-  ]);
-  const title = input("text", `node-title-${pkg.package_id}`, "Player-facing node title.");
-  const page = input("number", `node-page-${pkg.package_id}`, "PDF page number used as source reference.");
-  page.min = "0";
-  page.step = "1";
-  const reviewStatus = select(`node-review-${pkg.package_id}`, "Node review status.", [
-    ["draft", "Draft"],
-    ["checked", "Checked"],
-    ["needs_pdf_check", "Needs PDF check"],
-    ["ready_for_manifest", "Ready for manifest"],
-  ]);
-  const text = textarea(`node-text-${pkg.package_id}`, "Reviewed player-facing narrative/location text for this node.", 5);
-  const appNotes = textarea(`node-notes-${pkg.package_id}`, "App notes: saves, rolls, foes, rewards, choices, rules handling, or branch requirements.", 4);
-  const branches = textarea(`node-branches-${pkg.package_id}`, "JSON array of branches, e.g. [{\"label\":\"Open the north door\",\"to\":\"room-2\",\"condition\":\"door choice\"}].", 4);
-  branches.value = "[]";
-  const form = el("div", "modern-package-node-form");
-  form.append(
-    field("Node Id", id),
-    field("Type", type),
-    field("Title", title),
-    field("Source Page", page),
-    field("Review Status", reviewStatus),
-    field("Player Text", text),
-    field("App Notes", appNotes),
-    field("Branches JSON", branches)
-  );
-  const row = actions();
-  row.appendChild(button("Add / Update Node", "Add this reviewed PDF node or replace the existing node with the same id.", async () => {
-    const nodeId = id.value.trim();
-    if (!nodeId) throw new Error("Node Id is required.");
-    const nextNode = {
-      id: nodeId,
-      type: type.value,
-      title: title.value.trim() || nodeId,
-      source_page: Number(page.value || 0),
-      player_text: text.value,
-      app_notes: appNotes.value,
-      branches: parseJsonArrayField(branches, "Branches JSON"),
-      review_status: reviewStatus.value,
-    };
-    const nextNodes = nodes.filter((item) => item.id !== nodeId);
-    nextNodes.push(nextNode);
-    const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review`, {
-      method: "POST",
-      body: JSON.stringify({ nodes: nextNodes }),
-    });
-    replaceAdventurePackageInState(result.package);
-    setStatus(`Saved node ${nodeId}.`);
-    redraw();
-  }));
-  panel.append(nodeList, form, row);
+  panel.appendChild(nodeList);
   return panel;
 }
 

@@ -3649,8 +3649,8 @@
         "nodes",
         "module format"
       ],
-      "summary": "Tables documents the PDF Import Review Workspace and user-editable adventure module format.",
-      "body": "The modern Tables page includes adventure_package_review_workspace_table. It documents the structured PDF review workspace, clickable candidate lists for locations/nodes, tables, foes, items, classes, and procedures, move/ignore correction tools that preserve original extraction metadata, package diagnostics, review nodes, branch targets, local tables/foes/items/procedures, and the user guide at docs/ADVENTURE_MODULE_FORMAT.md. Review nodes are human-checked rooms, scenes, locations, hexes, camps, settlements, or endings stored in DATA_DIR/Adventures/<module_id>/package.json before conversion to a playable adventure.json manifest.",
+      "summary": "Tables documents the PDF Import Review Workspace, Location Preview, Location Editor, and user-editable adventure module format.",
+      "body": "The modern Tables page includes adventure_package_review_workspace_table. It documents the structured PDF review workspace, clickable candidate lists for locations/nodes, tables, foes, items, classes, and procedures, move/ignore correction tools that preserve original extraction metadata, package diagnostics, the Location Preview, the Location Editor, review nodes, branch targets, linked foe_ids, item_ids, procedure_ids, map_pin_id, local tables/foes/items/procedures, and the user guide at docs/ADVENTURE_MODULE_FORMAT.md. Review nodes are human-checked rooms, scenes, locations, hexes, camps, settlements, or endings stored in DATA_DIR/Adventures/<module_id>/package.json before conversion to a playable adventure.json manifest. The preview shows player text, app notes, exits/choices, linked foes, rewards/items, procedures, and map pin/artwork context; the editor writes explicit ids so the same structure can support the future Create Module workflow.",
       "implementation_status": "implemented"
     },
     {

@@ -138,6 +138,9 @@ Typical package:
   "source_page": 25,
   "player_text": "Reviewed player-facing text from the source.",
   "app_notes": "Stealth save, possible assassin ambush, then branch to scene-1 or return to town.",
+  "foe_ids": ["assassin-agent"],
+  "item_ids": ["emerald-necklace"],
+  "procedure_ids": ["stealth-save-ambush"],
   "branches": [
     {
       "label": "Go to the cabin",
@@ -155,6 +158,42 @@ Use `player_text` for what the player should read.
 Use `app_notes` for dice, saves, monster handling, rewards, procedure notes, and anything the app should automate later.
 
 Use `branches` for printed choices, doors, scene jumps, save results, routes, or endings.
+
+## Location Preview And Editor
+
+The PDF Import Review Workspace includes a Location Preview for each node.
+
+The preview answers: "If this became a playable room/location, what would the player see and what would the app need to handle?"
+
+It shows:
+
+- title, id, type, source page, and review status
+- player-facing description
+- app/rules notes
+- linked foes
+- linked items, rewards, or services
+- exits and choices from `branches`
+- linked procedures such as saves, rolls, table lookups, or special handling
+- linked map pins and map artwork when available
+
+The Location Editor lets you edit:
+
+- node id
+- type
+- title
+- source page
+- review status
+- player description
+- app/rules notes
+- linked foe ids
+- linked item ids
+- linked procedure ids
+- linked map pin id
+- exits/choices JSON
+
+Use linked ids when possible. For example, if a location contains a Black Knight, move or create a Foes record with id `black-knight`, then add `black-knight` to the location's `foe_ids`.
+
+This composer-style data is intended to be reused by the future hand-authored adventure creator.
 
 ## Candidate Lists From PDFs
 
