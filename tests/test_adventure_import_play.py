@@ -941,10 +941,39 @@ def test_build_adventure_export_zip(repo: RulesRepository, tmp_path: Path) -> No
     path, result = import_adventure_manifest(ROOT, data_dir, manifest, rules_repo=repo, overwrite=True)
     assert result.valid, result.errors
     assert path is not None
+    adventure_dir = path.parent
+    (adventure_dir / "maps").mkdir()
+    (adventure_dir / "maps" / "level-1.png").write_bytes(b"fake-map")
+    (adventure_dir / "package.json").write_text('{"schema_version": 1}\n', encoding="utf-8")
     payload = build_adventure_export_zip(ROOT, data_dir, manifest["id"])
     with zipfile.ZipFile(io.BytesIO(payload)) as archive:
         names = archive.namelist()
         assert "adventure.json" in names
         assert "adventure.meta.json" in names
+        assert "package.json" in names
+        assert "maps/level-1.png" in names
         manifest_text = archive.read("adventure.json").decode("utf-8")
         assert "Crypt of Whispers" in manifest_text
+
+
+def test_import_overwrite_preserves_adventure_folder_assets(repo: RulesRepository, tmp_path: Path) -> None:
+    from app.engine.adventure_import import import_adventure_manifest
+
+    data_dir = tmp_path / "appdata"
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    path, result = import_adventure_manifest(ROOT, data_dir, manifest, rules_repo=repo, overwrite=True)
+    assert result.valid, result.errors
+    assert path is not None
+    adventure_dir = path.parent
+    (adventure_dir / "maps").mkdir()
+    (adventure_dir / "maps" / "level-1.png").write_bytes(b"fake-map")
+    (adventure_dir / "package.json").write_text('{"schema_version": 1}\n', encoding="utf-8")
+
+    updated = {**manifest, "synopsis": "Updated import keeps local package assets."}
+    path, result = import_adventure_manifest(ROOT, data_dir, updated, rules_repo=repo, overwrite=True)
+
+    assert result.valid, result.errors
+    assert path is not None
+    assert (adventure_dir / "maps" / "level-1.png").read_bytes() == b"fake-map"
+    assert (adventure_dir / "package.json").is_file()
+    assert json.loads(path.read_text(encoding="utf-8"))["synopsis"] == "Updated import keeps local package assets."

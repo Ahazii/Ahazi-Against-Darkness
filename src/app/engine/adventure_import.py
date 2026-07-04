@@ -116,15 +116,9 @@ def build_adventure_export_zip(root_dir: Path, data_dir: Path, adventure_id: str
     adventure_dir = path.parent
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.write(path, ADVENTURE_MANIFEST_FILENAME)
-        meta_path = adventure_dir / ADVENTURE_META_FILENAME
-        if meta_path.is_file():
-            archive.write(meta_path, ADVENTURE_META_FILENAME)
-        assets_dir = adventure_dir / "assets"
-        if assets_dir.is_dir():
-            for asset in sorted(assets_dir.rglob("*")):
-                if asset.is_file():
-                    archive.write(asset, str(Path("assets") / asset.relative_to(assets_dir)))
+        for item in sorted(adventure_dir.rglob("*")):
+            if item.is_file():
+                archive.write(item, str(item.relative_to(adventure_dir)))
     return buffer.getvalue()
 
 
@@ -224,8 +218,6 @@ def import_adventure_manifest(
         )
         return None, result
 
-    if target_dir.exists() and overwrite:
-        shutil.rmtree(target_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
     target_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     meta_path = target_dir / ADVENTURE_META_FILENAME
