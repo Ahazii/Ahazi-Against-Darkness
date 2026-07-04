@@ -182,6 +182,16 @@ def enter_fd_side_sheet(
         session.fd_magic_citadel_mr_active = True
         if show_rolls:
             session.log.append("Magic Citadel: magic resistance is suspended on this side sheet (FD p.60).")
+    if chosen == "citadel" and session.fd_citadel_type == "ghost_citadel":
+        from .forsaken_depths_citadel import apply_fd_ghost_citadel_entry
+
+        apply_fd_ghost_citadel_entry(
+            engine,
+            session,
+            tile,
+            hcl=engine._highest_character_level(session.party),
+            show_rolls=show_rolls,
+        )
     label = fd_side_sheet_kind_label(chosen)
     if show_rolls:
         session.log.append(

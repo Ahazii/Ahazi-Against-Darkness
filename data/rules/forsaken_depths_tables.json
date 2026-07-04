@@ -225,7 +225,7 @@
     {"roll": "3", "key": "something_stirs", "name": "Something Stirs in the Darkness", "summary": "For 6 areas, empty rooms have 3-in-6 river encounters (FD p.63).", "source_page": 63},
     {"roll": "4", "key": "labyrinth_shifts", "name": "Labyrinth Shifts", "summary": "Reroll shapes (not content) of the last 5 visited rooms (FD p.63).", "source_page": 63},
     {"roll": "5", "key": "flood", "name": "Flood", "summary": "Three HCL+2 Swimming Saves per hero; scrolls and bows at risk (FD p.63).", "source_page": 63},
-    {"roll": "6", "key": "earthquake", "name": "Earthquake", "summary": "Each hero Saves vs. d3 HCL falling stones (FD p.63).", "source_page": 63},
+    {"roll": "6", "key": "earthquake", "name": "Earthquake", "summary": "Each hero rolls d3 falling stones; each stone is a Save vs. HCL and each failure costs 1 Life (FD p.63).", "source_page": 63},
     {"roll": "7", "key": "nightmare_mist", "name": "Nightmare Mist", "summary": "Save vs. HCL+2 hallucinations or roll Hallucinations Table (FD p.63).", "source_page": 63},
     {"roll": "8", "key": "the_portal", "name": "The Portal", "summary": "Working portal — choose destination; 1 Life per crossing (FD p.63).", "source_page": 63},
     {"roll": "9", "key": "the_passage", "name": "The Passage", "summary": "Secret door to a Citadel — Tier-in-6 corridor trap chance (FD p.63).", "source_page": 63},
@@ -297,7 +297,7 @@
     {"roll": "5-6", "key": "revelations", "name": "Revelations", "summary": "1 Madness plus one automatic success benefit (FD p.55).", "source_page": 55}
   ],
   "fd_ruins_content_table": [
-    {"roll": "2-3", "key": "ruins_machinery", "name": "Complex Machinery", "summary": "App offers one first-visit attempt per living hero: HCL+4 understand roll for 1 Clue or Tier damage (FD p.56).", "source_page": 56},
+    {"roll": "2-3", "key": "ruins_machinery", "name": "Complex Machinery", "summary": "App offers one first-visit attempt per living hero: HCL+2 understand roll for 1 Clue or d6 Food rations, or Tier damage on failure (FD p.56).", "source_page": 56},
     {"roll": "4", "key": "ruins_servitors", "name": "Servitors", "subtable": "fd_minions_table", "summary": "Roll Forsaken Depths Minions Table (FD p.56).", "source_page": 56},
     {"roll": "5", "key": "ruins_more_servitors", "name": "More Servitors", "subtable": "fd_minions_table", "summary": "Minions +2 count (FD p.56).", "source_page": 56},
     {"roll": "6", "key": "ruins_psychic_hall", "name": "Psychic Residue", "summary": "App rolls all HCL+3 psychic Saves, gives successful heroes the +3 future-save marker, and offers failure choices for damage, Madness, or spell slots (FD p.56).", "source_page": 56},
@@ -309,12 +309,12 @@
     {"roll": "12", "key": "ruins_secret_passage", "name": "Secret Passage", "summary": "Abyss, Netherworld, or Citadel — find with Clues/traps/monsters (FD p.56).", "source_page": 56}
   ],
   "fd_citadel_table": [
-    {"roll": "1", "key": "ghost_citadel", "name": "Ghost Citadel", "room_count": "3d6", "summary": "3d6 oversized rooms; final room Citadel Weird Final Boss (FD p.60).", "source_page": 60},
+    {"roll": "1", "key": "ghost_citadel", "name": "Ghost Citadel", "room_count": "3d6", "summary": "3d6 oversized rooms; entry Madness and HCL+6 hallucination Save; final room Citadel Weird Final Boss (FD p.60).", "source_page": 60},
     {"roll": "2", "key": "crowded_citadel", "name": "Crowded Citadel", "room_count": "4d6", "summary": "4d6 rooms; double minion counts; −1 Reaction (FD p.60).", "source_page": 60},
-    {"roll": "3", "key": "citadel_of_traps", "name": "Citadel of Traps", "room_count": "10+2d6", "summary": "10+2d6 rooms; minions often replaced by traps with treasure (FD p.60).", "source_page": 60},
+    {"roll": "3", "key": "citadel_of_traps", "name": "Citadel of Traps", "room_count": "10+2d6", "summary": "10+2d6 rooms; Minions/Hordes have 4-in-6 trap replacement; trap-guarded rooms have 3-in-6 treasure (FD p.60).", "source_page": 60},
     {"roll": "4", "key": "prisoners_citadel", "name": "Prisoners of the Citadel", "room_count": "3d6", "summary": "3d6 rooms; escape with 4 Clues (FD p.60).", "source_page": 60},
     {"roll": "5", "key": "citadel_of_dead", "name": "Citadel of Dead Things", "room_count": "2d6+6", "summary": "2d6+6 rooms; no healing except bandages (FD p.60).", "source_page": 60},
-    {"roll": "6", "key": "magic_citadel", "name": "Magic Citadel", "room_count": "3d6", "summary": "3d6 rooms; MR suspended; idols/altars; final Cyclopean Idol (FD p.60).", "source_page": 60}
+    {"roll": "6", "key": "magic_citadel", "name": "Magic Citadel", "room_count": "3d6", "summary": "3d6 rooms; MR suspended; 1-in-6 idols/altars; final Cyclopean Idol guarded by Weird +1 Life immune to Citadel altar spells (FD p.60).", "source_page": 60}
   ],
   "fd_citadel_weird_table": [
     {"roll": "1", "name": "Chaos Mothbeast Queen", "enemy_category": "weird", "summary": "HCL+6 chaos weird, HCL+6 Life, 6 attacks (FD p.61).", "source_page": 61},

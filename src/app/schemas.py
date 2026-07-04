@@ -1553,6 +1553,7 @@ class SessionAction(BaseModel):
         Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_quest_roll", "heroic_learn"] | None
     ) = None
     fd_cairn_natural_one_choice: Literal["life", "spell"] | None = None
+    fd_ruins_machinery_reward_choice: Literal["clue", "food"] | None = None
     fd_ruins_psychic_choice: Literal["damage", "madness", "spell_slots"] | None = None
     fd_winds_choice: Literal["life", "madness"] | None = None
     fd_disintegration_choice: Literal["incinerate", "sacrifice_item"] | None = None

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from ..schemas import PartyMemberState, SessionState, TileState
 from .class_combat import save_modifier
-from .dice import roll_exploding_for_level
+from .dice import roll_d6, roll_exploding_for_level
 from .experience import tier_for_level
 from .madness import _grant_madness
 from .party_life import apply_party_life_loss
@@ -46,7 +46,7 @@ def setup_ruins_complex_machinery(session: SessionState, tile: TileState, *, sho
     if show_rolls:
         session.log.append(
             "Ruins procedure: Complex Machinery. Each hero may try once on this first visit; "
-            "success grants 1 Clue, failure deals Tier damage (FD p.56)."
+            "success grants 1 Clue or d6 Food rations, failure deals Tier damage (FD p.56)."
         )
 
 
@@ -55,6 +55,7 @@ def resolve_ruins_complex_machinery(
     session: SessionState,
     character_id: str | None,
     *,
+    reward_choice: str | None = None,
     show_rolls: bool = True,
 ) -> None:
     if session.mode != "exploration":
@@ -67,6 +68,9 @@ def resolve_ruins_complex_machinery(
     if tile.fd_ruins_machinery_resolved:
         session.log.append("The machinery has already yielded its Clue or danger in this room.")
         return
+    if reward_choice not in {"clue", "food"}:
+        session.log.append("Choose the Complex Machinery success reward first: 1 Clue or d6 Food rations (FD p.56).")
+        return
     member = next((hero for hero in session.party if hero.character_id == character_id), None)
     if member is None or member.current_life <= 0:
         session.log.append("Choose a living hero to examine the Complex Machinery.")
@@ -76,20 +80,27 @@ def resolve_ruins_complex_machinery(
         return
     tile.fd_ruins_machinery_attempted_character_ids.append(character_id)
     hcl = engine._highest_character_level(session.party)
-    target = hcl + 4
+    target = hcl + 2
     total, rolls = roll_exploding_for_level(member, session=session)
     modifier = _machinery_modifier(member)
     final_total = total + modifier
     if show_rolls:
         session.log.append(
             f"Complex Machinery: {member.name} rolls {' + '.join(str(value) for value in rolls)} + "
-            f"{modifier} = {final_total} vs HCL+4 ({target}, FD p.56)."
+            f"{modifier} = {final_total} vs HCL+2 ({target}, FD p.56)."
         )
     if rolls[0] != 1 and final_total >= target:
         tile.fd_ruins_machinery_resolved = True
-        session.clues_found += 1
-        member.clues += 1
-        session.log.append(f"{member.name} understands the mechanism; the party gains 1 Clue (FD p.56).")
+        if reward_choice == "food":
+            rations = roll_d6()
+            member.inventory.extend(["Food ration"] * rations)
+            session.log.append(
+                f"{member.name} understands the mechanism and finds {rations} Food ration(s) (d6, FD p.56)."
+            )
+        else:
+            session.clues_found += 1
+            member.clues += 1
+            session.log.append(f"{member.name} understands the mechanism; the party gains 1 Clue (FD p.56).")
         return
     damage = tier_for_level(hcl)
     before = member.current_life

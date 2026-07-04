@@ -1632,6 +1632,113 @@ def test_fd_crowded_citadel_doubles_minions(monkeypatch) -> None:
     assert len(tile.enemies) == 2
 
 
+def test_fd_citadel_of_traps_replaces_hordes_and_uses_three_in_six_treasure(monkeypatch) -> None:
+    from app.engine.forsaken_depths_citadel import apply_fd_citadel_room
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-traps-citadel",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_citadel_type = "citadel_of_traps"
+    session.fd_side_sheet_rooms_total = 4
+    session.fd_side_sheet_rooms_entered = 1
+    tile = TileState(
+        id="trap-citadel-room",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Trap Citadel room",
+        description="Side sheet",
+        content_key="fd_side_sheet",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+    )
+    monkeypatch.setattr(
+        eng,
+        "_roll_fd_content",
+        lambda session, tile_type, hcl: {
+            "key": "fd_horde",
+            "description": "Horde",
+            "objects": ["Horde"],
+            "enemies": [
+                EnemyState(
+                    id="h1",
+                    name="Deep Horde",
+                    category="horde",
+                    level=3,
+                    life=6,
+                    max_life=6,
+                )
+            ],
+        },
+    )
+    rolls = iter([4, 3])
+    monkeypatch.setattr("app.engine.forsaken_depths_citadel.roll_d6", lambda: next(rolls))
+    monkeypatch.setattr(
+        eng.table_roller,
+        "roll_fd_trap",
+        lambda *args, **kwargs: type("Trap", (), {"trap_key": "fd_test_trap", "trap_level": 7, "summary": "Test Trap"})(),
+    )
+    staged: list[str] = []
+    monkeypatch.setattr(
+        eng.table_roller,
+        "roll_fd_treasure",
+        lambda *args, **kwargs: type("Treasure", (), {"gold": 12, "items": []})(),
+    )
+    monkeypatch.setattr(eng, "_stage_treasure_outcome", lambda session, tile, outcome, **kwargs: staged.append("treasure"))
+
+    apply_fd_citadel_room(eng, session, tile, hcl=5, show_rolls=False)
+
+    assert tile.content_key == "fd_trap"
+    assert tile.trap_key == "fd_test_trap"
+    assert not tile.enemies
+    assert staged == ["treasure"]
+
+
+def test_fd_magic_citadel_final_spawns_plus_life_guardian_and_idol(monkeypatch) -> None:
+    from app.engine.forsaken_depths_citadel import apply_fd_citadel_room
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-magic-final",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_citadel_type = "magic_citadel"
+    session.fd_side_sheet_rooms_total = 3
+    session.fd_side_sheet_rooms_entered = 3
+    tile = TileState(
+        id="magic-final",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Magic Citadel final",
+        description="Side sheet",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_citadel.roll_d6", lambda: 1)
+
+    apply_fd_citadel_room(eng, session, tile, hcl=5, show_rolls=False)
+
+    assert tile.fd_cyclopean_idol_available
+    assert "Cyclopean Idol" in tile.objects
+    assert tile.enemies
+    assert tile.enemies[0].life == tile.enemies[0].max_life
+    assert "immune to Magic Citadel altar spells" in tile.enemies[0].tags
+    assert any("Weird Monster" in obj for obj in tile.objects)
+
+
 def test_fd_prisoners_escape_spends_clues() -> None:
     from app.engine.forsaken_depths_citadel import escape_fd_prisoners_citadel
 
@@ -1753,14 +1860,48 @@ def test_fd_ruins_complex_machinery_success_grants_clue(monkeypatch) -> None:
     tile = session.map_state.tiles[0]
     session.mode = "exploration"
     setup_ruins_complex_machinery(session, tile, show_rolls=False)
-    monkeypatch.setattr("app.engine.forsaken_depths_ruins.roll_exploding_for_level", lambda *args, **kwargs: (20, [20]))
+    monkeypatch.setattr("app.engine.forsaken_depths_ruins.roll_exploding_for_level", lambda *args, **kwargs: (7, [7]))
 
-    eng.advance(session, "resolve_fd_ruins_machinery", character_id="hero-1")
+    eng.advance(
+        session,
+        "resolve_fd_ruins_machinery",
+        character_id="hero-1",
+        fd_ruins_machinery_reward_choice="clue",
+    )
 
     assert tile.fd_ruins_machinery_resolved
     assert session.clues_found == 1
     assert session.party[0].clues == 1
     assert any("gains 1 Clue" in entry for entry in session.log)
+
+
+def test_fd_ruins_complex_machinery_success_can_grant_food(monkeypatch) -> None:
+    from app.engine.forsaken_depths_ruins import setup_ruins_complex_machinery
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-ruins-machinery-food",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    session.mode = "exploration"
+    setup_ruins_complex_machinery(session, tile, show_rolls=False)
+    monkeypatch.setattr("app.engine.forsaken_depths_ruins.roll_exploding_for_level", lambda *args, **kwargs: (7, [7]))
+    monkeypatch.setattr("app.engine.forsaken_depths_ruins.roll_d6", lambda: 4)
+
+    eng.advance(
+        session,
+        "resolve_fd_ruins_machinery",
+        character_id="hero-1",
+        fd_ruins_machinery_reward_choice="food",
+    )
+
+    assert tile.fd_ruins_machinery_resolved
+    assert session.clues_found == 0
+    assert session.party[0].inventory.count("Food ration") == 4
+    assert any("4 Food ration" in entry for entry in session.log)
 
 
 def test_fd_ruins_complex_machinery_failure_deals_tier_damage_and_locks_attempt(monkeypatch) -> None:
@@ -1780,8 +1921,18 @@ def test_fd_ruins_complex_machinery_failure_deals_tier_damage_and_locks_attempt(
     monkeypatch.setattr("app.engine.forsaken_depths_ruins.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     before = session.party[0].current_life
 
-    eng.advance(session, "resolve_fd_ruins_machinery", character_id="hero-1")
-    eng.advance(session, "resolve_fd_ruins_machinery", character_id="hero-1")
+    eng.advance(
+        session,
+        "resolve_fd_ruins_machinery",
+        character_id="hero-1",
+        fd_ruins_machinery_reward_choice="clue",
+    )
+    eng.advance(
+        session,
+        "resolve_fd_ruins_machinery",
+        character_id="hero-1",
+        fd_ruins_machinery_reward_choice="clue",
+    )
 
     assert not tile.fd_ruins_machinery_resolved
     assert session.party[0].current_life == before - tier_for_level(session.party[0].level)
@@ -1869,6 +2020,27 @@ def test_fd_winds_of_despair_waits_for_player_choices() -> None:
 
     assert session.fd_winds_of_despair_pending == {}
     assert session.party[0].current_life == 10
+
+
+def test_fd_earthquake_rolls_d3_hcl_stone_saves(monkeypatch) -> None:
+    from app.engine.forsaken_depths_events import apply_fd_event_earthquake
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-earthquake",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_events.roll_d3", lambda: 3)
+    monkeypatch.setattr("app.engine.forsaken_depths_events.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+    before = session.party[0].current_life
+
+    apply_fd_event_earthquake(session, hcl=5, show_rolls=True)
+
+    assert session.party[0].current_life == before - 3
+    assert sum("Earthquake stone Save" in entry and "rolls" in entry for entry in session.log) == 3
+    assert any("d3 falling stones = 3" in entry for entry in session.log)
 
 
 def test_fd_disintegration_blast_player_can_sacrifice_magic_item(monkeypatch) -> None:

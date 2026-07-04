@@ -7,8 +7,10 @@ import uuid
 from typing import TYPE_CHECKING
 
 from ..schemas import EnemyState, SessionState, TileState
-from .dice import roll_d6, roll_formula
+from .class_combat import save_modifier
+from .dice import roll_d6, roll_exploding_for_level, roll_formula
 from .forsaken_depths_map import is_fd_ruleset
+from .madness import _grant_madness
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
@@ -84,6 +86,42 @@ def fd_prisoners_escape_available(session: SessionState) -> bool:
     )
 
 
+def apply_fd_ghost_citadel_entry(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    hcl: int,
+    show_rolls: bool,
+) -> None:
+    """Apply Ghost Citadel entry Madness and magic Save checks (FD p.60)."""
+    target = hcl + 6
+    if show_rolls:
+        session.log.append(
+            f"Ghost Citadel entry (FD p.60): every hero gains 1 Madness and Saves vs HCL+6 ({target}) "
+            "or rolls on the Hallucinations Table."
+        )
+    for member in session.party:
+        if member.current_life <= 0:
+            continue
+        session.log.extend(_grant_madness(session, member, source="Ghost Citadel", log=[]))
+        total, rolls = roll_exploding_for_level(member, session=session)
+        half_level = max(1, member.level // 2)
+        wizard_bonus = 1 if member.class_id.lower() == "wizard" else 0
+        modifier = save_modifier(member, save_label="Ghost Citadel", session=session) + half_level + wizard_bonus
+        final_total = total + modifier
+        if show_rolls:
+            session.log.append(
+                f"Ghost Citadel Save: {member.name} rolls {' + '.join(str(value) for value in rolls)} + "
+                f"{modifier} = {final_total} vs {target}."
+            )
+        if rolls[0] == 1 or final_total < target:
+            from .forsaken_depths_content import apply_fd_hallucination
+
+            session.log.append(f"{member.name} fails the Ghost Citadel Save and suffers a hallucination (FD p.60).")
+            apply_fd_hallucination(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
+
+
 def apply_fd_citadel_room(
     engine: RandomDungeonEngine,
     session: SessionState,
@@ -103,9 +141,23 @@ def apply_fd_citadel_room(
         tile.fd_cyclopean_idol_available = True
         if "Cyclopean Idol" not in tile.objects:
             tile.objects.append("Cyclopean Idol")
+        _spawn_citadel_weird_final(
+            engine,
+            session,
+            tile,
+            hcl=hcl,
+            show_rolls=show_rolls,
+            label="Magic Citadel Idol Guardian",
+            extra_life=1,
+            spell_immunity_note=True,
+            announce=False,
+        )
+        if tile.enemies:
+            engine._announce_encounter(session, tile, show_rolls=show_rolls)
         if show_rolls:
             session.log.append(
-                "Magic Citadel final chamber — interact with the Cyclopean Idol (roll fd_cyclopean_idol_table, FD p.52 / p.60)."
+                "Magic Citadel final chamber — defeat the Weird guardian, then interact with the Cyclopean Idol "
+                "(roll fd_cyclopean_idol_table, FD p.52 / p.60)."
             )
         return
 
@@ -127,12 +179,24 @@ def apply_fd_citadel_room(
     if citadel_key == "citadel_of_traps":
         _apply_traps_citadel_room(engine, session, tile, hcl=hcl, content_key=content.get("key", ""), show_rolls=show_rolls)
 
-    if citadel_key == "magic_citadel" and roll_d6() <= 3:
-        feature = "Idol" if roll_d6() % 2 else "Altar"
+    if citadel_key == "magic_citadel" and roll_d6() == 1:
+        feature_roll = roll_d6()
+        if feature_roll <= 3:
+            idol_roll = roll_d6()
+            feature = "Idol statue" if idol_roll <= 3 else "Cyclopean Idol"
+            if feature == "Cyclopean Idol":
+                tile.fd_cyclopean_idol_available = True
+        else:
+            from .forsaken_depths_heroic_spells import random_heroic_spell_name
+
+            spell = random_heroic_spell_name()
+            session.fd_idol_heroic_spell = spell
+            session.fd_idol_pending_choice = "heroic_learn"
+            feature = f"Heroic Spell Altar ({spell})"
         if feature not in tile.objects:
             tile.objects.append(feature)
         if show_rolls:
-            session.log.append(f"Magic Citadel: {feature} in this chamber (FD p.60).")
+            session.log.append(f"Magic Citadel: 1-in-6 feature found — {feature} (FD p.60).")
 
     if citadel_key == "citadel_of_dead" and show_rolls and session.fd_side_sheet_rooms_entered == 1:
         session.log.append(
@@ -194,7 +258,7 @@ def _apply_traps_citadel_room(
     content_key: str,
     show_rolls: bool,
 ) -> None:
-    if content_key != "fd_minions" or roll_d6() > 4:
+    if content_key not in {"fd_minions", "fd_horde"} or roll_d6() > 4:
         return
     tile.enemies = []
     tile.initial_enemy_count = 0
@@ -205,14 +269,14 @@ def _apply_traps_citadel_room(
     if trap.summary not in tile.objects:
         tile.objects = [obj for obj in tile.objects if obj.lower() != "servitors"]
         tile.objects.append(trap.summary)
-    if roll_d6() <= 2:
+    if roll_d6() <= 3:
         outcome = engine.table_roller.roll_fd_treasure(
             show_rolls=False,
             silk_already_found=session.fd_silk_treasure_used,
         )
         engine._stage_treasure_outcome(session, tile, outcome, show_rolls=show_rolls)
     if show_rolls:
-        session.log.append("Citadel of Traps: minions replaced by a trap (FD p.60).")
+        session.log.append("Citadel of Traps: Minions/Hordes replaced by a trap (FD p.60).")
 
 
 def _spawn_citadel_weird_final(
@@ -224,6 +288,9 @@ def _spawn_citadel_weird_final(
     show_rolls: bool,
     label: str,
     table_roll: int | None = None,
+    extra_life: int = 0,
+    spell_immunity_note: bool = False,
+    announce: bool = True,
 ) -> None:
     roll = table_roll if table_roll is not None else roll_d6()
     row = engine.table_roller.lookup("fd_citadel_weird_table", roll)
@@ -238,6 +305,12 @@ def _spawn_citadel_weird_final(
         )
     spawned = engine._fd_spawn_from_table_row(session, row, hcl)
     if spawned:
+        for enemy in spawned:
+            if extra_life:
+                enemy.life += extra_life
+                enemy.max_life += extra_life
+            if spell_immunity_note and "immune to Magic Citadel altar spells" not in enemy.tags:
+                enemy.tags.append("immune to Magic Citadel altar spells")
         tile.enemies.extend(spawned)
         tile.initial_enemy_count = len(tile.enemies)
         tile.content_key = "fd_weird"
@@ -247,5 +320,5 @@ def _spawn_citadel_weird_final(
         )
         if "Boss Monster" not in tile.objects and "Weird Monster" not in tile.objects:
             tile.objects.append("Weird Monster")
-        if session.mode == "exploration":
+        if session.mode == "exploration" and announce:
             engine._announce_encounter(session, tile, show_rolls=show_rolls)

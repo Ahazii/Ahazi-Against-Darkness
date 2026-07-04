@@ -115,23 +115,32 @@ def apply_fd_event_earthquake(
     hcl: int,
     show_rolls: bool = True,
 ) -> None:
-    stone_level = roll_d3() + hcl
     if show_rolls:
-        session.log.append(f"Earthquake (FD p.63): falling stones at level {stone_level} (d3+HCL).")
-    for member in _living_party(session):
-        failed, save_log = _fd_save_vs_level(
-            member,
-            stone_level,
-            label="Earthquake Save",
-            show_rolls=show_rolls,
-            session=session,
+        session.log.append(
+            f"Earthquake (FD p.63): each hero Saves against d3 falling HCL stone(s); "
+            "each failed Save costs 1 Life."
         )
-        session.log.extend(save_log)
-        if failed:
-            from .party_life import apply_party_life_loss
+    for member in _living_party(session):
+        stone_count = roll_d3()
+        if show_rolls:
+            session.log.append(f"{member.name}: d3 falling stones = {stone_count}; Save vs HCL {hcl} for each.")
+        for attempt in range(1, stone_count + 1):
+            failed, save_log = _fd_save_vs_level(
+                member,
+                hcl,
+                label=f"Earthquake stone Save {attempt}/{stone_count}",
+                show_rolls=show_rolls,
+                session=session,
+            )
+            session.log.extend(save_log)
+            if failed:
+                from .party_life import apply_party_life_loss
 
-            applied = apply_party_life_loss(session, member, 1, log=session.log)
-            session.log.append(f"{member.name} takes {applied} Life from falling stone ({member.current_life}/{member.max_life}).")
+                applied = apply_party_life_loss(session, member, 1, log=session.log)
+                session.log.append(
+                    f"{member.name} takes {applied} Life from falling stone "
+                    f"({member.current_life}/{member.max_life})."
+                )
 
 
 def apply_fd_event_labyrinth_shift(

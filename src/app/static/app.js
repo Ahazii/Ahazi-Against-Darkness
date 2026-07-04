@@ -852,7 +852,7 @@ const ACTION_TOOLTIPS = {
   resolveFdCyclopeanIdol:
     "Interact with the Cyclopean Idol — roll fd_cyclopean_idol_table (FD p.52).",
   fdRuinsMachinery:
-    "Complex Machinery (FD p.56): choose a living hero to attempt HCL+4. Gnomes/artificers add Level, wizards add half Level. Success grants 1 Clue; failure deals Tier damage.",
+    "Complex Machinery (FD p.56): choose a living hero and the success reward before rolling HCL+2. Gnomes/artificers add Level, wizards add half Level. Success grants 1 Clue or d6 Food rations; failure deals Tier damage.",
   fdRuinsPsychicDamage:
     "Psychic Residue (FD p.56): this failed hero chooses 3 damage as the consequence.",
   fdRuinsPsychicMadness:
@@ -11907,6 +11907,37 @@ function questDebugSummary(session = state.session) {
   ];
 }
 
+function forsakenDepthsDebugSummary(session = state.session) {
+  if (session?.ruleset !== "forsaken_depths") return ["Forsaken Depths: not active"];
+  const tile = currentTile(session);
+  const pending = [];
+  if (session.fd_winds_of_despair_pending && Object.keys(session.fd_winds_of_despair_pending).length) {
+    pending.push(`Winds choices ${Object.keys(session.fd_winds_of_despair_pending).length}`);
+  }
+  if (session.fd_disintegration_pending && Object.keys(session.fd_disintegration_pending).length) {
+    pending.push("Disintegration choice");
+  }
+  if (session.fd_soulbinding_pending && Object.keys(session.fd_soulbinding_pending).length) {
+    pending.push(`Soulbinding choices ${Object.keys(session.fd_soulbinding_pending).length}`);
+  }
+  if (session.fd_ruins_psychic_pending && Object.keys(session.fd_ruins_psychic_pending).length) {
+    pending.push(`Psychic Residue choices ${Object.keys(session.fd_ruins_psychic_pending).length}`);
+  }
+  const lines = [
+    `River: ${fdRiverTypeDisplay(session) || "none"}; ${fdTravelModeDisplay(session) || "travel n/a"}; ${fdBoatStatusDisplay(session) || "boat n/a"}`,
+    `Citadel: ${fdCitadelDisplay(session) || "none"}; modifier: ${fdCitadelModifierLine(session) || "none"}`,
+    `Side sheet: ${fdSideSheetDisplay(session) || "none"}; active=${Boolean(session.fd_side_sheet_active)}; origin=${session.fd_side_sheet_origin_tile_id || "none"}`,
+    `Rare event state: Stirs=${session.fd_stirs_in_darkness_remaining || 0}; Flood bow penalty rooms=${session.fd_flood_bow_penalty_rooms || 0}; Portal tile=${session.fd_portal_tile_id || "none"}`,
+    `Pending FD choices: ${pending.length ? pending.join("; ") : "none"}`,
+  ];
+  if (tile) {
+    lines.push(
+      `FD current tile: content=${tile.content_key || "none"}; side_sheet=${Boolean(tile.fd_side_sheet)}; hidden chamber=${Boolean(tile.fd_hidden_treasure_chamber)}; idol=${Boolean(tile.fd_cyclopean_idol_available)}; room status=${fdRoomPendingStatus(session, tile) || "none"}`
+    );
+  }
+  return lines;
+}
+
 function buildNarrativeDebugReport(session = state.session) {
   const { room, promptData, tagReference } = tagCurrentPromptData(session);
   const diagnostics = generatedTagDiagnostics(session);
@@ -11937,6 +11968,9 @@ function buildNarrativeDebugReport(session = state.session) {
     "",
     "### Quest State",
     questDebugSummary(session).map((line) => `- ${line}`).join("\n"),
+    "",
+    "### Forsaken Depths Context",
+    forsakenDepthsDebugSummary(session).map((line) => `- ${line}`).join("\n"),
     "",
     "### Generated Adventures Guild Context",
     tagReference
@@ -14592,13 +14626,26 @@ function appendFdRuinsActions(parent, session, tile) {
         select.appendChild(option);
       }
       row.appendChild(select);
-      const btn = node("button", "secondary", "Examine Machinery");
-      btn.type = "button";
-      setButtonTooltip(btn, ACTION_TOOLTIPS.fdRuinsMachinery);
-      btn.addEventListener("click", () =>
-        advance("resolve_fd_ruins_machinery", { character_id: select.value })
+      const clueBtn = node("button", "secondary", "Try for Clue");
+      clueBtn.type = "button";
+      setButtonTooltip(clueBtn, `${ACTION_TOOLTIPS.fdRuinsMachinery} Success grants 1 Clue to the selected hero.`);
+      clueBtn.addEventListener("click", () =>
+        advance("resolve_fd_ruins_machinery", {
+          character_id: select.value,
+          fd_ruins_machinery_reward_choice: "clue",
+        })
       );
-      row.appendChild(btn);
+      row.appendChild(clueBtn);
+      const foodBtn = node("button", "secondary", "Try for Food");
+      foodBtn.type = "button";
+      setButtonTooltip(foodBtn, `${ACTION_TOOLTIPS.fdRuinsMachinery} Success grants d6 Food rations to the selected hero.`);
+      foodBtn.addEventListener("click", () =>
+        advance("resolve_fd_ruins_machinery", {
+          character_id: select.value,
+          fd_ruins_machinery_reward_choice: "food",
+        })
+      );
+      row.appendChild(foodBtn);
       parent.appendChild(row);
     } else {
       const line = subline("Complex Machinery: every living hero has already tried this room.");
@@ -18951,6 +18998,20 @@ function currentObjectiveForSession(session) {
         body:
           "Forsaken Depths treasure is waiting for a choice from the printed table. Pick the treasure option before claiming or leaving the room.",
         tone: "gold",
+        secondaryAction: { label: "Copy FD Playtest Report", kind: "tag-copy-report" },
+      };
+    }
+    if (session.fd_side_sheet_active) {
+      const kind = session.fd_side_sheet_kind === "citadel" ? fdCitadelDisplay(session) || "Citadel" : fdSideSheetDisplay(session) || "Forsaken Ruins";
+      const entered = session.fd_side_sheet_rooms_entered || 0;
+      const total = session.fd_side_sheet_rooms_total || 0;
+      return {
+        title: `Current objective: ${kind}`,
+        body:
+          `Explore the separate side sheet room budget (${entered}/${total}). Resolve room content, traps, foes, treasure choices, and Citadel modifiers before returning to the main map.`,
+        tone: "quest",
+        action: entered >= total ? { label: "Return to main map", kind: "advance", advanceAction: "exit_fd_side_sheet" } : null,
+        secondaryAction: { label: "Copy FD Playtest Report", kind: "tag-copy-report" },
       };
     }
     if (tile.fd_hidden_treasure_chamber && !tile.fd_hidden_treasure_claimed && tile.resolved) {
@@ -18960,6 +19021,7 @@ function currentObjectiveForSession(session) {
           "The guarded Weird Monster is cleared. Claim the three tier-appropriate magic items from the Hidden Treasure Chamber.",
         tone: "gold",
         action: { label: "Claim Hidden Treasure", kind: "advance", advanceAction: "claim_fd_hidden_treasure" },
+        secondaryAction: { label: "Copy FD Playtest Report", kind: "tag-copy-report" },
       };
     }
   }
@@ -19179,7 +19241,7 @@ function appendCurrentObjectiveButton(parent, action) {
       btn.addEventListener("click", () => openTagAdventureActions());
       break;
     case "tag-copy-report":
-      setButtonTooltip(btn, "Copy the full Narrative Report: exact player-facing Narrative first, then generated-adventure diagnostics and current room context for debugging.");
+      setButtonTooltip(btn, "Copy the full Narrative Report: exact player-facing Narrative first, then current room, quest, Forsaken Depths, and generated-adventure diagnostics for debugging.");
       btn.addEventListener("click", () => copyNarrativeDebugReport());
       break;
     case "tag-lead-signoff":

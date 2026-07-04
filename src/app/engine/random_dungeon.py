@@ -907,6 +907,7 @@ class RandomDungeonEngine:
         courtship_use_luck: bool = False,
         courtship_damsel_penalty: str | None = None,
         fd_idol_choice: str | None = None,
+        fd_ruins_machinery_reward_choice: str | None = None,
         hireling_id: str | None = None,
         retainer_type: str | None = None,
         professional_id: str | None = None,
@@ -1274,7 +1275,13 @@ class RandomDungeonEngine:
         elif action == "resolve_fd_ruins_machinery":
             from .forsaken_depths_ruins import resolve_ruins_complex_machinery
 
-            resolve_ruins_complex_machinery(self, session, character_id, show_rolls=show_rolls)
+            resolve_ruins_complex_machinery(
+                self,
+                session,
+                character_id,
+                reward_choice=fd_ruins_machinery_reward_choice,
+                show_rolls=show_rolls,
+            )
         elif action == "resolve_fd_ruins_psychic_choice":
             from .forsaken_depths_ruins import resolve_ruins_psychic_choice
 

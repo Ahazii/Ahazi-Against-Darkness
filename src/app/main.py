@@ -5331,6 +5331,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         fd_secret_passage_destination=payload.fd_secret_passage_destination,
         fd_portal_destination=payload.fd_portal_destination,
         fd_cairn_natural_one_choice=payload.fd_cairn_natural_one_choice,
+        fd_ruins_machinery_reward_choice=payload.fd_ruins_machinery_reward_choice,
         fd_ruins_psychic_choice=payload.fd_ruins_psychic_choice,
         fd_winds_choice=payload.fd_winds_choice,
         fd_disintegration_choice=payload.fd_disintegration_choice,
