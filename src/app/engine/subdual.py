@@ -13,7 +13,17 @@ def apply_major_foe_level_drop(enemy: EnemyState) -> bool:
         return False
     if enemy.level_drop_applied or enemy.life > enemy.max_life // 2:
         return False
-    enemy.level = max(1, enemy.level - 1)
+    drop = 1
+    for tag in enemy.tags:
+        text = str(tag).lower()
+        if not text.startswith("half_life_level_drop:"):
+            continue
+        try:
+            drop = max(1, int(text.split(":", 1)[1]))
+        except ValueError:
+            drop = 1
+        break
+    enemy.level = max(1, enemy.level - drop)
     enemy.level_drop_applied = True
     return True
 

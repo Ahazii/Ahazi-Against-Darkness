@@ -45,6 +45,7 @@ Hover any badge for rulebook page references.
 | **Citadel of Dead** banner | Dead Things side sheet | Bandages only (hover) |
 | **MR suspended** badge | Magic Citadel side sheet | Spells ignore MR tiers |
 | **Treasure choice** buttons | Pending FD treasure choice on tile | `choose_treasure_outcome` |
+| **FD horde notes** | Horde combat | Opening Dark Elf/Goblin volleys, per-character horde attacks, Troll regeneration, Goblin Horde half-Life Level drop, and post-horde weapon salvage are handled by the app with FD p.42 log notes |
 | **Roll Demesne encounter** | `courtship_demesne_active`, exploration | `courtship_roll_encounter` |
 | **Woo / Fight / Giving / Withholding** | Pending woo or active wooing | `courtship_woo_encounter`, `courtship_fight_encounter`, `courtship_woo_giving`, `courtship_woo_withholding`, `courtship_woo_abort_fight` |
 | **Damsel penalty choice** | After Giving success vs Damsel of Teeming Roses | `courtship_damsel_penalty` (Life or Madness on next Withholding fail) |
@@ -110,6 +111,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `forsaken_depths_map.py` | Catalog selection, ETR helpers |
 | `forsaken_depths_river.py` | River type, hazards, boat, room codes (END/Ru/Ca/B/ETC), NC combat |
 | `forsaken_depths_content.py` | Events, hallucinations, ruins (Ru), citadel rolls |
+| `forsaken_depths_hordes.py` | FD p.42 horde opening volleys and post-horde weapon salvage |
 | `random_dungeon.py` | FD content rolls, trap seeding, tile generation |
 | `forsaken_depths_citadel.py` | Citadel type modifiers (crowded, traps, prisoners escape, dead healing, magic MR, final bosses) |
 | `forsaken_depths_side_sheet.py` | Citadel / river ruins side-dungeon entry, room budget, return to main map |

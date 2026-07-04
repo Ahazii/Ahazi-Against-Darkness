@@ -9635,6 +9635,10 @@ class RandomDungeonEngine:
             for enemy in defeated_this_fight:
                 if enemy.category in {"weird", "boss"}:
                     session.major_foes_defeated_this_adventure += 1
+            if is_fd_ruleset(session):
+                from .forsaken_depths_hordes import add_fd_horde_weapon_salvage
+
+                session.log.extend(add_fd_horde_weapon_salvage(tile, defeated_this_fight))
             self._award_encounter_xp(session, defeated_this_fight, show_rolls=show_rolls)
             self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
             if session.courtship_demesne_active:
@@ -9803,6 +9807,14 @@ class RandomDungeonEngine:
         if not any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("There are no active enemies here.")
             return
+        if is_fd_ruleset(session) and session.combat_round == 0:
+            from .forsaken_depths_hordes import apply_fd_horde_opening_volleys
+
+            session.log.extend(apply_fd_horde_opening_volleys(session, tile, show_rolls=show_rolls))
+            if not any(pc.current_life > 0 for pc in session.party):
+                session.mode = "complete"
+                session.log.append("The party has fallen.")
+                return
         initial_minor_count = tile.initial_enemy_count or len(tile.enemies)
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         party_here = combat_party(session, tile.id)

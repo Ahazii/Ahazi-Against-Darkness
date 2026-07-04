@@ -1070,6 +1070,10 @@ def _apply_pc_hit(
         return [enemy for enemy in living_enemies if enemy.life > 0]
     target_life_before = target.life
     apply_enemy_damage(target, damage, damage_kind="normal")
+    if context.session is not None:
+        from .forsaken_depths_content import clear_fd_foe_hallucination_on_damage
+
+        log.extend(clear_fd_foe_hallucination_on_damage(target))
     log.append(
         f"{pc.name} hits {target.name} for {damage} damage with {attack_label} "
         f"{enemy_life_change_text(target, target_life_before)}."
@@ -1264,6 +1268,12 @@ def _resolve_pc_attack(
         context.session.firearm_fired_this_encounter = True
     if plan.label:
         attack_label = f"{attack_label} ({plan.label})"
+    if context.session is not None:
+        from .forsaken_depths_content import consume_fd_foe_next_attack_fails
+
+        if consume_fd_foe_next_attack_fails(target):
+            log.append(f"{pc.name}'s attack against {target.name} fails automatically (foe Revelation, FD p.55).")
+            return living_enemies
     if (
         plan.label == "knife throw"
         and plan.wielded
@@ -1349,7 +1359,15 @@ def _resolve_pc_attack(
         if daring_bonus:
             log.append(f"{pc.name} adds +{daring_bonus} from an ally's Daring Escape.")
 
-    if use_rage:
+    auto_hit_fd_hallucination = False
+    if context.session is not None:
+        from .forsaken_depths_content import fd_foe_attack_auto_hits
+
+        auto_hit_fd_hallucination = fd_foe_attack_auto_hits(target)
+    if auto_hit_fd_hallucination:
+        total, rolls = target_level, [target_level]
+        rage_note = "automatic hit"
+    elif use_rage:
         from .class_abilities import roll_rage_attack_d6
 
         total, rolls = roll_rage_attack_d6()
@@ -1647,7 +1665,14 @@ def _resolve_pc_attack(
         )
     if explain_math:
         log.append(f"Attack math: need total >= enemy level {target_level} to hit.")
-    if not attack_hits(final_total, target_level):
+    if auto_hit_fd_hallucination:
+        from .forsaken_depths_content import consume_fd_foe_next_hit
+
+        if consume_fd_foe_next_hit(target):
+            log.append(f"{target.name} ignores danger; this attack hits automatically (FD p.55).")
+        else:
+            log.append(f"{target.name} is not defending; this attack hits automatically (FD p.55).")
+    if not auto_hit_fd_hallucination and not attack_hits(final_total, target_level):
         if (
             missile
             and session is not None
@@ -2494,6 +2519,12 @@ def _resolve_foe_ranged(
     for enemy in enemies:
         if enemy.life <= 0 or not enemy_can_fire_ranged(enemy):
             continue
+        if context.session is not None:
+            from .forsaken_depths_content import fd_foe_skips_attack
+
+            if fd_foe_skips_attack(enemy):
+                log.append(f"{enemy.name} loses its ranged attack to a foe hallucination (FD p.55).")
+                continue
         pairs = assign_enemy_attacks([enemy], party, context=context, once_per_foe=True)
         if not pairs:
             continue
@@ -2810,6 +2841,11 @@ def resolve_combat_round(
 
     def run_party_melee_phase() -> None:
         nonlocal living_enemies, morale_failed
+        if context.session is not None:
+            from .forsaken_depths_content import apply_fd_party_controlled_foes
+
+            log.extend(apply_fd_party_controlled_foes(enemies, show_rolls=show_rolls))
+            living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         for pc in sorted_party(party):
             if pc.character_id in context.continual_light_casters and (
                 has_skill(pc, "continual_light") or pc.class_id.lower() == "illusionist"
@@ -3041,6 +3077,13 @@ def resolve_combat_round(
             if member.current_life > 0 and any(status.lower() == "specter swarm" for status in member.statuses)
         }
         for enemy, target in assign_enemy_attacks(enemies, party, context=context):
+            if context.session is not None:
+                from .forsaken_depths_content import fd_foe_skips_attack
+
+                if fd_foe_skips_attack(enemy):
+                    if show_rolls:
+                        log.append(f"{enemy.name} loses its attack to a foe hallucination (FD p.55).")
+                    continue
             if enemy.id in foe_ranged_this_round and not enemy_uses_natural_attacks(enemy):
                 if show_rolls:
                     log.append(f"{enemy.name} spends the turn drawing a melee weapon.")

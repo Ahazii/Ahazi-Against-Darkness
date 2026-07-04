@@ -15,6 +15,10 @@ if TYPE_CHECKING:
 
 FD_FINGERS_ARE_WORMS_STATUS = "FD My Fingers are Worms"
 FD_NO_DANGER_HERE_STATUS = "FD No Danger Here"
+FD_FOE_NO_DEFENSE_TAG = "fd_foe_hallucination_no_defense"
+FD_FOE_NEXT_HIT_TAG = "fd_foe_hallucination_next_hit"
+FD_FOE_NEXT_ATTACK_FAILS_TAG = "fd_foe_hallucination_next_attack_fails"
+FD_FOE_PARTY_CONTROLLED_TAG = "fd_foe_hallucination_party_controlled"
 
 
 def _add_status(member, status: str) -> None:
@@ -69,6 +73,142 @@ def clear_fd_fingers_are_worms_at_encounter_end(session: SessionState) -> list[s
 
 def fd_hallucination_blocks_weapon_or_item(member) -> bool:
     return fd_fingers_are_worms_active(member)
+
+
+def _enemy_tags(enemy) -> set[str]:
+    return {str(tag).lower() for tag in getattr(enemy, "tags", [])}
+
+
+def fd_foe_skips_attack(enemy) -> bool:
+    tags = _enemy_tags(enemy)
+    return FD_FOE_NO_DEFENSE_TAG in tags or FD_FOE_PARTY_CONTROLLED_TAG in tags
+
+
+def fd_foe_attack_auto_hits(enemy) -> bool:
+    return FD_FOE_NO_DEFENSE_TAG in _enemy_tags(enemy) or FD_FOE_NEXT_HIT_TAG in _enemy_tags(enemy)
+
+
+def consume_fd_foe_next_hit(enemy) -> bool:
+    if FD_FOE_NEXT_HIT_TAG not in _enemy_tags(enemy):
+        return False
+    enemy.tags = [tag for tag in enemy.tags if str(tag).lower() != FD_FOE_NEXT_HIT_TAG]
+    return True
+
+
+def consume_fd_foe_next_attack_fails(enemy) -> bool:
+    if FD_FOE_NEXT_ATTACK_FAILS_TAG not in _enemy_tags(enemy):
+        return False
+    enemy.tags = [tag for tag in enemy.tags if str(tag).lower() != FD_FOE_NEXT_ATTACK_FAILS_TAG]
+    return True
+
+
+def clear_fd_foe_hallucination_on_damage(enemy) -> list[str]:
+    if FD_FOE_NO_DEFENSE_TAG not in _enemy_tags(enemy):
+        return []
+    enemy.tags = [tag for tag in enemy.tags if str(tag).lower() != FD_FOE_NO_DEFENSE_TAG]
+    return [f"{enemy.name}'s foe hallucination ends after it takes damage (FD p.55)."]
+
+
+def apply_fd_party_controlled_foes(enemies: list, *, show_rolls: bool = True) -> list[str]:
+    """Resolve mirrored Surrounded by Foes: the affected foe attacks other foes (FD p.55)."""
+    log: list[str] = []
+    controlled = [
+        enemy
+        for enemy in enemies
+        if enemy.life > 0 and FD_FOE_PARTY_CONTROLLED_TAG in _enemy_tags(enemy)
+    ]
+    if not controlled:
+        return log
+    from .combat import apply_enemy_damage, attack_hits, enemy_life_change_text
+    from .dice import roll_exploding_for_level
+
+    for attacker in controlled:
+        target = next(
+            (
+                enemy
+                for enemy in enemies
+                if enemy.life > 0
+                and enemy.id != attacker.id
+                and FD_FOE_PARTY_CONTROLLED_TAG not in _enemy_tags(enemy)
+            ),
+            None,
+        )
+        if target is None:
+            attacker.tags = [
+                tag for tag in attacker.tags if str(tag).lower() != FD_FOE_PARTY_CONTROLLED_TAG
+            ]
+            log.append(f"{attacker.name}'s party-controlled hallucination ends; no other foes remain (FD p.55).")
+            continue
+        total, rolls = roll_exploding_for_level(max(1, attacker.level))
+        if show_rolls:
+            log.append(
+                f"Foe hallucination attack: {attacker.name} attacks {target.name} for the party: "
+                f"{' + '.join(str(value) for value in rolls)} vs Level {target.level}."
+            )
+        if not attack_hits(total, target.level):
+            log.append(f"{attacker.name} misses {target.name}.")
+            continue
+        before = target.life
+        apply_enemy_damage(target, 1, damage_kind="normal")
+        log.append(f"{attacker.name} wounds {target.name} for 1 damage {enemy_life_change_text(target, before)}.")
+        if target.life <= 0:
+            log.append(f"{target.name} is defeated.")
+    return log
+
+
+def apply_fd_foe_hallucination(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    enemy,
+    *,
+    show_rolls: bool = True,
+    forced_roll: int | None = None,
+) -> list[str]:
+    roll = forced_roll or roll_d6()
+    row = engine.table_roller.lookup("fd_hallucination_table", roll)
+    name = row.get("name") if row else f"roll {roll}"
+    log = [f"Foe hallucination roll: d6 = {roll} -> {name} mirrored for {enemy.name} (FD p.55)."]
+    living_others = [foe for foe in tile.enemies if foe.id != enemy.id and foe.life > 0]
+    key = (row or {}).get("key", "")
+    if key == "surrounded_by_foes":
+        if living_others:
+            if FD_FOE_PARTY_CONTROLLED_TAG not in enemy.tags:
+                enemy.tags.append(FD_FOE_PARTY_CONTROLLED_TAG)
+            log.append(f"{enemy.name} turns on the other foes; treat it as party-controlled while other foes remain.")
+        else:
+            if FD_FOE_NO_DEFENSE_TAG not in enemy.tags:
+                enemy.tags.append(FD_FOE_NO_DEFENSE_TAG)
+            log.append(f"{enemy.name} wastes its next turn; no other foes are present.")
+    elif key == "fingers_are_worms":
+        if FD_FOE_NO_DEFENSE_TAG not in enemy.tags:
+            enemy.tags.append(FD_FOE_NO_DEFENSE_TAG)
+        log.append(f"{enemy.name} stops attacking and defending until it takes damage.")
+    elif key == "no_danger_here":
+        if FD_FOE_NEXT_HIT_TAG not in enemy.tags:
+            enemy.tags.append(FD_FOE_NEXT_HIT_TAG)
+        log.append(f"The next attack against {enemy.name} hits automatically.")
+    elif key == "horrors_from_beyond":
+        tags = _enemy_tags(enemy)
+        if enemy.category in {"vermin", "minions"} or enemy.max_life <= 1:
+            enemy.life = 0
+            enemy.subdued = True
+            log.append(f"{enemy.name} is knocked out by the hallucination.")
+        elif "final_boss" in tags or "no_morale" in tags or "fight_to_death" in tags:
+            log.append(f"{enemy.name} is unaffected by the mirrored Horrors result.")
+        else:
+            enemy.life = 0
+            log.append(f"{enemy.name} runs away from the hallucination.")
+    elif key == "revelations":
+        if FD_FOE_NEXT_ATTACK_FAILS_TAG not in enemy.tags:
+            enemy.tags.append(FD_FOE_NEXT_ATTACK_FAILS_TAG)
+        old_level = enemy.level
+        enemy.level = max(1, enemy.level - 1)
+        log.append(
+            f"The next attack or spellcasting roll against {enemy.name} fails automatically; "
+            f"its Level drops from {old_level} to {enemy.level}."
+        )
+    return log
 
 
 def roll_fd_citadel(

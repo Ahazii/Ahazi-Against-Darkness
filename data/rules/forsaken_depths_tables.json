@@ -1,5 +1,5 @@
 {
-  "ruleset_status": "Forsaken Depths tables (fd_* keys below) validated against Four Against the Forsaken Depths. Live engine: river/boat, traps, treasure, events (flood/earthquake/labyrinth/portal/mist), Lady in Gray quests, Cairn tap, hidden treasure chamber, FD p.55 player hallucination mechanics, Revelation auto-apply, Surrounded by Foes combat-round duration tracking, side sheets, citadel modifiers, Oblivion, ruins secret passage.",
+  "ruleset_status": "Forsaken Depths tables (fd_* keys below) validated against Four Against the Forsaken Depths. Live engine: river/boat, traps, treasure, events (flood/earthquake/labyrinth/portal/mist), Lady in Gray quests, Cairn tap, hidden treasure chamber, FD p.55 player hallucination mechanics and mirrored foe effects, FD horde attacks/volleys/salvage, Revelation auto-apply, Surrounded by Foes combat-round duration tracking, side sheets, citadel modifiers, Oblivion, ruins secret passage.",
   "open_items": [
     "Rulebook validation → validated on all 72 tiles."
   ],
@@ -196,12 +196,12 @@
     {"roll": "6", "name": "Goblins of the Deep", "enemy_category": "minions", "summary": "2d6+1 HCL minions.", "source_page": 40}
   ],
   "fd_horde_table": [
-    {"roll": "1", "name": "Horde of Deep Trolls", "enemy_category": "horde", "summary": "HCL+1 horde, HCL+2 Life.", "source_page": 42},
-    {"roll": "2", "name": "Horde of Deep Hobgoblins", "enemy_category": "horde", "summary": "HCL+3 horde, HCL Life.", "source_page": 42},
-    {"roll": "3", "name": "Horde of Chaos Cultists", "enemy_category": "horde", "summary": "HCL horde, HCL Life.", "source_page": 42},
-    {"roll": "4", "name": "Horde of Dark Elves", "enemy_category": "horde", "summary": "HCL+2 horde, 10 Life.", "source_page": 42},
-    {"roll": "5", "name": "Horde of Lizardmen of the Deep", "enemy_category": "horde", "summary": "HCL+2 horde, 2 attacks per character per turn.", "source_page": 42},
-    {"roll": "6", "name": "Horde of Goblins of the Deep", "enemy_category": "horde", "summary": "HCL horde, HCL-1 Life.", "source_page": 42}
+    {"roll": "1", "name": "Horde of Deep Trolls", "enemy_category": "horde", "summary": "HCL+1 horde, HCL+2 Life, 1 attack per character, regenerates 1 Life at end of turn.", "source_page": 42},
+    {"roll": "2", "name": "Horde of Deep Hobgoblins", "enemy_category": "horde", "summary": "HCL+3 horde, HCL Life, 1 attack per character, morale +1, 2 FD treasure rolls.", "source_page": 42},
+    {"roll": "3", "name": "Horde of Chaos Cultists", "enemy_category": "horde", "summary": "HCL horde, HCL Life, 1 attack per character, never tests Morale, no treasure.", "source_page": 42},
+    {"roll": "4", "name": "Horde of Dark Elves", "enemy_category": "horde", "summary": "HCL+2 horde, 10 Life, opening hand-crossbow volley, 1 attack per character, 1 FD treasure roll.", "source_page": 42},
+    {"roll": "5", "name": "Horde of Lizardmen of the Deep", "enemy_category": "horde", "summary": "HCL+2 horde, HCL Life, 2 attacks per character, wound-poison save at end of party turns.", "source_page": 42},
+    {"roll": "6", "name": "Horde of Goblins of the Deep", "enemy_category": "horde", "summary": "HCL horde, HCL-1 Life, opening javelin volley, Morale -1, L drops by 2 at half Life.", "source_page": 42}
   ],
   "fd_boss_table": [
     {"roll": "1", "name": "Armored Forsaken Depths Troll", "enemy_category": "boss", "summary": "HCL+2 boss, HCL+2 Life, 4 attacks.", "source_page": 44},

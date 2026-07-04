@@ -301,6 +301,12 @@ def test_fd_monster_tables_loaded() -> None:
     assert len(monsters["fd_weird"]) == 14
     assert len(monsters["courtship_demons"]) >= 20
     assert len(monsters["fd_horde"]) == 6
+    hordes = {row["name"]: row for row in monsters["fd_horde"]}
+    assert hordes["Horde of Deep Trolls"]["attacks"] == 1
+    assert "regeneration" in hordes["Horde of Deep Trolls"]["tags"]
+    assert hordes["Horde of Lizardmen of the Deep"]["attacks"] == 2
+    assert hordes["Horde of Goblins of the Deep"]["attacks"] == 1
+    assert "half_life_level_drop:2" in hordes["Horde of Goblins of the Deep"]["tags"]
 
 
 def test_fd_river_type_rolled_on_etr_transition(monkeypatch) -> None:
@@ -716,6 +722,248 @@ def test_fd_surrounded_by_foes_tracks_combat_rounds(monkeypatch) -> None:
     assert session.fd_surrounded_by_foes_turns_remaining == 0
     assert session.fd_surrounded_by_foes_character_id is None
     assert any("shakes off Surrounded by Foes" in entry for entry in session.log)
+
+
+def test_fd_foe_hallucination_mirror_no_defense_auto_hit(monkeypatch) -> None:
+    from app.engine.combat import CombatContext, _resolve_pc_attack
+    from app.engine.forsaken_depths_content import (
+        FD_FOE_NO_DEFENSE_TAG,
+        apply_fd_foe_hallucination,
+    )
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-foe-hallucination",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    enemy = EnemyState(
+        id="foe-1",
+        name="Hallucinating Foe",
+        category="boss",
+        level=20,
+        life=3,
+        max_life=3,
+        attacks=1,
+        tags=["forsaken_depths"],
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [enemy]
+    log = apply_fd_foe_hallucination(eng, session, tile, enemy, forced_roll=2)
+    assert FD_FOE_NO_DEFENSE_TAG in enemy.tags
+    assert any("stops attacking and defending" in entry for entry in log)
+
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+    combat_log: list[str] = []
+    _resolve_pc_attack(
+        session.party[0],
+        enemy,
+        show_rolls=True,
+        explain_math=True,
+        party_attack_bonus=0,
+        subdual=False,
+        missile=False,
+        living_enemies=[enemy],
+        log=combat_log,
+        context=CombatContext(session=session),
+    )
+
+    assert enemy.life < enemy.max_life
+    assert FD_FOE_NO_DEFENSE_TAG not in enemy.tags
+    assert any("hits automatically" in entry for entry in combat_log)
+    assert any("foe hallucination ends" in entry for entry in combat_log)
+
+
+def test_fd_foe_hallucination_revelation_fails_next_attack() -> None:
+    from app.engine.combat import CombatContext, _resolve_pc_attack
+    from app.engine.forsaken_depths_content import FD_FOE_NEXT_ATTACK_FAILS_TAG, apply_fd_foe_hallucination
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-foe-revelation",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    enemy = EnemyState(
+        id="foe-1",
+        name="Revealed Foe",
+        category="boss",
+        level=5,
+        life=3,
+        max_life=3,
+        attacks=1,
+        tags=["forsaken_depths"],
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [enemy]
+    apply_fd_foe_hallucination(eng, session, tile, enemy, forced_roll=5)
+    assert FD_FOE_NEXT_ATTACK_FAILS_TAG in enemy.tags
+    assert enemy.level == 4
+
+    combat_log: list[str] = []
+    _resolve_pc_attack(
+        session.party[0],
+        enemy,
+        show_rolls=True,
+        explain_math=False,
+        party_attack_bonus=99,
+        subdual=False,
+        missile=False,
+        living_enemies=[enemy],
+        log=combat_log,
+        context=CombatContext(session=session),
+    )
+
+    assert enemy.life == enemy.max_life
+    assert FD_FOE_NEXT_ATTACK_FAILS_TAG not in enemy.tags
+    assert any("fails automatically" in entry for entry in combat_log)
+
+
+def test_fd_foe_hallucination_party_controlled_attacks_other_foe(monkeypatch) -> None:
+    from app.engine.forsaken_depths_content import (
+        FD_FOE_PARTY_CONTROLLED_TAG,
+        apply_fd_foe_hallucination,
+        apply_fd_party_controlled_foes,
+    )
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-foe-party-controlled",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    controlled = EnemyState(
+        id="foe-1",
+        name="Confused Foe",
+        category="boss",
+        level=5,
+        life=3,
+        max_life=3,
+        attacks=1,
+        tags=["forsaken_depths"],
+    )
+    target = EnemyState(
+        id="foe-2",
+        name="Other Foe",
+        category="boss",
+        level=2,
+        life=3,
+        max_life=3,
+        attacks=1,
+        tags=["forsaken_depths"],
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [controlled, target]
+    apply_fd_foe_hallucination(eng, session, tile, controlled, forced_roll=1)
+    assert FD_FOE_PARTY_CONTROLLED_TAG in controlled.tags
+    monkeypatch.setattr("app.engine.dice.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
+
+    log = apply_fd_party_controlled_foes(tile.enemies, show_rolls=True)
+
+    assert target.life == 2
+    assert any("attacks Other Foe for the party" in entry for entry in log)
+
+
+def test_fd_goblin_horde_half_life_level_drop_is_two() -> None:
+    from app.engine.subdual import apply_major_foe_level_drop
+
+    enemy = EnemyState(
+        id="goblin-horde",
+        name="Horde of Goblins of the Deep",
+        category="boss",
+        level=6,
+        life=2,
+        max_life=5,
+        attacks=1,
+        tags=["horde", "forsaken_depths", "half_life_level_drop:2"],
+    )
+
+    assert apply_major_foe_level_drop(enemy) is True
+    assert enemy.level == 4
+
+
+def test_fd_goblin_horde_opening_javelins_target_highest_life(monkeypatch) -> None:
+    from app.engine.forsaken_depths_hordes import (
+        FD_HORDE_VOLLEY_USED_TAG,
+        apply_fd_horde_opening_volleys,
+    )
+
+    eng = engine()
+    hero = _party_member()
+    scout = PartyMemberState.model_validate(
+        {
+            **hero.model_dump(),
+            "character_id": "hero-2",
+            "name": "Scout",
+            "current_life": 6,
+            "max_life": 8,
+            "marching_order": 2,
+        }
+    )
+    session = eng.create_session(
+        "fd-goblin-volley",
+        "party-1",
+        [hero, scout],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    enemy = EnemyState(
+        id="goblin-horde",
+        name="Horde of Goblins of the Deep",
+        category="boss",
+        level=20,
+        life=4,
+        max_life=4,
+        attacks=1,
+        tags=["horde", "goblin", "forsaken_depths", "fd_horde_goblin_javelins"],
+    )
+    tile.enemies = [enemy]
+    monkeypatch.setattr("app.engine.forsaken_depths_hordes.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+
+    log = apply_fd_horde_opening_volleys(session, tile, show_rolls=True)
+
+    assert FD_HORDE_VOLLEY_USED_TAG in enemy.tags
+    assert session.party[0].current_life == 10
+    assert session.party[1].current_life == 5
+    assert sum(1 for entry in log if entry.startswith("Volley Defense:")) == 3
+    assert any("throws javelins before melee" in entry for entry in log)
+
+
+def test_fd_horde_salvage_marks_room_after_defeat() -> None:
+    from app.engine.forsaken_depths_hordes import (
+        FD_HORDE_WEAPON_SALVAGE_OBJECT,
+        add_fd_horde_weapon_salvage,
+    )
+
+    tile = TileState(
+        id="horde-room",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Horde room",
+        description="Defeated horde",
+    )
+    defeated = [
+        EnemyState(
+            id="troll-horde",
+            name="Horde of Deep Trolls",
+            category="boss",
+            level=6,
+            life=0,
+            max_life=7,
+            attacks=1,
+            tags=["horde", "forsaken_depths"],
+        )
+    ]
+
+    log = add_fd_horde_weapon_salvage(tile, defeated)
+
+    assert FD_HORDE_WEAPON_SALVAGE_OBJECT in tile.objects
+    assert any("Light weapon" in entry and "hand weapon" in entry for entry in log)
 
 
 def test_fd_citadel_roll_on_etc(monkeypatch) -> None:
