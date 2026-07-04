@@ -156,9 +156,11 @@ def test_create_package_from_pdf_creates_manual_map_slot_and_preserves_pins(tmp_
     assert summary["package_id"] == "map-module-pdf"
     assert summary["map_count"] == 1
     assert summary["maps"][0]["id"] == "manual-map-review-slot"
-    assert summary["maps"][0]["asset_path"] == "adventures/map-module-pdf/maps/manual-map-review-slot_1600x900.png"
-    assert (data / "assets" / "adventures" / "map-module-pdf" / "maps" / "manual-map-review-slot_1600x900.README.txt").is_file()
+    assert summary["maps"][0]["asset_path"] == "maps/manual-map-review-slot_1600x900.png"
+    assert summary["maps"][0]["asset_url"] == "/api/adventures/packages/map-module-pdf/maps/manual-map-review-slot_1600x900.png"
+    assert (data / "Adventures" / "map-module-pdf" / "maps" / "manual-map-review-slot_1600x900.README.txt").is_file()
     assert Path(summary["package_path"]).is_file()
+    assert Path(summary["adventure_folder"]).name == "map-module-pdf"
     package = load_adventure_package(data, "map-module-pdf")
     assert package is not None
     assert package["source"]["source_pdf"] == "Adventure PDFs/Map Module.pdf"

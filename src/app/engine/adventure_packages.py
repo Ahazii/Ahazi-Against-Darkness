@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
 from .adventure_pdf_sources import adventure_pdf_source_dirs, load_adventure_pdf_assessments
 
 
-PACKAGE_DIRNAME = "Adventure Packages"
 PACKAGE_FILENAME = "package.json"
-MAP_ASSET_ROOT = Path("adventures")
+LEGACY_PACKAGE_DIRNAME = "Adventure Packages"
+LEGACY_MAP_ASSET_ROOT = Path("adventures")
 ALLOWED_PROCEDURE_OPS = {
     "roll_table",
     "spawn_foes",
@@ -33,20 +34,35 @@ def _slug(value: str, fallback: str = "adventure-package") -> str:
 
 
 def adventure_package_root(data_dir: Path) -> Path:
-    path = data_dir / PACKAGE_DIRNAME
+    path = data_dir / "Adventures"
     path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def adventure_folder(data_dir: Path, package_id: str) -> Path:
+    path = adventure_package_root(data_dir) / _slug(package_id)
+    path.mkdir(parents=True, exist_ok=True)
+    for child in ("maps", "artwork", "tables", "notes"):
+        (path / child).mkdir(parents=True, exist_ok=True)
     return path
 
 
 def adventure_package_path(data_dir: Path, package_id: str) -> Path:
-    safe_id = _slug(package_id)
-    return adventure_package_root(data_dir) / safe_id / PACKAGE_FILENAME
+    return adventure_folder(data_dir, package_id) / PACKAGE_FILENAME
 
 
 def adventure_package_asset_dir(data_dir: Path, package_id: str) -> Path:
-    path = data_dir / "assets" / MAP_ASSET_ROOT / _slug(package_id) / "maps"
+    path = adventure_folder(data_dir, package_id) / "maps"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def legacy_adventure_package_path(data_dir: Path, package_id: str) -> Path:
+    return data_dir / LEGACY_PACKAGE_DIRNAME / _slug(package_id) / PACKAGE_FILENAME
+
+
+def legacy_adventure_package_asset_dir(data_dir: Path, package_id: str) -> Path:
+    return data_dir / "assets" / LEGACY_MAP_ASSET_ROOT / _slug(package_id) / "maps"
 
 
 def _relative_source_path(root_dir: Path, data_dir: Path, path: Path) -> str:
@@ -91,13 +107,25 @@ def _find_pdf_source(root_dir: Path, data_dir: Path, pdf_id: str) -> tuple[Path,
 
 def load_adventure_package(data_dir: Path, package_id: str) -> dict[str, Any] | None:
     path = adventure_package_path(data_dir, package_id)
+    used_legacy = False
+    if not path.is_file():
+        legacy_path = legacy_adventure_package_path(data_dir, package_id)
+        if legacy_path.is_file():
+            path = legacy_path
+            used_legacy = True
     if not path.is_file():
         return None
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    return payload if isinstance(payload, dict) else None
+    if not isinstance(payload, dict):
+        return None
+    if used_legacy:
+        payload["package_id"] = _slug(str(payload.get("package_id") or package_id))
+        _migrate_legacy_package_assets(data_dir, payload["package_id"], payload)
+        save_adventure_package(data_dir, payload)
+    return payload
 
 
 def save_adventure_package(data_dir: Path, package: dict[str, Any]) -> Path:
@@ -110,7 +138,19 @@ def save_adventure_package(data_dir: Path, package: dict[str, Any]) -> Path:
 
 
 def _asset_url_path(package_id: str, filename: str) -> str:
-    return str(MAP_ASSET_ROOT / _slug(package_id) / "maps" / filename).replace("\\", "/")
+    return f"maps/{filename}"
+
+
+def package_map_asset_path(data_dir: Path, package_id: str, asset_path: str) -> Path:
+    clean = str(asset_path or "").replace("\\", "/").lstrip("/")
+    filename = Path(clean).name if "/" in clean else clean
+    current = adventure_package_asset_dir(data_dir, package_id) / filename
+    if current.is_file():
+        return current
+    legacy = legacy_adventure_package_asset_dir(data_dir, package_id) / filename
+    if legacy.is_file():
+        return legacy
+    return current
 
 
 def _extract_pdf_map_images(pdf_path: Path, data_dir: Path, package_id: str, *, max_pages: int = 12) -> list[dict[str, Any]]:
@@ -201,6 +241,7 @@ def create_or_refresh_package_from_pdf(
     pdf_path, assessment = _find_pdf_source(root_dir, data_dir, pdf_id)
     package_id = _slug(str(assessment.get("id") or pdf_path.stem))
     existing = load_adventure_package(data_dir, package_id) or {}
+    _migrate_legacy_package_assets(data_dir, package_id, existing)
     existing_maps = {str(item.get("id")): item for item in existing.get("maps", []) if isinstance(item, dict)}
     maps: list[dict[str, Any]] = []
     extraction_warnings: list[str] = []
@@ -279,7 +320,16 @@ def _sanitize_procedures(procedures: Any) -> list[dict[str, Any]]:
 def list_adventure_packages(data_dir: Path) -> list[dict[str, Any]]:
     packages: list[dict[str, Any]] = []
     root = adventure_package_root(data_dir)
+    seen: set[str] = set()
     for path in sorted(root.glob(f"*/{PACKAGE_FILENAME}")):
+        package = load_adventure_package(data_dir, path.parent.name)
+        if package:
+            seen.add(str(package.get("package_id") or path.parent.name))
+            packages.append(package_summary(data_dir, package))
+    legacy_root = data_dir / LEGACY_PACKAGE_DIRNAME
+    for path in sorted(legacy_root.glob(f"*/{PACKAGE_FILENAME}")):
+        if path.parent.name in seen:
+            continue
         package = load_adventure_package(data_dir, path.parent.name)
         if package:
             packages.append(package_summary(data_dir, package))
@@ -293,7 +343,13 @@ def package_summary(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
     for item in maps:
         copy = dict(item)
         asset_path = str(copy.get("asset_path") or "")
-        copy["asset_exists"] = bool(asset_path and (data_dir / "assets" / asset_path).is_file())
+        asset_file = package_map_asset_path(data_dir, str(package.get("package_id") or ""), asset_path)
+        copy["asset_exists"] = bool(asset_path and asset_file.is_file())
+        copy["asset_url"] = (
+            f"/api/adventures/packages/{str(package.get('package_id') or '')}/maps/{Path(asset_path).name}"
+            if asset_path
+            else ""
+        )
         enriched_maps.append(copy)
     return {
         "package_id": str(package.get("package_id") or ""),
@@ -311,6 +367,7 @@ def package_summary(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
         "tracker_count": len(package.get("trackers", []) or []),
         "procedure_count": len(package.get("procedures", []) or []),
         "package_path": str(adventure_package_path(data_dir, str(package.get("package_id") or ""))),
+        "adventure_folder": str(adventure_folder(data_dir, str(package.get("package_id") or ""))),
     }
 
 
@@ -365,3 +422,21 @@ def _bounded_float(value: Any, minimum: float, maximum: float) -> float:
     except (TypeError, ValueError):
         number = minimum
     return round(max(minimum, min(maximum, number)), 2)
+
+
+def _migrate_legacy_package_assets(data_dir: Path, package_id: str, package: dict[str, Any]) -> None:
+    legacy_dir = legacy_adventure_package_asset_dir(data_dir, package_id)
+    if not legacy_dir.is_dir():
+        return
+    target_dir = adventure_package_asset_dir(data_dir, package_id)
+    for item in legacy_dir.iterdir():
+        if not item.is_file():
+            continue
+        target = target_dir / item.name
+        if not target.exists():
+            shutil.copy2(item, target)
+    if not package:
+        return
+    for map_record in package.get("maps", []):
+        if isinstance(map_record, dict) and map_record.get("asset_path"):
+            map_record["asset_path"] = f"maps/{Path(str(map_record['asset_path'])).name}"

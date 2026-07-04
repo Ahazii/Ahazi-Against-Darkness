@@ -210,7 +210,7 @@
           },
           "asset_path": {
             "type": "string",
-            "description": "DATA_DIR-relative local asset path, for example assets/adventures/example/maps/level-1.png."
+          "description": "Adventure-folder-relative local asset path, for example maps/level-1.png inside DATA_DIR/Adventures/<adventure_id>/."
           },
           "coordinate_system": {
             "const": "percent"

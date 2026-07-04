@@ -3386,7 +3386,7 @@ function renderAdventurePackageManager() {
     packageContainer.append(
       modernStatusRow("Selected source", selectedAdventure?.name || selectedAdventure?.id || "PDF source", "This source PDF remains non-playable until a reviewed manifest exists."),
       modernStatusRow("Package status", pkg ? `${pkg.map_count || 0} map(s) · ${pkg.pin_count || 0} pin(s) · ${pkg.review?.status || "draft"}` : "No package yet", "Create a package to store map assets and review metadata in DATA_DIR."),
-      modernStatusRow("Storage", pkg?.package_path || "DATA_DIR/Adventure Packages/<package_id>/package.json", "Package JSON is user-facing data beside game.db. Extracted map images live under DATA_DIR/assets/adventures/<package_id>/maps/.")
+      modernStatusRow("Storage", pkg?.adventure_folder || "DATA_DIR/Adventures/<adventure_id>/", "Everything for this adventure lives together beside game.db: package.json, maps/, artwork/, tables/, notes/, and the future adventure.json.")
     );
     if (pkg) packageContainer.appendChild(renderAdventurePackageMaps(pkg));
   };
@@ -3427,12 +3427,12 @@ function renderAdventurePackageMaps(pkg) {
     const preview = el("div", "modern-package-map-preview");
     if (map.asset_exists && map.asset_path) {
       const img = document.createElement("img");
-      img.src = `/assets/${String(map.asset_path).split("/").map(encodeURIComponent).join("/")}`;
+      img.src = map.asset_url || `/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/maps/${encodeURIComponent(String(map.asset_path || "").split("/").pop() || "")}`;
       img.alt = map.title || map.id;
       img.title = "Click the map to fill the pin X/Y percentage fields. Review placement against the source PDF before trusting it in play.";
       preview.appendChild(img);
     } else {
-      preview.appendChild(el("span", "muted", `Put a map image at DATA_DIR/assets/${map.asset_path || "adventures/<package>/maps/manual-map-review-slot_1600x900.png"}`));
+      preview.appendChild(el("span", "muted", `Put a map image at DATA_DIR/Adventures/${pkg.package_id}/${map.asset_path || "maps/manual-map-review-slot_1600x900.png"}`));
     }
     const form = renderAdventurePackagePinForm(pkg, map, preview);
     cardEl.append(preview, form, renderAdventurePackagePins(pkg, map));

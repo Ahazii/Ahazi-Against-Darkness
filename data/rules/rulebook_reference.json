@@ -3632,7 +3632,7 @@
         "package"
       ],
       "summary": "Tables documents the Adventure Management package editor for extracted PDF map images and room/location pins.",
-      "body": "The modern Tables page includes adventure_package_map_pinning_table. It documents package JSON under DATA_DIR/Adventure Packages, extracted or manually supplied map images under DATA_DIR/assets/adventures/<package_id>/maps, and percent-based pin coordinates linking a room, scene, hex, or location id to the reviewed map. Pins are review metadata and do not replace the source PDF or playable manifest.",
+      "body": "The modern Tables page includes adventure_package_map_pinning_table. It documents package JSON under DATA_DIR/Adventures/<adventure_id>/package.json, extracted or manually supplied map images under DATA_DIR/Adventures/<adventure_id>/maps, and percent-based pin coordinates linking a room, scene, hex, or location id to the reviewed map. Pins are review metadata and do not replace the source PDF or playable manifest.",
       "implementation_status": "implemented"
     },
     {

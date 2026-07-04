@@ -2123,6 +2123,7 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "/api/adventures/packages" in MODERN_PAGES_JS
     assert "function renderAdventurePackageManager" in MODERN_PAGES_JS
     assert "Create / Refresh Package" in MODERN_PAGES_JS
+    assert "DATA_DIR/Adventures/<adventure_id>/" in MODERN_PAGES_JS
     assert "modern-package-map-preview" in MODERN_PAGES_JS
     assert ".modern-package-pin-form" in STYLES_CSS
 

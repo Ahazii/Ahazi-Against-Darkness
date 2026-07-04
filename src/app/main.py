@@ -41,6 +41,7 @@ from .engine.adventure_packages import (
     create_or_refresh_package_from_pdf,
     delete_map_pin,
     list_adventure_packages,
+    package_map_asset_path,
     upsert_map_pin,
 )
 from .engine.adventure_allowlists import build_adventure_allowlists
@@ -2832,13 +2833,13 @@ def _rules_tables_payload() -> dict:
     data["adventure_package_map_pinning_table"] = [
         {
             "area": "Package files",
-            "path": "DATA_DIR/Adventure Packages/<package_id>/package.json",
-            "purpose": "Stores reviewed package metadata, map records, and room/location pins beside game.db for backup.",
+            "path": "DATA_DIR/Adventures/<adventure_id>/package.json",
+            "purpose": "Stores reviewed package metadata, map records, and room/location pins beside the adventure manifest.",
             "boundary": "Package files prepare import data; they do not make a source PDF playable by themselves.",
         },
         {
             "area": "Map assets",
-            "path": "DATA_DIR/assets/adventures/<package_id>/maps/",
+            "path": "DATA_DIR/Adventures/<adventure_id>/maps/",
             "purpose": "Stores extracted or manually supplied map images from user-owned PDFs.",
             "boundary": "Keep private-use PDF-derived art local unless publishing rights are secured.",
         },
@@ -4260,6 +4261,32 @@ async def save_adventure_package_pin(package_id: str, payload: dict[str, Any]) -
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"package": package}
+
+
+@app.get("/api/adventures/packages/{package_id}/maps/{filename}")
+async def adventure_package_map_asset(package_id: str, filename: str) -> FileResponse:
+    safe_filename = Path(filename).name
+    path = package_map_asset_path(settings.data_dir, package_id, safe_filename)
+    try:
+        resolved = path.resolve()
+        adventure_root = (settings.installed_adventures_dir / package_id).resolve()
+        legacy_root = (settings.user_assets_dir / "adventures" / package_id / "maps").resolve()
+    except OSError as exc:
+        raise HTTPException(status_code=404, detail="Map asset not found.") from exc
+    try:
+        resolved.relative_to(adventure_root)
+        allowed = True
+    except ValueError:
+        try:
+            resolved.relative_to(legacy_root)
+            allowed = True
+        except ValueError:
+            allowed = False
+    if not allowed:
+        raise HTTPException(status_code=400, detail="Invalid map asset path.")
+    if not resolved.is_file():
+        raise HTTPException(status_code=404, detail="Map asset not found.")
+    return FileResponse(resolved)
 
 
 @app.delete("/api/adventures/packages/{package_id}/maps/{map_id}/pins/{pin_id}")
