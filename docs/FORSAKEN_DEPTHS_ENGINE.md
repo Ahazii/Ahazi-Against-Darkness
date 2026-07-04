@@ -40,6 +40,8 @@ Hover any badge for rulebook page references.
 | **Worms / No danger** badges | FD p.55 hallucination status active | Blocks weapons/items or next danger as appropriate |
 | **Enter … sheet** | Ru or ETC tile, exploration | `enter_fd_side_sheet` |
 | **Return to main map** | On side-sheet tile | `exit_fd_side_sheet` |
+| **Examine Machinery** | Ruins roll 2-3 room | `resolve_fd_ruins_machinery` |
+| **Psychic Residue choices** | Failed ruins roll 6 Save | `resolve_fd_ruins_psychic_choice` |
 | **Secret passage** | Ruins roll 12 tile | `fd_secret_passage_unlock_clues` / `choose_fd_secret_passage_destination` |
 | **Escape citadel (4 Clues)** | Prisoners citadel side sheet | `fd_prisoners_escape` |
 | **Citadel of Dead** banner | Dead Things side sheet | Bandages only (hover) |
@@ -115,6 +117,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `random_dungeon.py` | FD content rolls, trap seeding, tile generation |
 | `forsaken_depths_citadel.py` | Citadel type modifiers (crowded, traps, prisoners escape, dead healing, magic MR, final bosses) |
 | `forsaken_depths_side_sheet.py` | Citadel / river ruins side-dungeon entry, room budget, return to main map |
+| `forsaken_depths_ruins.py` | Ruins Complex Machinery and Psychic Residue choice workflows (FD p.56) |
 | `forsaken_depths_secret_passage.py` | Ruins secret passage unlock (Clues / traps / weirds) and destination choice |
 | `forsaken_depths_cyclopean_idol.py` | Cyclopean Idol table outcomes (FD p.52) |
 | `courtship_demesne.py` | Blossoms' Demesne via Portal (TCOTFD p.62–68) |
@@ -128,6 +131,13 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `forsaken_depths_events.py` | FD events including Portal branches |
 | `forsaken_depths_quest.py` | Lady in Gray quests (up to 2 concurrent), oracle-bound quests, pilgrimage |
 | `forsaken_depths_spell_scrolls.py` | Dark Pits scroll rewards (Scroll/Bark/Prism by spell class) |
+
+## Ruins machinery and psychic residue (FD p.56)
+
+| Room result | App behavior |
+|-------------|--------------|
+| **Complex Machinery** | Room panel offers **Examine Machinery** with a living-hero selector. Each hero can attempt once; success grants 1 Clue, failure applies Tier damage. Gnomes/artificers add Level; wizards add half Level. |
+| **Psychic Residue** | The app rolls every living hero's psychic Save on entry. Successful heroes gain the +3 future Psychic Residue Save marker for this adventure. Failed heroes get room-panel buttons for the printed consequence choice: 3 damage, 1 Madness, or lose 2 spell slots. |
 
 ## Ruins secret passage (FD p.56)
 

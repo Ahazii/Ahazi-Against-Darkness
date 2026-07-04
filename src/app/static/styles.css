@@ -7200,6 +7200,23 @@ input[type="radio"] {
   margin-top: 12px;
 }
 
+.fd-ruins-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.fd-ruins-action-row .search-label {
+  width: auto;
+  min-width: 140px;
+}
+
+.fd-ruins-character-select {
+  max-width: 220px;
+}
+
 .tight-actions {
   margin-top: 0;
 }

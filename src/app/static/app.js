@@ -851,6 +851,14 @@ const ACTION_TOOLTIPS = {
     "Three-items Quest — turn in a newly found magic item at the Lady in Gray's tile (FD p.54).",
   resolveFdCyclopeanIdol:
     "Interact with the Cyclopean Idol — roll fd_cyclopean_idol_table (FD p.52).",
+  fdRuinsMachinery:
+    "Complex Machinery (FD p.56): choose a living hero to attempt HCL+4. Gnomes/artificers add Level, wizards add half Level. Success grants 1 Clue; failure deals Tier damage.",
+  fdRuinsPsychicDamage:
+    "Psychic Residue (FD p.56): this failed hero chooses 3 damage as the consequence.",
+  fdRuinsPsychicMadness:
+    "Psychic Residue (FD p.56): this failed hero chooses 1 Madness as the consequence.",
+  fdRuinsPsychicSpellSlots:
+    "Psychic Residue (FD p.56): this failed hero loses 2 spell slots. Use only for a hero with spell slots.",
   courtshipRollEncounter:
     "Roll 2d6 on the current Demesne region encounter table (TCOTFD p.62–68).",
   courtshipSpendEncounterClue:
@@ -14554,6 +14562,85 @@ function appendFdCyclopeanIdolActions(parent, session, tile) {
   }
 }
 
+function appendFdRuinsActions(parent, session, tile) {
+  if (session?.ruleset !== "forsaken_depths" || session.mode !== "exploration" || !tile) return;
+  if (tile.content_key === "ruins_machinery" && !tile.fd_ruins_machinery_resolved) {
+    const attempted = new Set(tile.fd_ruins_machinery_attempted_character_ids || []);
+    const eligible = livingParty(session).filter((member) => !attempted.has(member.character_id));
+    if (eligible.length) {
+      const row = node("div", "fd-ruins-action-row");
+      row.appendChild(node("span", "search-label", "Complex Machinery:"));
+      const select = document.createElement("select");
+      select.className = "fd-ruins-character-select";
+      setTooltip(select, ACTION_TOOLTIPS.fdRuinsMachinery);
+      for (const member of eligible) {
+        const option = document.createElement("option");
+        option.value = member.character_id;
+        option.textContent = `${member.name} (L${member.level || 1})`;
+        select.appendChild(option);
+      }
+      row.appendChild(select);
+      const btn = node("button", "secondary", "Examine Machinery");
+      btn.type = "button";
+      setButtonTooltip(btn, ACTION_TOOLTIPS.fdRuinsMachinery);
+      btn.addEventListener("click", () =>
+        advance("resolve_fd_ruins_machinery", { character_id: select.value })
+      );
+      row.appendChild(btn);
+      parent.appendChild(row);
+    } else {
+      const line = subline("Complex Machinery: every living hero has already tried this room.");
+      setTooltip(line, ACTION_TOOLTIPS.fdRuinsMachinery);
+      parent.appendChild(line);
+    }
+  }
+
+  const pending = session.fd_ruins_psychic_pending || {};
+  const pendingHere = livingParty(session).filter((member) => pending[member.character_id] === tile.id);
+  for (const member of pendingHere) {
+    const row = node("div", "fd-ruins-action-row");
+    row.appendChild(node("span", "search-label", `${member.name} Psychic Residue:`));
+    const damageBtn = node("button", "secondary", "Take 3 damage");
+    damageBtn.type = "button";
+    setButtonTooltip(damageBtn, ACTION_TOOLTIPS.fdRuinsPsychicDamage);
+    damageBtn.addEventListener("click", () =>
+      advance("resolve_fd_ruins_psychic_choice", {
+        character_id: member.character_id,
+        fd_ruins_psychic_choice: "damage",
+      })
+    );
+    row.appendChild(damageBtn);
+
+    const madnessBtn = node("button", "secondary", "Gain 1 Madness");
+    madnessBtn.type = "button";
+    setButtonTooltip(madnessBtn, ACTION_TOOLTIPS.fdRuinsPsychicMadness);
+    madnessBtn.addEventListener("click", () =>
+      advance("resolve_fd_ruins_psychic_choice", {
+        character_id: member.character_id,
+        fd_ruins_psychic_choice: "madness",
+      })
+    );
+    row.appendChild(madnessBtn);
+
+    const spellBtn = node("button", "secondary", "Lose 2 spell slots");
+    spellBtn.type = "button";
+    const spellCount = (member.spells || []).length;
+    spellBtn.disabled = spellCount < 1;
+    setButtonTooltip(
+      spellBtn,
+      spellCount < 1 ? "This hero has no spell slots to lose." : ACTION_TOOLTIPS.fdRuinsPsychicSpellSlots
+    );
+    spellBtn.addEventListener("click", () =>
+      advance("resolve_fd_ruins_psychic_choice", {
+        character_id: member.character_id,
+        fd_ruins_psychic_choice: "spell_slots",
+      })
+    );
+    row.appendChild(spellBtn);
+    parent.appendChild(row);
+  }
+}
+
 function isFdQuestMagicItem(item) {
   const lower = String(item || "").trim().toLowerCase();
   if (!lower) return false;
@@ -25177,6 +25264,7 @@ function renderTileDetail(session) {
   appendTagContextualActions(info, session, tile);
   appendCourtshipDemesneActions(info, session);
   appendFdCyclopeanIdolActions(info, session, tile);
+  appendFdRuinsActions(info, session, tile);
   if (
     session.ruleset === "forsaken_depths" &&
     (session.fd_flood_bow_penalty_rooms || 0) > 0

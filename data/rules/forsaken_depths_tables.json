@@ -297,10 +297,10 @@
     {"roll": "5-6", "key": "revelations", "name": "Revelations", "summary": "1 Madness plus one automatic success benefit (FD p.55).", "source_page": 55}
   ],
   "fd_ruins_content_table": [
-    {"roll": "2-3", "key": "ruins_machinery", "name": "Complex Machinery", "summary": "HCL+4 understand roll for 1 Clue or Tier damage (FD p.56).", "source_page": 56},
+    {"roll": "2-3", "key": "ruins_machinery", "name": "Complex Machinery", "summary": "App offers one first-visit attempt per living hero: HCL+4 understand roll for 1 Clue or Tier damage (FD p.56).", "source_page": 56},
     {"roll": "4", "key": "ruins_servitors", "name": "Servitors", "subtable": "fd_minions_table", "summary": "Roll Forsaken Depths Minions Table (FD p.56).", "source_page": 56},
     {"roll": "5", "key": "ruins_more_servitors", "name": "More Servitors", "subtable": "fd_minions_table", "summary": "Minions +2 count (FD p.56).", "source_page": 56},
-    {"roll": "6", "key": "ruins_psychic_hall", "name": "Psychic Residue", "summary": "All Save vs. HCL+3 psychic assault (FD p.56).", "source_page": 56},
+    {"roll": "6", "key": "ruins_psychic_hall", "name": "Psychic Residue", "summary": "App rolls all HCL+3 psychic Saves, gives successful heroes the +3 future-save marker, and offers failure choices for damage, Madness, or spell slots (FD p.56).", "source_page": 56},
     {"roll": "7", "key": "ruins_trap", "name": "Trap", "summary": "Roll Forsaken Depths Trap Table; 2-in-6 treasure in rooms (FD p.56).", "source_page": 56},
     {"roll": "8", "key": "ruins_boss", "name": "Boss Monster", "subtable": "fd_boss_table", "summary": "Boss — not Final Boss but counts as Major Foe (FD p.56).", "source_page": 56},
     {"roll": "9", "key": "ruins_weird", "name": "Weird Monster", "subtable": "fd_weird_table", "summary": "Roll Forsaken Depths Weird Monster Table (FD p.56).", "source_page": 56},

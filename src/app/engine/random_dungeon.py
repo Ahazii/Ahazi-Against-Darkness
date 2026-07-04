@@ -891,6 +891,7 @@ class RandomDungeonEngine:
         fd_secret_passage_destination: str | None = None,
         fd_portal_destination: str | None = None,
         fd_cairn_natural_one_choice: str | None = None,
+        fd_ruins_psychic_choice: str | None = None,
         fd_quest_reward_choice: str | None = None,
         fd_quest_from_treasure: bool = False,
         fd_quest_id: str | None = None,
@@ -1002,6 +1003,8 @@ class RandomDungeonEngine:
             "report_fd_idol_visit",
             "resolve_fd_cyclopean_idol",
             "choose_fd_idol_outcome",
+            "resolve_fd_ruins_machinery",
+            "resolve_fd_ruins_psychic_choice",
             "courtship_roll_encounter",
             "courtship_choose_pathway",
             "courtship_leave_demesne",
@@ -1248,6 +1251,19 @@ class RandomDungeonEngine:
                 tile,
                 fd_idol_choice,
                 item_name=item_name,
+                show_rolls=show_rolls,
+            )
+        elif action == "resolve_fd_ruins_machinery":
+            from .forsaken_depths_ruins import resolve_ruins_complex_machinery
+
+            resolve_ruins_complex_machinery(self, session, character_id, show_rolls=show_rolls)
+        elif action == "resolve_fd_ruins_psychic_choice":
+            from .forsaken_depths_ruins import resolve_ruins_psychic_choice
+
+            resolve_ruins_psychic_choice(
+                session,
+                character_id,
+                fd_ruins_psychic_choice,
                 show_rolls=show_rolls,
             )
         elif action == "courtship_roll_encounter":

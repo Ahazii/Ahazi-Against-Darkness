@@ -1740,6 +1740,115 @@ def test_fd_ruins_secret_passage_offer(monkeypatch) -> None:
     assert session.fd_secret_passage_tile_id == tile.id
 
 
+def test_fd_ruins_complex_machinery_success_grants_clue(monkeypatch) -> None:
+    from app.engine.forsaken_depths_ruins import setup_ruins_complex_machinery
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-ruins-machinery-success",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    session.mode = "exploration"
+    setup_ruins_complex_machinery(session, tile, show_rolls=False)
+    monkeypatch.setattr("app.engine.forsaken_depths_ruins.roll_exploding_for_level", lambda *args, **kwargs: (20, [20]))
+
+    eng.advance(session, "resolve_fd_ruins_machinery", character_id="hero-1")
+
+    assert tile.fd_ruins_machinery_resolved
+    assert session.clues_found == 1
+    assert session.party[0].clues == 1
+    assert any("gains 1 Clue" in entry for entry in session.log)
+
+
+def test_fd_ruins_complex_machinery_failure_deals_tier_damage_and_locks_attempt(monkeypatch) -> None:
+    from app.engine.experience import tier_for_level
+    from app.engine.forsaken_depths_ruins import setup_ruins_complex_machinery
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-ruins-machinery-fail",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    session.mode = "exploration"
+    setup_ruins_complex_machinery(session, tile, show_rolls=False)
+    monkeypatch.setattr("app.engine.forsaken_depths_ruins.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+    before = session.party[0].current_life
+
+    eng.advance(session, "resolve_fd_ruins_machinery", character_id="hero-1")
+    eng.advance(session, "resolve_fd_ruins_machinery", character_id="hero-1")
+
+    assert not tile.fd_ruins_machinery_resolved
+    assert session.party[0].current_life == before - tier_for_level(session.party[0].level)
+    assert tile.fd_ruins_machinery_attempted_character_ids == ["hero-1"]
+    assert any("already tried" in entry for entry in session.log)
+
+
+def test_fd_ruins_psychic_residue_failure_choices(monkeypatch) -> None:
+    from app.engine.forsaken_depths_ruins import resolve_ruins_psychic_residue
+
+    caster = _party_member()
+    caster.character_id = "hero-2"
+    caster.name = "Wizard"
+    caster.class_id = "wizard"
+    caster.class_name = "Wizard"
+    caster.spells = ["Sleep", "Fireball"]
+    eng = engine()
+    session = eng.create_session(
+        "fd-ruins-psychic",
+        "party-1",
+        [_party_member(), caster],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.forsaken_depths_ruins.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+
+    resolve_ruins_psychic_residue(eng, session, tile, hcl=5, show_rolls=False)
+    eng.advance(
+        session,
+        "resolve_fd_ruins_psychic_choice",
+        character_id="hero-1",
+        fd_ruins_psychic_choice="damage",
+    )
+    eng.advance(
+        session,
+        "resolve_fd_ruins_psychic_choice",
+        character_id="hero-2",
+        fd_ruins_psychic_choice="spell_slots",
+    )
+
+    assert "hero-1" not in session.fd_ruins_psychic_pending
+    assert "hero-2" not in session.fd_ruins_psychic_pending
+    assert session.party[0].current_life == 9
+    assert session.party[1].spells == []
+    assert any("loses spell slot" in entry for entry in session.log)
+
+
+def test_fd_ruins_psychic_residue_success_grants_future_bonus(monkeypatch) -> None:
+    from app.engine.forsaken_depths_ruins import FD_RUINS_PSYCHIC_IMMUNITY_STATUS, resolve_ruins_psychic_residue
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-ruins-psychic-success",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.forsaken_depths_ruins.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
+
+    resolve_ruins_psychic_residue(eng, session, tile, hcl=5, show_rolls=False)
+    assert FD_RUINS_PSYCHIC_IMMUNITY_STATUS in session.party[0].statuses
+    assert not session.fd_ruins_psychic_pending
+
+
 def test_fd_secret_passage_unlock_with_clues() -> None:
     from app.engine.forsaken_depths_secret_passage import offer_fd_ruins_secret_passage
 

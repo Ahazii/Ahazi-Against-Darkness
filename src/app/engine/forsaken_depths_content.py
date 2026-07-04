@@ -501,7 +501,15 @@ def apply_ruins_room_content(
         session.log.append(f"Ruins content roll: 2d6 = {roll} → {name} (FD p.56). {summary}")
     key = row.get("key", "")
     subtable = row.get("subtable")
-    if subtable:
+    if key == "ruins_machinery":
+        from .forsaken_depths_ruins import setup_ruins_complex_machinery
+
+        setup_ruins_complex_machinery(session, tile, show_rolls=show_rolls)
+    elif key == "ruins_psychic_hall":
+        from .forsaken_depths_ruins import resolve_ruins_psychic_residue
+
+        resolve_ruins_psychic_residue(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
+    elif subtable:
         sub_roll = roll_d6()
         sub_row = engine.table_roller.lookup_fd_subtable_row(subtable, sub_roll)
         if sub_row:
