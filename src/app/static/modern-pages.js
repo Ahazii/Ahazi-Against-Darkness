@@ -3,6 +3,7 @@ const modernState = {
   characters: [],
   parties: [],
   adventures: [],
+  adventurePackages: [],
   sessions: [],
   campaign: null,
   rulesProfiles: [],
@@ -1603,11 +1604,12 @@ function adventureReadinessBlocks(rows) {
 }
 
 async function loadCore() {
-  const [classes, characters, parties, adventures, sessions, campaign, profiles, preferences] = await Promise.all([
+  const [classes, characters, parties, adventures, adventurePackages, sessions, campaign, profiles, preferences] = await Promise.all([
     api("/api/rules/classes"),
     api("/api/characters"),
     api("/api/parties"),
     api("/api/adventures"),
+    api("/api/adventures/packages"),
     api("/api/sessions/summaries"),
     api("/api/campaign"),
     api("/api/rules/profiles"),
@@ -1617,6 +1619,7 @@ async function loadCore() {
   modernState.characters = characters;
   modernState.parties = parties;
   modernState.adventures = adventures;
+  modernState.adventurePackages = adventurePackages.packages || [];
   modernState.sessions = sessions;
   modernState.campaign = campaign;
   modernState.rulesProfiles = profiles;
@@ -3355,6 +3358,168 @@ function renderAdventurePdfSourceScanner() {
   return panel;
 }
 
+function adventurePackageForPdf(adventure) {
+  const id = String(adventure?.id || "");
+  return (modernState.adventurePackages || []).find((item) => item.package_id === id) || null;
+}
+
+function renderAdventurePackageManager() {
+  const pdfSources = (modernState.adventures || []).filter((adventure) => adventure.pdf_source);
+  const panel = card(
+    "Adventure Package Review",
+    "Create and review PDF-derived package data: extracted map images, manual map slots, room/location pins, and future local tables, foes, items, classes, trackers, and procedures. Packages stay local in DATA_DIR."
+  );
+  const picker = select(
+    "modern-package-pdf-source",
+    "Choose the scanned PDF source that should receive or refresh a local adventure package.",
+    pdfSources.map((adventure) => [adventure.id, `${adventure.name || adventure.id} (${adventure.pdf_detected_type || "PDF source"})`])
+  );
+  if (!pdfSources.length) {
+    panel.appendChild(el("p", "muted", "No PDF sources found. Place PDFs in DATA_DIR/Adventure PDFs, then use Scan new PDFs."));
+    return panel;
+  }
+  const packageContainer = el("div", "modern-package-review");
+  const drawPackage = () => {
+    const selectedAdventure = pdfSources.find((item) => item.id === picker.value) || pdfSources[0];
+    const pkg = adventurePackageForPdf(selectedAdventure);
+    packageContainer.replaceChildren();
+    packageContainer.append(
+      modernStatusRow("Selected source", selectedAdventure?.name || selectedAdventure?.id || "PDF source", "This source PDF remains non-playable until a reviewed manifest exists."),
+      modernStatusRow("Package status", pkg ? `${pkg.map_count || 0} map(s) · ${pkg.pin_count || 0} pin(s) · ${pkg.review?.status || "draft"}` : "No package yet", "Create a package to store map assets and review metadata in DATA_DIR."),
+      modernStatusRow("Storage", pkg?.package_path || "DATA_DIR/Adventure Packages/<package_id>/package.json", "Package JSON is user-facing data beside game.db. Extracted map images live under DATA_DIR/assets/adventures/<package_id>/maps/.")
+    );
+    if (pkg) packageContainer.appendChild(renderAdventurePackageMaps(pkg));
+  };
+  picker.addEventListener("change", drawPackage);
+  const row = actions();
+  row.append(
+    button("Create / Refresh Package", "Create or refresh the local adventure package for this PDF. Existing reviewed pins are preserved where possible.", async () => {
+      const result = await api(`/api/adventures/pdf-sources/${encodeURIComponent(picker.value)}/package`, {
+        method: "POST",
+        body: JSON.stringify({ extract_maps: true }),
+      });
+      modernState.adventurePackages = (modernState.adventurePackages || []).filter((item) => item.package_id !== result.package.package_id);
+      modernState.adventurePackages.push(result.package);
+      setStatus(`Package ready: ${result.package.title}. ${result.package.map_count || 0} map candidate(s), ${result.package.pin_count || 0} pin(s).`);
+      drawPackage();
+    }),
+    button("Refresh Packages", "Reload local package summaries from DATA_DIR without rescanning PDFs.", async () => {
+      const result = await api("/api/adventures/packages");
+      modernState.adventurePackages = result.packages || [];
+      setStatus(`Loaded ${modernState.adventurePackages.length} adventure package(s).`);
+      drawPackage();
+    })
+  );
+  panel.append(field("PDF Source", picker), row, packageContainer);
+  drawPackage();
+  return panel;
+}
+
+function renderAdventurePackageMaps(pkg) {
+  const wrap = el("div", "modern-package-map-list");
+  for (const map of pkg.maps || []) {
+    const cardEl = el("div", "modern-package-map-card");
+    cardEl.append(
+      el("h4", "", map.title || map.id),
+      el("p", "muted", `${map.asset_path || "No asset path"} · page ${map.source_page || "?"} · ${map.asset_exists ? "asset present" : "asset missing"}`)
+    );
+    if (map.extraction_note) cardEl.appendChild(el("p", "muted", map.extraction_note));
+    const preview = el("div", "modern-package-map-preview");
+    if (map.asset_exists && map.asset_path) {
+      const img = document.createElement("img");
+      img.src = `/assets/${String(map.asset_path).split("/").map(encodeURIComponent).join("/")}`;
+      img.alt = map.title || map.id;
+      img.title = "Click the map to fill the pin X/Y percentage fields. Review placement against the source PDF before trusting it in play.";
+      preview.appendChild(img);
+    } else {
+      preview.appendChild(el("span", "muted", `Put a map image at DATA_DIR/assets/${map.asset_path || "adventures/<package>/maps/manual-map-review-slot_1600x900.png"}`));
+    }
+    const form = renderAdventurePackagePinForm(pkg, map, preview);
+    cardEl.append(preview, form, renderAdventurePackagePins(pkg, map));
+    wrap.appendChild(cardEl);
+  }
+  return wrap;
+}
+
+function renderAdventurePackagePinForm(pkg, map, preview) {
+  const label = input("text", `pin-label-${pkg.package_id}-${map.id}`, "Short map label, for example 1 or A.");
+  const node = input("text", `pin-node-${pkg.package_id}-${map.id}`, "Room, scene, hex, or location id this pin links to.");
+  const x = input("number", `pin-x-${pkg.package_id}-${map.id}`, "X coordinate as percentage across the map.");
+  const y = input("number", `pin-y-${pkg.package_id}-${map.id}`, "Y coordinate as percentage down the map.");
+  const width = input("number", `pin-width-${pkg.package_id}-${map.id}`, "Optional width percentage for a rectangular area.");
+  const height = input("number", `pin-height-${pkg.package_id}-${map.id}`, "Optional height percentage for a rectangular area.");
+  const shape = select(`pin-shape-${pkg.package_id}-${map.id}`, "Pin shape. Use point for a numbered room marker or rect for an area.", [["point", "Point"], ["rect", "Rectangle"], ["circle", "Circle"]]);
+  for (const numeric of [x, y, width, height]) {
+    numeric.min = "0";
+    numeric.max = "100";
+    numeric.step = "0.1";
+  }
+  preview.addEventListener("click", (event) => {
+    const img = preview.querySelector("img");
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    x.value = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)).toFixed(2);
+    y.value = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)).toFixed(2);
+    setStatus(`Pin coordinate filled: ${x.value}%, ${y.value}%. Add a label and node id, then save.`);
+  });
+  const form = el("div", "modern-package-pin-form");
+  form.append(
+    field("Label", label),
+    field("Node / Room Id", node),
+    field("X %", x),
+    field("Y %", y),
+    field("Width %", width),
+    field("Height %", height),
+    field("Shape", shape)
+  );
+  const row = actions();
+  row.appendChild(button("Save Pin", "Save or update this pin in the local package JSON. This does not change the playable module until a manifest uses the package.", async () => {
+    const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/pins`, {
+      method: "POST",
+      body: JSON.stringify({
+        map_id: map.id,
+        label: label.value,
+        node_id: node.value,
+        x: Number(x.value || 0),
+        y: Number(y.value || 0),
+        width: Number(width.value || 0),
+        height: Number(height.value || 0),
+        shape: shape.value,
+      }),
+    });
+    modernState.adventurePackages = (modernState.adventurePackages || []).filter((item) => item.package_id !== result.package.package_id);
+    modernState.adventurePackages.push(result.package);
+    setStatus(`Saved pin for ${result.package.title}.`);
+    renderPage();
+  }));
+  form.appendChild(row);
+  return form;
+}
+
+function renderAdventurePackagePins(pkg, map) {
+  const pins = map.pins || [];
+  const list = el("div", "modern-package-pin-list");
+  if (!pins.length) {
+    list.appendChild(el("p", "muted", "No pins yet. Click the map preview to fill X/Y, then save a pin for a room, hex, scene, or location."));
+    return list;
+  }
+  for (const pin of pins) {
+    const row = el("div", "modern-row");
+    row.appendChild(el("span", "", `${pin.label} -> ${pin.node_id} (${pin.x}%, ${pin.y}%)`));
+    const rowActions = actions();
+    rowActions.appendChild(button("Delete Pin", "Remove this pin from the local package JSON.", async () => {
+      const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/maps/${encodeURIComponent(map.id)}/pins/${encodeURIComponent(pin.id)}`, { method: "DELETE" });
+      modernState.adventurePackages = (modernState.adventurePackages || []).filter((item) => item.package_id !== result.package.package_id);
+      modernState.adventurePackages.push(result.package);
+      setStatus(`Deleted pin ${pin.label}.`);
+      renderPage();
+    }, "danger-button"));
+    row.appendChild(rowActions);
+    list.appendChild(row);
+  }
+  return list;
+}
+
 function renderAdventureModuleManager() {
   const panel = card(
     "Generated Adventure Modules",
@@ -3732,7 +3897,7 @@ function renderAdventureManagement() {
     panelEl.append(...nodes.filter(Boolean));
     panels[key] = panelEl;
   }
-  addAdventureTab("modules", "Modules", "Import, export, delete, and review all adventure module types.", [renderAdventurePdfSourceScanner(), renderAdventureModuleImport(), renderAdventureModuleBrowser()]);
+  addAdventureTab("modules", "Modules", "Import, export, delete, and review all adventure module types.", [renderAdventurePdfSourceScanner(), renderAdventurePackageManager(), renderAdventureModuleImport(), renderAdventureModuleBrowser()]);
   addAdventureTab("guild", "The Adventures Guild", "Generate Adventures Guild modules and review lead signoff support.", [
     renderTagModuleGeneration(),
     renderTagWorkflowDashboard("go"),

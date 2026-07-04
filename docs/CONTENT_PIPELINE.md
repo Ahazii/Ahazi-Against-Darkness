@@ -255,8 +255,8 @@ resolves all dice and combat.
 
 0. Place owned source PDFs in `DATA_DIR/Adventure PDFs` (the legacy repo `Adventures/` folder is still scanned for local development copies), then use Adventure Management -> Modules -> **Scan new PDFs**. The scan writes metadata only to `DATA_DIR/adventure_pdf_sources.json`: title guess, page count, encryption/text-extraction status, likely module type, map/pin signals, table/foe/class package signals, confidence, warnings, and recommended conversion path.
 1. Inventory PDF pages, text length, and embedded images.
-2. If the PDF adds module-local content, create a declarative package matching `data/adventures/schema/adventure_package.v1.json`. Packages can record local tables, foes, items, class candidates, trackers, procedures, imported map assets, and map pins. They cannot execute scripts.
-3. Extract map images into `DATA_DIR/assets/adventures/<package_id>/maps/` and tie room/hex/location ids to percent-based map pins in the package. Keep the source PDF and source page on every map/pin set so the player can audit it.
+2. If the PDF adds module-local content, use Adventure Management -> Modules -> **Create / Refresh Package** to create a declarative package matching `data/adventures/schema/adventure_package.v1.json`. Packages live under `DATA_DIR/Adventure Packages/<package_id>/package.json` and can record local tables, foes, items, class candidates, trackers, procedures, imported map assets, and map pins. They cannot execute scripts.
+3. Extracted map images are stored in `DATA_DIR/assets/adventures/<package_id>/maps/`. If no embedded PDF image can be extracted, the package creates a manual map slot; place a cropped map image at the displayed `DATA_DIR/assets/...` path. Use the package map preview to click/fill percent coordinates and tie room/hex/location ids to pins. Keep the source PDF and source page on every map/pin set so the player can audit it.
 4. Extract room/key text.
 5. Create a manifest matching the v1 schema:
 

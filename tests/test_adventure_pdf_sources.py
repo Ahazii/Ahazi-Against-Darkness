@@ -10,6 +10,11 @@ from app.engine.adventure_pdf_sources import (
     scan_new_adventure_pdfs,
     user_adventure_pdf_dir,
 )
+from app.engine.adventure_packages import (
+    create_or_refresh_package_from_pdf,
+    load_adventure_package,
+    upsert_map_pin,
+)
 
 
 def _write_blank_pdf(path: Path) -> None:
@@ -134,3 +139,44 @@ def test_adventure_package_schema_is_declarative_and_map_pin_ready() -> None:
     assert "script" not in procedure_op
     assert "javascript" not in procedure_op
     assert "python" not in procedure_op
+
+
+def test_create_package_from_pdf_creates_manual_map_slot_and_preserves_pins(tmp_path: Path) -> None:
+    root = tmp_path / "app"
+    data = tmp_path / "data"
+    root.mkdir()
+    data.mkdir()
+    pdf_dir = user_adventure_pdf_dir(data)
+    pdf_dir.mkdir(parents=True)
+    _write_blank_pdf(pdf_dir / "Map Module.pdf")
+    scan_new_adventure_pdfs(root, data)
+
+    summary = create_or_refresh_package_from_pdf(root, data, "map-module-pdf")
+
+    assert summary["package_id"] == "map-module-pdf"
+    assert summary["map_count"] == 1
+    assert summary["maps"][0]["id"] == "manual-map-review-slot"
+    assert summary["maps"][0]["asset_path"] == "adventures/map-module-pdf/maps/manual-map-review-slot_1600x900.png"
+    assert (data / "assets" / "adventures" / "map-module-pdf" / "maps" / "manual-map-review-slot_1600x900.README.txt").is_file()
+    assert Path(summary["package_path"]).is_file()
+    package = load_adventure_package(data, "map-module-pdf")
+    assert package is not None
+    assert package["source"]["source_pdf"] == "Adventure PDFs/Map Module.pdf"
+
+    pinned = upsert_map_pin(
+        data,
+        "map-module-pdf",
+        {
+            "map_id": "manual-map-review-slot",
+            "label": "1",
+            "node_id": "room-1",
+            "x": 42.5,
+            "y": 63,
+            "shape": "point",
+        },
+    )
+    assert pinned["pin_count"] == 1
+
+    refreshed = create_or_refresh_package_from_pdf(root, data, "map-module-pdf")
+    assert refreshed["pin_count"] == 1
+    assert refreshed["maps"][0]["pins"][0]["node_id"] == "room-1"

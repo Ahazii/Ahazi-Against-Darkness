@@ -37,6 +37,12 @@ from .engine.adventure_pdf_sources import (
     load_adventure_pdf_assessments,
     scan_new_adventure_pdfs,
 )
+from .engine.adventure_packages import (
+    create_or_refresh_package_from_pdf,
+    delete_map_pin,
+    list_adventure_packages,
+    upsert_map_pin,
+)
 from .engine.adventure_allowlists import build_adventure_allowlists
 from .engine.adventure_foes import spawn_manifest_foes
 from .engine.adventure_manifest import validate_adventure_manifest
@@ -2823,6 +2829,32 @@ def _rules_tables_payload() -> dict:
             "safety": "Classes stay experimental until every ability, equipment rule, and advancement hook is checked against the PDF.",
         },
     ]
+    data["adventure_package_map_pinning_table"] = [
+        {
+            "area": "Package files",
+            "path": "DATA_DIR/Adventure Packages/<package_id>/package.json",
+            "purpose": "Stores reviewed package metadata, map records, and room/location pins beside game.db for backup.",
+            "boundary": "Package files prepare import data; they do not make a source PDF playable by themselves.",
+        },
+        {
+            "area": "Map assets",
+            "path": "DATA_DIR/assets/adventures/<package_id>/maps/",
+            "purpose": "Stores extracted or manually supplied map images from user-owned PDFs.",
+            "boundary": "Keep private-use PDF-derived art local unless publishing rights are secured.",
+        },
+        {
+            "area": "Pin coordinates",
+            "path": "maps[].pins[] x/y/width/height as percent",
+            "purpose": "Links a room, scene, hex, or location id to a position on the imported map image.",
+            "boundary": "Pins are review metadata; exact room/key rules still come from the PDF and reviewed manifest.",
+        },
+        {
+            "area": "Refresh behavior",
+            "path": "Create / Refresh Package",
+            "purpose": "Re-extracts candidate map images while preserving existing pins with matching map ids.",
+            "boundary": "A refresh should not erase manual review work.",
+        },
+    ]
     data["artwork_expansion_plan_table"] = [
         {
             "slot": "Module cover art",
@@ -4195,6 +4227,50 @@ async def scan_adventure_pdf_sources(payload: dict | None = None) -> dict[str, A
         return scan_new_adventure_pdfs(settings.root_dir, settings.data_dir, force=force)
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/adventures/packages")
+async def adventure_packages() -> dict[str, Any]:
+    return {"packages": list_adventure_packages(settings.data_dir)}
+
+
+@app.post("/api/adventures/pdf-sources/{pdf_id}/package")
+async def create_adventure_package_from_pdf(pdf_id: str, payload: dict | None = None) -> dict[str, Any]:
+    extract_maps = bool((payload or {}).get("extract_maps", True))
+    try:
+        package = create_or_refresh_package_from_pdf(
+            settings.root_dir,
+            settings.data_dir,
+            pdf_id,
+            extract_maps=extract_maps,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return {"package": package}
+
+
+@app.post("/api/adventures/packages/{package_id}/pins")
+async def save_adventure_package_pin(package_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        package = upsert_map_pin(settings.data_dir, package_id, payload)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"package": package}
+
+
+@app.delete("/api/adventures/packages/{package_id}/maps/{map_id}/pins/{pin_id}")
+async def remove_adventure_package_pin(package_id: str, map_id: str, pin_id: str) -> dict[str, Any]:
+    try:
+        package = delete_map_pin(settings.data_dir, package_id, map_id, pin_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"package": package}
 
 
 @app.get("/api/adventures/tiles")

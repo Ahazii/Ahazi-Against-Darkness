@@ -80,7 +80,7 @@ Template: `examples/crypt-of-whispers/adventure.json`
 
 Owned PDFs stay in `DATA_DIR/Adventure PDFs` or the local `Adventures/` folder (not committed). Use Adventure Management -> Modules -> **Scan new PDFs** to assess the source before conversion. Human reviewers extract playable room/scene data into the **same manifest format** ([`docs/CONTENT_PIPELINE.md`](../../docs/CONTENT_PIPELINE.md)). Set `source.type` to `"pdf"`.
 
-Use `schema/adventure_package.v1.json` when the PDF adds module-local material that does not belong in the base manifest: imported map images, room/hex/location pins, local roll tables, foes, items, class candidates, doom/event trackers, or allowlisted procedures. Package assets belong in the user-facing data folder, for example `DATA_DIR/assets/adventures/<package_id>/maps/`.
+Use Adventure Management -> Modules -> **Create / Refresh Package** when the PDF adds module-local material that does not belong in the base manifest. Packages use `schema/adventure_package.v1.json` and live in `DATA_DIR/Adventure Packages/<package_id>/package.json`. Package assets belong in the user-facing data folder, for example `DATA_DIR/assets/adventures/<package_id>/maps/`. The package editor can extract embedded PDF images where possible and lets you pin rooms, hexes, scenes, or locations to percent coordinates on the reviewed map.
 
 First PDF target: `caves-of-the-kobold-slave-masters.pdf`.
 
