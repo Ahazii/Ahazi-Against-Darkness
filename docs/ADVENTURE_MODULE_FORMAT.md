@@ -111,12 +111,14 @@ Typical package:
     "source_pages": [1, 2, 3],
     "license_note": "Private-use package from a user-owned PDF."
   },
-  "capabilities": ["maps", "pins", "tables", "foes"],
+  "capabilities": ["maps", "pins", "tables", "foes", "items", "states", "rules"],
   "nodes": [],
   "maps": [],
   "tables": [],
   "foes": [],
   "items": [],
+  "states": [],
+  "rules": [],
   "trackers": [],
   "procedures": [],
   "review": {
@@ -195,7 +197,7 @@ Use linked ids when possible. For example, if a location contains a Black Knight
 
 This composer-style data is intended to be reused by the future hand-authored adventure creator.
 
-## Foes, Items, Classes, Tables, Trackers, And Procedures
+## Foes, Items, Classes, States, Rules, Tables, Trackers, And Procedures
 
 The PDF Import Review Workspace also includes an Imported Record Editor for module-local records.
 
@@ -204,6 +206,8 @@ Use it before editing raw JSON directly. It lets you review and edit:
 - foes
 - items, rewards, services, or special equipment
 - class candidates
+- states or conditions that can apply to characters, parties, foes, or items
+- module-local rules
 - roll tables
 - trackers
 - app procedures
@@ -220,7 +224,55 @@ Foes, items, and classes use a flexible source-backed record:
 }
 ```
 
-Because different PDFs describe foes, classes, items, and services differently, extra fields are allowed. Use the editor's Extra JSON box for module-specific details such as `level`, `hcl`, `attack`, `life`, `treasure`, `price_gp`, `equipment_tags`, `skill_options`, `class_features`, or publisher wording that still needs checking.
+Because different PDFs describe foes, classes, items, states, rules, and services differently, extra fields are allowed. Use the editor's Extra JSON box for module-specific details such as `level`, `hcl`, `attack`, `life`, `treasure`, `price_gp`, `equipment_tags`, `skill_options`, `class_features`, or publisher wording that still needs checking.
+
+Item records have structured fields for the common cases:
+
+```json
+{
+  "id": "emerald-necklace",
+  "name": "Emerald Necklace",
+  "source_page": 25,
+  "description": "Reviewed summary of what the item is and what it does.",
+  "modifiers": [],
+  "states_applied": [],
+  "sale_price_gp": 200,
+  "sellable": true,
+  "buyable": false,
+  "review_status": "needs_pdf_check"
+}
+```
+
+State records should describe the target, duration, modifiers, and removal method:
+
+```json
+{
+  "id": "hypnotised",
+  "name": "Hypnotised",
+  "source_page": 14,
+  "description": "Reviewed condition summary.",
+  "applies_to": "character",
+  "duration": "Until the printed recovery condition is met.",
+  "modifiers": [],
+  "removal": "Check the PDF scene.",
+  "review_status": "needs_pdf_check"
+}
+```
+
+Rule records should capture scope, trigger, and effect without executable code:
+
+```json
+{
+  "id": "bridge-ambush-rule",
+  "name": "Bridge Ambush Rule",
+  "source_page": 9,
+  "description": "Reviewed local rule summary.",
+  "scope": "location",
+  "trigger": "When the party crosses the bridge.",
+  "effect": "Use the reviewed procedure or branch choices.",
+  "review_status": "needs_pdf_check"
+}
+```
 
 Tables should keep reviewed rows in `rows`:
 
@@ -250,6 +302,8 @@ The PDF Import Review Workspace can extract candidate records from the source PD
 - Foes
 - Items
 - Classes
+- States
+- Rules
 - Procedures
 
 Candidate records are guesses. They normally start with `review_status: "needs_pdf_check"`.

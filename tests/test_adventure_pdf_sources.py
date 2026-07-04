@@ -138,8 +138,12 @@ def test_adventure_package_schema_is_declarative_and_map_pin_ready() -> None:
 
     assert "maps" in schema["properties"]
     assert "nodes" in schema["properties"]
+    assert "states" in schema["properties"]
+    assert "rules" in schema["properties"]
     assert "ignored_records" in schema["properties"]
     assert "pins" in schema["properties"]["capabilities"]["items"]["enum"]
+    assert "states" in schema["properties"]["capabilities"]["items"]["enum"]
+    assert "rules" in schema["properties"]["capabilities"]["items"]["enum"]
     assert "pin_location" in procedure_op
     assert "script" not in procedure_op
     assert "javascript" not in procedure_op
@@ -320,6 +324,8 @@ def test_package_candidate_extraction_populates_human_review_lists(monkeypatch, 
                 3-4 Potion of Healing
                 5-6 Magic Sword
                 The party may claim the Emerald Necklace reward.
+                Special rule: when this happens, the alarm clock advances.
+                Poisoned characters suffer a condition until cured.
                 """,
             }
         ]
@@ -333,14 +339,20 @@ def test_package_candidate_extraction_populates_human_review_lists(monkeypatch, 
     assert summary["foe_count"] >= 1
     assert summary["class_count"] >= 1
     assert summary["item_count"] >= 1
+    assert summary["state_count"] >= 1
+    assert summary["rule_count"] >= 1
     package = load_adventure_package(data, "candidate-module-pdf")
     assert package is not None
     assert any(node["id"] == "room-1" for node in package["nodes"])
     assert any(table["title"] == "Treasure Table" for table in package["tables"])
     assert any(foe["name"] == "Black Knight" for foe in package["foes"])
     assert any("emerald-necklace" in item["id"] for item in package["items"])
+    assert any("poisoned" in state["id"] for state in package["states"])
+    assert any("special-rule" in rule["id"] or "alarm-clock" in rule["id"] for rule in package["rules"])
 
     # Re-running extraction merges by id instead of duplicating the candidate lists.
     updated = extract_adventure_package_candidates(root, data, "candidate-module-pdf")
     assert updated["candidate_changes"]["nodes"] == 0
     assert updated["candidate_changes"]["tables"] == 0
+    assert updated["candidate_changes"]["states"] == 0
+    assert updated["candidate_changes"]["rules"] == 0

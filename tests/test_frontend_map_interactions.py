@@ -2126,6 +2126,13 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert ".modern-warning-list" in STYLES_CSS
     assert "/api/adventures/packages" in MODERN_PAGES_JS
     assert "function renderAdventurePackageManager" in MODERN_PAGES_JS
+    assert "PDF Importer Module List" in MODERN_PAGES_JS
+    assert "Scan New PDFs" in MODERN_PAGES_JS
+    assert "Rescan All PDFs" in MODERN_PAGES_JS
+    assert "Refresh List" in MODERN_PAGES_JS
+    assert "Create / Refresh" in MODERN_PAGES_JS
+    assert "Edit / Check" in MODERN_PAGES_JS
+    assert "Delete Package" in MODERN_PAGES_JS
     assert "function renderAdventurePackageReviewWorkspace" in MODERN_PAGES_JS
     assert "PDF Import Review Workspace" in MODERN_PAGES_JS
     assert "Imported Content Browser" in MODERN_PAGES_JS
@@ -2150,6 +2157,15 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "Tables" in MODERN_PAGES_JS
     assert "Foes" in MODERN_PAGES_JS
     assert "Classes" in MODERN_PAGES_JS
+    assert "States" in MODERN_PAGES_JS
+    assert "Rules" in MODERN_PAGES_JS
+    assert "Sale Price gp" in MODERN_PAGES_JS
+    assert "Sellable" in MODERN_PAGES_JS
+    assert "Buyable" in MODERN_PAGES_JS
+    assert "Modifiers JSON" in MODERN_PAGES_JS
+    assert "States Applied" in MODERN_PAGES_JS
+    assert "Removal / Cure" in MODERN_PAGES_JS
+    assert "Rule scope" in MODERN_PAGES_JS
     assert "Ignored" in MODERN_PAGES_JS
     assert "Save Correction" in MODERN_PAGES_JS
     assert "Move Record" in MODERN_PAGES_JS
@@ -2159,8 +2175,8 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "Save Location" in MODERN_PAGES_JS
     assert "Clear Editor" in MODERN_PAGES_JS
     assert "Save Structured Sections" in MODERN_PAGES_JS
-    assert "Create / Update Package from PDF" in MODERN_PAGES_JS
-    assert "Reload Package List" in MODERN_PAGES_JS
+    assert "refreshAdventurePackageSummaries" in MODERN_PAGES_JS
+    assert "/api/adventures/packages/${encodeURIComponent(pkg.package_id)}`" in MODERN_PAGES_JS
     assert "DATA_DIR/Adventures/<adventure_id>/" in MODERN_PAGES_JS
     assert "modern-package-map-preview" in MODERN_PAGES_JS
     assert ".modern-package-pin-form" in STYLES_CSS

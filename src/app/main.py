@@ -39,6 +39,7 @@ from .engine.adventure_pdf_sources import (
 )
 from .engine.adventure_packages import (
     create_or_refresh_package_from_pdf,
+    delete_adventure_package,
     delete_map_pin,
     extract_adventure_package_candidates,
     list_adventure_packages,
@@ -2809,7 +2810,7 @@ def _rules_tables_payload() -> dict:
     data["adventure_package_schema_table"] = [
         {
             "area": "Declarative package",
-            "purpose": "Adds local PDF module content as data: foes, classes, items, tables, trackers, map assets, and pins.",
+            "purpose": "Adds local PDF module content as data: foes, classes, items, states, rules, tables, trackers, map assets, and pins.",
             "safety": "Packages do not execute scripts; they use engine-approved operations only.",
         },
         {
@@ -2823,8 +2824,8 @@ def _rules_tables_payload() -> dict:
             "safety": "Rows must keep source page references and stay inside the package unless explicitly promoted later.",
         },
         {
-            "area": "Trackers and procedures",
-            "purpose": "Models common adventure logic such as doom clocks, route counters, save checks, table rolls, and branch transitions.",
+            "area": "States, rules, trackers, and procedures",
+            "purpose": "Models common adventure logic such as character states, local module rules, doom clocks, route counters, save checks, table rolls, and branch transitions.",
             "safety": "Only allowlisted operation names are valid; arbitrary code is intentionally excluded.",
         },
         {
@@ -2864,13 +2865,13 @@ def _rules_tables_payload() -> dict:
             "area": "Review workspace",
             "purpose": "Lets the user inspect and edit PDF-imported package data as human-readable candidate lists and structured sections instead of raw JSON only.",
             "stored_in": "DATA_DIR/Adventures/<module_id>/package.json",
-            "fields": "title, reviewed pages, rights note, review status, review notes, nodes, foes, classes, items, tables, trackers, procedures",
+            "fields": "title, reviewed pages, rights note, review status, review notes, nodes, foes, classes, items, states, rules, tables, trackers, procedures",
             "safety": "Package diagnostics report structural errors and warnings before conversion to a playable adventure.json manifest.",
         },
         {
             "area": "Candidate browser",
-            "purpose": "Shows clickable lists of imported locations/nodes, tables, foes, items, classes, and procedures with a detail pane.",
-            "stored_in": "package.json nodes[], tables[], foes[], items[], classes[], procedures[], ignored_records[]",
+            "purpose": "Shows clickable lists of imported locations/nodes, tables, foes, items, classes, states, rules, and procedures with a detail pane.",
+            "stored_in": "package.json nodes[], tables[], foes[], items[], classes[], states[], rules[], procedures[], ignored_records[]",
             "fields": "record id, title/name, source page, review status, source text, branches, rows, procedure steps, original extraction metadata",
             "safety": "Extractor output is marked needs_pdf_check and must be confirmed against the PDF before being used for play. Misclassified records can be moved; junk records can be ignored and preserved for future importer improvement.",
         },
@@ -2890,9 +2891,9 @@ def _rules_tables_payload() -> dict:
         },
         {
             "area": "Imported record editor",
-            "purpose": "Lets the user preview and edit module-local foes, items, classes, tables, trackers, and procedures without starting in raw JSON.",
-            "stored_in": "package.json foes[], items[], classes[], tables[], trackers[], procedures[]",
-            "fields": "id, name/title/label, source page, review status, notes/source text, table rows, tracker ranges, procedure steps, extra JSON",
+            "purpose": "Lets the user preview and edit module-local foes, items, classes, states, rules, tables, trackers, and procedures without starting in raw JSON.",
+            "stored_in": "package.json foes[], items[], classes[], states[], rules[], tables[], trackers[], procedures[]",
+            "fields": "id, name/title/label, source page, review status, notes/source text, item modifiers/states/pricing/buyable/sellable flags, state modifiers/removal, rule trigger/effect, table rows, tracker ranges, procedure steps, extra JSON",
             "safety": "Records remain PDF-review package data until a manifest uses them; procedure steps are still sanitized to allowlisted operations only.",
         },
         {
@@ -4311,6 +4312,16 @@ async def extract_adventure_package_candidate_records(package_id: str) -> dict[s
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return {"package": package}
+
+
+@app.delete("/api/adventures/packages/{package_id}")
+async def remove_adventure_package_review(package_id: str) -> dict[str, Any]:
+    try:
+        return delete_adventure_package(settings.data_dir, package_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/adventures/pdf-sources/{pdf_id}/package")

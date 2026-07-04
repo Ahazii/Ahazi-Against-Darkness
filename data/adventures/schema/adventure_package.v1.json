@@ -48,7 +48,7 @@
     "capabilities": {
       "type": "array",
       "items": {
-        "enum": ["foes", "classes", "items", "tables", "trackers", "procedures", "maps", "pins"]
+        "enum": ["foes", "classes", "items", "tables", "trackers", "procedures", "states", "rules", "maps", "pins"]
       },
       "uniqueItems": true
     },
@@ -67,6 +67,20 @@
     },
     "items": {
       "type": "array",
+      "items": {
+        "$ref": "#/$defs/sourcedRecord"
+      }
+    },
+    "states": {
+      "type": "array",
+      "description": "Module-local states, conditions, curses, blessings, or other status records that may apply to characters, parties, foes, or items after review.",
+      "items": {
+        "$ref": "#/$defs/sourcedRecord"
+      }
+    },
+    "rules": {
+      "type": "array",
+      "description": "Module-local rules extracted from the source PDF. These remain review data until explicit app support or manifest conversion uses them.",
       "items": {
         "$ref": "#/$defs/sourcedRecord"
       }

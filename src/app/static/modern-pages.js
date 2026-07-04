@@ -3377,59 +3377,138 @@ function adventurePackageForPdf(adventure) {
   return (modernState.adventurePackages || []).find((item) => item.package_id === id) || null;
 }
 
+async function refreshAdventurePackageSummaries() {
+  const result = await api("/api/adventures/packages");
+  modernState.adventurePackages = result.packages || [];
+  return modernState.adventurePackages;
+}
+
 function renderAdventurePackageManager() {
   const pdfSources = (modernState.adventures || []).filter((adventure) => adventure.pdf_source);
   const panel = card(
-    "Adventure Package Review",
-    "Create and review PDF-derived package data: extracted map images, manual map slots, room/location pins, and future local tables, foes, items, classes, trackers, and procedures. Packages stay local in DATA_DIR."
-  );
-  const picker = select(
-    "modern-package-pdf-source",
-    "Choose the scanned PDF source that should receive or refresh a local adventure package.",
-    pdfSources.map((adventure) => [adventure.id, `${adventure.name || adventure.id} (${adventure.pdf_detected_type || "PDF source"})`])
+    "PDF Importer Module List",
+    "Every scanned source PDF appears here with status and actions. Scan/rescan updates assessment metadata; Create / Refresh builds the local DATA_DIR package; Validate checks the package; Edit / Check opens the structured review workspace."
   );
   if (!pdfSources.length) {
     panel.appendChild(el("p", "muted", "No PDF sources found. Place PDFs in DATA_DIR/Adventure PDFs, then use Scan new PDFs."));
     return panel;
   }
   const packageContainer = el("div", "modern-package-review");
-  const drawPackage = () => {
-    const selectedAdventure = pdfSources.find((item) => item.id === picker.value) || pdfSources[0];
-    const pkg = adventurePackageForPdf(selectedAdventure);
+  const drawWorkspace = (pkg = null) => {
     packageContainer.replaceChildren();
-    packageContainer.append(
-      modernStatusRow("Selected source", selectedAdventure?.name || selectedAdventure?.id || "PDF source", "This source PDF remains non-playable until a reviewed manifest exists."),
-      modernStatusRow("Package status", pkg ? `${pkg.map_count || 0} map(s) · ${pkg.pin_count || 0} pin(s) · ${pkg.review?.status || "draft"}` : "No package yet", "Create a package to store map assets and review metadata in DATA_DIR."),
-      modernStatusRow("Storage", pkg?.adventure_folder || "DATA_DIR/Adventures/<adventure_id>/", "Everything for this adventure lives together beside game.db: package.json, maps/, artwork/, tables/, notes/, and the future adventure.json.")
-    );
-    if (pkg) {
-      packageContainer.appendChild(renderAdventurePackageReviewWorkspace(pkg, drawPackage));
-      packageContainer.appendChild(renderAdventurePackageMaps(pkg));
+    if (!pkg) {
+      packageContainer.appendChild(el("p", "muted", "Choose Edit / Check on a scanned module to open its structured review workspace."));
+      return;
     }
+    packageContainer.append(
+      modernStatusRow("Editing module", pkg.title || pkg.package_id, "This is the local package review record; it is not playable until a validated adventure.json manifest exists."),
+      modernStatusRow("Package status", `${pkg.node_count || 0} location(s) · ${pkg.map_count || 0} map(s) · ${pkg.foe_count || 0} foe(s) · ${pkg.item_count || 0} item(s) · ${pkg.state_count || 0} state(s) · ${pkg.rule_count || 0} rule(s)`, "Use the browser and editors below to check every imported element against the source PDF."),
+      modernStatusRow("Storage", pkg.adventure_folder || "DATA_DIR/Adventures/<adventure_id>/", "Everything for this adventure lives together beside game.db: package.json, maps/, artwork/, tables/, notes/, and the future adventure.json.")
+    );
+    packageContainer.appendChild(renderAdventurePackageReviewWorkspace(pkg, () => renderPage()));
+    packageContainer.appendChild(renderAdventurePackageMaps(pkg));
   };
-  picker.addEventListener("change", drawPackage);
-  const row = actions();
-  row.append(
-    button("Create / Update Package from PDF", "Create the local package for this selected PDF, or update it from the PDF while preserving reviewed pins and existing reviewed package data where possible.", async () => {
-      const result = await api(`/api/adventures/pdf-sources/${encodeURIComponent(picker.value)}/package`, {
-        method: "POST",
-        body: JSON.stringify({ extract_maps: true }),
-      });
-      modernState.adventurePackages = (modernState.adventurePackages || []).filter((item) => item.package_id !== result.package.package_id);
-      modernState.adventurePackages.push(result.package);
-      setStatus(`Package ready: ${result.package.title}. ${result.package.map_count || 0} map candidate(s), ${result.package.pin_count || 0} pin(s).`);
+  const topActions = actions();
+  topActions.append(
+    button("Scan New PDFs", "Scan new PDFs in DATA_DIR/Adventure PDFs and the legacy Adventures folder. Existing unchanged assessments are skipped.", async () => {
+      const result = await api("/api/adventures/pdf-sources/scan", { method: "POST", body: JSON.stringify({}) });
+      setStatus(`Scanned ${result.scanned?.length || 0} new PDF source(s); ${result.skipped?.length || 0} already assessed.`);
       window.sessionStorage.setItem(ADVENTURE_MANAGEMENT_TAB_KEY, "pdf");
-      drawPackage();
+      await refreshCoreAndRender();
     }),
-    button("Reload Package List", "Reload package summaries already stored in DATA_DIR. This does not rescan the PDF or update package content.", async () => {
-      const result = await api("/api/adventures/packages");
-      modernState.adventurePackages = result.packages || [];
-      setStatus(`Loaded ${modernState.adventurePackages.length} adventure package(s).`);
-      drawPackage();
-    })
+    button("Rescan All PDFs", "Force a metadata rescan for all source PDFs. This updates assessment metadata but does not overwrite reviewed package records.", async () => {
+      const result = await api("/api/adventures/pdf-sources/scan", { method: "POST", body: JSON.stringify({ force: true }) });
+      setStatus(`Rescanned ${result.scanned?.length || 0} PDF source(s); ${result.errors?.length || 0} scanner issue(s).`);
+      window.sessionStorage.setItem(ADVENTURE_MANAGEMENT_TAB_KEY, "pdf");
+      await refreshCoreAndRender();
+    }, "secondary"),
+    button("Refresh List", "Reload package summaries already stored in DATA_DIR. This does not rescan PDFs.", async () => {
+      const packages = await refreshAdventurePackageSummaries();
+      setStatus(`Loaded ${packages.length} adventure package(s).`);
+      renderPage();
+    }, "secondary")
   );
-  panel.append(field("PDF Source", picker), row, packageContainer);
-  drawPackage();
+  const list = el("div", "modern-module-table modern-pdf-module-list");
+  list.append(el("strong", "", "Module"), el("strong", "", "Status"), el("strong", "", "Detected Content"), el("strong", "", "Actions"));
+  for (const adventure of [...pdfSources].sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))) {
+    let currentPkg = adventurePackageForPdf(adventure);
+    const nameCell = el("div", "modern-row-copy");
+    nameCell.append(
+      el("strong", "", adventure.name || adventure.id),
+      el("span", "muted", `${adventure.id} · ${adventure.pdf_page_count || 0} page(s) · ${adventure.pdf_source_kind || "source"}`)
+    );
+    if (adventure.source) nameCell.appendChild(el("span", "muted", adventure.source));
+    const statusCell = el("div", "modern-row-copy");
+    statusCell.append(
+      el("span", "modern-tag", currentPkg ? (currentPkg.review?.status || "draft review") : (adventure.pdf_conversion_status || "source PDF assessed")),
+      el("span", "muted", currentPkg ? `${currentPkg.node_count || 0} location(s), ${currentPkg.map_count || 0} map(s), ${currentPkg.pin_count || 0} pin(s)` : "No local package yet")
+    );
+    const detected = el("div", "modern-chip-row");
+    const signals = [
+      [adventure.pdf_detected_type ? String(adventure.pdf_detected_type).replaceAll("_", " ") : "unknown", "Detected PDF workflow type."],
+      [`maps ${adventure.pdf_map_signals || 0}`, "Potential map/image signals found by the scanner."],
+      [`locations ${adventure.pdf_numbered_location_signals || 0}`, "Potential room, scene, hex, or numbered-location signals."],
+      [`tables ${adventure.pdf_table_signals || 0}`, "Potential roll table signals."],
+      [`foes ${adventure.pdf_foe_signals || 0}`, "Potential foe or monster signals."],
+      [`classes ${adventure.pdf_class_signals || 0}`, "Potential new character class signals."],
+    ];
+    for (const [label, hint] of signals) {
+      const chip = el("span", "modern-tag", label);
+      chip.title = hint;
+      detected.appendChild(chip);
+    }
+    const rowActions = actions();
+    rowActions.append(
+      button("Create / Refresh", "Create or refresh the local package from this PDF. Existing reviewed records and matching pins are preserved where possible.", async () => {
+        const result = await api(`/api/adventures/pdf-sources/${encodeURIComponent(adventure.id)}/package`, {
+          method: "POST",
+          body: JSON.stringify({ extract_maps: true }),
+        });
+        replaceAdventurePackageInState(result.package);
+        currentPkg = result.package;
+        setStatus(`Package ready: ${result.package.title}.`);
+        drawWorkspace(result.package);
+      }),
+      button("Validate", "Load this package and show structural diagnostics. This checks local package coherence; it does not certify PDF accuracy.", async () => {
+        if (!currentPkg) throw new Error("Create / Refresh a package before validating it.");
+        const result = await api(`/api/adventures/packages/${encodeURIComponent(currentPkg.package_id)}`);
+        replaceAdventurePackageInState(result.package);
+        currentPkg = result.package;
+        const diagnostics = result.package.diagnostics || {};
+        const messages = [...(diagnostics.errors || []), ...(diagnostics.warnings || [])];
+        setStatus(diagnostics.valid ? `${result.package.title} package is structurally valid.` : `${result.package.title} needs attention: ${messages.slice(0, 2).join("; ")}`);
+        drawWorkspace(result.package);
+      }, "secondary"),
+      button("Edit / Check", "Open the structured review workspace for locations, maps, foes, items, classes, states, rules, tables, trackers, and procedures.", async () => {
+        let editable = currentPkg;
+        if (!editable) {
+          const created = await api(`/api/adventures/pdf-sources/${encodeURIComponent(adventure.id)}/package`, {
+            method: "POST",
+            body: JSON.stringify({ extract_maps: true }),
+          });
+          editable = created.package;
+          replaceAdventurePackageInState(editable);
+        }
+        const result = await api(`/api/adventures/packages/${encodeURIComponent(editable.package_id)}`);
+        replaceAdventurePackageInState(result.package);
+        currentPkg = result.package;
+        setStatus(`Opened review workspace for ${result.package.title}.`);
+        drawWorkspace(result.package);
+      }),
+      button("Delete Package", "Delete the local review package from DATA_DIR/Adventures. This does not delete the original PDF source.", async () => {
+        if (!currentPkg) throw new Error("There is no local package to delete for this PDF source.");
+        if (!window.confirm(`Delete the local review package for ${currentPkg.title || currentPkg.package_id}? The source PDF is not deleted.`)) return;
+        const result = await api(`/api/adventures/packages/${encodeURIComponent(currentPkg.package_id)}`, { method: "DELETE" });
+        currentPkg = null;
+        await refreshAdventurePackageSummaries();
+        setStatus(result.message || "Deleted local package.");
+        renderPage();
+      }, "danger-button")
+    );
+    list.append(nameCell, statusCell, detected, rowActions);
+  }
+  panel.append(topActions, list, packageContainer);
+  drawWorkspace();
   return panel;
 }
 
@@ -3473,7 +3552,7 @@ function renderAdventurePackageDiagnostics(pkg) {
 function renderAdventurePackageReviewWorkspace(pkg, redraw) {
   const panel = card(
     "PDF Import Review Workspace",
-    "Review the import as structured facts before it becomes playable: source pages, room/scene/location nodes, branch targets, maps, pins, local tables, foes, items, trackers, and procedures."
+    "Review the import as structured facts before it becomes playable: source pages, room/scene/location nodes, branch targets, maps, pins, local tables, foes, items, classes, states, rules, trackers, and procedures."
   );
   panel.appendChild(renderAdventurePackageDiagnostics(pkg));
   const hasDetail = Array.isArray(pkg.nodes);
@@ -3528,11 +3607,11 @@ function renderAdventurePackageReviewWorkspace(pkg, redraw) {
     redraw();
   }));
   const extractRow = actions();
-  extractRow.appendChild(button("Extract Candidate Lists", "Re-scan the source PDF text and add candidate locations, tables, foes, classes, items, and procedures without overwriting reviewed records. Treat results as guesses until checked against the PDF.", async () => {
+  extractRow.appendChild(button("Extract Candidate Lists", "Re-scan the source PDF text and add candidate locations, tables, foes, classes, items, states, rules, and procedures without overwriting reviewed records. Treat results as guesses until checked against the PDF.", async () => {
     const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/extract-candidates`, { method: "POST" });
     replaceAdventurePackageInState(result.package);
     const changes = result.package.candidate_changes || {};
-    setStatus(`Candidate extraction complete: locations ${changes.nodes || 0}, tables ${changes.tables || 0}, foes ${changes.foes || 0}, classes ${changes.classes || 0}, items ${changes.items || 0}, procedures ${changes.procedures || 0}.`);
+    setStatus(`Candidate extraction complete: locations ${changes.nodes || 0}, tables ${changes.tables || 0}, foes ${changes.foes || 0}, classes ${changes.classes || 0}, items ${changes.items || 0}, states ${changes.states || 0}, rules ${changes.rules || 0}, procedures ${changes.procedures || 0}.`);
     redraw();
   }));
   panel.append(detailGrid, saveDetails, extractRow, renderAdventurePackageReviewBrowser(pkg), renderAdventurePackageNodeEditor(pkg, redraw), renderAdventurePackageRecordEditor(pkg, redraw), renderAdventurePackageSectionEditor(pkg, redraw));
@@ -3543,6 +3622,8 @@ function packageRecordTitle(kind, record) {
   if (kind === "nodes") return record.title || record.id || "Untitled location";
   if (kind === "tables") return record.title || record.id || "Untitled table";
   if (kind === "procedures") return record.title || record.id || "Untitled procedure";
+  if (kind === "states") return record.name || record.title || record.id || "Untitled state";
+  if (kind === "rules") return record.name || record.title || record.id || "Untitled rule";
   return record.name || record.title || record.id || "Untitled record";
 }
 
@@ -3551,6 +3632,8 @@ function packageRecordSingular(kind) {
     foes: "foe",
     items: "item",
     classes: "class",
+    states: "state",
+    rules: "rule",
     tables: "table",
     trackers: "tracker",
     procedures: "procedure",
@@ -3563,6 +3646,8 @@ const PACKAGE_REVIEW_GROUPS = [
   ["foes", "Foes"],
   ["items", "Items"],
   ["classes", "Classes"],
+  ["states", "States"],
+  ["rules", "Rules"],
   ["procedures", "Procedures"],
   ["ignored_records", "Ignored"],
 ];
@@ -3590,6 +3675,13 @@ function normalizePackageRecordForKind(record, targetKind, sourceKind = "") {
   } else if (targetKind === "procedures") {
     copy.title = copy.title || copy.name || copy.id || "Untitled procedure";
     copy.steps = Array.isArray(copy.steps) && copy.steps.length ? copy.steps : [{ op: "show_choice" }];
+  } else if (targetKind === "states") {
+    copy.name = copy.name || copy.title || copy.id || "Untitled state";
+    copy.applies_to = copy.applies_to || "character";
+    copy.modifiers = Array.isArray(copy.modifiers) ? copy.modifiers : [];
+  } else if (targetKind === "rules") {
+    copy.name = copy.name || copy.title || copy.id || "Untitled rule";
+    copy.scope = copy.scope || "module";
   } else {
     copy.name = copy.name || copy.title || copy.id || "Untitled record";
   }
@@ -4050,6 +4142,9 @@ function packageRecordKnownKeys(kind) {
   if (kind === "tables") return ["id", "title", "source_page", "dice", "rows", "review_status", "source_text"];
   if (kind === "trackers") return ["id", "label", "initial", "minimum", "maximum", "source_page"];
   if (kind === "procedures") return ["id", "title", "source_page", "steps", "review_status", "source_text"];
+  if (kind === "items") return ["id", "name", "source_page", "description", "modifiers", "states_applied", "sale_price_gp", "sellable", "buyable", "notes", "source_text", "review_status"];
+  if (kind === "states") return ["id", "name", "source_page", "description", "applies_to", "duration", "modifiers", "removal", "notes", "source_text", "review_status"];
+  if (kind === "rules") return ["id", "name", "source_page", "description", "scope", "trigger", "effect", "notes", "source_text", "review_status"];
   return ["id", "name", "source_page", "notes", "source_text", "review_status"];
 }
 
@@ -4080,6 +4175,8 @@ function renderAdventurePackageRecordEditor(pkg, redraw) {
     ["foes", "Foes"],
     ["items", "Items"],
     ["classes", "Classes"],
+    ["states", "States"],
+    ["rules", "Rules"],
     ["tables", "Tables"],
     ["trackers", "Trackers"],
     ["procedures", "Procedures"],
@@ -4170,6 +4267,92 @@ function renderAdventurePackageRecordEditor(pkg, redraw) {
           ...(minimum.value !== "" ? { minimum: Number(minimum.value) } : {}),
           ...(maximum.value !== "" ? { maximum: Number(maximum.value) } : {}),
         })));
+      } else if (kind === "items") {
+        const description = textarea(`record-description-${pkg.package_id}-${kind}`, "Player-facing item description: what it is and what it does in this module.", 3);
+        description.value = existing.description || "";
+        const modifiers = textarea(`record-modifiers-${pkg.package_id}-${kind}`, "JSON array of modifiers this item applies, for example attack, defense, saves, spell effects, or inventory traits.", 4);
+        modifiers.value = JSON.stringify(existing.modifiers || [], null, 2);
+        const statesApplied = input("text", `record-states-${pkg.package_id}-${kind}`, "Comma-separated state ids applied by this item, if any.");
+        statesApplied.value = (existing.states_applied || []).join(", ");
+        const salePrice = input("number", `record-sale-price-${pkg.package_id}-${kind}`, "Sale price in gp if the PDF gives one. Leave blank if not sellable or unknown.");
+        salePrice.min = "0";
+        salePrice.step = "1";
+        salePrice.value = existing.sale_price_gp ?? "";
+        const sellable = input("checkbox", `record-sellable-${pkg.package_id}-${kind}`, "Whether this item can be sold under the module/PDF rules.");
+        sellable.checked = Boolean(existing.sellable);
+        const buyable = input("checkbox", `record-buyable-${pkg.package_id}-${kind}`, "Whether this item can be bought under the module/PDF rules.");
+        buyable.checked = Boolean(existing.buyable);
+        const sellableRow = el("label", "modern-check-row");
+        sellableRow.title = sellable.title;
+        sellableRow.append(sellable, el("span", "", "Sellable"));
+        const buyableRow = el("label", "modern-check-row");
+        buyableRow.title = buyable.title;
+        buyableRow.append(buyable, el("span", "", "Buyable"));
+        form.append(field("Description", description), field("Modifiers JSON", modifiers), field("States Applied", statesApplied), field("Sale Price gp", salePrice), sellableRow, buyableRow, field("Notes / Source Text", notes), field("Extra JSON", extra));
+        editorMount.append(form, renderPackageRecordSaveRow(pkg, kind, records, existing, redraw, () => ({
+          ...parseJsonObjectField(extra, "Extra JSON"),
+          id: id.value.trim(),
+          name: name.value.trim() || id.value.trim(),
+          source_page: Number(page.value || 0),
+          description: description.value,
+          modifiers: parseJsonArrayField(modifiers, "Modifiers JSON"),
+          states_applied: commaList(statesApplied.value),
+          ...(salePrice.value !== "" ? { sale_price_gp: Number(salePrice.value || 0) } : {}),
+          sellable: sellable.checked,
+          buyable: buyable.checked,
+          notes: notes.value,
+          source_text: notes.value,
+          review_status: reviewStatus.value,
+        })));
+      } else if (kind === "states") {
+        const description = textarea(`record-description-${pkg.package_id}-${kind}`, "Player-facing state or condition description.", 3);
+        description.value = existing.description || "";
+        const appliesTo = input("text", `record-applies-${pkg.package_id}-${kind}`, "Who or what this state can apply to, for example character, party, foe, or item.");
+        appliesTo.value = existing.applies_to || "";
+        const duration = input("text", `record-duration-${pkg.package_id}-${kind}`, "How long this state lasts, using the PDF wording or reviewer summary.");
+        duration.value = existing.duration || "";
+        const modifiers = textarea(`record-modifiers-${pkg.package_id}-${kind}`, "JSON array of modifiers this state applies. Keep empty until checked against the PDF.", 4);
+        modifiers.value = JSON.stringify(existing.modifiers || [], null, 2);
+        const removal = textarea(`record-removal-${pkg.package_id}-${kind}`, "How this state is cured, removed, expires, or is replaced.", 3);
+        removal.value = existing.removal || "";
+        form.append(field("Description", description), field("Applies To", appliesTo), field("Duration", duration), field("Modifiers JSON", modifiers), field("Removal / Cure", removal), field("Notes / Source Text", notes), field("Extra JSON", extra));
+        editorMount.append(form, renderPackageRecordSaveRow(pkg, kind, records, existing, redraw, () => ({
+          ...parseJsonObjectField(extra, "Extra JSON"),
+          id: id.value.trim(),
+          name: name.value.trim() || id.value.trim(),
+          source_page: Number(page.value || 0),
+          description: description.value,
+          applies_to: appliesTo.value,
+          duration: duration.value,
+          modifiers: parseJsonArrayField(modifiers, "Modifiers JSON"),
+          removal: removal.value,
+          notes: notes.value,
+          source_text: notes.value,
+          review_status: reviewStatus.value,
+        })));
+      } else if (kind === "rules") {
+        const description = textarea(`record-description-${pkg.package_id}-${kind}`, "Readable summary of the module-local rule.", 3);
+        description.value = existing.description || "";
+        const scope = input("text", `record-scope-${pkg.package_id}-${kind}`, "Rule scope, for example module, location, combat, travel, campaign, or class.");
+        scope.value = existing.scope || "";
+        const trigger = textarea(`record-trigger-${pkg.package_id}-${kind}`, "When this rule applies.", 3);
+        trigger.value = existing.trigger || "";
+        const effect = textarea(`record-effect-${pkg.package_id}-${kind}`, "What the rule changes or requires.", 4);
+        effect.value = existing.effect || "";
+        form.append(field("Description", description), field("Scope", scope), field("Trigger", trigger), field("Effect", effect), field("Notes / Source Text", notes), field("Extra JSON", extra));
+        editorMount.append(form, renderPackageRecordSaveRow(pkg, kind, records, existing, redraw, () => ({
+          ...parseJsonObjectField(extra, "Extra JSON"),
+          id: id.value.trim(),
+          name: name.value.trim() || id.value.trim(),
+          source_page: Number(page.value || 0),
+          description: description.value,
+          scope: scope.value,
+          trigger: trigger.value,
+          effect: effect.value,
+          notes: notes.value,
+          source_text: notes.value,
+          review_status: reviewStatus.value,
+        })));
       } else {
         form.append(field("Notes / Source Text", notes), field("Extra JSON", extra));
         editorMount.append(form, renderPackageRecordSaveRow(pkg, kind, records, existing, redraw, () => ({
@@ -4230,6 +4413,8 @@ function renderAdventurePackageSectionEditor(pkg, redraw) {
     ["foes", "Foes"],
     ["classes", "Classes"],
     ["items", "Items"],
+    ["states", "States"],
+    ["rules", "Rules"],
     ["tables", "Tables"],
     ["trackers", "Trackers"],
     ["procedures", "Procedures"],

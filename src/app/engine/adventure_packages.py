@@ -26,7 +26,7 @@ ALLOWED_PROCEDURE_OPS = {
     "pin_location",
     "show_choice",
 }
-PACKAGE_CAPABILITIES = {"foes", "classes", "items", "tables", "trackers", "procedures", "maps", "pins"}
+PACKAGE_CAPABILITIES = {"foes", "classes", "items", "tables", "trackers", "procedures", "states", "rules", "maps", "pins"}
 NODE_TYPES = {"room", "scene", "location", "hex", "camp", "settlement", "ending"}
 NODE_REVIEW_STATUSES = {"candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest", "wrong_type", "ignored"}
 
@@ -234,7 +234,9 @@ def _candidate_records_from_pdf_pages(pages: list[dict[str, Any]]) -> dict[str, 
     classes: list[dict[str, Any]] = []
     items: list[dict[str, Any]] = []
     procedures: list[dict[str, Any]] = []
-    seen: dict[str, set[str]] = {key: set() for key in ("nodes", "tables", "foes", "classes", "items", "procedures")}
+    states: list[dict[str, Any]] = []
+    rules: list[dict[str, Any]] = []
+    seen: dict[str, set[str]] = {key: set() for key in ("nodes", "tables", "foes", "classes", "items", "procedures", "states", "rules")}
     for page in pages:
         page_no = int(page.get("page") or 0)
         text = str(page.get("text") or "")
@@ -330,6 +332,34 @@ def _candidate_records_from_pdf_pages(pages: list[dict[str, Any]]) -> dict[str, 
                             "source_text": _snippet(lines, index),
                         }
                     )
+            if _looks_like_state_line(compact):
+                name = _candidate_name_from_line(compact)
+                state_id = _slug(name, f"state-{page_no}")
+                if name and state_id not in seen["states"]:
+                    seen["states"].add(state_id)
+                    states.append(
+                        _sourced_candidate(
+                            state_id,
+                            name,
+                            page_no,
+                            _snippet(lines, index),
+                            "Candidate character/party/foe state or condition. Check trigger, duration, modifiers, cure/removal, and eligible targets.",
+                        )
+                    )
+            if _looks_like_rule_line(compact):
+                name = _candidate_name_from_line(compact)
+                rule_id = _slug(name, f"rule-{page_no}")
+                if name and rule_id not in seen["rules"]:
+                    seen["rules"].add(rule_id)
+                    rules.append(
+                        _sourced_candidate(
+                            rule_id,
+                            name,
+                            page_no,
+                            _snippet(lines, index),
+                            "Candidate module-local rule. Check scope, trigger, player choice points, dice rolls, and whether it belongs in procedures or tables instead.",
+                        )
+                    )
     return {
         "nodes": nodes[:80],
         "tables": tables[:40],
@@ -337,6 +367,8 @@ def _candidate_records_from_pdf_pages(pages: list[dict[str, Any]]) -> dict[str, 
         "classes": classes[:30],
         "items": items[:80],
         "procedures": procedures[:60],
+        "states": states[:40],
+        "rules": rules[:40],
     }
 
 
@@ -388,6 +420,43 @@ def _looks_like_item_line(line: str) -> bool:
 def _looks_like_procedure_line(line: str) -> bool:
     lower = line.lower()
     return any(token in lower for token in ("if you", "if the party", "save vs", "roll d", "choose", "go to scene", "turn to", "read scene")) and len(line) <= 260
+
+
+def _looks_like_state_line(line: str) -> bool:
+    lower = line.lower()
+    return any(
+        token in lower
+        for token in (
+            "poisoned",
+            "diseased",
+            "cursed",
+            "blessed",
+            "stunned",
+            "hypnotized",
+            "hypnotised",
+            "madness",
+            "wounded",
+            "condition",
+            "state",
+        )
+    ) and len(line) <= 240
+
+
+def _looks_like_rule_line(line: str) -> bool:
+    lower = line.lower()
+    return any(
+        token in lower
+        for token in (
+            "new rule",
+            "special rule",
+            "optional rule",
+            "campaign rule",
+            "rule:",
+            "rules:",
+            "when this happens",
+            "from now on",
+        )
+    ) and len(line) <= 260
 
 
 def _candidate_name_from_line(line: str) -> str:
@@ -478,6 +547,8 @@ def create_or_refresh_package_from_pdf(
         "foes": existing.get("foes", []) or candidates["foes"],
         "classes": existing.get("classes", []) or candidates["classes"],
         "items": existing.get("items", []) or candidates["items"],
+        "states": existing.get("states", []) or candidates["states"],
+        "rules": existing.get("rules", []) or candidates["rules"],
         "ignored_records": existing.get("ignored_records", []),
         "nodes": existing.get("nodes", []) or candidates["nodes"],
         "tables": existing.get("tables", []) or candidates["tables"],
@@ -506,7 +577,7 @@ def extract_adventure_package_candidates(root_dir: Path, data_dir: Path, package
         raise FileNotFoundError(f"Source PDF {source_pdf!r} was not found.")
     candidates = _candidate_records_from_pdf_pages(_extract_pdf_text_pages(pdf_path))
     changed: dict[str, int] = {}
-    for field in ("nodes", "foes", "classes", "items", "tables", "procedures"):
+    for field in ("nodes", "foes", "classes", "items", "tables", "procedures", "states", "rules"):
         before = len(package.get(field, []) or [])
         package[field] = _merge_candidate_records(package.get(field, []), candidates[field])
         changed[field] = len(package.get(field, []) or []) - before
@@ -555,6 +626,7 @@ def _package_capabilities(assessment: dict[str, Any], maps: list[dict[str, Any]]
         capabilities.add("foes")
     if int(assessment.get("class_signals") or 0):
         capabilities.add("classes")
+    capabilities.update({"items", "states", "rules"})
     return sorted(capabilities)
 
 
@@ -628,6 +700,8 @@ def package_summary(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
         "foe_count": len(package.get("foes", []) or []),
         "class_count": len(package.get("classes", []) or []),
         "item_count": len(package.get("items", []) or []),
+        "state_count": len(package.get("states", []) or []),
+        "rule_count": len(package.get("rules", []) or []),
         "ignored_record_count": len(package.get("ignored_records", []) or []),
         "node_count": len(package.get("nodes", []) or []),
         "table_count": len(package.get("tables", []) or []),
@@ -727,7 +801,7 @@ def validate_adventure_package(package: dict[str, Any]) -> dict[str, Any]:
                     warnings.append(f"Pin {pin.get('label') or pin.get('id')} points to {node_id!r}, which is not yet a reviewed node.")
     else:
         errors.append("maps must be an array.")
-    for field in ("foes", "classes", "items", "ignored_records", "tables", "trackers", "procedures"):
+    for field in ("foes", "classes", "items", "states", "rules", "ignored_records", "tables", "trackers", "procedures"):
         if field in package and not isinstance(package.get(field), list):
             errors.append(f"{field} must be an array.")
     for procedure in package.get("procedures") or []:
@@ -767,7 +841,7 @@ def update_adventure_package_review(data_dir: Path, package_id: str, payload: di
     if "review_notes" in payload:
         review["notes"] = str(payload.get("review_notes") or "")
     package["review"] = review
-    for field in ("nodes", "foes", "classes", "items", "ignored_records", "tables", "trackers"):
+    for field in ("nodes", "foes", "classes", "items", "states", "rules", "ignored_records", "tables", "trackers"):
         if field in payload:
             value = payload.get(field)
             if not isinstance(value, list):
@@ -780,6 +854,37 @@ def update_adventure_package_review(data_dir: Path, package_id: str, payload: di
         package["procedures"] = _sanitize_procedures(value)
     save_adventure_package(data_dir, package)
     return _package_with_diagnostics(data_dir, package)
+
+
+def delete_adventure_package(data_dir: Path, package_id: str) -> dict[str, Any]:
+    package = load_adventure_package(data_dir, package_id)
+    if not package:
+        raise FileNotFoundError(f"Adventure package {package_id} was not found.")
+    folder = adventure_folder(data_dir, package_id).resolve()
+    root = adventure_package_root(data_dir).resolve()
+    try:
+        folder.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("Package folder is outside DATA_DIR/Adventures.") from exc
+    manifest = folder / "adventure.json"
+    package_file = folder / PACKAGE_FILENAME
+    deleted_folder = False
+    if manifest.is_file():
+        if package_file.is_file():
+            package_file.unlink()
+    else:
+        shutil.rmtree(folder)
+        deleted_folder = True
+    return {
+        "deleted": True,
+        "package_id": _slug(package_id),
+        "deleted_folder": deleted_folder,
+        "message": (
+            f"Deleted local PDF review package {package_id}."
+            if deleted_folder
+            else f"Deleted package.json for {package_id}; adventure.json and local assets were left in place."
+        ),
+    }
 
 
 def _integer_list(value: Any) -> list[int]:
