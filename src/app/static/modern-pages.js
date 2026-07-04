@@ -3305,7 +3305,7 @@ function renderAiAdventures() {
 function adventureModuleKind(adventure) {
   const id = String(adventure.id || "");
   const source = String(adventure.source || "").toLowerCase();
-  if (adventure.pdf_source) return "PDF source";
+  if (adventure.pdf_source) return "PDF";
   if (id === "random" || source === "rules") return "Rules";
   if (id.startsWith("ai-") || source === "ai") return "AI";
   if (adventure.tag_lead_type || (modernState.campaign?.tag_generated_adventure_ids || []).includes(id)) return "The Adventures Guild";
@@ -3318,6 +3318,16 @@ function adventureModuleInUse(adventureId) {
 
 function adventureModuleCompleted(adventureId) {
   return (modernState.sessions || []).some((session) => session.adventure_id === adventureId && session.mode === "complete");
+}
+
+function adventureModuleStatus(adventure) {
+  if (adventure.pdf_source) return "N/A";
+  const inUse = adventureModuleInUse(adventure.id).length;
+  if (inUse) return "In progress";
+  if (adventureModuleCompleted(adventure.id)) return "Completed";
+  if (adventure.playable === false) return "Not playable";
+  if (["random", "ai-adventure", "courtship-demesne"].includes(String(adventure.id || "")) || adventure.source === "rules") return "Protected";
+  return "Ready";
 }
 
 function adventureModuleTags(adventure) {
@@ -3344,6 +3354,8 @@ function renderAdventurePdfSourceScanner() {
   panel.append(
     modernStatusRow("Source folder", "DATA_DIR/Adventure PDFs", "Place new owned adventure PDFs here in the user-facing appdata folder. The legacy repo Adventures folder is also scanned for existing local PDFs."),
     modernStatusRow("Assessed PDFs", `${pdfSources.length} source PDF(s) · ${unscanned} unscanned`, "PDF sources stay non-playable until a validated adventure.json manifest is created and imported."),
+    modernStatusRow("Package signals", "Maps, pins, tables, foes, classes", "The scanner flags source PDFs that may need local package data before conversion."),
+    modernStatusRow("Map/pin signals", "Review before conversion", "Use package review to place extracted or manually supplied map art and pin rooms, scenes, hexes, or locations."),
     modernStatusRow("Package layer", "Maps, pins, tables, foes, classes", "Odd modules should become declarative adventure packages: local data and map pins, not executable scripts.")
   );
   const row = actions();
@@ -3520,62 +3532,21 @@ function renderAdventurePackagePins(pkg, map) {
   return list;
 }
 
-function renderAdventureModuleManager() {
-  const panel = card(
-    "Generated Adventure Modules",
-    "One list is cleaner than separate AI and Adventures Guild lists: the tag on each module shows its source, completion state, and whether an active session is using it. The server also blocks deletion while a module is in use."
-  );
-  const rows = [...(modernState.adventures || [])].sort((a, b) => (a.name || a.title || a.id).localeCompare(b.name || b.title || b.id));
-  for (const adventure of rows) {
-    const id = String(adventure.id || "");
-    const title = adventure.name || adventure.title || id;
-    const inUse = adventureModuleInUse(id);
-    const protectedModule = ["random", "ai-adventure", "courtship-demesne"].includes(id) || adventure.source === "rules" || adventure.playable === false;
-    const row = el("div", "modern-row modern-module-row");
-    const copy = el("div", "modern-row-copy");
-    copy.append(el("strong", "", title));
-    copy.append(el("span", "muted", `${id} · ${adventure.room_count || 0} room(s) · ${adventure.notes || "Playable imported module."}`));
-    const tags = el("div", "modern-chip-row");
-    for (const tag of adventureModuleTags(adventure)) tags.appendChild(el("span", "modern-tag", tag));
-    copy.appendChild(tags);
-    row.appendChild(copy);
-    const rowActions = actions();
-    if (!protectedModule) {
-      rowActions.append(
-        link("Export JSON", `/api/adventures/${encodeURIComponent(id)}/export`, "Export this module manifest as JSON."),
-        link("Export ZIP", `/api/adventures/${encodeURIComponent(id)}/export.zip`, "Export this module as a zip package.")
-      );
-      const remove = button("Delete", inUse.length ? "Cannot delete while this module has an in-progress game." : "Delete this installed module. Completed session history is kept.", async () => {
-        if (inUse.length) throw new Error(`Cannot delete ${title}: ${inUse.length} game(s) still use it.`);
-        if (!window.confirm(`Delete ${title}?`)) return;
-        const result = await api(`/api/adventures/${encodeURIComponent(id)}`, { method: "DELETE" });
-        setStatus(result.message || "Adventure module deleted.");
-        await refreshCoreAndRender();
-      });
-      remove.disabled = Boolean(inUse.length);
-      rowActions.appendChild(remove);
-    } else {
-      rowActions.appendChild(el("span", "muted", protectedModule ? "Protected module" : ""));
-    }
-    row.appendChild(rowActions);
-    panel.appendChild(row);
-  }
-  if (!rows.length) panel.appendChild(el("p", "muted", "No adventure modules found."));
-  return panel;
-}
-
-function renderAdventureModuleImport() {
-  const panel = card("Import Module", "Import any reviewed adventure manifest JSON. The module will appear in the unified module list with source/status tags after validation.");
+function renderAdventureModuleImportActions() {
+  const panel = card("Module Import", "Import creates a new module in DATA_DIR/Adventures/<module_id>. JSON import is available now; ZIP import is shown here because package/module bundles will use it next.");
   const json = textarea("modern-module-import-json", "Paste an adventure module JSON manifest to validate or import.", 8);
   const file = input("file", "modern-module-import-file", "Load an adventure module JSON file.");
   file.accept = ".json,application/json";
+  const zipFile = input("file", "modern-module-import-zip-file", "Load a future module .zip package. ZIP import is not implemented yet.");
+  zipFile.accept = ".zip,application/zip";
+  zipFile.disabled = true;
   file.addEventListener("change", async () => {
     const selected = file.files?.[0];
     if (!selected) return;
     json.value = await selected.text();
     setStatus(`Loaded ${selected.name} into Module JSON.`);
   });
-  panel.append(field("Module JSON", json), field("Import file", file));
+  panel.append(field("Module JSON", json), field("Import .json file", file), field("Import .zip file", zipFile));
   const row = actions();
   row.append(
     button("Validate Module", "Validate the pasted adventure module before importing it.", async () => {
@@ -3586,73 +3557,59 @@ function renderAdventureModuleImport() {
       const result = await api("/api/adventures/import", { method: "POST", body: JSON.stringify({ manifest: JSON.parse(json.value), overwrite: false }) });
       setStatus(result.message || `Imported ${result.title || result.adventure_id}.`);
       await refreshCoreAndRender();
-    })
+    }),
+    button("Import ZIP", "ZIP import is planned for full adventure folders containing adventure.json, package.json, maps, artwork, tables, and notes.", async () => {
+      setStatus("ZIP import is planned; use Import JSON for now.");
+    }, "secondary")
   );
+  row.lastChild.disabled = true;
   panel.appendChild(row);
   return panel;
 }
 
-function renderAdventureModuleBrowser() {
+function renderAdventureModuleList() {
   const panel = card(
-    "Adventure Module Browser",
-    "Select a module to inspect source, status, cover-art guidance, export actions, and delete safety. The server blocks deletion while a module is used by an active session."
+    "All Modules",
+    "Every module source appears here: rules, The Adventures Guild, AI/imported, PDF sources, and future custom modules. Source-specific preparation lives in the generator and PDF importer tabs."
   );
   const rows = [...(modernState.adventures || [])].sort((a, b) => (a.name || a.title || a.id).localeCompare(b.name || b.title || b.id));
   if (!rows.length) {
     panel.appendChild(el("p", "muted", "No adventure modules found."));
     return panel;
   }
-  const browser = el("div", "modern-adventure-browser");
-  const list = el("div", "modern-adventure-list");
-  const detail = el("div", "modern-adventure-detail");
-  let selectedId = rows[0]?.id || "";
-  const summary = (adventure) => {
+  const list = el("div", "modern-module-table");
+  list.append(
+    el("strong", "", "Module Name"),
+    el("strong", "", "Source"),
+    el("strong", "", "Status"),
+    el("strong", "", "Actions")
+  );
+  for (const adventure of rows) {
     const id = String(adventure.id || "");
     const title = adventure.name || adventure.title || id;
     const inUse = adventureModuleInUse(id);
     const protectedModule = ["random", "ai-adventure", "courtship-demesne"].includes(id) || adventure.source === "rules" || adventure.playable === false;
-    return { id, title, inUse, protectedModule };
-  };
-  const drawDetail = (adventure) => {
-    detail.replaceChildren();
-    if (!adventure) {
-      detail.appendChild(el("p", "muted", "No module selected."));
-      return;
-    }
-    const { id, title, inUse, protectedModule } = summary(adventure);
-    detail.appendChild(el("h3", "", title));
-    detail.appendChild(el("p", "muted", adventure.notes || "Playable imported module."));
-    const tags = el("div", "modern-chip-row");
-    for (const tag of adventureModuleTags(adventure)) tags.appendChild(el("span", "modern-tag", tag));
-    detail.appendChild(tags);
-    detail.append(
-      modernStatusRow("Module id", id, "Stable module id used by saved sessions and export/delete endpoints."),
-      modernStatusRow("Rooms", `${adventure.room_count || 0} room(s)`, "Imported and generated modules use authored room counts; Random Dungeon is procedural."),
-      modernStatusRow("Source", adventureModuleKind(adventure), "Source tag used to distinguish rules, imported, AI-authored, and Adventures Guild generated modules."),
-      modernStatusRow("Usage", inUse.length ? `${inUse.length} active session(s)` : "Not currently in use", "Modules in active sessions cannot be deleted."),
-      modernStatusRow("Cover art", `Planned: DATA_DIR/assets/artwork/user/adventures/${id}_cover_1600x900.*`, "Future module cover art slot. Keep copyrighted or AI-generated artwork local unless licensed for distribution.")
-    );
+    const source = adventureModuleKind(adventure);
+    const status = adventureModuleStatus(adventure);
+    const nameCell = el("div", "modern-row-copy");
+    nameCell.append(el("strong", "", title), el("span", "muted", `${id}${adventure.room_count ? ` · ${adventure.room_count} room(s)` : ""}`));
     if (adventure.pdf_source) {
-      detail.append(
-        modernStatusRow("PDF assessment", `${adventure.pdf_page_count || 0} page(s) · ${adventure.pdf_text_extractable ? "text extractable" : "text review needed"}`, "Source PDF assessment from Scan new PDFs. The PDF remains non-playable until converted to a reviewed manifest."),
-        modernStatusRow("Detected type", adventure.pdf_detected_type ? `${String(adventure.pdf_detected_type).replaceAll("_", " ")} · ${adventure.pdf_confidence || "unknown"} confidence` : "Not scanned", "Used to choose the correct future converter: room graph, scene route, collection split, campaign bundle, or hex-crawl workflow."),
-        modernStatusRow("Package signals", `tables ${adventure.pdf_table_signals || 0} · foes ${adventure.pdf_foe_signals || 0} · classes ${adventure.pdf_class_signals || 0}`, "Signals that the PDF may add local roll tables, monsters, items, or character options before it can be played faithfully."),
-        modernStatusRow("Map/pin signals", `maps ${adventure.pdf_map_signals || 0} · numbered locations ${adventure.pdf_numbered_location_signals || 0}`, "Signals that the PDF likely needs imported map images with pinned rooms, hexes, or locations."),
-        modernStatusRow("Package recommendation", adventure.pdf_package_recommendation || "No package recommendation yet; run Scan new PDFs after adding or changing the source PDF.", "Package advice only. Source pages still need manual review before generated pins, tables, or foes are trusted."),
-        modernStatusRow("Recommended next step", adventure.pdf_recommended_action || "Run Scan new PDFs, then manually review the PDF before creating a manifest.", "Scanner advice only; exact rules and adventure structure still require PDF review.")
-      );
-      if (adventure.pdf_warnings?.length) {
-        const warnings = el("ul", "modern-warning-list");
-        for (const warning of adventure.pdf_warnings) warnings.appendChild(el("li", "", warning));
-        detail.appendChild(warnings);
-      }
+      nameCell.appendChild(el("span", "muted", `${adventure.pdf_detected_type ? String(adventure.pdf_detected_type).replaceAll("_", " ") : "unscanned"} · ${adventure.pdf_package_recommendation || adventure.pdf_recommended_action || "Review in PDF Module Importer"}`));
+    } else if (adventure.notes) {
+      nameCell.appendChild(el("span", "muted", adventure.notes));
     }
+    const sourceCell = el("span", "modern-tag", source);
+    sourceCell.title = "Module source. PDF source rows are assessment/preparation records until converted to a playable module.";
+    const statusCell = el("span", "modern-tag", status);
+    statusCell.title = "Module status: N/A for source PDFs, Ready for playable modules, In progress for active sessions, Completed if a session has finished.";
     const rowActions = actions();
-    if (!protectedModule) {
-      rowActions.append(
-        link("Export JSON", `/api/adventures/${encodeURIComponent(id)}/export`, "Export this module manifest as JSON."),
-        link("Export ZIP", `/api/adventures/${encodeURIComponent(id)}/export.zip`, "Export this module as a zip package.")
-      );
+    if (adventure.playable) {
+      rowActions.append(link("Export .json", `/api/adventures/${encodeURIComponent(id)}/export`, "Export this module manifest as JSON."));
+      rowActions.append(link("Export .zip", `/api/adventures/${encodeURIComponent(id)}/export.zip`, "Export the full adventure folder as a ZIP package."));
+    } else {
+      rowActions.appendChild(el("span", "muted", adventure.pdf_source ? "Review in PDF Importer" : "No export"));
+    }
+    if (!protectedModule && adventure.playable) {
       const remove = button("Delete", inUse.length ? "Cannot delete while this module has an in-progress game." : "Delete this installed module. Completed session history is kept.", async () => {
         if (inUse.length) throw new Error(`Cannot delete ${title}: ${inUse.length} game(s) still use it.`);
         if (!window.confirm(`Delete ${title}?`)) return;
@@ -3662,35 +3619,25 @@ function renderAdventureModuleBrowser() {
       });
       remove.disabled = Boolean(inUse.length);
       rowActions.appendChild(remove);
-    } else {
-      rowActions.appendChild(el("span", "muted", "Protected module"));
+    } else if (protectedModule) {
+      rowActions.appendChild(el("span", "muted", "Protected"));
     }
-    detail.appendChild(rowActions);
-  };
-  const drawList = () => {
-    list.replaceChildren();
-    for (const adventure of rows) {
-      const { id, title, inUse } = summary(adventure);
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = `modern-adventure-list-item${id === selectedId ? " selected" : ""}`;
-      item.title = "Select this module to inspect status, export options, delete safety, and planned cover art.";
-      item.append(
-        el("strong", "", title),
-        el("span", "muted", adventure.pdf_source ? `${adventureModuleKind(adventure)} · ${adventure.pdf_detected_type ? String(adventure.pdf_detected_type).replaceAll("_", " ") : "unscanned"}${inUse.length ? " · in use" : ""}` : `${adventureModuleKind(adventure)} · ${adventure.room_count || 0} room(s)${inUse.length ? " · in use" : ""}`)
-      );
-      item.addEventListener("click", () => {
-        selectedId = id;
-        drawList();
-        drawDetail(rows.find((row) => row.id === selectedId));
-      });
-      list.appendChild(item);
-    }
-  };
-  browser.append(list, detail);
-  panel.appendChild(browser);
-  drawList();
-  drawDetail(rows.find((row) => row.id === selectedId));
+    list.append(nameCell, sourceCell, statusCell, rowActions);
+  }
+  panel.appendChild(list);
+  return panel;
+}
+
+function renderCreateModulePlaceholder() {
+  const panel = card(
+    "Create Module",
+    "Placeholder for a hand-authored module builder. This will create a complete DATA_DIR/Adventures/<module_id>/ folder with adventure.json, package.json, maps, artwork, tables, notes, and validation."
+  );
+  panel.append(
+    modernStatusRow("Status", "Planned", "Manual module creation is deliberately separate from TAG generation, AI prompts, and PDF source conversion."),
+    modernStatusRow("Folder model", "DATA_DIR/Adventures/<module_id>/", "Everything for a module should live in one adventure folder for backup, export, and deletion."),
+    modernStatusRow("Next design step", "Room graph + map/pin + validation workflow", "The builder should use the same reviewed manifest/package schemas as imported modules.")
+  );
   return panel;
 }
 
@@ -3869,9 +3816,10 @@ function renderAiModuleGeneration() {
 
 function renderAdventureManagement() {
   rootEl.appendChild(renderGuide("Adventure Management", [
-    "Use Modules to import, export, delete, and check whether a module is AI-authored, Adventures Guild generated, completed, or in use.",
-    "Use The Adventures Guild generation for rumors, treasure maps, thematic dungeons, and Guild jobs.",
-    "Use AI generation when you want a prompt and JSON validation workflow for an external AI-authored adventure.",
+    "Use Modules for the single list of all modules from every source, with import, export, delete, source, and status in one place.",
+    "Use Generate Modules for The Adventures Guild and AI generators.",
+    "Use PDF Module Importer to scan source PDFs, create package folders, review maps, and pin rooms before conversion.",
+    "Use Create Module for the future hand-authored module builder.",
     "Start and resume actual play from Go Adventure."
   ], "go_adventure_closeout_gates", "adventure management generated modules import export delete"));
   const tabs = el("div", "modern-tabs");
@@ -3897,10 +3845,22 @@ function renderAdventureManagement() {
     panelEl.append(...nodes.filter(Boolean));
     panels[key] = panelEl;
   }
-  addAdventureTab("modules", "Modules", "Import, export, delete, and review all adventure module types.", [renderAdventurePdfSourceScanner(), renderAdventurePackageManager(), renderAdventureModuleImport(), renderAdventureModuleBrowser()]);
-  addAdventureTab("guild", "The Adventures Guild", "Generate Adventures Guild modules and review lead signoff support.", [
+  addAdventureTab("modules", "Modules", "Single list of all modules plus global JSON/ZIP import actions.", [renderAdventureModuleImportActions(), renderAdventureModuleList()]);
+  addAdventureTab("generate", "Generate Modules", "Generate Adventures Guild modules and AI-authored module prompts/imports.", [
     renderTagModuleGeneration(),
-    renderTagWorkflowDashboard("go"),
+    renderAiModuleGeneration(),
+    collapseCard(renderTagWorkflowDashboard("go")),
+  ]);
+  addAdventureTab("pdf", "PDF Module Importer", "Scan PDF sources, create package folders, review map assets, and pin rooms or locations.", [
+    renderAdventurePdfSourceScanner(),
+    renderAdventurePackageManager(),
+  ]);
+  addAdventureTab("create", "Create Module", "Placeholder for a hand-authored module builder.", [renderCreateModulePlaceholder()]);
+  addAdventureTab("reference", "Reference", "Review closeout, signoff, action history, and rules/table links for generated modules.", [
+    renderPlaytestTriagePanel("adventure-management"),
+    renderAdventureCloseoutCockpit("Adventure Management"),
+    renderTagSignoffPanel("Adventures Guild Lead / Start Signoff"),
+    renderTagActionLogExplorer(),
     renderTagLeadSelectorPanel(),
     renderRumorLeadAuditPanel(),
     renderRumorSignoffChecklist(),
@@ -3908,13 +3868,6 @@ function renderAdventureManagement() {
     renderTreasureMapSignoffChecklist(),
     renderThematicDungeonLeadAuditPanel(),
     renderThematicDungeonSignoffChecklist(),
-  ]);
-  addAdventureTab("ai", "AI Modules", "Generate prompts, validate imports, and install AI-authored modules.", [renderAiModuleGeneration()]);
-  addAdventureTab("reference", "Reference", "Review closeout, signoff, action history, and rules/table links for generated modules.", [
-    renderPlaytestTriagePanel("adventure-management"),
-    renderAdventureCloseoutCockpit("Adventure Management"),
-    renderTagSignoffPanel("Adventures Guild Lead / Start Signoff"),
-    renderTagActionLogExplorer(),
   ]);
   rootEl.append(tabs, ...Object.values(panels));
   activateAdventureTab("modules");

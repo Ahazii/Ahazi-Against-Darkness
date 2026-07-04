@@ -570,6 +570,20 @@ h2 {
   align-items: start;
 }
 
+.modern-module-table {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.6fr) minmax(120px, 0.6fr) minmax(110px, 0.55fr) minmax(250px, 1fr);
+  gap: 8px 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.modern-module-table > * {
+  min-width: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(120, 114, 89, 0.28);
+}
+
 .modern-adventure-browser {
   display: grid;
   grid-template-columns: minmax(220px, 0.36fr) minmax(0, 1fr);
@@ -1083,6 +1097,14 @@ h2 {
 
   .modern-adventure-browser {
     grid-template-columns: 1fr;
+  }
+
+  .modern-module-table {
+    grid-template-columns: 1fr;
+  }
+
+  .modern-module-table > strong {
+    display: none;
   }
 
   .modern-package-pin-form {

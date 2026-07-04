@@ -1968,10 +1968,11 @@ def test_playtest_objective_and_adventure_browser_wiring() -> None:
     assert "function renderPlaytestTriagePanel" in MODERN_PAGES_JS
     assert "Playtest Triage" in MODERN_PAGES_JS
     assert "Do not change mechanics until the relevant PDF/table/reference has been checked." in MODERN_PAGES_JS
-    assert "function renderAdventureModuleBrowser()" in MODERN_PAGES_JS
-    assert "modern-adventure-browser" in MODERN_PAGES_JS
-    assert "Cover art" in MODERN_PAGES_JS
-    assert ".modern-adventure-browser" in STYLES_CSS
+    assert "function renderAdventureModuleList()" in MODERN_PAGES_JS
+    assert "modern-module-table" in MODERN_PAGES_JS
+    assert "All Modules" in MODERN_PAGES_JS
+    assert "Import .zip file" in MODERN_PAGES_JS
+    assert ".modern-module-table" in STYLES_CSS
     assert "playtest_triage_workflow_table" in MAIN_PY
     assert "exploration_objective_clarity_table" in MAIN_PY
     assert "adventure_management_browser_table" in MAIN_PY
@@ -2519,7 +2520,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
     assert "Start\", \"Start a fresh adventure" in MODERN_PAGES_JS
     assert "Resume\", \"Resume active adventures" in MODERN_PAGES_JS
-    assert "The Adventures Guild\", \"Generate Adventures Guild modules" in MODERN_PAGES_JS
+    assert "Generate Modules\", \"Generate Adventures Guild modules" in MODERN_PAGES_JS
+    assert "PDF Module Importer\", \"Scan PDF sources" in MODERN_PAGES_JS
+    assert "Create Module\", \"Placeholder for a hand-authored module builder" in MODERN_PAGES_JS
     assert "Adventure Management" in MODERN_PAGES_JS
     assert "Reference\", \"Review closeout" in MODERN_PAGES_JS
     assert ".modern-tabs" in STYLES_CSS

@@ -2768,18 +2768,18 @@ def _rules_tables_payload() -> dict:
     ]
     data["adventure_management_browser_table"] = [
         {
-            "area": "Module list",
-            "purpose": "Selectable list of all rules, imported, AI, and Adventures Guild modules with source, room count, and in-use status.",
+            "area": "Modules tab",
+            "purpose": "Single list of all rules, PDF source, imported, AI, and Adventures Guild modules with module name, source, lifecycle status, export actions, and delete safety.",
             "safety": "Deletion is disabled for protected modules and active-session modules.",
         },
         {
-            "area": "Module detail",
-            "purpose": "Shows module id, rooms, source, active usage, planned cover-art path, export actions, and delete action.",
-            "safety": "Server-side delete blocking remains authoritative.",
+            "area": "Global import actions",
+            "purpose": "JSON import lives at the top of the Modules tab because import creates a new module rather than acting on an existing row. ZIP import is reserved for full adventure-folder packages.",
+            "safety": "Imported modules must validate before they are installed into DATA_DIR/Adventures.",
         },
         {
-            "area": "Generation tabs",
-            "purpose": "Keep Adventures Guild and AI generation under Adventure Management instead of separate dashboard launchers.",
+            "area": "Source tabs",
+            "purpose": "Generate Modules owns The Adventures Guild and AI generators; PDF Module Importer owns scan/package/map-pin review; Create Module is a placeholder for hand-authored modules.",
             "safety": "Generated modules still start from Go Adventure after readiness checks.",
         },
     ]

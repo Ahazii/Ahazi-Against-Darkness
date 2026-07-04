@@ -3568,7 +3568,7 @@
         "cover art"
       ],
       "summary": "Adventure Management uses a selectable module browser with detail, status, export, delete safety, and planned cover art paths.",
-      "body": "Adventure Management now shows a selected-module browser rather than a long flat list. The detail pane shows module id, room count, source, active-session usage, cover-art guidance, and export/delete controls. Delete buttons are still backed by server-side blocking for active sessions. Module cover art is planned under DATA_DIR/assets/artwork/user/adventures and is not yet required for play.",
+      "body": "Adventure Management now starts with a single Modules tab listing every module source together: rules, The Adventures Guild, AI/imported, PDF sources, and future custom modules. Rows show module name, source, status, export actions, and delete safety. JSON import is global because it creates a new module; ZIP import is reserved for full adventure-folder packages. Source-specific workflows live in Generate Modules, PDF Module Importer, and Create Module.",
       "implementation_status": "implemented"
     },
     {
@@ -3582,7 +3582,7 @@
         "modules"
       ],
       "summary": "Tables documents the module list/detail redesign and delete-safety behavior.",
-      "body": "The modern Tables page includes adventure_management_browser_table. It documents the module list, module detail panel, source/status tags, and server-side delete-safety rule.",
+      "body": "The modern Tables page includes adventure_management_browser_table. It documents the unified Modules tab, global JSON/ZIP import placement, source/status tags, generator/PDF/create tabs, and server-side delete-safety rule.",
       "implementation_status": "implemented"
     },
     {
