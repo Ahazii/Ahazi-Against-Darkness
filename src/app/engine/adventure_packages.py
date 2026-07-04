@@ -29,6 +29,7 @@ ALLOWED_PROCEDURE_OPS = {
 PACKAGE_CAPABILITIES = {"foes", "classes", "items", "tables", "trackers", "procedures", "states", "rules", "maps", "pins"}
 NODE_TYPES = {"room", "scene", "location", "hex", "camp", "settlement", "ending"}
 NODE_REVIEW_STATUSES = {"candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest", "wrong_type", "ignored"}
+MAP_PIN_ROLES = {"location", "room", "entrance", "exit", "stairs", "secret", "objective", "camp", "settlement", "other"}
 
 
 def _slug(value: str, fallback: str = "adventure-package") -> str:
@@ -799,6 +800,8 @@ def validate_adventure_package(package: dict[str, Any]) -> dict[str, Any]:
                 node_id = str(pin.get("node_id") or "").strip()
                 if nodes and node_id and node_id not in node_ids:
                     warnings.append(f"Pin {pin.get('label') or pin.get('id')} points to {node_id!r}, which is not yet a reviewed node.")
+                if pin.get("role") and pin.get("role") not in MAP_PIN_ROLES:
+                    errors.append(f"maps[{map_index}].pins[{pin_index}].role must be one of {sorted(MAP_PIN_ROLES)}.")
     else:
         errors.append("maps must be an array.")
     for field in ("foes", "classes", "items", "states", "rules", "ignored_records", "tables", "trackers", "procedures"):
@@ -926,15 +929,20 @@ def upsert_map_pin(data_dir: Path, package_id: str, payload: dict[str, Any]) -> 
     if not label or not node_id:
         raise ValueError("Pin label and node id are required.")
     pin_id = _slug(str(payload.get("id") or node_id or label), "pin")
+    role = str(payload.get("role") or "location").strip().lower().replace(" ", "_").replace("-", "_")
+    if role not in MAP_PIN_ROLES:
+        role = "location"
     pin = {
         "id": pin_id,
         "label": label[:40],
+        "role": role,
         "node_id": node_id[:80],
         "x": _bounded_float(payload.get("x"), 0.0, 100.0),
         "y": _bounded_float(payload.get("y"), 0.0, 100.0),
         "width": _bounded_float(payload.get("width", 0), 0.0, 100.0),
         "height": _bounded_float(payload.get("height", 0), 0.0, 100.0),
         "shape": str(payload.get("shape") or "point") if str(payload.get("shape") or "point") in {"point", "rect", "circle", "polygon"} else "point",
+        "notes": str(payload.get("notes") or "").strip()[:500],
     }
     pins = [item for item in target.get("pins", []) if isinstance(item, dict) and item.get("id") != pin_id]
     pins.append(pin)

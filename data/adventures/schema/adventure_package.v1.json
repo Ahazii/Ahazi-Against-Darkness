@@ -341,6 +341,10 @@
                 "label": {
                   "type": "string"
                 },
+                "role": {
+                  "enum": ["location", "room", "entrance", "exit", "stairs", "secret", "objective", "camp", "settlement", "other"],
+                  "description": "Review marker role used by the map editor. Entrance, exit, stairs, secret, objective, camp, and settlement are metadata until the playable manifest uses them."
+                },
                 "node_id": {
                   "type": "string",
                   "description": "Room, hex, scene, or location id in the reviewed manifest."
@@ -367,6 +371,10 @@
                 },
                 "shape": {
                   "enum": ["point", "rect", "circle", "polygon"]
+                },
+                "notes": {
+                  "type": "string",
+                  "description": "Optional reviewer note about the source label, door, entrance, exit, staircase, or objective marker."
                 }
               }
             }

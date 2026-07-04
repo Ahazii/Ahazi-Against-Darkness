@@ -180,17 +180,30 @@ def test_create_package_from_pdf_creates_manual_map_slot_and_preserves_pins(tmp_
         {
             "map_id": "manual-map-review-slot",
             "label": "1",
+            "role": "entrance",
             "node_id": "room-1",
             "x": 42.5,
             "y": 63,
             "shape": "point",
+            "notes": "Dungeon entrance marker on the reviewed map.",
         },
     )
     assert pinned["pin_count"] == 1
+    assert pinned["maps"][0]["pins"][0]["role"] == "entrance"
+    assert pinned["maps"][0]["pins"][0]["notes"] == "Dungeon entrance marker on the reviewed map."
 
     refreshed = create_or_refresh_package_from_pdf(root, data, "map-module-pdf")
     assert refreshed["pin_count"] == 1
     assert refreshed["maps"][0]["pins"][0]["node_id"] == "room-1"
+    assert refreshed["maps"][0]["pins"][0]["role"] == "entrance"
+
+
+def test_adventure_package_schema_allows_role_marked_map_pins() -> None:
+    schema = json.loads(Path("data/adventures/schema/adventure_package.v1.json").read_text(encoding="utf-8"))
+    pin_schema = schema["properties"]["maps"]["items"]["properties"]["pins"]["items"]["properties"]
+    assert "role" in pin_schema
+    assert {"entrance", "exit", "stairs", "secret", "objective"}.issubset(set(pin_schema["role"]["enum"]))
+    assert "notes" in pin_schema
 
 
 def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Path) -> None:

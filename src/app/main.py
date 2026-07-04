@@ -2850,8 +2850,14 @@ def _rules_tables_payload() -> dict:
         {
             "area": "Pin coordinates",
             "path": "maps[].pins[] x/y/width/height as percent",
-            "purpose": "Links a room, scene, hex, or location id to a position on the imported map image.",
+            "purpose": "Links a room, scene, hex, or location id to a position on the imported map image. Pin role marks ordinary locations, rooms, dungeon entrances, exits, stairs, secrets, objectives, camps, settlements, or other markers.",
             "boundary": "Pins are review metadata; exact room/key rules still come from the PDF and reviewed manifest.",
+        },
+        {
+            "area": "Pin roles",
+            "path": "maps[].pins[].role",
+            "purpose": "Lets the graphical review screen distinguish location pins from entrances, exits, stairs, objectives, secrets, camp, and settlement markers.",
+            "boundary": "A role documents the map review decision; it does not auto-create playable movement until the location graph is reviewed.",
         },
         {
             "area": "Refresh behavior",

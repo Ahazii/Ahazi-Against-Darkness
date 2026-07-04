@@ -2191,6 +2191,14 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "/api/adventures/packages/${encodeURIComponent(pkg.package_id)}`" in MODERN_PAGES_JS
     assert "DATA_DIR/Adventures/<adventure_id>/" in MODERN_PAGES_JS
     assert "modern-package-map-preview" in MODERN_PAGES_JS
+    assert "Map Review / Pin Locations" in MODERN_PAGES_JS
+    assert "Pin Role" in MODERN_PAGES_JS
+    assert "Dungeon Entrance" in MODERN_PAGES_JS
+    assert "Dungeon Exit" in MODERN_PAGES_JS
+    assert "Save Map Pin" in MODERN_PAGES_JS
+    assert "modern-package-map-pin-marker" in MODERN_PAGES_JS
+    assert "role: role.value" in MODERN_PAGES_JS
+    assert ".modern-package-map-pin-marker" in STYLES_CSS
     assert ".modern-package-pin-form" in STYLES_CSS
     assert ".modern-package-node-form" in STYLES_CSS
     assert ".modern-package-browser-body" in STYLES_CSS

@@ -365,14 +365,28 @@ Pins use percent coordinates so they survive resizing:
 {
   "id": "pin-room-1",
   "label": "1",
+  "role": "room",
   "node_id": "room-1",
   "x": 42.5,
   "y": 63,
-  "shape": "point"
+  "shape": "point",
+  "notes": "Numbered room marker on the level 1 map."
 }
 ```
 
 `node_id` should match a reviewed node id, then later a playable room id.
+
+Use `role` to mark what the pin means during review:
+
+- `location` or `room` for ordinary keyed areas
+- `entrance` for the dungeon entrance or adventure start marker
+- `exit` for an exit back to camp, settlement, or another map
+- `stairs` for a level change or vertical route
+- `secret` for hidden doors, secret rooms, or concealed routes
+- `objective` for a keyed goal, boss, rescue, relic, or other focal site
+- `camp`, `settlement`, or `other` when the map includes overland or non-dungeon sites
+
+Pin roles are metadata until the reviewed location graph uses them. Do not infer playable exits from a marker unless the PDF text and reviewed node branches agree.
 
 ## Procedures
 

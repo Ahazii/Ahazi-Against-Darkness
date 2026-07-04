@@ -3631,8 +3631,8 @@
         "pins",
         "package"
       ],
-      "summary": "Tables documents the Adventure Management package editor for extracted PDF map images and room/location pins.",
-      "body": "The modern Tables page includes adventure_package_map_pinning_table. It documents package JSON under DATA_DIR/Adventures/<adventure_id>/package.json, extracted or manually supplied map images under DATA_DIR/Adventures/<adventure_id>/maps, and percent-based pin coordinates linking a room, scene, hex, or location id to the reviewed map. Pins are review metadata and do not replace the source PDF or playable manifest.",
+      "summary": "Tables documents the Adventure Management package editor for extracted PDF map images and role-marked room/location pins.",
+      "body": "The modern Tables page includes adventure_package_map_pinning_table. It documents package JSON under DATA_DIR/Adventures/<adventure_id>/package.json, extracted or manually supplied map images under DATA_DIR/Adventures/<adventure_id>/maps, and percent-based pin coordinates linking a room, scene, hex, or location id to the reviewed map. Pins can be marked as location, room, dungeon entrance, dungeon exit, stairs, secret, objective, camp, settlement, or other. These roles are review metadata and do not replace the source PDF or playable manifest.",
       "implementation_status": "implemented"
     },
     {

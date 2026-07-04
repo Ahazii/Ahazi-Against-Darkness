@@ -3405,8 +3405,8 @@ function renderAdventurePackageManager() {
       modernStatusRow("Package status", `${pkg.node_count || 0} location(s) · ${pkg.map_count || 0} map(s) · ${pkg.foe_count || 0} foe(s) · ${pkg.item_count || 0} item(s) · ${pkg.state_count || 0} state(s) · ${pkg.rule_count || 0} rule(s)`, "Use the browser and editors below to check every imported element against the source PDF."),
       modernStatusRow("Storage", pkg.adventure_folder || "DATA_DIR/Adventures/<adventure_id>/", "Everything for this adventure lives together beside game.db: package.json, maps/, artwork/, tables/, notes/, and the future adventure.json.")
     );
-    packageContainer.appendChild(renderAdventurePackageReviewWorkspace(pkg, () => renderPage()));
     packageContainer.appendChild(renderAdventurePackageMaps(pkg));
+    packageContainer.appendChild(renderAdventurePackageReviewWorkspace(pkg, () => renderPage()));
     packageContainer.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const topActions = actions();
@@ -4472,7 +4472,16 @@ function renderAdventurePackageSectionEditor(pkg, redraw) {
 }
 
 function renderAdventurePackageMaps(pkg) {
+  const panel = card(
+    "Map Review / Pin Locations",
+    "Review the extracted or manually supplied map image, then click the map to place percent-based markers. Use pin roles to mark rooms, the dungeon entrance, exits, stairs, secrets, objectives, camps, or settlements before converting the package into a playable graph."
+  );
   const wrap = el("div", "modern-package-map-list");
+  if (!(pkg.maps || []).length) {
+    wrap.appendChild(el("p", "muted", "No map records yet. Create / Refresh will add a manual map slot when the PDF importer cannot extract a map image."));
+    panel.appendChild(wrap);
+    return panel;
+  }
   for (const map of pkg.maps || []) {
     const cardEl = el("div", "modern-package-map-card");
     cardEl.append(
@@ -4494,17 +4503,42 @@ function renderAdventurePackageMaps(pkg) {
     cardEl.append(preview, form, renderAdventurePackagePins(pkg, map));
     wrap.appendChild(cardEl);
   }
-  return wrap;
+  panel.appendChild(wrap);
+  return panel;
 }
 
 function renderAdventurePackagePinForm(pkg, map, preview) {
   const label = input("text", `pin-label-${pkg.package_id}-${map.id}`, "Short map label, for example 1 or A.");
-  const node = input("text", `pin-node-${pkg.package_id}-${map.id}`, "Room, scene, hex, or location id this pin links to.");
+  const role = select(`pin-role-${pkg.package_id}-${map.id}`, "What this marker represents on the map. Use Dungeon Entrance and Dungeon Exit for route endpoints; use Location or Room for ordinary keyed areas.", [
+    ["location", "Location"],
+    ["room", "Room"],
+    ["entrance", "Dungeon Entrance"],
+    ["exit", "Dungeon Exit"],
+    ["stairs", "Stairs / Level Change"],
+    ["secret", "Secret / Hidden"],
+    ["objective", "Objective / Key Site"],
+    ["camp", "Camp"],
+    ["settlement", "Settlement"],
+    ["other", "Other"],
+  ]);
+  const node = input("text", `pin-node-${pkg.package_id}-${map.id}`, "Room, scene, hex, or location id this pin links to. Pick an existing reviewed node when possible; use a temporary id for visual markers not reviewed yet.");
   const x = input("number", `pin-x-${pkg.package_id}-${map.id}`, "X coordinate as percentage across the map.");
   const y = input("number", `pin-y-${pkg.package_id}-${map.id}`, "Y coordinate as percentage down the map.");
   const width = input("number", `pin-width-${pkg.package_id}-${map.id}`, "Optional width percentage for a rectangular area.");
   const height = input("number", `pin-height-${pkg.package_id}-${map.id}`, "Optional height percentage for a rectangular area.");
   const shape = select(`pin-shape-${pkg.package_id}-${map.id}`, "Pin shape. Use point for a numbered room marker or rect for an area.", [["point", "Point"], ["rect", "Rectangle"], ["circle", "Circle"]]);
+  const notes = textarea(`pin-notes-${pkg.package_id}-${map.id}`, "Optional review notes, for example which PDF label, door, staircase, exit arrow, or entrance text this marker came from.", 2);
+  const datalistId = `pin-node-options-${pkg.package_id}-${map.id}`;
+  node.setAttribute("list", datalistId);
+  const datalist = document.createElement("datalist");
+  datalist.id = datalistId;
+  for (const item of pkg.nodes || []) {
+    if (!item?.id) continue;
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.label = `${item.title || item.id}${item.type ? ` (${item.type})` : ""}`;
+    datalist.appendChild(option);
+  }
   for (const numeric of [x, y, width, height]) {
     numeric.min = "0";
     numeric.max = "100";
@@ -4518,29 +4552,54 @@ function renderAdventurePackagePinForm(pkg, map, preview) {
     y.value = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)).toFixed(2);
     setStatus(`Pin coordinate filled: ${x.value}%, ${y.value}%. Add a label and node id, then save.`);
   });
+  const fillFromPin = (pin) => {
+    label.value = pin.label || "";
+    role.value = pin.role || "location";
+    node.value = pin.node_id || "";
+    x.value = pin.x ?? "";
+    y.value = pin.y ?? "";
+    width.value = pin.width || "";
+    height.value = pin.height || "";
+    shape.value = pin.shape || "point";
+    notes.value = pin.notes || "";
+    setStatus(`Loaded map pin ${pin.label || pin.id} for editing.`);
+  };
+  for (const pin of map.pins || []) {
+    const marker = renderAdventurePackageMapPinMarker(pin);
+    marker.addEventListener("click", (event) => {
+      event.stopPropagation();
+      fillFromPin(pin);
+    });
+    preview.appendChild(marker);
+  }
   const form = el("div", "modern-package-pin-form");
   form.append(
     field("Label", label),
+    field("Pin Role", role),
     field("Node / Room Id", node),
     field("X %", x),
     field("Y %", y),
     field("Width %", width),
     field("Height %", height),
-    field("Shape", shape)
+    field("Shape", shape),
+    field("Notes", notes),
+    datalist
   );
   const row = actions();
-  row.appendChild(button("Save Pin", "Save or update this pin in the local package JSON. This does not change the playable module until a manifest uses the package.", async () => {
+  row.appendChild(button("Save Map Pin", "Save or update this role-marked pin in the local package JSON. This does not create playable exits until a reviewed manifest uses the package.", async () => {
     const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/pins`, {
       method: "POST",
       body: JSON.stringify({
         map_id: map.id,
         label: label.value,
+        role: role.value,
         node_id: node.value,
         x: Number(x.value || 0),
         y: Number(y.value || 0),
         width: Number(width.value || 0),
         height: Number(height.value || 0),
         shape: shape.value,
+        notes: notes.value,
       }),
     });
     modernState.adventurePackages = (modernState.adventurePackages || []).filter((item) => item.package_id !== result.package.package_id);
@@ -4552,16 +4611,27 @@ function renderAdventurePackagePinForm(pkg, map, preview) {
   return form;
 }
 
+function renderAdventurePackageMapPinMarker(pin) {
+  const marker = el("button", `modern-package-map-pin-marker role-${pin.role || "location"}`, pin.label || pin.id || "?");
+  marker.type = "button";
+  marker.style.left = `${Math.max(0, Math.min(100, Number(pin.x || 0)))}%`;
+  marker.style.top = `${Math.max(0, Math.min(100, Number(pin.y || 0)))}%`;
+  marker.title = `${modernTitleFromKey(pin.role || "location")}: ${pin.label || pin.id || "pin"}${pin.node_id ? ` -> ${pin.node_id}` : ""}. Click to load this marker into the editor.`;
+  return marker;
+}
+
 function renderAdventurePackagePins(pkg, map) {
   const pins = map.pins || [];
   const list = el("div", "modern-package-pin-list");
   if (!pins.length) {
-    list.appendChild(el("p", "muted", "No pins yet. Click the map preview to fill X/Y, then save a pin for a room, hex, scene, or location."));
+    list.appendChild(el("p", "muted", "No pins yet. Click the map preview to fill X/Y, choose a pin role, then save a room, entrance, exit, objective, or location marker."));
     return list;
   }
   for (const pin of pins) {
     const row = el("div", "modern-row");
-    row.appendChild(el("span", "", `${pin.label} -> ${pin.node_id} (${pin.x}%, ${pin.y}%)`));
+    const summary = el("span", "", `${modernTitleFromKey(pin.role || "location")}: ${pin.label} -> ${pin.node_id} (${pin.x}%, ${pin.y}%)`);
+    summary.title = pin.notes || "Click the marker on the map to load this pin into the editor.";
+    row.appendChild(summary);
     const rowActions = actions();
     rowActions.appendChild(button("Delete Pin", "Remove this pin from the local package JSON.", async () => {
       const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/maps/${encodeURIComponent(map.id)}/pins/${encodeURIComponent(pin.id)}`, { method: "DELETE" });

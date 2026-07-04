@@ -647,6 +647,7 @@ h2 {
 }
 
 .modern-package-map-preview {
+  position: relative;
   display: grid;
   place-items: center;
   min-height: 180px;
@@ -664,9 +665,49 @@ h2 {
   cursor: crosshair;
 }
 
+.modern-package-map-pin-marker {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  min-width: 28px;
+  min-height: 28px;
+  padding: 3px 7px;
+  border: 2px solid rgba(255, 244, 180, 0.96);
+  border-radius: 999px;
+  background: rgba(201, 162, 39, 0.92);
+  color: #11120d;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.32);
+  cursor: pointer;
+}
+
+.modern-package-map-pin-marker.role-entrance {
+  background: #79d27f;
+}
+
+.modern-package-map-pin-marker.role-exit,
+.modern-package-map-pin-marker.role-stairs {
+  background: #78b7ff;
+}
+
+.modern-package-map-pin-marker.role-secret {
+  background: #c9a9ff;
+}
+
+.modern-package-map-pin-marker.role-objective {
+  background: #f06f5f;
+}
+
+.modern-package-map-pin-marker.role-camp,
+.modern-package-map-pin-marker.role-settlement {
+  background: #f6c86d;
+}
+
 .modern-package-pin-form {
   display: grid;
-  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
   gap: 8px;
   align-items: end;
 }
