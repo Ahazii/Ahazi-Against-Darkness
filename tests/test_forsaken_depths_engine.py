@@ -1849,6 +1849,117 @@ def test_fd_ruins_psychic_residue_success_grants_future_bonus(monkeypatch) -> No
     assert not session.fd_ruins_psychic_pending
 
 
+def test_fd_winds_of_despair_waits_for_player_choices() -> None:
+    from app.engine.forsaken_depths_content import apply_fd_event
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-winds-choice",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.special_event_key = "winds_of_despair"
+
+    apply_fd_event(eng, session, tile, hcl=5, show_rolls=False)
+    assert session.fd_winds_of_despair_pending == {"hero-1": tile.id}
+
+    eng.advance(session, "resolve_fd_winds_choice", character_id="hero-1", fd_winds_choice="life")
+
+    assert session.fd_winds_of_despair_pending == {}
+    assert session.party[0].current_life == 10
+
+
+def test_fd_disintegration_blast_player_can_sacrifice_magic_item(monkeypatch) -> None:
+    eng = engine()
+    hero = _party_member()
+    hero.inventory.append("Legendary Ring")
+    session = eng.create_session(
+        "fd-disintegration-choice",
+        "party-1",
+        [hero],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "fd_disintegration_blast"
+    tile.trap_level = 99
+    monkeypatch.setattr("app.engine.forsaken_depths_traps.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+    before = session.party[0].current_life
+
+    eng.advance(session, "resolve_trap")
+    assert session.fd_disintegration_pending["character_id"] == "hero-1"
+    assert not tile.trap_resolved
+
+    eng.advance(
+        session,
+        "resolve_fd_disintegration_choice",
+        fd_disintegration_choice="sacrifice_item",
+        item_name="Legendary Ring",
+    )
+
+    assert session.fd_disintegration_pending == {}
+    assert tile.trap_resolved
+    assert "Legendary Ring" not in session.party[0].inventory
+    assert session.party[0].current_life < before
+
+
+def test_fd_magic_resistant_liquid_blocks_spell_cast(monkeypatch) -> None:
+    eng = engine()
+    hero = _party_member()
+    hero.class_id = "wizard"
+    hero.class_name = "Wizard"
+    hero.spells = ["Fireball"]
+    session = eng.create_session(
+        "fd-magic-liquid",
+        "party-1",
+        [hero],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "fd_magic_resistant_liquid"
+    tile.trap_level = 99
+    monkeypatch.setattr("app.engine.forsaken_depths_traps.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+
+    eng.advance(session, "resolve_trap")
+    eng.advance(session, "cast_spell", character_id="hero-1", spell_name="Fireball")
+
+    assert any(status.startswith("FD Magic Resistant Liquid") for status in session.party[0].statuses)
+    assert any("magic resistant liquid" in entry for entry in session.log)
+
+
+def test_fd_soulbinding_trap_prompts_consequence_when_away(monkeypatch) -> None:
+    from app.engine.forsaken_depths_traps import check_fd_soulbinding_on_area_enter
+
+    eng = engine()
+    hero = _party_member()
+    rear = _party_member()
+    rear.character_id = "hero-2"
+    rear.name = "Rear"
+    rear.marching_order = 2
+    session = eng.create_session(
+        "fd-soulbinding-choice",
+        "party-1",
+        [hero, rear],
+        ruleset="forsaken_depths",
+    )
+    origin = session.map_state.tiles[0]
+    origin.trap_key = "fd_soulbinding_trap"
+    origin.trap_level = 99
+    monkeypatch.setattr("app.engine.forsaken_depths_traps.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+
+    eng.advance(session, "resolve_trap")
+    assert any(status.startswith("FD Soulbound:") for status in session.party[1].statuses)
+
+    away = TileState(id="away", x=1, y=0, tile_key="11", tile_type="room", title="Away", description="Away")
+    check_fd_soulbinding_on_area_enter(session, away, show_rolls=False)
+    assert session.fd_soulbinding_pending == {"hero-2": "away"}
+
+    eng.advance(session, "resolve_fd_soulbinding_choice", character_id="hero-2", fd_soulbinding_choice="madness")
+    assert session.fd_soulbinding_pending == {}
+    assert session.party[1].madness == 1
+
+
 def test_fd_secret_passage_unlock_with_clues() -> None:
     from app.engine.forsaken_depths_secret_passage import offer_fd_ruins_secret_passage
 

@@ -1128,6 +1128,9 @@ class SessionState(BaseModel):
     fd_secret_passage_weird_defeated: int = Field(default=0, ge=0)
     fd_secret_passage_unlocked: bool = False
     fd_ruins_psychic_pending: dict[str, str] = Field(default_factory=dict)
+    fd_winds_of_despair_pending: dict[str, str] = Field(default_factory=dict)
+    fd_disintegration_pending: dict[str, object] = Field(default_factory=dict)
+    fd_soulbinding_pending: dict[str, str] = Field(default_factory=dict)
     fd_stirs_in_darkness_remaining: int = Field(default=0, ge=0)
     fd_stirs_processed_tile_ids: list[str] = Field(default_factory=list)
     fd_silk_treasure_used: bool = False
@@ -1551,6 +1554,9 @@ class SessionAction(BaseModel):
     ) = None
     fd_cairn_natural_one_choice: Literal["life", "spell"] | None = None
     fd_ruins_psychic_choice: Literal["damage", "madness", "spell_slots"] | None = None
+    fd_winds_choice: Literal["life", "madness"] | None = None
+    fd_disintegration_choice: Literal["incinerate", "sacrifice_item"] | None = None
+    fd_soulbinding_choice: Literal["life", "madness"] | None = None
     fd_quest_reward_choice: Literal["xp_all", "heroic_item"] | None = None
     fd_quest_from_treasure: bool = False
     fd_quest_id: str | None = None

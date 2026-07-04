@@ -399,21 +399,9 @@ def apply_fd_event(
 
             offer_fd_lady_in_gray(session, tile, show_rolls=show_rolls)
     elif event_key == "winds_of_despair":
-        for member in session.party:
-            if member.current_life <= 0:
-                continue
-            if madness_points(member) < 3:
-                session.log.extend(
-                    apply_madness_gain(
-                        session,
-                        member,
-                        source="Winds of Despair",
-                        show_rolls=show_rolls,
-                    )
-                )
-            else:
-                member.current_life = max(0, member.current_life - 2)
-                session.log.append(f"{member.name} loses 2 Life to the Winds of Despair (FD p.63).")
+        from .forsaken_depths_traps import offer_winds_of_despair_choices
+
+        offer_winds_of_despair_choices(session, tile, show_rolls=show_rolls)
     elif event_key == "something_stirs":
         session.fd_stirs_in_darkness_remaining = 6
         session.log.append(

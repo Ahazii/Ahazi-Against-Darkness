@@ -42,6 +42,10 @@ Hover any badge for rulebook page references.
 | **Return to main map** | On side-sheet tile | `exit_fd_side_sheet` |
 | **Examine Machinery** | Ruins roll 2-3 room | `resolve_fd_ruins_machinery` |
 | **Psychic Residue choices** | Failed ruins roll 6 Save | `resolve_fd_ruins_psychic_choice` |
+| **Winds of Despair choices** | FD event roll 2 | `resolve_fd_winds_choice` (per living hero: 2 Life or 1 Madness) |
+| **Disintegration Blast choice** | Failed FD trap roll 6 with a permanent magic item | `resolve_fd_disintegration_choice` (sacrifice item or accept incineration) |
+| **Soulbinding choices** | Bound hero enters another area | `resolve_fd_soulbinding_choice` (1 Life or 1 Madness per area away) |
+| **Room status line / Current Objective** | Unresolved FD trap, event, treasure, or chamber reward | Display/action guide only; blocks unrelated actions while a printed player choice is pending |
 | **Secret passage** | Ruins roll 12 tile | `fd_secret_passage_unlock_clues` / `choose_fd_secret_passage_destination` |
 | **Escape citadel (4 Clues)** | Prisoners citadel side sheet | `fd_prisoners_escape` |
 | **Citadel of Dead** banner | Dead Things side sheet | Bandages only (hover) |
@@ -113,6 +117,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `forsaken_depths_map.py` | Catalog selection, ETR helpers |
 | `forsaken_depths_river.py` | River type, hazards, boat, room codes (END/Ru/Ca/B/ETC), NC combat |
 | `forsaken_depths_content.py` | Events, hallucinations, ruins (Ru), citadel rolls |
+| `forsaken_depths_traps.py` | Exact FD p.58 trap saves, item-sacrifice choices, soulbinding area checks, and Winds of Despair choice prompts |
 | `forsaken_depths_hordes.py` | FD p.42 horde opening volleys and post-horde weapon salvage |
 | `random_dungeon.py` | FD content rolls, trap seeding, tile generation |
 | `forsaken_depths_citadel.py` | Citadel type modifiers (crowded, traps, prisoners escape, dead healing, magic MR, final bosses) |
@@ -171,8 +176,9 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 
 ## Traps and events
 
-- **fd_trap** room content seeds an FD trap (`fd_trap_table`); resolve with **Resolve trap** like EE traps. The log names the FD trap row before saves are resolved. Room traps have a 2-in-6 FD treasure roll after clearing.
-- **Monster treasure** uses `fd_treasure_table` when `ruleset=forsaken_depths` after combat on slain foes with explicit `treasure_rolls` on the FD bestiary template (`treasure_modifier` / `treasure_bonus` apply per roll). Gem/jewelry rows add pocket items as `Gem (Ngp)` rather than raw gold. Rolls with a choice (gold/masterwork, potions/scrolls, etc.) show **Treasure** map markers with pick buttons before claim. Roll **10** (jackpot) offers **roll twice** or **roll four times** (4-in-6 wandering monsters when claiming loot). Vermin without `treasure_rolls` do not default to a roll in FD sessions.
+- **fd_trap** room content seeds an FD trap (`fd_trap_table`, level HCL+Tier+2). **Resolve trap** now follows FD p.58 directly: all trap Saves add half Level, named class/armor modifiers are applied only where the row says so, Halflings get the printed reroll, Beast Cage spawns a no-treasure surprise Weird, Soulbinding creates an area-away choice, Disintegration pauses for the permanent-magic-item sacrifice choice, and Magic Resistant Liquid blocks spell/prayer/scroll/magic-item casting while its six-room counter remains. Room traps have a 2-in-6 FD treasure roll after clearing.
+- **Monster treasure** uses `fd_treasure_table` when `ruleset=forsaken_depths` after combat on slain foes with explicit `treasure_rolls` on the FD bestiary template (`treasure_modifier` / `treasure_bonus` apply per roll). Gem/jewelry rows add pocket items as `Gem (Ngp)` rather than raw gold. Rolls with a choice (gold/masterwork, silver weapons/arrows, potions/scrolls, clue scroll/magic item, etc.) show **Treasure** map markers with pick buttons before claim, and Current Objective points to the unresolved treasure choice. Roll **10** (jackpot) offers **roll twice** or **roll four times** (4-in-6 wandering monsters when claiming loot). Vermin without `treasure_rolls` do not default to a roll in FD sessions.
+- **Winds of Despair** (`fd_event_table` roll 2): Current Objective prompts each living hero to choose **2 Life loss** or **1 Madness** before unrelated exploration actions continue.
 - **Something Stirs** (`fd_stirs_in_darkness_remaining`): empty areas may roll 3-in-6 river encounters until the counter reaches 0.
 - **River of Oblivion**: natural 1 on spellcasting or puzzle Saves forgets a spell (party sheet lists forgotten spells). Once per adventure, remove 1 Madness from one hero via **Oblivion: remove 1 Madness** on the party sheet when the offer is pending.
 - **River travel**: while boating, only water-channel exits are valid; bank exits disembark the party to foot travel. On foot, water-channel exits are blocked (FD p.28). ETR boatmen charge **20 gp per character** (30 gp for deep hobgoblin). Serpent River applies **−2 boating Saves** and **+1 Major Foe level** on river ambushes. River hazards fire once per stretch; Damaged Boat hazards skip when on foot. Special Feature hazards add Bridge/Cairn/ETC codes (not inline ruins). **Conjuration** — consult spirits on the room panel (1 Clue, 1 Madness, once per stretch). **Tears** — hero death spreads 1 Madness to each survivor. **Flame** — Lucky Boat / fireproof boats ignore boat-destruction rolls. **Waste of Time** hazard skips hazard checks on the next two stretches and advances hunger twice. **Bridge (B)** — **Disembark at Bridge** while boating.

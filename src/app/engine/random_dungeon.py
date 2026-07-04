@@ -892,6 +892,9 @@ class RandomDungeonEngine:
         fd_portal_destination: str | None = None,
         fd_cairn_natural_one_choice: str | None = None,
         fd_ruins_psychic_choice: str | None = None,
+        fd_winds_choice: str | None = None,
+        fd_disintegration_choice: str | None = None,
+        fd_soulbinding_choice: str | None = None,
         fd_quest_reward_choice: str | None = None,
         fd_quest_from_treasure: bool = False,
         fd_quest_id: str | None = None,
@@ -948,6 +951,18 @@ class RandomDungeonEngine:
         if action != "resolve_acolyte_blessing" and session.pending_acolyte_blessing is not None:
             session.log.append("Choose whether the acolyte tries to preserve Blessing.")
             return self._touch(session)
+        if is_fd_ruleset(session):
+            from .forsaken_depths_traps import pending_fd_player_choice, pending_fd_player_choice_label
+
+            fd_choice_actions = {
+                "resolve_fd_winds_choice",
+                "resolve_fd_disintegration_choice",
+                "resolve_fd_soulbinding_choice",
+                "resolve_fd_ruins_psychic_choice",
+            }
+            if action not in fd_choice_actions and pending_fd_player_choice(session):
+                session.log.append(pending_fd_player_choice_label(session))
+                return self._touch(session)
         if self._fd_block_hallucinated_item_action(session, action, character_id):
             return self._touch(session)
         turn_actions = {
@@ -1005,6 +1020,9 @@ class RandomDungeonEngine:
             "choose_fd_idol_outcome",
             "resolve_fd_ruins_machinery",
             "resolve_fd_ruins_psychic_choice",
+            "resolve_fd_winds_choice",
+            "resolve_fd_disintegration_choice",
+            "resolve_fd_soulbinding_choice",
             "courtship_roll_encounter",
             "courtship_choose_pathway",
             "courtship_leave_demesne",
@@ -1266,6 +1284,28 @@ class RandomDungeonEngine:
                 fd_ruins_psychic_choice,
                 show_rolls=show_rolls,
             )
+        elif action == "resolve_fd_winds_choice":
+            from .forsaken_depths_traps import resolve_fd_winds_choice
+
+            resolve_fd_winds_choice(session, character_id, fd_winds_choice, show_rolls=show_rolls)
+        elif action == "resolve_fd_disintegration_choice":
+            from .forsaken_depths_traps import resolve_fd_disintegration_choice
+
+            tile_id = str((session.fd_disintegration_pending or {}).get("tile_id") or "")
+            tile = self._tile_by_id(session, tile_id) if tile_id else self._current_tile(session)
+            resolve_fd_disintegration_choice(
+                session,
+                fd_disintegration_choice,
+                item_name,
+                show_rolls=show_rolls,
+            )
+            if tile is not None and not session.fd_disintegration_pending:
+                tile.trap_resolved = True
+                self._after_trap_resolved(session, tile, show_rolls=show_rolls)
+        elif action == "resolve_fd_soulbinding_choice":
+            from .forsaken_depths_traps import resolve_fd_soulbinding_choice
+
+            resolve_fd_soulbinding_choice(session, character_id, fd_soulbinding_choice, show_rolls=show_rolls)
         elif action == "courtship_roll_encounter":
             from .courtship_demesne import roll_courtship_encounter
 
@@ -2278,6 +2318,10 @@ class RandomDungeonEngine:
                 session.current_tile_entry_exit_id = entry_exit.id if entry_exit else None
                 self._sync_session_environment_from_tile(session, existing)
                 self._apply_session_tile_catalog(session, existing)
+                if is_fd_ruleset(session):
+                    from .forsaken_depths_traps import check_fd_soulbinding_on_area_enter
+
+                    check_fd_soulbinding_on_area_enter(session, existing, show_rolls=show_rolls)
                 if is_fd_ruleset(session) and session_tile_catalog(session) == "forsaken_depths_rivers":
                     self._fd_on_river_stretch_entered(session, existing, show_rolls=show_rolls)
                 if existing.content_key == "entrance":
@@ -6358,6 +6402,11 @@ class RandomDungeonEngine:
             )
         if caster is None or caster.current_life <= 0:
             session.log.append("That hero cannot cast.")
+            return
+        if any(status.startswith("FD Magic Resistant Liquid") for status in caster.statuses):
+            session.log.append(
+                f"{caster.name} is covered in magic resistant liquid and cannot use spells, prayers, scrolls, or magic-item casts for six rooms (FD p.58)."
+            )
             return
         from_item = from_scroll or from_magic_item
         if caster.class_id.lower() == "conservationist":
@@ -15662,6 +15711,10 @@ class RandomDungeonEngine:
         show_rolls: bool,
         explain_math: bool,
     ) -> None:
+        if is_fd_ruleset(session):
+            from .forsaken_depths_traps import check_fd_soulbinding_on_area_enter
+
+            check_fd_soulbinding_on_area_enter(session, tile, show_rolls=show_rolls)
         if tile.trap_key and not tile.trap_resolved and not tile.enemies:
             if self._consume_mycelial_warning(session, tile, "Trap"):
                 tile.trap_resolved = True
@@ -17430,6 +17483,15 @@ class RandomDungeonEngine:
             return
         if (tile.trap_key or "").startswith("abyss_"):
             trap_log = self._resolve_abyss_trap(session, tile, show_rolls=show_rolls)
+            self._finalize_trap_resolution(session, tile, trap_log=trap_log, show_rolls=show_rolls)
+            return
+        if is_fd_ruleset(session) and (tile.trap_key or "").startswith("fd_"):
+            from .forsaken_depths_traps import resolve_fd_trap
+
+            trap_log, pending_choice = resolve_fd_trap(self, session, tile, show_rolls=show_rolls)
+            if pending_choice:
+                session.log.extend(trap_log)
+                return
             self._finalize_trap_resolution(session, tile, trap_log=trap_log, show_rolls=show_rolls)
             return
         lead = next(

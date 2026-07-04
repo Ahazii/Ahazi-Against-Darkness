@@ -221,7 +221,7 @@
   ],
   "fd_event_table": [
     {"roll": "1", "key": "lady_in_gray", "name": "Lady in Gray", "summary": "Offers a Quest — roll on the Forsaken Depths Quest Table (FD p.54).", "source_page": 63},
-    {"roll": "2", "key": "winds_of_despair", "name": "Winds of Despair", "summary": "Each hero gains 1 Madness or loses 2 Life (FD p.63).", "source_page": 63},
+    {"roll": "2", "key": "winds_of_despair", "name": "Winds of Despair", "summary": "App prompts each living hero to choose 1 Madness or 2 Life loss before play continues (FD p.63).", "source_page": 63},
     {"roll": "3", "key": "something_stirs", "name": "Something Stirs in the Darkness", "summary": "For 6 areas, empty rooms have 3-in-6 river encounters (FD p.63).", "source_page": 63},
     {"roll": "4", "key": "labyrinth_shifts", "name": "Labyrinth Shifts", "summary": "Reroll shapes (not content) of the last 5 visited rooms (FD p.63).", "source_page": 63},
     {"roll": "5", "key": "flood", "name": "Flood", "summary": "Three HCL+2 Swimming Saves per hero; scrolls and bows at risk (FD p.63).", "source_page": 63},
@@ -235,7 +235,7 @@
     {
       "roll": "1",
       "trap_key": "fd_magic_resistant_liquid",
-      "result": "Magic Resistant Liquid splashes a random hero — no spells or prayers for six rooms (FD p.58).",
+      "result": "Magic Resistant Liquid splashes a random hero — app blocks spells, prayers, scroll casts, and magic-item casts for six rooms (FD p.58).",
       "target": "random",
       "save": "defense",
       "damage": 0,
@@ -244,7 +244,7 @@
     {
       "roll": "2",
       "trap_key": "fd_oblivion_trapdoor",
-      "result": "Oblivion Trapdoor — lead hero Save or fall; allies may forget them (FD p.58).",
+      "result": "Oblivion Trapdoor — lead hero Saves or falls for 1 damage; app rolls allies' memory Saves and erases hero/equipment if nobody remembers them (FD p.58).",
       "target": "lead",
       "save": "trapdoor",
       "damage": 1,
@@ -253,7 +253,7 @@
     {
       "roll": "3",
       "trap_key": "fd_obsidian_disk",
-      "result": "Obsidian Disk — all heroes Save (armor/shield apply) or take Tier+2 damage (FD p.58).",
+      "result": "Obsidian Disk — all heroes Save (armor/shield apply) or take Tier+2 damage; app adds d6 brittle masterwork knife pieces as claimable treasure (FD p.58).",
       "target": "all",
       "save": "defense",
       "damage": 2,
@@ -263,7 +263,7 @@
     {
       "roll": "4",
       "trap_key": "fd_beast_cage",
-      "result": "Beast Cage — lead hero Save or a surprise Weird Monster attacks (FD p.58).",
+      "result": "Beast Cage — lead hero Saves or app spawns a surprise Weird Monster with no treasure and no Final Boss status (FD p.58).",
       "target": "lead",
       "save": "defense",
       "damage": 0,
@@ -272,7 +272,7 @@
     {
       "roll": "5",
       "trap_key": "fd_soulbinding_trap",
-      "result": "Soulbinding Trap — rear hero Save or bound to this room until Blessing (FD p.58).",
+      "result": "Soulbinding Trap — rear hero Saves or is bound to this room; app prompts 1 Life loss or 1 Madness for each later area away until Blessing (FD p.58).",
       "target": "rear",
       "save": "defense",
       "damage": 0,
@@ -281,7 +281,7 @@
     {
       "roll": "6",
       "trap_key": "fd_disintegration_blast",
-      "result": "Disintegration Blast — random hero Save or incinerated (FD p.58).",
+      "result": "Disintegration Blast — random hero Saves or app asks whether to sacrifice a permanent magic item for Tier+1 damage, otherwise the hero is incinerated with no resurrection (FD p.58).",
       "target": "random",
       "save": "defense",
       "damage": 2,

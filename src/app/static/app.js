@@ -859,6 +859,18 @@ const ACTION_TOOLTIPS = {
     "Psychic Residue (FD p.56): this failed hero chooses 1 Madness as the consequence.",
   fdRuinsPsychicSpellSlots:
     "Psychic Residue (FD p.56): this failed hero loses 2 spell slots. Use only for a hero with spell slots.",
+  fdWindsLife:
+    "Winds of Despair (FD p.63): this hero loses 2 Life instead of gaining Madness.",
+  fdWindsMadness:
+    "Winds of Despair (FD p.63): this hero gains 1 Madness instead of losing Life.",
+  fdDisintegrationSacrifice:
+    "Disintegration Blast (FD p.58): sacrifice a permanent magic item and take Tier+1 concussion damage instead of being incinerated.",
+  fdDisintegrationIncinerate:
+    "Disintegration Blast (FD p.58): accept incineration. The hero may not be resurrected.",
+  fdSoulbindingLife:
+    "Soulbinding Trap (FD p.58): while away from the bound room, this hero loses 1 Life for this area.",
+  fdSoulbindingMadness:
+    "Soulbinding Trap (FD p.58): while away from the bound room, this hero gains 1 Madness for this area.",
   courtshipRollEncounter:
     "Roll 2d6 on the current Demesne region encounter table (TCOTFD p.62–68).",
   courtshipSpendEncounterClue:
@@ -14641,6 +14653,121 @@ function appendFdRuinsActions(parent, session, tile) {
   }
 }
 
+function memberById(session, characterId) {
+  return (session?.party || []).find((member) => member.character_id === characterId) || null;
+}
+
+function appendFdPendingChoiceActions(parent, session, tile) {
+  if (session?.ruleset !== "forsaken_depths" || session.mode !== "exploration") return;
+  const winds = session.fd_winds_of_despair_pending || {};
+  for (const [characterId, tileId] of Object.entries(winds)) {
+    if (tile?.id && tileId !== tile.id) continue;
+    const member = memberById(session, characterId);
+    if (!member || member.current_life <= 0) continue;
+    const row = node("div", "fd-ruins-action-row");
+    row.appendChild(node("span", "search-label", `${member.name} Winds:`));
+    const lifeBtn = node("button", "secondary", "Lose 2 Life");
+    lifeBtn.type = "button";
+    setButtonTooltip(lifeBtn, ACTION_TOOLTIPS.fdWindsLife);
+    lifeBtn.addEventListener("click", () =>
+      advance("resolve_fd_winds_choice", { character_id: characterId, fd_winds_choice: "life" })
+    );
+    row.appendChild(lifeBtn);
+    const madnessBtn = node("button", "secondary", "Gain 1 Madness");
+    madnessBtn.type = "button";
+    setButtonTooltip(madnessBtn, ACTION_TOOLTIPS.fdWindsMadness);
+    madnessBtn.addEventListener("click", () =>
+      advance("resolve_fd_winds_choice", { character_id: characterId, fd_winds_choice: "madness" })
+    );
+    row.appendChild(madnessBtn);
+    parent.appendChild(row);
+  }
+
+  const disintegration = session.fd_disintegration_pending || {};
+  const disintegrationMember = memberById(session, disintegration.character_id);
+  if (disintegrationMember && (!tile?.id || disintegration.tile_id === tile.id)) {
+    const row = node("div", "fd-ruins-action-row");
+    row.appendChild(node("span", "search-label", `${disintegrationMember.name} Disintegration:`));
+    const items = disintegration.items || [];
+    if (items.length) {
+      const select = document.createElement("select");
+      select.className = "fd-ruins-character-select";
+      for (const item of items) {
+        select.appendChild(optionWithItemTooltip(item));
+      }
+      row.appendChild(select);
+      const sacrificeBtn = node("button", "secondary", "Sacrifice item");
+      sacrificeBtn.type = "button";
+      setButtonTooltip(sacrificeBtn, ACTION_TOOLTIPS.fdDisintegrationSacrifice);
+      sacrificeBtn.addEventListener("click", () =>
+        advance("resolve_fd_disintegration_choice", {
+          fd_disintegration_choice: "sacrifice_item",
+          item_name: select.value,
+        })
+      );
+      row.appendChild(sacrificeBtn);
+    }
+    const incinerateBtn = node("button", "danger", "Accept incineration");
+    incinerateBtn.type = "button";
+    setButtonTooltip(incinerateBtn, ACTION_TOOLTIPS.fdDisintegrationIncinerate);
+    incinerateBtn.addEventListener("click", () =>
+      advance("resolve_fd_disintegration_choice", { fd_disintegration_choice: "incinerate" })
+    );
+    row.appendChild(incinerateBtn);
+    parent.appendChild(row);
+  }
+
+  const soulbinding = session.fd_soulbinding_pending || {};
+  for (const [characterId, tileId] of Object.entries(soulbinding)) {
+    if (tile?.id && tileId !== tile.id) continue;
+    const member = memberById(session, characterId);
+    if (!member || member.current_life <= 0) continue;
+    const row = node("div", "fd-ruins-action-row");
+    row.appendChild(node("span", "search-label", `${member.name} Soulbinding:`));
+    const lifeBtn = node("button", "secondary", "Lose 1 Life");
+    lifeBtn.type = "button";
+    setButtonTooltip(lifeBtn, ACTION_TOOLTIPS.fdSoulbindingLife);
+    lifeBtn.addEventListener("click", () =>
+      advance("resolve_fd_soulbinding_choice", { character_id: characterId, fd_soulbinding_choice: "life" })
+    );
+    row.appendChild(lifeBtn);
+    const madnessBtn = node("button", "secondary", "Gain 1 Madness");
+    madnessBtn.type = "button";
+    setButtonTooltip(madnessBtn, ACTION_TOOLTIPS.fdSoulbindingMadness);
+    madnessBtn.addEventListener("click", () =>
+      advance("resolve_fd_soulbinding_choice", { character_id: characterId, fd_soulbinding_choice: "madness" })
+    );
+    row.appendChild(madnessBtn);
+    parent.appendChild(row);
+  }
+}
+
+function fdRoomPendingStatus(session, tile) {
+  if (session?.ruleset !== "forsaken_depths" || !tile) return null;
+  if (session.fd_disintegration_pending && session.fd_disintegration_pending.tile_id === tile.id) {
+    return "FD room status: Disintegration Blast choice pending";
+  }
+  if (Object.values(session.fd_winds_of_despair_pending || {}).includes(tile.id)) {
+    return "FD room status: Winds of Despair choices pending";
+  }
+  if (Object.values(session.fd_soulbinding_pending || {}).includes(tile.id)) {
+    return "FD room status: Soulbinding consequence pending";
+  }
+  if (Object.values(session.fd_ruins_psychic_pending || {}).includes(tile.id)) {
+    return "FD room status: Psychic Residue choices pending";
+  }
+  if (tile.trap_key && !tile.trap_resolved) return `FD room status: trap unresolved (${tile.trap_key})`;
+  if (tile.pending_treasure_choice) return `FD room status: treasure choice pending (${tile.pending_treasure_choice})`;
+  if (tile.fd_hidden_treasure_chamber && !tile.fd_hidden_treasure_claimed) {
+    const living = (tile.enemies || []).some((enemy) => (enemy.life || 0) > 0);
+    return living ? "FD room status: Hidden Treasure guardian alive" : "FD room status: Hidden Treasure claim pending";
+  }
+  if (!tile.treasure_claimed && (tile.treasure_gold || (tile.treasure_items || []).length)) {
+    return "FD room status: treasure claim pending";
+  }
+  return "FD room status: clear";
+}
+
 function isFdQuestMagicItem(item) {
   const lower = String(item || "").trim().toLowerCase();
   if (!lower) return false;
@@ -18784,6 +18911,57 @@ function currentObjectiveForSession(session) {
         : "Combat mode is active but no living foe is shown; resolve or exit the encounter state.",
       tone: "danger",
     };
+  }
+  if (session.ruleset === "forsaken_depths") {
+    if (session.fd_disintegration_pending && Object.keys(session.fd_disintegration_pending).length) {
+      return {
+        title: "Current objective: choose Disintegration outcome",
+        body:
+          "The Disintegration Blast has failed against a hero. If they carry a permanent magic item, choose whether to sacrifice it and take Tier+1 damage, or accept incineration. This is a PDF choice, so the app waits.",
+        tone: "danger",
+      };
+    }
+    if (session.fd_winds_of_despair_pending && Object.keys(session.fd_winds_of_despair_pending).length) {
+      return {
+        title: "Current objective: resolve Winds of Despair",
+        body:
+          "Each living hero caught by the event must choose either 1 Madness or 2 Life loss. Use the room-panel buttons for each hero.",
+        tone: "warn",
+      };
+    }
+    if (session.fd_soulbinding_pending && Object.keys(session.fd_soulbinding_pending).length) {
+      return {
+        title: "Current objective: resolve Soulbinding",
+        body:
+          "A soulbound hero is away from the binding room. Choose 1 Life loss or 1 Madness for the current area before moving on.",
+        tone: "warn",
+      };
+    }
+    if (session.fd_ruins_psychic_pending && Object.keys(session.fd_ruins_psychic_pending).length) {
+      return {
+        title: "Current objective: resolve Psychic Residue",
+        body:
+          "One or more heroes failed the Psychic Residue Save. Choose the printed consequence for each: 3 damage, 1 Madness, or 2 spell slots.",
+        tone: "warn",
+      };
+    }
+    if (tile.pending_treasure_choice) {
+      return {
+        title: "Current objective: choose treasure",
+        body:
+          "Forsaken Depths treasure is waiting for a choice from the printed table. Pick the treasure option before claiming or leaving the room.",
+        tone: "gold",
+      };
+    }
+    if (tile.fd_hidden_treasure_chamber && !tile.fd_hidden_treasure_claimed && tile.resolved) {
+      return {
+        title: "Current objective: claim Hidden Treasure Chamber",
+        body:
+          "The guarded Weird Monster is cleared. Claim the three tier-appropriate magic items from the Hidden Treasure Chamber.",
+        tone: "gold",
+        action: { label: "Claim Hidden Treasure", kind: "advance", advanceAction: "claim_fd_hidden_treasure" },
+      };
+    }
   }
   const hasTrap = Boolean(tile.trap_key && !tile.trap_resolved);
   if (hasTrap) {
@@ -25155,6 +25333,12 @@ function renderTileDetail(session) {
   if (tile.special_event_summary) {
     info.appendChild(subline(`Special event: ${tile.special_event_summary}`));
   }
+  const fdStatus = fdRoomPendingStatus(session, tile);
+  if (fdStatus) {
+    const statusLine = subline(fdStatus);
+    setTooltip(statusLine, "App room-resolution status for Forsaken Depths: shows unresolved printed choices, traps, treasure, or chamber rewards.");
+    info.appendChild(statusLine);
+  }
   if (session.final_boss_defeated) info.appendChild(subline("Final Boss slain."));
   if (tile.healer_available) info.appendChild(subline("Wandering healer is here."));
   if (tile.alchemist_available) {
@@ -25265,6 +25449,7 @@ function renderTileDetail(session) {
   appendCourtshipDemesneActions(info, session);
   appendFdCyclopeanIdolActions(info, session, tile);
   appendFdRuinsActions(info, session, tile);
+  appendFdPendingChoiceActions(info, session, tile);
   if (
     session.ruleset === "forsaken_depths" &&
     (session.fd_flood_bow_penalty_rooms || 0) > 0
