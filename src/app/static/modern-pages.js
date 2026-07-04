@@ -3407,6 +3407,7 @@ function renderAdventurePackageManager() {
     );
     packageContainer.appendChild(renderAdventurePackageReviewWorkspace(pkg, () => renderPage()));
     packageContainer.appendChild(renderAdventurePackageMaps(pkg));
+    packageContainer.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const topActions = actions();
   topActions.append(
@@ -3460,17 +3461,23 @@ function renderAdventurePackageManager() {
     const rowActions = actions();
     rowActions.append(
       button("Create / Refresh", "Create or refresh the local package from this PDF. Existing reviewed records and matching pins are preserved where possible.", async () => {
+        setStatus(`Creating or refreshing package for ${adventure.name || adventure.id}...`);
         const result = await api(`/api/adventures/pdf-sources/${encodeURIComponent(adventure.id)}/package`, {
           method: "POST",
           body: JSON.stringify({ extract_maps: true }),
         });
-        replaceAdventurePackageInState(result.package);
-        currentPkg = result.package;
-        setStatus(`Package ready: ${result.package.title}.`);
-        drawWorkspace(result.package);
+        const detail = await api(`/api/adventures/packages/${encodeURIComponent(result.package.package_id)}`);
+        replaceAdventurePackageInState(detail.package);
+        currentPkg = detail.package;
+        setStatus(`Package ready: ${detail.package.title}.`);
+        drawWorkspace(detail.package);
       }),
       button("Validate", "Load this package and show structural diagnostics. This checks local package coherence; it does not certify PDF accuracy.", async () => {
-        if (!currentPkg) throw new Error("Create / Refresh a package before validating it.");
+        if (!currentPkg) {
+          setStatus(`No package exists yet for ${adventure.name || adventure.id}. Use Create / Refresh first.`);
+          return;
+        }
+        setStatus(`Validating package for ${currentPkg.title || currentPkg.package_id}...`);
         const result = await api(`/api/adventures/packages/${encodeURIComponent(currentPkg.package_id)}`);
         replaceAdventurePackageInState(result.package);
         currentPkg = result.package;
@@ -3481,6 +3488,7 @@ function renderAdventurePackageManager() {
       }, "secondary"),
       button("Edit / Check", "Open the structured review workspace for locations, maps, foes, items, classes, states, rules, tables, trackers, and procedures.", async () => {
         let editable = currentPkg;
+        setStatus(`Opening review workspace for ${adventure.name || adventure.id}...`);
         if (!editable) {
           const created = await api(`/api/adventures/pdf-sources/${encodeURIComponent(adventure.id)}/package`, {
             method: "POST",
@@ -3496,8 +3504,12 @@ function renderAdventurePackageManager() {
         drawWorkspace(result.package);
       }),
       button("Delete Package", "Delete the local review package from DATA_DIR/Adventures. This does not delete the original PDF source.", async () => {
-        if (!currentPkg) throw new Error("There is no local package to delete for this PDF source.");
+        if (!currentPkg) {
+          setStatus(`No local package exists yet for ${adventure.name || adventure.id}.`);
+          return;
+        }
         if (!window.confirm(`Delete the local review package for ${currentPkg.title || currentPkg.package_id}? The source PDF is not deleted.`)) return;
+        setStatus(`Deleting local package ${currentPkg.title || currentPkg.package_id}...`);
         const result = await api(`/api/adventures/packages/${encodeURIComponent(currentPkg.package_id)}`, { method: "DELETE" });
         currentPkg = null;
         await refreshAdventurePackageSummaries();
@@ -3507,7 +3519,7 @@ function renderAdventurePackageManager() {
     );
     list.append(nameCell, statusCell, detected, rowActions);
   }
-  panel.append(topActions, list, packageContainer);
+  panel.append(topActions, packageContainer, list);
   drawWorkspace();
   return panel;
 }

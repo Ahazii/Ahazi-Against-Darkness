@@ -2133,6 +2133,11 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "Create / Refresh" in MODERN_PAGES_JS
     assert "Edit / Check" in MODERN_PAGES_JS
     assert "Delete Package" in MODERN_PAGES_JS
+    assert "Creating or refreshing package for" in MODERN_PAGES_JS
+    assert "Opening review workspace for" in MODERN_PAGES_JS
+    assert "No package exists yet" in MODERN_PAGES_JS
+    assert "packageContainer.scrollIntoView" in MODERN_PAGES_JS
+    assert "panel.append(topActions, packageContainer, list)" in MODERN_PAGES_JS
     assert "function renderAdventurePackageReviewWorkspace" in MODERN_PAGES_JS
     assert "PDF Import Review Workspace" in MODERN_PAGES_JS
     assert "Imported Content Browser" in MODERN_PAGES_JS
