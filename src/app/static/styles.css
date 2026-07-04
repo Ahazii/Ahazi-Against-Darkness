@@ -787,6 +787,15 @@ h2 {
   background: rgba(201, 162, 39, 0.14);
 }
 
+.modern-package-correction-panel {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(201, 162, 39, 0.32);
+  border-radius: 7px;
+  background: rgba(201, 162, 39, 0.08);
+}
+
 .modern-json-preview {
   max-height: 280px;
   overflow: auto;

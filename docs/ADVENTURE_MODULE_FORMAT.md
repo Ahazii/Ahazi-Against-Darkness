@@ -190,6 +190,28 @@ Common fixes after extraction:
 - Add missing branch targets when the PDF says "go to Scene X".
 - Add app notes for saves, rolls, rewards, and choices the app should automate later.
 
+## Correcting Misclassified Records
+
+The review browser lets you correct candidate records without editing the whole JSON file by hand.
+
+Use **Move Record** when the candidate is useful but in the wrong list. For example:
+
+- move a monster from Items to Foes
+- move a numbered room from Tables to Locations
+- move a choice/save instruction from Locations to Procedures
+
+Use **Mark Wrong / Ignore** when the candidate is not useful. For example:
+
+- page headers
+- copyright/footer text
+- repeated table titles
+- examples that are not part of the adventure
+- numbering that is not a room, table row, or procedure
+
+Ignored records are preserved in `ignored_records` so future importer improvements can see what was classified incorrectly. They are not used for playable conversion.
+
+Moved records keep `original_extraction` metadata showing the original detected list and source text.
+
 ## Maps And Pins
 
 Map images belong in:

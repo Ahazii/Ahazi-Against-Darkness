@@ -71,6 +71,13 @@
         "$ref": "#/$defs/sourcedRecord"
       }
     },
+    "ignored_records": {
+      "type": "array",
+      "description": "Candidate records the reviewer marked as wrong or not useful. Kept so importer corrections remain auditable.",
+      "items": {
+        "$ref": "#/$defs/sourcedRecord"
+      }
+    },
     "nodes": {
       "type": "array",
       "description": "Human-reviewed rooms, scenes, hexes, or locations extracted from the source PDF before conversion to a playable adventure.json manifest.",
@@ -133,7 +140,7 @@
             }
           },
           "review_status": {
-            "enum": ["draft", "checked", "needs_pdf_check", "ready_for_manifest"]
+            "enum": ["candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest", "wrong_type", "ignored"]
           }
         }
       }
@@ -174,7 +181,7 @@
             }
           },
           "review_status": {
-            "enum": ["candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest"]
+            "enum": ["candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest", "wrong_type", "ignored"]
           },
           "source_text": {
             "type": "string"
@@ -258,7 +265,7 @@
             }
           },
           "review_status": {
-            "enum": ["candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest"]
+            "enum": ["candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest", "wrong_type", "ignored"]
           },
           "source_text": {
             "type": "string"

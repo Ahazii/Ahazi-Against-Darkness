@@ -3539,6 +3539,46 @@ function packageRecordTitle(kind, record) {
   return record.name || record.title || record.id || "Untitled record";
 }
 
+const PACKAGE_REVIEW_GROUPS = [
+  ["nodes", "Locations"],
+  ["tables", "Tables"],
+  ["foes", "Foes"],
+  ["items", "Items"],
+  ["classes", "Classes"],
+  ["procedures", "Procedures"],
+  ["ignored_records", "Ignored"],
+];
+
+function packageRecordId(record) {
+  return String(record?.id || "");
+}
+
+function normalizePackageRecordForKind(record, targetKind, sourceKind = "") {
+  const copy = { ...(record || {}) };
+  copy.original_extraction = copy.original_extraction || {
+    detected_as: sourceKind || targetKind,
+    source_text: copy.source_text || copy.player_text || copy.notes || "",
+  };
+  copy.corrected_type = targetKind;
+  copy.review_status = copy.review_status || "needs_pdf_check";
+  if (targetKind === "nodes") {
+    copy.type = copy.type || "location";
+    copy.title = copy.title || copy.name || copy.id || "Untitled location";
+    copy.player_text = copy.player_text || copy.source_text || copy.notes || "";
+    copy.branches = Array.isArray(copy.branches) ? copy.branches : [];
+  } else if (targetKind === "tables") {
+    copy.title = copy.title || copy.name || copy.id || "Untitled table";
+    copy.rows = Array.isArray(copy.rows) && copy.rows.length ? copy.rows : [{ result: "candidate", text: copy.source_text || copy.notes || "" }];
+  } else if (targetKind === "procedures") {
+    copy.title = copy.title || copy.name || copy.id || "Untitled procedure";
+    copy.steps = Array.isArray(copy.steps) && copy.steps.length ? copy.steps : [{ op: "show_choice" }];
+  } else {
+    copy.name = copy.name || copy.title || copy.id || "Untitled record";
+  }
+  copy.source_page = Number(copy.source_page || 0);
+  return copy;
+}
+
 function packageRecordSubtitle(kind, record) {
   const bits = [];
   if (record.type) bits.push(record.type);
@@ -3550,7 +3590,7 @@ function packageRecordSubtitle(kind, record) {
   return bits.join(" · ") || "candidate";
 }
 
-function packageRecordDetail(record) {
+function packageRecordDetail(pkg, kind, record, redraw) {
   const wrap = el("div", "modern-package-detail");
   wrap.appendChild(el("h4", "", packageRecordTitle("", record)));
   const meta = el("div", "modern-chip-row");
@@ -3586,22 +3626,102 @@ function packageRecordDetail(record) {
   const json = document.createElement("pre");
   json.className = "modern-json-preview";
   json.textContent = JSON.stringify(record, null, 2);
-  wrap.appendChild(json);
+  wrap.append(renderPackageRecordCorrectionControls(pkg, kind, record, redraw), json);
   return wrap;
+}
+
+function renderPackageRecordCorrectionControls(pkg, kind, record, redraw) {
+  const panel = el("div", "modern-package-correction-panel");
+  panel.appendChild(el("strong", "", "Review correction"));
+  const title = input("text", `record-title-${pkg.package_id}-${kind}-${packageRecordId(record)}`, "Correct the displayed title/name for this record.");
+  title.value = packageRecordTitle(kind, record);
+  const page = input("number", `record-page-${pkg.package_id}-${kind}-${packageRecordId(record)}`, "Correct the source PDF page for this record.");
+  page.min = "0";
+  page.step = "1";
+  page.value = String(record.source_page || 0);
+  const status = select(`record-status-${pkg.package_id}-${kind}-${packageRecordId(record)}`, "Review status for this candidate record.", [
+    ["needs_pdf_check", "Needs PDF check"],
+    ["draft", "Draft"],
+    ["checked", "Checked"],
+    ["ready_for_manifest", "Ready for manifest"],
+    ["wrong_type", "Wrong type"],
+    ["ignored", "Ignored"],
+  ]);
+  status.value = record.review_status || "needs_pdf_check";
+  const target = select(`record-target-${pkg.package_id}-${kind}-${packageRecordId(record)}`, "Move this record to another imported-content list if it was misclassified.", PACKAGE_REVIEW_GROUPS.map(([key, label]) => [key, label]));
+  target.value = kind;
+  const reason = input("text", `record-reason-${pkg.package_id}-${kind}-${packageRecordId(record)}`, "Optional correction note explaining why this record was moved or ignored.");
+  reason.value = "";
+  panel.append(field("Title / Name", title), field("Source Page", page), field("Review Status", status), field("Move To", target), field("Correction Note", reason));
+  const row = actions();
+  const savePayload = async (payload, message) => {
+    const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    replaceAdventurePackageInState(result.package);
+    setStatus(message);
+    redraw();
+  };
+  row.append(
+    button("Save Correction", "Save title/name, source page, review status, and optional correction note in this list.", async () => {
+      const records = [...(pkg[kind] || [])];
+      const next = records.map((item) => {
+        if (packageRecordId(item) !== packageRecordId(record)) return item;
+        const copy = { ...item, source_page: Number(page.value || 0), review_status: status.value };
+        if (kind === "nodes" || kind === "tables" || kind === "procedures") copy.title = title.value;
+        else copy.name = title.value;
+        if (reason.value.trim()) copy.correction_note = reason.value.trim();
+        return copy;
+      });
+      await savePayload({ [kind]: next }, `Saved correction for ${title.value}.`);
+    }),
+    button("Move Record", "Move this record into the selected list while preserving original extraction metadata.", async () => {
+      if (target.value === kind) throw new Error("Choose a different target list before moving.");
+      const sourceRecords = (pkg[kind] || []).filter((item) => packageRecordId(item) !== packageRecordId(record));
+      const moved = normalizePackageRecordForKind(
+        {
+          ...record,
+          source_page: Number(page.value || 0),
+          correction_note: reason.value.trim() || `Moved from ${kind} to ${target.value}.`,
+        },
+        target.value,
+        kind
+      );
+      if (target.value === "nodes" || target.value === "tables" || target.value === "procedures") moved.title = title.value;
+      else moved.name = title.value;
+      const targetRecords = [...(pkg[target.value] || []).filter((item) => packageRecordId(item) !== packageRecordId(moved)), moved];
+      await savePayload({ [kind]: sourceRecords, [target.value]: targetRecords }, `Moved ${title.value} to ${PACKAGE_REVIEW_GROUPS.find(([key]) => key === target.value)?.[1] || target.value}.`);
+    }),
+    button("Mark Wrong / Ignore", "Remove this candidate from the active list and preserve it under ignored_records for later importer improvement.", async () => {
+      const sourceRecords = (pkg[kind] || []).filter((item) => packageRecordId(item) !== packageRecordId(record));
+      const ignored = {
+        ...record,
+        name: title.value,
+        title: title.value,
+        source_page: Number(page.value || 0),
+        review_status: "ignored",
+        corrected_type: "ignored_records",
+        ignored_reason: reason.value.trim() || "Marked wrong or not useful during PDF review.",
+        original_list: kind,
+        original_extraction: record.original_extraction || {
+          detected_as: kind,
+          source_text: record.source_text || record.player_text || record.notes || "",
+        },
+      };
+      const ignoredRecords = [...(pkg.ignored_records || []).filter((item) => packageRecordId(item) !== packageRecordId(ignored)), ignored];
+      await savePayload({ [kind]: sourceRecords, ignored_records: ignoredRecords }, `Ignored ${title.value}.`);
+    }, "danger-button")
+  );
+  panel.appendChild(row);
+  return panel;
 }
 
 function renderAdventurePackageReviewBrowser(pkg) {
   const panel = el("div", "modern-package-browser");
   panel.appendChild(el("h4", "", "Imported Content Browser"));
   panel.appendChild(el("p", "muted", "These are candidate or reviewed records from the package. Click a row to inspect details; check the PDF before marking anything ready for manifest conversion."));
-  const groups = [
-    ["nodes", "Locations", pkg.nodes || []],
-    ["tables", "Tables", pkg.tables || []],
-    ["foes", "Foes", pkg.foes || []],
-    ["items", "Items", pkg.items || []],
-    ["classes", "Classes", pkg.classes || []],
-    ["procedures", "Procedures", pkg.procedures || []],
-  ];
+  const groups = PACKAGE_REVIEW_GROUPS.map(([key, label]) => [key, label, pkg[key] || []]);
   let active = groups.find(([, , records]) => records.length)?.[0] || "nodes";
   let selected = null;
   const tabs = el("div", "modern-package-browser-tabs");
@@ -3638,7 +3758,7 @@ function renderAdventurePackageReviewBrowser(pkg) {
         });
         list.appendChild(item);
       }
-      detail.appendChild(packageRecordDetail(selectedRecord));
+      detail.appendChild(packageRecordDetail(pkg, active, selectedRecord, () => renderPage()));
     }
     body.append(list, detail);
   };
@@ -3743,6 +3863,7 @@ function renderAdventurePackageSectionEditor(pkg, redraw) {
     ["tables", "Tables"],
     ["trackers", "Trackers"],
     ["procedures", "Procedures"],
+    ["ignored_records", "Ignored Records"],
   ];
   const controls = {};
   const grid = el("div", "modern-package-section-grid");

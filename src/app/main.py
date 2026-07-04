@@ -2870,9 +2870,9 @@ def _rules_tables_payload() -> dict:
         {
             "area": "Candidate browser",
             "purpose": "Shows clickable lists of imported locations/nodes, tables, foes, items, classes, and procedures with a detail pane.",
-            "stored_in": "package.json nodes[], tables[], foes[], items[], classes[], procedures[]",
-            "fields": "record id, title/name, source page, review status, source text, branches, rows, procedure steps",
-            "safety": "Extractor output is marked needs_pdf_check and must be confirmed against the PDF before being used for play.",
+            "stored_in": "package.json nodes[], tables[], foes[], items[], classes[], procedures[], ignored_records[]",
+            "fields": "record id, title/name, source page, review status, source text, branches, rows, procedure steps, original extraction metadata",
+            "safety": "Extractor output is marked needs_pdf_check and must be confirmed against the PDF before being used for play. Misclassified records can be moved; junk records can be ignored and preserved for future importer improvement.",
         },
         {
             "area": "Review nodes",

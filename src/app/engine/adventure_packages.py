@@ -28,7 +28,7 @@ ALLOWED_PROCEDURE_OPS = {
 }
 PACKAGE_CAPABILITIES = {"foes", "classes", "items", "tables", "trackers", "procedures", "maps", "pins"}
 NODE_TYPES = {"room", "scene", "location", "hex", "camp", "settlement", "ending"}
-NODE_REVIEW_STATUSES = {"draft", "checked", "needs_pdf_check", "ready_for_manifest"}
+NODE_REVIEW_STATUSES = {"candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest", "wrong_type", "ignored"}
 
 
 def _slug(value: str, fallback: str = "adventure-package") -> str:
@@ -478,6 +478,7 @@ def create_or_refresh_package_from_pdf(
         "foes": existing.get("foes", []) or candidates["foes"],
         "classes": existing.get("classes", []) or candidates["classes"],
         "items": existing.get("items", []) or candidates["items"],
+        "ignored_records": existing.get("ignored_records", []),
         "nodes": existing.get("nodes", []) or candidates["nodes"],
         "tables": existing.get("tables", []) or candidates["tables"],
         "trackers": existing.get("trackers", []),
@@ -627,6 +628,7 @@ def package_summary(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
         "foe_count": len(package.get("foes", []) or []),
         "class_count": len(package.get("classes", []) or []),
         "item_count": len(package.get("items", []) or []),
+        "ignored_record_count": len(package.get("ignored_records", []) or []),
         "node_count": len(package.get("nodes", []) or []),
         "table_count": len(package.get("tables", []) or []),
         "tracker_count": len(package.get("trackers", []) or []),
@@ -725,7 +727,7 @@ def validate_adventure_package(package: dict[str, Any]) -> dict[str, Any]:
                     warnings.append(f"Pin {pin.get('label') or pin.get('id')} points to {node_id!r}, which is not yet a reviewed node.")
     else:
         errors.append("maps must be an array.")
-    for field in ("foes", "classes", "items", "tables", "trackers", "procedures"):
+    for field in ("foes", "classes", "items", "ignored_records", "tables", "trackers", "procedures"):
         if field in package and not isinstance(package.get(field), list):
             errors.append(f"{field} must be an array.")
     for procedure in package.get("procedures") or []:
@@ -765,7 +767,7 @@ def update_adventure_package_review(data_dir: Path, package_id: str, payload: di
     if "review_notes" in payload:
         review["notes"] = str(payload.get("review_notes") or "")
     package["review"] = review
-    for field in ("nodes", "foes", "classes", "items", "tables", "trackers"):
+    for field in ("nodes", "foes", "classes", "items", "ignored_records", "tables", "trackers"):
         if field in payload:
             value = payload.get(field)
             if not isinstance(value, list):

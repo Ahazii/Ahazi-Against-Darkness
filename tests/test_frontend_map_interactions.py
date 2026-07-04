@@ -2134,6 +2134,11 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "Tables" in MODERN_PAGES_JS
     assert "Foes" in MODERN_PAGES_JS
     assert "Classes" in MODERN_PAGES_JS
+    assert "Ignored" in MODERN_PAGES_JS
+    assert "Save Correction" in MODERN_PAGES_JS
+    assert "Move Record" in MODERN_PAGES_JS
+    assert "Mark Wrong / Ignore" in MODERN_PAGES_JS
+    assert "original_extraction" in MODERN_PAGES_JS
     assert "Load Editable Package" in MODERN_PAGES_JS
     assert "Add / Update Node" in MODERN_PAGES_JS
     assert "Save Structured Sections" in MODERN_PAGES_JS
@@ -2144,6 +2149,7 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert ".modern-package-pin-form" in STYLES_CSS
     assert ".modern-package-node-form" in STYLES_CSS
     assert ".modern-package-browser-body" in STYLES_CSS
+    assert ".modern-package-correction-panel" in STYLES_CSS
     assert "/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review" in MODERN_PAGES_JS
     assert "/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/extract-candidates" in MODERN_PAGES_JS
 

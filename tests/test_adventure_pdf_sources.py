@@ -138,6 +138,7 @@ def test_adventure_package_schema_is_declarative_and_map_pin_ready() -> None:
 
     assert "maps" in schema["properties"]
     assert "nodes" in schema["properties"]
+    assert "ignored_records" in schema["properties"]
     assert "pins" in schema["properties"]["capabilities"]["items"]["enum"]
     assert "pin_location" in procedure_op
     assert "script" not in procedure_op
@@ -227,6 +228,16 @@ def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Pat
                     "review_status": "checked",
                 },
             ],
+            "ignored_records": [
+                {
+                    "id": "page-header",
+                    "name": "Page Header",
+                    "source_page": 1,
+                    "notes": "Marked wrong during review.",
+                    "review_status": "ignored",
+                    "original_list": "items",
+                }
+            ],
         },
     )
 
@@ -234,10 +245,12 @@ def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Pat
     assert updated["source"]["source_pages"] == [1, 2, 5]
     assert updated["review"]["status"] == "review_in_progress"
     assert updated["node_count"] == 2
+    assert updated["ignored_record_count"] == 1
     assert updated["diagnostics"]["valid"] is True
     assert updated["diagnostics"]["errors"] == []
     detail = package_detail(data, "review-module-pdf")
     assert detail["nodes"][0]["id"] == "scene-1"
+    assert detail["ignored_records"][0]["original_list"] == "items"
     assert detail["review"]["notes"] == "Opening scene checked against the source PDF."
 
 
