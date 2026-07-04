@@ -1942,6 +1942,66 @@ def _resolve_attacks(
         if context.session is not None and context.session.pending_bodyguard_intercept is not None:
             continue
         if context.session is not None:
+            from .forsaken_depths_content import fd_no_danger_here_active
+
+            if fd_no_danger_here_active(target):
+                damage_target = target
+                damage = 1
+                if context.session.courtship_demesne_active:
+                    from .courtship_combat import apply_courtship_on_foe_hit, courtship_skip_foe_damage
+
+                    log.extend(
+                        apply_courtship_on_foe_hit(
+                            enemy,
+                            damage_target,
+                            party,
+                            session=context.session,
+                            show_rolls=show_rolls,
+                            defense_total=0,
+                            defense_rolls=[],
+                        )
+                    )
+                    if courtship_skip_foe_damage(enemy):
+                        log.append(f"{damage_target.name} ignores the danger, but {enemy.name}'s hit causes no Life loss.")
+                        continue
+                damage, pain_log = adjust_incoming_damage(context.session, damage_target, damage)
+                log.extend(pain_log)
+                if damage:
+                    from .party_life import apply_party_life_loss
+
+                    damage_target_life_before = damage_target.current_life
+                    applied = apply_party_life_loss(context.session, damage_target, damage, log=log)
+                    log.append(
+                        f"{damage_target.name} ignores the danger and takes {applied} damage from {enemy.name} "
+                        f"{party_life_change_text(damage_target, damage_target_life_before)} (FD p.55)."
+                    )
+                    from .monster_combat_hooks import queue_skeleton_spawns_from_damage, record_pc_damage
+
+                    record_pc_damage(context, applied, member=damage_target)
+                    queue_skeleton_spawns_from_damage(context, living_enemies or [], applied)
+                    if any(status.lower() == "slime disease" for status in damage_target.statuses) and damage_target.current_life > 0:
+                        damage_target_life_before = damage_target.current_life
+                        extra = apply_party_life_loss(context.session, damage_target, 1, log=log)
+                        log.append(
+                            f"Slime disease worsens {damage_target.name}'s wound for +1 Life loss "
+                            f"{party_life_change_text(damage_target, damage_target_life_before)}."
+                        )
+                        record_pc_damage(context, extra, member=damage_target)
+                else:
+                    log.append(f"{damage_target.name} ignores the danger, but avoids Life loss from {enemy.name}.")
+                if damage_target.current_life == 0:
+                    log.append(f"{damage_target.name} falls.")
+                elif enemy_has_poison(enemy) or enemy.on_hit_effects:
+                    _apply_foe_on_hit_effects(
+                        enemy,
+                        damage_target,
+                        log,
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                        context=context,
+                    )
+                continue
+        if context.session is not None:
             from .forsaken_depths_revelation import consume_fd_revelation_auto_defend
 
             if consume_fd_revelation_auto_defend(context.session, show_rolls=show_rolls):
@@ -2245,24 +2305,25 @@ def _resolve_attacks(
                 log.extend(pain_log)
             if damage:
                 damage_target_life_before = damage_target.current_life
-                damage_target.current_life = max(0, damage_target.current_life - damage)
+                from .party_life import apply_party_life_loss
+
+                applied = apply_party_life_loss(context.session, damage_target, damage, log=log)
                 log.append(
-                    f"{damage_target.name} takes {damage} damage from {enemy.name} "
+                    f"{damage_target.name} takes {applied} damage from {enemy.name} "
                     f"{party_life_change_text(damage_target, damage_target_life_before)}."
                 )
                 from .monster_combat_hooks import queue_skeleton_spawns_from_damage, record_pc_damage
 
-                record_pc_damage(context, damage, member=damage_target)
-                queue_skeleton_spawns_from_damage(context, living_enemies or [], damage)
+                record_pc_damage(context, applied, member=damage_target)
+                queue_skeleton_spawns_from_damage(context, living_enemies or [], applied)
                 if any(status.lower() == "slime disease" for status in damage_target.statuses) and damage_target.current_life > 0:
-                    from .party_life import apply_party_life_loss
-
                     damage_target_life_before = damage_target.current_life
-                    apply_party_life_loss(context.session, damage_target, 1)
+                    extra = apply_party_life_loss(context.session, damage_target, 1, log=log)
                     log.append(
                         f"Slime disease worsens {damage_target.name}'s wound for +1 Life loss "
                         f"{party_life_change_text(damage_target, damage_target_life_before)}."
                     )
+                    record_pc_damage(context, extra, member=damage_target)
             else:
                 log.append(f"{damage_target.name} avoids damage from {enemy.name}.")
             if damage_target.current_life == 0 and context.session is not None:
@@ -2624,6 +2685,11 @@ def resolve_combat_round(
                 if member_cannot_attack(pc):
                     log.append(f"{pc.name} cannot attack this round.")
                     continue
+                from .forsaken_depths_content import fd_hallucination_blocks_weapon_or_item
+
+                if fd_hallucination_blocks_weapon_or_item(pc):
+                    log.append(f"{pc.name} cannot use weapons or held items (My Fingers are Worms, FD p.55).")
+                    continue
                 ranged_plans = plan_ranged_attacks(pc, context)
                 if (
                     ranged_plans
@@ -2682,6 +2748,11 @@ def resolve_combat_round(
 
             if member_cannot_attack(pc):
                 log.append(f"{pc.name} cannot attack this round.")
+                continue
+            from .forsaken_depths_content import fd_hallucination_blocks_weapon_or_item
+
+            if fd_hallucination_blocks_weapon_or_item(pc):
+                log.append(f"{pc.name} cannot use weapons or held items (My Fingers are Worms, FD p.55).")
                 continue
             opening_plans = plan_ranged_attacks(pc, context)
             if (
@@ -2753,6 +2824,11 @@ def resolve_combat_round(
 
             if member_cannot_attack(pc):
                 log.append(f"{pc.name} cannot attack this round.")
+                continue
+            from .forsaken_depths_content import fd_hallucination_blocks_weapon_or_item
+
+            if fd_hallucination_blocks_weapon_or_item(pc):
+                log.append(f"{pc.name} cannot use weapons or held items (My Fingers are Worms, FD p.55).")
                 continue
             from .courtship_combat import member_cannot_act_courtship
 

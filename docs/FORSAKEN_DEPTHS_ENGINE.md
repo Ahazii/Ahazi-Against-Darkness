@@ -37,6 +37,7 @@ Hover any badge for rulebook page references.
 | **Oblivion: remove 1 Madness** | Oblivion river, pending offer, hero has Madness | `fd_oblivion_redeem_madness` |
 | **Forgotten spells** line | Spell forgotten on natural 1 | Display only (hover for rule) |
 | **Revelation** buttons (5) | `fd_hallucination_revelation_available` | `fd_spend_hallucination_revelation` |
+| **Worms / No danger** badges | FD p.55 hallucination status active | Blocks weapons/items or next danger as appropriate |
 | **Enter … sheet** | Ru or ETC tile, exploration | `enter_fd_side_sheet` |
 | **Return to main map** | On side-sheet tile | `exit_fd_side_sheet` |
 | **Secret passage** | Ruins roll 12 tile | `fd_secret_passage_unlock_clues` / `choose_fd_secret_passage_destination` |
@@ -166,7 +167,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 - **Wandering monsters** on FD sessions use `fd_wandering_monsters_table` (including Waste of Time river hazards).
 - **Beast Cage** spawns a surprise weird monster if the lead hero fails the Save.
 - **fd_event** rolls d10 on `fd_event_table` when the tile is first entered. **The Passage** rolls the Citadel type/room count immediately, logs the Tier-in-6 trap chance result, and exposes **Enter Citadel sheet** on that tile.
-- **fd_hallucination** rolls `fd_hallucination_table`; roll 1 **Surrounded by Foes** records the affected hero and the d3+1 duration, then ticks it down after combat rounds; roll 5–6 grants a **Revelation** (party sheet / room panel buttons). After two hallucinations in one adventure, roll 4 redirects to an Event.
+- **fd_hallucination** rolls `fd_hallucination_table`; roll 1 **Surrounded by Foes** records the affected hero and the d3+1 duration, then ticks it down after combat rounds; roll 2 **My Fingers are Worms** blocks that hero from weapon/held-item use until encounter end, damage, or Blessing; roll 3 **There is No Danger Here** forces the next dangerous Save failure or attack hit and clears after the damaging event; roll 4 **Horrors from Beyond** applies Madness equal to Tier; roll 5–6 grants a **Revelation** (party sheet / room panel buttons). After two hallucinations in one adventure, roll 4 redirects to an Event.
 - **fd_weird** (roll 9): d6 1–3 → `fd_weird_table`, 4–6 → `fd_citadel_weird_table`.
 - **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Citadel entry pre-generates the full room budget** on the side sheet; explore to enter each room for content. **Ghost Citadel** side-sheet placement prefers oversized map elements (40+ cells). **Return to main map** when done. Room budget blocks further expansion when exhausted. Citadel types apply their FD p.60 modifiers (crowded double minions/−1 Reaction, traps replacing minions, prisoners 4-Clue escape, dead-citadel bandages-only healing, magic citadel MR suspended, ghost final boss; **magic citadel final** places a Cyclopean Idol to interact with). Dungeon **ETC** tiles roll citadel type on first entry (same as river ETC).
 

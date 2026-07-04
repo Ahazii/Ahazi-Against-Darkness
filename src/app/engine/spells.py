@@ -859,6 +859,9 @@ def _cast_blessing(
 
         if cleanse_cavern_water_contamination(session, target.character_id):
             log.append(f"Blessing cleanses contaminated water from {target.name}.")
+        from .forsaken_depths_content import clear_fd_hallucination_with_blessing
+
+        log.extend(clear_fd_hallucination_with_blessing(target))
     if dark_plague_result is True:
         log.append("Dark Plague uses the Abyss d8+L cure check; other Blessing effects resolve normally.")
     return SpellOutcome(log, enemies, party, spell_consumed=True, curse_break_target_id=target.character_id)

@@ -411,6 +411,8 @@ const fdStirs = document.getElementById("fd-stirs");
 const fdSideSheet = document.getElementById("fd-side-sheet");
 const fdRevelation = document.getElementById("fd-revelation");
 const fdSurroundedByFoes = document.getElementById("fd-surrounded-by-foes");
+const fdFingersWorms = document.getElementById("fd-fingers-worms");
+const fdNoDangerHere = document.getElementById("fd-no-danger-here");
 const fdOblivionOffer = document.getElementById("fd-oblivion-offer");
 const fdMagicMr = document.getElementById("fd-magic-mr");
 const mapViewportEl = document.getElementById("map-viewport");
@@ -2887,6 +2889,8 @@ function blessingRemovableConditions(target, kind, session = null) {
     const lower = status.toLowerCase();
     if (
       lower === "cursed" ||
+      lower === "fd my fingers are worms" ||
+      lower === "fd no danger here" ||
       lower === "petrified" ||
       lower === "slime disease" ||
       lower.startsWith("cordyceps infected")
@@ -7252,6 +7256,8 @@ function heroStatusChips(session, member, tile) {
       });
     } else if (lower.startsWith("poisoned")) {
       chips.push({ label: status, kind: "danger", title: "Poison can cause ongoing harm until cured or the effect expires." });
+    } else if (lower === "fd my fingers are worms" || lower === "fd no danger here") {
+      chips.push({ label: status, kind: "danger", title: statusChipTooltip(status) });
     } else if (
       lower === "protection" ||
       lower === "barkskin" ||
@@ -7500,6 +7506,8 @@ function statusChipTooltip(label) {
   if (lower === "protection") return "Protection spell: +1 Defense until the encounter ends.";
   if (lower === "enchanted weapon") return "Epic Reward: roll two attack dice with this hero's weapon and keep the better result until adventure end.";
   if (lower === "kerrak dar hoard") return "Epic Reward: spend 1 held Clue while exploring to find Kerrak Dar's 500gp hoard.";
+  if (lower === "fd my fingers are worms") return "Forsaken Depths p.55: cannot use weapons or held items until the encounter ends, the hero takes damage, or Blessing is cast.";
+  if (lower === "fd no danger here") return "Forsaken Depths p.55: the hero ignores the next dangerous Save or attack; the next damaging event clears it.";
   if (lower.includes("holy symbol")) return "Epic Reward: a cleric's Healing prayer restores +2 Life; if the cleric dies and body plus symbol reach the temple, the church pays for one resurrection attempt and keeps the symbol.";
   if (lower.includes("scout warning +1 saves")) return "Scout warning: +1 to all Saves and no surprise in this environment until it is left.";
   if (lower.includes("slumber amanita")) return "Slumber Amanita: next Sleep cast gains +Tier, including scrolls and Wand of Sleep.";
@@ -13683,6 +13691,24 @@ function fdSurroundedByFoesDisplay(session) {
   return `Surrounded: ${victim?.name || "hero"} (${remaining})`;
 }
 
+function fdStatusHolderDisplay(session, statusName, label) {
+  if (session?.ruleset !== "forsaken_depths") return "";
+  const holders = (session.party || []).filter((member) =>
+    (member.statuses || []).some((status) => String(status).toLowerCase() === statusName)
+  );
+  if (!holders.length) return "";
+  const names = holders.map((member) => member.name || "hero").join(", ");
+  return `${label}: ${names}`;
+}
+
+function fdFingersWormsDisplay(session) {
+  return fdStatusHolderDisplay(session, "fd my fingers are worms", "Worms");
+}
+
+function fdNoDangerHereDisplay(session) {
+  return fdStatusHolderDisplay(session, "fd no danger here", "No danger");
+}
+
 function fdSideSheetDisplay(session) {
   if (session?.ruleset !== "forsaken_depths" || !session.fd_side_sheet_active) return "";
   const kind = session.fd_side_sheet_kind === "ruins" ? "Ruins" : "Citadel";
@@ -14904,6 +14930,28 @@ function syncFdSessionBadges(session) {
       setTooltip(
         fdSurroundedByFoes,
         "Surrounded by Foes hallucination (FD p.55): the named hero sees allies as foes. The app tracks the d3+1 duration and ticks it down after each combat round."
+      );
+    }
+  }
+  const fingersLabel = fdFingersWormsDisplay(session);
+  if (fdFingersWorms) {
+    fdFingersWorms.textContent = fingersLabel;
+    fdFingersWorms.classList.toggle("hidden", !fingersLabel);
+    if (fingersLabel) {
+      setTooltip(
+        fdFingersWorms,
+        "My Fingers are Worms (FD p.55): affected heroes cannot use weapons or held items until the encounter ends, they take damage, or Blessing is cast on them."
+      );
+    }
+  }
+  const noDangerLabel = fdNoDangerHereDisplay(session);
+  if (fdNoDangerHere) {
+    fdNoDangerHere.textContent = noDangerLabel;
+    fdNoDangerHere.classList.toggle("hidden", !noDangerLabel);
+    if (noDangerLabel) {
+      setTooltip(
+        fdNoDangerHere,
+        "There is No Danger Here (FD p.55): affected heroes automatically fail the next dangerous Save or take the next attack without defending; it clears after that damaging event."
       );
     }
   }

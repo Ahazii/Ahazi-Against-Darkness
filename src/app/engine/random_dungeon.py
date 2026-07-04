@@ -484,6 +484,33 @@ ENVIRONMENT_EVENT_KEYS = {
     "fungal_merchant",
     "mycelial_warning",
 }
+FD_FINGERS_BLOCKED_ACTIONS = {
+    "apply_gremlin_repellant",
+    "burn_scroll",
+    "copy_scroll",
+    "envenom_weapon",
+    "set_default_weapon",
+    "spend_torch",
+    "surgeon_burn_scroll",
+    "swap_weapon",
+    "use_abyss_item",
+    "use_acid_vial",
+    "use_apothecary_brew",
+    "use_arrow_of_slaying",
+    "use_bandage",
+    "use_berserkers_mushroom",
+    "use_blossoms_item",
+    "use_enchanted_paint",
+    "use_herbal_tonic",
+    "use_holy_water",
+    "use_lantern_oil",
+    "use_magic_item",
+    "use_map_fragment",
+    "use_miners_ointment",
+    "use_mushroom",
+    "use_potion",
+    "use_wolfsbane",
+}
 
 
 @dataclass
@@ -919,6 +946,8 @@ class RandomDungeonEngine:
             return self._touch(session)
         if action != "resolve_acolyte_blessing" and session.pending_acolyte_blessing is not None:
             session.log.append("Choose whether the acolyte tries to preserve Blessing.")
+            return self._touch(session)
+        if self._fd_block_hallucinated_item_action(session, action, character_id):
             return self._touch(session)
         turn_actions = {
             "explore",
@@ -9538,6 +9567,10 @@ class RandomDungeonEngine:
         session.foe_taunt_active = {}
         session.foe_taunt_pending = {}
         session.fd_illusionary_distraction_active = False
+        if is_fd_ruleset(session):
+            from .forsaken_depths_content import clear_fd_fingers_are_worms_at_encounter_end
+
+            session.log.extend(clear_fd_fingers_are_worms_at_encounter_end(session))
         if session.courtship_demesne_active:
             from .courtship_combat import clear_courtship_combat_statuses
 
@@ -15362,6 +15395,29 @@ class RandomDungeonEngine:
 
         if not spend_fd_hallucination_revelation(session, choice, show_rolls=show_rolls):
             session.log.append("Hallucination Revelation is not available.")
+
+    def _fd_block_hallucinated_item_action(
+        self,
+        session: SessionState,
+        action: str,
+        character_id: str | None,
+    ) -> bool:
+        if not is_fd_ruleset(session) or action not in FD_FINGERS_BLOCKED_ACTIONS:
+            return False
+        if not character_id:
+            return False
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None:
+            return False
+        from .forsaken_depths_content import fd_hallucination_blocks_weapon_or_item
+
+        if not fd_hallucination_blocks_weapon_or_item(member):
+            return False
+        session.log.append(
+            f"{member.name} cannot use weapons or held items while My Fingers are Worms is active "
+            "(FD p.55). Wait until the encounter ends, take damage, or cast Blessing."
+        )
+        return True
 
     def _fd_prisoners_escape(self, session: SessionState, *, show_rolls: bool) -> None:
         if session.mode != "exploration":

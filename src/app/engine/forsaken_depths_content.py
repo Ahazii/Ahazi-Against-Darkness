@@ -7,10 +7,68 @@ from typing import TYPE_CHECKING
 
 from ..schemas import SessionState, TileState
 from .dice import roll_2d6, roll_d6, roll_d10, roll_formula
-from .madness import apply_madness_gain, madness_points
+from .madness import apply_madness_gain
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
+
+
+FD_FINGERS_ARE_WORMS_STATUS = "FD My Fingers are Worms"
+FD_NO_DANGER_HERE_STATUS = "FD No Danger Here"
+
+
+def _add_status(member, status: str) -> None:
+    if status not in member.statuses:
+        member.statuses.append(status)
+
+
+def _remove_status(member, status: str) -> bool:
+    before = len(member.statuses)
+    member.statuses = [item for item in member.statuses if item != status]
+    return len(member.statuses) != before
+
+
+def fd_fingers_are_worms_active(member) -> bool:
+    return FD_FINGERS_ARE_WORMS_STATUS in getattr(member, "statuses", [])
+
+
+def fd_no_danger_here_active(member) -> bool:
+    return FD_NO_DANGER_HERE_STATUS in getattr(member, "statuses", [])
+
+
+def clear_fd_hallucination_on_damage(
+    session: SessionState | None,
+    member,
+    *,
+    source: str = "damage",
+) -> list[str]:
+    messages: list[str] = []
+    if _remove_status(member, FD_FINGERS_ARE_WORMS_STATUS):
+        messages.append(f"{member.name} shakes off My Fingers are Worms after taking {source} (FD p.55).")
+    if _remove_status(member, FD_NO_DANGER_HERE_STATUS):
+        messages.append(f"{member.name} stops ignoring danger after the damaging event (FD p.55).")
+    return messages
+
+
+def clear_fd_hallucination_with_blessing(member) -> list[str]:
+    messages: list[str] = []
+    if _remove_status(member, FD_FINGERS_ARE_WORMS_STATUS):
+        messages.append(f"Blessing clears My Fingers are Worms from {member.name} (FD p.55).")
+    if _remove_status(member, FD_NO_DANGER_HERE_STATUS):
+        messages.append(f"Blessing clears No Danger Here from {member.name} (FD p.55).")
+    return messages
+
+
+def clear_fd_fingers_are_worms_at_encounter_end(session: SessionState) -> list[str]:
+    messages: list[str] = []
+    for member in session.party:
+        if _remove_status(member, FD_FINGERS_ARE_WORMS_STATUS):
+            messages.append(f"{member.name}'s My Fingers are Worms hallucination ends with the encounter (FD p.55).")
+    return messages
+
+
+def fd_hallucination_blocks_weapon_or_item(member) -> bool:
+    return fd_fingers_are_worms_active(member)
 
 
 def roll_fd_citadel(
@@ -72,25 +130,16 @@ def apply_fd_hallucination(
     victim = random.choice(living)
     tier = max(1, (hcl + 2) // 3)
     if key in {"horrors_from_beyond", "revelations"}:
-        before = madness_points(victim)
-        session.log.extend(
-            apply_madness_gain(
-                session,
-                victim,
-                source=f"Hallucination: {name}",
-                show_rolls=show_rolls,
-            )
-        )
-        if key == "horrors_from_beyond" and madness_points(victim) == before:
-            for _ in range(tier):
-                session.log.extend(
-                    apply_madness_gain(
-                        session,
-                        victim,
-                        source="Horrors from Beyond",
-                        show_rolls=show_rolls,
-                    )
+        gain_count = tier if key == "horrors_from_beyond" else 1
+        for _ in range(gain_count):
+            session.log.extend(
+                apply_madness_gain(
+                    session,
+                    victim,
+                    source=f"Hallucination: {name}",
+                    show_rolls=show_rolls,
                 )
+            )
         if key == "revelations":
             session.fd_hallucination_revelation_available = True
             session.log.append(
@@ -105,10 +154,15 @@ def apply_fd_hallucination(
             f"(rolled {turns}; FD p.55). Track attacks and choices carefully until the state clears."
         )
     elif key == "fingers_are_worms":
-        session.log.append(f"{victim.name} drops held items and stares at their hands (FD p.55).")
-    elif key == "no_danger_here":
+        _add_status(victim, FD_FINGERS_ARE_WORMS_STATUS)
         session.log.append(
-            f"{victim.name} ignores the next danger source automatically (FD p.55)."
+            f"{victim.name} drops anything held and cannot use weapons or items until the encounter ends, "
+            "they take damage, or Blessing is cast on them (FD p.55)."
+        )
+    elif key == "no_danger_here":
+        _add_status(victim, FD_NO_DANGER_HERE_STATUS)
+        session.log.append(
+            f"{victim.name} will ignore the next dangerous Save or attack; the next damaging event clears it (FD p.55)."
         )
     tile.resolved = True
 

@@ -343,7 +343,13 @@ def _cast_mass_blessing(
     return SpellOutcome(log, enemies, party, spell_consumed=True)
 
 
-BLESSING_STATUS_NAMES = {"cursed", "petrified", "slime disease"}
+BLESSING_STATUS_NAMES = {
+    "cursed",
+    "fd my fingers are worms",
+    "fd no danger here",
+    "petrified",
+    "slime disease",
+}
 
 
 def _target_choice_ids(target: PartyMemberState | HirelingState) -> set[str]:

@@ -185,6 +185,8 @@ def test_setup_includes_forsaken_depths_ruleset_select() -> None:
     assert "fd-side-sheet" in index_html
     assert "fd-revelation" in index_html
     assert "fd-surrounded-by-foes" in index_html
+    assert "fd-fingers-worms" in index_html
+    assert "fd-no-danger-here" in index_html
     assert "fd-oblivion-offer" in index_html
     assert "fd-magic-mr" in index_html
     assert "fdTravelModeDisplay" in app_js
@@ -206,6 +208,10 @@ def test_setup_includes_forsaken_depths_ruleset_select() -> None:
     assert "appendFdRevelationActions" in app_js
     assert "fdSurroundedByFoesDisplay" in app_js
     assert "Surrounded by Foes hallucination" in app_js
+    assert "fdFingersWormsDisplay" in app_js
+    assert "fdNoDangerHereDisplay" in app_js
+    assert "My Fingers are Worms (FD p.55)" in app_js
+    assert "There is No Danger Here (FD p.55)" in app_js
     assert "enterFdSideSheet" in app_js
     assert "fdPrisonersEscape" in app_js
 
@@ -216,6 +222,8 @@ def test_map_styles_include_river_water_overlay() -> None:
     assert "env-river" in styles
     assert ".fd-boat-status" in styles
     assert ".fd-surrounded-by-foes" in styles
+    assert ".fd-fingers-worms" in styles
+    assert ".fd-no-danger-here" in styles
     assert "fd-side-sheet-tile" in styles
     assert ".fd-magic-mr" in styles
 
@@ -555,6 +563,120 @@ def test_fd_hallucination_applies_on_prepare(monkeypatch) -> None:
     apply_fd_hallucination(eng, session, tile, hcl=5, show_rolls=True)
     assert tile.resolved
     assert any("Horrors from Beyond" in entry for entry in session.log)
+    assert session.party[0].madness == 2
+
+
+def test_fd_horrors_from_beyond_applies_tier_madness(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-horrors-tier",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(
+        id="hall-room",
+        x=0,
+        y=0,
+        tile_key="12",
+        tile_type="room",
+        title="Gloomy room",
+        description="Hallucination test",
+        content_key="fd_hallucination",
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_content.roll_d6", lambda: 4)
+    from app.engine.forsaken_depths_content import apply_fd_hallucination
+
+    apply_fd_hallucination(eng, session, tile, hcl=7, show_rolls=True)
+
+    assert session.party[0].madness == 3
+
+
+def test_fd_fingers_are_worms_blocks_items_and_clears() -> None:
+    eng = engine()
+    member = _party_member()
+    member.inventory.append("Potion of Healing")
+    session = eng.create_session(
+        "fd-worms",
+        "party-1",
+        [member],
+        ruleset="forsaken_depths",
+    )
+    from app.engine.forsaken_depths_content import FD_FINGERS_ARE_WORMS_STATUS
+
+    session.party[0].statuses.append(FD_FINGERS_ARE_WORMS_STATUS)
+    eng.advance(session, "use_potion", character_id="hero-1", item_name="Potion of Healing")
+
+    assert "Potion of Healing" in session.party[0].inventory
+    assert any("cannot use weapons or held items" in entry for entry in session.log)
+
+    from app.engine.forsaken_depths_content import clear_fd_fingers_are_worms_at_encounter_end
+
+    session.log.extend(clear_fd_fingers_are_worms_at_encounter_end(session))
+    assert FD_FINGERS_ARE_WORMS_STATUS not in session.party[0].statuses
+    assert any("ends with the encounter" in entry for entry in session.log)
+
+
+def test_fd_hallucinations_clear_on_damage_and_blessing() -> None:
+    member = _party_member()
+    session = engine().create_session(
+        "fd-hallucination-clear",
+        "party-1",
+        [member],
+        ruleset="forsaken_depths",
+    )
+    from app.engine.forsaken_depths_content import (
+        FD_FINGERS_ARE_WORMS_STATUS,
+        FD_NO_DANGER_HERE_STATUS,
+    )
+    from app.engine.party_life import apply_party_life_loss
+    from app.engine.spells import _cast_blessing
+
+    session.party[0].statuses.extend([FD_FINGERS_ARE_WORMS_STATUS, FD_NO_DANGER_HERE_STATUS])
+    applied = apply_party_life_loss(session, session.party[0], 1, log=session.log)
+    assert applied == 1
+    assert FD_FINGERS_ARE_WORMS_STATUS not in session.party[0].statuses
+    assert FD_NO_DANGER_HERE_STATUS not in session.party[0].statuses
+    assert any("stops ignoring danger" in entry for entry in session.log)
+
+    session.party[0].statuses.extend([FD_FINGERS_ARE_WORMS_STATUS, FD_NO_DANGER_HERE_STATUS])
+    _cast_blessing(
+        session.party[0],
+        session.party,
+        [],
+        session.party[0].character_id,
+        session.log,
+        session=session,
+    )
+    assert FD_FINGERS_ARE_WORMS_STATUS not in session.party[0].statuses
+    assert FD_NO_DANGER_HERE_STATUS not in session.party[0].statuses
+    assert any("Blessing clears My Fingers are Worms" in entry for entry in session.log)
+
+
+def test_fd_no_danger_here_auto_fails_trap_save() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-no-danger-save",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    from app.engine.forsaken_depths_content import FD_NO_DANGER_HERE_STATUS
+
+    session.party[0].statuses.append(FD_NO_DANGER_HERE_STATUS)
+    failed, log = eng.table_roller._trap_save_check(
+        session.party[0],
+        99,
+        "L99 trap",
+        poison=False,
+        show_rolls=True,
+        explain_math=True,
+        trap_key="hidden_pit",
+        session=session,
+    )
+
+    assert failed
+    assert any("automatically fails" in entry for entry in log)
 
 
 def test_fd_surrounded_by_foes_tracks_combat_rounds(monkeypatch) -> None:

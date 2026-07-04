@@ -24,7 +24,13 @@ def _fd_save_vs_level(
     label: str,
     show_rolls: bool,
     swim: bool = False,
+    session: SessionState | None = None,
 ) -> tuple[bool, list[str]]:
+    if session is not None:
+        from .forsaken_depths_content import fd_no_danger_here_active
+
+        if fd_no_danger_here_active(member):
+            return True, [f"{member.name} ignores the danger and automatically fails the {label} (FD p.55)."]
     from .class_combat import save_modifier
 
     total, rolls = roll_exploding_for_level(member)
@@ -64,11 +70,17 @@ def apply_fd_event_flood(
                 label=f"Swimming Save {attempt}/3",
                 show_rolls=show_rolls,
                 swim=True,
+                session=session,
             )
             session.log.extend(save_log)
             if failed:
-                member.current_life = max(0, member.current_life - 1)
-                session.log.append(f"{member.name} loses 1 Life to the flood ({member.current_life}/{member.max_life}).")
+                from .party_life import apply_party_life_loss
+
+                before = member.current_life
+                applied = apply_party_life_loss(session, member, 1, log=session.log)
+                session.log.append(
+                    f"{member.name} loses {applied} Life to the flood ({member.current_life}/{member.max_life}; was {before})."
+                )
     for member in _living_party(session):
         destroyed: list[str] = []
         kept: list[str] = []
@@ -112,11 +124,14 @@ def apply_fd_event_earthquake(
             stone_level,
             label="Earthquake Save",
             show_rolls=show_rolls,
+            session=session,
         )
         session.log.extend(save_log)
         if failed:
-            member.current_life = max(0, member.current_life - 1)
-            session.log.append(f"{member.name} takes 1 Life from falling stone ({member.current_life}/{member.max_life}).")
+            from .party_life import apply_party_life_loss
+
+            applied = apply_party_life_loss(session, member, 1, log=session.log)
+            session.log.append(f"{member.name} takes {applied} Life from falling stone ({member.current_life}/{member.max_life}).")
 
 
 def apply_fd_event_labyrinth_shift(
@@ -175,6 +190,7 @@ def apply_fd_event_nightmare_mist(
             save_level,
             label="Nightmare Mist Save",
             show_rolls=show_rolls,
+            session=session,
         )
         session.log.extend(save_log)
         if failed:

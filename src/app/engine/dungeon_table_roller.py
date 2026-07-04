@@ -1659,6 +1659,12 @@ class DungeonTableRoller:
         session: SessionState | None = None,
     ) -> tuple[bool, list[str]]:
         if session is not None:
+            from .forsaken_depths_content import fd_no_danger_here_active
+
+            if fd_no_danger_here_active(member):
+                return True, [
+                    f"{member.name} ignores the danger and automatically fails the {label} Save (FD p.55)."
+                ]
             from .forsaken_depths_revelation import consume_fd_revelation_auto_save
 
             if consume_fd_revelation_auto_save(session, show_rolls=show_rolls):
@@ -2025,6 +2031,13 @@ def _save_trap_hit(
     from .heroic_skill_effects import trap_damage_after_reduction, trap_save_bonus
 
     log: list[str] = []
+    forced_failure = False
+    if session is not None:
+        from .forsaken_depths_content import fd_no_danger_here_active
+
+        if fd_no_danger_here_active(member):
+            forced_failure = True
+            log.append(f"{member.name} ignores the danger and automatically fails the {label} Save (FD p.55).")
     total, rolls = roll_exploding_for_level(member)
     modifier = _trap_save_modifier(member, trap_key, label, poison=poison) + encumbrance_penalty(member)
     modifier += trap_save_bonus(member, trap_key, label)
@@ -2036,8 +2049,8 @@ def _save_trap_hit(
         log.append(f"Trap save: {member.name} vs {label}: {' + '.join(str(value) for value in rolls)} + {modifier}.")
     if explain_math:
         log.append(f"Trap save math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need >= {trap_level}.")
-    failed = rolls[0] == 1 or total + modifier < trap_level
-    if failed and _caverns_halfling_reroll_applies(member, trap_key):
+    failed = forced_failure or rolls[0] == 1 or total + modifier < trap_level
+    if failed and not forced_failure and _caverns_halfling_reroll_applies(member, trap_key):
         total, rolls = roll_exploding_for_level(member)
         if show_rolls:
             log.append(f"Caverns halfling reroll: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}.")
@@ -2045,10 +2058,15 @@ def _save_trap_hit(
             log.append(f"Caverns halfling reroll math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need >= {trap_level}.")
         failed = rolls[0] == 1 or total + modifier < trap_level
     if failed:
-        applied = damage * 2 if double_on_natural_1 and rolls[0] == 1 else damage
+        applied = damage * 2 if double_on_natural_1 and not forced_failure and rolls[0] == 1 else damage
         applied, reduction_log = trap_damage_after_reduction(member, trap_key, label, applied)
         log.extend(reduction_log)
-        member.current_life = max(0, member.current_life - applied)
+        if session is not None:
+            from .party_life import apply_party_life_loss
+
+            applied = apply_party_life_loss(session, member, applied, log=log)
+        else:
+            member.current_life = max(0, member.current_life - applied)
         log.append(f"{member.name} takes {applied} damage from the {label}.")
         if bear_trap and applied > 0 and "Bear Trap Wound" not in member.statuses:
             member.statuses.append("Bear Trap Wound")

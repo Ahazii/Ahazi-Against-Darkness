@@ -1,5 +1,5 @@
 {
-  "ruleset_status": "Forsaken Depths tables (fd_* keys below) validated against Four Against the Forsaken Depths. Live engine: river/boat, traps, treasure, events (flood/earthquake/labyrinth/portal/mist), Lady in Gray quests, Cairn tap, hidden treasure chamber, Revelation auto-apply, Surrounded by Foes combat-round duration tracking, side sheets, citadel modifiers, Oblivion, ruins secret passage.",
+  "ruleset_status": "Forsaken Depths tables (fd_* keys below) validated against Four Against the Forsaken Depths. Live engine: river/boat, traps, treasure, events (flood/earthquake/labyrinth/portal/mist), Lady in Gray quests, Cairn tap, hidden treasure chamber, FD p.55 player hallucination mechanics, Revelation auto-apply, Surrounded by Foes combat-round duration tracking, side sheets, citadel modifiers, Oblivion, ruins secret passage.",
   "open_items": [
     "Rulebook validation → validated on all 72 tiles."
   ],

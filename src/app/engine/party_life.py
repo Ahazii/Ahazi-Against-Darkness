@@ -16,6 +16,8 @@ def apply_party_life_loss(
     session: SessionState | None,
     member: PartyMemberState,
     amount: int,
+    *,
+    log: list[str] | None = None,
 ) -> int:
     if amount <= 0:
         return 0
@@ -24,4 +26,12 @@ def apply_party_life_loss(
     applied = before - member.current_life
     if applied > 0:
         record_character_life_loss(session, member.character_id)
+        if session is not None:
+            from .forsaken_depths_content import clear_fd_hallucination_on_damage
+
+            clear_log = clear_fd_hallucination_on_damage(session, member)
+            if log is not None:
+                log.extend(clear_log)
+            else:
+                session.log.extend(clear_log)
     return applied
