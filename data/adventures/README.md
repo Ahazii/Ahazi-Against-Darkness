@@ -3,6 +3,7 @@
 Structured adventure manifests live here. They power **imported** sessions (`SessionState.adventure_type === "imported"`), including modules authored by external AI and modules extracted from owned PDFs.
 
 **Full specification:** [`docs/AI_ADVENTURE_MODE.md`](../../docs/AI_ADVENTURE_MODE.md)
+**User-editing guide:** [`docs/ADVENTURE_MODULE_FORMAT.md`](../../docs/ADVENTURE_MODULE_FORMAT.md)
 
 ---
 
@@ -26,11 +27,16 @@ data/adventures/
 DATA_DIR/Adventures/                 ← runtime install location (beside game.db)
   {adventure_id}/
     adventure.json
+    package.json
+    maps/
+    artwork/
+    tables/
+    notes/
     adventure.meta.json
 ```
 
-**Export (v1):** a single `adventure.json` file (same schema as installed modules).  
-**Export (future v2):** `.zip` containing `adventure.json`, optional package JSON, and optional `assets/`.
+**Export JSON:** a single `adventure.json` file (same schema as installed modules).
+**Export ZIP:** the full `DATA_DIR/Adventures/<adventure_id>/` folder, including `adventure.json`, optional `package.json`, maps, artwork, tables, and notes.
 
 **Do not** add test or personal modules under `data/adventures/{id}/` — only shipped examples and `examples/` belong here. User imports install to `DATA_DIR/Adventures/` beside `game.db`.
 
@@ -78,9 +84,9 @@ Template: `examples/crypt-of-whispers/adventure.json`
 
 ## PDF-authored adventures
 
-Owned PDFs stay in `DATA_DIR/Adventure PDFs` or the local `Adventures/` folder (not committed). Use Adventure Management -> Modules -> **Scan new PDFs** to assess the source before conversion. Human reviewers extract playable room/scene data into the **same manifest format** ([`docs/CONTENT_PIPELINE.md`](../../docs/CONTENT_PIPELINE.md)). Set `source.type` to `"pdf"`.
+Owned PDFs stay in `DATA_DIR/Adventure PDFs` or the local `Adventures/` folder (not committed). Use Adventure Management -> PDF Module Importer -> **Scan new PDFs** to assess the source before conversion. Human reviewers extract playable room/scene data into the **same manifest format** ([`docs/CONTENT_PIPELINE.md`](../../docs/CONTENT_PIPELINE.md)). Set `source.type` to `"pdf"`.
 
-Use Adventure Management -> Modules -> **Create / Refresh Package** when the PDF adds module-local material that does not belong in the base manifest. Packages use `schema/adventure_package.v1.json` and live inside the adventure folder as `DATA_DIR/Adventures/<adventure_id>/package.json`. Package assets belong in that same adventure folder, for example `DATA_DIR/Adventures/<adventure_id>/maps/`. The package editor can extract embedded PDF images where possible and lets you pin rooms, hexes, scenes, or locations to percent coordinates on the reviewed map.
+Use Adventure Management -> PDF Module Importer -> **Create / Refresh Package** when the PDF adds module-local material that does not belong in the base manifest. Packages use `schema/adventure_package.v1.json` and live inside the adventure folder as `DATA_DIR/Adventures/<adventure_id>/package.json`. Package assets belong in that same adventure folder, for example `DATA_DIR/Adventures/<adventure_id>/maps/`. The PDF Import Review Workspace lets you edit reviewed nodes, branches, notes, local tables, foes, items, trackers, procedures, and map pins before conversion to a playable manifest.
 
 First PDF target: `caves-of-the-kobold-slave-masters.pdf`.
 
@@ -92,6 +98,7 @@ First PDF target: `caves-of-the-kobold-slave-masters.pdf`.
 |------|--------|
 | Manifest schema | `data/adventures/schema/adventure_manifest.v1.json` |
 | Package schema | `data/adventures/schema/adventure_package.v1.json` |
+| User module guide | `docs/ADVENTURE_MODULE_FORMAT.md` |
 | Validator | `adventure_manifest.py` + `tools/validate_adventure_manifest.py` |
 | Allowlists | `build_adventure_allowlists()` + `tools/export_adventure_allowlists.py` → snapshot `allowlists.json` |
 | Prompt builder | Home → **AI Adventure (build prompt)** |

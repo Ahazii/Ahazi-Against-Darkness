@@ -26,6 +26,9 @@ ALLOWED_PROCEDURE_OPS = {
     "pin_location",
     "show_choice",
 }
+PACKAGE_CAPABILITIES = {"foes", "classes", "items", "tables", "trackers", "procedures", "maps", "pins"}
+NODE_TYPES = {"room", "scene", "location", "hex", "camp", "settlement", "ending"}
+NODE_REVIEW_STATUSES = {"draft", "checked", "needs_pdf_check", "ready_for_manifest"}
 
 
 def _slug(value: str, fallback: str = "adventure-package") -> str:
@@ -272,6 +275,7 @@ def create_or_refresh_package_from_pdf(
         "foes": existing.get("foes", []),
         "classes": existing.get("classes", []),
         "items": existing.get("items", []),
+        "nodes": existing.get("nodes", []),
         "tables": existing.get("tables", []),
         "trackers": existing.get("trackers", []),
         "procedures": _sanitize_procedures(existing.get("procedures", [])),
@@ -336,6 +340,13 @@ def list_adventure_packages(data_dir: Path) -> list[dict[str, Any]]:
     return packages
 
 
+def package_detail(data_dir: Path, package_id: str) -> dict[str, Any]:
+    package = load_adventure_package(data_dir, package_id)
+    if not package:
+        raise FileNotFoundError(f"Adventure package {package_id} was not found.")
+    return _package_with_diagnostics(data_dir, package)
+
+
 def package_summary(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
     maps = [item for item in package.get("maps", []) if isinstance(item, dict)]
     pins = sum(len(item.get("pins", [])) for item in maps)
@@ -363,12 +374,180 @@ def package_summary(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
         "foe_count": len(package.get("foes", []) or []),
         "class_count": len(package.get("classes", []) or []),
         "item_count": len(package.get("items", []) or []),
+        "node_count": len(package.get("nodes", []) or []),
         "table_count": len(package.get("tables", []) or []),
         "tracker_count": len(package.get("trackers", []) or []),
         "procedure_count": len(package.get("procedures", []) or []),
         "package_path": str(adventure_package_path(data_dir, str(package.get("package_id") or ""))),
         "adventure_folder": str(adventure_folder(data_dir, str(package.get("package_id") or ""))),
+        "diagnostics": validate_adventure_package(package),
     }
+
+
+def _package_with_diagnostics(data_dir: Path, package: dict[str, Any]) -> dict[str, Any]:
+    summary = package_summary(data_dir, package)
+    detail = dict(package)
+    detail.update(summary)
+    detail["diagnostics"] = validate_adventure_package(package)
+    return detail
+
+
+def validate_adventure_package(package: dict[str, Any]) -> dict[str, Any]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    if package.get("schema_version") != 1:
+        errors.append("schema_version must be 1.")
+    package_id = str(package.get("package_id") or "")
+    if not package_id:
+        errors.append("package_id is required.")
+    if not str(package.get("title") or "").strip():
+        errors.append("title is required.")
+    source = package.get("source")
+    if not isinstance(source, dict) or source.get("type") != "pdf":
+        errors.append("source.type must be pdf.")
+    elif not str(source.get("source_pdf") or "").strip():
+        errors.append("source.source_pdf is required.")
+    capabilities = package.get("capabilities") or []
+    if not isinstance(capabilities, list):
+        errors.append("capabilities must be an array.")
+    else:
+        for capability in capabilities:
+            if capability not in PACKAGE_CAPABILITIES:
+                errors.append(f"Unknown capability {capability!r}.")
+    nodes = package.get("nodes") or []
+    node_ids: set[str] = set()
+    if not isinstance(nodes, list):
+        errors.append("nodes must be an array.")
+    else:
+        for node in nodes:
+            if isinstance(node, dict) and str(node.get("id") or "").strip():
+                node_ids.add(str(node.get("id") or "").strip())
+        seen_node_ids: set[str] = set()
+        for index, node in enumerate(nodes):
+            prefix = f"nodes[{index}]"
+            if not isinstance(node, dict):
+                errors.append(f"{prefix} must be an object.")
+                continue
+            node_id = str(node.get("id") or "").strip()
+            if not node_id:
+                errors.append(f"{prefix}.id is required.")
+            elif node_id in seen_node_ids:
+                errors.append(f"Duplicate node id {node_id!r}.")
+            else:
+                seen_node_ids.add(node_id)
+            if node.get("type") not in NODE_TYPES:
+                errors.append(f"{prefix}.type must be one of {sorted(NODE_TYPES)}.")
+            if not str(node.get("title") or "").strip():
+                errors.append(f"{prefix}.title is required.")
+            if not isinstance(node.get("source_page"), int) or int(node.get("source_page")) < 0:
+                errors.append(f"{prefix}.source_page must be a non-negative integer.")
+            if not str(node.get("player_text") or "").strip():
+                warnings.append(f"{prefix} has no reviewed player_text.")
+            if node.get("review_status") and node.get("review_status") not in NODE_REVIEW_STATUSES:
+                errors.append(f"{prefix}.review_status is invalid.")
+            for branch_index, branch in enumerate(node.get("branches") or []):
+                branch_prefix = f"{prefix}.branches[{branch_index}]"
+                if not isinstance(branch, dict):
+                    errors.append(f"{branch_prefix} must be an object.")
+                    continue
+                if not str(branch.get("label") or "").strip():
+                    errors.append(f"{branch_prefix}.label is required.")
+                target = str(branch.get("to") or "").strip()
+                if not target:
+                    errors.append(f"{branch_prefix}.to is required.")
+                elif nodes and target not in node_ids:
+                    warnings.append(f"{branch_prefix} points to {target!r}, which is not yet a reviewed node.")
+    maps = package.get("maps") or []
+    if isinstance(maps, list):
+        for map_index, map_record in enumerate(maps):
+            if not isinstance(map_record, dict):
+                errors.append(f"maps[{map_index}] must be an object.")
+                continue
+            for pin_index, pin in enumerate(map_record.get("pins") or []):
+                if not isinstance(pin, dict):
+                    errors.append(f"maps[{map_index}].pins[{pin_index}] must be an object.")
+                    continue
+                node_id = str(pin.get("node_id") or "").strip()
+                if nodes and node_id and node_id not in node_ids:
+                    warnings.append(f"Pin {pin.get('label') or pin.get('id')} points to {node_id!r}, which is not yet a reviewed node.")
+    else:
+        errors.append("maps must be an array.")
+    for field in ("foes", "classes", "items", "tables", "trackers", "procedures"):
+        if field in package and not isinstance(package.get(field), list):
+            errors.append(f"{field} must be an array.")
+    for procedure in package.get("procedures") or []:
+        if not isinstance(procedure, dict):
+            errors.append("procedures entries must be objects.")
+            continue
+        for step in procedure.get("steps") or []:
+            if isinstance(step, dict) and step.get("op") not in ALLOWED_PROCEDURE_OPS:
+                errors.append(f"Procedure {procedure.get('id') or '?'} uses unsupported op {step.get('op')!r}.")
+    ready_nodes = [node for node in nodes if isinstance(node, dict) and node.get("review_status") == "ready_for_manifest"]
+    if nodes and not ready_nodes:
+        warnings.append("No reviewed node is marked ready_for_manifest yet.")
+    valid = not errors
+    return {"valid": valid, "errors": errors, "warnings": warnings}
+
+
+def update_adventure_package_review(data_dir: Path, package_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    package = load_adventure_package(data_dir, package_id)
+    if not package:
+        raise FileNotFoundError(f"Adventure package {package_id} was not found.")
+    if "title" in payload:
+        title = str(payload.get("title") or "").strip()
+        if not title:
+            raise ValueError("title cannot be blank.")
+        package["title"] = title
+    source = dict(package.get("source") or {})
+    if "source_pages" in payload:
+        source["source_pages"] = _integer_list(payload.get("source_pages"))
+    if "license_note" in payload:
+        source["license_note"] = str(payload.get("license_note") or "")
+    if source:
+        source.setdefault("type", "pdf")
+        package["source"] = source
+    review = dict(package.get("review") or {})
+    if "review_status" in payload:
+        review["status"] = str(payload.get("review_status") or "draft_review_needed")
+    if "review_notes" in payload:
+        review["notes"] = str(payload.get("review_notes") or "")
+    package["review"] = review
+    for field in ("nodes", "foes", "classes", "items", "tables", "trackers"):
+        if field in payload:
+            value = payload.get(field)
+            if not isinstance(value, list):
+                raise ValueError(f"{field} must be a JSON array.")
+            package[field] = value
+    if "procedures" in payload:
+        value = payload.get("procedures")
+        if not isinstance(value, list):
+            raise ValueError("procedures must be a JSON array.")
+        package["procedures"] = _sanitize_procedures(value)
+    save_adventure_package(data_dir, package)
+    return _package_with_diagnostics(data_dir, package)
+
+
+def _integer_list(value: Any) -> list[int]:
+    if isinstance(value, str):
+        parts = re.split(r"[,;\s]+", value.strip())
+        values = []
+        for part in parts:
+            if not part:
+                continue
+            try:
+                number = int(part)
+            except ValueError:
+                continue
+            if number >= 0:
+                values.append(number)
+        return values
+    if isinstance(value, list):
+        clean = []
+        for item in value:
+            if isinstance(item, int) and item >= 0:
+                clean.append(item)
+        return clean
+    return []
 
 
 def upsert_map_pin(data_dir: Path, package_id: str, payload: dict[str, Any]) -> dict[str, Any]:

@@ -3400,7 +3400,10 @@ function renderAdventurePackageManager() {
       modernStatusRow("Package status", pkg ? `${pkg.map_count || 0} map(s) · ${pkg.pin_count || 0} pin(s) · ${pkg.review?.status || "draft"}` : "No package yet", "Create a package to store map assets and review metadata in DATA_DIR."),
       modernStatusRow("Storage", pkg?.adventure_folder || "DATA_DIR/Adventures/<adventure_id>/", "Everything for this adventure lives together beside game.db: package.json, maps/, artwork/, tables/, notes/, and the future adventure.json.")
     );
-    if (pkg) packageContainer.appendChild(renderAdventurePackageMaps(pkg));
+    if (pkg) {
+      packageContainer.appendChild(renderAdventurePackageReviewWorkspace(pkg, drawPackage));
+      packageContainer.appendChild(renderAdventurePackageMaps(pkg));
+    }
   };
   picker.addEventListener("change", drawPackage);
   const row = actions();
@@ -3425,6 +3428,218 @@ function renderAdventurePackageManager() {
   panel.append(field("PDF Source", picker), row, packageContainer);
   drawPackage();
   return panel;
+}
+
+function parseJsonArrayField(control, label) {
+  try {
+    const value = JSON.parse(control.value || "[]");
+    if (!Array.isArray(value)) throw new Error(`${label} must be a JSON array.`);
+    return value;
+  } catch (error) {
+    throw new Error(`${label}: ${error.message}`);
+  }
+}
+
+function replaceAdventurePackageInState(pkg) {
+  modernState.adventurePackages = (modernState.adventurePackages || []).filter((item) => item.package_id !== pkg.package_id);
+  modernState.adventurePackages.push(pkg);
+}
+
+function renderAdventurePackageDiagnostics(pkg) {
+  const diagnostics = pkg.diagnostics || {};
+  const panel = el("div", diagnostics.valid ? "modern-package-diagnostics ok" : "modern-package-diagnostics warn");
+  panel.appendChild(el("strong", "", diagnostics.valid ? "Package review data is structurally valid" : "Package review data needs attention"));
+  const messages = [...(diagnostics.errors || []), ...(diagnostics.warnings || [])];
+  if (!messages.length) {
+    panel.appendChild(el("span", "muted", "No package diagnostics reported. This does not mean the PDF content has been fully checked yet."));
+    return panel;
+  }
+  const list = el("ul", "modern-warning-list");
+  for (const message of messages) list.appendChild(el("li", "", message));
+  panel.appendChild(list);
+  return panel;
+}
+
+function renderAdventurePackageReviewWorkspace(pkg, redraw) {
+  const panel = card(
+    "PDF Import Review Workspace",
+    "Review the import as structured facts before it becomes playable: source pages, room/scene/location nodes, branch targets, maps, pins, local tables, foes, items, trackers, and procedures."
+  );
+  panel.appendChild(renderAdventurePackageDiagnostics(pkg));
+  const hasDetail = Array.isArray(pkg.nodes);
+  if (!hasDetail) {
+    const loadRow = actions();
+    loadRow.appendChild(button("Load Editable Package", "Load the full local package.json from DATA_DIR so you can review and edit structured sections.", async () => {
+      const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}`);
+      replaceAdventurePackageInState(result.package);
+      setStatus(`Loaded editable package: ${result.package.title}.`);
+      redraw();
+    }));
+    panel.appendChild(loadRow);
+    return panel;
+  }
+  const title = input("text", `package-title-${pkg.package_id}`, "Package title shown in Adventure Management and future module conversion.");
+  title.value = pkg.title || "";
+  const pages = input("text", `package-pages-${pkg.package_id}`, "Comma-separated PDF pages reviewed for this package.");
+  pages.value = (pkg.source?.source_pages || []).join(", ");
+  const status = select(`package-review-status-${pkg.package_id}`, "Review status. Use ready only after the source PDF has been checked.", [
+    ["draft_review_needed", "Draft - needs PDF review"],
+    ["review_in_progress", "Review in progress"],
+    ["ready_for_manifest", "Ready for manifest conversion"],
+    ["blocked", "Blocked"],
+  ]);
+  status.value = pkg.review?.status || "draft_review_needed";
+  const license = textarea(`package-license-${pkg.package_id}`, "Private-use or publishing-rights note for PDF-derived text and artwork.", 3);
+  license.value = pkg.source?.license_note || "";
+  const notes = textarea(`package-review-notes-${pkg.package_id}`, "Reviewer notes: what was checked, what is uncertain, and what still needs PDF/source confirmation.", 4);
+  notes.value = pkg.review?.notes || "";
+  const detailGrid = el("div", "modern-package-review-grid");
+  detailGrid.append(
+    field("Package Title", title),
+    field("Reviewed PDF Pages", pages),
+    field("Review Status", status),
+    field("License / Rights Note", license),
+    field("Reviewer Notes", notes)
+  );
+  const saveDetails = actions();
+  saveDetails.appendChild(button("Save Review Details", "Save package title, reviewed pages, rights note, and review status to DATA_DIR/Adventures/<module_id>/package.json.", async () => {
+    const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review`, {
+      method: "POST",
+      body: JSON.stringify({
+        title: title.value,
+        source_pages: pages.value,
+        license_note: license.value,
+        review_status: status.value,
+        review_notes: notes.value,
+      }),
+    });
+    replaceAdventurePackageInState(result.package);
+    setStatus(`Saved review details for ${result.package.title}.`);
+    redraw();
+  }));
+  panel.append(detailGrid, saveDetails, renderAdventurePackageNodeEditor(pkg, redraw), renderAdventurePackageSectionEditor(pkg, redraw));
+  return panel;
+}
+
+function renderAdventurePackageNodeEditor(pkg, redraw) {
+  const panel = el("div", "modern-package-node-editor");
+  panel.appendChild(el("h4", "", "Rooms / Scenes / Locations"));
+  panel.appendChild(el("p", "muted", "Use nodes for the human-reviewed structure extracted from the PDF. A node can be a room, scene, hex, location, camp, settlement, or ending. Branches should point to other node ids."));
+  const nodes = Array.isArray(pkg.nodes) ? pkg.nodes : [];
+  const nodeList = el("div", "modern-package-node-list");
+  if (!nodes.length) nodeList.appendChild(el("p", "muted", "No reviewed nodes yet. Add one from the source PDF before converting this package to a playable module."));
+  for (const node of nodes) {
+    const row = el("details", "modern-package-node-card");
+    row.appendChild(el("summary", "", `${node.id || "node"} · ${node.title || "Untitled"} · ${node.type || "room"} · page ${node.source_page ?? "?"}`));
+    row.append(
+      modernStatusRow("Review", node.review_status || "draft", "Node-level review status. ready_for_manifest means the source page and branch logic have been checked."),
+      modernStatusRow("Branches", `${(node.branches || []).length}`, "Branches represent printed choices, save results, doors, routes, or endings."),
+      el("p", "muted", node.player_text || "No player text recorded."),
+      el("p", "muted", node.app_notes || "No app notes recorded.")
+    );
+    nodeList.appendChild(row);
+  }
+  const id = input("text", `node-id-${pkg.package_id}`, "Lowercase id for this room, scene, hex, or location.");
+  const type = select(`node-type-${pkg.package_id}`, "What kind of reviewed content this node represents.", [
+    ["room", "Room"],
+    ["scene", "Scene"],
+    ["location", "Location"],
+    ["hex", "Hex"],
+    ["camp", "Camp"],
+    ["settlement", "Settlement"],
+    ["ending", "Ending"],
+  ]);
+  const title = input("text", `node-title-${pkg.package_id}`, "Player-facing node title.");
+  const page = input("number", `node-page-${pkg.package_id}`, "PDF page number used as source reference.");
+  page.min = "0";
+  page.step = "1";
+  const reviewStatus = select(`node-review-${pkg.package_id}`, "Node review status.", [
+    ["draft", "Draft"],
+    ["checked", "Checked"],
+    ["needs_pdf_check", "Needs PDF check"],
+    ["ready_for_manifest", "Ready for manifest"],
+  ]);
+  const text = textarea(`node-text-${pkg.package_id}`, "Reviewed player-facing narrative/location text for this node.", 5);
+  const appNotes = textarea(`node-notes-${pkg.package_id}`, "App notes: saves, rolls, foes, rewards, choices, rules handling, or branch requirements.", 4);
+  const branches = textarea(`node-branches-${pkg.package_id}`, "JSON array of branches, e.g. [{\"label\":\"Open the north door\",\"to\":\"room-2\",\"condition\":\"door choice\"}].", 4);
+  branches.value = "[]";
+  const form = el("div", "modern-package-node-form");
+  form.append(
+    field("Node Id", id),
+    field("Type", type),
+    field("Title", title),
+    field("Source Page", page),
+    field("Review Status", reviewStatus),
+    field("Player Text", text),
+    field("App Notes", appNotes),
+    field("Branches JSON", branches)
+  );
+  const row = actions();
+  row.appendChild(button("Add / Update Node", "Add this reviewed PDF node or replace the existing node with the same id.", async () => {
+    const nodeId = id.value.trim();
+    if (!nodeId) throw new Error("Node Id is required.");
+    const nextNode = {
+      id: nodeId,
+      type: type.value,
+      title: title.value.trim() || nodeId,
+      source_page: Number(page.value || 0),
+      player_text: text.value,
+      app_notes: appNotes.value,
+      branches: parseJsonArrayField(branches, "Branches JSON"),
+      review_status: reviewStatus.value,
+    };
+    const nextNodes = nodes.filter((item) => item.id !== nodeId);
+    nextNodes.push(nextNode);
+    const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review`, {
+      method: "POST",
+      body: JSON.stringify({ nodes: nextNodes }),
+    });
+    replaceAdventurePackageInState(result.package);
+    setStatus(`Saved node ${nodeId}.`);
+    redraw();
+  }));
+  panel.append(nodeList, form, row);
+  return panel;
+}
+
+function renderAdventurePackageSectionEditor(pkg, redraw) {
+  const details = document.createElement("details");
+  details.className = "modern-package-section-editor";
+  const summary = document.createElement("summary");
+  summary.textContent = "Advanced structured sections";
+  summary.title = "Edit package arrays directly when the importer guessed tables, foes, items, trackers, or procedures. This still saves structured package data, not arbitrary executable code.";
+  details.appendChild(summary);
+  const fields = [
+    ["nodes", "Nodes"],
+    ["foes", "Foes"],
+    ["classes", "Classes"],
+    ["items", "Items"],
+    ["tables", "Tables"],
+    ["trackers", "Trackers"],
+    ["procedures", "Procedures"],
+  ];
+  const controls = {};
+  const grid = el("div", "modern-package-section-grid");
+  for (const [key, label] of fields) {
+    const control = textarea(`package-${key}-${pkg.package_id}`, `${label} JSON array. Keep source_page/source text references so the PDF can be audited later.`, key === "nodes" ? 12 : 7);
+    control.value = JSON.stringify(pkg[key] || [], null, 2);
+    controls[key] = control;
+    grid.appendChild(field(label, control));
+  }
+  const row = actions();
+  row.appendChild(button("Save Structured Sections", "Save these reviewed arrays to package.json. Procedure steps are sanitized to the allowlisted operation names only.", async () => {
+    const payload = {};
+    for (const [key, label] of fields) payload[key] = parseJsonArrayField(controls[key], label);
+    const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    replaceAdventurePackageInState(result.package);
+    setStatus(`Saved structured sections for ${result.package.title}.`);
+    redraw();
+  }));
+  details.append(grid, row);
+  return details;
 }
 
 function renderAdventurePackageMaps(pkg) {

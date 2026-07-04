@@ -2123,10 +2123,17 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert ".modern-warning-list" in STYLES_CSS
     assert "/api/adventures/packages" in MODERN_PAGES_JS
     assert "function renderAdventurePackageManager" in MODERN_PAGES_JS
+    assert "function renderAdventurePackageReviewWorkspace" in MODERN_PAGES_JS
+    assert "PDF Import Review Workspace" in MODERN_PAGES_JS
+    assert "Load Editable Package" in MODERN_PAGES_JS
+    assert "Add / Update Node" in MODERN_PAGES_JS
+    assert "Save Structured Sections" in MODERN_PAGES_JS
     assert "Create / Refresh Package" in MODERN_PAGES_JS
     assert "DATA_DIR/Adventures/<adventure_id>/" in MODERN_PAGES_JS
     assert "modern-package-map-preview" in MODERN_PAGES_JS
     assert ".modern-package-pin-form" in STYLES_CSS
+    assert ".modern-package-node-form" in STYLES_CSS
+    assert "/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review" in MODERN_PAGES_JS
 
 
 def test_current_objective_and_tag_actions_dialog_layout_is_not_squeezed() -> None:

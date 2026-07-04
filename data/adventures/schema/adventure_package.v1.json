@@ -71,6 +71,73 @@
         "$ref": "#/$defs/sourcedRecord"
       }
     },
+    "nodes": {
+      "type": "array",
+      "description": "Human-reviewed rooms, scenes, hexes, or locations extracted from the source PDF before conversion to a playable adventure.json manifest.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "title", "source_page", "player_text"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "type": {
+            "enum": ["room", "scene", "location", "hex", "camp", "settlement", "ending"]
+          },
+          "title": {
+            "type": "string"
+          },
+          "source_page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "player_text": {
+            "type": "string",
+            "description": "Reviewed player-facing narrative or boxed/location text. Keep private PDF prose local unless publishing rights are secured."
+          },
+          "app_notes": {
+            "type": "string",
+            "description": "Reviewer notes about dice, checks, monsters, rewards, branch conditions, or rules that the app must automate."
+          },
+          "map_pin_id": {
+            "type": "string"
+          },
+          "procedure_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "branches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "to"],
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "condition": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                },
+                "source_text": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "review_status": {
+            "enum": ["draft", "checked", "needs_pdf_check", "ready_for_manifest"]
+          }
+        }
+      }
+    },
     "tables": {
       "type": "array",
       "items": {

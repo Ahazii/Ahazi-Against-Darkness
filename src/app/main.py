@@ -41,7 +41,9 @@ from .engine.adventure_packages import (
     create_or_refresh_package_from_pdf,
     delete_map_pin,
     list_adventure_packages,
+    package_detail,
     package_map_asset_path,
+    update_adventure_package_review,
     upsert_map_pin,
 )
 from .engine.adventure_allowlists import build_adventure_allowlists
@@ -2856,6 +2858,29 @@ def _rules_tables_payload() -> dict:
             "boundary": "A refresh should not erase manual review work.",
         },
     ]
+    data["adventure_package_review_workspace_table"] = [
+        {
+            "area": "Review workspace",
+            "purpose": "Lets the user inspect and edit PDF-imported package data as structured sections instead of raw JSON only.",
+            "stored_in": "DATA_DIR/Adventures/<module_id>/package.json",
+            "fields": "title, reviewed pages, rights note, review status, review notes, nodes, foes, classes, items, tables, trackers, procedures",
+            "safety": "Package diagnostics report structural errors and warnings before conversion to a playable adventure.json manifest.",
+        },
+        {
+            "area": "Review nodes",
+            "purpose": "Human-reviewed rooms, scenes, hexes, locations, camps, settlements, and endings extracted from the source PDF.",
+            "stored_in": "package.json nodes[]",
+            "fields": "id, type, title, source_page, player_text, app_notes, branches, review_status",
+            "safety": "Branches should point to reviewed node ids; source_page remains visible for PDF audit.",
+        },
+        {
+            "area": "User guide",
+            "purpose": "Documents the editable module-folder format for users and playtesters.",
+            "stored_in": "docs/ADVENTURE_MODULE_FORMAT.md",
+            "fields": "adventure.json, package.json, maps, pins, procedures, safe editing workflow",
+            "safety": "Private-use PDF prose and artwork stay local in DATA_DIR unless publishing rights are secured.",
+        },
+    ]
     data["artwork_expansion_plan_table"] = [
         {
             "slot": "Module cover art",
@@ -4233,6 +4258,26 @@ async def scan_adventure_pdf_sources(payload: dict | None = None) -> dict[str, A
 @app.get("/api/adventures/packages")
 async def adventure_packages() -> dict[str, Any]:
     return {"packages": list_adventure_packages(settings.data_dir)}
+
+
+@app.get("/api/adventures/packages/{package_id}")
+async def adventure_package_detail(package_id: str) -> dict[str, Any]:
+    try:
+        package = package_detail(settings.data_dir, package_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"package": package}
+
+
+@app.post("/api/adventures/packages/{package_id}/review")
+async def save_adventure_package_review(package_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        package = update_adventure_package_review(settings.data_dir, package_id, payload)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"package": package}
 
 
 @app.post("/api/adventures/pdf-sources/{pdf_id}/package")

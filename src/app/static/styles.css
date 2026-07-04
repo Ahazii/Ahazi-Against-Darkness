@@ -680,8 +680,72 @@ h2 {
   gap: 6px;
 }
 
+.modern-package-diagnostics {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #3c3a30;
+  border-radius: 7px;
+  background: #151610;
+}
+
+.modern-package-diagnostics.ok {
+  border-color: rgba(113, 184, 104, 0.45);
+}
+
+.modern-package-diagnostics.warn {
+  border-color: rgba(201, 162, 39, 0.58);
+}
+
+.modern-package-review-grid,
+.modern-package-node-form,
+.modern-package-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.modern-package-review-grid .field:nth-last-child(-n + 2),
+.modern-package-node-form .field:nth-last-child(-n + 3),
+.modern-package-section-grid .field {
+  grid-column: 1 / -1;
+}
+
+.modern-package-node-editor,
+.modern-package-node-list {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.modern-package-node-editor h4 {
+  margin: 8px 0 0;
+}
+
+.modern-package-node-card,
+.modern-package-section-editor {
+  border: 1px solid #3c3a30;
+  border-radius: 7px;
+  background: #151610;
+  padding: 9px;
+}
+
+.modern-package-node-card summary,
+.modern-package-section-editor summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #fff7d6;
+}
+
 @media (max-width: 560px) {
   .modern-package-pin-form {
+    grid-template-columns: 1fr;
+  }
+
+  .modern-package-review-grid,
+  .modern-package-node-form,
+  .modern-package-section-grid {
     grid-template-columns: 1fr;
   }
 }

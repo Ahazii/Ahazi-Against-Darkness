@@ -188,6 +188,7 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         "exploration_objective_clarity_table",
         "adventure_management_browser_table",
         "adventure_package_map_pinning_table",
+        "adventure_package_review_workspace_table",
         "adventure_package_schema_table",
         "adventure_pdf_source_scan_table",
         "artwork_expansion_plan_table",

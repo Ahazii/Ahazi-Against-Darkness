@@ -13,6 +13,8 @@ from app.engine.adventure_pdf_sources import (
 from app.engine.adventure_packages import (
     create_or_refresh_package_from_pdf,
     load_adventure_package,
+    package_detail,
+    update_adventure_package_review,
     upsert_map_pin,
 )
 
@@ -134,6 +136,7 @@ def test_adventure_package_schema_is_declarative_and_map_pin_ready() -> None:
     )
 
     assert "maps" in schema["properties"]
+    assert "nodes" in schema["properties"]
     assert "pins" in schema["properties"]["capabilities"]["items"]["enum"]
     assert "pin_location" in procedure_op
     assert "script" not in procedure_op
@@ -182,3 +185,56 @@ def test_create_package_from_pdf_creates_manual_map_slot_and_preserves_pins(tmp_
     refreshed = create_or_refresh_package_from_pdf(root, data, "map-module-pdf")
     assert refreshed["pin_count"] == 1
     assert refreshed["maps"][0]["pins"][0]["node_id"] == "room-1"
+
+
+def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Path) -> None:
+    root = tmp_path / "app"
+    data = tmp_path / "data"
+    root.mkdir()
+    data.mkdir()
+    pdf_dir = user_adventure_pdf_dir(data)
+    pdf_dir.mkdir(parents=True)
+    _write_blank_pdf(pdf_dir / "Review Module.pdf")
+    scan_new_adventure_pdfs(root, data)
+    create_or_refresh_package_from_pdf(root, data, "review-module-pdf")
+
+    updated = update_adventure_package_review(
+        data,
+        "review-module-pdf",
+        {
+            "title": "Review Module",
+            "source_pages": "1, 2, 5",
+            "review_status": "review_in_progress",
+            "review_notes": "Opening scene checked against the source PDF.",
+            "nodes": [
+                {
+                    "id": "scene-1",
+                    "type": "scene",
+                    "title": "Opening Scene",
+                    "source_page": 1,
+                    "player_text": "The reviewed opening text.",
+                    "app_notes": "Ask for a choice before branching.",
+                    "branches": [{"label": "Continue", "to": "scene-2"}],
+                    "review_status": "ready_for_manifest",
+                },
+                {
+                    "id": "scene-2",
+                    "type": "scene",
+                    "title": "Second Scene",
+                    "source_page": 2,
+                    "player_text": "The reviewed follow-up text.",
+                    "review_status": "checked",
+                },
+            ],
+        },
+    )
+
+    assert updated["title"] == "Review Module"
+    assert updated["source"]["source_pages"] == [1, 2, 5]
+    assert updated["review"]["status"] == "review_in_progress"
+    assert updated["node_count"] == 2
+    assert updated["diagnostics"]["valid"] is True
+    assert updated["diagnostics"]["errors"] == []
+    detail = package_detail(data, "review-module-pdf")
+    assert detail["nodes"][0]["id"] == "scene-1"
+    assert detail["review"]["notes"] == "Opening scene checked against the source PDF."
