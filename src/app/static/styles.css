@@ -765,6 +765,16 @@ h2 {
   min-width: 0;
 }
 
+.modern-package-browser-active {
+  grid-column: 1 / -1;
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 162, 39, 0.38);
+  border-radius: 7px;
+  background: rgba(201, 162, 39, 0.09);
+  color: #fff7d6;
+  font-weight: 700;
+}
+
 .modern-package-record-list,
 .modern-package-record-detail,
 .modern-package-detail {

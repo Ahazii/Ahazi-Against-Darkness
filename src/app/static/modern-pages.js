@@ -197,7 +197,7 @@ function button(label, title, onClick, className = "secondary") {
   const btn = el("button", className, label);
   btn.type = "button";
   btn.title = title;
-  btn.addEventListener("click", () => onClick().catch(handleError));
+  btn.addEventListener("click", () => Promise.resolve().then(() => onClick()).catch(handleError));
   return btn;
 }
 
@@ -3808,7 +3808,7 @@ function packageRecordUsage(pkg, kind, record) {
 function renderPackageRecordPreview(pkg, kind, record) {
   const preview = el("div", "modern-package-record-preview");
   const title = packageRecordTitle("", record);
-  preview.appendChild(el("h4", "", `${MODERN_PACKAGE_CANDIDATE_GROUPS.find(([key]) => key === kind)?.[1] || "Record"} Preview: ${title}`));
+  preview.appendChild(el("h4", "", `${PACKAGE_REVIEW_GROUPS.find(([key]) => key === kind)?.[1] || "Record"} Preview: ${title}`));
   const meta = el("div", "modern-chip-row");
   for (const [label, value] of [
     ["id", record.id],
@@ -3996,11 +3996,18 @@ function renderAdventurePackageReviewBrowser(pkg) {
       tabs.appendChild(tab);
     }
     const [, label, records] = groups.find(([key]) => key === active) || groups[0];
+    const activeSummary = el("div", "modern-package-browser-active", `${label} (${records.length})`);
+    activeSummary.title = `Currently reviewing ${label.toLowerCase()} extracted or edited for this package.`;
     const list = el("div", "modern-package-record-list");
     const detail = el("div", "modern-package-record-detail");
+    body.appendChild(activeSummary);
+    list.appendChild(el("strong", "", `${label} (${records.length})`));
     if (!records.length) {
       list.appendChild(el("p", "muted", `No ${label.toLowerCase()} recorded yet. Use Extract Candidate Lists or add records manually in the editor below.`));
-      detail.appendChild(el("p", "muted", "Select a record to inspect details."));
+      detail.append(
+        el("strong", "", `${label} detail`),
+        el("p", "muted", `No ${label.toLowerCase()} are currently recorded in this package. If the extractor put one in the wrong list, open that source list, select the record, choose Move To ${label}, then press Move Record.`)
+      );
     } else {
       const selectedRecord = selected || records[0];
       selected = selectedRecord;
@@ -4016,7 +4023,15 @@ function renderAdventurePackageReviewBrowser(pkg) {
         });
         list.appendChild(item);
       }
-      detail.appendChild(packageRecordDetail(pkg, active, selectedRecord, () => renderPage()));
+      try {
+        detail.appendChild(packageRecordDetail(pkg, active, selectedRecord, () => renderPage()));
+      } catch (error) {
+        detail.append(
+          el("strong", "", `${label} detail`),
+          el("p", "warning-text", `Could not preview this record: ${error?.message || "unknown render error"}`),
+          el("pre", "modern-json-preview", JSON.stringify(selectedRecord, null, 2))
+        );
+      }
     }
     body.append(list, detail);
   };

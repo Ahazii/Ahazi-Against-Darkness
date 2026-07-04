@@ -2126,6 +2126,7 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert ".modern-warning-list" in STYLES_CSS
     assert "/api/adventures/packages" in MODERN_PAGES_JS
     assert "function renderAdventurePackageManager" in MODERN_PAGES_JS
+    assert "Promise.resolve().then(() => onClick()).catch(handleError)" in MODERN_PAGES_JS
     assert "PDF Importer Module List" in MODERN_PAGES_JS
     assert "Scan New PDFs" in MODERN_PAGES_JS
     assert "Rescan All PDFs" in MODERN_PAGES_JS
@@ -2174,6 +2175,12 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "Ignored" in MODERN_PAGES_JS
     assert "Save Correction" in MODERN_PAGES_JS
     assert "Move Record" in MODERN_PAGES_JS
+    assert "If the extractor put one in the wrong list" in MODERN_PAGES_JS
+    assert "choose Move To ${label}" in MODERN_PAGES_JS
+    assert "modern-package-browser-active" in MODERN_PAGES_JS
+    assert "Could not preview this record" in MODERN_PAGES_JS
+    assert ".modern-package-browser-active" in STYLES_CSS
+    assert "MODERN_PACKAGE_CANDIDATE_GROUPS" not in MODERN_PAGES_JS
     assert "Mark Wrong / Ignore" in MODERN_PAGES_JS
     assert "original_extraction" in MODERN_PAGES_JS
     assert "Load Editable Package" in MODERN_PAGES_JS
