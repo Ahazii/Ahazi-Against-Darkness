@@ -156,6 +156,40 @@ Use `app_notes` for dice, saves, monster handling, rewards, procedure notes, and
 
 Use `branches` for printed choices, doors, scene jumps, save results, routes, or endings.
 
+## Candidate Lists From PDFs
+
+The PDF Import Review Workspace can extract candidate records from the source PDF text. These are shown in clickable lists:
+
+- Locations
+- Tables
+- Foes
+- Items
+- Classes
+- Procedures
+
+Candidate records are guesses. They normally start with `review_status: "needs_pdf_check"`.
+
+Use the detail pane to inspect:
+
+- source page
+- source text
+- branches
+- table rows
+- procedure steps
+- notes
+- raw JSON for that record
+
+Only change a record to `checked` or `ready_for_manifest` after comparing it with the source PDF.
+
+Common fixes after extraction:
+
+- Rename noisy candidate titles.
+- Split a long location into multiple nodes.
+- Remove table rows that were actually numbered room entries.
+- Move monster stat text from `items` to `foes`.
+- Add missing branch targets when the PDF says "go to Scene X".
+- Add app notes for saves, rolls, rewards, and choices the app should automate later.
+
 ## Maps And Pins
 
 Map images belong in:

@@ -258,8 +258,9 @@ resolves all dice and combat.
 1. Inventory PDF pages, text length, and embedded images.
 2. If the PDF adds module-local content, use Adventure Management -> PDF Module Importer -> **Create / Refresh Package** to create a declarative package matching `data/adventures/schema/adventure_package.v1.json`. Packages live inside the adventure folder at `DATA_DIR/Adventures/<adventure_id>/package.json` and can record reviewed nodes, local tables, foes, items, class candidates, trackers, procedures, imported map assets, and map pins. They cannot execute scripts.
 3. Extracted map images are stored in `DATA_DIR/Adventures/<adventure_id>/maps/`. If no embedded PDF image can be extracted, the package creates a manual map slot; place a cropped map image at the displayed `DATA_DIR/Adventures/<adventure_id>/maps/...` path. Use the package map preview to click/fill percent coordinates and tie room/hex/location ids to pins. Keep the source PDF and source page on every map/pin set so the player can audit it.
-4. Use the PDF Import Review Workspace to edit structured review nodes: rooms, scenes, locations, hexes, branches, app notes, and source pages. Keep uncertain text as `needs_pdf_check` until the PDF has been checked.
-5. Create a manifest matching the v1 schema:
+4. Use the PDF Import Review Workspace to extract and inspect candidate lists for locations/nodes, tables, foes, items, classes, and procedures. Click any candidate to inspect source page, source text, branches, table rows, procedure steps, and raw JSON.
+5. Edit structured review nodes: rooms, scenes, locations, hexes, branches, app notes, and source pages. Keep uncertain text as `needs_pdf_check` until the PDF has been checked.
+6. Create a manifest matching the v1 schema:
 
 ```json
 {
@@ -281,9 +282,9 @@ resolves all dice and combat.
 }
 ```
 
-6. Review the manifest and any package data manually against the source PDF.
-7. Run automated validation (`validate_adventure_manifest()` plus the package diagnostics shown in Adventure Management).
-8. Make the adventure playable only after validation passes.
+7. Review the manifest and any package data manually against the source PDF.
+8. Run automated validation (`validate_adventure_manifest()` plus the package diagnostics shown in Adventure Management).
+9. Make the adventure playable only after validation passes.
 
 Package notes:
 

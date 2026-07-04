@@ -738,6 +738,68 @@ h2 {
   color: #fff7d6;
 }
 
+.modern-package-browser {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #3c3a30;
+  border-radius: 7px;
+  background: #151610;
+}
+
+.modern-package-browser h4 {
+  margin: 0;
+}
+
+.modern-package-browser-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.modern-package-browser-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.34fr) minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+
+.modern-package-record-list,
+.modern-package-record-detail,
+.modern-package-detail {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.modern-package-record-item {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  justify-items: start;
+}
+
+.modern-package-record-item.selected {
+  border-color: rgba(201, 162, 39, 0.72);
+  background: rgba(201, 162, 39, 0.14);
+}
+
+.modern-json-preview {
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 9px;
+  border: 1px solid #3c3a30;
+  border-radius: 7px;
+  background: #10110d;
+  color: #d9d0a4;
+  font-size: 0.82rem;
+}
+
 @media (max-width: 560px) {
   .modern-package-pin-form {
     grid-template-columns: 1fr;
@@ -746,6 +808,10 @@ h2 {
   .modern-package-review-grid,
   .modern-package-node-form,
   .modern-package-section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modern-package-browser-body {
     grid-template-columns: 1fr;
   }
 }

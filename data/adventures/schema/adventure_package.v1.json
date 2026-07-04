@@ -172,6 +172,12 @@
                 }
               }
             }
+          },
+          "review_status": {
+            "enum": ["candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest"]
+          },
+          "source_text": {
+            "type": "string"
           }
         }
       }
@@ -250,6 +256,12 @@
                 }
               }
             }
+          },
+          "review_status": {
+            "enum": ["candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest"]
+          },
+          "source_text": {
+            "type": "string"
           }
         }
       }

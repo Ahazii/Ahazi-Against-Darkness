@@ -12,6 +12,7 @@ from app.engine.adventure_pdf_sources import (
 )
 from app.engine.adventure_packages import (
     create_or_refresh_package_from_pdf,
+    extract_adventure_package_candidates,
     load_adventure_package,
     package_detail,
     update_adventure_package_review,
@@ -238,3 +239,57 @@ def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Pat
     detail = package_detail(data, "review-module-pdf")
     assert detail["nodes"][0]["id"] == "scene-1"
     assert detail["review"]["notes"] == "Opening scene checked against the source PDF."
+
+
+def test_package_candidate_extraction_populates_human_review_lists(monkeypatch, tmp_path: Path) -> None:
+    from app.engine import adventure_packages
+
+    root = tmp_path / "app"
+    data = tmp_path / "data"
+    root.mkdir()
+    data.mkdir()
+    pdf_dir = user_adventure_pdf_dir(data)
+    pdf_dir.mkdir(parents=True)
+    _write_blank_pdf(pdf_dir / "Candidate Module.pdf")
+    scan_new_adventure_pdfs(root, data)
+
+    def fake_pages(pdf_path: Path, *, max_pages: int = 80):
+        return [
+            {
+                "page": 3,
+                "text": """
+                Room 1: Gatehouse
+                The gatehouse smells of smoke. If you open the iron door, go to Room 2.
+                Room 2: Chapel
+                Test Save vs L4 or fight the Black Knight.
+                Black Knight HCL+2 boss, 5 Life points, Morale +1.
+                New character class: Cave Scout
+                Treasure Table
+                1-2 10 gp
+                3-4 Potion of Healing
+                5-6 Magic Sword
+                The party may claim the Emerald Necklace reward.
+                """,
+            }
+        ]
+
+    monkeypatch.setattr(adventure_packages, "_extract_pdf_text_pages", fake_pages)
+
+    summary = create_or_refresh_package_from_pdf(root, data, "candidate-module-pdf")
+
+    assert summary["node_count"] >= 2
+    assert summary["table_count"] >= 1
+    assert summary["foe_count"] >= 1
+    assert summary["class_count"] >= 1
+    assert summary["item_count"] >= 1
+    package = load_adventure_package(data, "candidate-module-pdf")
+    assert package is not None
+    assert any(node["id"] == "room-1" for node in package["nodes"])
+    assert any(table["title"] == "Treasure Table" for table in package["tables"])
+    assert any(foe["name"] == "Black Knight" for foe in package["foes"])
+    assert any("emerald-necklace" in item["id"] for item in package["items"])
+
+    # Re-running extraction merges by id instead of duplicating the candidate lists.
+    updated = extract_adventure_package_candidates(root, data, "candidate-module-pdf")
+    assert updated["candidate_changes"]["nodes"] == 0
+    assert updated["candidate_changes"]["tables"] == 0

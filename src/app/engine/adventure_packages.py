@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from .adventure_pdf_sources import adventure_pdf_source_dirs, load_adventure_pdf_assessments
+from .adventure_pdf_sources import adventure_pdf_source_dirs, load_adventure_pdf_assessments, user_adventure_pdf_dir
 
 
 PACKAGE_FILENAME = "package.json"
@@ -198,6 +198,208 @@ def _extract_pdf_map_images(pdf_path: Path, data_dir: Path, package_id: str, *, 
     return maps
 
 
+def _extract_pdf_text_pages(pdf_path: Path, *, max_pages: int = 80) -> list[dict[str, Any]]:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:  # pragma: no cover - dependency is present in app image/tests
+        raise RuntimeError("pypdf is required to extract PDF text.") from exc
+    reader = PdfReader(str(pdf_path))
+    pages: list[dict[str, Any]] = []
+    for index, page in enumerate(reader.pages[: min(max_pages, len(reader.pages))], start=1):
+        try:
+            text = page.extract_text() or ""
+        except Exception:  # noqa: BLE001 - one bad page should not block the package
+            text = ""
+        pages.append({"page": index, "text": text})
+    return pages
+
+
+def _candidate_status() -> str:
+    return "needs_pdf_check"
+
+
+def _snippet(lines: list[str], start: int, *, limit: int = 7, max_chars: int = 900) -> str:
+    parts: list[str] = []
+    for line in lines[start : start + limit]:
+        clean = re.sub(r"\s+", " ", line).strip()
+        if clean:
+            parts.append(clean)
+    return " ".join(parts)[:max_chars]
+
+
+def _candidate_records_from_pdf_pages(pages: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    nodes: list[dict[str, Any]] = []
+    tables: list[dict[str, Any]] = []
+    foes: list[dict[str, Any]] = []
+    classes: list[dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
+    procedures: list[dict[str, Any]] = []
+    seen: dict[str, set[str]] = {key: set() for key in ("nodes", "tables", "foes", "classes", "items", "procedures")}
+    for page in pages:
+        page_no = int(page.get("page") or 0)
+        text = str(page.get("text") or "")
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        for index, line in enumerate(lines):
+            compact = re.sub(r"\s+", " ", line).strip()
+            lower = compact.lower()
+            node_match = re.match(r"^(scene|room|area|location|hex)\s+([a-z0-9]+)\s*[:.)-]?\s*(.*)$", compact, flags=re.IGNORECASE)
+            numbered_match = re.match(r"^(\d{1,3})\s*[).:-]\s+(.{3,100})$", compact)
+            if node_match:
+                kind = node_match.group(1).lower()
+                label = node_match.group(2).lower()
+                title = node_match.group(3).strip() or f"{kind.title()} {label}"
+                node_id = _slug(f"{kind}-{label}", "node")
+                if node_id not in seen["nodes"]:
+                    seen["nodes"].add(node_id)
+                    nodes.append(
+                        {
+                            "id": node_id,
+                            "type": "hex" if kind == "hex" else ("location" if kind in {"area", "location"} else "scene" if kind == "scene" else "room"),
+                            "title": title,
+                            "source_page": page_no,
+                            "player_text": _snippet(lines, index),
+                            "app_notes": "Candidate extracted from a heading-like PDF line. Check source page before using.",
+                            "branches": _branch_candidates(compact + " " + _snippet(lines, index + 1, limit=3)),
+                            "review_status": _candidate_status(),
+                        }
+                    )
+            elif numbered_match and ("numbered location" in text.lower() or "map" in text.lower() or len(nodes) < 20):
+                label = numbered_match.group(1)
+                title = numbered_match.group(2).strip()
+                node_id = _slug(f"location-{label}", "location")
+                if node_id not in seen["nodes"]:
+                    seen["nodes"].add(node_id)
+                    nodes.append(
+                        {
+                            "id": node_id,
+                            "type": "location",
+                            "title": title[:90],
+                            "source_page": page_no,
+                            "player_text": _snippet(lines, index),
+                            "app_notes": "Candidate numbered location. Confirm whether this is a room, map key, table row, or unrelated numbering.",
+                            "branches": _branch_candidates(compact + " " + _snippet(lines, index + 1, limit=3)),
+                            "review_status": _candidate_status(),
+                        }
+                    )
+            if "table" in lower and len(compact) <= 90:
+                table_id = _slug(compact, f"table-{page_no}")
+                if table_id not in seen["tables"]:
+                    seen["tables"].add(table_id)
+                    rows = _table_row_candidates(lines[index + 1 : index + 12])
+                    tables.append(
+                        {
+                            "id": table_id,
+                            "title": compact,
+                            "source_page": page_no,
+                            "dice": _detect_dice(_snippet(lines, index, limit=12)),
+                            "rows": rows or [{"result": "candidate", "text": _snippet(lines, index + 1, limit=4)}],
+                            "review_status": _candidate_status(),
+                            "source_text": _snippet(lines, index, limit=12),
+                        }
+                    )
+            class_match = re.search(r"\b(?:new character class|new class|class)\s*[:\-]\s*([A-Z][A-Za-z' -]{2,60})", compact)
+            if class_match:
+                name = class_match.group(1).strip(" .:-")
+                class_id = _slug(name, "class")
+                if class_id not in seen["classes"]:
+                    seen["classes"].add(class_id)
+                    classes.append(_sourced_candidate(class_id, name, page_no, _snippet(lines, index), "Candidate class. Check abilities, equipment, advancement, and UI support before enabling."))
+            if _looks_like_foe_line(compact):
+                name = _candidate_name_from_line(compact)
+                foe_id = _slug(name, "foe")
+                if name and foe_id not in seen["foes"]:
+                    seen["foes"].add(foe_id)
+                    foes.append(_sourced_candidate(foe_id, name, page_no, _snippet(lines, index), "Candidate foe/stat line. Check stats, level, morale, treasure, reactions, and special rules."))
+            if _looks_like_item_line(compact):
+                name = _candidate_name_from_line(compact)
+                item_id = _slug(name, "item")
+                if name and item_id not in seen["items"]:
+                    seen["items"].add(item_id)
+                    items.append(_sourced_candidate(item_id, name, page_no, _snippet(lines, index), "Candidate item/reward/service. Check cost, effect, ownership, and timing."))
+            if _looks_like_procedure_line(compact):
+                proc_id = _slug(compact[:60], f"procedure-{page_no}")
+                if proc_id not in seen["procedures"]:
+                    seen["procedures"].add(proc_id)
+                    procedures.append(
+                        {
+                            "id": proc_id,
+                            "title": compact[:90],
+                            "source_page": page_no,
+                            "steps": [{"op": "show_choice" if "choose" in lower or "if you" in lower else "test_save" if "save" in lower else "roll_table"}],
+                            "review_status": _candidate_status(),
+                            "source_text": _snippet(lines, index),
+                        }
+                    )
+    return {
+        "nodes": nodes[:80],
+        "tables": tables[:40],
+        "foes": foes[:80],
+        "classes": classes[:30],
+        "items": items[:80],
+        "procedures": procedures[:60],
+    }
+
+
+def _sourced_candidate(record_id: str, name: str, page_no: int, source_text: str, note: str) -> dict[str, Any]:
+    return {
+        "id": record_id,
+        "name": name[:90],
+        "source_page": page_no,
+        "notes": note,
+        "review_status": _candidate_status(),
+        "source_text": source_text,
+    }
+
+
+def _branch_candidates(text: str) -> list[dict[str, str]]:
+    branches = []
+    for match in re.finditer(r"(?:go to|turn to|read|play(?:ing)?)\s+(scene|room|area|location|hex)?\s*([0-9]{1,3}[a-z]?)", text, flags=re.IGNORECASE):
+        kind = (match.group(1) or "scene").lower()
+        target = _slug(f"{kind}-{match.group(2).lower()}", "node")
+        branches.append({"label": f"Go to {kind.title()} {match.group(2)}", "to": target, "source_text": match.group(0)})
+    return branches[:6]
+
+
+def _table_row_candidates(lines: list[str]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for line in lines:
+        compact = re.sub(r"\s+", " ", line).strip()
+        match = re.match(r"^(\d{1,2}(?:[-–]\d{1,2})?)\s*[).:-]?\s+(.{2,180})$", compact)
+        if match:
+            rows.append({"result": match.group(1), "text": match.group(2)})
+    return rows[:20]
+
+
+def _detect_dice(text: str) -> str:
+    match = re.search(r"\b(d6|2d6|d66|d3|d100)\b", text, flags=re.IGNORECASE)
+    return match.group(1).lower() if match else ""
+
+
+def _looks_like_foe_line(line: str) -> bool:
+    lower = line.lower()
+    return any(token in lower for token in (" hcl", "life points", " morale", " final boss", " minion", " vermin", " weird monster", " boss")) and len(line) <= 220
+
+
+def _looks_like_item_line(line: str) -> bool:
+    lower = line.lower()
+    return any(token in lower for token in ("magic ", "potion", "scroll", "sword", "shield", "armor", "armour", "necklace", "ring", "boots", "shoes", "reward", "treasure", "gp", "service")) and len(line) <= 220
+
+
+def _looks_like_procedure_line(line: str) -> bool:
+    lower = line.lower()
+    return any(token in lower for token in ("if you", "if the party", "save vs", "roll d", "choose", "go to scene", "turn to", "read scene")) and len(line) <= 260
+
+
+def _candidate_name_from_line(line: str) -> str:
+    clean = re.sub(r"\s+", " ", line).strip(" .:-")
+    for splitter in (" HCL", " hcl", " has ", " have ", " is ", " are ", " costs ", " cost ", " worth ", ":", " - ", " – ", ","):
+        if splitter in clean:
+            clean = clean.split(splitter, 1)[0]
+            break
+    clean = re.sub(r"^(if|roll|the|a|an)\s+", "", clean, flags=re.IGNORECASE).strip(" .:-")
+    return clean[:80]
+
+
 def _manual_map_slot(package_id: str, pdf_path: Path, source_page: int = 0) -> dict[str, Any]:
     filename = "manual-map-review-slot_1600x900.png"
     return {
@@ -260,6 +462,7 @@ def create_or_refresh_package_from_pdf(
         old = existing_maps.get(str(item.get("id")))
         if old and old.get("pins"):
             item["pins"] = old["pins"]
+    candidates = _candidate_records_from_pdf_pages(_extract_pdf_text_pages(pdf_path))
     package = {
         "schema_version": 1,
         "package_id": package_id,
@@ -272,23 +475,73 @@ def create_or_refresh_package_from_pdf(
         },
         "adventure_manifest_id": str(existing.get("adventure_manifest_id") or ""),
         "capabilities": _package_capabilities(assessment, maps),
-        "foes": existing.get("foes", []),
-        "classes": existing.get("classes", []),
-        "items": existing.get("items", []),
-        "nodes": existing.get("nodes", []),
-        "tables": existing.get("tables", []),
+        "foes": existing.get("foes", []) or candidates["foes"],
+        "classes": existing.get("classes", []) or candidates["classes"],
+        "items": existing.get("items", []) or candidates["items"],
+        "nodes": existing.get("nodes", []) or candidates["nodes"],
+        "tables": existing.get("tables", []) or candidates["tables"],
         "trackers": existing.get("trackers", []),
-        "procedures": _sanitize_procedures(existing.get("procedures", [])),
+        "procedures": _sanitize_procedures(existing.get("procedures", []) or candidates["procedures"]),
         "maps": maps,
         "review": {
             "status": "draft_review_needed",
             "pdf_assessment_id": package_id,
             "package_recommendation": str(assessment.get("package_recommendation") or ""),
             "warnings": [str(item) for item in assessment.get("warnings", []) if item] + extraction_warnings,
+            "candidate_counts": {key: len(value) for key, value in candidates.items()},
         },
     }
     save_adventure_package(data_dir, package)
     return package_summary(data_dir, package)
+
+
+def extract_adventure_package_candidates(root_dir: Path, data_dir: Path, package_id: str) -> dict[str, Any]:
+    package = load_adventure_package(data_dir, package_id)
+    if not package:
+        raise FileNotFoundError(f"Adventure package {package_id} was not found.")
+    source_pdf = str((package.get("source") or {}).get("source_pdf") or "")
+    pdf_path = _resolve_package_source_pdf(root_dir, data_dir, source_pdf)
+    if not pdf_path.is_file():
+        raise FileNotFoundError(f"Source PDF {source_pdf!r} was not found.")
+    candidates = _candidate_records_from_pdf_pages(_extract_pdf_text_pages(pdf_path))
+    changed: dict[str, int] = {}
+    for field in ("nodes", "foes", "classes", "items", "tables", "procedures"):
+        before = len(package.get(field, []) or [])
+        package[field] = _merge_candidate_records(package.get(field, []), candidates[field])
+        changed[field] = len(package.get(field, []) or []) - before
+    review = dict(package.get("review") or {})
+    review["candidate_counts"] = {key: len(value) for key, value in candidates.items()}
+    review["last_candidate_extract"] = "local_pdf_text_scan"
+    package["review"] = review
+    save_adventure_package(data_dir, package)
+    detail = _package_with_diagnostics(data_dir, package)
+    detail["candidate_changes"] = changed
+    return detail
+
+
+def _resolve_package_source_pdf(root_dir: Path, data_dir: Path, source_pdf: str) -> Path:
+    clean = source_pdf.replace("\\", "/").lstrip("/")
+    candidates = [
+        data_dir / clean,
+        root_dir / clean,
+        user_adventure_pdf_dir(data_dir) / Path(clean).name,
+        root_dir / "Adventures" / Path(clean).name,
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return candidates[0]
+
+
+def _merge_candidate_records(existing: Any, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    records = [item for item in existing if isinstance(item, dict)] if isinstance(existing, list) else []
+    seen = {str(item.get("id") or "") for item in records}
+    for candidate in candidates:
+        candidate_id = str(candidate.get("id") or "")
+        if candidate_id and candidate_id not in seen:
+            records.append(candidate)
+            seen.add(candidate_id)
+    return records
 
 
 def _package_capabilities(assessment: dict[str, Any], maps: list[dict[str, Any]]) -> list[str]:

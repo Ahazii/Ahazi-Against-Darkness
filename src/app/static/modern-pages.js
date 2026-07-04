@@ -3517,7 +3517,130 @@ function renderAdventurePackageReviewWorkspace(pkg, redraw) {
     setStatus(`Saved review details for ${result.package.title}.`);
     redraw();
   }));
-  panel.append(detailGrid, saveDetails, renderAdventurePackageNodeEditor(pkg, redraw), renderAdventurePackageSectionEditor(pkg, redraw));
+  const extractRow = actions();
+  extractRow.appendChild(button("Extract Candidate Lists", "Re-scan the source PDF text and add candidate locations, tables, foes, classes, items, and procedures without overwriting reviewed records. Treat results as guesses until checked against the PDF.", async () => {
+    const result = await api(`/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/extract-candidates`, { method: "POST" });
+    replaceAdventurePackageInState(result.package);
+    const changes = result.package.candidate_changes || {};
+    setStatus(`Candidate extraction complete: locations ${changes.nodes || 0}, tables ${changes.tables || 0}, foes ${changes.foes || 0}, classes ${changes.classes || 0}, items ${changes.items || 0}, procedures ${changes.procedures || 0}.`);
+    redraw();
+  }));
+  panel.append(detailGrid, saveDetails, extractRow, renderAdventurePackageReviewBrowser(pkg), renderAdventurePackageNodeEditor(pkg, redraw), renderAdventurePackageSectionEditor(pkg, redraw));
+  return panel;
+}
+
+function packageRecordTitle(kind, record) {
+  if (kind === "nodes") return record.title || record.id || "Untitled location";
+  if (kind === "tables") return record.title || record.id || "Untitled table";
+  if (kind === "procedures") return record.title || record.id || "Untitled procedure";
+  return record.name || record.title || record.id || "Untitled record";
+}
+
+function packageRecordSubtitle(kind, record) {
+  const bits = [];
+  if (record.type) bits.push(record.type);
+  if (record.source_page !== undefined) bits.push(`page ${record.source_page}`);
+  if (record.review_status) bits.push(String(record.review_status).replaceAll("_", " "));
+  if (kind === "tables" && record.dice) bits.push(record.dice);
+  if (kind === "nodes" && Array.isArray(record.branches) && record.branches.length) bits.push(`${record.branches.length} branch(es)`);
+  if (kind === "tables" && Array.isArray(record.rows)) bits.push(`${record.rows.length} row(s)`);
+  return bits.join(" · ") || "candidate";
+}
+
+function packageRecordDetail(record) {
+  const wrap = el("div", "modern-package-detail");
+  wrap.appendChild(el("h4", "", packageRecordTitle("", record)));
+  const meta = el("div", "modern-chip-row");
+  for (const key of ["id", "type", "source_page", "review_status", "dice"]) {
+    if (record[key] !== undefined && record[key] !== "") meta.appendChild(el("span", "modern-tag", `${key}: ${record[key]}`));
+  }
+  wrap.appendChild(meta);
+  const textKeys = ["player_text", "description", "notes", "app_notes", "source_text"];
+  for (const key of textKeys) {
+    if (record[key]) {
+      wrap.appendChild(el("strong", "", key.replaceAll("_", " ")));
+      wrap.appendChild(el("p", "muted", String(record[key])));
+    }
+  }
+  if (Array.isArray(record.branches) && record.branches.length) {
+    wrap.appendChild(el("strong", "", "branches"));
+    const list = el("ul", "modern-warning-list");
+    for (const branch of record.branches) list.appendChild(el("li", "", `${branch.label || "Branch"} -> ${branch.to || "?"}${branch.condition ? ` (${branch.condition})` : ""}`));
+    wrap.appendChild(list);
+  }
+  if (Array.isArray(record.rows) && record.rows.length) {
+    wrap.appendChild(el("strong", "", "rows"));
+    const list = el("ul", "modern-warning-list");
+    for (const row of record.rows.slice(0, 20)) list.appendChild(el("li", "", `${row.result || "?"}: ${row.text || row.description || JSON.stringify(row)}`));
+    wrap.appendChild(list);
+  }
+  if (Array.isArray(record.steps) && record.steps.length) {
+    wrap.appendChild(el("strong", "", "procedure steps"));
+    const list = el("ul", "modern-warning-list");
+    for (const step of record.steps) list.appendChild(el("li", "", step.op || JSON.stringify(step)));
+    wrap.appendChild(list);
+  }
+  const json = document.createElement("pre");
+  json.className = "modern-json-preview";
+  json.textContent = JSON.stringify(record, null, 2);
+  wrap.appendChild(json);
+  return wrap;
+}
+
+function renderAdventurePackageReviewBrowser(pkg) {
+  const panel = el("div", "modern-package-browser");
+  panel.appendChild(el("h4", "", "Imported Content Browser"));
+  panel.appendChild(el("p", "muted", "These are candidate or reviewed records from the package. Click a row to inspect details; check the PDF before marking anything ready for manifest conversion."));
+  const groups = [
+    ["nodes", "Locations", pkg.nodes || []],
+    ["tables", "Tables", pkg.tables || []],
+    ["foes", "Foes", pkg.foes || []],
+    ["items", "Items", pkg.items || []],
+    ["classes", "Classes", pkg.classes || []],
+    ["procedures", "Procedures", pkg.procedures || []],
+  ];
+  let active = groups.find(([, , records]) => records.length)?.[0] || "nodes";
+  let selected = null;
+  const tabs = el("div", "modern-package-browser-tabs");
+  const body = el("div", "modern-package-browser-body");
+  const draw = () => {
+    tabs.replaceChildren();
+    body.replaceChildren();
+    for (const [key, label, records] of groups) {
+      const tab = button(`${label} (${records.length})`, `Show imported ${label.toLowerCase()} detected or edited in this package.`, () => {
+        active = key;
+        selected = null;
+        draw();
+      }, key === active ? "" : "secondary");
+      tabs.appendChild(tab);
+    }
+    const [, label, records] = groups.find(([key]) => key === active) || groups[0];
+    const list = el("div", "modern-package-record-list");
+    const detail = el("div", "modern-package-record-detail");
+    if (!records.length) {
+      list.appendChild(el("p", "muted", `No ${label.toLowerCase()} recorded yet. Use Extract Candidate Lists or add records manually in the editor below.`));
+      detail.appendChild(el("p", "muted", "Select a record to inspect details."));
+    } else {
+      const selectedRecord = selected || records[0];
+      selected = selectedRecord;
+      for (const record of records) {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = `modern-package-record-item${record === selectedRecord ? " selected" : ""}`;
+        item.title = "Inspect this imported candidate. Confirm details against the PDF before using it in play.";
+        item.append(el("strong", "", packageRecordTitle(active, record)), el("span", "muted", packageRecordSubtitle(active, record)));
+        item.addEventListener("click", () => {
+          selected = record;
+          draw();
+        });
+        list.appendChild(item);
+      }
+      detail.appendChild(packageRecordDetail(selectedRecord));
+    }
+    body.append(list, detail);
+  };
+  panel.append(tabs, body);
+  draw();
   return panel;
 }
 

@@ -40,6 +40,7 @@ from .engine.adventure_pdf_sources import (
 from .engine.adventure_packages import (
     create_or_refresh_package_from_pdf,
     delete_map_pin,
+    extract_adventure_package_candidates,
     list_adventure_packages,
     package_detail,
     package_map_asset_path,
@@ -2861,10 +2862,17 @@ def _rules_tables_payload() -> dict:
     data["adventure_package_review_workspace_table"] = [
         {
             "area": "Review workspace",
-            "purpose": "Lets the user inspect and edit PDF-imported package data as structured sections instead of raw JSON only.",
+            "purpose": "Lets the user inspect and edit PDF-imported package data as human-readable candidate lists and structured sections instead of raw JSON only.",
             "stored_in": "DATA_DIR/Adventures/<module_id>/package.json",
             "fields": "title, reviewed pages, rights note, review status, review notes, nodes, foes, classes, items, tables, trackers, procedures",
             "safety": "Package diagnostics report structural errors and warnings before conversion to a playable adventure.json manifest.",
+        },
+        {
+            "area": "Candidate browser",
+            "purpose": "Shows clickable lists of imported locations/nodes, tables, foes, items, classes, and procedures with a detail pane.",
+            "stored_in": "package.json nodes[], tables[], foes[], items[], classes[], procedures[]",
+            "fields": "record id, title/name, source page, review status, source text, branches, rows, procedure steps",
+            "safety": "Extractor output is marked needs_pdf_check and must be confirmed against the PDF before being used for play.",
         },
         {
             "area": "Review nodes",
@@ -4277,6 +4285,17 @@ async def save_adventure_package_review(package_id: str, payload: dict[str, Any]
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"package": package}
+
+
+@app.post("/api/adventures/packages/{package_id}/extract-candidates")
+async def extract_adventure_package_candidate_records(package_id: str) -> dict[str, Any]:
+    try:
+        package = extract_adventure_package_candidates(settings.root_dir, settings.data_dir, package_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return {"package": package}
 
 
