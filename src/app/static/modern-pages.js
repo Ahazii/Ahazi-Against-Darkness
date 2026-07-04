@@ -15,6 +15,7 @@ const modernState = {
 };
 
 const MODERN_PREFS_KEY = "ahazi-modern-dashboard-prefs";
+const ADVENTURE_MANAGEMENT_TAB_KEY = "ahazi-modern-adventure-management-tab";
 
 const TAG_ADVENTURE_FIXED_RESULTS = {
   rumor: [
@@ -3363,6 +3364,7 @@ function renderAdventurePdfSourceScanner() {
     button("Scan new PDFs", "Scan new or changed PDFs in DATA_DIR/Adventure PDFs and the legacy Adventures folder. This creates assessment metadata only.", async () => {
       const result = await api("/api/adventures/pdf-sources/scan", { method: "POST", body: JSON.stringify({}) });
       setStatus(`Scanned ${result.scanned?.length || 0} new PDF source(s); ${result.skipped?.length || 0} already assessed.`);
+      window.sessionStorage.setItem(ADVENTURE_MANAGEMENT_TAB_KEY, "pdf");
       await refreshCoreAndRender();
     })
   );
@@ -3416,6 +3418,7 @@ function renderAdventurePackageManager() {
       modernState.adventurePackages = (modernState.adventurePackages || []).filter((item) => item.package_id !== result.package.package_id);
       modernState.adventurePackages.push(result.package);
       setStatus(`Package ready: ${result.package.title}. ${result.package.map_count || 0} map candidate(s), ${result.package.pin_count || 0} pin(s).`);
+      window.sessionStorage.setItem(ADVENTURE_MANAGEMENT_TAB_KEY, "pdf");
       drawPackage();
     }),
     button("Refresh Packages", "Reload local package summaries from DATA_DIR without rescanning PDFs.", async () => {
@@ -4163,6 +4166,7 @@ function renderAdventureManagement() {
   const tabs = el("div", "modern-tabs");
   const panels = {};
   function activateAdventureTab(key) {
+    window.sessionStorage.setItem(ADVENTURE_MANAGEMENT_TAB_KEY, key);
     for (const buttonEl of tabs.querySelectorAll(".modern-tab-button")) {
       const selected = buttonEl.dataset.tab === key;
       buttonEl.classList.toggle("selected", selected);
@@ -4208,7 +4212,8 @@ function renderAdventureManagement() {
     renderThematicDungeonSignoffChecklist(),
   ]);
   rootEl.append(tabs, ...Object.values(panels));
-  activateAdventureTab("modules");
+  const storedTab = window.sessionStorage.getItem(ADVENTURE_MANAGEMENT_TAB_KEY);
+  activateAdventureTab(panels[storedTab] ? storedTab : "modules");
 }
 
 async function renderGoAdventure() {

@@ -2114,6 +2114,9 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "source PDFs only" in APP_JS
     assert "function renderAdventurePdfSourceScanner" in MODERN_PAGES_JS
     assert "PDF Adventure Sources" in MODERN_PAGES_JS
+    assert "ADVENTURE_MANAGEMENT_TAB_KEY" in MODERN_PAGES_JS
+    assert 'window.sessionStorage.setItem(ADVENTURE_MANAGEMENT_TAB_KEY, "pdf")' in MODERN_PAGES_JS
+    assert 'activateAdventureTab(panels[storedTab] ? storedTab : "modules")' in MODERN_PAGES_JS
     assert "adventure.pdf_source" in MODERN_PAGES_JS
     assert "Package signals" in MODERN_PAGES_JS
     assert "Map/pin signals" in MODERN_PAGES_JS
