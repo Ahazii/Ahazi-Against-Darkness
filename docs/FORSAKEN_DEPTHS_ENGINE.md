@@ -23,6 +23,7 @@ Tile editor workflow: [FD_MAP_ELEMENT_EDITOR.md](FD_MAP_ELEMENT_EDITOR.md).
 | **Stirs** | *Something Stirs in the Darkness* event — river encounters in empty rooms for N areas |
 | **Side sheet** | Active citadel or river ruins side dungeon — rooms entered / budget |
 | **Revelation** | Hallucination Revelation benefit ready to spend |
+| **Surrounded** | Hallucination p.55 state: named hero sees allies as foes; duration ticks after combat rounds |
 | **Oblivion offer** | One-time Madness redemption on River of Oblivion |
 | **MR suspended** | Magic Citadel — foe magic resistance ignored on side sheet |
 | **Demesne** | Active Courtship of Flower Demons exploration (region, Melancholy, keywords) |
@@ -165,7 +166,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 - **Wandering monsters** on FD sessions use `fd_wandering_monsters_table` (including Waste of Time river hazards).
 - **Beast Cage** spawns a surprise weird monster if the lead hero fails the Save.
 - **fd_event** rolls d10 on `fd_event_table` when the tile is first entered. **The Passage** rolls the Citadel type/room count immediately, logs the Tier-in-6 trap chance result, and exposes **Enter Citadel sheet** on that tile.
-- **fd_hallucination** rolls `fd_hallucination_table`; roll 5–6 grants a **Revelation** (party sheet / room panel buttons). After two hallucinations in one adventure, roll 4 redirects to an Event.
+- **fd_hallucination** rolls `fd_hallucination_table`; roll 1 **Surrounded by Foes** records the affected hero and the d3+1 duration, then ticks it down after combat rounds; roll 5–6 grants a **Revelation** (party sheet / room panel buttons). After two hallucinations in one adventure, roll 4 redirects to an Event.
 - **fd_weird** (roll 9): d6 1–3 → `fd_weird_table`, 4–6 → `fd_citadel_weird_table`.
 - **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Citadel entry pre-generates the full room budget** on the side sheet; explore to enter each room for content. **Ghost Citadel** side-sheet placement prefers oversized map elements (40+ cells). **Return to main map** when done. Room budget blocks further expansion when exhausted. Citadel types apply their FD p.60 modifiers (crowded double minions/−1 Reaction, traps replacing minions, prisoners 4-Clue escape, dead-citadel bandages-only healing, magic citadel MR suspended, ghost final boss; **magic citadel final** places a Cyclopean Idol to interact with). Dungeon **ETC** tiles roll citadel type on first entry (same as river ETC).
 

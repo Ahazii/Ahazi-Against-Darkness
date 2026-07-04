@@ -410,6 +410,7 @@ const fdCitadel = document.getElementById("fd-citadel");
 const fdStirs = document.getElementById("fd-stirs");
 const fdSideSheet = document.getElementById("fd-side-sheet");
 const fdRevelation = document.getElementById("fd-revelation");
+const fdSurroundedByFoes = document.getElementById("fd-surrounded-by-foes");
 const fdOblivionOffer = document.getElementById("fd-oblivion-offer");
 const fdMagicMr = document.getElementById("fd-magic-mr");
 const mapViewportEl = document.getElementById("map-viewport");
@@ -13674,6 +13675,14 @@ function fdStirsDisplay(session) {
   return `Stirs: ${remaining} area${remaining === 1 ? "" : "s"} left`;
 }
 
+function fdSurroundedByFoesDisplay(session) {
+  if (session?.ruleset !== "forsaken_depths") return "";
+  const remaining = session.fd_surrounded_by_foes_turns_remaining || 0;
+  if (!remaining) return "";
+  const victim = (session.party || []).find((member) => member.character_id === session.fd_surrounded_by_foes_character_id);
+  return `Surrounded: ${victim?.name || "hero"} (${remaining})`;
+}
+
 function fdSideSheetDisplay(session) {
   if (session?.ruleset !== "forsaken_depths" || !session.fd_side_sheet_active) return "";
   const kind = session.fd_side_sheet_kind === "ruins" ? "Ruins" : "Citadel";
@@ -14884,6 +14893,17 @@ function syncFdSessionBadges(session) {
       setTooltip(
         fdRevelation,
         "Hallucination Revelation from fd_hallucination_table roll 5–6 — spend once for an automatic success benefit (FD p.55). Use party sheet or room panel buttons."
+      );
+    }
+  }
+  const surroundedLabel = fdSurroundedByFoesDisplay(session);
+  if (fdSurroundedByFoes) {
+    fdSurroundedByFoes.textContent = surroundedLabel;
+    fdSurroundedByFoes.classList.toggle("hidden", !surroundedLabel);
+    if (surroundedLabel) {
+      setTooltip(
+        fdSurroundedByFoes,
+        "Surrounded by Foes hallucination (FD p.55): the named hero sees allies as foes. The app tracks the d3+1 duration and ticks it down after each combat round."
       );
     }
   }
@@ -24956,6 +24976,15 @@ function renderTileDetail(session) {
     );
     info.appendChild(revLine);
     appendFdRevelationActions(info, session);
+  }
+  const surroundedLabel = fdSurroundedByFoesDisplay(session);
+  if (surroundedLabel) {
+    const surroundedLine = subline(surroundedLabel);
+    setTooltip(
+      surroundedLine,
+      "Surrounded by Foes hallucination: the named hero sees allies as foes. The app ticks the remaining duration after each combat round (FD p.55)."
+    );
+    info.appendChild(surroundedLine);
   }
   if (session.fd_hallucination_content_rolls >= 2) {
     const hallLine = subline(`Hallucinations this adventure: ${session.fd_hallucination_content_rolls} (roll 4 → Event)`);

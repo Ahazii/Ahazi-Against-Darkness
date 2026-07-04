@@ -184,6 +184,7 @@ def test_setup_includes_forsaken_depths_ruleset_select() -> None:
     assert "fd-stirs" in index_html
     assert "fd-side-sheet" in index_html
     assert "fd-revelation" in index_html
+    assert "fd-surrounded-by-foes" in index_html
     assert "fd-oblivion-offer" in index_html
     assert "fd-magic-mr" in index_html
     assert "fdTravelModeDisplay" in app_js
@@ -203,6 +204,8 @@ def test_setup_includes_forsaken_depths_ruleset_select() -> None:
     assert "fd_quest_spend_clue_enemy" in app_js
     assert "recover_fd_lost_page" in app_js
     assert "appendFdRevelationActions" in app_js
+    assert "fdSurroundedByFoesDisplay" in app_js
+    assert "Surrounded by Foes hallucination" in app_js
     assert "enterFdSideSheet" in app_js
     assert "fdPrisonersEscape" in app_js
 
@@ -212,6 +215,7 @@ def test_map_styles_include_river_water_overlay() -> None:
     assert ".map-square.water" in styles
     assert "env-river" in styles
     assert ".fd-boat-status" in styles
+    assert ".fd-surrounded-by-foes" in styles
     assert "fd-side-sheet-tile" in styles
     assert ".fd-magic-mr" in styles
 
@@ -546,9 +550,50 @@ def test_fd_hallucination_applies_on_prepare(monkeypatch) -> None:
         content_key="fd_hallucination",
     )
     monkeypatch.setattr("app.engine.forsaken_depths_content.roll_d6", lambda: 4)
-    eng._prepare_tile_features(session, tile, show_rolls=True, explain_math=False)
+    from app.engine.forsaken_depths_content import apply_fd_hallucination
+
+    apply_fd_hallucination(eng, session, tile, hcl=5, show_rolls=True)
     assert tile.resolved
     assert any("Horrors from Beyond" in entry for entry in session.log)
+
+
+def test_fd_surrounded_by_foes_tracks_combat_rounds(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-surrounded",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(
+        id="hall-room",
+        x=0,
+        y=0,
+        tile_key="12",
+        tile_type="room",
+        title="Gloomy room",
+        description="Hallucination test",
+        content_key="fd_hallucination",
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_content.roll_d6", lambda: 1)
+    monkeypatch.setattr("app.engine.forsaken_depths_content.roll_formula", lambda formula: 2)
+
+    from app.engine.forsaken_depths_content import apply_fd_hallucination
+
+    apply_fd_hallucination(eng, session, tile, hcl=5, show_rolls=True)
+
+    assert session.fd_surrounded_by_foes_character_id == "hero-1"
+    assert session.fd_surrounded_by_foes_turns_remaining == 2
+    assert any("allies are foes" in entry for entry in session.log)
+
+    from app.engine.forsaken_depths_content import tick_fd_surrounded_by_foes
+
+    tick_fd_surrounded_by_foes(session, show_rolls=True)
+    assert session.fd_surrounded_by_foes_turns_remaining == 1
+    tick_fd_surrounded_by_foes(session, show_rolls=True)
+    assert session.fd_surrounded_by_foes_turns_remaining == 0
+    assert session.fd_surrounded_by_foes_character_id is None
+    assert any("shakes off Surrounded by Foes" in entry for entry in session.log)
 
 
 def test_fd_citadel_roll_on_etc(monkeypatch) -> None:

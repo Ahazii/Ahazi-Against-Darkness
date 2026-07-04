@@ -97,8 +97,12 @@ def apply_fd_hallucination(
                 f"{victim.name} may spend the Revelation benefit once this adventure (FD p.55)."
             )
     elif key == "surrounded_by_foes":
+        turns = roll_formula("d3+1")
+        session.fd_surrounded_by_foes_character_id = victim.character_id
+        session.fd_surrounded_by_foes_turns_remaining = turns
         session.log.append(
-            f"{victim.name} hallucinates that allies are foes for d3+1 turns — resolve manually (FD p.55)."
+            f"{victim.name} hallucinates that allies are foes for d3+1 combat round(s) "
+            f"(rolled {turns}; FD p.55). Track attacks and choices carefully until the state clears."
         )
     elif key == "fingers_are_worms":
         session.log.append(f"{victim.name} drops held items and stares at their hands (FD p.55).")
@@ -107,6 +111,42 @@ def apply_fd_hallucination(
             f"{victim.name} ignores the next danger source automatically (FD p.55)."
         )
     tile.resolved = True
+
+
+def tick_fd_surrounded_by_foes(
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    if session.fd_surrounded_by_foes_turns_remaining <= 0:
+        session.fd_surrounded_by_foes_character_id = None
+        return
+    member = next(
+        (
+            item
+            for item in session.party
+            if item.character_id == session.fd_surrounded_by_foes_character_id
+        ),
+        None,
+    )
+    if member is None or member.current_life <= 0:
+        session.fd_surrounded_by_foes_character_id = None
+        session.fd_surrounded_by_foes_turns_remaining = 0
+        if show_rolls:
+            session.log.append("Surrounded by Foes hallucination clears because the affected hero is no longer active.")
+        return
+    session.fd_surrounded_by_foes_turns_remaining = max(
+        0,
+        session.fd_surrounded_by_foes_turns_remaining - 1,
+    )
+    if session.fd_surrounded_by_foes_turns_remaining <= 0:
+        session.log.append(f"{member.name} shakes off Surrounded by Foes (FD p.55).")
+        session.fd_surrounded_by_foes_character_id = None
+    elif show_rolls:
+        session.log.append(
+            f"Surrounded by Foes: {member.name} has "
+            f"{session.fd_surrounded_by_foes_turns_remaining} combat round(s) remaining (FD p.55)."
+        )
 
 
 FD_REVELATION_CHOICES: dict[str, str] = {

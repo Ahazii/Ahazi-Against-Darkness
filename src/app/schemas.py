@@ -1002,6 +1002,8 @@ class SessionState(BaseModel):
     fd_oblivion_madness_redemption_pending: bool = False
     fd_hallucination_content_rolls: int = Field(default=0, ge=0)
     fd_hallucination_revelation_available: bool = False
+    fd_surrounded_by_foes_character_id: str | None = None
+    fd_surrounded_by_foes_turns_remaining: int = Field(default=0, ge=0)
     fd_revelation_negate_ambush: bool = False
     fd_revelation_auto_defend: bool = False
     fd_revelation_auto_save: bool = False

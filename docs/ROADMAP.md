@@ -280,6 +280,19 @@ Goal: broaden rule coverage safely.
 - Use [`MASTER_RULE_COVERAGE.md`](MASTER_RULE_COVERAGE.md) as the program-level
   source of truth for EE, Four Against the Abyss, Four Against the Forsaken
   Depths, Tales from the Adventurers' Guild, and Four Against the Netherworld.
+- Plan a shared **ruleset package** architecture after the PDF adventure package
+  workflow is stable. Core 4AD, Expanded Edition, Abyss, and later supplements
+  should gradually move toward the same inspectable content shape used by
+  imported adventures: tables, foes, items, classes, states, trackers, and
+  allowlisted procedures. This is a migration direction, not a big-bang rewrite:
+  start with read-only package viewers and one small table family, then prove
+  tests and behavior are unchanged before converting more content.
+- Keep a clear boundary between package data and engine mechanics. Monster
+  tables, treasure lists, item catalogs, class records, state flags, and numeric
+  trackers are good ruleset-package candidates. Rules that alter combat flow,
+  advancement, map generation, reactions, or session lifecycle should become
+  named engine hooks with declarative configuration only where the PDF rule can
+  be represented cleanly.
 - Complete the whole-book Abyss audit. The profile, dedicated procedural
   runtime, exact trap/feature/event pass, reaction routing, tactical
   leader-lock/multiple-boss/horde targeting, and core item use-actions are now

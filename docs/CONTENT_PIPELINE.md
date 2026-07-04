@@ -293,6 +293,13 @@ Package notes:
 - Use percent coordinates for pins so a map can be resized without losing room/area alignment.
 - If a PDF says the player chooses, represent that as a visible choice. If the PDF says to roll, let the app roll and report the result.
 
+Ruleset package direction:
+
+- The same package vocabulary should eventually support read-only and then editable ruleset content for Core 4AD, Expanded Edition, Abyss, and later supplements.
+- Good ruleset-package candidates are tables, foes, items, classes, states/flags, numeric trackers, and declarative procedures.
+- Do not force complex mechanics into JSON. Combat-flow changes, advancement rules, map-generation rules, reaction timing, and session lifecycle behavior should remain named engine hooks unless the PDF rule can be represented cleanly by allowlisted procedures and state checks.
+- Migrate existing EE/Abyss content one small table family at a time and prove tests/behavior are unchanged before broadening the conversion.
+
 ## First Adventure Target
 
 Use `caves-of-the-kobold-slave-masters.pdf` first. It is short, text-extractable,

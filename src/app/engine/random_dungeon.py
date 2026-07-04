@@ -9496,6 +9496,10 @@ class RandomDungeonEngine:
             session.carried_body_id = None
 
         session.combat_round += 1
+        if is_fd_ruleset(session):
+            from .forsaken_depths_content import tick_fd_surrounded_by_foes
+
+            tick_fd_surrounded_by_foes(session, show_rolls=show_rolls)
         session.spell_used_character_ids = []
         session.combat_bodyguard_pause = None
         if session.combat_round == 1:
