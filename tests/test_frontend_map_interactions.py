@@ -2137,7 +2137,8 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert "Load Editable Package" in MODERN_PAGES_JS
     assert "Add / Update Node" in MODERN_PAGES_JS
     assert "Save Structured Sections" in MODERN_PAGES_JS
-    assert "Create / Refresh Package" in MODERN_PAGES_JS
+    assert "Create / Update Package from PDF" in MODERN_PAGES_JS
+    assert "Reload Package List" in MODERN_PAGES_JS
     assert "DATA_DIR/Adventures/<adventure_id>/" in MODERN_PAGES_JS
     assert "modern-package-map-preview" in MODERN_PAGES_JS
     assert ".modern-package-pin-form" in STYLES_CSS

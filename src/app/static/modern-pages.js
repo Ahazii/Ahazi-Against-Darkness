@@ -3410,7 +3410,7 @@ function renderAdventurePackageManager() {
   picker.addEventListener("change", drawPackage);
   const row = actions();
   row.append(
-    button("Create / Refresh Package", "Create or refresh the local adventure package for this PDF. Existing reviewed pins are preserved where possible.", async () => {
+    button("Create / Update Package from PDF", "Create the local package for this selected PDF, or update it from the PDF while preserving reviewed pins and existing reviewed package data where possible.", async () => {
       const result = await api(`/api/adventures/pdf-sources/${encodeURIComponent(picker.value)}/package`, {
         method: "POST",
         body: JSON.stringify({ extract_maps: true }),
@@ -3421,7 +3421,7 @@ function renderAdventurePackageManager() {
       window.sessionStorage.setItem(ADVENTURE_MANAGEMENT_TAB_KEY, "pdf");
       drawPackage();
     }),
-    button("Refresh Packages", "Reload local package summaries from DATA_DIR without rescanning PDFs.", async () => {
+    button("Reload Package List", "Reload package summaries already stored in DATA_DIR. This does not rescan the PDF or update package content.", async () => {
       const result = await api("/api/adventures/packages");
       modernState.adventurePackages = result.packages || [];
       setStatus(`Loaded ${modernState.adventurePackages.length} adventure package(s).`);
