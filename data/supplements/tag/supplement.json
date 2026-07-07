@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "tag",
+  "title": "Tales from the Adventurers' Guild",
+  "kind": "campaign",
+  "status": "active",
+  "locked": false,
+  "enabled_by_default": false,
+  "source": {
+    "type": "pdf",
+    "source_pdf": "Tales_from_the_adventurers_guild.pdf"
+  },
+  "capabilities": [
+    "tables",
+    "states",
+    "rules",
+    "procedures",
+    "locations",
+    "campaign_state",
+    "generators",
+    "narrative"
+  ],
+  "dependencies": ["expanded-edition-core"],
+  "conflicts": [],
+  "legacy_mappings": {
+    "tag_banking_enabled": ["true"],
+    "adventure_type": ["tag_generated"]
+  },
+  "notes": "TAG guild, finance, generated-lead, and closeout behavior remains in current campaign/adventure modules."
+}

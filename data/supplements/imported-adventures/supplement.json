@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "imported-adventures",
+  "title": "Imported Adventure Packages",
+  "kind": "imported_pdf",
+  "status": "review_only",
+  "locked": false,
+  "enabled_by_default": false,
+  "source": {
+    "type": "local_user",
+    "source_path": "DATA_DIR/Adventures"
+  },
+  "capabilities": [
+    "foes",
+    "classes",
+    "items",
+    "tables",
+    "maps",
+    "locations",
+    "states",
+    "rules",
+    "trackers",
+    "procedures",
+    "artwork",
+    "narrative"
+  ],
+  "dependencies": ["expanded-edition-core"],
+  "conflicts": [],
+  "legacy_mappings": {
+    "adventure_type": ["imported"]
+  },
+  "notes": "Local reviewed packages can contain exact PDF narrative text. They are not executable rule code."
+}

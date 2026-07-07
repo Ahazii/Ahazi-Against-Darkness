@@ -42,6 +42,7 @@ def test_assets_route_prefers_data_dir_and_does_not_use_static_mount() -> None:
 
     assert 'user_assets_dir = data_dir / "assets"' in config_py
     assert 'packaged_assets_dir = root_dir / "assets"' in config_py
+    assert 'settings.data_dir / "Supplements"' in config_py
     assert "_seed_user_asset_folders(settings)" in config_py
     assert "_seed_user_narrative_override_template(settings)" in config_py
     assert '"tag_scene_narrative_overrides.json"' in config_py
@@ -52,6 +53,8 @@ def test_assets_route_prefers_data_dir_and_does_not_use_static_mount() -> None:
     assert "cryptography" in requirements
 
     assert 'ASSETS_DIR="${DATA_DIR}/assets"' in entrypoint
+    assert 'SUPPLEMENTS_DIR="${DATA_DIR}/Supplements"' in entrypoint
+    assert 'mkdir -p "${SUPPLEMENTS_DIR}"' in entrypoint
     assert 'mkdir -p "${ASSETS_DIR}/artwork/user"' in entrypoint
     assert 'mkdir -p "${ASSETS_DIR}/Application Artwork"' in entrypoint
     assert 'mkdir -p "${ASSETS_DIR}/icons/user"' in entrypoint
@@ -80,6 +83,7 @@ def test_user_facing_asset_guidance_points_to_data_dir_assets() -> None:
         "DATA_DIR/assets/artwork/user",
         "DATA_DIR/assets/Application Artwork",
         "DATA_DIR/assets/rules_art/local",
+        "DATA_DIR/Supplements",
     ]:
         assert required in combined
 

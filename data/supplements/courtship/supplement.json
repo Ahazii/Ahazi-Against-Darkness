@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "courtship",
+  "title": "The Courtship of Flower Demons",
+  "kind": "rules_expansion",
+  "status": "active",
+  "locked": false,
+  "enabled_by_default": false,
+  "source": {
+    "type": "pdf",
+    "source_pdf": "The_Courtship_of_Flower_Demons.pdf"
+  },
+  "capabilities": [
+    "foes",
+    "classes",
+    "items",
+    "tables",
+    "states",
+    "rules",
+    "terrain_types",
+    "locations",
+    "procedures"
+  ],
+  "dependencies": ["expanded-edition-core"],
+  "conflicts": [],
+  "legacy_mappings": {
+    "courtship_enabled": ["true"],
+    "ruleset_profile_id": ["forsaken_depths"]
+  },
+  "notes": "Courtship content is currently enabled through the Forsaken Depths profile switch."
+}

@@ -692,7 +692,7 @@ async def list_ruleset_profiles(adventure_id: str = "random") -> list[dict[str, 
 async def list_supplements() -> dict[str, Any]:
     from .engine.supplements import supplement_payload
 
-    return supplement_payload()
+    return supplement_payload(settings.root_dir, settings.data_dir)
 
 
 @app.get("/api/states")
@@ -740,9 +740,10 @@ async def get_preferences() -> AppPreferences:
 
 @app.put("/api/preferences")
 async def update_preferences(payload: dict[str, Any]) -> AppPreferences:
-    from .engine.supplements import enabled_supplement_ids_from_selection
+    from .engine.supplements import enabled_supplement_ids_from_selection, supplement_registry
 
     prefs = _load_app_preferences()
+    supplements = supplement_registry(settings.root_dir, settings.data_dir)
     if "show_tag_fixed_result_selector" in payload:
         prefs.show_tag_fixed_result_selector = _parse_bool(payload.get("show_tag_fixed_result_selector"))
     if "enabled_supplement_ids" in payload:
@@ -750,7 +751,7 @@ async def update_preferences(payload: dict[str, Any]) -> AppPreferences:
         if not isinstance(raw_ids, list):
             raise HTTPException(status_code=400, detail="enabled_supplement_ids must be a list.")
         try:
-            prefs.enabled_supplement_ids = enabled_supplement_ids_from_selection(raw_ids)
+            prefs.enabled_supplement_ids = enabled_supplement_ids_from_selection(raw_ids, supplements)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     store.save("preferences", prefs)
@@ -2804,6 +2805,32 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Records active content context only; it does not claim new supplement mechanics are implemented.",
         },
     ]
+    data["supplement_manifest_registry_table"] = [
+        {
+            "area": "Packaged manifests",
+            "path": "data/supplements/<supplement_id>/supplement.json",
+            "purpose": "Describes built-in supplements using file-backed metadata while current data loaders keep reading the existing rules/adventure files.",
+            "rules_boundary": "Manifest records document available content; they do not move rule data or change mechanics by themselves.",
+        },
+        {
+            "area": "Local manifests",
+            "path": "DATA_DIR/Supplements/<supplement_id>/supplement.json",
+            "purpose": "Provides a user-facing appdata location for future reviewed or imported local supplements.",
+            "rules_boundary": "Local manifests can be listed and locked into a session snapshot, but they remain declarative unless a trusted loader implements their mechanics.",
+        },
+        {
+            "area": "Diagnostics",
+            "path": "/api/supplements diagnostics[]",
+            "purpose": "Reports malformed or duplicate supplement manifests without breaking Settings, Go Adventure, or existing saves.",
+            "rules_boundary": "A warning means the manifest needs review; it is not a PDF rules ruling.",
+        },
+        {
+            "area": "Legacy bridge",
+            "path": "legacy_mappings",
+            "purpose": "Records which current fields still drive behavior during migration, such as ruleset profiles and tile catalogs.",
+            "rules_boundary": "Legacy mappings explain compatibility only; PDF-backed automation still lives in existing rule modules until deliberately moved.",
+        },
+    ]
     data["playtest_triage_workflow_table"] = [
         {
             "field": "Area",
@@ -4699,10 +4726,15 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
         raw_supplement_ids = payload.get("active_supplement_ids")
         if not isinstance(raw_supplement_ids, list):
             raise HTTPException(status_code=400, detail="active_supplement_ids must be a list.")
-        from .engine.supplements import enabled_supplement_ids_from_selection, legacy_random_profile_id_for_supplements
+        from .engine.supplements import (
+            enabled_supplement_ids_from_selection,
+            legacy_random_profile_id_for_supplements,
+            supplement_registry,
+        )
 
+        supplements = supplement_registry(settings.root_dir, settings.data_dir)
         try:
-            requested_active_supplement_ids = enabled_supplement_ids_from_selection(raw_supplement_ids)
+            requested_active_supplement_ids = enabled_supplement_ids_from_selection(raw_supplement_ids, supplements)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         if adventure_id == "random" and not ruleset_profile_id:
@@ -4803,9 +4835,12 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
                 active_ids.append(supplement_id)
         session.active_supplement_ids = active_ids
     session = apply_abyss_campaign_to_session(store, session)
-    from .engine.supplements import supplement_snapshot_log_line
+    from .engine.supplements import supplement_registry, supplement_snapshot_log_line
 
-    supplement_log_line = supplement_snapshot_log_line(session.active_supplement_ids)
+    supplement_log_line = supplement_snapshot_log_line(
+        session.active_supplement_ids,
+        supplement_registry(settings.root_dir, settings.data_dir),
+    )
     if supplement_log_line not in session.log:
         session.log.append(supplement_log_line)
     session.minor_encounters_defeated = max(

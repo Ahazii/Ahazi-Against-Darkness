@@ -3228,6 +3228,7 @@ function renderSupplementRegistryPanel() {
   const payload = modernState.supplements || {};
   const supplements = Array.isArray(payload.supplements) ? payload.supplements : [];
   const legacyFields = Array.isArray(payload.legacy_fields) ? payload.legacy_fields : [];
+  const diagnostics = Array.isArray(payload.diagnostics) ? payload.diagnostics : [];
   const panel = card(
     "Supplement Library (read-only)",
     "A supplement is a book, adventure, rules expansion, tile pack, terrain pack, or imported PDF package. These records explain what each package can add before the app lets campaigns turn them on or off."
@@ -3243,6 +3244,8 @@ function renderSupplementRegistryPanel() {
   summary.append(
     modernStatusRow("Registry", `${supplements.length} supplement records`, "Read-only registry loaded from the backend supplement metadata."),
     modernStatusRow("Locked core", payload.locked_core_id || "expanded-edition-core", "The base Expanded Edition supplement is always active."),
+    modernStatusRow("Packaged manifests", payload.packaged_manifest_root || "ROOT/data/supplements", "Built-in supplement manifests shipped with the app."),
+    modernStatusRow("Local manifests", payload.local_manifest_root || "DATA_DIR/Supplements", "User-facing folder for future local supplement manifests beside game.db."),
     modernStatusRow("Mode", payload.read_only ? "Read-only" : "Editable", "This screen is intentionally not changing gameplay yet."),
     modernStatusRow("Legacy bridge", `${legacyFields.length} compatibility fields`, "Existing save/session fields remain valid during migration.")
   );
@@ -3261,12 +3264,23 @@ function renderSupplementRegistryPanel() {
     row.appendChild(chips);
     row.append(
       modernStatusRow("Source", supplement.source?.source_pdf || supplement.source?.source_path || supplement.source?.type || "Current project data", "Source file or storage area represented by this supplement."),
+      modernStatusRow("Manifest", supplement.manifest_path || supplement.registry_origin || "Built-in fallback", `Registry origin: ${modernTitleFromKey(supplement.registry_origin || "builtin_fallback")}.`),
       modernStatusRow("Dependencies", (supplement.dependencies || []).join(", ") || "None", "Supplement dependencies that must be active before this supplement can be enabled."),
       modernStatusRow("Legacy mappings", Object.keys(supplement.legacy_mappings || {}).join(", ") || "None", "Current fields that still stand in for future supplement activation."),
       modernStatusRow("Example", supplementExample(supplement), "Plain-language example of what this supplement record means."),
       el("p", "muted", supplement.notes || "")
     );
     panel.appendChild(row);
+  }
+  if (diagnostics.length) {
+    const diagnosticsBox = el("details", "modern-row modern-registry-row");
+    diagnosticsBox.open = true;
+    diagnosticsBox.title = "Supplement manifest load warnings. Fix the local manifest file, then refresh Settings.";
+    diagnosticsBox.appendChild(registrySummary("Manifest diagnostics", `${diagnostics.length} warning(s)`));
+    for (const diagnostic of diagnostics) {
+      diagnosticsBox.appendChild(modernStatusRow(diagnostic.severity || "warning", diagnostic.path || "unknown path", diagnostic.message || "No detail."));
+    }
+    panel.appendChild(diagnosticsBox);
   }
   if (legacyFields.length) {
     const legacy = el("details", "modern-row modern-registry-row");

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "four-against-the-abyss",
+  "title": "Four Against the Abyss",
+  "kind": "rules_expansion",
+  "status": "active",
+  "locked": false,
+  "enabled_by_default": false,
+  "source": {
+    "type": "pdf",
+    "source_pdf": "Four-Against-the-Abyss.pdf"
+  },
+  "capabilities": [
+    "foes",
+    "items",
+    "tables",
+    "states",
+    "rules",
+    "campaign_state",
+    "procedures"
+  ],
+  "dependencies": ["expanded-edition-core"],
+  "conflicts": [],
+  "legacy_mappings": {
+    "ruleset_profile_id": ["abyss"]
+  },
+  "notes": "Abyss-specific tables, afflictions, items, and campaign-state behavior remain wired through existing modules."
+}

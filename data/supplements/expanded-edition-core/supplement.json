@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "expanded-edition-core",
+  "title": "Four Against Darkness Expanded Edition",
+  "kind": "core_rules",
+  "status": "active",
+  "locked": true,
+  "enabled_by_default": true,
+  "source": {
+    "type": "pdf",
+    "source_pdf": "Four_Against_Darkness_Expanded_Edition.pdf"
+  },
+  "capabilities": [
+    "foes",
+    "classes",
+    "items",
+    "tables",
+    "states",
+    "rules",
+    "room_tiles",
+    "terrain_types",
+    "generators",
+    "rules_reference"
+  ],
+  "dependencies": [],
+  "conflicts": [],
+  "legacy_mappings": {
+    "ruleset": ["ee"],
+    "ruleset_profile_id": ["ee_random"],
+    "tile_catalog": ["ee"]
+  },
+  "notes": "Locked-on base game content. Gameplay still reads current data/rules files during migration."
+}

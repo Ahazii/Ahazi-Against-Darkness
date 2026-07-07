@@ -7,6 +7,7 @@ APP_GID="${PGID:-${APP_GID:-10001}}"
 DATA_DIR="${DATA_DIR:-/data}"
 RULES_DIR="${DATA_DIR}/rules"
 ASSETS_DIR="${DATA_DIR}/assets"
+SUPPLEMENTS_DIR="${DATA_DIR}/Supplements"
 
 if ! getent group "${APP_USER}" >/dev/null 2>&1; then
   groupadd --gid "${APP_GID}" "${APP_USER}"
@@ -18,6 +19,7 @@ fi
 
 mkdir -p "${DATA_DIR}"
 mkdir -p "${RULES_DIR}"
+mkdir -p "${SUPPLEMENTS_DIR}"
 mkdir -p "${ASSETS_DIR}/artwork/user"
 mkdir -p "${ASSETS_DIR}/Application Artwork"
 mkdir -p "${ASSETS_DIR}/icons/user"

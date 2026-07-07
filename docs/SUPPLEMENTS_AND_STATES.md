@@ -540,6 +540,8 @@ Default mode should remain dark unless the user chooses otherwise or system sett
 ### Phase 1: Read-Only Supplement Registry
 
 - Add supplement metadata records for existing rule/data groups.
+- Store packaged supplement metadata at `data/supplements/<supplement_id>/supplement.json`.
+- Create `DATA_DIR/Supplements/` for future local reviewed supplements beside `game.db`.
 - Do not change gameplay.
 - The app can list known supplements and their capabilities.
 - Expanded Edition core is locked on.
@@ -588,6 +590,7 @@ Good first candidates:
 - Extend package capabilities with `locations`, `room_tiles`, `terrain_types`, `generators`, `campaign_state`, and `narrative`.
 - Keep v1 package compatibility.
 - Add migration/validation diagnostics.
+- Keep package records declarative unless a trusted loader explicitly promotes them into a supplement manifest.
 
 ### Phase 6: Rule Hooks
 

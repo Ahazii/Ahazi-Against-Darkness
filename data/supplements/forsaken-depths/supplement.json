@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "forsaken-depths",
+  "title": "Four Against the Forsaken Depths",
+  "kind": "rules_expansion",
+  "status": "active",
+  "locked": false,
+  "enabled_by_default": false,
+  "source": {
+    "type": "pdf",
+    "source_pdf": "Four_Against_the_Forsaken_Depths.pdf"
+  },
+  "capabilities": [
+    "foes",
+    "classes",
+    "items",
+    "tables",
+    "states",
+    "rules",
+    "room_tiles",
+    "terrain_types",
+    "generators",
+    "procedures"
+  ],
+  "dependencies": ["expanded-edition-core"],
+  "conflicts": [],
+  "legacy_mappings": {
+    "ruleset": ["forsaken_depths"],
+    "ruleset_profile_id": ["forsaken_depths", "forsaken_depths_no_courtship"],
+    "tile_catalog": ["forsaken_depths", "forsaken_depths_rivers"]
+  },
+  "notes": "Current terrain, river, tile, and profile behavior stays in existing Forsaken Depths modules."
+}

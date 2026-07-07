@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
+from pathlib import Path
 from typing import Any
 
 
 SUPPLEMENT_REGISTRY_VERSION = 1
 LOCKED_CORE_SUPPLEMENT_ID = "expanded-edition-core"
+SUPPLEMENT_MANIFEST_FILENAME = "supplement.json"
 
 LEGACY_SUPPLEMENT_FIELDS: list[dict[str, str]] = [
     {
@@ -232,8 +235,138 @@ SUPPLEMENTS: list[dict[str, Any]] = [
 ]
 
 
-def supplement_registry() -> list[dict[str, Any]]:
-    return deepcopy(SUPPLEMENTS)
+def _manifest_display_path(path: Path, *, root_dir: Path | None = None, data_dir: Path | None = None) -> str:
+    for label, base in (("DATA_DIR", data_dir), ("ROOT", root_dir)):
+        if base is None:
+            continue
+        try:
+            return f"{label}/{path.relative_to(base).as_posix()}"
+        except ValueError:
+            continue
+    return path.as_posix()
+
+
+def _normalize_manifest(raw: dict[str, Any], *, origin: str, path: Path, root_dir: Path | None, data_dir: Path | None) -> dict[str, Any]:
+    supplement_id = str(raw.get("id") or "").strip()
+    title = str(raw.get("title") or "").strip()
+    kind = str(raw.get("kind") or "").strip()
+    status = str(raw.get("status") or "").strip()
+    if not supplement_id:
+        raise ValueError("id is required.")
+    if not title:
+        raise ValueError(f"{supplement_id}: title is required.")
+    if not kind:
+        raise ValueError(f"{supplement_id}: kind is required.")
+    if not status:
+        raise ValueError(f"{supplement_id}: status is required.")
+    capabilities = raw.get("capabilities") or []
+    if not isinstance(capabilities, list):
+        raise ValueError(f"{supplement_id}: capabilities must be an array.")
+    manifest = deepcopy(raw)
+    manifest["id"] = supplement_id
+    manifest["title"] = title
+    manifest["kind"] = kind
+    manifest["status"] = status
+    manifest["capabilities"] = [str(item) for item in capabilities]
+    manifest["dependencies"] = [str(item) for item in manifest.get("dependencies") or []]
+    manifest["conflicts"] = [str(item) for item in manifest.get("conflicts") or []]
+    manifest["legacy_mappings"] = manifest.get("legacy_mappings") if isinstance(manifest.get("legacy_mappings"), dict) else {}
+    manifest["source"] = manifest.get("source") if isinstance(manifest.get("source"), dict) else {}
+    manifest["locked"] = bool(manifest.get("locked"))
+    manifest["enabled_by_default"] = bool(manifest.get("enabled_by_default"))
+    manifest["registry_origin"] = origin
+    manifest["manifest_path"] = _manifest_display_path(path, root_dir=root_dir, data_dir=data_dir)
+    return manifest
+
+
+def _load_manifest_dir(
+    directory: Path,
+    *,
+    origin: str,
+    root_dir: Path | None,
+    data_dir: Path | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    manifests: list[dict[str, Any]] = []
+    diagnostics: list[dict[str, str]] = []
+    if not directory.exists():
+        return manifests, diagnostics
+    for path in sorted(directory.glob(f"*/{SUPPLEMENT_MANIFEST_FILENAME}")):
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(raw, dict):
+                raise ValueError("manifest root must be an object.")
+            manifests.append(_normalize_manifest(raw, origin=origin, path=path, root_dir=root_dir, data_dir=data_dir))
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "path": _manifest_display_path(path, root_dir=root_dir, data_dir=data_dir),
+                    "message": f"Could not load supplement manifest: {exc}",
+                }
+            )
+    return manifests, diagnostics
+
+
+def supplement_registry_with_diagnostics(
+    root_dir: Path | None = None,
+    data_dir: Path | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    supplements = []
+    seen: set[str] = set()
+    diagnostics: list[dict[str, str]] = []
+
+    def append_records(records: list[dict[str, Any]], *, replace: bool = False) -> None:
+        nonlocal supplements
+        for record in records:
+            supplement_id = str(record.get("id") or "")
+            if not supplement_id:
+                continue
+            if supplement_id in seen:
+                if not replace:
+                    diagnostics.append(
+                        {
+                            "severity": "warning",
+                            "path": str(record.get("manifest_path") or ""),
+                            "message": f"Duplicate supplement id {supplement_id!r} ignored.",
+                        }
+                    )
+                    continue
+                supplements = [item for item in supplements if item.get("id") != supplement_id]
+            seen.add(supplement_id)
+            supplements.append(record)
+
+    append_records([{**deepcopy(item), "registry_origin": "builtin_fallback", "manifest_path": ""} for item in SUPPLEMENTS])
+    if root_dir is not None:
+        packaged, packaged_diagnostics = _load_manifest_dir(
+            root_dir / "data" / "supplements",
+            origin="packaged_manifest",
+            root_dir=root_dir,
+            data_dir=data_dir,
+        )
+        diagnostics.extend(packaged_diagnostics)
+        append_records(packaged, replace=True)
+    if data_dir is not None:
+        local, local_diagnostics = _load_manifest_dir(
+            data_dir / "Supplements",
+            origin="local_manifest",
+            root_dir=root_dir,
+            data_dir=data_dir,
+        )
+        diagnostics.extend(local_diagnostics)
+        append_records(local, replace=False)
+    canonical_order = {str(item["id"]): index for index, item in enumerate(SUPPLEMENTS)}
+    supplements.sort(
+        key=lambda item: (
+            canonical_order.get(str(item.get("id") or ""), len(canonical_order)),
+            str(item.get("title") or ""),
+        )
+    )
+    return supplements, diagnostics
+
+
+def supplement_registry(root_dir: Path | None = None, data_dir: Path | None = None) -> list[dict[str, Any]]:
+    supplements, _diagnostics = supplement_registry_with_diagnostics(root_dir, data_dir)
+    return deepcopy(supplements)
 
 
 def _append_unique(items: list[str], item: str) -> None:
@@ -241,13 +374,15 @@ def _append_unique(items: list[str], item: str) -> None:
         items.append(item)
 
 
-def known_supplement_ids() -> set[str]:
-    return {str(item["id"]) for item in SUPPLEMENTS}
+def known_supplement_ids(supplements: list[dict[str, Any]] | None = None) -> set[str]:
+    registry = supplements if supplements is not None else SUPPLEMENTS
+    return {str(item["id"]) for item in registry}
 
 
-def supplement_titles_for_ids(supplement_ids: list[str] | None) -> list[str]:
+def supplement_titles_for_ids(supplement_ids: list[str] | None, supplements: list[dict[str, Any]] | None = None) -> list[str]:
     """Return display titles for a stored supplement snapshot."""
-    titles_by_id = {str(item["id"]): str(item["title"]) for item in SUPPLEMENTS}
+    registry = supplements if supplements is not None else SUPPLEMENTS
+    titles_by_id = {str(item["id"]): str(item["title"]) for item in registry}
     titles: list[str] = []
     for raw_id in supplement_ids or []:
         supplement_id = str(raw_id or "").strip()
@@ -256,16 +391,20 @@ def supplement_titles_for_ids(supplement_ids: list[str] | None) -> list[str]:
     return titles
 
 
-def supplement_snapshot_log_line(supplement_ids: list[str] | None) -> str:
-    titles = supplement_titles_for_ids(supplement_ids)
+def supplement_snapshot_log_line(supplement_ids: list[str] | None, supplements: list[dict[str, Any]] | None = None) -> str:
+    titles = supplement_titles_for_ids(supplement_ids, supplements)
     if not titles:
         return "Supplements locked for this session: legacy session with no supplement snapshot metadata."
     return f"Supplements locked for this session: {', '.join(titles)}."
 
 
-def enabled_supplement_ids_from_selection(selected_ids: list[str] | None) -> list[str]:
+def enabled_supplement_ids_from_selection(
+    selected_ids: list[str] | None,
+    supplements: list[dict[str, Any]] | None = None,
+) -> list[str]:
     """Normalize saved defaults or per-session supplement selections."""
-    known = known_supplement_ids()
+    registry = supplements if supplements is not None else SUPPLEMENTS
+    known = known_supplement_ids(registry)
     ids = [LOCKED_CORE_SUPPLEMENT_ID]
     for raw_id in selected_ids or []:
         supplement_id = str(raw_id or "").strip()
@@ -274,7 +413,7 @@ def enabled_supplement_ids_from_selection(selected_ids: list[str] | None) -> lis
         if supplement_id not in known:
             raise ValueError(f"Unknown supplement id: {supplement_id}")
         _append_unique(ids, supplement_id)
-        supplement = next((item for item in SUPPLEMENTS if item["id"] == supplement_id), {})
+        supplement = next((item for item in registry if item["id"] == supplement_id), {})
         for dependency_id in supplement.get("dependencies", []):
             if dependency_id not in known:
                 raise ValueError(f"Unknown supplement dependency: {dependency_id}")
@@ -326,11 +465,16 @@ def active_supplement_ids_for_legacy_session(
     return ids
 
 
-def supplement_payload() -> dict[str, Any]:
+def supplement_payload(root_dir: Path | None = None, data_dir: Path | None = None) -> dict[str, Any]:
+    supplements, diagnostics = supplement_registry_with_diagnostics(root_dir, data_dir)
     return {
         "schema_version": SUPPLEMENT_REGISTRY_VERSION,
         "read_only": True,
         "locked_core_id": LOCKED_CORE_SUPPLEMENT_ID,
-        "supplements": supplement_registry(),
+        "supplements": supplements,
         "legacy_fields": deepcopy(LEGACY_SUPPLEMENT_FIELDS),
+        "manifest_filename": SUPPLEMENT_MANIFEST_FILENAME,
+        "packaged_manifest_root": "ROOT/data/supplements",
+        "local_manifest_root": "DATA_DIR/Supplements",
+        "diagnostics": diagnostics,
     }

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app import main
@@ -18,6 +21,7 @@ from app.engine.supplements import (
     enabled_supplement_ids_from_selection,
     legacy_random_profile_id_for_supplements,
     supplement_payload,
+    supplement_registry,
     supplement_snapshot_log_line,
     supplement_titles_for_ids,
 )
@@ -58,15 +62,21 @@ def test_ruleset_profiles_api(client: TestClient) -> None:
 
 
 def test_supplement_registry_marks_core_locked_and_legacy_fields() -> None:
-    payload = supplement_payload()
+    root = Path(__file__).resolve().parents[1]
+    payload = supplement_payload(root, root / ".data-test-unused")
     assert payload["schema_version"] == 1
     assert payload["read_only"] is True
     assert payload["locked_core_id"] == LOCKED_CORE_SUPPLEMENT_ID
+    assert payload["packaged_manifest_root"] == "ROOT/data/supplements"
+    assert payload["local_manifest_root"] == "DATA_DIR/Supplements"
+    assert payload["manifest_filename"] == "supplement.json"
 
     supplements = {item["id"]: item for item in payload["supplements"]}
     core = supplements[LOCKED_CORE_SUPPLEMENT_ID]
     assert core["locked"] is True
     assert core["enabled_by_default"] is True
+    assert core["registry_origin"] == "packaged_manifest"
+    assert core["manifest_path"] == "ROOT/data/supplements/expanded-edition-core/supplement.json"
     assert {"rules", "states", "room_tiles", "terrain_types"}.issubset(set(core["capabilities"]))
 
     forsaken_depths = supplements["forsaken-depths"]
@@ -81,6 +91,47 @@ def test_supplement_registry_marks_core_locked_and_legacy_fields() -> None:
     for field in ["ruleset", "ruleset_profile_id", "tile_catalog", "courtship_enabled", "fiendish_foes_enabled", "tag_banking_enabled"]:
         assert legacy[field]["status"] == "legacy_compatibility"
     assert legacy["ruleset_profile_id"]["replacement"] == "active_supplements"
+
+
+def test_supplement_registry_loads_local_manifest_and_reports_bad_files(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    data_dir = tmp_path / "data"
+    local_dir = data_dir / "Supplements" / "local-demo"
+    local_dir.mkdir(parents=True)
+    (local_dir / "supplement.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "id": "local-demo",
+                "title": "Local Demo Supplement",
+                "kind": "local_user",
+                "status": "review_only",
+                "locked": False,
+                "enabled_by_default": False,
+                "source": {"type": "local_user", "source_path": "DATA_DIR/Supplements/local-demo"},
+                "capabilities": ["locations", "narrative", "states"],
+                "dependencies": [LOCKED_CORE_SUPPLEMENT_ID],
+                "conflicts": [],
+                "legacy_mappings": {},
+                "notes": "Test-only local supplement manifest.",
+            }
+        ),
+        encoding="utf-8",
+    )
+    bad_dir = data_dir / "Supplements" / "broken"
+    bad_dir.mkdir(parents=True)
+    (bad_dir / "supplement.json").write_text("{bad json", encoding="utf-8")
+
+    payload = supplement_payload(root, data_dir)
+    supplements = {item["id"]: item for item in payload["supplements"]}
+    assert supplements["local-demo"]["registry_origin"] == "local_manifest"
+    assert supplements["local-demo"]["manifest_path"] == "DATA_DIR/Supplements/local-demo/supplement.json"
+    known_ids = {item["id"] for item in supplement_registry(root, data_dir)}
+    assert "local-demo" in known_ids
+    assert LOCKED_CORE_SUPPLEMENT_ID in known_ids
+    assert payload["diagnostics"]
+    assert "DATA_DIR/Supplements/broken/supplement.json" in payload["diagnostics"][0]["path"]
+    assert "Could not load supplement manifest" in payload["diagnostics"][0]["message"]
 
 
 def test_supplements_api_is_read_only_registry(client: TestClient) -> None:
@@ -353,6 +404,7 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         "adventure_package_schema_table",
         "adventure_pdf_source_scan_table",
         "session_supplement_snapshot_table",
+        "supplement_manifest_registry_table",
         "artwork_expansion_plan_table",
         "application_artwork_slots_table",
         "developer_preferences_table",
