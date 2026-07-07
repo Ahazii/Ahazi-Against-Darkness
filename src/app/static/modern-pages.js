@@ -1600,6 +1600,66 @@ function supplementConflictIds(ids) {
   return conflicts;
 }
 
+function supplementRegistryMap() {
+  return new Map((modernState.supplements?.supplements || []).map((supplement) => [supplement.id, supplement]));
+}
+
+function activeDefaultSupplementIds() {
+  const selected = new Set(modernState.preferences?.enabled_supplement_ids || []);
+  for (const supplement of modernState.supplements?.supplements || []) {
+    if (supplement.locked) selected.add(supplement.id);
+  }
+  return selected;
+}
+
+function supplementFilterOptions() {
+  return [
+    ["", "All supplement contexts"],
+    ["__active_defaults", "Enabled defaults only"],
+    ...(modernState.supplements?.supplements || []).map((supplement) => [supplement.id, supplement.title || supplement.id]),
+  ];
+}
+
+function inferredSupplementIdsForText(text, { fallbackCore = true } = {}) {
+  const haystack = String(text || "").toLowerCase();
+  const known = supplementRegistryMap();
+  const ids = [];
+  const add = (id) => {
+    if (known.has(id) && !ids.includes(id)) ids.push(id);
+  };
+  if (/\btag\b|adventurers'? guild|tales from the adventurers/.test(haystack)) add("tag");
+  if (/abyss|four against the abyss/.test(haystack)) add("four-against-the-abyss");
+  if (/forsaken depths|\bfd_|fd |fd_|four against the forsaken/.test(haystack)) add("forsaken-depths");
+  if (/courtship|tcotfd|flower demons|blossoms|demesne|norindaal|soul cube/.test(haystack)) add("courtship");
+  if (/imported adventure|adventure package|package\.json|pdf import|source pdf|module-local/.test(haystack)) add("imported-adventures");
+  if (!ids.length && fallbackCore) add("expanded-edition-core");
+  return ids;
+}
+
+function supplementTitlesForBadges(ids) {
+  const known = supplementRegistryMap();
+  return (ids || []).map((id) => known.get(id)?.title || id);
+}
+
+function renderSupplementBadges(ids, title = "Inferred supplement context for filtering. This is navigation metadata, not a rules outcome.") {
+  const badges = el("div", "modern-supplement-badges");
+  badges.title = title;
+  for (const label of supplementTitlesForBadges(ids)) {
+    badges.appendChild(el("span", "modern-supplement-badge", label));
+  }
+  return badges;
+}
+
+function supplementFilterMatches(ids, selectedValue) {
+  if (!selectedValue) return true;
+  const itemIds = new Set(ids || []);
+  if (selectedValue === "__active_defaults") {
+    const active = activeDefaultSupplementIds();
+    return !itemIds.size || [...itemIds].some((id) => active.has(id));
+  }
+  return itemIds.has(selectedValue);
+}
+
 function suggestedLegacyProfileForSupplements(ids) {
   const enabled = new Set(ids || []);
   if (enabled.has("four-against-the-abyss")) return "abyss";
@@ -5721,10 +5781,11 @@ async function renderRulesReference() {
   const statuses = [...new Set(modernState.rulesReference.map((entry) => entry.implementation_status || "reference"))].sort();
   const status = select("modern-rules-status", "Filter by implementation status.", [["", "All statuses"], ...statuses.map((item) => [item, modernStatusLabel(item)])]);
   const source = select("modern-rules-source", "Filter entries by whether they cite a printed source page or have artwork slots.", [["", "All source refs"], ["with", "With source page"], ["app", "App-only / no source page"], ["art", "With artwork slot"]]);
+  const supplementFilter = select("modern-rules-supplement", "Filter by inferred supplement context. Enabled defaults uses the saved Settings supplement list and always includes locked core.", supplementFilterOptions());
   const sort = select("modern-rules-sort", "Sort rules reference entries.", [["category", "Category"], ["title", "Title"], ["implementation_status", "Status"], ["source_page", "Source page"]]);
   const results = el("div", "modern-list");
   const controls = el("div", "modern-filterbar");
-  controls.append(field("Search", search), field("Category", category), field("Status", status), field("Source", source), field("Sort", sort));
+  controls.append(field("Search", search), field("Category", category), field("Status", status), field("Source", source), field("Supplement", supplementFilter), field("Sort", sort));
   const rowActions = actions();
   rowActions.append(
     button("Expand All", "Open every visible rules reference card.", async () => {
@@ -5745,6 +5806,7 @@ async function renderRulesReference() {
       .filter((entry) => source.value !== "with" || Boolean(entry.source_page))
       .filter((entry) => source.value !== "app" || !entry.source_page)
       .filter((entry) => source.value !== "art" || artworkForReference(entry).length)
+      .filter((entry) => supplementFilterMatches(inferredSupplementIdsForText(`${entry.id || ""} ${entry.title || ""} ${entry.summary || ""} ${entry.body || ""} ${entry.source || ""} ${(entry.keywords || []).join(" ")}`), supplementFilter.value))
       .filter((entry) => `${entry.title} ${entry.summary || ""} ${entry.body} ${entry.category || ""} ${entry.implementation_status || ""} ${entry.source_page || ""} ${(entry.keywords || []).join(" ")} ${artworkForReference(entry).map((art) => `${art.title} ${art.summary} ${art.source_pdf}`).join(" ")}`.toLowerCase().includes(needle))
       .sort((a, b) => String(a[sort.value] || "").localeCompare(String(b[sort.value] || ""), undefined, { numeric: true }) || String(a.title || "").localeCompare(String(b.title || "")));
     const byCategory = rows.reduce((groups, entry) => {
@@ -5778,6 +5840,7 @@ async function renderRulesReference() {
         );
         row.appendChild(rowSummary);
         if (item.summary) row.appendChild(el("p", "modern-home-status", item.summary));
+        row.appendChild(renderSupplementBadges(inferredSupplementIdsForText(`${item.id || ""} ${item.title || ""} ${item.summary || ""} ${item.body || ""} ${item.source || ""} ${(item.keywords || []).join(" ")}`), "Inferred from this reference title, source, keywords, and body. Use the Supplement filter to narrow the reference index."));
         if (item.keywords?.length) row.appendChild(el("span", "muted", item.keywords.join(" · ")));
         const relatedArt = artworkForReference(item);
         if (relatedArt.length) row.appendChild(renderArtworkRows(relatedArt.slice(0, 3), { compact: true }));
@@ -5805,6 +5868,7 @@ async function renderRulesReference() {
   category.addEventListener("change", draw);
   status.addEventListener("change", draw);
   source.addEventListener("change", draw);
+  supplementFilter.addEventListener("change", draw);
   sort.addEventListener("change", draw);
   draw();
   rootEl.appendChild(panel);
@@ -5836,6 +5900,10 @@ function modernTableFamily(key) {
   if (key.includes("map") || key.includes("room") || key.includes("door") || key.includes("trap") || key.includes("treasure") || key.includes("search") || key.includes("quest")) return "Dungeon and exploration";
   if (key.includes("equipment") || key.includes("hireling") || key.includes("economy") || key.includes("hidden") || key.includes("icon")) return "Equipment, economy, and app registries";
   return "Expanded Edition and app tables";
+}
+
+function supplementIdsForTable(key, value) {
+  return inferredSupplementIdsForText(`${key} ${modernTableFamily(key)} ${modernSearchText(value)}`);
 }
 
 function modernTablePreview(value, needle = "") {
@@ -5879,10 +5947,11 @@ async function renderTables() {
   const families = [...new Set(Object.keys(modernState.tables).map(modernTableFamily))].sort();
   const family = select("modern-table-family", "Filter by table family.", [["", "All table families"], ...families.map((item) => [item, item])]);
   const artworkFilter = select("modern-table-artwork", "Filter tables by whether they have local artwork slots.", [["", "All artwork states"], ["with", "With artwork slot"], ["without", "Without artwork slot"]]);
+  const supplementFilter = select("modern-table-supplement", "Filter tables by inferred supplement context. Enabled defaults uses the saved Settings supplement list and always includes locked core.", supplementFilterOptions());
   const sort = select("modern-table-sort", "Sort table groups.", [["name", "Name"], ["rows", "Row count"]]);
   const results = el("div", "modern-list");
   const controls = el("div", "modern-filterbar");
-  controls.append(field("Search", search), field("Family", family), field("Artwork", artworkFilter), field("Sort", sort));
+  controls.append(field("Search", search), field("Family", family), field("Artwork", artworkFilter), field("Supplement", supplementFilter), field("Sort", sort));
   const rowActions = actions();
   rowActions.append(
     button("Expand All", "Open every visible table group and table.", async () => {
@@ -5900,6 +5969,7 @@ async function renderTables() {
       if (family.value && modernTableFamily(key) !== family.value) return false;
       if (artworkFilter.value === "with" && !artworkForTable(key).length) return false;
       if (artworkFilter.value === "without" && artworkForTable(key).length) return false;
+      if (!supplementFilterMatches(supplementIdsForTable(key, modernState.tables[key]), supplementFilter.value)) return false;
       if (!needle) return true;
       return key.toLowerCase().includes(needle)
         || modernSearchText(modernState.tables[key]).toLowerCase().includes(needle)
@@ -5941,6 +6011,7 @@ async function renderTables() {
         const tableArt = artworkForTable(key);
         summary.append(el("strong", "", modernTitleFromKey(key)), el("span", "muted", `${key} · ${modernTableRowCount(value)} row(s)${tableArt.length ? ` · ${tableArt.length} art slot(s)` : ""}`));
         details.appendChild(summary);
+        details.appendChild(renderSupplementBadges(supplementIdsForTable(key, value), "Inferred from this table key, family, and row text. Use the Supplement filter to narrow table navigation."));
         if (tableArt.length) details.appendChild(renderArtworkRows(tableArt.slice(0, 4), { compact: true }));
         const previewMount = el("div", "modern-table-preview-mount");
         const renderPreview = () => {
@@ -5967,6 +6038,7 @@ async function renderTables() {
   search.addEventListener("input", draw);
   family.addEventListener("change", draw);
   artworkFilter.addEventListener("change", draw);
+  supplementFilter.addEventListener("change", draw);
   sort.addEventListener("change", draw);
   draw();
   rootEl.appendChild(panel);

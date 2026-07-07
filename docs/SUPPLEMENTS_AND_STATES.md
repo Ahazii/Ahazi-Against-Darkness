@@ -584,6 +584,7 @@ Good first candidates:
 - Do not let later enable/disable changes corrupt active sessions.
 - Add required dependencies automatically and reject declared supplement conflicts before saving defaults or starting sessions.
 - Show active supplement list in session diagnostics, the Adventure View header, session lists, and the new-session log/report context.
+- Filter Rules Reference and Tables List by inferred supplement context, including the saved enabled-default supplement set.
 - Keep old sessions valid by treating missing `active_supplement_ids` as a legacy session with no snapshot metadata.
 - Snapshot supplement, state-registry, and terrain-registry versions on new sessions so future migrations can tell which metadata model was active at creation.
 

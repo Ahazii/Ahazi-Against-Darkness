@@ -1139,6 +1139,25 @@ h2 {
   margin: 0;
 }
 
+.modern-supplement-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.modern-supplement-badge {
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: rgba(201, 162, 39, 0.08);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .modern-stack {
   display: grid;
   gap: 4px;

@@ -83,6 +83,7 @@ APP_ONLY_REFERENCE_IDS = {
     "adventure_package_schema_table",
     "session_supplement_snapshot_table",
     "supplement_manifest_registry_table",
+    "supplement_reference_filters_table",
 }
 
 

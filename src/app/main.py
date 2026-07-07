@@ -2843,6 +2843,26 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Dependency/conflict validation protects content activation state; it does not decide printed rule outcomes.",
         },
     ]
+    data["supplement_reference_filters_table"] = [
+        {
+            "surface": "Rules Reference",
+            "filter": "Supplement",
+            "player_use": "Narrow curated reference entries to Expanded Edition, Abyss, Forsaken Depths, Courtship, Tales from the Adventurers' Guild, imported-package context, or the saved enabled-default supplement set.",
+            "rules_boundary": "Filtering is inferred navigation metadata; it does not enable, disable, or reinterpret the printed rule.",
+        },
+        {
+            "surface": "Tables List",
+            "filter": "Supplement",
+            "player_use": "Narrow exposed tables by inferred supplement context while keeping existing family, artwork, search, and sort controls.",
+            "rules_boundary": "Tables remain the same data. The supplement filter only helps players find the relevant table faster.",
+        },
+        {
+            "surface": "Reference/table cards",
+            "filter": "Supplement badges",
+            "player_use": "See which supplement context caused a reference entry or table to match the filter.",
+            "rules_boundary": "Badges are derived from ids, titles, keywords, source strings, and table keys; exact mechanics still belong to the PDF-backed implementation.",
+        },
+    ]
     data["playtest_triage_workflow_table"] = [
         {
             "field": "Area",
