@@ -14,7 +14,7 @@ from app.engine.ruleset_profiles import (
     profile_by_id,
     resolve_profile_for_adventure,
 )
-from app.engine.states import state_payload
+from app.engine.states import state_payload, state_registry_diagnostics
 from app.engine.supplements import (
     LOCKED_CORE_SUPPLEMENT_ID,
     active_supplement_ids_for_legacy_session,
@@ -27,7 +27,7 @@ from app.engine.supplements import (
     supplement_titles_for_ids,
     validate_supplement_manifest,
 )
-from app.engine.terrain_registry import terrain_payload
+from app.engine.terrain_registry import terrain_payload, terrain_registry_diagnostics
 from app.schemas import SessionState
 
 
@@ -293,6 +293,7 @@ def test_state_registry_maps_existing_statuses_and_counters() -> None:
     payload = state_payload()
     assert payload["schema_version"] == 1
     assert payload["read_only"] is True
+    assert payload["diagnostics"] == []
     states = {item["id"]: item for item in payload["states"]}
 
     dark_plague = states["dark-plague"]
@@ -317,6 +318,35 @@ def test_state_registry_maps_existing_statuses_and_counters() -> None:
     assert "equipment" in payload["scopes"]
 
 
+def test_state_registry_diagnostics_flag_bad_metadata() -> None:
+    diagnostics = state_registry_diagnostics([
+        {
+            "id": "bad-state",
+            "name": "Bad State",
+            "family": "test",
+            "scope": "character",
+            "value_type": "flag",
+            "source": {"supplement_id": "missing-supplement", "page": 0},
+            "review_status": "source_backed",
+        },
+        {
+            "id": "bad-state",
+            "name": "Bad State Duplicate",
+            "family": "test",
+            "scope": "character",
+            "value_type": "flag",
+            "source": {"supplement_id": "expanded-edition-core", "page": 1},
+            "legacy_mappings": {"statuses": ["Bad"]},
+            "review_status": "source_backed",
+        },
+    ])
+    messages = [item["message"] for item in diagnostics]
+    assert "State 'bad-state' references unknown supplement 'missing-supplement'." in messages
+    assert "State 'bad-state' is source_backed but has no positive source page." in messages
+    assert "State 'bad-state' has no legacy mapping yet." in messages
+    assert "Duplicate state id 'bad-state'." in messages
+
+
 def test_states_api_is_read_only_registry(client: TestClient) -> None:
     response = client.get("/api/states")
     assert response.status_code == 200
@@ -330,6 +360,7 @@ def test_terrain_registry_maps_existing_environment_and_terrain_values() -> None
     payload = terrain_payload()
     assert payload["schema_version"] == 1
     assert payload["read_only"] is True
+    assert payload["diagnostics"] == []
     records = {item["id"]: item for item in payload["terrain"]}
 
     assert {"dungeon", "caverns", "fungal_grottoes"}.issubset(set(payload["environment_values"]))
@@ -352,6 +383,31 @@ def test_terrain_registry_maps_existing_environment_and_terrain_values() -> None
 
     legacy = {item["field"]: item for item in payload["legacy_fields"]}
     assert legacy["TileState.terrain"]["status"] == "legacy_compatibility"
+
+
+def test_terrain_registry_diagnostics_flag_bad_metadata() -> None:
+    diagnostics = terrain_registry_diagnostics([
+        {
+            "id": "bad-terrain",
+            "name": "Bad Terrain",
+            "kind": "terrain",
+            "source": {"supplement_id": "missing-supplement", "page": 0},
+            "review_status": "source_backed",
+        },
+        {
+            "id": "bad-terrain",
+            "name": "Bad Terrain Duplicate",
+            "kind": "terrain",
+            "source": {"supplement_id": "expanded-edition-core", "page": 1},
+            "legacy_mappings": {"terrain": ["bad"]},
+            "review_status": "source_backed",
+        },
+    ])
+    messages = [item["message"] for item in diagnostics]
+    assert "Terrain 'bad-terrain' references unknown supplement 'missing-supplement'." in messages
+    assert "Terrain 'bad-terrain' is source_backed but has no positive source page." in messages
+    assert "Terrain 'bad-terrain' has no legacy mapping yet." in messages
+    assert "Duplicate terrain id 'bad-terrain'." in messages
 
 
 def test_terrain_api_is_read_only_registry(client: TestClient) -> None:

@@ -3428,6 +3428,18 @@ function registrySummaryWithHighlight(title, meta, needle = "") {
   return summary;
 }
 
+function renderRegistryDiagnostics(title, diagnostics, hint) {
+  if (!Array.isArray(diagnostics) || !diagnostics.length) return null;
+  const box = el("details", "modern-row modern-registry-row");
+  box.open = true;
+  box.title = hint || "Registry metadata diagnostics.";
+  box.appendChild(registrySummary(title, `${diagnostics.length} warning(s)`));
+  for (const diagnostic of diagnostics) {
+    box.appendChild(modernStatusRow(diagnostic.severity || "warning", diagnostic.path || "unknown path", diagnostic.message || "No detail."));
+  }
+  return box;
+}
+
 function supplementExample(supplement) {
   const id = supplement?.id || "";
   if (id === "expanded-edition-core") return "Expanded Edition is always active and provides the baseline rules, classes, monsters, tables, states, room tiles, and rules reference.";
@@ -3463,6 +3475,8 @@ function renderStateRegistryPanel() {
     modernStatusRow("Scopes", scopes.map(modernTitleFromKey).join(", ") || "None", "Where these states can apply.")
   );
   panel.appendChild(summary);
+  const diagnosticsPanel = renderRegistryDiagnostics("State diagnostics", payload.diagnostics, "State registry metadata warnings. Fix the source record before using it for future state-instance migration.");
+  if (diagnosticsPanel) panel.appendChild(diagnosticsPanel);
   const search = input("search", "modern-state-registry-search", "Search state name, id, family, scope, source, topic, legacy mapping, or hover text.");
   search.placeholder = "Search states...";
   const familyFilter = select("modern-state-registry-family", "Filter state definitions by family.", [["", "All families"], ...families.map((item) => [item, modernTitleFromKey(item)])]);
@@ -3608,6 +3622,8 @@ function renderTerrainRegistryPanel() {
     modernStatusRow("Water group", (payload.water_values || []).map(modernTitleFromKey).join(", "), "Values treated as water by current terrain helpers.")
   );
   panel.appendChild(summary);
+  const diagnosticsPanel = renderRegistryDiagnostics("Terrain diagnostics", payload.diagnostics, "Terrain registry metadata warnings. Fix the source record before using it for future terrain-instance migration.");
+  if (diagnosticsPanel) panel.appendChild(diagnosticsPanel);
   const search = input("search", "modern-terrain-registry-search", "Search terrain name, id, kind, source, topic, interactions, examples, legacy mapping, or hover text.");
   search.placeholder = "Search terrain...";
   const kindFilter = select("modern-terrain-registry-kind", "Filter terrain definitions by kind.", [["", "All kinds"], ...kinds.map((item) => [item, modernTitleFromKey(item)])]);

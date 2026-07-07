@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from .supplements import LOCKED_CORE_SUPPLEMENT_ID
+from .supplements import LOCKED_CORE_SUPPLEMENT_ID, known_supplement_ids
 
 
 STATE_REGISTRY_VERSION = 1
@@ -301,12 +301,38 @@ def state_registry() -> list[dict[str, Any]]:
     return deepcopy(STATE_DEFINITIONS)
 
 
+def state_registry_diagnostics(states: list[dict[str, Any]] | None = None) -> list[dict[str, str]]:
+    registry = states if states is not None else STATE_DEFINITIONS
+    diagnostics: list[dict[str, str]] = []
+    seen: set[str] = set()
+    supplements = known_supplement_ids()
+    for index, state in enumerate(registry):
+        state_id = str(state.get("id") or "").strip()
+        path = state_id or f"state[{index}]"
+        if not state_id:
+            diagnostics.append({"severity": "error", "path": path, "message": "State record is missing id."})
+            continue
+        if state_id in seen:
+            diagnostics.append({"severity": "warning", "path": state_id, "message": f"Duplicate state id {state_id!r}."})
+        seen.add(state_id)
+        source = state.get("source") if isinstance(state.get("source"), dict) else {}
+        supplement_id = str(source.get("supplement_id") or "").strip()
+        if supplement_id and supplement_id not in supplements:
+            diagnostics.append({"severity": "warning", "path": state_id, "message": f"State {state_id!r} references unknown supplement {supplement_id!r}."})
+        if state.get("review_status") == "source_backed" and int(source.get("page") or 0) <= 0:
+            diagnostics.append({"severity": "warning", "path": state_id, "message": f"State {state_id!r} is source_backed but has no positive source page."})
+        if not state.get("legacy_mappings"):
+            diagnostics.append({"severity": "info", "path": state_id, "message": f"State {state_id!r} has no legacy mapping yet."})
+    return diagnostics
+
+
 def state_payload() -> dict[str, Any]:
     states = state_registry()
     return {
         "schema_version": STATE_REGISTRY_VERSION,
         "read_only": True,
         "states": states,
+        "diagnostics": state_registry_diagnostics(states),
         "legacy_fields": deepcopy(LEGACY_STATE_FIELDS),
         "families": sorted({state["family"] for state in states}),
         "scopes": sorted({state["scope"] for state in states}),

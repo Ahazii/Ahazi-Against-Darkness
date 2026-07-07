@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from .supplements import LOCKED_CORE_SUPPLEMENT_ID
+from .supplements import LOCKED_CORE_SUPPLEMENT_ID, known_supplement_ids
 from .terrain import (
     ENTANGLE_TERRAINS,
     FOREST_PATHWAY_TERRAINS,
@@ -188,12 +188,38 @@ def terrain_registry() -> list[dict[str, Any]]:
     return deepcopy(TERRAIN_DEFINITIONS)
 
 
+def terrain_registry_diagnostics(terrain: list[dict[str, Any]] | None = None) -> list[dict[str, str]]:
+    registry = terrain if terrain is not None else TERRAIN_DEFINITIONS
+    diagnostics: list[dict[str, str]] = []
+    seen: set[str] = set()
+    supplements = known_supplement_ids()
+    for index, record in enumerate(registry):
+        terrain_id = str(record.get("id") or "").strip()
+        path = terrain_id or f"terrain[{index}]"
+        if not terrain_id:
+            diagnostics.append({"severity": "error", "path": path, "message": "Terrain record is missing id."})
+            continue
+        if terrain_id in seen:
+            diagnostics.append({"severity": "warning", "path": terrain_id, "message": f"Duplicate terrain id {terrain_id!r}."})
+        seen.add(terrain_id)
+        source = record.get("source") if isinstance(record.get("source"), dict) else {}
+        supplement_id = str(source.get("supplement_id") or "").strip()
+        if supplement_id and supplement_id not in supplements:
+            diagnostics.append({"severity": "warning", "path": terrain_id, "message": f"Terrain {terrain_id!r} references unknown supplement {supplement_id!r}."})
+        if record.get("review_status") == "source_backed" and int(source.get("page") or 0) <= 0:
+            diagnostics.append({"severity": "warning", "path": terrain_id, "message": f"Terrain {terrain_id!r} is source_backed but has no positive source page."})
+        if not record.get("legacy_mappings"):
+            diagnostics.append({"severity": "info", "path": terrain_id, "message": f"Terrain {terrain_id!r} has no legacy mapping yet."})
+    return diagnostics
+
+
 def terrain_payload() -> dict[str, Any]:
     terrain = terrain_registry()
     return {
         "schema_version": TERRAIN_REGISTRY_VERSION,
         "read_only": True,
         "terrain": terrain,
+        "diagnostics": terrain_registry_diagnostics(terrain),
         "legacy_fields": deepcopy(LEGACY_TERRAIN_FIELDS),
         "environment_values": sorted(VALID_ENVIRONMENTS),
         "terrain_values": sorted(VALID_TERRAINS),
