@@ -3432,7 +3432,7 @@ function renderSettings() {
   const selectedSupplements = new Set(modernState.preferences?.enabled_supplement_ids || ["expanded-edition-core"]);
   rootEl.appendChild(renderGuide("Settings Workflow", [
     "Settings affect dashboard defaults and Go Adventure choices; they do not delete rules data.",
-    "Supplement switches are saved as preferences now. They document which books/packages you want active after campaign and session supplement locking, while legacy ruleset profiles still drive current random-session behavior.",
+    "Supplement switches are saved defaults for new sessions. Go Adventure preselects them, lets you adjust the list for that session, and locks the final supplement snapshot when play starts.",
     "The State Registry is read-only for now; existing status strings and counters remain the save format.",
     "The Terrain Registry is read-only for now; current map/session terrain fields remain the save format.",
     "Legacy ruleset/profile controls still decide which profiles appear as preferred random-adventure choices.",
@@ -3441,7 +3441,7 @@ function renderSettings() {
   const panel = card("Settings / Options", "Save dashboard preferences for starting adventures. These preferences are used by Go Adventure.");
   const tag = input("checkbox", "modern-tag-banking", "Use TAG banking for campaign finance actions instead of only the legacy home-bank flow.");
   tag.checked = Boolean(modernState.campaign?.tag_banking_enabled);
-  const defaultProfile = select("modern-rules-profile", "Legacy default ruleset profile for random adventures. Future sessions will snapshot active supplement ids instead.", modernState.rulesProfiles.map((p) => [p.id, p.label]));
+  const defaultProfile = select("modern-rules-profile", "Legacy default ruleset profile for random adventures. New sessions now also snapshot active supplement ids.", modernState.rulesProfiles.map((p) => [p.id, p.label]));
   defaultProfile.value = prefs.defaultRulesetProfile || "ee_random";
   const mapMode = select("modern-default-map-mode", "Default map mode.", [["unlimited", "Unlimited"], ["paper", "Paper 20x28"]]);
   mapMode.value = prefs.defaultMapMode || "unlimited";
@@ -3449,10 +3449,10 @@ function renderSettings() {
   const xp = select("modern-default-xp-system", "Default XP system.", [["classical", "Classical"], ["slow_and_sure", "Slow and Sure"], ["old_school", "Old School"], ["slower_advancement", "Slower Advancement"]]);
   xp.value = prefs.defaultXpSystem || "classical";
   panel.append(field("TAG banking", tag), field("Default random ruleset (legacy)", defaultProfile), field("Default map mode", mapMode), field("Default map limit", mapLimit), field("XP system", xp));
-  const supplementPrefsCard = card("Enabled Supplements (preference)", "Preference-only for now: saved list of supplements you want active for future sessions. Expanded Edition is locked on; current random sessions still use legacy ruleset profiles until activation is fully wired.");
+  const supplementPrefsCard = card("Enabled Supplements (default)", "Saved default list for new sessions. Expanded Edition is locked on; Go Adventure can adjust optional supplements per session before locking the snapshot.");
   const supplements = Array.isArray(modernState.supplements?.supplements) ? modernState.supplements.supplements : [];
   for (const supplement of supplements) {
-    const checkbox = input("checkbox", `modern-supplement-${supplement.id}`, `Save ${supplement.title || supplement.id} as an enabled supplement preference. This does not yet alter existing saved sessions or replace legacy ruleset profile behavior.`);
+    const checkbox = input("checkbox", `modern-supplement-${supplement.id}`, `Save ${supplement.title || supplement.id} as a default enabled supplement for new sessions. This does not alter existing saved sessions.`);
     checkbox.checked = supplement.locked || selectedSupplements.has(supplement.id);
     checkbox.disabled = Boolean(supplement.locked);
     const state = supplement.locked ? "locked on" : (checkbox.checked ? "enabled preference" : "off preference");
@@ -5319,23 +5319,6 @@ async function renderGoAdventure() {
   const panel = card("Start New Adventure", "Choose party, adventure type, module, ruleset, and start play. This creates a new session.");
   panel.classList.add("modern-primary-card");
   const enabledSupplementIds = modernState.preferences?.enabled_supplement_ids || ["expanded-edition-core"];
-  const suggestedProfile = suggestedLegacyProfileForSupplements(enabledSupplementIds);
-  const supplementPreferenceCard = card("Supplement Preferences", "Preference-only for now: these saved Settings choices show which supplements you intend to use. New sessions still lock supplements from the selected random profile or imported module until activation is fully wired.");
-  supplementPreferenceCard.classList.add("modern-card-compact");
-  supplementPreferenceCard.appendChild(
-    modernStatusRow(
-      "Enabled preference",
-      supplementTitlesForIds(enabledSupplementIds) || "Four Against Darkness Expanded Edition",
-      "Session locked supplements are shown on Resume/Saved Games after creation; this preference list is the next activation bridge."
-    )
-  );
-  supplementPreferenceCard.appendChild(
-    modernStatusRow(
-      "Suggested legacy random profile",
-      legacyProfileLabel(suggestedProfile),
-      "Based on Settings > Enabled Supplements: Abyss selected suggests Abyss; Forsaken Depths + Courtship suggests the combined Forsaken Depths profile; Forsaken Depths alone suggests the no-Courtship profile; otherwise Expanded Edition random. This is advisory until supplement activation replaces legacy profiles."
-    )
-  );
   const party = select("modern-start-party", "Party to send on the adventure.", partyOptions());
   party.value = prefs.lastPartyId || "";
   const type = select("modern-adventure-type", "Adventure type filter: Random creates a generated dungeon; Imported/AI uses an installed adventure module.", [["random", "Random"], ["imported", "Imported Adventure Module"], ["ai", "AI Adventure Module"]]);
@@ -5346,11 +5329,78 @@ async function renderGoAdventure() {
   const profileRows = modernState.rulesProfiles.filter((profile) => enabledRulesets.includes(profile.id));
   const profile = select("modern-start-profile", "Ruleset profile used only for Random adventures.", profileRows.map((p) => [p.id, p.label]));
   profile.value = prefs.defaultRulesetProfile || "ee_random";
+  const initialSuggestedProfile = suggestedLegacyProfileForSupplements(enabledSupplementIds);
+  if (!prefs.defaultRulesetProfile && [...profile.options].some((option) => option.value === initialSuggestedProfile)) {
+    profile.value = initialSuggestedProfile;
+  }
   const xp = select("modern-start-xp", "XP system for this adventure.", [["classical", "Classical"], ["slow_and_sure", "Slow and Sure"], ["old_school", "Old School"], ["slower_advancement", "Slower Advancement"]]);
   xp.value = prefs.defaultXpSystem || "classical";
   const mapMode = select("modern-start-map-mode", "Map mode for this adventure.", [["unlimited", "Unlimited"], ["paper", "Paper 20x28"]]);
   mapMode.value = prefs.defaultMapMode || "unlimited";
   const mapLimit = input("number", "modern-start-map-limit", "Unlimited-map element cap before end-boss pressure.", String(prefs.defaultMapLimit || 60));
+  const startSupplements = Array.isArray(modernState.supplements?.supplements) ? modernState.supplements.supplements : [];
+  const startSupplementChecks = new Map();
+  const supplementPreferenceCard = card("Session Supplements", "Settings provides the starting checklist. Adjust it here before Start Adventure; the final list is locked onto the new session and shown on Resume/Saved Games.");
+  supplementPreferenceCard.classList.add("modern-card-compact");
+  const supplementStatusRows = el("div", "modern-list");
+  function selectedStartSupplementIds() {
+    return startSupplements
+      .filter((supplement) => {
+        const checkbox = startSupplementChecks.get(supplement.id);
+        return supplement.locked || checkbox?.checked || (type.value !== "random" && supplement.id === "imported-adventures");
+      })
+      .map((supplement) => supplement.id);
+  }
+  function syncStartSupplementProfile({ userChanged = false } = {}) {
+    const chosen = selectedStartSupplementIds();
+    const suggested = suggestedLegacyProfileForSupplements(chosen);
+    if (type.value === "random" && userChanged && [...profile.options].some((option) => option.value === suggested)) {
+      profile.value = suggested;
+      drawReadiness();
+    }
+    supplementStatusRows.replaceChildren(
+      modernStatusRow(
+        "Session selection",
+        supplementTitlesForIds(chosen) || "Four Against Darkness Expanded Edition",
+        "This is the supplement snapshot that will be saved on the new session. Existing saved sessions are unchanged."
+      ),
+      modernStatusRow(
+        "Suggested legacy random profile",
+        legacyProfileLabel(suggested),
+        "Based on the selected session supplements: Abyss suggests Abyss; Forsaken Depths + Courtship suggests the combined Forsaken Depths profile; Forsaken Depths alone suggests the no-Courtship profile; otherwise Expanded Edition random. The legacy profile still drives random generation until supplement activation fully replaces it."
+      )
+    );
+    for (const supplement of startSupplements) {
+      const checkbox = startSupplementChecks.get(supplement.id);
+      if (!checkbox) continue;
+      const forcedImported = type.value !== "random" && supplement.id === "imported-adventures";
+      checkbox.checked = Boolean(supplement.locked || forcedImported || checkbox.checked);
+      checkbox.disabled = Boolean(supplement.locked || forcedImported);
+      checkbox.title = forcedImported
+        ? "Imported adventure sessions always record the Imported Adventure Packages supplement because the selected module supplies maps, locations, narrative, or package data."
+        : `Include ${supplement.title || supplement.id} in the supplement snapshot for this new session.`;
+      const label = checkbox.closest("label")?.querySelector("[data-supplement-start-label]");
+      if (label) {
+        const state = supplement.locked ? "locked on" : forcedImported ? "required for imported module" : checkbox.checked ? "on for this session" : "off for this session";
+        label.textContent = `${supplement.title || supplement.id} - ${state}`;
+      }
+    }
+  }
+  for (const supplement of startSupplements) {
+    const checkbox = input("checkbox", `modern-start-supplement-${supplement.id}`, `Include ${supplement.title || supplement.id} in the supplement snapshot for this new session.`);
+    checkbox.checked = Boolean(supplement.locked || enabledSupplementIds.includes(supplement.id));
+    checkbox.disabled = Boolean(supplement.locked);
+    startSupplementChecks.set(supplement.id, checkbox);
+    const row = el("label", "modern-check-row");
+    row.title = `${supplement.notes || "Supplement registry record."} Capabilities: ${(supplement.capabilities || []).join(", ") || "none listed"}.`;
+    const label = el("span");
+    label.dataset.supplementStartLabel = "true";
+    row.append(checkbox, label);
+    checkbox.addEventListener("change", () => syncStartSupplementProfile({ userChanged: true }));
+    supplementPreferenceCard.appendChild(row);
+  }
+  supplementPreferenceCard.appendChild(supplementStatusRows);
+  syncStartSupplementProfile();
   const readiness = card("Setup Check", "Warnings here should be handled before starting unless you are deliberately testing an edge case.");
   readiness.classList.add("modern-card-compact");
   const gate = card("Closeout Gate", "Server-checked campaign closeout, guidance, roster health, context, equipment, and active-session warnings for the selected party.");
@@ -5457,6 +5507,7 @@ async function renderGoAdventure() {
     adventure.replaceChildren(...optionRows(adventureOptions(type.value)));
     writeModernPrefs({ lastAdventureType: type.value, lastAdventureId: adventure.value || "" });
     profile.closest("label")?.classList.toggle("hidden", type.value !== "random");
+    syncStartSupplementProfile();
     drawReadiness();
   });
   adventure.addEventListener("change", () => {
@@ -5487,6 +5538,7 @@ async function renderGoAdventure() {
         xp_system: xp.value,
         map_bounds_mode: mapMode.value,
         unlimited_map_element_cap: Number(mapLimit.value || 60),
+        active_supplement_ids: selectedStartSupplementIds(),
         allow_start_anyway: Boolean(overrideStart.checked),
       }),
     });

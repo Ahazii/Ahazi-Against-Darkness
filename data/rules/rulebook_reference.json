@@ -3493,7 +3493,7 @@
         "button design"
       ],
       "summary": "Tables documents developer-only preferences and shared button styling behavior.",
-      "body": "The modern Tables page includes developer_preferences_table. It documents the game.db-backed fixed Adventures Guild result selector preference and the shared button design baseline used across normal panels and screens. The selector is explicitly developer-only because forcing results is a playtest aid, not normal rules play.",
+      "body": "The modern Tables page includes developer_preferences_table. It documents the game.db-backed fixed Adventures Guild result selector preference, the saved enabled_supplement_ids default list, and the shared button design baseline used across normal panels and screens. The fixed selector is explicitly developer-only because forcing results is a playtest aid, not normal rules play. Go Adventure preselects saved supplement defaults, lets the player adjust them per new session, and locks the final active_supplement_ids snapshot onto that session. Random sessions still use legacy profiles for generation during migration, but supplement-only starts infer the matching legacy profile when one is not sent explicitly.",
       "implementation_status": "implemented"
     },
     {

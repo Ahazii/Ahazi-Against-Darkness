@@ -246,7 +246,7 @@ def known_supplement_ids() -> set[str]:
 
 
 def enabled_supplement_ids_from_selection(selected_ids: list[str] | None) -> list[str]:
-    """Normalize saved user supplement preferences without changing play rules yet."""
+    """Normalize saved defaults or per-session supplement selections."""
     known = known_supplement_ids()
     ids = [LOCKED_CORE_SUPPLEMENT_ID]
     for raw_id in selected_ids or []:
@@ -262,6 +262,18 @@ def enabled_supplement_ids_from_selection(selected_ids: list[str] | None) -> lis
                 raise ValueError(f"Unknown supplement dependency: {dependency_id}")
             _append_unique(ids, dependency_id)
     return ids
+
+
+def legacy_random_profile_id_for_supplements(supplement_ids: list[str] | None) -> str:
+    """Return the current random-session profile that best matches supplements."""
+    enabled = set(supplement_ids or [])
+    if "four-against-the-abyss" in enabled:
+        return "abyss"
+    if "forsaken-depths" in enabled and "courtship" in enabled:
+        return "forsaken_depths"
+    if "forsaken-depths" in enabled:
+        return "forsaken_depths_no_courtship"
+    return "ee_random"
 
 
 def active_supplement_ids_for_legacy_session(

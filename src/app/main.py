@@ -2766,8 +2766,8 @@ def _rules_tables_payload() -> dict:
             "default": "expanded-edition-core",
             "stored_in": "game.db records/preferences/ui",
             "developer_ui": "Settings / Options",
-            "effect": "Stores the user's enabled supplement preference list before session creation consumes supplement activation directly.",
-            "rules_boundary": "Preference-only for now; current random sessions still use legacy ruleset profiles and existing session snapshots.",
+            "effect": "Stores the user's default enabled supplement list. Go Adventure preselects these switches and lets the player adjust the supplement snapshot per new session.",
+            "rules_boundary": "New sessions now lock active_supplement_ids from Go Adventure. Random sessions still use legacy profiles for generation, but supplement-only starts infer the matching legacy profile during migration.",
         },
         {
             "preference": "button_design_baseline",
@@ -4663,6 +4663,19 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
         if courtship_enabled_raw is not None
         else None
     )
+    requested_active_supplement_ids: list[str] | None = None
+    if "active_supplement_ids" in payload:
+        raw_supplement_ids = payload.get("active_supplement_ids")
+        if not isinstance(raw_supplement_ids, list):
+            raise HTTPException(status_code=400, detail="active_supplement_ids must be a list.")
+        from .engine.supplements import enabled_supplement_ids_from_selection, legacy_random_profile_id_for_supplements
+
+        try:
+            requested_active_supplement_ids = enabled_supplement_ids_from_selection(raw_supplement_ids)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if adventure_id == "random" and not ruleset_profile_id:
+            ruleset_profile_id = legacy_random_profile_id_for_supplements(requested_active_supplement_ids)
     from .engine.ruleset_profiles import resolve_profile_for_adventure
     from .engine.tag_campaign import load_campaign
 
@@ -4752,6 +4765,12 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     from .engine.tag_campaign import apply_abyss_campaign_to_session
 
+    if requested_active_supplement_ids is not None:
+        active_ids = list(requested_active_supplement_ids)
+        for supplement_id in session.active_supplement_ids:
+            if supplement_id not in active_ids:
+                active_ids.append(supplement_id)
+        session.active_supplement_ids = active_ids
     session = apply_abyss_campaign_to_session(store, session)
     session.minor_encounters_defeated = max(
         (character.minor_encounters_cleared for character in characters),

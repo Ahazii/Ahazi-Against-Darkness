@@ -62,3 +62,104 @@ def test_create_imported_session_ignores_random_profile_payload(client: TestClie
     assert payload["supplement_registry_version"] == 1
     assert payload["state_registry_version"] == 1
     assert payload["terrain_registry_version"] == 1
+
+
+def test_create_session_accepts_per_session_supplement_snapshot(client: TestClient) -> None:
+    character_ids: list[str] = []
+    for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
+        response = client.post("/api/characters", json={"name": f"Supplement Hero {index}", "class_id": class_id})
+        assert response.status_code == 200
+        character_ids.append(response.json()["id"])
+
+    party_response = client.post("/api/parties", json={"name": "Supplement Party", "character_ids": character_ids})
+    assert party_response.status_code == 200
+
+    session_response = client.post(
+        "/api/sessions",
+        json={
+            "party_id": party_response.json()["id"],
+            "adventure_id": "random",
+            "ruleset_profile_id": "ee_random",
+            "active_supplement_ids": ["courtship", "tag"],
+        },
+    )
+
+    assert session_response.status_code == 200
+    payload = session_response.json()
+    assert payload["active_supplement_ids"] == ["expanded-edition-core", "courtship", "tag"]
+    assert payload["supplement_registry_version"] == 1
+
+
+def test_create_session_infers_forsaken_profile_from_supplement_snapshot(client: TestClient) -> None:
+    character_ids: list[str] = []
+    for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
+        response = client.post("/api/characters", json={"name": f"FD Supplement Hero {index}", "class_id": class_id})
+        assert response.status_code == 200
+        character_ids.append(response.json()["id"])
+
+    party_response = client.post("/api/parties", json={"name": "FD Supplement Party", "character_ids": character_ids})
+    assert party_response.status_code == 200
+
+    session_response = client.post(
+        "/api/sessions",
+        json={
+            "party_id": party_response.json()["id"],
+            "adventure_id": "random",
+            "active_supplement_ids": ["forsaken-depths"],
+        },
+    )
+
+    assert session_response.status_code == 200
+    payload = session_response.json()
+    assert payload["ruleset_profile_id"] == "forsaken_depths_no_courtship"
+    assert payload["ruleset"] == "forsaken_depths"
+    assert payload["courtship_enabled"] is False
+    assert payload["active_supplement_ids"] == ["expanded-edition-core", "forsaken-depths"]
+
+
+def test_create_session_infers_abyss_profile_from_supplement_snapshot(client: TestClient) -> None:
+    character_ids: list[str] = []
+    for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
+        response = client.post("/api/characters", json={"name": f"Abyss Supplement Hero {index}", "class_id": class_id})
+        assert response.status_code == 200
+        character_ids.append(response.json()["id"])
+
+    party_response = client.post("/api/parties", json={"name": "Abyss Supplement Party", "character_ids": character_ids})
+    assert party_response.status_code == 200
+
+    session_response = client.post(
+        "/api/sessions",
+        json={
+            "party_id": party_response.json()["id"],
+            "adventure_id": "random",
+            "active_supplement_ids": ["four-against-the-abyss"],
+        },
+    )
+
+    assert session_response.status_code == 200
+    payload = session_response.json()
+    assert payload["ruleset_profile_id"] == "abyss"
+    assert payload["active_supplement_ids"] == ["expanded-edition-core", "four-against-the-abyss"]
+
+
+def test_create_session_rejects_unknown_per_session_supplement(client: TestClient) -> None:
+    character_ids: list[str] = []
+    for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
+        response = client.post("/api/characters", json={"name": f"Bad Supplement Hero {index}", "class_id": class_id})
+        assert response.status_code == 200
+        character_ids.append(response.json()["id"])
+
+    party_response = client.post("/api/parties", json={"name": "Bad Supplement Party", "character_ids": character_ids})
+    assert party_response.status_code == 200
+
+    session_response = client.post(
+        "/api/sessions",
+        json={
+            "party_id": party_response.json()["id"],
+            "adventure_id": "random",
+            "active_supplement_ids": ["made-up-book"],
+        },
+    )
+
+    assert session_response.status_code == 400
+    assert "Unknown supplement id: made-up-book" in session_response.json()["detail"]

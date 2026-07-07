@@ -577,7 +577,7 @@ Good first candidates:
 
 ### Phase 4: Session Supplement Lock
 
-- Record active supplements when a session starts.
+- Record active supplements when a session starts. Settings provides the default list; Go Adventure shows those defaults as adjustable per-session checkboxes before the final `active_supplement_ids` snapshot is saved.
 - Do not let later enable/disable changes corrupt active sessions.
 - Show active supplement list in session diagnostics.
 - Keep old sessions valid by treating missing `active_supplement_ids` as a legacy session with no snapshot metadata.

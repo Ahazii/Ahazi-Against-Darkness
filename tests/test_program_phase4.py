@@ -16,6 +16,7 @@ from app.engine.supplements import (
     LOCKED_CORE_SUPPLEMENT_ID,
     active_supplement_ids_for_legacy_session,
     enabled_supplement_ids_from_selection,
+    legacy_random_profile_id_for_supplements,
     supplement_payload,
 )
 from app.engine.terrain_registry import terrain_payload
@@ -98,6 +99,13 @@ def test_tag_banking_does_not_lock_tag_supplement_for_random_sessions() -> None:
 def test_enabled_supplement_preferences_keep_core_and_dependencies() -> None:
     assert enabled_supplement_ids_from_selection([]) == [LOCKED_CORE_SUPPLEMENT_ID]
     assert enabled_supplement_ids_from_selection(["forsaken-depths"]) == [LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths"]
+
+
+def test_supplement_selection_suggests_legacy_random_profile() -> None:
+    assert legacy_random_profile_id_for_supplements([LOCKED_CORE_SUPPLEMENT_ID]) == "ee_random"
+    assert legacy_random_profile_id_for_supplements([LOCKED_CORE_SUPPLEMENT_ID, "four-against-the-abyss"]) == "abyss"
+    assert legacy_random_profile_id_for_supplements([LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths"]) == "forsaken_depths_no_courtship"
+    assert legacy_random_profile_id_for_supplements([LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths", "courtship"]) == "forsaken_depths"
 
 
 def test_state_registry_maps_existing_statuses_and_counters() -> None:
@@ -337,6 +345,9 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         assert len(payload[key]) > 0
     assert any(row["name"] for row in payload["monster_bestiary_table"])
     assert any(row["catalog"] == "forsaken_depths" for row in payload["map_elements_table"])
+    supplement_pref = next(row for row in payload["developer_preferences_table"] if row["preference"] == "enabled_supplement_ids")
+    assert "Go Adventure preselects these switches" in supplement_pref["effect"]
+    assert "active_supplement_ids" in supplement_pref["rules_boundary"]
 
 
 def test_create_session_stores_ruleset_profile(client: TestClient) -> None:

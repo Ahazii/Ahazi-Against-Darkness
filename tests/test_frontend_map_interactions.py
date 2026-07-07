@@ -2261,6 +2261,11 @@ def test_go_adventure_start_uses_status_icons_not_setup_panels() -> None:
     assert "modern-start-status-icons" in MODERN_PAGES_JS[go_start:]
     assert "function addStartStatusIcon" in MODERN_PAGES_JS[go_start:]
     assert "showSnapshotDetail(label, detail)" in MODERN_PAGES_JS[go_start:]
+    assert "const supplementPreferenceCard = card(\"Session Supplements\"" in MODERN_PAGES_JS[go_start:]
+    assert "modern-start-supplement-${supplement.id}" in MODERN_PAGES_JS[go_start:]
+    assert "function selectedStartSupplementIds()" in MODERN_PAGES_JS[go_start:]
+    assert "active_supplement_ids: selectedStartSupplementIds()" in MODERN_PAGES_JS[go_start:]
+    assert "syncStartSupplementProfile({ userChanged: true })" in MODERN_PAGES_JS[go_start:]
     assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, supplementPreferenceCard, workflowGuide])' in MODERN_PAGES_JS
     assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate])' not in MODERN_PAGES_JS
     assert "button.modern-dashboard-status-icon" in STYLES_CSS
@@ -2733,11 +2738,11 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "Legacy Ruleset Profiles",
         "Default random ruleset (legacy)",
         "legacy compatibility",
-        "campaign and session supplement locking",
-        "Enabled Supplements (preference)",
-        "Supplement Preferences",
+        "final supplement snapshot",
+        "Enabled Supplements (default)",
+        "Session Supplements",
         "enabled_supplement_ids",
-        "Preference-only for now",
+        "Saved default list for new sessions",
         "supplementTitlesForIds",
         "suggestedLegacyProfileForSupplements",
         "Suggested legacy random profile",
