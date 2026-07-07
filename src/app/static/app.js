@@ -28110,6 +28110,7 @@ function buildHirelingPartySheet(session, hireling, mode = "standalone") {
   }
   if (headerActions.childElementCount) summary.appendChild(headerActions);
   details.appendChild(summary);
+  bindPartySheetSummaryToggle(details, summary, sheetKey);
 
   const body = node("div", "party-sheet-body");
   body.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, hireling)}`));
@@ -31167,6 +31168,16 @@ function setAllPartySheetsOpen(open) {
   renderPartyState(state.session);
 }
 
+function bindPartySheetSummaryToggle(details, summary, sheetKey) {
+  summary.addEventListener("click", (event) => {
+    if (event.target.closest("button, a, input, select, textarea, label")) return;
+    event.preventDefault();
+    details.open = !details.open;
+    if (!state.partySheetOpen) state.partySheetOpen = {};
+    state.partySheetOpen[sheetKey] = details.open;
+  });
+}
+
 function renderPartySuppliesPanel(session) {
   const details = document.createElement("details");
   details.className = "party-sheet-details party-supplies-details item";
@@ -31226,6 +31237,7 @@ function renderPartySuppliesPanel(session) {
   }
   details.appendChild(summary);
   details.appendChild(body);
+  bindPartySheetSummaryToggle(details, summary, "party-supplies");
   details.addEventListener("toggle", () => {
     state.partySuppliesOpen = details.open;
     saveLayoutPrefs();
@@ -31286,6 +31298,7 @@ function appendPartyMemberSheet(target, session, member, renderCtx) {
     appendMemberSheetHeaderActions(headerActions, session, member, inventoryPanel);
     summary.appendChild(headerActions);
     details.appendChild(summary);
+    bindPartySheetSummaryToggle(details, summary, member.character_id);
 
     const body = node("div", "party-sheet-body");
     body.appendChild(inventoryPanel);

@@ -1586,6 +1586,18 @@ function supplementTitlesForIds(ids) {
   return (ids || []).map((id) => known.get(id) || id).join(", ");
 }
 
+function suggestedLegacyProfileForSupplements(ids) {
+  const enabled = new Set(ids || []);
+  if (enabled.has("four-against-the-abyss")) return "abyss";
+  if (enabled.has("forsaken-depths") && enabled.has("courtship")) return "forsaken_depths";
+  if (enabled.has("forsaken-depths")) return "forsaken_depths_no_courtship";
+  return "ee_random";
+}
+
+function legacyProfileLabel(profileId) {
+  return modernState.rulesProfiles.find((profile) => profile.id === profileId)?.label || profileId;
+}
+
 function adventureReadinessRows(selectedPartyId, { adventureType = "random", adventureId = "", profileId = "", mapLimitValue = 60 } = {}) {
   const party = modernState.parties.find((item) => item.id === selectedPartyId);
   const baseRows = [
@@ -5307,6 +5319,7 @@ async function renderGoAdventure() {
   const panel = card("Start New Adventure", "Choose party, adventure type, module, ruleset, and start play. This creates a new session.");
   panel.classList.add("modern-primary-card");
   const enabledSupplementIds = modernState.preferences?.enabled_supplement_ids || ["expanded-edition-core"];
+  const suggestedProfile = suggestedLegacyProfileForSupplements(enabledSupplementIds);
   const supplementPreferenceCard = card("Supplement Preferences", "Preference-only for now: these saved Settings choices show which supplements you intend to use. New sessions still lock supplements from the selected random profile or imported module until activation is fully wired.");
   supplementPreferenceCard.classList.add("modern-card-compact");
   supplementPreferenceCard.appendChild(
@@ -5314,6 +5327,13 @@ async function renderGoAdventure() {
       "Enabled preference",
       supplementTitlesForIds(enabledSupplementIds) || "Four Against Darkness Expanded Edition",
       "Session locked supplements are shown on Resume/Saved Games after creation; this preference list is the next activation bridge."
+    )
+  );
+  supplementPreferenceCard.appendChild(
+    modernStatusRow(
+      "Suggested legacy random profile",
+      legacyProfileLabel(suggestedProfile),
+      "Use this as the Default random ruleset in Settings if you want today's random-session behavior to match the saved supplement preference."
     )
   );
   const party = select("modern-start-party", "Party to send on the adventure.", partyOptions());
