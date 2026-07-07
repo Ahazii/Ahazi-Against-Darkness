@@ -245,6 +245,24 @@ def known_supplement_ids() -> set[str]:
     return {str(item["id"]) for item in SUPPLEMENTS}
 
 
+def supplement_titles_for_ids(supplement_ids: list[str] | None) -> list[str]:
+    """Return display titles for a stored supplement snapshot."""
+    titles_by_id = {str(item["id"]): str(item["title"]) for item in SUPPLEMENTS}
+    titles: list[str] = []
+    for raw_id in supplement_ids or []:
+        supplement_id = str(raw_id or "").strip()
+        if supplement_id:
+            titles.append(titles_by_id.get(supplement_id, supplement_id))
+    return titles
+
+
+def supplement_snapshot_log_line(supplement_ids: list[str] | None) -> str:
+    titles = supplement_titles_for_ids(supplement_ids)
+    if not titles:
+        return "Supplements locked for this session: legacy session with no supplement snapshot metadata."
+    return f"Supplements locked for this session: {', '.join(titles)}."
+
+
 def enabled_supplement_ids_from_selection(selected_ids: list[str] | None) -> list[str]:
     """Normalize saved defaults or per-session supplement selections."""
     known = known_supplement_ids()

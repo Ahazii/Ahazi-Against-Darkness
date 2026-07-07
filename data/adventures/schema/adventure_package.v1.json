@@ -48,7 +48,25 @@
     "capabilities": {
       "type": "array",
       "items": {
-        "enum": ["foes", "classes", "items", "tables", "trackers", "procedures", "states", "rules", "maps", "pins", "artwork"]
+        "enum": [
+          "foes",
+          "classes",
+          "items",
+          "tables",
+          "trackers",
+          "procedures",
+          "states",
+          "rules",
+          "maps",
+          "pins",
+          "locations",
+          "room_tiles",
+          "terrain_types",
+          "generators",
+          "campaign_state",
+          "narrative",
+          "artwork"
+        ]
       },
       "uniqueItems": true
     },
@@ -81,6 +99,48 @@
     "rules": {
       "type": "array",
       "description": "Module-local rules extracted from the source PDF. These remain review data until explicit app support or manifest conversion uses them.",
+      "items": {
+        "$ref": "#/$defs/sourcedRecord"
+      }
+    },
+    "locations": {
+      "type": "array",
+      "description": "Supplement-facing alias for reviewed playable places. Current importer UI stores these in nodes; future loaders may promote checked nodes into locations.",
+      "items": {
+        "$ref": "#/$defs/sourcedRecord"
+      }
+    },
+    "room_tiles": {
+      "type": "array",
+      "description": "Reusable random dungeon room tile records supplied by this package. Review-only until a trusted tile loader supports them.",
+      "items": {
+        "$ref": "#/$defs/sourcedRecord"
+      }
+    },
+    "terrain_types": {
+      "type": "array",
+      "description": "Terrain/environment definitions supplied by this package. Review-only until a trusted terrain loader supports them.",
+      "items": {
+        "$ref": "#/$defs/sourcedRecord"
+      }
+    },
+    "generators": {
+      "type": "array",
+      "description": "Random generation profiles, table selections, tile choices, or terrain mixes supplied by this package. Review-only until explicitly implemented.",
+      "items": {
+        "$ref": "#/$defs/sourcedRecord"
+      }
+    },
+    "campaign_state": {
+      "type": "array",
+      "description": "Campaign-spanning facts or trackers supplied by this package. Review-only until explicitly implemented.",
+      "items": {
+        "$ref": "#/$defs/sourcedRecord"
+      }
+    },
+    "narrative": {
+      "type": "array",
+      "description": "Exact or reviewed local PDF narrative blocks. Keep exact copyrighted prose private in DATA_DIR packages unless publishing rights are secured.",
       "items": {
         "$ref": "#/$defs/sourcedRecord"
       }

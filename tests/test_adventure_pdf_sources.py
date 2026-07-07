@@ -145,6 +145,11 @@ def test_adventure_package_schema_is_declarative_and_map_pin_ready() -> None:
     assert "pins" in schema["properties"]["capabilities"]["items"]["enum"]
     assert "states" in schema["properties"]["capabilities"]["items"]["enum"]
     assert "rules" in schema["properties"]["capabilities"]["items"]["enum"]
+    assert {"locations", "room_tiles", "terrain_types", "generators", "campaign_state", "narrative"}.issubset(
+        set(schema["properties"]["capabilities"]["items"]["enum"])
+    )
+    for key in ["locations", "room_tiles", "terrain_types", "generators", "campaign_state", "narrative"]:
+        assert key in schema["properties"]
     assert "pin_location" in procedure_op
     assert "script" not in procedure_op
     assert "javascript" not in procedure_op
@@ -174,6 +179,7 @@ def test_create_package_from_pdf_creates_manual_map_slot_and_preserves_pins(tmp_
     package = load_adventure_package(data, "map-module-pdf")
     assert package is not None
     assert package["source"]["source_pdf"] == "Adventure PDFs/Map Module.pdf"
+    assert "locations" in package["capabilities"]
 
     pinned = upsert_map_pin(
         data,

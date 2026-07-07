@@ -112,7 +112,7 @@ Typical package:
     "source_pages": [1, 2, 3],
     "license_note": "Private-use package from a user-owned PDF."
   },
-  "capabilities": ["maps", "pins", "tables", "foes", "items", "states", "rules"],
+  "capabilities": ["maps", "pins", "locations", "narrative", "tables", "foes", "items", "states", "rules"],
   "nodes": [],
   "maps": [],
   "tables": [],
@@ -120,6 +120,12 @@ Typical package:
   "items": [],
   "states": [],
   "rules": [],
+  "locations": [],
+  "room_tiles": [],
+  "terrain_types": [],
+  "generators": [],
+  "campaign_state": [],
+  "narrative": [],
   "trackers": [],
   "procedures": [],
   "review": {
@@ -128,6 +134,8 @@ Typical package:
   }
 }
 ```
+
+Supplement-facing package capabilities now share the same vocabulary as the wider supplement model. `nodes` remain the current review workspace for rooms, scenes, hexes, camps, settlements, and endings. The `locations`, `room_tiles`, `terrain_types`, `generators`, `campaign_state`, and `narrative` arrays are reserved declarative containers for future loaders and should stay review-only until explicitly implemented.
 
 ## Review Nodes
 

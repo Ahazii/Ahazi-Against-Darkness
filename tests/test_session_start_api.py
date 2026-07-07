@@ -62,6 +62,10 @@ def test_create_imported_session_ignores_random_profile_payload(client: TestClie
     assert payload["supplement_registry_version"] == 1
     assert payload["state_registry_version"] == 1
     assert payload["terrain_registry_version"] == 1
+    assert (
+        "Supplements locked for this session: "
+        "Four Against Darkness Expanded Edition, Imported Adventure Packages."
+    ) in payload["log"]
 
 
 def test_create_session_accepts_per_session_supplement_snapshot(client: TestClient) -> None:
@@ -88,6 +92,10 @@ def test_create_session_accepts_per_session_supplement_snapshot(client: TestClie
     payload = session_response.json()
     assert payload["active_supplement_ids"] == ["expanded-edition-core", "courtship", "tag"]
     assert payload["supplement_registry_version"] == 1
+    assert (
+        "Supplements locked for this session: "
+        "Four Against Darkness Expanded Edition, The Courtship of Flower Demons, Tales from the Adventurers' Guild."
+    ) in payload["log"]
 
 
 def test_create_session_infers_forsaken_profile_from_supplement_snapshot(client: TestClient) -> None:
@@ -115,6 +123,10 @@ def test_create_session_infers_forsaken_profile_from_supplement_snapshot(client:
     assert payload["ruleset"] == "forsaken_depths"
     assert payload["courtship_enabled"] is False
     assert payload["active_supplement_ids"] == ["expanded-edition-core", "forsaken-depths"]
+    assert (
+        "Supplements locked for this session: "
+        "Four Against Darkness Expanded Edition, Four Against the Forsaken Depths."
+    ) in payload["log"]
 
 
 def test_create_session_infers_abyss_profile_from_supplement_snapshot(client: TestClient) -> None:
@@ -140,6 +152,10 @@ def test_create_session_infers_abyss_profile_from_supplement_snapshot(client: Te
     payload = session_response.json()
     assert payload["ruleset_profile_id"] == "abyss"
     assert payload["active_supplement_ids"] == ["expanded-edition-core", "four-against-the-abyss"]
+    assert (
+        "Supplements locked for this session: "
+        "Four Against Darkness Expanded Edition, Four Against the Abyss."
+    ) in payload["log"]
 
 
 def test_create_session_rejects_unknown_per_session_supplement(client: TestClient) -> None:

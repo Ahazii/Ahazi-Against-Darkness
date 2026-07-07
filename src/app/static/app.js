@@ -402,6 +402,7 @@ const sessionMain = document.getElementById("session-main");
 const showSetupBtn = document.getElementById("show-setup");
 const sessionMode = document.getElementById("session-mode");
 const sessionAdventureTitle = document.getElementById("session-adventure-title");
+const sessionSupplements = document.getElementById("session-supplements");
 const fdMapMode = document.getElementById("fd-map-mode");
 const fdRiverType = document.getElementById("fd-river-type");
 const fdBoatStatus = document.getElementById("fd-boat-status");
@@ -2897,6 +2898,38 @@ function sessionAdventureTitleText(session) {
   if (manifestTitle) return manifestTitle;
   if (session.adventure_id) return questPrettyTitle(String(session.adventure_id).replace(/[-_]+/g, " "));
   return "";
+}
+
+const SUPPLEMENT_TITLE_BY_ID = {
+  "expanded-edition-core": "Four Against Darkness Expanded Edition",
+  "four-against-the-abyss": "Four Against the Abyss",
+  "forsaken-depths": "Four Against the Forsaken Depths",
+  courtship: "The Courtship of Flower Demons",
+  tag: "Tales from the Adventurers' Guild",
+  "imported-adventures": "Imported Adventure Packages",
+};
+
+function sessionSupplementTitles(session) {
+  const ids = Array.isArray(session?.active_supplement_ids) ? session.active_supplement_ids : [];
+  return ids.map((id) => SUPPLEMENT_TITLE_BY_ID[id] || id).filter(Boolean);
+}
+
+function renderSessionSupplementChip(session) {
+  if (!sessionSupplements) return;
+  const titles = sessionSupplementTitles(session);
+  sessionSupplements.classList.toggle("hidden", !titles.length);
+  if (!titles.length) {
+    sessionSupplements.textContent = "";
+    sessionSupplements.title = "Legacy session: no supplement snapshot metadata is stored.";
+    return;
+  }
+  sessionSupplements.textContent = titles.length === 1 ? "Supplements: 1" : `Supplements: ${titles.length}`;
+  sessionSupplements.title = `Locked supplements for this session: ${titles.join(", ")}. Settings changes affect future sessions only.`;
+}
+
+function sessionSupplementDebugLine(session) {
+  const titles = sessionSupplementTitles(session);
+  return titles.length ? titles.join(", ") : "legacy session: no supplement snapshot";
 }
 
 function massBlessingTargetId(target, kind) {
@@ -11693,6 +11726,13 @@ function renderSetupRosterFromCache() {
   state.setupRosterDirty = false;
 }
 
+function appendSessionSupplementSummary(parent, session) {
+  const line = subline(`Locked supplements: ${sessionSupplementDebugLine(session)}`);
+  line.classList.add("session-list-supplements");
+  line.title = "Locked supplement snapshot for this session. Settings changes affect future sessions only.";
+  parent.appendChild(line);
+}
+
 function sessionListEntryFromSession(session) {
   if (!session?.id) return null;
   const manifest = session.imported_manifest || {};
@@ -11717,6 +11757,9 @@ function sessionListEntryFromSession(session) {
       (session.adventure_type === "imported" && Array.isArray(manifest.rooms)
         ? manifest.rooms.length
         : null),
+    active_supplement_ids: Array.isArray(session.active_supplement_ids)
+      ? [...session.active_supplement_ids]
+      : [],
     active_quest_description:
       session.active_quest_description ||
       quest?.description?.trim() ||
@@ -11962,6 +12005,7 @@ function buildNarrativeDebugReport(session = state.session) {
     `Adventure type: ${session?.adventure_type || "unknown"}`,
     `Session mode: ${session?.mode || "unknown"}`,
     `Ruleset: ${session?.ruleset || "ee"} / XP: ${session?.xp_system || "unknown"}`,
+    `Supplements: ${sessionSupplementDebugLine(session)}`,
     `Party: ${(session?.party || []).map((member) => `${member.name} L${member.level} ${member.current_life}/${member.max_life} Life ${member.gold || 0}gp`).join("; ") || "none"}`,
     "",
     "### Current Room",
@@ -16835,6 +16879,7 @@ function renderActiveGames() {
         `${sessionListModeLabel(session)}${session.saved_at ? " | saved" : " | unsaved"} | ${session.tile_count ?? session.map_state?.tiles?.length ?? 0} map elements`
       )
     );
+    appendSessionSupplementSummary(item, session);
     const actions = node("div", "item-actions");
     const resume = node("button", "secondary", state.session?.id === session.id ? "Current" : "Resume");
     resume.type = "button";
@@ -16866,6 +16911,7 @@ function renderSavedGames() {
     item.appendChild(
       subline(`${sessionListModeLabel(session)} | saved ${formatDateTime(session.saved_at)} | ${session.tile_count ?? session.map_state?.tiles?.length ?? 0} map elements`)
     );
+    appendSessionSupplementSummary(item, session);
     const actions = node("div", "item-actions");
     const load = node("button", "secondary", state.session?.id === session.id ? "Current" : "Load");
     load.type = "button";
@@ -18039,6 +18085,7 @@ function renderSession() {
   applyCombatFocusLayout(session);
   applyCampScreenLayout(session);
   sessionMode.textContent = session.camped_outside ? "camp" : session.mode;
+  renderSessionSupplementChip(session);
   if (sessionAdventureTitle) {
     const title = sessionAdventureTitleText(session);
     sessionAdventureTitle.textContent = title ? `- ${title}` : "";

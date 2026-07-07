@@ -2125,6 +2125,22 @@ def test_camped_outside_uses_dedicated_camp_screen() -> None:
     assert "overflow: visible;" in STYLES_CSS
 
 
+def test_session_header_shows_locked_supplement_snapshot() -> None:
+    assert 'id="session-supplements"' in INDEX_HTML
+    assert "const sessionSupplements = document.getElementById(\"session-supplements\")" in APP_JS
+    assert "const SUPPLEMENT_TITLE_BY_ID" in APP_JS
+    assert "function sessionSupplementTitles(session)" in APP_JS
+    assert "function renderSessionSupplementChip(session)" in APP_JS
+    assert "renderSessionSupplementChip(session)" in APP_JS
+    assert "Locked supplements for this session" in APP_JS
+    assert "Settings changes affect future sessions only" in APP_JS
+    assert ".session-supplements" in STYLES_CSS
+    assert "function appendSessionSupplementSummary(parent, session)" in APP_JS
+    assert "Locked supplements: ${sessionSupplementDebugLine(session)}" in APP_JS
+    assert "active_supplement_ids: Array.isArray(session.active_supplement_ids)" in APP_JS
+    assert ".session-list-supplements" in STYLES_CSS
+
+
 def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable() -> None:
     assert 'id="scan-adventure-pdfs"' in INDEX_HTML
     assert "/api/adventures/pdf-sources/scan" in APP_JS
@@ -2541,6 +2557,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "## Actual Narrative" in APP_JS
     assert "## Debug Context" in APP_JS
     assert "The following information is not player narrative" in APP_JS
+    assert "function sessionSupplementDebugLine(session)" in APP_JS
+    assert "Supplements: ${sessionSupplementDebugLine(session)}" in APP_JS
+    assert "legacy session: no supplement snapshot" in APP_JS
     assert "Copy Narrative Report" in INDEX_HTML
     assert "Advanced / Manual Actions" in INDEX_HTML
     assert "Copy Playtest Report" not in INDEX_HTML

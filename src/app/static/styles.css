@@ -2789,6 +2789,16 @@ button.modern-dashboard-status-icon {
   white-space: nowrap;
 }
 
+.session-supplements {
+  border: 1px solid rgba(201, 162, 39, 0.38);
+  background: rgba(201, 162, 39, 0.12);
+  color: var(--text);
+}
+
+.session-list-supplements {
+  color: var(--text-soft);
+}
+
 .list {
   display: grid;
   gap: 8px;

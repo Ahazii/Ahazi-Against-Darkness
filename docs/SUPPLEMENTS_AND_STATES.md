@@ -579,7 +579,7 @@ Good first candidates:
 
 - Record active supplements when a session starts. Settings provides the default list; Go Adventure shows those defaults as adjustable per-session checkboxes before the final `active_supplement_ids` snapshot is saved.
 - Do not let later enable/disable changes corrupt active sessions.
-- Show active supplement list in session diagnostics.
+- Show active supplement list in session diagnostics, the Adventure View header, session lists, and the new-session log/report context.
 - Keep old sessions valid by treating missing `active_supplement_ids` as a legacy session with no snapshot metadata.
 - Snapshot supplement, state-registry, and terrain-registry versions on new sessions so future migrations can tell which metadata model was active at creation.
 

@@ -18,6 +18,8 @@ from app.engine.supplements import (
     enabled_supplement_ids_from_selection,
     legacy_random_profile_id_for_supplements,
     supplement_payload,
+    supplement_snapshot_log_line,
+    supplement_titles_for_ids,
 )
 from app.engine.terrain_registry import terrain_payload
 from app.schemas import SessionState
@@ -106,6 +108,20 @@ def test_supplement_selection_suggests_legacy_random_profile() -> None:
     assert legacy_random_profile_id_for_supplements([LOCKED_CORE_SUPPLEMENT_ID, "four-against-the-abyss"]) == "abyss"
     assert legacy_random_profile_id_for_supplements([LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths"]) == "forsaken_depths_no_courtship"
     assert legacy_random_profile_id_for_supplements([LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths", "courtship"]) == "forsaken_depths"
+
+
+def test_supplement_snapshot_log_line_uses_titles_and_legacy_fallback() -> None:
+    assert supplement_titles_for_ids([LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths"]) == [
+        "Four Against Darkness Expanded Edition",
+        "Four Against the Forsaken Depths",
+    ]
+    assert supplement_snapshot_log_line([LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths"]) == (
+        "Supplements locked for this session: "
+        "Four Against Darkness Expanded Edition, Four Against the Forsaken Depths."
+    )
+    assert supplement_snapshot_log_line([]) == (
+        "Supplements locked for this session: legacy session with no supplement snapshot metadata."
+    )
 
 
 def test_state_registry_maps_existing_statuses_and_counters() -> None:
@@ -336,6 +352,7 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         "adventure_package_review_workspace_table",
         "adventure_package_schema_table",
         "adventure_pdf_source_scan_table",
+        "session_supplement_snapshot_table",
         "artwork_expansion_plan_table",
         "application_artwork_slots_table",
         "developer_preferences_table",

@@ -77,6 +77,11 @@ APP_ONLY_REFERENCE_IDS = {
     "item_tooltip_coverage_table",
     "rules_artwork_registry",
     "pdf_artwork_boundary",
+    "adventure_package_map_pinning_table",
+    "adventure_package_review_workspace_table",
+    "adventure_pdf_source_scan_table",
+    "adventure_package_schema_table",
+    "session_supplement_snapshot_table",
 }
 
 

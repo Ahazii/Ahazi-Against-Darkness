@@ -353,6 +353,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "modern_dashboard_management_table",
     "modern_tag_workflow_table",
     "playtest_triage_workflow_table",
+    "session_supplement_snapshot_table",
     "tag_closeout_checklist_automation_table",
     "tag_generated_adventure_signoff_table",
     "tag_generated_lead_structure_table",

@@ -27,7 +27,25 @@ ALLOWED_PROCEDURE_OPS = {
     "pin_location",
     "show_choice",
 }
-PACKAGE_CAPABILITIES = {"foes", "classes", "items", "tables", "trackers", "procedures", "states", "rules", "maps", "pins", "artwork"}
+PACKAGE_CAPABILITIES = {
+    "foes",
+    "classes",
+    "items",
+    "tables",
+    "trackers",
+    "procedures",
+    "states",
+    "rules",
+    "maps",
+    "pins",
+    "locations",
+    "room_tiles",
+    "terrain_types",
+    "generators",
+    "campaign_state",
+    "narrative",
+    "artwork",
+}
 NODE_TYPES = {"room", "scene", "location", "hex", "camp", "settlement", "ending"}
 NODE_REVIEW_STATUSES = {"candidate", "draft", "checked", "needs_pdf_check", "ready_for_manifest", "wrong_type", "ignored"}
 MAP_PIN_ROLES = {"location", "room", "entrance", "exit", "stairs", "secret", "objective", "camp", "settlement", "other"}
@@ -793,7 +811,9 @@ def _merge_candidate_records(existing: Any, candidates: list[dict[str, Any]]) ->
 def _package_capabilities(assessment: dict[str, Any], maps: list[dict[str, Any]]) -> list[str]:
     capabilities = set()
     if maps:
-        capabilities.update({"maps", "pins"})
+        capabilities.update({"maps", "pins", "locations"})
+    if int(assessment.get("numbered_location_signals") or 0):
+        capabilities.update({"locations", "narrative"})
     if int(assessment.get("table_signals") or 0):
         capabilities.add("tables")
     if int(assessment.get("foe_signals") or 0):

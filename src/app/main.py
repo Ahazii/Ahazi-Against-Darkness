@@ -2778,6 +2778,32 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "UI-only; does not change any PDF mechanic.",
         },
     ]
+    data["session_supplement_snapshot_table"] = [
+        {
+            "surface": "Settings / Options",
+            "shows": "Saved default enabled_supplement_ids with Expanded Edition locked on.",
+            "player_use": "Choose which optional supplements should be preselected for future sessions.",
+            "rules_boundary": "Settings changes do not rewrite existing sessions; they only affect future starts.",
+        },
+        {
+            "surface": "Go Adventure",
+            "shows": "Preselected supplement checkboxes for the next session.",
+            "player_use": "Adjust the active supplement set before starting an adventure.",
+            "rules_boundary": "The final active_supplement_ids snapshot is saved on the new session while legacy profiles still drive random generation during migration.",
+        },
+        {
+            "surface": "Adventure View header and session lists",
+            "shows": "Supplement title summary for the locked session snapshot.",
+            "player_use": "Confirm which books/packages are active for the open or saved game.",
+            "rules_boundary": "Display-only context; changing the chip or list is not a rules action.",
+        },
+        {
+            "surface": "Session log and Copy Narrative Report",
+            "shows": "A titled supplement snapshot line when the session is created.",
+            "player_use": "Share playtest/debug reports with enough context to reproduce active supplement behavior.",
+            "rules_boundary": "Records active content context only; it does not claim new supplement mechanics are implemented.",
+        },
+    ]
     data["playtest_triage_workflow_table"] = [
         {
             "field": "Area",
@@ -2855,8 +2881,13 @@ def _rules_tables_payload() -> dict:
     data["adventure_package_schema_table"] = [
         {
             "area": "Declarative package",
-            "purpose": "Adds local PDF module content as data: foes, classes, items, states, rules, tables, trackers, map assets, pins, and extracted artwork.",
+            "purpose": "Adds local PDF module content as data: foes, classes, items, states, rules, tables, trackers, locations, narrative, map assets, pins, and extracted artwork.",
             "safety": "Packages do not execute scripts; they use engine-approved operations only.",
+        },
+        {
+            "area": "Supplement vocabulary",
+            "purpose": "Allows review-only locations, room tiles, terrain types, generators, campaign state, and narrative records so imported packages can align with the supplement model.",
+            "safety": "These records are declarative review data until a trusted loader or explicit rule implementation uses them.",
         },
         {
             "area": "Map assets and pins",
@@ -4772,6 +4803,11 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
                 active_ids.append(supplement_id)
         session.active_supplement_ids = active_ids
     session = apply_abyss_campaign_to_session(store, session)
+    from .engine.supplements import supplement_snapshot_log_line
+
+    supplement_log_line = supplement_snapshot_log_line(session.active_supplement_ids)
+    if supplement_log_line not in session.log:
+        session.log.append(supplement_log_line)
     session.minor_encounters_defeated = max(
         (character.minor_encounters_cleared for character in characters),
         default=0,
