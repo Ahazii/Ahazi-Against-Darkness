@@ -2903,6 +2903,20 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Legacy mappings are a migration guide; current map/session helpers still drive actual terrain behavior.",
         },
     ]
+    data["active_registry_tooltips_table"] = [
+        {
+            "surface": "Adventure View",
+            "hover_target": "Status chips",
+            "player_use": "Hover hero, hireling, foe, and room status chips to see matching State Registry metadata, source page/topic, and the existing rules tooltip together.",
+            "rules_boundary": "This exposes registry context for the current legacy status text; it does not apply, expire, cure, or change a state.",
+        },
+        {
+            "surface": "Adventure View",
+            "hover_target": "Play context line",
+            "player_use": "Hover the terrain/play-context line to see matching Terrain Registry metadata, source page/topic, interaction groups, and migration notes.",
+            "rules_boundary": "This explains the current map/session terrain fields; map generation, table routing, and encounter outcomes still use the existing PDF-backed helpers.",
+        },
+    ]
     data["playtest_triage_workflow_table"] = [
         {
             "field": "Area",

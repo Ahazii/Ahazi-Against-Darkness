@@ -1815,9 +1815,20 @@ def test_final_boss_completion_banner_and_completed_sessions_return_home() -> No
 
 def test_status_effect_chips_have_hover_text() -> None:
     assert "function statusChipTooltip(label)" in APP_JS
+    assert "stateRegistry: { states: [], legacy_fields: [] }" in APP_JS
+    assert "terrainRegistry: { terrain: [], legacy_fields: [] }" in APP_JS
+    assert "/api/states" in APP_JS
+    assert "/api/terrain" in APP_JS
+    assert "function statusTooltipWithRegistry(label, fallback = \"\")" in APP_JS
+    assert "function terrainRegistryTooltip(playCtx = {}, tile = {})" in APP_JS
     body = _function_body("appendStatusChips", APP_JS)
+    assert "statusTooltipWithRegistry(chip.label" in body
     assert "el.title = title;" in body
     assert "el.dataset.tooltip = title;" in body
+    assert "State Registry:" in APP_JS
+    assert "Terrain Registry:" in APP_JS
+    assert "setTooltip(playContextLine, terrainRegistryTooltip(playCtx, tile));" in APP_JS
+    assert "active_registry_tooltips_table" in MAIN_PY
     assert "Shield bonus applies" in APP_JS
     assert "Blessed Temple/Shrine: +1 Attack vs undead and demon foes until one such foe is slain." in APP_JS
     assert "Magic Resistance" in APP_JS

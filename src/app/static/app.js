@@ -6,6 +6,8 @@ const state = {
   aiPromptDefaults: null,
   aiPromptText: "",
   rulesTables: {},
+  stateRegistry: { states: [], legacy_fields: [] },
+  terrainRegistry: { terrain: [], legacy_fields: [] },
   expertSkillsCatalog: null,
   icons: [],
   sessions: [],
@@ -2990,6 +2992,97 @@ function blessingRemovableConditions(target, kind, session = null) {
     });
   }
   return rows;
+}
+
+function registryTextList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map((item) => String(item || "")).filter(Boolean);
+  if (typeof value === "object") return Object.values(value).flatMap(registryTextList);
+  return [String(value)];
+}
+
+function stateRegistryDefinitions() {
+  return Array.isArray(state.stateRegistry?.states) ? state.stateRegistry.states : [];
+}
+
+function terrainRegistryDefinitions() {
+  return Array.isArray(state.terrainRegistry?.terrain) ? state.terrainRegistry.terrain : [];
+}
+
+function stateDefinitionForStatus(label) {
+  const raw = String(label || "").trim();
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  const base = lower.replace(/\s*\([^)]*\)\s*/g, " ").replace(/[^a-z0-9+ -]/g, " ").replace(/\s+/g, " ").trim();
+  return stateRegistryDefinitions().find((definition) => {
+    const mappings = definition.legacy_mappings || {};
+    const exact = registryTextList(mappings.statuses).map((item) => item.toLowerCase());
+    if (exact.some((item) => item === lower || item === base)) return true;
+    const statusText = registryTextList(mappings.status_text).map((item) => item.toLowerCase());
+    if (statusText.some((item) => lower.includes(item) || base.includes(item))) return true;
+    const prefixes = registryTextList(mappings.status_prefixes).map((item) => item.toLowerCase());
+    if (prefixes.some((item) => lower.startsWith(item) || base.startsWith(item))) return true;
+    const suffixes = registryTextList(mappings.item_suffixes).map((item) => item.toLowerCase());
+    return suffixes.some((item) => lower.includes(item));
+  }) || null;
+}
+
+function stateRegistryTooltip(label) {
+  const definition = stateDefinitionForStatus(label);
+  if (!definition) return "";
+  const source = definition.source || {};
+  const sourceLine = `${source.source_pdf || "Current project data"}${Number(source.page || 0) > 0 ? ` p.${source.page}` : ""}`;
+  const scope = [definition.family, definition.scope, definition.value_type].filter(Boolean).map((item) => String(item).replace(/_/g, " ")).join(" · ");
+  return [
+    `State Registry: ${definition.name || definition.id}`,
+    scope,
+    definition.ui?.hover || "",
+    `Source: ${sourceLine} · ${source.topic || "State"}`,
+  ].filter(Boolean).join("\n");
+}
+
+function statusTooltipWithRegistry(label, fallback = "") {
+  const registry = stateRegistryTooltip(label);
+  const base = fallback || statusChipTooltip(label);
+  if (base && registry && !base.includes("State Registry:")) return `${base}\n\n${registry}`;
+  return base || registry;
+}
+
+function terrainDefinitionsForContext(playCtx = {}, tile = {}) {
+  const contextValues = new Set(
+    [playCtx.environment, playCtx.terrain, tile?.environment, tile?.terrain]
+      .filter(Boolean)
+      .map((item) => String(item).toLowerCase())
+  );
+  return terrainRegistryDefinitions().filter((definition) => {
+    const mappings = definition.legacy_mappings || {};
+    const mappedValues = [
+      definition.id,
+      ...registryTextList(mappings.environment),
+      ...registryTextList(mappings.terrain),
+      ...registryTextList(mappings.tile_catalog),
+    ]
+      .filter(Boolean)
+      .map((item) => String(item).toLowerCase());
+    return mappedValues.some((item) => contextValues.has(item));
+  });
+}
+
+function terrainRegistryTooltip(playCtx = {}, tile = {}) {
+  const definitions = terrainDefinitionsForContext(playCtx, tile);
+  if (!definitions.length) return "Terrain Registry: no matching terrain metadata record.";
+  return definitions.slice(0, 3).map((definition) => {
+    const source = definition.source || {};
+    const sourceLine = `${source.source_pdf || "Current project data"}${Number(source.page || 0) > 0 ? ` p.${source.page}` : ""}`;
+    const interactions = registryTextList(definition.interactions).join(", ");
+    return [
+      `Terrain Registry: ${definition.name || definition.id}`,
+      [definition.kind, definition.applies_to].filter(Boolean).map((item) => String(item).replace(/_/g, " ")).join(" · "),
+      interactions ? `Interactions: ${interactions}` : "",
+      definition.ui?.hover || "",
+      `Source: ${sourceLine} · ${source.topic || "Terrain"}`,
+    ].filter(Boolean).join("\n");
+  }).join("\n\n");
 }
 
 function massBlessingSelectableTargets(session) {
@@ -7612,7 +7705,7 @@ function appendStatusChips(container, chips) {
   const row = node("div", "combat-status-chips");
   for (const chip of chips) {
     const el = node("span", `combat-chip combat-chip-${chip.kind}`, chip.label);
-    const title = chip.title || statusChipTooltip(chip.label);
+    const title = statusTooltipWithRegistry(chip.label, chip.title || "");
     el.title = title;
     el.dataset.tooltip = title;
     row.appendChild(el);
@@ -11077,12 +11170,14 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedSessionId ? "game" : requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, forsakenDepthsMapElements, forsakenDepthsRiversMapElements, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions, rulesetProfiles, campaign, preferences] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, stateRegistry, terrainRegistry, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, forsakenDepthsMapElements, forsakenDepthsRiversMapElements, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions, rulesetProfiles, campaign, preferences] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
       api("/api/adventures"),
       api("/api/rules/tables"),
+      api("/api/states"),
+      api("/api/terrain"),
       api("/api/rules/expert-skills"),
       api("/api/rules/heroic-skills"),
       api("/api/rules/legendary-skills"),
@@ -11105,6 +11200,8 @@ async function loadAll(options = {}) {
     state.parties = parties;
     state.adventures = adventures;
     state.rulesTables = rulesTables;
+    state.stateRegistry = stateRegistry || { states: [], legacy_fields: [] };
+    state.terrainRegistry = terrainRegistry || { terrain: [], legacy_fields: [] };
     state.expertSkillsCatalog = expertSkillsCatalog;
     state.heroicSkillsCatalog = heroicSkillsCatalog;
     state.legendarySkillsCatalog = legendarySkillsCatalog;
@@ -25496,9 +25593,13 @@ function renderTileDetail(session) {
   const contextBits = [`Terrain: ${terrainLabel}`];
   if (playCtx.weather_active) contextBits.push("altered weather");
   if (playCtx.forest_pathway_active) contextBits.push("forest pathway");
-  info.appendChild(subline(`Play context: ${contextBits.join(" · ")}`));
+  const playContextLine = subline(`Play context: ${contextBits.join(" · ")}`);
+  setTooltip(playContextLine, terrainRegistryTooltip(playCtx, tile));
+  info.appendChild(playContextLine);
   if (tile.environment && tile.environment !== "dungeon") {
-    info.appendChild(subline(`This map element: ${tile.environment.replace("_", " ")}`));
+    const environmentLine = subline(`This map element: ${tile.environment.replace("_", " ")}`);
+    setTooltip(environmentLine, terrainRegistryTooltip(playCtx, tile));
+    info.appendChild(environmentLine);
   }
   if (tile.special_event_summary) {
     info.appendChild(subline(`Special event: ${tile.special_event_summary}`));
