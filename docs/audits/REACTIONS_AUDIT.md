@@ -17,7 +17,7 @@
 
 **Overall:** All reaction keys are engine-handled with Combat Focus / legacy UI affordances. Scout-ahead reactions share the same special-outcome paths. Dwarf Miser blocks all bribes. Sleep reads `attack_bonus_first_round` from data. Gem bribes log counted resale value (dwarf +20% where applicable). Table-driven tests cover every `bribe_*` special key.
 
-Full table listing: `docs/REACTION_TABLES_LIST.txt` (regenerate with `python tools/list_reaction_tables.py`).
+Full table listing: `docs/reference/REACTION_TABLES_LIST.txt` (regenerate with `python tools/list_reaction_tables.py`).
 
 ---
 
@@ -98,5 +98,5 @@ Earlier P0 fixes (same pass): Wraith `bribe_magic_item` normalization; Dwarf Mis
 cd c:\Coding\4AD
 $env:PYTHONPATH="src"
 python -m pytest tests/test_reactions.py tests/test_special_bribe_reactions.py tests/test_mechanic_regression_map.py tests/test_secrets_reactions_table_family.py -q
-python tools/list_reaction_tables.py > docs/REACTION_TABLES_LIST.txt
+python tools/list_reaction_tables.py > docs/reference/REACTION_TABLES_LIST.txt
 ```

@@ -110,6 +110,6 @@ The TAG troupe is now a proper roster surface rather than only an active-party p
 
 ## Signoff Workflow
 
-For PDF checking, use [Rulebook Checking Guide](RULEBOOK_CHECKING_GUIDE.md). The spreadsheet signoff files are in `docs/Checking/Outputs/signoff_280626/`.
+For PDF checking, use [Rulebook Checking Guide](RULEBOOK_CHECKING_GUIDE.md). The archived spreadsheet signoff files are in `docs/archive/checking/signoff_280626/`.
 
-Internal compliance audits such as `EE_COMPLIANCE_AUDIT.md`, `ABYSS_COMPLIANCE_AUDIT.md`, and `REACTIONS_AUDIT.md` remain in `docs/` because they are engineering reference documents, not player action checklists.
+Internal compliance audits such as `EE_COMPLIANCE_AUDIT.md`, `ABYSS_COMPLIANCE_AUDIT.md`, and `REACTIONS_AUDIT.md` live in `docs/audits/` because they are engineering reference documents, not player action checklists.

@@ -11,6 +11,7 @@ from app.engine.ruleset_profiles import (
     profile_by_id,
     resolve_profile_for_adventure,
 )
+from app.engine.supplements import LOCKED_CORE_SUPPLEMENT_ID, supplement_payload
 from app.schemas import SessionState
 
 
@@ -44,6 +45,42 @@ def test_ruleset_profiles_api(client: TestClient) -> None:
     class_ids = {item["id"] for item in filtered.json()}
     assert "wandering_alchemist" not in class_ids
     assert "warrior" in class_ids
+
+
+def test_supplement_registry_marks_core_locked_and_legacy_fields() -> None:
+    payload = supplement_payload()
+    assert payload["schema_version"] == 1
+    assert payload["read_only"] is True
+    assert payload["locked_core_id"] == LOCKED_CORE_SUPPLEMENT_ID
+
+    supplements = {item["id"]: item for item in payload["supplements"]}
+    core = supplements[LOCKED_CORE_SUPPLEMENT_ID]
+    assert core["locked"] is True
+    assert core["enabled_by_default"] is True
+    assert {"rules", "states", "room_tiles", "terrain_types"}.issubset(set(core["capabilities"]))
+
+    forsaken_depths = supplements["forsaken-depths"]
+    assert {"room_tiles", "terrain_types", "generators"}.issubset(set(forsaken_depths["capabilities"]))
+    assert "forsaken_depths_rivers" in forsaken_depths["legacy_mappings"]["tile_catalog"]
+
+    imported = supplements["imported-adventures"]
+    assert imported["status"] == "review_only"
+    assert {"maps", "locations", "narrative", "states", "rules"}.issubset(set(imported["capabilities"]))
+
+    legacy = {item["field"]: item for item in payload["legacy_fields"]}
+    for field in ["ruleset", "ruleset_profile_id", "tile_catalog", "courtship_enabled", "fiendish_foes_enabled", "tag_banking_enabled"]:
+        assert legacy[field]["status"] == "legacy_compatibility"
+    assert legacy["ruleset_profile_id"]["replacement"] == "active_supplements"
+
+
+def test_supplements_api_is_read_only_registry(client: TestClient) -> None:
+    response = client.get("/api/supplements")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["read_only"] is True
+    assert payload["locked_core_id"] == "expanded-edition-core"
+    ids = {item["id"] for item in payload["supplements"]}
+    assert {"expanded-edition-core", "four-against-the-abyss", "forsaken-depths", "courtship", "tag", "imported-adventures"}.issubset(ids)
 
 
 def test_campaign_api_updates_tag_settlement(client: TestClient) -> None:

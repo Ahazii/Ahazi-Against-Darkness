@@ -2670,6 +2670,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "/api/adventures/ai/prompt",
         "/api/adventures/import",
         "/api/sessions",
+        "/api/supplements",
     ]:
         assert path in MODERN_PAGES_JS
     assert "openLegacyHomeAt(" not in MODERN_PAGES_JS
@@ -2708,6 +2709,12 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "modern-table-family",
         "modernTableFamily",
         "modern-table-preview-mount",
+        "Supplement Library (read-only)",
+        "Legacy Ruleset Profiles",
+        "Default random ruleset (legacy)",
+        "legacy compatibility",
+        "campaign and session supplement locking",
+        "renderSupplementRegistryPanel",
     ]:
         assert label in MODERN_PAGES_JS
 

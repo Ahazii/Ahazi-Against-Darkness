@@ -36,7 +36,7 @@ whole-book completion.
 
 ## Expanded Edition
 
-Primary audit: [EE_COMPLIANCE_AUDIT.md](EE_COMPLIANCE_AUDIT.md).
+Primary audit: [EE_COMPLIANCE_AUDIT.md](audits/EE_COMPLIANCE_AUDIT.md).
 
 The current EE audit measures the random-dungeon solo application scope. It
 excludes printed sample adventures, lore, roleplaying guidance and adventure
@@ -51,7 +51,7 @@ Next work:
 
 ## Four Against the Abyss
 
-Primary audit: [ABYSS_COMPLIANCE_AUDIT.md](ABYSS_COMPLIANCE_AUDIT.md).
+Primary audit: [ABYSS_COMPLIANCE_AUDIT.md](audits/ABYSS_COMPLIANCE_AUDIT.md).
 
 The existing audit covers expert advancement, skills, spells, Secrets and
 hirelings. Phase B adds a playable Abyss random-dungeon profile and table

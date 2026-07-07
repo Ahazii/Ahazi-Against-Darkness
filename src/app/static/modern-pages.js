@@ -12,6 +12,7 @@ const modernState = {
   artwork: [],
   tables: {},
   preferences: {},
+  supplements: { supplements: [], legacy_fields: [] },
 };
 
 const MODERN_PREFS_KEY = "ahazi-modern-dashboard-prefs";
@@ -1605,7 +1606,7 @@ function adventureReadinessBlocks(rows) {
 }
 
 async function loadCore() {
-  const [classes, characters, parties, adventures, adventurePackages, sessions, campaign, profiles, preferences] = await Promise.all([
+  const [classes, characters, parties, adventures, adventurePackages, sessions, campaign, profiles, preferences, supplements] = await Promise.all([
     api("/api/rules/classes"),
     api("/api/characters"),
     api("/api/parties"),
@@ -1615,6 +1616,7 @@ async function loadCore() {
     api("/api/campaign"),
     api("/api/rules/profiles"),
     api("/api/preferences"),
+    api("/api/supplements"),
   ]);
   modernState.classes = classes;
   modernState.characters = characters;
@@ -1625,6 +1627,7 @@ async function loadCore() {
   modernState.campaign = campaign;
   modernState.rulesProfiles = profiles;
   modernState.preferences = preferences || {};
+  modernState.supplements = supplements || { supplements: [], legacy_fields: [] };
 }
 
 async function refreshCoreAndRender() {
@@ -3191,27 +3194,77 @@ async function renderCampaign() {
   rootEl.appendChild(layout);
 }
 
+function renderSupplementRegistryPanel() {
+  const payload = modernState.supplements || {};
+  const supplements = Array.isArray(payload.supplements) ? payload.supplements : [];
+  const legacyFields = Array.isArray(payload.legacy_fields) ? payload.legacy_fields : [];
+  const panel = card(
+    "Supplement Library (read-only)",
+    "Known rules books, adventures, terrain packs, room tiles, and imported PDFs are listed here as the future activation model. Enable/disable controls come after campaign and session supplement locking."
+  );
+  panel.title = "Read-only supplement registry. Expanded Edition is locked on; existing ruleset controls below are legacy compatibility until activation is session-safe.";
+  const summary = el("div", "modern-grid two");
+  summary.append(
+    modernStatusRow("Registry", `${supplements.length} supplement records`, "Read-only registry loaded from the backend supplement metadata."),
+    modernStatusRow("Locked core", payload.locked_core_id || "expanded-edition-core", "The base Expanded Edition supplement is always active."),
+    modernStatusRow("Mode", payload.read_only ? "Read-only" : "Editable", "This screen is intentionally not changing gameplay yet."),
+    modernStatusRow("Legacy bridge", `${legacyFields.length} compatibility fields`, "Existing save/session fields remain valid during migration.")
+  );
+  panel.appendChild(summary);
+  for (const supplement of supplements) {
+    const row = el("details", "modern-row");
+    row.title = supplement.notes || "Supplement metadata record.";
+    const state = supplement.locked ? "locked" : (supplement.enabled_by_default ? "default on" : "optional");
+    row.appendChild(el("summary", "", `${supplement.title || supplement.id} · ${modernTitleFromKey(supplement.kind)} · ${modernTitleFromKey(supplement.status)} · ${state}`));
+    const chips = el("div", "modern-chip-row");
+    for (const capability of supplement.capabilities || []) {
+      const chip = el("span", "modern-tag", modernTitleFromKey(capability));
+      chip.title = `Capability supplied by ${supplement.title || supplement.id}: ${modernTitleFromKey(capability)}.`;
+      chips.appendChild(chip);
+    }
+    row.appendChild(chips);
+    row.append(
+      modernStatusRow("Source", supplement.source?.source_pdf || supplement.source?.source_path || supplement.source?.type || "Current project data", "Source file or storage area represented by this supplement."),
+      modernStatusRow("Dependencies", (supplement.dependencies || []).join(", ") || "None", "Supplement dependencies that must be active before this supplement can be enabled."),
+      modernStatusRow("Legacy mappings", Object.keys(supplement.legacy_mappings || {}).join(", ") || "None", "Current fields that still stand in for future supplement activation."),
+      el("p", "muted", supplement.notes || "")
+    );
+    panel.appendChild(row);
+  }
+  if (legacyFields.length) {
+    const legacy = el("details", "modern-row");
+    legacy.title = "Current compatibility fields that will eventually be replaced by campaign/session supplement ids.";
+    legacy.appendChild(el("summary", "", "Legacy compatibility fields"));
+    for (const fieldInfo of legacyFields) {
+      legacy.appendChild(modernStatusRow(fieldInfo.field, `${fieldInfo.status} -> ${fieldInfo.replacement}`, fieldInfo.notes || ""));
+    }
+    panel.appendChild(legacy);
+  }
+  return panel;
+}
+
 function renderSettings() {
   const prefs = readModernPrefs();
   rootEl.appendChild(renderGuide("Settings Workflow", [
     "Settings affect dashboard defaults and Go Adventure choices; they do not delete rules data.",
-    "Enabled rulesets control which profiles appear as preferred random-adventure choices.",
+    "The Supplement Library is read-only for now; enable/disable becomes safe after campaign and session supplement locking.",
+    "Legacy ruleset/profile controls still decide which profiles appear as preferred random-adventure choices.",
     "TAG banking toggles which finance workflow the dashboard emphasizes."
   ], "", "settings ruleset profile"));
   const panel = card("Settings / Options", "Save dashboard preferences for starting adventures. These preferences are used by Go Adventure.");
   const tag = input("checkbox", "modern-tag-banking", "Use TAG banking for campaign finance actions instead of only the legacy home-bank flow.");
   tag.checked = Boolean(modernState.campaign?.tag_banking_enabled);
-  const defaultProfile = select("modern-rules-profile", "Default ruleset profile for random adventures.", modernState.rulesProfiles.map((p) => [p.id, p.label]));
+  const defaultProfile = select("modern-rules-profile", "Legacy default ruleset profile for random adventures. Future sessions will snapshot active supplement ids instead.", modernState.rulesProfiles.map((p) => [p.id, p.label]));
   defaultProfile.value = prefs.defaultRulesetProfile || "ee_random";
   const mapMode = select("modern-default-map-mode", "Default map mode.", [["unlimited", "Unlimited"], ["paper", "Paper 20x28"]]);
   mapMode.value = prefs.defaultMapMode || "unlimited";
   const mapLimit = input("number", "modern-default-map-limit", "Default unlimited-map element cap before end-boss pressure.", String(prefs.defaultMapLimit || 60));
   const xp = select("modern-default-xp-system", "Default XP system.", [["classical", "Classical"], ["slow_and_sure", "Slow and Sure"], ["old_school", "Old School"], ["slower_advancement", "Slower Advancement"]]);
   xp.value = prefs.defaultXpSystem || "classical";
-  panel.append(field("TAG banking", tag), field("Default random ruleset", defaultProfile), field("Default map mode", mapMode), field("Default map limit", mapLimit), field("XP system", xp));
-  const rulesCard = card("Enabled Rulesets", "Choose which ruleset profiles appear as preferred options on Go Adventure. This does not delete content or rules data.");
+  panel.append(field("TAG banking", tag), field("Default random ruleset (legacy)", defaultProfile), field("Default map mode", mapMode), field("Default map limit", mapLimit), field("XP system", xp));
+  const rulesCard = card("Legacy Ruleset Profiles", "Legacy compatibility controls for which ruleset profiles appear as preferred options on Go Adventure. This does not enable, disable, or delete supplement content.");
   for (const profile of modernState.rulesProfiles) {
-    const checkbox = input("checkbox", `modern-enabled-ruleset-${profile.id}`, `Show ${profile.label} as an available ruleset profile in Go Adventure. This only changes dashboard filtering; it does not remove rules data.`);
+    const checkbox = input("checkbox", `modern-enabled-ruleset-${profile.id}`, `Show ${profile.label} as an available legacy ruleset profile in Go Adventure. This only changes dashboard filtering; it does not remove rules data or change supplement activation.`);
     const enabled = prefs.enabledRulesets ? prefs.enabledRulesets.includes(profile.id) : true;
     checkbox.checked = enabled;
     const row = el("label", "modern-check-row");
@@ -3234,7 +3287,7 @@ function renderSettings() {
     setStatus("Settings saved.");
     await refreshCoreAndRender();
   }, ""));
-  rootEl.append(panel, rulesCard);
+  rootEl.append(panel, renderSupplementRegistryPanel(), rulesCard);
 }
 
 function renderAiAdventures() {

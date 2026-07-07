@@ -17583,7 +17583,7 @@ function renderRulesTables() {
 
   const reactionsGroup = createRulesSectionGroup(
     "Monster reaction tables",
-    `${Object.keys(state.monsterReactions || {}).length} named per-foe d6 tables (see docs/REACTION_TABLES_LIST.txt) plus 4 category fallbacks; mixed groups use category tables`
+    `${Object.keys(state.monsterReactions || {}).length} named per-foe d6 tables (see docs/reference/REACTION_TABLES_LIST.txt) plus 4 category fallbacks; mixed groups use category tables`
   );
   renderMonsterReactionRulesTables(reactionsGroup.body);
   rulesTablesEl.appendChild(reactionsGroup.group);

@@ -684,6 +684,13 @@ async def list_ruleset_profiles(adventure_id: str = "random") -> list[dict[str, 
     ]
 
 
+@app.get("/api/supplements")
+async def list_supplements() -> dict[str, Any]:
+    from .engine.supplements import supplement_payload
+
+    return supplement_payload()
+
+
 @app.get("/api/rules/classes")
 async def list_classes(ruleset_profile_id: str | None = None) -> list[CharacterClass]:
     classes = rules.classes()
