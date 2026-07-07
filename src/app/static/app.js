@@ -3117,6 +3117,67 @@ function activeStateRegistryMatches(session, tile) {
   }));
 }
 
+function memberStateRegistryMatches(session, member, tile) {
+  const matches = new Map();
+  for (const chip of heroStatusChips(session, member, tile)) {
+    const definition = stateDefinitionForStatus(chip.label);
+    if (!definition) continue;
+    const key = definition.id || chip.label;
+    if (!matches.has(key)) {
+      matches.set(key, {
+        definition,
+        labels: new Set(),
+      });
+    }
+    matches.get(key).labels.add(chip.label);
+  }
+  return [...matches.values()].map((entry) => ({
+    definition: entry.definition,
+    labels: [...entry.labels],
+  }));
+}
+
+function partySheetStateSummaryTooltip(session, member, tile) {
+  const chips = heroStatusChips(session, member, tile);
+  if (!chips.length) return "No active status/effect chips for this hero.";
+  const matches = memberStateRegistryMatches(session, member, tile);
+  const visible = chips.map((chip) => chip.label).join(", ");
+  if (!matches.length) {
+    return `Visible effects: ${visible}\n\nNo active State Registry match yet. These effects still use legacy status/item/session fields.`;
+  }
+  const registryLines = matches.map((match) => {
+    const source = registrySourceLine(match.definition.source || {}, "State");
+    return `- ${match.definition.name || match.definition.id}: ${source}`;
+  });
+  return [`Visible effects: ${visible}`, "", "State Registry matches:", ...registryLines].join("\n");
+}
+
+function appendMemberStateRegistryPanel(parent, session, member, tile) {
+  const chips = heroStatusChips(session, member, tile);
+  if (!chips.length) return;
+  const matches = memberStateRegistryMatches(session, member, tile);
+  const panel = node("div", "party-state-registry-panel");
+  panel.appendChild(node("div", "party-state-registry-title", "State context"));
+  if (!matches.length) {
+    panel.appendChild(
+      node(
+        "div",
+        "party-state-registry-row muted",
+        "No active registry-backed state match. Visible effects still use legacy status/item/session fields."
+      )
+    );
+  } else {
+    for (const match of matches) {
+      const definition = match.definition;
+      const labelText = match.labels.length ? ` (${match.labels.join(", ")})` : "";
+      const line = node("div", "party-state-registry-row", `${definition.name || definition.id}${labelText}`);
+      setTooltip(line, stateRegistryTooltip(match.labels[0] || definition.name || definition.id));
+      panel.appendChild(line);
+    }
+  }
+  parent.appendChild(panel);
+}
+
 function appendRegistryContextPanel(parent, session, tile, playCtx) {
   const box = node("div", "registry-context-panel");
   box.appendChild(node("div", "registry-context-title", "Registry context"));
@@ -12168,6 +12229,27 @@ function forsakenDepthsDebugSummary(session = state.session) {
   return lines;
 }
 
+function registryDebugSummary(session = state.session) {
+  const tile = currentTile(session);
+  if (!tile) return ["Registry context: no current room"];
+  const playCtx = session.play_context || resolvePlayContext(session, tile);
+  const terrainMatches = terrainDefinitionsForContext(playCtx, tile);
+  const stateMatches = activeStateRegistryMatches(session, tile);
+  const lines = [
+    `Play context: terrain=${playCtx.terrain || "unknown"}; environment=${playCtx.environment || tile.environment || session?.environment || "unknown"}; weather=${Boolean(playCtx.weather_active)}; forest pathway=${Boolean(playCtx.forest_pathway_active)}`,
+    `Terrain registry: ${terrainMatches.length ? terrainMatches.map((entry) => `${entry.name || entry.id} (${registrySourceLine(entry.source || {}, "Terrain")})`).join("; ") : "no matching terrain metadata record"}`,
+    `Active state registry matches: ${stateMatches.length ? stateMatches.map((match) => `${match.definition.name || match.definition.id} [${match.labels.join(", ")}]${match.owners.length ? ` on ${match.owners.join(", ")}` : ""}`).join("; ") : "none"}`,
+  ];
+  const visibleEffects = (session.party || [])
+    .map((member) => {
+      const chips = heroStatusChips(session, member, tile);
+      return chips.length ? `${member.name}: ${chips.map((chip) => chip.label).join(", ")}` : "";
+    })
+    .filter(Boolean);
+  lines.push(`Visible party effect chips: ${visibleEffects.length ? visibleEffects.join("; ") : "none"}`);
+  return lines;
+}
+
 function buildNarrativeDebugReport(session = state.session) {
   const { room, promptData, tagReference } = tagCurrentPromptData(session);
   const diagnostics = generatedTagDiagnostics(session);
@@ -12196,6 +12278,9 @@ function buildNarrativeDebugReport(session = state.session) {
     "",
     "### Current Room",
     currentRoomDebugSummary(session).map((line) => `- ${line}`).join("\n"),
+    "",
+    "### Registry Context",
+    registryDebugSummary(session).map((line) => `- ${line}`).join("\n"),
     "",
     "### Quest State",
     questDebugSummary(session).map((line) => `- ${line}`).join("\n"),
@@ -31505,7 +31590,9 @@ function appendPartyMemberSheet(target, session, member, renderCtx) {
     summary.className = "party-sheet-summary marching-order-row";
     summary.appendChild(classIconGraphic(member.class_id, member.class_name));
     summary.appendChild(node("span", "position", `#${member.marching_order}`));
-    summary.appendChild(node("span", "party-sheet-meta", partySheetSummaryLine(member, session, tile)));
+    const meta = node("span", "party-sheet-meta", partySheetSummaryLine(member, session, tile));
+    setTooltip(meta, partySheetStateSummaryTooltip(session, member, tile));
+    summary.appendChild(meta);
 
     const inventoryPanel = buildMemberInventoryPanel(member, session);
     const headerActions = node("div", "marching-order-actions");
@@ -31574,6 +31661,7 @@ function appendPartyMemberSheet(target, session, member, renderCtx) {
     if (heroicLine) body.appendChild(subline(heroicLine));
     const legendaryLine = learnedLegendarySkillsLine(member);
     if (legendaryLine) body.appendChild(subline(legendaryLine));
+    appendMemberStateRegistryPanel(body, session, member, tile);
     appendStatusChips(body, heroStatusChips(session, member, tile));
     const abilityLine = abilityStatusLine(session, member);
     if (abilityLine) body.appendChild(subline(abilityLine));

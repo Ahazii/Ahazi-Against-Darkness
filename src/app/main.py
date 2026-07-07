@@ -2911,6 +2911,18 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "This is a summary of metadata already visible through hovers. It does not make unmatched statuses into registry states or change saves.",
         },
         {
+            "surface": "Party Sheets",
+            "hover_target": "Hero summary and expanded State context block",
+            "player_use": "Hover the hero summary or expand the sheet to see whether visible effects map to State Registry rows.",
+            "rules_boundary": "This identifies current legacy effects that already have registry metadata. It does not create state instances or change effect timing.",
+        },
+        {
+            "surface": "Copy Narrative Report",
+            "hover_target": "Debug Context / Registry Context",
+            "player_use": "Paste playtest reports that include current terrain registry matches, active state registry matches, and visible party effect chips.",
+            "rules_boundary": "Report context is diagnostic only and remains separate from the exact Actual Narrative section.",
+        },
+        {
             "surface": "Adventure View",
             "hover_target": "Status chips",
             "player_use": "Hover hero, hireling, foe, and room status chips to see matching State Registry metadata, source page/topic, and the existing rules tooltip together.",

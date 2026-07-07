@@ -1822,19 +1822,27 @@ def test_status_effect_chips_have_hover_text() -> None:
     assert "function statusTooltipWithRegistry(label, fallback = \"\")" in APP_JS
     assert "function terrainRegistryTooltip(playCtx = {}, tile = {})" in APP_JS
     assert "function appendRegistryContextPanel(parent, session, tile, playCtx)" in APP_JS
+    assert "function partySheetStateSummaryTooltip(session, member, tile)" in APP_JS
+    assert "function appendMemberStateRegistryPanel(parent, session, member, tile)" in APP_JS
     body = _function_body("appendStatusChips", APP_JS)
     assert "statusTooltipWithRegistry(chip.label" in body
     assert "el.title = title;" in body
     assert "el.dataset.tooltip = title;" in body
+    party_sheet = _function_body("appendPartyMemberSheet", APP_JS)
+    assert "setTooltip(meta, partySheetStateSummaryTooltip(session, member, tile));" in party_sheet
+    assert "appendMemberStateRegistryPanel(body, session, member, tile);" in party_sheet
     detail = _function_body("renderTileDetail", APP_JS)
     assert "appendRegistryContextPanel(info, session, tile, playCtx);" in detail
     assert detail.index("appendRegistryContextPanel(info, session, tile, playCtx);") < detail.index("appendPartyMilestoneTallies(info, session);")
     assert "State Registry:" in APP_JS
     assert "Terrain Registry:" in APP_JS
     assert "Registry context" in APP_JS
+    assert "State context" in APP_JS
     assert "States: no active registry-backed status chips detected" in APP_JS
+    assert "No active registry-backed state match. Visible effects still use legacy status/item/session fields." in APP_JS
     assert "setTooltip(playContextLine, terrainRegistryTooltip(playCtx, tile));" in APP_JS
     assert ".registry-context-panel" in STYLES_CSS
+    assert ".party-state-registry-panel" in STYLES_CSS
     assert "active_registry_tooltips_table" in MAIN_PY
     assert "Shield bonus applies" in APP_JS
     assert "Blessed Temple/Shrine: +1 Attack vs undead and demon foes until one such foe is slain." in APP_JS
@@ -2571,11 +2579,16 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "function generatedTagDiagnostics" in APP_JS
     assert "function copyGeneratedTagPlaytestReport" not in APP_JS
     assert "function buildNarrativeDebugReport" in APP_JS
+    assert "function registryDebugSummary(session = state.session)" in APP_JS
     assert "function copyNarrativeDebugReport" in APP_JS
     assert "function copyTextToClipboard" in APP_JS
     assert "document.execCommand(\"copy\")" in APP_JS
     assert "## Actual Narrative" in APP_JS
     assert "## Debug Context" in APP_JS
+    assert "### Registry Context" in APP_JS
+    assert "Terrain registry:" in APP_JS
+    assert "Active state registry matches:" in APP_JS
+    assert "Visible party effect chips:" in APP_JS
     assert "The following information is not player narrative" in APP_JS
     assert "function sessionSupplementDebugLine(session)" in APP_JS
     assert "function sessionSupplementDebugBlock(session)" in APP_JS

@@ -559,7 +559,7 @@ Default mode should remain dark unless the user chooses otherwise or system sett
 - Mark `Character.statuses`, `PartyMemberState.statuses`, `Character.madness`, `PartyMemberState.madness`, and `SessionState.pending_*` as legacy compatibility storage.
 - Show the read-only State Registry in Settings beside the Supplement Library.
 - Make the read-only State Registry searchable/filterable by family, scope, source supplement, and review status before adding state-instance mutation.
-- Adventure View room details now show active registry-backed state/status matches in the Registry Context block, and status-chip hovers append matching State Registry metadata to the existing rules tooltip when a legacy status string maps to a registry row.
+- Adventure View room details now show active registry-backed state/status matches in the Registry Context block. Party Sheet summaries and expanded State Context rows show whether each hero's visible effects map to State Registry rows, and status-chip hovers append matching State Registry metadata to the existing rules tooltip when a legacy status string maps to a registry row.
 
 Good first candidates:
 
