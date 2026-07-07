@@ -6507,14 +6507,15 @@ button.door-destroy-spell {
 
 .camp-screen {
   display: grid;
-  grid-template-rows: minmax(280px, 52vh) minmax(0, auto);
+  grid-template-rows: clamp(180px, 30vh, 300px) minmax(340px, 1fr);
   gap: 12px;
-  min-height: calc(100vh - 220px);
+  min-height: min(720px, calc(100vh - 220px));
+  height: calc(100vh - 220px);
 }
 
 .camp-artwork-stage {
   position: relative;
-  min-height: 280px;
+  min-height: 180px;
   overflow: hidden;
   border: 1px solid rgba(198, 143, 59, 0.42);
   border-radius: 8px;
@@ -6586,7 +6587,7 @@ button.door-destroy-spell {
   display: grid;
   grid-template-columns: minmax(280px, 0.42fr) minmax(0, 1fr);
   gap: 12px;
-  min-height: 0;
+  min-height: 320px;
 }
 
 .camp-left-column {
@@ -6594,14 +6595,14 @@ button.door-destroy-spell {
   align-content: start;
   gap: 8px;
   min-width: 0;
-  max-height: 42vh;
+  max-height: min(58vh, 560px);
   overflow: auto;
 }
 
 .camp-controls,
 .camp-party-sheets {
   min-width: 0;
-  max-height: 42vh;
+  max-height: min(58vh, 560px);
   overflow: auto;
 }
 
@@ -6623,6 +6624,7 @@ button.door-destroy-spell {
 
 .camp-party-sheets {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 8px;
   padding: 10px;
@@ -6644,8 +6646,9 @@ button.door-destroy-spell {
 }
 
 .camp-party-sheets .party-sheet-summary {
-  min-height: 40px;
-  align-items: flex-start;
+  min-height: 52px;
+  align-items: center;
+  padding: 8px 10px;
 }
 
 .camp-party-sheets .party-sheet-meta {

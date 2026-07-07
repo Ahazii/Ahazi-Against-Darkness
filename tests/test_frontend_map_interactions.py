@@ -2101,12 +2101,15 @@ def test_camped_outside_uses_dedicated_camp_screen() -> None:
     assert "function sessionTroupeId" in APP_JS
     assert "Camp regroup is restricted to the troupe assigned to this party" in APP_JS
     assert ".camp-screen" in STYLES_CSS
+    assert "grid-template-rows: clamp(180px, 30vh, 300px) minmax(340px, 1fr);" in STYLES_CSS
     assert ".session-main.camp-mode" in STYLES_CSS
     assert ".session-main.camp-mode .exploration-panel-toggle" in STYLES_CSS
     assert ".camp-artwork-stage" in STYLES_CSS
+    assert "min-height: 180px;" in STYLES_CSS
     assert ".camp-left-column" in STYLES_CSS
     assert ".camp-party-sheets .party-sheet-list" in STYLES_CSS
     assert ".camp-party-sheets .party-sheet-summary" in STYLES_CSS
+    assert 'href="/static/styles.css?v=0.69.11"' in INDEX_HTML
 
 
 def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable() -> None:
