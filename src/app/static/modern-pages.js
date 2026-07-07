@@ -5466,7 +5466,6 @@ async function renderGoAdventure() {
     supplementPreferenceCard.appendChild(row);
   }
   supplementPreferenceCard.appendChild(supplementStatusRows);
-  syncStartSupplementProfile();
   const readiness = card("Setup Check", "Warnings here should be handled before starting unless you are deliberately testing an edge case.");
   readiness.classList.add("modern-card-compact");
   const gate = card("Closeout Gate", "Server-checked campaign closeout, guidance, roster health, context, equipment, and active-session warnings for the selected party.");
@@ -5563,6 +5562,7 @@ async function renderGoAdventure() {
     drawStartSummary();
   }
   panel.append(field("Party", party), field("Adventure type", type), field("Adventure/module", adventure), field("Random ruleset", profile), field("XP system", xp), field("Map mode", mapMode), field("Map limit", mapLimit), startStatusIcons, startSummary);
+  syncStartSupplementProfile();
   drawReadiness();
   await drawCloseoutGate();
   party.addEventListener("change", () => {
@@ -6212,6 +6212,7 @@ async function renderDeveloper() {
   );
   tools.appendChild(row);
   tools.appendChild(renderDeveloperPreferences());
+  tools.appendChild(renderSupplementRegistryPanel());
   tools.appendChild(rulePdfMount);
   tools.appendChild(artworkMount);
   if (window.sessionStorage.getItem("ahazi-modern-dev-unlocked") === "1") tools.classList.remove("hidden");

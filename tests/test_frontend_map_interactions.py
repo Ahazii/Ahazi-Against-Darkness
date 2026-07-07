@@ -2759,6 +2759,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "modernTableFamily",
         "modern-table-preview-mount",
         "Supplement Library (read-only)",
+        "Developer tools unlocked.",
         "Packaged manifests",
         "Manifest schema",
         "ROOT/data/supplements/schema/supplement_manifest.v1.json",
@@ -2798,6 +2799,8 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "legacy session: no supplement snapshot",
     ]:
         assert label in MODERN_PAGES_JS
+    assert "syncStartSupplementProfile();\n  const readiness" not in MODERN_PAGES_JS
+    assert "tools.appendChild(renderSupplementRegistryPanel());" in MODERN_PAGES_JS
     assert ".modern-registry-row > summary" in STYLES_CSS
     assert "justify-items: start;" in STYLES_CSS
     assert ".modern-inline-list" in STYLES_CSS
