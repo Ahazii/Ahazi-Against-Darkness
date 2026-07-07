@@ -369,6 +369,37 @@ function modernSearchText(value) {
   return "";
 }
 
+function searchTerms(needle) {
+  return String(needle || "")
+    .trim()
+    .split(/\s+/)
+    .filter((term) => term.length >= 2)
+    .slice(0, 8);
+}
+
+function appendHighlightedText(node, text, needle) {
+  const value = String(text ?? "");
+  const terms = searchTerms(needle);
+  if (!value || !terms.length) {
+    node.appendChild(document.createTextNode(value));
+    return node;
+  }
+  const escaped = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(`(${escaped.join("|")})`, "gi");
+  let lastIndex = 0;
+  for (const match of value.matchAll(pattern)) {
+    if (match.index > lastIndex) node.appendChild(document.createTextNode(value.slice(lastIndex, match.index)));
+    node.appendChild(el("mark", "modern-search-hit", match[0]));
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < value.length) node.appendChild(document.createTextNode(value.slice(lastIndex)));
+  return node;
+}
+
+function highlightedEl(tag, className, text, needle) {
+  return appendHighlightedText(el(tag, className), text, needle);
+}
+
 function partyNamesForCharacter(characterId) {
   return modernState.parties.filter((party) => (party.character_ids || []).includes(characterId)).map((party) => party.name);
 }
@@ -5835,18 +5866,18 @@ async function renderRulesReference() {
         const rowSummary = document.createElement("summary");
         rowSummary.title = "Show or hide the full implementation note for this rule reference.";
         rowSummary.append(
-          el("strong", "", item.title || item.id),
+          highlightedEl("strong", "", item.title || item.id, needle),
           el("span", "muted", `${modernStatusLabel(item.implementation_status)}${item.source_page ? ` · p.${item.source_page}` : ""}`)
         );
         row.appendChild(rowSummary);
-        if (item.summary) row.appendChild(el("p", "modern-home-status", item.summary));
+        if (item.summary) row.appendChild(highlightedEl("p", "modern-home-status", item.summary, needle));
         row.appendChild(renderSupplementBadges(inferredSupplementIdsForText(`${item.id || ""} ${item.title || ""} ${item.summary || ""} ${item.body || ""} ${item.source || ""} ${(item.keywords || []).join(" ")}`), "Inferred from this reference title, source, keywords, and body. Use the Supplement filter to narrow the reference index."));
-        if (item.keywords?.length) row.appendChild(el("span", "muted", item.keywords.join(" · ")));
+        if (item.keywords?.length) row.appendChild(highlightedEl("span", "muted", item.keywords.join(" · "), needle));
         const relatedArt = artworkForReference(item);
         if (relatedArt.length) row.appendChild(renderArtworkRows(relatedArt.slice(0, 3), { compact: true }));
         if (item.body) {
           const body = el("div", "modern-reference-body");
-          item.body.split("\n").filter((line) => line.trim()).forEach((line) => body.appendChild(el("p", "", line)));
+          item.body.split("\n").filter((line) => line.trim()).forEach((line) => body.appendChild(highlightedEl("p", "", line, needle)));
           row.appendChild(body);
         }
         groupBody.appendChild(row);
@@ -5925,9 +5956,9 @@ function modernTablePreview(value, needle = "") {
       const detail = Object.entries(row)
         .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(", ") : String(val)}`)
         .join(" | ");
-      line.append(el("strong", "", String(title)), el("span", "muted", detail));
+      line.append(highlightedEl("strong", "", String(title), needle), highlightedEl("span", "muted", detail, needle));
     } else {
-      line.append(el("span", "", String(row)));
+      line.append(highlightedEl("span", "", String(row), needle));
     }
     box.appendChild(line);
   }
@@ -6009,7 +6040,7 @@ async function renderTables() {
         const summary = document.createElement("summary");
         summary.title = "Show or hide this table's rows.";
         const tableArt = artworkForTable(key);
-        summary.append(el("strong", "", modernTitleFromKey(key)), el("span", "muted", `${key} · ${modernTableRowCount(value)} row(s)${tableArt.length ? ` · ${tableArt.length} art slot(s)` : ""}`));
+        summary.append(highlightedEl("strong", "", modernTitleFromKey(key), needle), highlightedEl("span", "muted", `${key} · ${modernTableRowCount(value)} row(s)${tableArt.length ? ` · ${tableArt.length} art slot(s)` : ""}`, needle));
         details.appendChild(summary);
         details.appendChild(renderSupplementBadges(supplementIdsForTable(key, value), "Inferred from this table key, family, and row text. Use the Supplement filter to narrow table navigation."));
         if (tableArt.length) details.appendChild(renderArtworkRows(tableArt.slice(0, 4), { compact: true }));

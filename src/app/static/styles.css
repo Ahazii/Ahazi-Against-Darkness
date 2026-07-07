@@ -1139,6 +1139,15 @@ h2 {
   margin: 0;
 }
 
+.modern-search-hit {
+  border-radius: 4px;
+  padding: 0 3px;
+  background: rgba(255, 214, 102, 0.34);
+  color: #fff7d6;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 .modern-supplement-badges {
   display: flex;
   flex-wrap: wrap;

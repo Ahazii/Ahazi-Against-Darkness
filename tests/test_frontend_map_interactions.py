@@ -2787,6 +2787,8 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "modern-rules-supplement",
         "modern-table-supplement",
         "Enabled defaults only",
+        "appendHighlightedText",
+        "modern-search-hit",
         "modern-supplement-badges",
         "modern-supplement-badge",
         "renderSupplementRegistryPanel",
@@ -2810,6 +2812,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
     assert "justify-items: start;" in STYLES_CSS
     assert ".modern-inline-list" in STYLES_CSS
     assert "overflow-wrap: anywhere;" in STYLES_CSS
+    assert ".modern-search-hit" in STYLES_CSS
 
 
 def test_legacy_dashboard_cards_link_to_modern_pages_not_old_home_actions() -> None:
