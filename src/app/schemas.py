@@ -105,6 +105,7 @@ class IconDefinition(BaseModel):
 class AppPreferences(BaseModel):
     id: str = "ui"
     show_tag_fixed_result_selector: bool = False
+    enabled_supplement_ids: list[str] = Field(default_factory=lambda: ["expanded-edition-core"])
 
 
 class CharacterCreate(BaseModel):

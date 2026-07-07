@@ -3412,9 +3412,10 @@ function renderTerrainRegistryPanel() {
 
 function renderSettings() {
   const prefs = readModernPrefs();
+  const selectedSupplements = new Set(modernState.preferences?.enabled_supplement_ids || ["expanded-edition-core"]);
   rootEl.appendChild(renderGuide("Settings Workflow", [
     "Settings affect dashboard defaults and Go Adventure choices; they do not delete rules data.",
-    "The Supplement Library is read-only for now; enable/disable becomes safe after campaign and session supplement locking.",
+    "Supplement switches are saved as preferences now. They document which books/packages you want active after campaign and session supplement locking, while legacy ruleset profiles still drive current random-session behavior.",
     "The State Registry is read-only for now; existing status strings and counters remain the save format.",
     "The Terrain Registry is read-only for now; current map/session terrain fields remain the save format.",
     "Legacy ruleset/profile controls still decide which profiles appear as preferred random-adventure choices.",
@@ -3431,6 +3432,18 @@ function renderSettings() {
   const xp = select("modern-default-xp-system", "Default XP system.", [["classical", "Classical"], ["slow_and_sure", "Slow and Sure"], ["old_school", "Old School"], ["slower_advancement", "Slower Advancement"]]);
   xp.value = prefs.defaultXpSystem || "classical";
   panel.append(field("TAG banking", tag), field("Default random ruleset (legacy)", defaultProfile), field("Default map mode", mapMode), field("Default map limit", mapLimit), field("XP system", xp));
+  const supplementPrefsCard = card("Enabled Supplements (preference)", "Preference-only for now: saved list of supplements you want active for future sessions. Expanded Edition is locked on; current random sessions still use legacy ruleset profiles until activation is fully wired.");
+  const supplements = Array.isArray(modernState.supplements?.supplements) ? modernState.supplements.supplements : [];
+  for (const supplement of supplements) {
+    const checkbox = input("checkbox", `modern-supplement-${supplement.id}`, `Save ${supplement.title || supplement.id} as an enabled supplement preference. This does not yet alter existing saved sessions or replace legacy ruleset profile behavior.`);
+    checkbox.checked = supplement.locked || selectedSupplements.has(supplement.id);
+    checkbox.disabled = Boolean(supplement.locked);
+    const state = supplement.locked ? "locked on" : (checkbox.checked ? "enabled preference" : "off preference");
+    const row = el("label", "modern-check-row");
+    row.append(checkbox, el("span", "", `${supplement.title || supplement.id} - ${state}`));
+    row.title = `${supplement.notes || "Supplement registry record."} Capabilities: ${(supplement.capabilities || []).join(", ") || "none listed"}.`;
+    supplementPrefsCard.appendChild(row);
+  }
   const rulesCard = card("Legacy Ruleset Profiles", "Legacy compatibility controls for which ruleset profiles appear as preferred options on Go Adventure. This does not enable, disable, or delete supplement content.");
   for (const profile of modernState.rulesProfiles) {
     const checkbox = input("checkbox", `modern-enabled-ruleset-${profile.id}`, `Show ${profile.label} as an available legacy ruleset profile in Go Adventure. This only changes dashboard filtering; it does not remove rules data or change supplement activation.`);
@@ -3443,6 +3456,13 @@ function renderSettings() {
   }
   panel.appendChild(button("Save Preferences", "Save TAG banking and dashboard defaults.", async () => {
     modernState.campaign = await api("/api/campaign", { method: "PUT", body: JSON.stringify({ tag_banking_enabled: tag.checked }) });
+    const enabledSupplementIds = supplements
+      .filter((supplement) => supplement.locked || document.getElementById(`modern-supplement-${supplement.id}`)?.checked)
+      .map((supplement) => supplement.id);
+    modernState.preferences = await api("/api/preferences", {
+      method: "PUT",
+      body: JSON.stringify({ enabled_supplement_ids: enabledSupplementIds }),
+    });
     const enabledRulesets = modernState.rulesProfiles
       .filter((profile) => document.getElementById(`modern-enabled-ruleset-${profile.id}`)?.checked)
       .map((profile) => profile.id);
@@ -3456,7 +3476,7 @@ function renderSettings() {
     setStatus("Settings saved.");
     await refreshCoreAndRender();
   }, ""));
-  rootEl.append(panel, renderSupplementRegistryPanel(), renderStateRegistryPanel(), renderTerrainRegistryPanel(), rulesCard);
+  rootEl.append(panel, supplementPrefsCard, renderSupplementRegistryPanel(), renderStateRegistryPanel(), renderTerrainRegistryPanel(), rulesCard);
 }
 
 function renderAiAdventures() {

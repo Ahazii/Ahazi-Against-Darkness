@@ -740,9 +740,19 @@ async def get_preferences() -> AppPreferences:
 
 @app.put("/api/preferences")
 async def update_preferences(payload: dict[str, Any]) -> AppPreferences:
+    from .engine.supplements import enabled_supplement_ids_from_selection
+
     prefs = _load_app_preferences()
     if "show_tag_fixed_result_selector" in payload:
         prefs.show_tag_fixed_result_selector = _parse_bool(payload.get("show_tag_fixed_result_selector"))
+    if "enabled_supplement_ids" in payload:
+        raw_ids = payload.get("enabled_supplement_ids")
+        if not isinstance(raw_ids, list):
+            raise HTTPException(status_code=400, detail="enabled_supplement_ids must be a list.")
+        try:
+            prefs.enabled_supplement_ids = enabled_supplement_ids_from_selection(raw_ids)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     store.save("preferences", prefs)
     return prefs
 
@@ -2750,6 +2760,14 @@ def _rules_tables_payload() -> dict:
             "developer_ui": "Developer Playtest Preferences",
             "effect": "Shows the fixed Adventures Guild result selector in module generators for repeatable playtests.",
             "rules_boundary": "Normal play should leave this off so generated Adventures Guild modules roll from the printed tables.",
+        },
+        {
+            "preference": "enabled_supplement_ids",
+            "default": "expanded-edition-core",
+            "stored_in": "game.db records/preferences/ui",
+            "developer_ui": "Settings / Options",
+            "effect": "Stores the user's enabled supplement preference list before session creation consumes supplement activation directly.",
+            "rules_boundary": "Preference-only for now; current random sessions still use legacy ruleset profiles and existing session snapshots.",
         },
         {
             "preference": "button_design_baseline",

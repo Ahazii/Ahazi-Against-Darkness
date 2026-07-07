@@ -15,6 +15,7 @@ from app.engine.states import state_payload
 from app.engine.supplements import (
     LOCKED_CORE_SUPPLEMENT_ID,
     active_supplement_ids_for_legacy_session,
+    enabled_supplement_ids_from_selection,
     supplement_payload,
 )
 from app.engine.terrain_registry import terrain_payload
@@ -92,6 +93,11 @@ def test_supplements_api_is_read_only_registry(client: TestClient) -> None:
 def test_tag_banking_does_not_lock_tag_supplement_for_random_sessions() -> None:
     assert active_supplement_ids_for_legacy_session(tag_banking_enabled=True) == [LOCKED_CORE_SUPPLEMENT_ID]
     assert active_supplement_ids_for_legacy_session(tag_generated=True) == [LOCKED_CORE_SUPPLEMENT_ID, "tag"]
+
+
+def test_enabled_supplement_preferences_keep_core_and_dependencies() -> None:
+    assert enabled_supplement_ids_from_selection([]) == [LOCKED_CORE_SUPPLEMENT_ID]
+    assert enabled_supplement_ids_from_selection(["forsaken-depths"]) == [LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths"]
 
 
 def test_state_registry_maps_existing_statuses_and_counters() -> None:
@@ -188,14 +194,23 @@ def test_app_preferences_persist_developer_fixed_result_selector(client: TestCli
     response = client.get("/api/preferences")
     assert response.status_code == 200
     assert response.json()["show_tag_fixed_result_selector"] is False
+    assert response.json()["enabled_supplement_ids"] == [LOCKED_CORE_SUPPLEMENT_ID]
 
-    saved = client.put("/api/preferences", json={"show_tag_fixed_result_selector": True})
+    saved = client.put(
+        "/api/preferences",
+        json={"show_tag_fixed_result_selector": True, "enabled_supplement_ids": ["forsaken-depths", "tag"]},
+    )
     assert saved.status_code == 200
     assert saved.json()["show_tag_fixed_result_selector"] is True
+    assert saved.json()["enabled_supplement_ids"] == [LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths", "tag"]
 
     reloaded = client.get("/api/preferences")
     assert reloaded.status_code == 200
     assert reloaded.json()["show_tag_fixed_result_selector"] is True
+    assert reloaded.json()["enabled_supplement_ids"] == [LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths", "tag"]
+
+    rejected = client.put("/api/preferences", json={"enabled_supplement_ids": ["made-up-book"]})
+    assert rejected.status_code == 400
 
 
 def test_campaign_api_travels_to_new_tag_settlement(client: TestClient, monkeypatch) -> None:

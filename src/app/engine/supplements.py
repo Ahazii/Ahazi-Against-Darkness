@@ -241,6 +241,29 @@ def _append_unique(items: list[str], item: str) -> None:
         items.append(item)
 
 
+def known_supplement_ids() -> set[str]:
+    return {str(item["id"]) for item in SUPPLEMENTS}
+
+
+def enabled_supplement_ids_from_selection(selected_ids: list[str] | None) -> list[str]:
+    """Normalize saved user supplement preferences without changing play rules yet."""
+    known = known_supplement_ids()
+    ids = [LOCKED_CORE_SUPPLEMENT_ID]
+    for raw_id in selected_ids or []:
+        supplement_id = str(raw_id or "").strip()
+        if not supplement_id:
+            continue
+        if supplement_id not in known:
+            raise ValueError(f"Unknown supplement id: {supplement_id}")
+        _append_unique(ids, supplement_id)
+        supplement = next((item for item in SUPPLEMENTS if item["id"] == supplement_id), {})
+        for dependency_id in supplement.get("dependencies", []):
+            if dependency_id not in known:
+                raise ValueError(f"Unknown supplement dependency: {dependency_id}")
+            _append_unique(ids, dependency_id)
+    return ids
+
+
 def active_supplement_ids_for_legacy_session(
     *,
     adventure_type: str = "random",
