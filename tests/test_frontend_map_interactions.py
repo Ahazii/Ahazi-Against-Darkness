@@ -1828,6 +1828,7 @@ def test_status_effect_chips_have_hover_text() -> None:
     assert "el.dataset.tooltip = title;" in body
     detail = _function_body("renderTileDetail", APP_JS)
     assert "appendRegistryContextPanel(info, session, tile, playCtx);" in detail
+    assert detail.index("appendRegistryContextPanel(info, session, tile, playCtx);") < detail.index("appendPartyMilestoneTallies(info, session);")
     assert "State Registry:" in APP_JS
     assert "Terrain Registry:" in APP_JS
     assert "Registry context" in APP_JS

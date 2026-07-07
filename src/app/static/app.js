@@ -25567,6 +25567,20 @@ function renderTileDetail(session) {
       ? `Paper ${session.map_state?.width || 20}×${session.map_state?.height || 28}`
       : `Unlimited map (${session.unlimited_map_element_cap || 60} map element cap)`;
   info.appendChild(subline(`Environment: ${envLabel} · Map: ${boundsLabel}`));
+  const playCtx = session.play_context || resolvePlayContext(session, tile);
+  const terrainLabel = playCtx.terrain === "indoor" ? "indoor" : playCtx.terrain.replace("_", " ");
+  const contextBits = [`Terrain: ${terrainLabel}`];
+  if (playCtx.weather_active) contextBits.push("altered weather");
+  if (playCtx.forest_pathway_active) contextBits.push("forest pathway");
+  const playContextLine = subline(`Play context: ${contextBits.join(" · ")}`);
+  setTooltip(playContextLine, terrainRegistryTooltip(playCtx, tile));
+  info.appendChild(playContextLine);
+  if (tile.environment && tile.environment !== "dungeon") {
+    const environmentLine = subline(`This map element: ${tile.environment.replace("_", " ")}`);
+    setTooltip(environmentLine, terrainRegistryTooltip(playCtx, tile));
+    info.appendChild(environmentLine);
+  }
+  appendRegistryContextPanel(info, session, tile, playCtx);
   const fdLabel = fdMapModeLabel(session);
   if (fdLabel) {
     const fdLine = subline(`Ruleset: ${fdLabel}`);
@@ -25650,20 +25664,6 @@ function renderTileDetail(session) {
   if (session.fiendish_foes_enabled) {
     info.appendChild(subline("Monster tables: Fiendish Foes enabled — d6 1–3 standard, 4–6 fiendish when 2+ heroes are L3+ (EE p.180)"));
   }
-  const playCtx = session.play_context || resolvePlayContext(session, tile);
-  const terrainLabel = playCtx.terrain === "indoor" ? "indoor" : playCtx.terrain.replace("_", " ");
-  const contextBits = [`Terrain: ${terrainLabel}`];
-  if (playCtx.weather_active) contextBits.push("altered weather");
-  if (playCtx.forest_pathway_active) contextBits.push("forest pathway");
-  const playContextLine = subline(`Play context: ${contextBits.join(" · ")}`);
-  setTooltip(playContextLine, terrainRegistryTooltip(playCtx, tile));
-  info.appendChild(playContextLine);
-  if (tile.environment && tile.environment !== "dungeon") {
-    const environmentLine = subline(`This map element: ${tile.environment.replace("_", " ")}`);
-    setTooltip(environmentLine, terrainRegistryTooltip(playCtx, tile));
-    info.appendChild(environmentLine);
-  }
-  appendRegistryContextPanel(info, session, tile, playCtx);
   if (tile.special_event_summary) {
     info.appendChild(subline(`Special event: ${tile.special_event_summary}`));
   }
