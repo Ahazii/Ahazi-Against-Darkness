@@ -29905,7 +29905,7 @@ function appendMemberSheetHeaderActions(actions, session, member, inventoryPanel
       const nextOpen = !state.sheetInventoryOpen[member.character_id];
       state.sheetInventoryOpen[member.character_id] = nextOpen;
       if (nextOpen) {
-        const details = inventoryPanel.closest("details.party-sheet-details");
+        const details = inventoryPanel.closest("details");
         if (details && !details.open) {
           details.open = true;
           state.partySheetOpen[member.character_id] = true;
@@ -31170,12 +31170,13 @@ function setAllPartySheetsOpen(open) {
 
 function bindPartySheetSummaryToggle(details, summary, sheetKey) {
   summary.addEventListener("click", (event) => {
-    if (event.target.closest("button, a, input, select, textarea, label")) return;
+    if (!event.target.closest(".party-sheet-meta, .party-supplies-icon, .position, .party-class-icon-graphic")) return;
     event.preventDefault();
+    event.stopPropagation();
     details.open = !details.open;
     if (!state.partySheetOpen) state.partySheetOpen = {};
     state.partySheetOpen[sheetKey] = details.open;
-  });
+  }, true);
 }
 
 function renderPartySuppliesPanel(session) {

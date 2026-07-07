@@ -5333,7 +5333,7 @@ async function renderGoAdventure() {
     modernStatusRow(
       "Suggested legacy random profile",
       legacyProfileLabel(suggestedProfile),
-      "Use this as the Default random ruleset in Settings if you want today's random-session behavior to match the saved supplement preference."
+      "Based on Settings > Enabled Supplements: Abyss selected suggests Abyss; Forsaken Depths + Courtship suggests the combined Forsaken Depths profile; Forsaken Depths alone suggests the no-Courtship profile; otherwise Expanded Edition random. This is advisory until supplement activation replaces legacy profiles."
     )
   );
   const party = select("modern-start-party", "Party to send on the adventure.", partyOptions());

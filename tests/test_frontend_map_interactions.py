@@ -1044,7 +1044,17 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.17"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.18"></script>' in INDEX_HTML
+
+
+def test_party_sheet_summary_toggle_ignores_controls_and_inventory_opens_sheet() -> None:
+    toggle = _function_body("bindPartySheetSummaryToggle", APP_JS)
+    assert "event.target.closest(\".party-sheet-meta, .party-supplies-icon, .position, .party-class-icon-graphic\")" in toggle
+    assert "event.stopPropagation()" in toggle
+    assert "}, true);" in toggle
+    header = _function_body("appendMemberSheetHeaderActions", APP_JS)
+    assert 'inventoryPanel.closest("details")' in header
+    assert "state.partySheetOpen[member.character_id] = true" in header
 
 
 def test_trial_of_champions_reaction_has_champion_picker_buttons() -> None:
