@@ -2836,6 +2836,12 @@ def _rules_tables_payload() -> dict:
             "purpose": "Records which current fields still drive behavior during migration, such as ruleset profiles and tile catalogs.",
             "rules_boundary": "Legacy mappings explain compatibility only; PDF-backed automation still lives in existing rule modules until deliberately moved.",
         },
+        {
+            "area": "Selection rules",
+            "path": "dependencies / conflicts",
+            "purpose": "Adds required dependencies to selected supplement snapshots and rejects conflicting supplement combinations before preferences or sessions are saved.",
+            "rules_boundary": "Dependency/conflict validation protects content activation state; it does not decide printed rule outcomes.",
+        },
     ]
     data["playtest_triage_workflow_table"] = [
         {

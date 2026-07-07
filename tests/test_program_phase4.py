@@ -22,6 +22,7 @@ from app.engine.supplements import (
     legacy_random_profile_id_for_supplements,
     supplement_payload,
     supplement_registry,
+    supplement_selection_issues,
     supplement_snapshot_log_line,
     supplement_titles_for_ids,
     validate_supplement_manifest,
@@ -179,6 +180,72 @@ def test_supplement_registry_loads_local_manifest_and_reports_bad_files(tmp_path
     assert payload["diagnostics"]
     assert "DATA_DIR/Supplements/broken/supplement.json" in payload["diagnostics"][0]["path"]
     assert "Could not load supplement manifest" in payload["diagnostics"][0]["message"]
+
+
+def test_supplement_registry_reports_unknown_references_and_reverse_conflicts(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    local_dir = data_dir / "Supplements" / "local-conflict"
+    local_dir.mkdir(parents=True)
+    (local_dir / "supplement.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "id": "local-conflict",
+                "title": "Local Conflict Supplement",
+                "kind": "local_user",
+                "status": "review_only",
+                "locked": False,
+                "enabled_by_default": False,
+                "source": {"type": "local_user", "source_path": "DATA_DIR/Supplements/local-conflict"},
+                "capabilities": ["rules"],
+                "dependencies": ["missing-required-book"],
+                "conflicts": ["tag"],
+                "legacy_mappings": {},
+                "notes": "Test-only local supplement manifest with intentionally bad references.",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    payload = supplement_payload(Path(__file__).resolve().parents[1], data_dir)
+    messages = [item["message"] for item in payload["diagnostics"]]
+    assert any("references unknown dependenc" in message and "missing-required-book" in message for message in messages)
+    assert any("reverse conflict is not declared" in message and "tag" in message for message in messages)
+
+
+def test_supplement_selection_rejects_conflicts_and_preserves_dependencies() -> None:
+    registry = [
+        {
+            "id": LOCKED_CORE_SUPPLEMENT_ID,
+            "title": "Core",
+            "dependencies": [],
+            "conflicts": [],
+        },
+        {
+            "id": "alpha",
+            "title": "Alpha",
+            "dependencies": [LOCKED_CORE_SUPPLEMENT_ID],
+            "conflicts": ["beta"],
+        },
+        {
+            "id": "beta",
+            "title": "Beta",
+            "dependencies": [LOCKED_CORE_SUPPLEMENT_ID],
+            "conflicts": ["alpha"],
+        },
+    ]
+    assert enabled_supplement_ids_from_selection(["alpha"], registry) == [LOCKED_CORE_SUPPLEMENT_ID, "alpha"]
+    assert supplement_selection_issues([LOCKED_CORE_SUPPLEMENT_ID, "alpha", "beta"], registry) == [
+        "alpha conflicts with beta.",
+        "beta conflicts with alpha.",
+    ]
+    try:
+        enabled_supplement_ids_from_selection(["alpha", "beta"], registry)
+    except ValueError as exc:
+        assert "alpha conflicts with beta" in str(exc)
+        assert "beta conflicts with alpha" in str(exc)
+    else:
+        raise AssertionError("Conflicting supplements should be rejected.")
 
 
 def test_supplements_api_is_read_only_registry(client: TestClient) -> None:

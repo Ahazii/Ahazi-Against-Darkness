@@ -1590,6 +1590,16 @@ function supplementTitlesForIds(ids) {
   return (ids || []).map((id) => known.get(id) || id).join(", ");
 }
 
+function supplementConflictIds(ids) {
+  const selected = new Set(ids || []);
+  const conflicts = new Set();
+  for (const supplement of modernState.supplements?.supplements || []) {
+    if (!selected.has(supplement.id)) continue;
+    for (const conflictId of supplement.conflicts || []) conflicts.add(conflictId);
+  }
+  return conflicts;
+}
+
 function suggestedLegacyProfileForSupplements(ids) {
   const enabled = new Set(ids || []);
   if (enabled.has("four-against-the-abyss")) return "abyss";
@@ -3470,16 +3480,45 @@ function renderSettings() {
   panel.append(field("TAG banking", tag), field("Default random ruleset (legacy)", defaultProfile), field("Default map mode", mapMode), field("Default map limit", mapLimit), field("XP system", xp));
   const supplementPrefsCard = card("Enabled Supplements (default)", "Saved default list for new sessions. Expanded Edition is locked on; Go Adventure can adjust optional supplements per session before locking the snapshot.");
   const supplements = Array.isArray(modernState.supplements?.supplements) ? modernState.supplements.supplements : [];
+  const supplementPrefChecks = new Map();
+  function selectedDefaultSupplementIds() {
+    return supplements
+      .filter((supplement) => supplement.locked || supplementPrefChecks.get(supplement.id)?.checked)
+      .map((supplement) => supplement.id);
+  }
+  function syncDefaultSupplementRows() {
+    const selected = selectedDefaultSupplementIds();
+    const conflicts = supplementConflictIds(selected);
+    for (const supplement of supplements) {
+      const checkbox = supplementPrefChecks.get(supplement.id);
+      if (!checkbox) continue;
+      const blockedByConflict = conflicts.has(supplement.id) && !checkbox.checked && !supplement.locked;
+      checkbox.disabled = Boolean(supplement.locked || blockedByConflict);
+      checkbox.title = blockedByConflict
+        ? `${supplement.title || supplement.id} conflicts with another selected default supplement.`
+        : `Save ${supplement.title || supplement.id} as a default enabled supplement for new sessions. This does not alter existing saved sessions.`;
+      const label = checkbox.closest("label")?.querySelector("[data-supplement-pref-label]");
+      if (label) {
+        const state = supplement.locked ? "locked on" : blockedByConflict ? "conflicts with selected default" : checkbox.checked ? "enabled preference" : "off preference";
+        label.textContent = `${supplement.title || supplement.id} - ${state}`;
+      }
+    }
+  }
   for (const supplement of supplements) {
     const checkbox = input("checkbox", `modern-supplement-${supplement.id}`, `Save ${supplement.title || supplement.id} as a default enabled supplement for new sessions. This does not alter existing saved sessions.`);
     checkbox.checked = supplement.locked || selectedSupplements.has(supplement.id);
     checkbox.disabled = Boolean(supplement.locked);
+    supplementPrefChecks.set(supplement.id, checkbox);
     const state = supplement.locked ? "locked on" : (checkbox.checked ? "enabled preference" : "off preference");
     const row = el("label", "modern-check-row");
-    row.append(checkbox, el("span", "", `${supplement.title || supplement.id} - ${state}`));
+    const label = el("span", "", `${supplement.title || supplement.id} - ${state}`);
+    label.dataset.supplementPrefLabel = "true";
+    row.append(checkbox, label);
     row.title = `${supplement.notes || "Supplement registry record."} Capabilities: ${(supplement.capabilities || []).join(", ") || "none listed"}.`;
+    checkbox.addEventListener("change", syncDefaultSupplementRows);
     supplementPrefsCard.appendChild(row);
   }
+  syncDefaultSupplementRows();
   const rulesCard = card("Legacy Ruleset Profiles", "Legacy compatibility controls for which ruleset profiles appear as preferred options on Go Adventure. This does not enable, disable, or delete supplement content.");
   for (const profile of modernState.rulesProfiles) {
     const checkbox = input("checkbox", `modern-enabled-ruleset-${profile.id}`, `Show ${profile.label} as an available legacy ruleset profile in Go Adventure. This only changes dashboard filtering; it does not remove rules data or change supplement activation.`);
@@ -5377,6 +5416,7 @@ async function renderGoAdventure() {
   function syncStartSupplementProfile({ userChanged = false } = {}) {
     const chosen = selectedStartSupplementIds();
     const suggested = suggestedLegacyProfileForSupplements(chosen);
+    const conflicts = supplementConflictIds(chosen);
     if (type.value === "random" && !profileManuallyChanged && [...profile.options].some((option) => option.value === suggested)) {
       profile.value = suggested;
       drawReadiness();
@@ -5397,14 +5437,17 @@ async function renderGoAdventure() {
       const checkbox = startSupplementChecks.get(supplement.id);
       if (!checkbox) continue;
       const forcedImported = type.value !== "random" && supplement.id === "imported-adventures";
+      const blockedByConflict = conflicts.has(supplement.id) && !checkbox.checked && !supplement.locked && !forcedImported;
       checkbox.checked = Boolean(supplement.locked || forcedImported || checkbox.checked);
-      checkbox.disabled = Boolean(supplement.locked || forcedImported);
-      checkbox.title = forcedImported
+      checkbox.disabled = Boolean(supplement.locked || forcedImported || blockedByConflict);
+      checkbox.title = blockedByConflict
+        ? `${supplement.title || supplement.id} conflicts with another selected session supplement.`
+        : forcedImported
         ? "Imported adventure sessions always record the Imported Adventure Packages supplement because the selected module supplies maps, locations, narrative, or package data."
         : `Include ${supplement.title || supplement.id} in the supplement snapshot for this new session.`;
       const label = checkbox.closest("label")?.querySelector("[data-supplement-start-label]");
       if (label) {
-        const state = supplement.locked ? "locked on" : forcedImported ? "required for imported module" : checkbox.checked ? "on for this session" : "off for this session";
+        const state = supplement.locked ? "locked on" : forcedImported ? "required for imported module" : blockedByConflict ? "conflicts with selected session supplement" : checkbox.checked ? "on for this session" : "off for this session";
         label.textContent = `${supplement.title || supplement.id} - ${state}`;
       }
     }

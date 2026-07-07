@@ -462,6 +462,30 @@ def supplement_registry_with_diagnostics(
             str(item.get("title") or ""),
         )
     )
+    known = {str(item.get("id") or "") for item in supplements}
+    for item in supplements:
+        supplement_id = str(item.get("id") or "")
+        for field in ("dependencies", "conflicts"):
+            for referenced_id in item.get(field, []):
+                if referenced_id not in known:
+                    label = "dependency" if field == "dependencies" else "conflict"
+                    diagnostics.append(
+                        {
+                            "severity": "warning",
+                            "path": str(item.get("manifest_path") or supplement_id),
+                            "message": f"Supplement {supplement_id!r} references unknown {label} {referenced_id!r}.",
+                        }
+                    )
+        for conflict_id in item.get("conflicts", []):
+            other = next((candidate for candidate in supplements if candidate.get("id") == conflict_id), None)
+            if other is not None and supplement_id not in (other.get("conflicts") or []):
+                diagnostics.append(
+                    {
+                        "severity": "warning",
+                        "path": str(item.get("manifest_path") or supplement_id),
+                        "message": f"Supplement {supplement_id!r} conflicts with {conflict_id!r}, but the reverse conflict is not declared.",
+                    }
+                )
     return supplements, diagnostics
 
 
@@ -492,6 +516,24 @@ def supplement_titles_for_ids(supplement_ids: list[str] | None, supplements: lis
     return titles
 
 
+def supplement_selection_issues(supplement_ids: list[str], supplements: list[dict[str, Any]] | None = None) -> list[str]:
+    registry = supplements if supplements is not None else SUPPLEMENTS
+    selected = set(supplement_ids)
+    by_id = {str(item["id"]): item for item in registry}
+    issues: list[str] = []
+    for supplement_id in sorted(selected):
+        supplement = by_id.get(supplement_id)
+        if not supplement:
+            continue
+        for dependency_id in supplement.get("dependencies", []):
+            if dependency_id not in selected:
+                issues.append(f"{supplement_id} requires {dependency_id}.")
+        for conflict_id in supplement.get("conflicts", []):
+            if conflict_id in selected:
+                issues.append(f"{supplement_id} conflicts with {conflict_id}.")
+    return issues
+
+
 def supplement_snapshot_log_line(supplement_ids: list[str] | None, supplements: list[dict[str, Any]] | None = None) -> str:
     titles = supplement_titles_for_ids(supplement_ids, supplements)
     if not titles:
@@ -519,6 +561,9 @@ def enabled_supplement_ids_from_selection(
             if dependency_id not in known:
                 raise ValueError(f"Unknown supplement dependency: {dependency_id}")
             _append_unique(ids, dependency_id)
+    issues = supplement_selection_issues(ids, registry)
+    if issues:
+        raise ValueError(" ".join(issues))
     return ids
 
 
