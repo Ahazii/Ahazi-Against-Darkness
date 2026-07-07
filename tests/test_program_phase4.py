@@ -11,6 +11,7 @@ from app.engine.ruleset_profiles import (
     profile_by_id,
     resolve_profile_for_adventure,
 )
+from app.engine.states import state_payload
 from app.engine.supplements import LOCKED_CORE_SUPPLEMENT_ID, supplement_payload
 from app.schemas import SessionState
 
@@ -81,6 +82,43 @@ def test_supplements_api_is_read_only_registry(client: TestClient) -> None:
     assert payload["locked_core_id"] == "expanded-edition-core"
     ids = {item["id"] for item in payload["supplements"]}
     assert {"expanded-edition-core", "four-against-the-abyss", "forsaken-depths", "courtship", "tag", "imported-adventures"}.issubset(ids)
+
+
+def test_state_registry_maps_existing_statuses_and_counters() -> None:
+    payload = state_payload()
+    assert payload["schema_version"] == 1
+    assert payload["read_only"] is True
+    states = {item["id"]: item for item in payload["states"]}
+
+    dark_plague = states["dark-plague"]
+    assert dark_plague["source"]["supplement_id"] == "four-against-the-abyss"
+    assert dark_plague["source"]["page"] == 37
+    assert "Dark Plague" in dark_plague["legacy_mappings"]["statuses"]
+
+    madness = states["madness"]
+    assert madness["value_type"] == "counter"
+    assert "PartyMemberState.madness" in madness["legacy_mappings"]["fields"]
+
+    hungry = states["hungry"]
+    assert "SessionState.hunger_rounds" in hungry["legacy_mappings"]["fields"]
+
+    psychic = states["fd-psychic-residue-save"]
+    assert psychic["source"]["page"] == 56
+    assert "FD Psychic Residue +3 Save" in psychic["legacy_mappings"]["statuses"]
+
+    legacy = {item["field"]: item for item in payload["legacy_fields"]}
+    assert legacy["PartyMemberState.statuses"]["status"] == "legacy_compatibility"
+    assert "madness_and_fear" in payload["families"]
+    assert "equipment" in payload["scopes"]
+
+
+def test_states_api_is_read_only_registry(client: TestClient) -> None:
+    response = client.get("/api/states")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["read_only"] is True
+    ids = {item["id"] for item in payload["states"]}
+    assert {"dark-plague", "lycanthropy", "madness", "hungry", "envenomed-weapon", "fd-psychic-residue-save"}.issubset(ids)
 
 
 def test_campaign_api_updates_tag_settlement(client: TestClient) -> None:

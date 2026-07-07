@@ -13,6 +13,7 @@ const modernState = {
   tables: {},
   preferences: {},
   supplements: { supplements: [], legacy_fields: [] },
+  states: { states: [], legacy_fields: [] },
 };
 
 const MODERN_PREFS_KEY = "ahazi-modern-dashboard-prefs";
@@ -1606,7 +1607,7 @@ function adventureReadinessBlocks(rows) {
 }
 
 async function loadCore() {
-  const [classes, characters, parties, adventures, adventurePackages, sessions, campaign, profiles, preferences, supplements] = await Promise.all([
+  const [classes, characters, parties, adventures, adventurePackages, sessions, campaign, profiles, preferences, supplements, states] = await Promise.all([
     api("/api/rules/classes"),
     api("/api/characters"),
     api("/api/parties"),
@@ -1617,6 +1618,7 @@ async function loadCore() {
     api("/api/rules/profiles"),
     api("/api/preferences"),
     api("/api/supplements"),
+    api("/api/states"),
   ]);
   modernState.classes = classes;
   modernState.characters = characters;
@@ -1628,6 +1630,7 @@ async function loadCore() {
   modernState.rulesProfiles = profiles;
   modernState.preferences = preferences || {};
   modernState.supplements = supplements || { supplements: [], legacy_fields: [] };
+  modernState.states = states || { states: [], legacy_fields: [] };
 }
 
 async function refreshCoreAndRender() {
@@ -3243,11 +3246,64 @@ function renderSupplementRegistryPanel() {
   return panel;
 }
 
+function renderStateRegistryPanel() {
+  const payload = modernState.states || {};
+  const states = Array.isArray(payload.states) ? payload.states : [];
+  const legacyFields = Array.isArray(payload.legacy_fields) ? payload.legacy_fields : [];
+  const panel = card(
+    "State Registry (read-only)",
+    "Current conditions, counters, equipment markers, and pending-choice states are listed here before any save-format migration. Existing status strings remain valid."
+  );
+  panel.title = "Read-only state registry. These records describe existing status strings, counters, and pending choices without changing gameplay.";
+  const families = Array.isArray(payload.families) ? payload.families : [];
+  const scopes = Array.isArray(payload.scopes) ? payload.scopes : [];
+  const sourceBacked = states.filter((state) => state.review_status === "source_backed").length;
+  const summary = el("div", "modern-grid two");
+  summary.append(
+    modernStatusRow("Registry", `${states.length} state definitions`, "State definitions are metadata only in this slice."),
+    modernStatusRow("Source-backed", `${sourceBacked}/${states.length}`, "Records with confirmed PDF page or source references."),
+    modernStatusRow("Families", families.map(modernTitleFromKey).join(", ") || "None", "State family taxonomy for future filters."),
+    modernStatusRow("Scopes", scopes.map(modernTitleFromKey).join(", ") || "None", "Where these states can apply.")
+  );
+  panel.appendChild(summary);
+  for (const state of states) {
+    const row = el("details", "modern-row");
+    row.title = state.ui?.hover || "State metadata record.";
+    const page = Number(state.source?.page || 0) > 0 ? `p.${state.source.page}` : state.review_status;
+    row.appendChild(el("summary", "", `${state.name || state.id} · ${modernTitleFromKey(state.family)} · ${modernTitleFromKey(state.scope)} · ${page}`));
+    const chips = el("div", "modern-chip-row");
+    for (const value of [state.value_type, state.source?.supplement_id, state.review_status].filter(Boolean)) {
+      const chip = el("span", "modern-tag", modernTitleFromKey(value));
+      chip.title = `State metadata: ${modernTitleFromKey(value)}.`;
+      chips.appendChild(chip);
+    }
+    row.appendChild(chips);
+    row.append(
+      modernStatusRow("Source", `${state.source?.source_pdf || "Current project data"} · ${state.source?.topic || "State"}`, "PDF/source reference for this state definition."),
+      modernStatusRow("Legacy mappings", Object.keys(state.legacy_mappings || {}).join(", ") || "None", "Current save fields, status strings, or item suffixes represented by this state."),
+      modernStatusRow("Implementation", state.implemented ? "Implemented in current helpers" : "Metadata only", "Whether existing app logic already uses this condition."),
+      el("p", "muted", state.ui?.hover || "")
+    );
+    panel.appendChild(row);
+  }
+  if (legacyFields.length) {
+    const legacy = el("details", "modern-row");
+    legacy.title = "Current fields that will eventually become state instances or procedures.";
+    legacy.appendChild(el("summary", "", "Legacy state storage"));
+    for (const fieldInfo of legacyFields) {
+      legacy.appendChild(modernStatusRow(fieldInfo.field, `${fieldInfo.status} -> ${fieldInfo.replacement}`, fieldInfo.notes || ""));
+    }
+    panel.appendChild(legacy);
+  }
+  return panel;
+}
+
 function renderSettings() {
   const prefs = readModernPrefs();
   rootEl.appendChild(renderGuide("Settings Workflow", [
     "Settings affect dashboard defaults and Go Adventure choices; they do not delete rules data.",
     "The Supplement Library is read-only for now; enable/disable becomes safe after campaign and session supplement locking.",
+    "The State Registry is read-only for now; existing status strings and counters remain the save format.",
     "Legacy ruleset/profile controls still decide which profiles appear as preferred random-adventure choices.",
     "TAG banking toggles which finance workflow the dashboard emphasizes."
   ], "", "settings ruleset profile"));
@@ -3287,7 +3343,7 @@ function renderSettings() {
     setStatus("Settings saved.");
     await refreshCoreAndRender();
   }, ""));
-  rootEl.append(panel, renderSupplementRegistryPanel(), rulesCard);
+  rootEl.append(panel, renderSupplementRegistryPanel(), renderStateRegistryPanel(), rulesCard);
 }
 
 function renderAiAdventures() {

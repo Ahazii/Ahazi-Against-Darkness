@@ -2671,6 +2671,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "/api/adventures/import",
         "/api/sessions",
         "/api/supplements",
+        "/api/states",
     ]:
         assert path in MODERN_PAGES_JS
     assert "openLegacyHomeAt(" not in MODERN_PAGES_JS
@@ -2716,6 +2717,10 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "campaign and session supplement locking",
         "renderSupplementRegistryPanel",
     ]:
+        "State Registry (read-only)",
+        "Legacy state storage",
+        "existing status strings and counters remain the save format",
+        "renderStateRegistryPanel",
         assert label in MODERN_PAGES_JS
 
 

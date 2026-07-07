@@ -553,6 +553,8 @@ Default mode should remain dark unless the user chooses otherwise or system sett
 - Start with states that already exist as constants/status strings.
 - Map current string statuses to definitions without changing save format yet.
 - Add source references and hover text.
+- Mark `Character.statuses`, `PartyMemberState.statuses`, `Character.madness`, `PartyMemberState.madness`, and `SessionState.pending_*` as legacy compatibility storage.
+- Show the read-only State Registry in Settings beside the Supplement Library.
 
 Good first candidates:
 
