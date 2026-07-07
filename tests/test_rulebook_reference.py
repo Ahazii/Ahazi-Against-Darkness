@@ -82,6 +82,7 @@ APP_ONLY_REFERENCE_IDS = {
     "adventure_pdf_source_scan_table",
     "adventure_package_schema_table",
     "session_supplement_snapshot_table",
+    "state_registry_navigation_table",
     "supplement_manifest_registry_table",
     "supplement_reference_filters_table",
 }

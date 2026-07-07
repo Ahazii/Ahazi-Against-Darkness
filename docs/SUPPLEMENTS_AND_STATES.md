@@ -558,6 +558,7 @@ Default mode should remain dark unless the user chooses otherwise or system sett
 - Add source references and hover text.
 - Mark `Character.statuses`, `PartyMemberState.statuses`, `Character.madness`, `PartyMemberState.madness`, and `SessionState.pending_*` as legacy compatibility storage.
 - Show the read-only State Registry in Settings beside the Supplement Library.
+- Make the read-only State Registry searchable/filterable by family, scope, source supplement, and review status before adding state-instance mutation.
 
 Good first candidates:
 

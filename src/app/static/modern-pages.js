@@ -441,6 +441,13 @@ function modernStatusRow(title, body, hint = "") {
   return row;
 }
 
+function modernStatusRowHighlighted(title, body, hint = "", needle = "") {
+  const row = el("div", "modern-row");
+  if (hint) row.title = hint;
+  row.append(highlightedEl("strong", "", title, needle), highlightedEl("span", "muted", body, needle));
+  return row;
+}
+
 function formatSnapshotDetail(detail) {
   if (detail == null) return "";
   if (Array.isArray(detail)) return detail.filter(Boolean).join("\n");
@@ -3415,6 +3422,12 @@ function registrySummary(title, meta) {
   return summary;
 }
 
+function registrySummaryWithHighlight(title, meta, needle = "") {
+  const summary = document.createElement("summary");
+  summary.append(highlightedEl("strong", "", title, needle), highlightedEl("span", "muted", meta, needle));
+  return summary;
+}
+
 function supplementExample(supplement) {
   const id = supplement?.id || "";
   if (id === "expanded-edition-core") return "Expanded Edition is always active and provides the baseline rules, classes, monsters, tables, states, room tiles, and rules reference.";
@@ -3440,6 +3453,7 @@ function renderStateRegistryPanel() {
   ]));
   const families = Array.isArray(payload.families) ? payload.families : [];
   const scopes = Array.isArray(payload.scopes) ? payload.scopes : [];
+  const reviewStatuses = [...new Set(states.map((state) => state.review_status || "review").filter(Boolean))].sort();
   const sourceBacked = states.filter((state) => state.review_status === "source_backed").length;
   const summary = el("div", "modern-grid two");
   summary.append(
@@ -3449,27 +3463,75 @@ function renderStateRegistryPanel() {
     modernStatusRow("Scopes", scopes.map(modernTitleFromKey).join(", ") || "None", "Where these states can apply.")
   );
   panel.appendChild(summary);
-  for (const state of states) {
+  const search = input("search", "modern-state-registry-search", "Search state name, id, family, scope, source, topic, legacy mapping, or hover text.");
+  search.placeholder = "Search states...";
+  const familyFilter = select("modern-state-registry-family", "Filter state definitions by family.", [["", "All families"], ...families.map((item) => [item, modernTitleFromKey(item)])]);
+  const scopeFilter = select("modern-state-registry-scope", "Filter state definitions by scope.", [["", "All scopes"], ...scopes.map((item) => [item, modernTitleFromKey(item)])]);
+  const supplementFilter = select("modern-state-registry-supplement", "Filter state definitions by source supplement.", supplementFilterOptions());
+  const reviewFilter = select("modern-state-registry-review", "Filter state definitions by PDF/source review status.", [["", "All review states"], ...reviewStatuses.map((item) => [item, modernTitleFromKey(item)])]);
+  const controls = el("div", "modern-filterbar");
+  controls.append(field("Search", search), field("Family", familyFilter), field("Scope", scopeFilter), field("Supplement", supplementFilter), field("Review", reviewFilter));
+  const results = el("div", "modern-list");
+  panel.append(controls, results);
+
+  const stateSearchText = (state) => [
+    state.id,
+    state.name,
+    state.family,
+    state.scope,
+    state.value_type,
+    state.review_status,
+    state.source?.supplement_id,
+    state.source?.source_pdf,
+    state.source?.topic,
+    state.ui?.label,
+    state.ui?.hover,
+    stateExample(state),
+    stateLegacyMappingText(state),
+  ].join(" ").toLowerCase();
+
+  const renderStateRow = (state, needle) => {
     const row = el("details", "modern-row modern-registry-row");
     row.title = state.ui?.hover || "State metadata record.";
     const page = Number(state.source?.page || 0) > 0 ? `p.${state.source.page}` : state.review_status;
-    row.appendChild(registrySummary(state.name || state.id, `${modernTitleFromKey(state.family)} · ${modernTitleFromKey(state.scope)} · ${page}`));
+    row.appendChild(registrySummaryWithHighlight(state.name || state.id, `${modernTitleFromKey(state.family)} · ${modernTitleFromKey(state.scope)} · ${page}`, needle));
+    row.appendChild(renderSupplementBadges([state.source?.supplement_id].filter(Boolean), "Source supplement for this state definition."));
     const chips = el("div", "modern-chip-row");
     for (const value of [state.value_type, state.source?.supplement_id, state.review_status].filter(Boolean)) {
-      const chip = el("span", "modern-tag", modernTitleFromKey(value));
+      const chip = highlightedEl("span", "modern-tag", modernTitleFromKey(value), needle);
       chip.title = `State metadata: ${modernTitleFromKey(value)}.`;
       chips.appendChild(chip);
     }
     row.appendChild(chips);
     row.append(
-      modernStatusRow("Source", `${state.source?.source_pdf || "Current project data"} · ${state.source?.topic || "State"}`, "PDF/source reference for this state definition."),
-      modernStatusRow("Legacy mappings", Object.keys(state.legacy_mappings || {}).join(", ") || "None", "Current save fields, status strings, or item suffixes represented by this state."),
-      modernStatusRow("Implementation", state.implemented ? "Implemented in current helpers" : "Metadata only", "Whether existing app logic already uses this condition."),
-      modernStatusRow("Example", stateExample(state), "Plain-language example of what this state means during play."),
-      el("p", "muted", state.ui?.hover || "")
+      modernStatusRowHighlighted("Source", `${state.source?.source_pdf || "Current project data"} · ${state.source?.topic || "State"}`, "PDF/source reference for this state definition.", needle),
+      modernStatusRowHighlighted("Legacy mappings", stateLegacyMappingText(state), "Current save fields, status strings, or item suffixes represented by this state.", needle),
+      modernStatusRowHighlighted("Implementation", state.implemented ? "Implemented in current helpers" : "Metadata only", "Whether existing app logic already uses this condition.", needle),
+      modernStatusRowHighlighted("Example", stateExample(state), "Plain-language example of what this state means during play.", needle),
+      highlightedEl("p", "muted", state.ui?.hover || "", needle)
     );
-    panel.appendChild(row);
-  }
+    return row;
+  };
+
+  const draw = () => {
+    results.replaceChildren();
+    const needle = search.value.trim().toLowerCase();
+    const rows = states
+      .filter((state) => !familyFilter.value || state.family === familyFilter.value)
+      .filter((state) => !scopeFilter.value || state.scope === scopeFilter.value)
+      .filter((state) => !reviewFilter.value || state.review_status === reviewFilter.value)
+      .filter((state) => supplementFilterMatches([state.source?.supplement_id].filter(Boolean), supplementFilter.value))
+      .filter((state) => !needle || stateSearchText(state).includes(needle));
+    results.appendChild(el("p", "muted", `${rows.length} matching state definition${rows.length === 1 ? "" : "s"} across ${new Set(rows.map((state) => state.family)).size} famil${new Set(rows.map((state) => state.family)).size === 1 ? "y" : "ies"}.`));
+    for (const state of rows) results.appendChild(renderStateRow(state, needle));
+    if (!rows.length) results.appendChild(el("p", "modern-home-status in-progress", "No matching state definitions. Clear filters or search by state name, source book, legacy status string, save field, or rules topic."));
+  };
+  search.addEventListener("input", draw);
+  familyFilter.addEventListener("change", draw);
+  scopeFilter.addEventListener("change", draw);
+  supplementFilter.addEventListener("change", draw);
+  reviewFilter.addEventListener("change", draw);
+  draw();
   if (legacyFields.length) {
     const legacy = el("details", "modern-row modern-registry-row");
     legacy.title = "Current fields that will eventually become state instances or procedures.";
@@ -3489,6 +3551,21 @@ function stateExample(state) {
   if (id === "envenomed-weapon") return "An envenomed weapon is an equipment state: the app can read it during an attack, then clear or consume it after the poison matters.";
   if (id === "fd-psychic-residue-save") return "Psychic Residue +3 Save is a temporary adventure marker that modifies later Psychic Residue saves.";
   return "Later rules can read, apply, remove, or expire this state instead of adding another one-off field.";
+}
+
+function stateLegacyMappingText(state) {
+  const mappings = state?.legacy_mappings || {};
+  const parts = [];
+  for (const [key, value] of Object.entries(mappings)) {
+    if (Array.isArray(value)) {
+      parts.push(`${modernTitleFromKey(key)}: ${value.join(", ")}`);
+    } else if (value && typeof value === "object") {
+      parts.push(`${modernTitleFromKey(key)}: ${modernSearchText(value)}`);
+    } else {
+      parts.push(`${modernTitleFromKey(key)}: ${String(value)}`);
+    }
+  }
+  return parts.join(" | ") || "None";
 }
 
 function renderTerrainRegistryPanel() {

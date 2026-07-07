@@ -2863,6 +2863,26 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Badges are derived from ids, titles, keywords, source strings, and table keys; exact mechanics still belong to the PDF-backed implementation.",
         },
     ]
+    data["state_registry_navigation_table"] = [
+        {
+            "surface": "Settings / Options",
+            "filter": "State search",
+            "player_use": "Find existing state definitions by name, id, source book, topic, legacy status string, save field, item suffix, or hover text.",
+            "rules_boundary": "State rows describe current metadata and legacy storage only; searching does not apply or remove a state.",
+        },
+        {
+            "surface": "Settings / Options",
+            "filter": "Family / Scope / Supplement / Review",
+            "player_use": "Narrow state definitions by how they behave, where they apply, which supplement owns them, and whether a PDF page is confirmed.",
+            "rules_boundary": "Filters expose implementation context. They do not decide printed timing, duration, cure, reward, or roll outcomes.",
+        },
+        {
+            "surface": "State cards",
+            "filter": "Legacy mappings",
+            "player_use": "See the current save fields, status strings, prefixes, and item suffixes that each future state instance would replace.",
+            "rules_boundary": "Legacy mappings are a migration guide; existing helpers still perform the actual rule behavior until a deliberate state-instance migration.",
+        },
+    ]
     data["playtest_triage_workflow_table"] = [
         {
             "field": "Area",

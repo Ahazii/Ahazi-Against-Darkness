@@ -354,6 +354,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "modern_tag_workflow_table",
     "playtest_triage_workflow_table",
     "session_supplement_snapshot_table",
+    "state_registry_navigation_table",
     "supplement_manifest_registry_table",
     "supplement_reference_filters_table",
     "tag_closeout_checklist_automation_table",
