@@ -266,7 +266,7 @@ def active_supplement_ids_for_legacy_session(
         _append_unique(ids, "forsaken-depths")
     if courtship_enabled or profile == "courtship_demesne":
         _append_unique(ids, "courtship")
-    if tag_banking_enabled or tag_generated:
+    if tag_generated:
         _append_unique(ids, "tag")
     if adventure_type == "imported":
         _append_unique(ids, "imported-adventures")

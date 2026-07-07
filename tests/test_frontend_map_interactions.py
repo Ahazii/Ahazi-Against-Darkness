@@ -2105,6 +2105,8 @@ def test_camped_outside_uses_dedicated_camp_screen() -> None:
     assert ".session-main.camp-mode .exploration-panel-toggle" in STYLES_CSS
     assert ".camp-artwork-stage" in STYLES_CSS
     assert ".camp-left-column" in STYLES_CSS
+    assert ".camp-party-sheets .party-sheet-list" in STYLES_CSS
+    assert ".camp-party-sheets .party-sheet-summary" in STYLES_CSS
 
 
 def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable() -> None:

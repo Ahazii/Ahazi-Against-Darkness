@@ -12,7 +12,11 @@ from app.engine.ruleset_profiles import (
     resolve_profile_for_adventure,
 )
 from app.engine.states import state_payload
-from app.engine.supplements import LOCKED_CORE_SUPPLEMENT_ID, supplement_payload
+from app.engine.supplements import (
+    LOCKED_CORE_SUPPLEMENT_ID,
+    active_supplement_ids_for_legacy_session,
+    supplement_payload,
+)
 from app.engine.terrain_registry import terrain_payload
 from app.schemas import SessionState
 
@@ -83,6 +87,11 @@ def test_supplements_api_is_read_only_registry(client: TestClient) -> None:
     assert payload["locked_core_id"] == "expanded-edition-core"
     ids = {item["id"] for item in payload["supplements"]}
     assert {"expanded-edition-core", "four-against-the-abyss", "forsaken-depths", "courtship", "tag", "imported-adventures"}.issubset(ids)
+
+
+def test_tag_banking_does_not_lock_tag_supplement_for_random_sessions() -> None:
+    assert active_supplement_ids_for_legacy_session(tag_banking_enabled=True) == [LOCKED_CORE_SUPPLEMENT_ID]
+    assert active_supplement_ids_for_legacy_session(tag_generated=True) == [LOCKED_CORE_SUPPLEMENT_ID, "tag"]
 
 
 def test_state_registry_maps_existing_statuses_and_counters() -> None:

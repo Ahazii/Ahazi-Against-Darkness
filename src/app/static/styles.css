@@ -6631,6 +6631,35 @@ button.door-destroy-spell {
   background: rgba(16, 17, 14, 0.52);
 }
 
+.camp-party-sheets .party-sheet-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.camp-party-sheets .party-group-heading {
+  align-items: flex-start;
+}
+
+.camp-party-sheets .party-sheet-details {
+  min-width: 0;
+}
+
+.camp-party-sheets .party-sheet-summary {
+  min-height: 40px;
+  align-items: flex-start;
+}
+
+.camp-party-sheets .party-sheet-meta {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.camp-party-sheets .marching-order-actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: min(42%, 240px);
+}
+
 .camp-panel {
   display: grid;
   gap: 8px;
