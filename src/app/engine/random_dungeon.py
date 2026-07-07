@@ -568,6 +568,9 @@ class RandomDungeonEngine:
         chosen_fiendish = normalize_fiendish_foes_enabled(fiendish_foes_enabled)
         eligible = party_fiendish_foes_eligible(party)
         from .ruleset_profiles import resolve_profile_for_adventure
+        from .states import STATE_REGISTRY_VERSION
+        from .supplements import SUPPLEMENT_REGISTRY_VERSION, active_supplement_ids_for_legacy_session
+        from .terrain_registry import TERRAIN_REGISTRY_VERSION
 
         profile = resolve_profile_for_adventure(
             "random",
@@ -698,6 +701,17 @@ class RandomDungeonEngine:
             ruleset_profile_id=profile.id,
             tag_banking_enabled=tag_banking_enabled,
             tile_catalog=start_catalog,
+            active_supplement_ids=active_supplement_ids_for_legacy_session(
+                adventure_type="random",
+                ruleset=chosen_ruleset,
+                ruleset_profile_id=profile.id,
+                courtship_enabled=bool(chosen_courtship),
+                tag_banking_enabled=tag_banking_enabled,
+                tile_catalog=start_catalog,
+            ),
+            supplement_registry_version=SUPPLEMENT_REGISTRY_VERSION,
+            state_registry_version=STATE_REGISTRY_VERSION,
+            terrain_registry_version=TERRAIN_REGISTRY_VERSION,
             courtship_enabled=bool(chosen_courtship),
             old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
             slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,
@@ -722,6 +736,9 @@ class RandomDungeonEngine:
         tag_banking_enabled: bool = False,
     ) -> SessionState:
         from .courtship_demesne import COURTSHIP_DEMESNE_ADVENTURE_ID
+        from .states import STATE_REGISTRY_VERSION
+        from .supplements import SUPPLEMENT_REGISTRY_VERSION, active_supplement_ids_for_legacy_session
+        from .terrain_registry import TERRAIN_REGISTRY_VERSION
 
         for index, member in enumerate(party, start=1):
             member.marching_order = index
@@ -788,6 +805,16 @@ class RandomDungeonEngine:
             ruleset="forsaken_depths",
             ruleset_profile_id="courtship_demesne",
             tag_banking_enabled=tag_banking_enabled,
+            active_supplement_ids=active_supplement_ids_for_legacy_session(
+                adventure_type="random",
+                ruleset="forsaken_depths",
+                ruleset_profile_id="courtship_demesne",
+                courtship_enabled=True,
+                tag_banking_enabled=tag_banking_enabled,
+            ),
+            supplement_registry_version=SUPPLEMENT_REGISTRY_VERSION,
+            state_registry_version=STATE_REGISTRY_VERSION,
+            terrain_registry_version=TERRAIN_REGISTRY_VERSION,
             courtship_enabled=True,
             courtship_demesne_active=True,
             courtship_demesne_region="seaside",

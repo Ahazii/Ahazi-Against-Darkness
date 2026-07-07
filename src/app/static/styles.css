@@ -1067,6 +1067,40 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.modern-registry-panel {
+  justify-items: stretch;
+  text-align: left;
+}
+
+.modern-registry-explainer {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(201, 162, 39, 0.24);
+  border-radius: 6px;
+  background: rgba(201, 162, 39, 0.06);
+  text-align: left;
+}
+
+.modern-registry-row {
+  justify-items: stretch;
+  text-align: left;
+}
+
+.modern-registry-row > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-content: start;
+  justify-items: start;
+  align-items: start;
+  text-align: left;
+}
+
+.modern-registry-row > summary .muted {
+  grid-column: 2;
+}
+
 .modern-reference-group,
 .modern-table-group {
   background: #11130f;

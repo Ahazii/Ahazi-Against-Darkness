@@ -236,6 +236,43 @@ def supplement_registry() -> list[dict[str, Any]]:
     return deepcopy(SUPPLEMENTS)
 
 
+def _append_unique(items: list[str], item: str) -> None:
+    if item not in items:
+        items.append(item)
+
+
+def active_supplement_ids_for_legacy_session(
+    *,
+    adventure_type: str = "random",
+    ruleset: str = "ee",
+    ruleset_profile_id: str | None = None,
+    courtship_enabled: bool = False,
+    tag_banking_enabled: bool = False,
+    tile_catalog: str | None = None,
+    tag_generated: bool = False,
+) -> list[str]:
+    ids = [LOCKED_CORE_SUPPLEMENT_ID]
+    profile = (ruleset_profile_id or "").strip().lower()
+    chosen_ruleset = (ruleset or "").strip().lower()
+    catalog = (tile_catalog or "").strip().lower()
+    if profile == "abyss":
+        _append_unique(ids, "four-against-the-abyss")
+    if (
+        chosen_ruleset == "forsaken_depths"
+        or profile.startswith("forsaken_depths")
+        or profile == "courtship_demesne"
+        or catalog.startswith("forsaken_depths")
+    ):
+        _append_unique(ids, "forsaken-depths")
+    if courtship_enabled or profile == "courtship_demesne":
+        _append_unique(ids, "courtship")
+    if tag_banking_enabled or tag_generated:
+        _append_unique(ids, "tag")
+    if adventure_type == "imported":
+        _append_unique(ids, "imported-adventures")
+    return ids
+
+
 def supplement_payload() -> dict[str, Any]:
     return {
         "schema_version": SUPPLEMENT_REGISTRY_VERSION,

@@ -58,3 +58,7 @@ def test_create_imported_session_ignores_random_profile_payload(client: TestClie
     payload = session_response.json()
     assert payload["adventure_type"] == "imported"
     assert payload["adventure_id"] == "crypt-of-whispers"
+    assert payload["active_supplement_ids"] == ["expanded-edition-core", "imported-adventures"]
+    assert payload["supplement_registry_version"] == 1
+    assert payload["state_registry_version"] == 1
+    assert payload["terrain_registry_version"] == 1

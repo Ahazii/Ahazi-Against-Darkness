@@ -14,6 +14,7 @@ const modernState = {
   preferences: {},
   supplements: { supplements: [], legacy_fields: [] },
   states: { states: [], legacy_fields: [] },
+  terrain: { terrain: [], legacy_fields: [] },
 };
 
 const MODERN_PREFS_KEY = "ahazi-modern-dashboard-prefs";
@@ -1573,6 +1574,13 @@ function latestSessionPerParty(sessions) {
   return Array.from(latest.values()).sort((a, b) => sessionRecencyKey(b).localeCompare(sessionRecencyKey(a)));
 }
 
+function sessionSupplementSummary(session) {
+  const ids = Array.isArray(session?.active_supplement_ids) ? session.active_supplement_ids : [];
+  if (!ids.length) return "legacy session: no supplement snapshot";
+  const known = new Map((modernState.supplements?.supplements || []).map((supplement) => [supplement.id, supplement.title || supplement.id]));
+  return ids.map((id) => known.get(id) || id).join(", ");
+}
+
 function adventureReadinessRows(selectedPartyId, { adventureType = "random", adventureId = "", profileId = "", mapLimitValue = 60 } = {}) {
   const party = modernState.parties.find((item) => item.id === selectedPartyId);
   const baseRows = [
@@ -1607,7 +1615,7 @@ function adventureReadinessBlocks(rows) {
 }
 
 async function loadCore() {
-  const [classes, characters, parties, adventures, adventurePackages, sessions, campaign, profiles, preferences, supplements, states] = await Promise.all([
+  const [classes, characters, parties, adventures, adventurePackages, sessions, campaign, profiles, preferences, supplements, states, terrain] = await Promise.all([
     api("/api/rules/classes"),
     api("/api/characters"),
     api("/api/parties"),
@@ -1619,6 +1627,7 @@ async function loadCore() {
     api("/api/preferences"),
     api("/api/supplements"),
     api("/api/states"),
+    api("/api/terrain"),
   ]);
   modernState.classes = classes;
   modernState.characters = characters;
@@ -1631,6 +1640,7 @@ async function loadCore() {
   modernState.preferences = preferences || {};
   modernState.supplements = supplements || { supplements: [], legacy_fields: [] };
   modernState.states = states || { states: [], legacy_fields: [] };
+  modernState.terrain = terrain || { terrain: [], legacy_fields: [] };
 }
 
 async function refreshCoreAndRender() {
@@ -3203,9 +3213,15 @@ function renderSupplementRegistryPanel() {
   const legacyFields = Array.isArray(payload.legacy_fields) ? payload.legacy_fields : [];
   const panel = card(
     "Supplement Library (read-only)",
-    "Known rules books, adventures, terrain packs, room tiles, and imported PDFs are listed here as the future activation model. Enable/disable controls come after campaign and session supplement locking."
+    "A supplement is a book, adventure, rules expansion, tile pack, terrain pack, or imported PDF package. These records explain what each package can add before the app lets campaigns turn them on or off."
   );
+  panel.classList.add("modern-registry-panel");
   panel.title = "Read-only supplement registry. Expanded Edition is locked on; existing ruleset controls below are legacy compatibility until activation is session-safe.";
+  panel.appendChild(registryExplanation("Why this exists", [
+    "Today the app still uses legacy ruleset profile fields for Go Adventure.",
+    "The target model is a list of active supplements per campaign/session, such as Expanded Edition + Forsaken Depths + a reviewed imported adventure.",
+    "Capabilities explain what a supplement can provide: foes, classes, states, maps, locations, terrain types, room tiles, rules, procedures, or exact local narrative text."
+  ]));
   const summary = el("div", "modern-grid two");
   summary.append(
     modernStatusRow("Registry", `${supplements.length} supplement records`, "Read-only registry loaded from the backend supplement metadata."),
@@ -3215,10 +3231,10 @@ function renderSupplementRegistryPanel() {
   );
   panel.appendChild(summary);
   for (const supplement of supplements) {
-    const row = el("details", "modern-row");
+    const row = el("details", "modern-row modern-registry-row");
     row.title = supplement.notes || "Supplement metadata record.";
     const state = supplement.locked ? "locked" : (supplement.enabled_by_default ? "default on" : "optional");
-    row.appendChild(el("summary", "", `${supplement.title || supplement.id} · ${modernTitleFromKey(supplement.kind)} · ${modernTitleFromKey(supplement.status)} · ${state}`));
+    row.appendChild(registrySummary(supplement.title || supplement.id, `${modernTitleFromKey(supplement.kind)} · ${modernTitleFromKey(supplement.status)} · ${state}`));
     const chips = el("div", "modern-chip-row");
     for (const capability of supplement.capabilities || []) {
       const chip = el("span", "modern-tag", modernTitleFromKey(capability));
@@ -3230,14 +3246,15 @@ function renderSupplementRegistryPanel() {
       modernStatusRow("Source", supplement.source?.source_pdf || supplement.source?.source_path || supplement.source?.type || "Current project data", "Source file or storage area represented by this supplement."),
       modernStatusRow("Dependencies", (supplement.dependencies || []).join(", ") || "None", "Supplement dependencies that must be active before this supplement can be enabled."),
       modernStatusRow("Legacy mappings", Object.keys(supplement.legacy_mappings || {}).join(", ") || "None", "Current fields that still stand in for future supplement activation."),
+      modernStatusRow("Example", supplementExample(supplement), "Plain-language example of what this supplement record means."),
       el("p", "muted", supplement.notes || "")
     );
     panel.appendChild(row);
   }
   if (legacyFields.length) {
-    const legacy = el("details", "modern-row");
+    const legacy = el("details", "modern-row modern-registry-row");
     legacy.title = "Current compatibility fields that will eventually be replaced by campaign/session supplement ids.";
-    legacy.appendChild(el("summary", "", "Legacy compatibility fields"));
+    legacy.appendChild(registrySummary("Legacy compatibility fields", "Current fields kept while supplement activation is introduced"));
     for (const fieldInfo of legacyFields) {
       legacy.appendChild(modernStatusRow(fieldInfo.field, `${fieldInfo.status} -> ${fieldInfo.replacement}`, fieldInfo.notes || ""));
     }
@@ -3246,15 +3263,44 @@ function renderSupplementRegistryPanel() {
   return panel;
 }
 
+function registryExplanation(title, lines) {
+  const box = el("div", "modern-registry-explainer");
+  box.appendChild(el("strong", "", title));
+  const list = el("ul", "modern-warning-list");
+  for (const line of lines) list.appendChild(el("li", "", line));
+  box.appendChild(list);
+  return box;
+}
+
+function registrySummary(title, meta) {
+  const summary = document.createElement("summary");
+  summary.append(el("strong", "", title), el("span", "muted", meta));
+  return summary;
+}
+
+function supplementExample(supplement) {
+  const id = supplement?.id || "";
+  if (id === "expanded-edition-core") return "Expanded Edition is always active and provides the baseline rules, classes, monsters, tables, states, room tiles, and rules reference.";
+  if (id === "forsaken-depths") return "Forsaken Depths can add its own room tiles, river/citadel/ruins terrain concepts, foes, classes, tables, states, and generation profiles.";
+  if (id === "imported-adventures") return "An imported PDF package can hold exact local narrative text, map pins, locations, foes, items, candidate rules, and candidate states for review.";
+  return "When activation is added, this record will help decide what content and rules can be used by a campaign or new session.";
+}
+
 function renderStateRegistryPanel() {
   const payload = modernState.states || {};
   const states = Array.isArray(payload.states) ? payload.states : [];
   const legacyFields = Array.isArray(payload.legacy_fields) ? payload.legacy_fields : [];
   const panel = card(
     "State Registry (read-only)",
-    "Current conditions, counters, equipment markers, and pending-choice states are listed here before any save-format migration. Existing status strings remain valid."
+    "A state is anything the game can remember or test: poisoned, hungry, cursed, a Madness counter, an envenomed weapon, a pending choice, or a terrain/location marker."
   );
+  panel.classList.add("modern-registry-panel");
   panel.title = "Read-only state registry. These records describe existing status strings, counters, and pending choices without changing gameplay.";
+  panel.appendChild(registryExplanation("How to read states", [
+    "Scope says what the state applies to, for example a character, an item, a location, a tile, or a whole campaign.",
+    "Value type says how it behaves: a flag is on/off, a counter stores a number, a timer expires later, and a modifier changes a roll.",
+    "Legacy mappings show today's save fields or status strings, such as PartyMemberState.statuses, Character.madness, or a poisoned item suffix."
+  ]));
   const families = Array.isArray(payload.families) ? payload.families : [];
   const scopes = Array.isArray(payload.scopes) ? payload.scopes : [];
   const sourceBacked = states.filter((state) => state.review_status === "source_backed").length;
@@ -3267,10 +3313,10 @@ function renderStateRegistryPanel() {
   );
   panel.appendChild(summary);
   for (const state of states) {
-    const row = el("details", "modern-row");
+    const row = el("details", "modern-row modern-registry-row");
     row.title = state.ui?.hover || "State metadata record.";
     const page = Number(state.source?.page || 0) > 0 ? `p.${state.source.page}` : state.review_status;
-    row.appendChild(el("summary", "", `${state.name || state.id} · ${modernTitleFromKey(state.family)} · ${modernTitleFromKey(state.scope)} · ${page}`));
+    row.appendChild(registrySummary(state.name || state.id, `${modernTitleFromKey(state.family)} · ${modernTitleFromKey(state.scope)} · ${page}`));
     const chips = el("div", "modern-chip-row");
     for (const value of [state.value_type, state.source?.supplement_id, state.review_status].filter(Boolean)) {
       const chip = el("span", "modern-tag", modernTitleFromKey(value));
@@ -3282,14 +3328,80 @@ function renderStateRegistryPanel() {
       modernStatusRow("Source", `${state.source?.source_pdf || "Current project data"} · ${state.source?.topic || "State"}`, "PDF/source reference for this state definition."),
       modernStatusRow("Legacy mappings", Object.keys(state.legacy_mappings || {}).join(", ") || "None", "Current save fields, status strings, or item suffixes represented by this state."),
       modernStatusRow("Implementation", state.implemented ? "Implemented in current helpers" : "Metadata only", "Whether existing app logic already uses this condition."),
+      modernStatusRow("Example", stateExample(state), "Plain-language example of what this state means during play."),
       el("p", "muted", state.ui?.hover || "")
     );
     panel.appendChild(row);
   }
   if (legacyFields.length) {
-    const legacy = el("details", "modern-row");
+    const legacy = el("details", "modern-row modern-registry-row");
     legacy.title = "Current fields that will eventually become state instances or procedures.";
-    legacy.appendChild(el("summary", "", "Legacy state storage"));
+    legacy.appendChild(registrySummary("Legacy state storage", "Current save fields kept until migration"));
+    for (const fieldInfo of legacyFields) {
+      legacy.appendChild(modernStatusRow(fieldInfo.field, `${fieldInfo.status} -> ${fieldInfo.replacement}`, fieldInfo.notes || ""));
+    }
+    panel.appendChild(legacy);
+  }
+  return panel;
+}
+
+function stateExample(state) {
+  const id = state?.id || "";
+  if (id === "madness") return "A hero with Madness 2 is not just carrying text; the counter can be tested by rules that check thresholds, recovery, or insanity.";
+  if (id === "dark-plague") return "Dark Plague is a character state that room-entry rules can read, damage from, spread, or remove through specific cure rules.";
+  if (id === "envenomed-weapon") return "An envenomed weapon is an equipment state: the app can read it during an attack, then clear or consume it after the poison matters.";
+  if (id === "fd-psychic-residue-save") return "Psychic Residue +3 Save is a temporary adventure marker that modifies later Psychic Residue saves.";
+  return "Later rules can read, apply, remove, or expire this state instead of adding another one-off field.";
+}
+
+function renderTerrainRegistryPanel() {
+  const payload = modernState.terrain || {};
+  const terrain = Array.isArray(payload.terrain) ? payload.terrain : [];
+  const legacyFields = Array.isArray(payload.legacy_fields) ? payload.legacy_fields : [];
+  const panel = card(
+    "Terrain Registry (read-only)",
+    "Terrain records describe where play is happening and which environment rules can apply. This is separate from fixed maps and separate from random room tiles."
+  );
+  panel.classList.add("modern-registry-panel");
+  panel.title = "Read-only terrain registry. These records describe existing environment and terrain values without changing map generation.";
+  panel.appendChild(registryExplanation("Terrain vs maps vs room tiles", [
+    "Maps are authored places with pins, regions, and linked locations.",
+    "Room tiles are reusable random-generation pieces with exits, walkable cells, and catalog rules.",
+    "Terrain is the rules context on top: indoor, forest, swamp, water, caverns, fungal grottoes, FD river bank, or Courtship Demesne water."
+  ]));
+  const summary = el("div", "modern-grid two");
+  summary.append(
+    modernStatusRow("Registry", `${terrain.length} terrain records`, "Terrain definitions are metadata only in this slice."),
+    modernStatusRow("Environment values", (payload.environment_values || []).map(modernTitleFromKey).join(", "), "Current table-routing environments."),
+    modernStatusRow("Terrain values", (payload.terrain_values || []).map(modernTitleFromKey).join(", "), "Current tile terrain values."),
+    modernStatusRow("Water group", (payload.water_values || []).map(modernTitleFromKey).join(", "), "Values treated as water by current terrain helpers.")
+  );
+  panel.appendChild(summary);
+  for (const record of terrain) {
+    const row = el("details", "modern-row modern-registry-row");
+    row.title = record.ui?.hover || "Terrain metadata record.";
+    const page = Number(record.source?.page || 0) > 0 ? `p.${record.source.page}` : record.review_status;
+    row.appendChild(registrySummary(record.name || record.id, `${modernTitleFromKey(record.kind)} · ${page}`));
+    const chips = el("div", "modern-chip-row");
+    for (const value of [record.kind, record.source?.supplement_id, record.review_status].filter(Boolean)) {
+      const chip = el("span", "modern-tag", modernTitleFromKey(value));
+      chip.title = `Terrain metadata: ${modernTitleFromKey(value)}.`;
+      chips.appendChild(chip);
+    }
+    row.appendChild(chips);
+    row.append(
+      modernStatusRow("Source", `${record.source?.source_pdf || "Current project data"} · ${record.source?.topic || "Terrain"}`, "PDF/source reference for this terrain definition."),
+      modernStatusRow("Legacy mappings", Object.keys(record.legacy_mappings || {}).join(", ") || "None", "Current fields or tile-grid concepts represented by this terrain record."),
+      modernStatusRow("Interactions", (record.interactions || []).join("; ") || "None recorded", "Current rules that read or care about this terrain."),
+      modernStatusRow("Example", (record.examples || [])[0] || "Terrain helps decide which rules can apply in a place.", "Plain-language example of what this terrain means during play."),
+      el("p", "muted", record.ui?.hover || "")
+    );
+    panel.appendChild(row);
+  }
+  if (legacyFields.length) {
+    const legacy = el("details", "modern-row modern-registry-row");
+    legacy.title = "Current fields that will eventually become terrain instances or terrain modifiers.";
+    legacy.appendChild(registrySummary("Legacy terrain storage", "Current map/session fields kept until migration"));
     for (const fieldInfo of legacyFields) {
       legacy.appendChild(modernStatusRow(fieldInfo.field, `${fieldInfo.status} -> ${fieldInfo.replacement}`, fieldInfo.notes || ""));
     }
@@ -3304,6 +3416,7 @@ function renderSettings() {
     "Settings affect dashboard defaults and Go Adventure choices; they do not delete rules data.",
     "The Supplement Library is read-only for now; enable/disable becomes safe after campaign and session supplement locking.",
     "The State Registry is read-only for now; existing status strings and counters remain the save format.",
+    "The Terrain Registry is read-only for now; current map/session terrain fields remain the save format.",
     "Legacy ruleset/profile controls still decide which profiles appear as preferred random-adventure choices.",
     "TAG banking toggles which finance workflow the dashboard emphasizes."
   ], "", "settings ruleset profile"));
@@ -3343,7 +3456,7 @@ function renderSettings() {
     setStatus("Settings saved.");
     await refreshCoreAndRender();
   }, ""));
-  rootEl.append(panel, renderSupplementRegistryPanel(), renderStateRegistryPanel(), rulesCard);
+  rootEl.append(panel, renderSupplementRegistryPanel(), renderStateRegistryPanel(), renderTerrainRegistryPanel(), rulesCard);
 }
 
 function renderAiAdventures() {
@@ -5338,6 +5451,7 @@ async function renderGoAdventure() {
     const row = el("div", "modern-row");
     row.append(el("strong", "", session.save_label || `${partyName} - ${session.mode}`));
     row.append(el("span", "muted", `${partyName} · ${session.adventure_type || session.adventure_id} · ${session.saved_at ? `saved ${session.saved_at}` : "active/unsaved"} · ${session.tile_count || 0} map element(s)`));
+    row.appendChild(modernStatusRow("Locked supplements", sessionSupplementSummary(session), "Supplements snapshot locked when this session was created. Legacy sessions may not have this metadata yet."));
     const rowActions = actions();
     rowActions.append(
       button("Resume Adventure", "Open this active session in the main play interface.", async () => {
@@ -5360,6 +5474,7 @@ async function renderGoAdventure() {
     const row = el("div", "modern-row");
     row.append(el("strong", "", session.save_label || `${partyName} - ${session.mode}`));
     row.append(el("span", "muted", `${partyName} · ${session.adventure_type || session.adventure_id} · saved ${session.saved_at} · ${session.tile_count || 0} map element(s)`));
+    row.appendChild(modernStatusRow("Locked supplements", sessionSupplementSummary(session), "Supplements snapshot locked when this session was created. Legacy sessions may not have this metadata yet."));
     const rowActions = actions();
     rowActions.append(
       button("Load Saved Game", "Open this saved session in the main play interface.", async () => {

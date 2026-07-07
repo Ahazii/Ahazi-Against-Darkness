@@ -2612,7 +2612,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Adventure Management" in MODERN_PAGES_JS
     assert "Reference\", \"Review closeout" in MODERN_PAGES_JS
     assert ".modern-tabs" in STYLES_CSS
-    assert "renderTagWorkflowDashboard(\"go\")," in MODERN_PAGES_JS
+    assert "renderTagWorkflowDashboard(\"go\")" in MODERN_PAGES_JS
     assert "modern-tag-lead-detail" in MODERN_PAGES_JS
     assert "TAG_ADVENTURE_FIXED_RESULTS" in MODERN_PAGES_JS
     assert "show_tag_fixed_result_selector" in MODERN_PAGES_JS
@@ -2672,6 +2672,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "/api/sessions",
         "/api/supplements",
         "/api/states",
+        "/api/terrain",
     ]:
         assert path in MODERN_PAGES_JS
     assert "openLegacyHomeAt(" not in MODERN_PAGES_JS
@@ -2716,12 +2717,22 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "legacy compatibility",
         "campaign and session supplement locking",
         "renderSupplementRegistryPanel",
-    ]:
         "State Registry (read-only)",
         "Legacy state storage",
         "existing status strings and counters remain the save format",
         "renderStateRegistryPanel",
+        "Terrain Registry (read-only)",
+        "Terrain vs maps vs room tiles",
+        "The Terrain Registry is read-only for now",
+        "renderTerrainRegistryPanel",
+        "modern-registry-row",
+        "Locked supplements",
+        "sessionSupplementSummary",
+        "legacy session: no supplement snapshot",
+    ]:
         assert label in MODERN_PAGES_JS
+    assert ".modern-registry-row > summary" in STYLES_CSS
+    assert "justify-items: start;" in STYLES_CSS
 
 
 def test_legacy_dashboard_cards_link_to_modern_pages_not_old_home_actions() -> None:

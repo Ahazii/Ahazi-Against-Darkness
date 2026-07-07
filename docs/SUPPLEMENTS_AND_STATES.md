@@ -572,12 +572,16 @@ Good first candidates:
 - Add terrain definitions for current environments.
 - Start with `dungeon`, `caverns`, `fungal_grottoes`, Forsaken Depths river/citadel/ruins/dark pits concepts, and Courtship demesne regions.
 - Wire UI labels and hover text before deeper rule changes.
+- Mark `TileState.environment`, `TileState.terrain`, `SessionState.environment`, `SessionState.alter_weather_active`, and `SessionState.forest_pathway_active` as legacy compatibility storage.
+- Show a read-only Terrain Registry in Settings and explain the difference between terrain, maps, and room tiles.
 
 ### Phase 4: Session Supplement Lock
 
 - Record active supplements when a session starts.
 - Do not let later enable/disable changes corrupt active sessions.
 - Show active supplement list in session diagnostics.
+- Keep old sessions valid by treating missing `active_supplement_ids` as a legacy session with no snapshot metadata.
+- Snapshot supplement, state-registry, and terrain-registry versions on new sessions so future migrations can tell which metadata model was active at creation.
 
 ### Phase 5: Package Schema v2
 

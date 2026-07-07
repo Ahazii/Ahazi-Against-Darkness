@@ -986,6 +986,10 @@ class SessionState(BaseModel):
     ruleset_profile_id: str = "ee_random"
     tag_banking_enabled: bool = False
     tile_catalog: Literal["ee", "forsaken_depths", "forsaken_depths_rivers"] = "ee"
+    active_supplement_ids: list[str] = Field(default_factory=list)
+    supplement_registry_version: int = Field(default=0, ge=0)
+    state_registry_version: int = Field(default=0, ge=0)
+    terrain_registry_version: int = Field(default=0, ge=0)
     fd_river_type: Literal["oblivion", "tears", "death", "flame", "conjuration", "serpent"] | None = None
     fd_boat_status: Literal["ok", "damaged", "destroyed"] = "ok"
     fd_travel_mode: Literal["boat", "foot"] = "boat"
@@ -1309,6 +1313,10 @@ class SessionListSummary(BaseModel):
     imported_title: str | None = None
     imported_room_count: int | None = Field(default=None, ge=0)
     active_quest_description: str | None = None
+    active_supplement_ids: list[str] = Field(default_factory=list)
+    supplement_registry_version: int = Field(default=0, ge=0)
+    state_registry_version: int = Field(default=0, ge=0)
+    terrain_registry_version: int = Field(default=0, ge=0)
 
 
 class SessionAction(BaseModel):

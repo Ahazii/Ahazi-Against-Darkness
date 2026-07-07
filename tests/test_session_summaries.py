@@ -36,6 +36,10 @@ def test_session_summaries_are_smaller_than_full_session_list(client: TestClient
     assert row["adventure_id"] == "random"
     assert row["mode"] == session["mode"]
     assert row["tile_count"] == len(session["map_state"]["tiles"])
+    assert row["active_supplement_ids"] == session["active_supplement_ids"]
+    assert row["supplement_registry_version"] == 1
+    assert row["state_registry_version"] == 1
+    assert row["terrain_registry_version"] == 1
     assert "party" not in row
     assert "log" not in row
     assert "map_state" not in row

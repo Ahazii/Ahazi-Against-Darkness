@@ -372,6 +372,10 @@ def session_to_summary(session: SessionState) -> SessionListSummary:
         if session.adventure_type == "imported" and isinstance(manifest.get("rooms"), list)
         else None,
         active_quest_description=(quest.description or "").strip() or None if quest else None,
+        active_supplement_ids=list(session.active_supplement_ids),
+        supplement_registry_version=session.supplement_registry_version,
+        state_registry_version=session.state_registry_version,
+        terrain_registry_version=session.terrain_registry_version,
     )
 
 
@@ -696,6 +700,13 @@ async def list_states() -> dict[str, Any]:
     from .engine.states import state_payload
 
     return state_payload()
+
+
+@app.get("/api/terrain")
+async def list_terrain() -> dict[str, Any]:
+    from .engine.terrain_registry import terrain_payload
+
+    return terrain_payload()
 
 
 @app.get("/api/rules/classes")

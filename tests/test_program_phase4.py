@@ -13,6 +13,7 @@ from app.engine.ruleset_profiles import (
 )
 from app.engine.states import state_payload
 from app.engine.supplements import LOCKED_CORE_SUPPLEMENT_ID, supplement_payload
+from app.engine.terrain_registry import terrain_payload
 from app.schemas import SessionState
 
 
@@ -119,6 +120,43 @@ def test_states_api_is_read_only_registry(client: TestClient) -> None:
     assert payload["read_only"] is True
     ids = {item["id"] for item in payload["states"]}
     assert {"dark-plague", "lycanthropy", "madness", "hungry", "envenomed-weapon", "fd-psychic-residue-save"}.issubset(ids)
+
+
+def test_terrain_registry_maps_existing_environment_and_terrain_values() -> None:
+    payload = terrain_payload()
+    assert payload["schema_version"] == 1
+    assert payload["read_only"] is True
+    records = {item["id"]: item for item in payload["terrain"]}
+
+    assert {"dungeon", "caverns", "fungal_grottoes"}.issubset(set(payload["environment_values"]))
+    assert {"indoor", "forest", "swamp", "jungle", "desert", "river"}.issubset(set(payload["terrain_values"]))
+    assert {"river", "lake", "seashore"}.issubset(set(payload["water_values"]))
+    assert {"forest", "swamp", "jungle"} == set(payload["entangle_values"])
+    assert {"forest", "jungle"} == set(payload["forest_pathway_values"])
+
+    forest = records["forest"]
+    assert "Entangle can be used" in forest["interactions"]
+    assert "Forest Pathway can be used" in forest["interactions"]
+
+    fd_river = records["fd-river-bank"]
+    assert fd_river["source"]["supplement_id"] == "forsaken-depths"
+    assert "forsaken_depths_rivers" in fd_river["legacy_mappings"]["tile_catalog"]
+
+    courtship_water = records["courtship-demesne-water"]
+    assert courtship_water["source"]["page"] == 27
+    assert courtship_water["review_status"] == "source_backed"
+
+    legacy = {item["field"]: item for item in payload["legacy_fields"]}
+    assert legacy["TileState.terrain"]["status"] == "legacy_compatibility"
+
+
+def test_terrain_api_is_read_only_registry(client: TestClient) -> None:
+    response = client.get("/api/terrain")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["read_only"] is True
+    ids = {item["id"] for item in payload["terrain"]}
+    assert {"dungeon", "caverns", "fungal_grottoes", "forest", "water", "fd-river-bank", "courtship-demesne-water"}.issubset(ids)
 
 
 def test_campaign_api_updates_tag_settlement(client: TestClient) -> None:
@@ -300,6 +338,52 @@ def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     assert payload["ruleset_profile_id"] == "forsaken_depths_no_courtship"
     assert payload["ruleset"] == "forsaken_depths"
     assert payload["courtship_enabled"] is False
+    assert payload["active_supplement_ids"] == ["expanded-edition-core", "forsaken-depths"]
+    assert payload["supplement_registry_version"] == 1
+    assert payload["state_registry_version"] == 1
+    assert payload["terrain_registry_version"] == 1
+
+
+def test_create_session_snapshots_courtship_supplement(client: TestClient) -> None:
+    character_ids: list[str] = []
+    for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
+        response = client.post("/api/characters", json={"name": f"Courtship Snapshot Hero {index}", "class_id": class_id})
+        assert response.status_code == 200
+        character_ids.append(response.json()["id"])
+
+    party_response = client.post("/api/parties", json={"name": "Courtship Snapshot Party", "character_ids": character_ids})
+    assert party_response.status_code == 200
+
+    session_response = client.post(
+        "/api/sessions",
+        json={
+            "party_id": party_response.json()["id"],
+            "adventure_id": "courtship-demesne",
+        },
+    )
+    assert session_response.status_code == 200
+    payload = session_response.json()
+    assert payload["ruleset_profile_id"] == "courtship_demesne"
+    assert payload["active_supplement_ids"] == ["expanded-edition-core", "forsaken-depths", "courtship"]
+
+
+def test_legacy_session_without_snapshot_metadata_still_loads() -> None:
+    session = SessionState.model_validate(
+        {
+            "id": "legacy-session",
+            "party_id": "party",
+            "adventure_id": "random",
+            "adventure_type": "random",
+            "party": [],
+            "map_state": {"width": 31, "height": 31, "tiles": [], "current_tile_id": ""},
+            "created_at": "2026-07-07T00:00:00Z",
+            "updated_at": "2026-07-07T00:00:00Z",
+        }
+    )
+    assert session.active_supplement_ids == []
+    assert session.supplement_registry_version == 0
+    assert session.state_registry_version == 0
+    assert session.terrain_registry_version == 0
 
 
 def test_campaign_world_assignment_propagates_to_parties_and_characters(client: TestClient) -> None:

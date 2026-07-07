@@ -14,6 +14,9 @@ from .heroic_skill_effects import mark_tile_visited
 from .inventory import snapshot_carry_baseline
 from .weapons import prune_weapon_defaults
 from .fiendish_foes import fiendish_foes_session_label, normalize_fiendish_foes_enabled, party_fiendish_foes_eligible
+from .states import STATE_REGISTRY_VERSION
+from .supplements import SUPPLEMENT_REGISTRY_VERSION, active_supplement_ids_for_legacy_session
+from .terrain_registry import TERRAIN_REGISTRY_VERSION
 
 if True:
     from .random_dungeon import OPPOSITE, RandomDungeonEngine
@@ -875,6 +878,13 @@ def create_session_from_manifest(
         unlimited_map_element_cap=chosen_cap,
         fiendish_foes_enabled=chosen_fiendish,
         environment=entrance_tile.environment,
+        active_supplement_ids=active_supplement_ids_for_legacy_session(
+            adventure_type="imported",
+            tag_generated=bool(tag_reference),
+        ),
+        supplement_registry_version=SUPPLEMENT_REGISTRY_VERSION,
+        state_registry_version=STATE_REGISTRY_VERSION,
+        terrain_registry_version=TERRAIN_REGISTRY_VERSION,
         old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
         slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,
         created_at=timestamp,
