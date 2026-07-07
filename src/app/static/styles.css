@@ -6124,6 +6124,10 @@ button.modern-dashboard-status-icon {
   overflow: hidden;
 }
 
+.party-sheet-details[open] {
+  overflow: visible;
+}
+
 .party-sheet-details.party-sheet-fallen {
   opacity: 0.78;
 }
