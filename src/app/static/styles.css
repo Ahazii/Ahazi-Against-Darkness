@@ -470,6 +470,17 @@ h2 {
   font-size: 15px;
 }
 
+.modern-card p,
+.modern-row,
+.modern-row span,
+.modern-check-row span,
+.modern-inline-list {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .modern-collapsible > summary {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1215,6 +1226,16 @@ h2 {
 
 .modern-check-row input {
   margin-top: 2px;
+}
+
+.modern-inline-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-soft);
+}
+
+.modern-inline-list li {
+  margin: 0;
 }
 
 .modern-character-details {

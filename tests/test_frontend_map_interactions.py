@@ -2775,6 +2775,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "Saved default list for new sessions",
         "supplementTitlesForIds",
         "suggestedLegacyProfileForSupplements",
+        "profileManuallyChanged",
         "Suggested legacy random profile",
         "forsaken_depths_no_courtship",
         "renderSupplementRegistryPanel",
@@ -2794,6 +2795,8 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         assert label in MODERN_PAGES_JS
     assert ".modern-registry-row > summary" in STYLES_CSS
     assert "justify-items: start;" in STYLES_CSS
+    assert ".modern-inline-list" in STYLES_CSS
+    assert "overflow-wrap: anywhere;" in STYLES_CSS
 
 
 def test_legacy_dashboard_cards_link_to_modern_pages_not_old_home_actions() -> None:

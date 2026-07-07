@@ -402,7 +402,11 @@ function latestTagLogs(actions = []) {
 function modernStatusRow(title, body, hint = "") {
   const row = el("div", "modern-row");
   if (hint) row.title = hint;
-  row.append(el("strong", "", title), el("span", "muted", body));
+  const bodyNode = Array.isArray(body) ? el("ul", "modern-inline-list") : el("span", "muted", body);
+  if (Array.isArray(body)) {
+    for (const item of body.filter(Boolean)) bodyNode.appendChild(el("li", "", item));
+  }
+  row.append(el("strong", "", title), bodyNode);
   return row;
 }
 
@@ -5344,9 +5348,13 @@ async function renderGoAdventure() {
   const profile = select("modern-start-profile", "Ruleset profile used only for Random adventures.", profileRows.map((p) => [p.id, p.label]));
   profile.value = prefs.defaultRulesetProfile || "ee_random";
   const initialSuggestedProfile = suggestedLegacyProfileForSupplements(enabledSupplementIds);
-  if (!prefs.defaultRulesetProfile && [...profile.options].some((option) => option.value === initialSuggestedProfile)) {
+  let profileManuallyChanged = false;
+  if ([...profile.options].some((option) => option.value === initialSuggestedProfile)) {
     profile.value = initialSuggestedProfile;
   }
+  profile.addEventListener("change", () => {
+    profileManuallyChanged = true;
+  });
   const xp = select("modern-start-xp", "XP system for this adventure.", [["classical", "Classical"], ["slow_and_sure", "Slow and Sure"], ["old_school", "Old School"], ["slower_advancement", "Slower Advancement"]]);
   xp.value = prefs.defaultXpSystem || "classical";
   const mapMode = select("modern-start-map-mode", "Map mode for this adventure.", [["unlimited", "Unlimited"], ["paper", "Paper 20x28"]]);
@@ -5368,14 +5376,14 @@ async function renderGoAdventure() {
   function syncStartSupplementProfile({ userChanged = false } = {}) {
     const chosen = selectedStartSupplementIds();
     const suggested = suggestedLegacyProfileForSupplements(chosen);
-    if (type.value === "random" && userChanged && [...profile.options].some((option) => option.value === suggested)) {
+    if (type.value === "random" && !profileManuallyChanged && [...profile.options].some((option) => option.value === suggested)) {
       profile.value = suggested;
       drawReadiness();
     }
     supplementStatusRows.replaceChildren(
       modernStatusRow(
         "Session selection",
-        supplementTitlesForIds(chosen) || "Four Against Darkness Expanded Edition",
+        supplementTitlesForIds(chosen).split(", ").filter(Boolean),
         "This is the supplement snapshot that will be saved on the new session. Existing saved sessions are unchanged."
       ),
       modernStatusRow(
