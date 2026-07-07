@@ -3588,8 +3588,8 @@
         "tooltips",
         "adventure view"
       ],
-      "summary": "Tables documents Adventure View hovers that connect live status and terrain labels to registry metadata.",
-      "body": "The modern Tables page includes active_registry_tooltips_table. It documents Adventure View hovers for status chips and play-context terrain lines. These hovers show matching State Registry or Terrain Registry metadata, source supplement/page/topic, and migration notes beside the existing play tooltip. This is display context only; status application, cures, terrain routing, map generation, and rule outcomes still use the current PDF-backed helpers.",
+      "summary": "Tables documents Adventure View registry context that connects live status and terrain labels to registry metadata.",
+      "body": "The modern Tables page includes active_registry_tooltips_table. It documents the Adventure View Registry Context block plus hovers for status chips and play-context terrain lines. The visible block shows the current room's matching Terrain Registry metadata and any active registry-backed State Registry matches; the hovers show source supplement/page/topic and migration notes beside the existing play tooltip. This is display context only; status application, cures, terrain routing, map generation, and rule outcomes still use the current PDF-backed helpers.",
       "implementation_status": "implemented"
     },
     {

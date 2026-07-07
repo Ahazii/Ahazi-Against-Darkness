@@ -3009,6 +3009,10 @@ function terrainRegistryDefinitions() {
   return Array.isArray(state.terrainRegistry?.terrain) ? state.terrainRegistry.terrain : [];
 }
 
+function registrySourceLine(source = {}, fallbackTopic = "Registry") {
+  return `${source.source_pdf || "Current project data"}${Number(source.page || 0) > 0 ? ` p.${source.page}` : ""} · ${source.topic || fallbackTopic}`;
+}
+
 function stateDefinitionForStatus(label) {
   const raw = String(label || "").trim();
   if (!raw) return null;
@@ -3031,13 +3035,12 @@ function stateRegistryTooltip(label) {
   const definition = stateDefinitionForStatus(label);
   if (!definition) return "";
   const source = definition.source || {};
-  const sourceLine = `${source.source_pdf || "Current project data"}${Number(source.page || 0) > 0 ? ` p.${source.page}` : ""}`;
   const scope = [definition.family, definition.scope, definition.value_type].filter(Boolean).map((item) => String(item).replace(/_/g, " ")).join(" · ");
   return [
     `State Registry: ${definition.name || definition.id}`,
     scope,
     definition.ui?.hover || "",
-    `Source: ${sourceLine} · ${source.topic || "State"}`,
+    `Source: ${registrySourceLine(source, "State")}`,
   ].filter(Boolean).join("\n");
 }
 
@@ -3073,16 +3076,75 @@ function terrainRegistryTooltip(playCtx = {}, tile = {}) {
   if (!definitions.length) return "Terrain Registry: no matching terrain metadata record.";
   return definitions.slice(0, 3).map((definition) => {
     const source = definition.source || {};
-    const sourceLine = `${source.source_pdf || "Current project data"}${Number(source.page || 0) > 0 ? ` p.${source.page}` : ""}`;
     const interactions = registryTextList(definition.interactions).join(", ");
     return [
       `Terrain Registry: ${definition.name || definition.id}`,
       [definition.kind, definition.applies_to].filter(Boolean).map((item) => String(item).replace(/_/g, " ")).join(" · "),
       interactions ? `Interactions: ${interactions}` : "",
       definition.ui?.hover || "",
-      `Source: ${sourceLine} · ${source.topic || "Terrain"}`,
+      `Source: ${registrySourceLine(source, "Terrain")}`,
     ].filter(Boolean).join("\n");
   }).join("\n\n");
+}
+
+function activeStateRegistryMatches(session, tile) {
+  const matches = new Map();
+  const addChip = (chip, owner) => {
+    const definition = stateDefinitionForStatus(chip?.label);
+    if (!definition) return;
+    const key = definition.id || chip.label;
+    if (!matches.has(key)) {
+      matches.set(key, {
+        definition,
+        labels: new Set(),
+        owners: new Set(),
+      });
+    }
+    const entry = matches.get(key);
+    entry.labels.add(chip.label);
+    if (owner) entry.owners.add(owner);
+  };
+  for (const member of session?.party || []) {
+    for (const chip of heroStatusChips(session, member, tile)) addChip(chip, member.name || "Hero");
+  }
+  for (const foe of tile?.enemies || []) {
+    for (const label of foeStatusLabels(foe)) addChip({ label }, foe.name || "Foe");
+  }
+  return [...matches.values()].map((entry) => ({
+    definition: entry.definition,
+    labels: [...entry.labels],
+    owners: [...entry.owners],
+  }));
+}
+
+function appendRegistryContextPanel(parent, session, tile, playCtx) {
+  const box = node("div", "registry-context-panel");
+  box.appendChild(node("div", "registry-context-title", "Registry context"));
+  const terrainMatches = terrainDefinitionsForContext(playCtx, tile);
+  const terrainLine = node(
+    "div",
+    "registry-context-row",
+    terrainMatches.length
+      ? `Terrain: ${terrainMatches.slice(0, 3).map((entry) => entry.name || entry.id).join(", ")}`
+      : "Terrain: no registry metadata match for this room"
+  );
+  setTooltip(terrainLine, terrainRegistryTooltip(playCtx, tile));
+  box.appendChild(terrainLine);
+
+  const stateMatches = activeStateRegistryMatches(session, tile);
+  if (stateMatches.length) {
+    for (const match of stateMatches.slice(0, 4)) {
+      const definition = match.definition;
+      const labelText = match.labels.length ? ` (${match.labels.join(", ")})` : "";
+      const ownerText = match.owners.length ? ` — ${match.owners.join(", ")}` : "";
+      const line = node("div", "registry-context-row", `State: ${definition.name || definition.id}${labelText}${ownerText}`);
+      setTooltip(line, stateRegistryTooltip(match.labels[0] || definition.name || definition.id));
+      box.appendChild(line);
+    }
+  } else {
+    box.appendChild(node("div", "registry-context-row muted", "States: no active registry-backed status chips detected"));
+  }
+  parent.appendChild(box);
 }
 
 function massBlessingSelectableTargets(session) {
@@ -25601,6 +25663,7 @@ function renderTileDetail(session) {
     setTooltip(environmentLine, terrainRegistryTooltip(playCtx, tile));
     info.appendChild(environmentLine);
   }
+  appendRegistryContextPanel(info, session, tile, playCtx);
   if (tile.special_event_summary) {
     info.appendChild(subline(`Special event: ${tile.special_event_summary}`));
   }

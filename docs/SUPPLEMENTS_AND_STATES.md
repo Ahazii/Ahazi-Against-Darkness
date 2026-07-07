@@ -559,7 +559,7 @@ Default mode should remain dark unless the user chooses otherwise or system sett
 - Mark `Character.statuses`, `PartyMemberState.statuses`, `Character.madness`, `PartyMemberState.madness`, and `SessionState.pending_*` as legacy compatibility storage.
 - Show the read-only State Registry in Settings beside the Supplement Library.
 - Make the read-only State Registry searchable/filterable by family, scope, source supplement, and review status before adding state-instance mutation.
-- Adventure View status-chip hovers now append matching State Registry metadata to the existing rules tooltip when a legacy status string maps to a registry row.
+- Adventure View room details now show active registry-backed state/status matches in the Registry Context block, and status-chip hovers append matching State Registry metadata to the existing rules tooltip when a legacy status string maps to a registry row.
 
 Good first candidates:
 
@@ -580,7 +580,7 @@ Good first candidates:
 - Mark `TileState.environment`, `TileState.terrain`, `SessionState.environment`, `SessionState.alter_weather_active`, and `SessionState.forest_pathway_active` as legacy compatibility storage.
 - Show a read-only Terrain Registry in Settings and explain the difference between terrain, maps, and room tiles.
 - Make the read-only Terrain Registry searchable/filterable by kind, source supplement, review status, and interaction group before adding terrain-instance mutation.
-- Adventure View Play Context terrain hovers now expose matching Terrain Registry metadata while leaving map/session terrain fields as the active save format.
+- Adventure View room details now show the current terrain registry match in the Registry Context block, and Play Context terrain hovers expose matching Terrain Registry metadata while leaving map/session terrain fields as the active save format.
 
 ### Phase 4: Session Supplement Lock
 

@@ -1821,13 +1821,19 @@ def test_status_effect_chips_have_hover_text() -> None:
     assert "/api/terrain" in APP_JS
     assert "function statusTooltipWithRegistry(label, fallback = \"\")" in APP_JS
     assert "function terrainRegistryTooltip(playCtx = {}, tile = {})" in APP_JS
+    assert "function appendRegistryContextPanel(parent, session, tile, playCtx)" in APP_JS
     body = _function_body("appendStatusChips", APP_JS)
     assert "statusTooltipWithRegistry(chip.label" in body
     assert "el.title = title;" in body
     assert "el.dataset.tooltip = title;" in body
+    detail = _function_body("renderTileDetail", APP_JS)
+    assert "appendRegistryContextPanel(info, session, tile, playCtx);" in detail
     assert "State Registry:" in APP_JS
     assert "Terrain Registry:" in APP_JS
+    assert "Registry context" in APP_JS
+    assert "States: no active registry-backed status chips detected" in APP_JS
     assert "setTooltip(playContextLine, terrainRegistryTooltip(playCtx, tile));" in APP_JS
+    assert ".registry-context-panel" in STYLES_CSS
     assert "active_registry_tooltips_table" in MAIN_PY
     assert "Shield bonus applies" in APP_JS
     assert "Blessed Temple/Shrine: +1 Attack vs undead and demon foes until one such foe is slain." in APP_JS

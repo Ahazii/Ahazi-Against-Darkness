@@ -2906,6 +2906,12 @@ def _rules_tables_payload() -> dict:
     data["active_registry_tooltips_table"] = [
         {
             "surface": "Adventure View",
+            "hover_target": "Registry Context block",
+            "player_use": "Read the current room's visible terrain registry match and any active registry-backed state matches without hunting for hover targets.",
+            "rules_boundary": "This is a summary of metadata already visible through hovers. It does not make unmatched statuses into registry states or change saves.",
+        },
+        {
+            "surface": "Adventure View",
             "hover_target": "Status chips",
             "player_use": "Hover hero, hireling, foe, and room status chips to see matching State Registry metadata, source page/topic, and the existing rules tooltip together.",
             "rules_boundary": "This exposes registry context for the current legacy status text; it does not apply, expire, cure, or change a state.",
