@@ -2914,6 +2914,11 @@ function sessionSupplementTitles(session) {
   return ids.map((id) => SUPPLEMENT_TITLE_BY_ID[id] || id).filter(Boolean);
 }
 
+function sessionSupplementTitleList(session, prefix = "- ") {
+  const titles = sessionSupplementTitles(session);
+  return titles.length ? titles.map((title) => `${prefix}${title}`).join("\n") : `${prefix}Legacy session: no supplement snapshot`;
+}
+
 function renderSessionSupplementChip(session) {
   if (!sessionSupplements) return;
   const titles = sessionSupplementTitles(session);
@@ -2924,12 +2929,24 @@ function renderSessionSupplementChip(session) {
     return;
   }
   sessionSupplements.textContent = titles.length === 1 ? "Supplements: 1" : `Supplements: ${titles.length}`;
-  sessionSupplements.title = `Locked supplements for this session: ${titles.join(", ")}. Settings changes affect future sessions only.`;
+  sessionSupplements.title = `Locked supplements for this session:\n${sessionSupplementTitleList(session)}\nSettings changes affect future sessions only.`;
 }
 
 function sessionSupplementDebugLine(session) {
   const titles = sessionSupplementTitles(session);
   return titles.length ? titles.join(", ") : "legacy session: no supplement snapshot";
+}
+
+function sessionSupplementDebugBlock(session) {
+  return `Supplements:\n${sessionSupplementTitleList(session)}`;
+}
+
+function formatNarrativeReportLine(line, session = state.session) {
+  const text = String(line || "");
+  if (text.startsWith("Supplements locked for this session:")) {
+    return `Supplements locked for this session:\n${sessionSupplementTitleList(session, "   - ")}`;
+  }
+  return text;
 }
 
 function massBlessingTargetId(target, kind) {
@@ -11727,10 +11744,20 @@ function renderSetupRosterFromCache() {
 }
 
 function appendSessionSupplementSummary(parent, session) {
-  const line = subline(`Locked supplements: ${sessionSupplementDebugLine(session)}`);
-  line.classList.add("session-list-supplements");
-  line.title = "Locked supplement snapshot for this session. Settings changes affect future sessions only.";
-  parent.appendChild(line);
+  const wrap = node("div", "session-list-supplements");
+  wrap.title = "Locked supplement snapshot for this session. Settings changes affect future sessions only.";
+  wrap.appendChild(node("div", "session-list-supplements-label", "Locked supplements:"));
+  const titles = sessionSupplementTitles(session);
+  if (!titles.length) {
+    wrap.appendChild(node("div", "muted", "Legacy session: no supplement snapshot"));
+  } else {
+    const list = node("ul", "session-list-supplements-items");
+    for (const title of titles) {
+      list.appendChild(node("li", "", title));
+    }
+    wrap.appendChild(list);
+  }
+  parent.appendChild(wrap);
 }
 
 function sessionListEntryFromSession(session) {
@@ -11915,7 +11942,7 @@ function _diagnosticPromptActionLabel(action) {
 }
 
 function narrativeReportLines(session = state.session) {
-  return (session?.log || []).map((entry) => normalizeLogEntryForDisplay(entry));
+  return (session?.log || []).map((entry) => formatNarrativeReportLine(normalizeLogEntryForDisplay(entry), session));
 }
 
 function currentRoomDebugSummary(session = state.session) {
@@ -12005,7 +12032,7 @@ function buildNarrativeDebugReport(session = state.session) {
     `Adventure type: ${session?.adventure_type || "unknown"}`,
     `Session mode: ${session?.mode || "unknown"}`,
     `Ruleset: ${session?.ruleset || "ee"} / XP: ${session?.xp_system || "unknown"}`,
-    `Supplements: ${sessionSupplementDebugLine(session)}`,
+    sessionSupplementDebugBlock(session),
     `Party: ${(session?.party || []).map((member) => `${member.name} L${member.level} ${member.current_life}/${member.max_life} Life ${member.gold || 0}gp`).join("; ") || "none"}`,
     "",
     "### Current Room",

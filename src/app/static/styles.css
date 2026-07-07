@@ -2797,6 +2797,20 @@ button.modern-dashboard-status-icon {
 
 .session-list-supplements {
   color: var(--text-soft);
+  display: grid;
+  gap: 2px;
+}
+
+.session-list-supplements-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.session-list-supplements-items {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 1px;
 }
 
 .list {

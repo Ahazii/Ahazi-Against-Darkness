@@ -2130,15 +2130,17 @@ def test_session_header_shows_locked_supplement_snapshot() -> None:
     assert "const sessionSupplements = document.getElementById(\"session-supplements\")" in APP_JS
     assert "const SUPPLEMENT_TITLE_BY_ID" in APP_JS
     assert "function sessionSupplementTitles(session)" in APP_JS
+    assert "function sessionSupplementTitleList(session, prefix = \"- \")" in APP_JS
     assert "function renderSessionSupplementChip(session)" in APP_JS
     assert "renderSessionSupplementChip(session)" in APP_JS
-    assert "Locked supplements for this session" in APP_JS
+    assert "Locked supplements for this session:\\n${sessionSupplementTitleList(session)}" in APP_JS
     assert "Settings changes affect future sessions only" in APP_JS
     assert ".session-supplements" in STYLES_CSS
     assert "function appendSessionSupplementSummary(parent, session)" in APP_JS
-    assert "Locked supplements: ${sessionSupplementDebugLine(session)}" in APP_JS
+    assert "session-list-supplements-items" in APP_JS
     assert "active_supplement_ids: Array.isArray(session.active_supplement_ids)" in APP_JS
     assert ".session-list-supplements" in STYLES_CSS
+    assert ".session-list-supplements-items" in STYLES_CSS
 
 
 def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable() -> None:
@@ -2558,7 +2560,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "## Debug Context" in APP_JS
     assert "The following information is not player narrative" in APP_JS
     assert "function sessionSupplementDebugLine(session)" in APP_JS
-    assert "Supplements: ${sessionSupplementDebugLine(session)}" in APP_JS
+    assert "function sessionSupplementDebugBlock(session)" in APP_JS
+    assert "function formatNarrativeReportLine(line, session = state.session)" in APP_JS
+    assert "sessionSupplementTitleList(session, \"   - \")" in APP_JS
+    assert "sessionSupplementDebugBlock(session)" in APP_JS
     assert "legacy session: no supplement snapshot" in APP_JS
     assert "Copy Narrative Report" in INDEX_HTML
     assert "Advanced / Manual Actions" in INDEX_HTML
