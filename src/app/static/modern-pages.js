@@ -3568,6 +3568,21 @@ function stateLegacyMappingText(state) {
   return parts.join(" | ") || "None";
 }
 
+function terrainLegacyMappingText(record) {
+  const mappings = record?.legacy_mappings || {};
+  const parts = [];
+  for (const [key, value] of Object.entries(mappings)) {
+    if (Array.isArray(value)) {
+      parts.push(`${modernTitleFromKey(key)}: ${value.join(", ")}`);
+    } else if (value && typeof value === "object") {
+      parts.push(`${modernTitleFromKey(key)}: ${modernSearchText(value)}`);
+    } else {
+      parts.push(`${modernTitleFromKey(key)}: ${String(value)}`);
+    }
+  }
+  return parts.join(" | ") || "None";
+}
+
 function renderTerrainRegistryPanel() {
   const payload = modernState.terrain || {};
   const terrain = Array.isArray(payload.terrain) ? payload.terrain : [];
@@ -3583,6 +3598,8 @@ function renderTerrainRegistryPanel() {
     "Room tiles are reusable random-generation pieces with exits, walkable cells, and catalog rules.",
     "Terrain is the rules context on top: indoor, forest, swamp, water, caverns, fungal grottoes, FD river bank, or Courtship Demesne water."
   ]));
+  const kinds = Array.isArray(payload.kinds) ? payload.kinds : [];
+  const reviewStatuses = [...new Set(terrain.map((record) => record.review_status || "review").filter(Boolean))].sort();
   const summary = el("div", "modern-grid two");
   summary.append(
     modernStatusRow("Registry", `${terrain.length} terrain records`, "Terrain definitions are metadata only in this slice."),
@@ -3591,27 +3608,91 @@ function renderTerrainRegistryPanel() {
     modernStatusRow("Water group", (payload.water_values || []).map(modernTitleFromKey).join(", "), "Values treated as water by current terrain helpers.")
   );
   panel.appendChild(summary);
-  for (const record of terrain) {
+  const search = input("search", "modern-terrain-registry-search", "Search terrain name, id, kind, source, topic, interactions, examples, legacy mapping, or hover text.");
+  search.placeholder = "Search terrain...";
+  const kindFilter = select("modern-terrain-registry-kind", "Filter terrain definitions by kind.", [["", "All kinds"], ...kinds.map((item) => [item, modernTitleFromKey(item)])]);
+  const supplementFilter = select("modern-terrain-registry-supplement", "Filter terrain definitions by source supplement.", supplementFilterOptions());
+  const reviewFilter = select("modern-terrain-registry-review", "Filter terrain definitions by PDF/source review status.", [["", "All review states"], ...reviewStatuses.map((item) => [item, modernTitleFromKey(item)])]);
+  const interactionFilter = select("modern-terrain-registry-interaction", "Filter terrain by common interaction groups.", [
+    ["", "All interactions"],
+    ["water", "Water / Flower Portal"],
+    ["outdoor", "Outdoor"],
+    ["entangle", "Entangle"],
+    ["forest_pathway", "Forest Pathway"],
+    ["routing", "Table routing"],
+  ]);
+  const controls = el("div", "modern-filterbar");
+  controls.append(field("Search", search), field("Kind", kindFilter), field("Supplement", supplementFilter), field("Review", reviewFilter), field("Interaction", interactionFilter));
+  const results = el("div", "modern-list");
+  panel.append(controls, results);
+
+  const terrainSearchText = (record) => [
+    record.id,
+    record.name,
+    record.kind,
+    record.review_status,
+    record.source?.supplement_id,
+    record.source?.source_pdf,
+    record.source?.topic,
+    record.ui?.hover,
+    terrainLegacyMappingText(record),
+    ...(record.interactions || []),
+    ...(record.examples || []),
+  ].join(" ").toLowerCase();
+
+  const matchesInteraction = (record) => {
+    const text = terrainSearchText(record);
+    if (!interactionFilter.value) return true;
+    if (interactionFilter.value === "water") return /water|river|seaside|riverside|flower portal/.test(text);
+    if (interactionFilter.value === "outdoor") return /outdoor/.test(text);
+    if (interactionFilter.value === "entangle") return /entangle/.test(text);
+    if (interactionFilter.value === "forest_pathway") return /forest pathway/.test(text);
+    if (interactionFilter.value === "routing") return /routing|routes|table/.test(text);
+    return true;
+  };
+
+  const renderTerrainRow = (record, needle) => {
     const row = el("details", "modern-row modern-registry-row");
     row.title = record.ui?.hover || "Terrain metadata record.";
     const page = Number(record.source?.page || 0) > 0 ? `p.${record.source.page}` : record.review_status;
-    row.appendChild(registrySummary(record.name || record.id, `${modernTitleFromKey(record.kind)} · ${page}`));
+    row.appendChild(registrySummaryWithHighlight(record.name || record.id, `${modernTitleFromKey(record.kind)} · ${page}`, needle));
+    row.appendChild(renderSupplementBadges([record.source?.supplement_id].filter(Boolean), "Source supplement for this terrain definition."));
     const chips = el("div", "modern-chip-row");
     for (const value of [record.kind, record.source?.supplement_id, record.review_status].filter(Boolean)) {
-      const chip = el("span", "modern-tag", modernTitleFromKey(value));
+      const chip = highlightedEl("span", "modern-tag", modernTitleFromKey(value), needle);
       chip.title = `Terrain metadata: ${modernTitleFromKey(value)}.`;
       chips.appendChild(chip);
     }
     row.appendChild(chips);
     row.append(
-      modernStatusRow("Source", `${record.source?.source_pdf || "Current project data"} · ${record.source?.topic || "Terrain"}`, "PDF/source reference for this terrain definition."),
-      modernStatusRow("Legacy mappings", Object.keys(record.legacy_mappings || {}).join(", ") || "None", "Current fields or tile-grid concepts represented by this terrain record."),
-      modernStatusRow("Interactions", (record.interactions || []).join("; ") || "None recorded", "Current rules that read or care about this terrain."),
-      modernStatusRow("Example", (record.examples || [])[0] || "Terrain helps decide which rules can apply in a place.", "Plain-language example of what this terrain means during play."),
-      el("p", "muted", record.ui?.hover || "")
+      modernStatusRowHighlighted("Source", `${record.source?.source_pdf || "Current project data"} · ${record.source?.topic || "Terrain"}`, "PDF/source reference for this terrain definition.", needle),
+      modernStatusRowHighlighted("Legacy mappings", terrainLegacyMappingText(record), "Current fields or tile-grid concepts represented by this terrain record.", needle),
+      modernStatusRowHighlighted("Interactions", (record.interactions || []).join("; ") || "None recorded", "Current rules that read or care about this terrain.", needle),
+      modernStatusRowHighlighted("Example", (record.examples || [])[0] || "Terrain helps decide which rules can apply in a place.", "Plain-language example of what this terrain means during play.", needle),
+      highlightedEl("p", "muted", record.ui?.hover || "", needle)
     );
-    panel.appendChild(row);
-  }
+    return row;
+  };
+
+  const draw = () => {
+    results.replaceChildren();
+    const needle = search.value.trim().toLowerCase();
+    const rows = terrain
+      .filter((record) => !kindFilter.value || record.kind === kindFilter.value)
+      .filter((record) => !reviewFilter.value || record.review_status === reviewFilter.value)
+      .filter((record) => supplementFilterMatches([record.source?.supplement_id].filter(Boolean), supplementFilter.value))
+      .filter(matchesInteraction)
+      .filter((record) => !needle || terrainSearchText(record).includes(needle));
+    results.appendChild(el("p", "muted", `${rows.length} matching terrain record${rows.length === 1 ? "" : "s"} across ${new Set(rows.map((record) => record.kind)).size} kind${new Set(rows.map((record) => record.kind)).size === 1 ? "" : "s"}.`));
+    for (const record of rows) results.appendChild(renderTerrainRow(record, needle));
+    if (!rows.length) results.appendChild(el("p", "modern-home-status in-progress", "No matching terrain records. Clear filters or search by terrain name, source book, legacy field, interaction, map concept, or rules topic."));
+  };
+  search.addEventListener("input", draw);
+  kindFilter.addEventListener("change", draw);
+  supplementFilter.addEventListener("change", draw);
+  reviewFilter.addEventListener("change", draw);
+  interactionFilter.addEventListener("change", draw);
+  draw();
   if (legacyFields.length) {
     const legacy = el("details", "modern-row modern-registry-row");
     legacy.title = "Current fields that will eventually become terrain instances or terrain modifiers.";

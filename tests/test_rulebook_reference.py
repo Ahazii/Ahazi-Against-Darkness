@@ -85,6 +85,7 @@ APP_ONLY_REFERENCE_IDS = {
     "state_registry_navigation_table",
     "supplement_manifest_registry_table",
     "supplement_reference_filters_table",
+    "terrain_registry_navigation_table",
 }
 
 

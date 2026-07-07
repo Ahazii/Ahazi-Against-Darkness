@@ -2883,6 +2883,26 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Legacy mappings are a migration guide; existing helpers still perform the actual rule behavior until a deliberate state-instance migration.",
         },
     ]
+    data["terrain_registry_navigation_table"] = [
+        {
+            "surface": "Settings / Options",
+            "filter": "Terrain search",
+            "player_use": "Find terrain/environment records by name, id, source book, topic, interaction, example, legacy field, tile catalog, or hover text.",
+            "rules_boundary": "Terrain rows describe current metadata and legacy storage only; searching does not change a tile, map, session, or generator.",
+        },
+        {
+            "surface": "Settings / Options",
+            "filter": "Kind / Supplement / Review / Interaction",
+            "player_use": "Narrow terrain records by environment/terrain/derived terrain, source supplement, PDF review status, or common interaction group such as water, outdoor, Entangle, Forest Pathway, or table routing.",
+            "rules_boundary": "Filters expose implementation context. They do not decide when a terrain rule applies in play.",
+        },
+        {
+            "surface": "Terrain cards",
+            "filter": "Legacy mappings",
+            "player_use": "See the current map/session fields, terrain values, tile catalogs, and grid-code concepts that each future terrain instance would replace.",
+            "rules_boundary": "Legacy mappings are a migration guide; current map/session helpers still drive actual terrain behavior.",
+        },
+    ]
     data["playtest_triage_workflow_table"] = [
         {
             "field": "Area",

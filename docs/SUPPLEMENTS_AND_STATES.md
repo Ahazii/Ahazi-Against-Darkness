@@ -578,6 +578,7 @@ Good first candidates:
 - Wire UI labels and hover text before deeper rule changes.
 - Mark `TileState.environment`, `TileState.terrain`, `SessionState.environment`, `SessionState.alter_weather_active`, and `SessionState.forest_pathway_active` as legacy compatibility storage.
 - Show a read-only Terrain Registry in Settings and explain the difference between terrain, maps, and room tiles.
+- Make the read-only Terrain Registry searchable/filterable by kind, source supplement, review status, and interaction group before adding terrain-instance mutation.
 
 ### Phase 4: Session Supplement Lock
 

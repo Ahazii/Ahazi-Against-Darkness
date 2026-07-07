@@ -357,6 +357,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "state_registry_navigation_table",
     "supplement_manifest_registry_table",
     "supplement_reference_filters_table",
+    "terrain_registry_navigation_table",
     "tag_closeout_checklist_automation_table",
     "tag_generated_adventure_signoff_table",
     "tag_generated_lead_structure_table",
