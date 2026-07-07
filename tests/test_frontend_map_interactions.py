@@ -2109,7 +2109,8 @@ def test_camped_outside_uses_dedicated_camp_screen() -> None:
     assert ".camp-left-column" in STYLES_CSS
     assert ".camp-party-sheets .party-sheet-list" in STYLES_CSS
     assert ".camp-party-sheets .party-sheet-summary" in STYLES_CSS
-    assert 'href="/static/styles.css?v=0.69.11"' in INDEX_HTML
+    assert "object-position: center 38%;" in STYLES_CSS
+    assert 'href="/static/styles.css?v=0.69.12"' in INDEX_HTML
 
 
 def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable() -> None:
@@ -2248,7 +2249,7 @@ def test_go_adventure_start_uses_status_icons_not_setup_panels() -> None:
     assert "modern-start-status-icons" in MODERN_PAGES_JS[go_start:]
     assert "function addStartStatusIcon" in MODERN_PAGES_JS[go_start:]
     assert "showSnapshotDetail(label, detail)" in MODERN_PAGES_JS[go_start:]
-    assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, workflowGuide])' in MODERN_PAGES_JS
+    assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, supplementPreferenceCard, workflowGuide])' in MODERN_PAGES_JS
     assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate])' not in MODERN_PAGES_JS
     assert "button.modern-dashboard-status-icon" in STYLES_CSS
     assert ".modern-start-status-icons" in STYLES_CSS
@@ -2642,7 +2643,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
     main_py = Path("src/app/main.py").read_text(encoding="utf-8")
     assert '@app.get("/modern"' in main_py
     assert '@app.get("/modern/{page_name}"' in main_py
-    assert 'src="/static/modern-pages.js?v=0.2.0"' in MODERN_HTML
+    assert 'src="/static/modern-pages.js?v=0.2.1"' in MODERN_HTML
     for page in [
         "characters",
         "troupes",
@@ -2722,8 +2723,10 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "legacy compatibility",
         "campaign and session supplement locking",
         "Enabled Supplements (preference)",
+        "Supplement Preferences",
         "enabled_supplement_ids",
         "Preference-only for now",
+        "supplementTitlesForIds",
         "renderSupplementRegistryPanel",
         "State Registry (read-only)",
         "Legacy state storage",

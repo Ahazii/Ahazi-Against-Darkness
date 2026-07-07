@@ -1581,6 +1581,11 @@ function sessionSupplementSummary(session) {
   return ids.map((id) => known.get(id) || id).join(", ");
 }
 
+function supplementTitlesForIds(ids) {
+  const known = new Map((modernState.supplements?.supplements || []).map((supplement) => [supplement.id, supplement.title || supplement.id]));
+  return (ids || []).map((id) => known.get(id) || id).join(", ");
+}
+
 function adventureReadinessRows(selectedPartyId, { adventureType = "random", adventureId = "", profileId = "", mapLimitValue = 60 } = {}) {
   const party = modernState.parties.find((item) => item.id === selectedPartyId);
   const baseRows = [
@@ -5301,6 +5306,16 @@ async function renderGoAdventure() {
   ], "tag_guild_closeout_guidance", "go adventure tag lead resume saved");
   const panel = card("Start New Adventure", "Choose party, adventure type, module, ruleset, and start play. This creates a new session.");
   panel.classList.add("modern-primary-card");
+  const enabledSupplementIds = modernState.preferences?.enabled_supplement_ids || ["expanded-edition-core"];
+  const supplementPreferenceCard = card("Supplement Preferences", "Preference-only for now: these saved Settings choices show which supplements you intend to use. New sessions still lock supplements from the selected random profile or imported module until activation is fully wired.");
+  supplementPreferenceCard.classList.add("modern-card-compact");
+  supplementPreferenceCard.appendChild(
+    modernStatusRow(
+      "Enabled preference",
+      supplementTitlesForIds(enabledSupplementIds) || "Four Against Darkness Expanded Edition",
+      "Session locked supplements are shown on Resume/Saved Games after creation; this preference list is the next activation bridge."
+    )
+  );
   const party = select("modern-start-party", "Party to send on the adventure.", partyOptions());
   party.value = prefs.lastPartyId || "";
   const type = select("modern-adventure-type", "Adventure type filter: Random creates a generated dungeon; Imported/AI uses an installed adventure module.", [["random", "Random"], ["imported", "Imported Adventure Module"], ["ai", "AI Adventure Module"]]);
@@ -5540,7 +5555,7 @@ async function renderGoAdventure() {
     panelEl.append(...nodes.filter(Boolean));
     panels[key] = panelEl;
   }
-  addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, workflowGuide]);
+  addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, supplementPreferenceCard, workflowGuide]);
   addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [sessions, saved, management]);
   addGoAdventureTab("reference", "Reference / Playtest", "Capture playtest issues and review closeout/reference context.", [
     renderPlaytestTriagePanel("go-adventure"),
