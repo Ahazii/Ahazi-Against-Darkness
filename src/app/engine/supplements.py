@@ -3,12 +3,46 @@ from __future__ import annotations
 from copy import deepcopy
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 
 SUPPLEMENT_REGISTRY_VERSION = 1
 LOCKED_CORE_SUPPLEMENT_ID = "expanded-edition-core"
 SUPPLEMENT_MANIFEST_FILENAME = "supplement.json"
+SUPPLEMENT_MANIFEST_SCHEMA_PATH = "data/supplements/schema/supplement_manifest.v1.json"
+SUPPLEMENT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+SUPPLEMENT_KINDS = {
+    "core_rules",
+    "rules_expansion",
+    "adventure",
+    "campaign",
+    "tile_pack",
+    "terrain_pack",
+    "imported_pdf",
+    "local_user",
+}
+SUPPLEMENT_STATUSES = {"active", "review_only", "planned", "deprecated"}
+SUPPLEMENT_SOURCE_TYPES = {"pdf", "local_user", "packaged_data"}
+SUPPLEMENT_CAPABILITIES = {
+    "foes",
+    "classes",
+    "items",
+    "tables",
+    "states",
+    "rules",
+    "room_tiles",
+    "terrain_types",
+    "generators",
+    "rules_reference",
+    "campaign_state",
+    "procedures",
+    "locations",
+    "narrative",
+    "maps",
+    "trackers",
+    "artwork",
+}
 
 LEGACY_SUPPLEMENT_FIELDS: list[dict[str, str]] = [
     {
@@ -246,34 +280,101 @@ def _manifest_display_path(path: Path, *, root_dir: Path | None = None, data_dir
     return path.as_posix()
 
 
+def _string_list(value: Any, field: str, errors: list[str]) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        errors.append(f"{field} must be an array.")
+        return []
+    clean: list[str] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, str) or not item.strip():
+            errors.append(f"{field}[{index}] must be a non-empty string.")
+            continue
+        clean.append(item.strip())
+    if len(clean) != len(set(clean)):
+        errors.append(f"{field} must not contain duplicates.")
+    return clean
+
+
+def validate_supplement_manifest(raw: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    if raw.get("schema_version") != SUPPLEMENT_REGISTRY_VERSION:
+        errors.append(f"schema_version must be {SUPPLEMENT_REGISTRY_VERSION}.")
+    supplement_id = str(raw.get("id") or "").strip()
+    if not supplement_id:
+        errors.append("id is required.")
+    elif not SUPPLEMENT_ID_RE.match(supplement_id):
+        errors.append("id must use lowercase letters, numbers, underscores, or hyphens and start with a letter or number.")
+    for field in ("title", "kind", "status"):
+        if not str(raw.get(field) or "").strip():
+            errors.append(f"{field} is required.")
+    kind = str(raw.get("kind") or "").strip()
+    if kind and kind not in SUPPLEMENT_KINDS:
+        errors.append(f"kind must be one of: {', '.join(sorted(SUPPLEMENT_KINDS))}.")
+    status = str(raw.get("status") or "").strip()
+    if status and status not in SUPPLEMENT_STATUSES:
+        errors.append(f"status must be one of: {', '.join(sorted(SUPPLEMENT_STATUSES))}.")
+    if not isinstance(raw.get("locked"), bool):
+        errors.append("locked must be a boolean.")
+    if not isinstance(raw.get("enabled_by_default"), bool):
+        errors.append("enabled_by_default must be a boolean.")
+
+    source = raw.get("source")
+    if not isinstance(source, dict):
+        errors.append("source must be an object.")
+    else:
+        source_type = str(source.get("type") or "").strip()
+        if source_type not in SUPPLEMENT_SOURCE_TYPES:
+            errors.append(f"source.type must be one of: {', '.join(sorted(SUPPLEMENT_SOURCE_TYPES))}.")
+        if source_type == "pdf" and not str(source.get("source_pdf") or "").strip():
+            errors.append("source.source_pdf is required for pdf supplements.")
+        if source_type == "local_user" and not str(source.get("source_path") or "").strip():
+            errors.append("source.source_path is required for local_user supplements.")
+
+    capabilities = _string_list(raw.get("capabilities"), "capabilities", errors)
+    if not capabilities:
+        errors.append("capabilities must include at least one capability.")
+    for capability in capabilities:
+        if capability not in SUPPLEMENT_CAPABILITIES:
+            errors.append(f"Unknown capability {capability!r}.")
+    _string_list(raw.get("dependencies"), "dependencies", errors)
+    _string_list(raw.get("conflicts"), "conflicts", errors)
+
+    legacy_mappings = raw.get("legacy_mappings")
+    if not isinstance(legacy_mappings, dict):
+        errors.append("legacy_mappings must be an object.")
+    else:
+        for key, value in legacy_mappings.items():
+            if not isinstance(key, str) or not key.strip():
+                errors.append("legacy_mappings keys must be non-empty strings.")
+                continue
+            _string_list(value, f"legacy_mappings.{key}", errors)
+    if "notes" in raw and not isinstance(raw.get("notes"), str):
+        errors.append("notes must be a string.")
+    return errors
+
+
 def _normalize_manifest(raw: dict[str, Any], *, origin: str, path: Path, root_dir: Path | None, data_dir: Path | None) -> dict[str, Any]:
+    validation_errors = validate_supplement_manifest(raw)
+    if validation_errors:
+        raise ValueError("; ".join(validation_errors))
     supplement_id = str(raw.get("id") or "").strip()
     title = str(raw.get("title") or "").strip()
     kind = str(raw.get("kind") or "").strip()
     status = str(raw.get("status") or "").strip()
-    if not supplement_id:
-        raise ValueError("id is required.")
-    if not title:
-        raise ValueError(f"{supplement_id}: title is required.")
-    if not kind:
-        raise ValueError(f"{supplement_id}: kind is required.")
-    if not status:
-        raise ValueError(f"{supplement_id}: status is required.")
-    capabilities = raw.get("capabilities") or []
-    if not isinstance(capabilities, list):
-        raise ValueError(f"{supplement_id}: capabilities must be an array.")
     manifest = deepcopy(raw)
     manifest["id"] = supplement_id
     manifest["title"] = title
     manifest["kind"] = kind
     manifest["status"] = status
-    manifest["capabilities"] = [str(item) for item in capabilities]
-    manifest["dependencies"] = [str(item) for item in manifest.get("dependencies") or []]
-    manifest["conflicts"] = [str(item) for item in manifest.get("conflicts") or []]
-    manifest["legacy_mappings"] = manifest.get("legacy_mappings") if isinstance(manifest.get("legacy_mappings"), dict) else {}
-    manifest["source"] = manifest.get("source") if isinstance(manifest.get("source"), dict) else {}
-    manifest["locked"] = bool(manifest.get("locked"))
-    manifest["enabled_by_default"] = bool(manifest.get("enabled_by_default"))
+    manifest["capabilities"] = _string_list(raw.get("capabilities"), "capabilities", [])
+    manifest["dependencies"] = _string_list(manifest.get("dependencies"), "dependencies", [])
+    manifest["conflicts"] = _string_list(manifest.get("conflicts"), "conflicts", [])
+    manifest["legacy_mappings"] = {
+        str(key): _string_list(value, f"legacy_mappings.{key}", [])
+        for key, value in (manifest.get("legacy_mappings") or {}).items()
+    }
     manifest["registry_origin"] = origin
     manifest["manifest_path"] = _manifest_display_path(path, root_dir=root_dir, data_dir=data_dir)
     return manifest
@@ -474,6 +575,7 @@ def supplement_payload(root_dir: Path | None = None, data_dir: Path | None = Non
         "supplements": supplements,
         "legacy_fields": deepcopy(LEGACY_SUPPLEMENT_FIELDS),
         "manifest_filename": SUPPLEMENT_MANIFEST_FILENAME,
+        "manifest_schema": f"ROOT/{SUPPLEMENT_MANIFEST_SCHEMA_PATH}",
         "packaged_manifest_root": "ROOT/data/supplements",
         "local_manifest_root": "DATA_DIR/Supplements",
         "diagnostics": diagnostics,

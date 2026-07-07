@@ -2760,6 +2760,8 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "modern-table-preview-mount",
         "Supplement Library (read-only)",
         "Packaged manifests",
+        "Manifest schema",
+        "ROOT/data/supplements/schema/supplement_manifest.v1.json",
         "Local manifests",
         "ROOT/data/supplements",
         "DATA_DIR/Supplements",

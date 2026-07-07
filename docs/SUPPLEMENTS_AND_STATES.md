@@ -541,6 +541,7 @@ Default mode should remain dark unless the user chooses otherwise or system sett
 
 - Add supplement metadata records for existing rule/data groups.
 - Store packaged supplement metadata at `data/supplements/<supplement_id>/supplement.json`.
+- Validate supplement metadata against `data/supplements/schema/supplement_manifest.v1.json` plus the app's runtime manifest validator.
 - Create `DATA_DIR/Supplements/` for future local reviewed supplements beside `game.db`.
 - Do not change gameplay.
 - The app can list known supplements and their capabilities.

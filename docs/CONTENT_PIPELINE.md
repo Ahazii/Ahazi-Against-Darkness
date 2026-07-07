@@ -290,7 +290,7 @@ resolves all dice and combat.
 Package notes:
 
 - Use an adventure package when a PDF introduces its own maps, numbered locations, exact local narrative, terrain, room tiles, custom generators, custom roll tables, new foes, new items, new classes, states/conditions, module-local rules, doom/event trackers, campaign-state facts, or branch procedures that do not fit the base manifest.
-- Use a supplement manifest when a reviewed package, rules expansion, tile pack, terrain pack, or campaign add-on needs to be listed as a selectable content source. Packaged manifests live under `data/supplements/`; future local reviewed manifests live under `DATA_DIR/Supplements/`. They remain metadata until a trusted loader implements the content.
+- Use a supplement manifest when a reviewed package, rules expansion, tile pack, terrain pack, or campaign add-on needs to be listed as a selectable content source. Packaged manifests live under `data/supplements/`; future local reviewed manifests live under `DATA_DIR/Supplements/`. `data/supplements/schema/supplement_manifest.v1.json` defines the manifest shape, and the app reports diagnostics for malformed local manifests. They remain metadata until a trusted loader implements the content.
 - Keep package assets in the adventure's user-facing `DATA_DIR/Adventures/<adventure_id>/` folder. Do not store user-supplied map images or private PDF-derived artwork inside the container image.
 - Use percent coordinates for pins so a map can be resized without losing room/area alignment.
 - Use pin roles as review labels only until the PDF text and location branches have been checked; do not auto-create playable exits from a visual marker alone.

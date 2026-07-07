@@ -2813,6 +2813,12 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Manifest records document available content; they do not move rule data or change mechanics by themselves.",
         },
         {
+            "area": "Manifest schema",
+            "path": "data/supplements/schema/supplement_manifest.v1.json",
+            "purpose": "Defines the required supplement manifest fields, allowed kinds/statuses/capabilities, source metadata, dependencies, conflicts, and legacy mappings.",
+            "rules_boundary": "Schema validation protects metadata quality; it does not validate printed PDF mechanics.",
+        },
+        {
             "area": "Local manifests",
             "path": "DATA_DIR/Supplements/<supplement_id>/supplement.json",
             "purpose": "Provides a user-facing appdata location for future reviewed or imported local supplements.",

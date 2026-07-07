@@ -24,6 +24,7 @@ from app.engine.supplements import (
     supplement_registry,
     supplement_snapshot_log_line,
     supplement_titles_for_ids,
+    validate_supplement_manifest,
 )
 from app.engine.terrain_registry import terrain_payload
 from app.schemas import SessionState
@@ -70,6 +71,7 @@ def test_supplement_registry_marks_core_locked_and_legacy_fields() -> None:
     assert payload["packaged_manifest_root"] == "ROOT/data/supplements"
     assert payload["local_manifest_root"] == "DATA_DIR/Supplements"
     assert payload["manifest_filename"] == "supplement.json"
+    assert payload["manifest_schema"] == "ROOT/data/supplements/schema/supplement_manifest.v1.json"
 
     supplements = {item["id"]: item for item in payload["supplements"]}
     core = supplements[LOCKED_CORE_SUPPLEMENT_ID]
@@ -91,6 +93,51 @@ def test_supplement_registry_marks_core_locked_and_legacy_fields() -> None:
     for field in ["ruleset", "ruleset_profile_id", "tile_catalog", "courtship_enabled", "fiendish_foes_enabled", "tag_banking_enabled"]:
         assert legacy[field]["status"] == "legacy_compatibility"
     assert legacy["ruleset_profile_id"]["replacement"] == "active_supplements"
+
+
+def test_packaged_supplement_manifests_match_manifest_validator() -> None:
+    root = Path(__file__).resolve().parents[1]
+    schema = json.loads((root / "data" / "supplements" / "schema" / "supplement_manifest.v1.json").read_text(encoding="utf-8"))
+    assert schema["properties"]["kind"]["enum"]
+    assert "terrain_types" in schema["properties"]["capabilities"]["items"]["enum"]
+    paths = sorted((root / "data" / "supplements").glob("*/supplement.json"))
+    assert paths
+    for path in paths:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        assert validate_supplement_manifest(manifest) == [], path
+
+
+def test_supplement_manifest_validator_reports_schema_errors() -> None:
+    errors = validate_supplement_manifest(
+        {
+            "schema_version": 2,
+            "id": "Bad Id",
+            "title": "",
+            "kind": "mystery",
+            "status": "maybe",
+            "locked": "no",
+            "enabled_by_default": "yes",
+            "source": {"type": "pdf"},
+            "capabilities": ["rules", "rules", "unknown"],
+            "dependencies": ["expanded-edition-core"],
+            "conflicts": "none",
+            "legacy_mappings": {"ruleset": "ee"},
+            "notes": 42,
+        }
+    )
+    assert "schema_version must be 1." in errors
+    assert any("id must use lowercase" in item for item in errors)
+    assert "title is required." in errors
+    assert any("kind must be one of" in item for item in errors)
+    assert any("status must be one of" in item for item in errors)
+    assert "locked must be a boolean." in errors
+    assert "enabled_by_default must be a boolean." in errors
+    assert "source.source_pdf is required for pdf supplements." in errors
+    assert "capabilities must not contain duplicates." in errors
+    assert "Unknown capability 'unknown'." in errors
+    assert "conflicts must be an array." in errors
+    assert "legacy_mappings.ruleset must be an array." in errors
+    assert "notes must be a string." in errors
 
 
 def test_supplement_registry_loads_local_manifest_and_reports_bad_files(tmp_path: Path) -> None:

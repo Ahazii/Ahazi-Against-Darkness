@@ -3248,6 +3248,7 @@ function renderSupplementRegistryPanel() {
   summary.append(
     modernStatusRow("Registry", `${supplements.length} supplement records`, "Read-only registry loaded from the backend supplement metadata."),
     modernStatusRow("Locked core", payload.locked_core_id || "expanded-edition-core", "The base Expanded Edition supplement is always active."),
+    modernStatusRow("Manifest schema", payload.manifest_schema || "ROOT/data/supplements/schema/supplement_manifest.v1.json", "Schema and app validator used for packaged and local supplement manifests."),
     modernStatusRow("Packaged manifests", payload.packaged_manifest_root || "ROOT/data/supplements", "Built-in supplement manifests shipped with the app."),
     modernStatusRow("Local manifests", payload.local_manifest_root || "DATA_DIR/Supplements", "User-facing folder for future local supplement manifests beside game.db."),
     modernStatusRow("Mode", payload.read_only ? "Read-only" : "Editable", "This screen is intentionally not changing gameplay yet."),
