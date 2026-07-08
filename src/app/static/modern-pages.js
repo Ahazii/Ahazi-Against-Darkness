@@ -6819,12 +6819,16 @@ async function renderRulePdfManager() {
         );
       }
       const editor = el("div", "modern-source-block-editor");
+      const searchPreview = el("div", "modern-source-block-search-preview");
+      if (searchTerms(needle).length) {
+        searchPreview.append(el("strong", "", "Search hit preview"), highlightedEl("p", "modern-pre-wrap", block.text || "", needle));
+      }
       editor.append(
+        searchPreview,
         field("Reviewed text", textArea),
         field("Assignment", assignmentEdit),
         field("Split text", splitArea),
-        actionsRow,
-        highlightedEl("p", "modern-pre-wrap", block.text || "", needle)
+        actionsRow
       );
       return editor;
     }

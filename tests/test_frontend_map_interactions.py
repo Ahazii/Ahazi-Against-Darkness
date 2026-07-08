@@ -2937,6 +2937,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/api/supplements/source-scans" in MODERN_PAGES_JS
     assert "View Blocks" in MODERN_PAGES_JS
     assert "Visible source blocks" in MODERN_PAGES_JS
+    assert "Search hit preview" in MODERN_PAGES_JS
+    assert "modern-source-block-search-preview" in MODERN_PAGES_JS
     assert "page-boundary candidates" in MODERN_PAGES_JS
     assert "sourceScanDetailMounts" in MODERN_PAGES_JS
     assert "modern-source-review-grid" in MODERN_PAGES_JS
