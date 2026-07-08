@@ -26,6 +26,7 @@ Status: active priority.
 - Generated TAG playtest support now includes richer app-authored lead guidance, more interesting prompt prose, lead selector/status cards, and TAG log filtering. The next big TAG pass should be a module-family playthrough audit: start with Rumors, then Treasure Maps, then Thematic Dungeons, then Guild Jobs, and convert any still-manual procedure notes into safe action buttons.
 - Go Adventure now uses Start, Resume, Generate, Guild Jobs, and Reference tabs. Exploration now calls the play text **Narrative** and lets the player show/hide Current Objective, Text Commands, Exits, and Character Sheets. Continue polishing toward an app-style shell, but avoid building a complex floating-window system until the docked controls are fully playtested.
 - The PDF boundary remains: app workflow guidance can be expanded freely, but exact printed text should stay in Rules Reference links or source-page references unless explicitly signed off.
+- Imported adventure package diagnostics now compare candidate states and terrain types with the State Registry and Terrain Registry as review-only hints. Future PDF package work should keep this boundary: diagnostics can guide review, but loaders should not promote imported rules, states, or terrain into active play until a trusted implementation explicitly owns that behavior.
 
 ## Dashboard Artwork And Help
 

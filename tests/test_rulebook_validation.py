@@ -333,6 +333,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "adventure_management_browser_table",
     "adventure_package_map_pinning_table",
     "adventure_package_review_workspace_table",
+    "adventure_package_registry_diagnostics_table",
     "adventure_package_schema_table",
     "adventure_pdf_source_scan_table",
     "application_artwork_slots_table",

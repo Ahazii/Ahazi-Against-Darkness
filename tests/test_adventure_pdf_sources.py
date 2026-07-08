@@ -18,6 +18,7 @@ from app.engine.adventure_packages import (
     package_detail,
     update_adventure_package_review,
     upsert_map_pin,
+    validate_adventure_package,
 )
 
 
@@ -402,6 +403,40 @@ def test_update_package_review_saves_nodes_and_reports_diagnostics(tmp_path: Pat
     assert detail["procedures"][0]["steps"][0]["op"] == "show_choice"
     assert detail["ignored_records"][0]["original_list"] == "items"
     assert detail["review"]["notes"] == "Opening scene checked against the source PDF."
+
+
+def test_package_diagnostics_cross_reference_state_and_terrain_registries() -> None:
+    diagnostics = validate_adventure_package(
+        {
+            "schema_version": 1,
+            "package_id": "registry-review",
+            "title": "Registry Review",
+            "source": {"type": "pdf", "source_pdf": "Review.pdf"},
+            "capabilities": ["states", "terrain_types"],
+            "nodes": [],
+            "maps": [],
+            "states": [
+                {"id": "dark-plague", "name": "Dark Plague", "source_page": 1},
+                {"id": "moon-sick", "name": "Moon Sick", "source_page": 2},
+            ],
+            "terrain_types": [
+                {"id": "dungeon", "name": "Dungeon", "source_page": 1},
+                {"id": "moon-marsh", "name": "Moon Marsh", "source_page": 3},
+            ],
+            "locations": [],
+            "room_tiles": [],
+            "generators": [],
+            "campaign_state": [],
+            "narrative": [],
+        }
+    )
+
+    assert diagnostics["valid"] is True
+    warnings = "\n".join(diagnostics["warnings"])
+    assert "states[0] 'Dark Plague' matches existing State Registry row 'dark-plague'" in warnings
+    assert "states[1] 'Moon Sick' has no State Registry match yet" in warnings
+    assert "terrain_types[0] 'Dungeon' matches Terrain Registry row(s) dungeon" in warnings
+    assert "terrain_types[1] 'Moon Marsh' has no Terrain Registry match yet" in warnings
 
 
 def test_package_candidate_extraction_populates_human_review_lists(monkeypatch, tmp_path: Path) -> None:

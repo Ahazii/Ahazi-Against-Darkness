@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from .adventure_pdf_sources import adventure_pdf_source_dirs, load_adventure_pdf_assessments, user_adventure_pdf_dir
+from .states import state_definition_for_status
+from .terrain_registry import terrain_definitions_for_context
 
 
 PACKAGE_FILENAME = "package.json"
@@ -54,6 +56,14 @@ MAP_PIN_ROLES = {"location", "room", "entrance", "exit", "stairs", "secret", "ob
 def _slug(value: str, fallback: str = "adventure-package") -> str:
     clean = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return clean or fallback
+
+
+def _record_label(record: dict[str, Any]) -> str:
+    for key in ("name", "title", "label", "id"):
+        value = str(record.get(key) or "").strip()
+        if value:
+            return value
+    return "unnamed"
 
 
 def adventure_package_root(data_dir: Path) -> Path:
@@ -930,6 +940,39 @@ def _package_with_diagnostics(data_dir: Path, package: dict[str, Any]) -> dict[s
     return detail
 
 
+def _append_registry_review_warnings(package: dict[str, Any], warnings: list[str]) -> None:
+    for index, record in enumerate(package.get("states") or []):
+        if not isinstance(record, dict):
+            continue
+        label = _record_label(record)
+        match = state_definition_for_status(label)
+        if match:
+            warnings.append(
+                f"states[{index}] {label!r} matches existing State Registry row {match.get('id')!r}; review whether the package should reference, extend, or override it."
+            )
+        else:
+            warnings.append(
+                f"states[{index}] {label!r} has no State Registry match yet; keep it review-only until trigger, duration, removal, and target scope are checked."
+            )
+    for index, record in enumerate(package.get("terrain_types") or []):
+        if not isinstance(record, dict):
+            continue
+        matches = terrain_definitions_for_context(
+            environment=str(record.get("environment") or record.get("id") or "").strip() or None,
+            terrain=str(record.get("terrain") or record.get("name") or record.get("label") or "").strip() or None,
+            tile_catalog=str(record.get("tile_catalog") or "").strip() or None,
+        )
+        label = _record_label(record)
+        if matches:
+            warnings.append(
+                f"terrain_types[{index}] {label!r} matches Terrain Registry row(s) {', '.join(str(item.get('id')) for item in matches)}; review whether this package terrain is new, derived, or an alias."
+            )
+        else:
+            warnings.append(
+                f"terrain_types[{index}] {label!r} has no Terrain Registry match yet; keep it review-only until environment, terrain value, and tile/generator usage are checked."
+            )
+
+
 def validate_adventure_package(package: dict[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -1012,7 +1055,7 @@ def validate_adventure_package(package: dict[str, Any]) -> dict[str, Any]:
                     errors.append(f"maps[{map_index}].pins[{pin_index}].role must be one of {sorted(MAP_PIN_ROLES)}.")
     else:
         errors.append("maps must be an array.")
-    for field in ("foes", "classes", "items", "states", "rules", "ignored_records", "tables", "trackers", "procedures"):
+    for field in ("foes", "classes", "items", "states", "rules", "ignored_records", "tables", "trackers", "procedures", "locations", "room_tiles", "terrain_types", "generators", "campaign_state", "narrative"):
         if field in package and not isinstance(package.get(field), list):
             errors.append(f"{field} must be an array.")
     if "artwork" in package and not isinstance(package.get("artwork"), list):
@@ -1027,6 +1070,7 @@ def validate_adventure_package(package: dict[str, Any]) -> dict[str, Any]:
     ready_nodes = [node for node in nodes if isinstance(node, dict) and node.get("review_status") == "ready_for_manifest"]
     if nodes and not ready_nodes:
         warnings.append("No reviewed node is marked ready_for_manifest yet.")
+    _append_registry_review_warnings(package, warnings)
     valid = not errors
     return {"valid": valid, "errors": errors, "warnings": warnings}
 

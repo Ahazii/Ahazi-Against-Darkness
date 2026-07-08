@@ -599,6 +599,7 @@ Good first candidates:
 - Extend package capabilities with `locations`, `room_tiles`, `terrain_types`, `generators`, `campaign_state`, and `narrative`.
 - Keep v1 package compatibility.
 - Add migration/validation diagnostics.
+- Cross-reference imported package `states` and `terrain_types` against the State Registry and Terrain Registry as review-only hints before any loader promotes them.
 - Keep package records declarative unless a trusted loader explicitly promotes them into a supplement manifest.
 
 ### Phase 6: Rule Hooks

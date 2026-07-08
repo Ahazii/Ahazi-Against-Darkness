@@ -3222,6 +3222,26 @@ def _rules_tables_payload() -> dict:
             "safety": "Private-use PDF prose and artwork stay local in DATA_DIR unless publishing rights are secured.",
         },
     ]
+    data["adventure_package_registry_diagnostics_table"] = [
+        {
+            "record_type": "states[]",
+            "diagnostic": "Cross-references candidate package state names against the State Registry.",
+            "player_use": "See whether an imported condition looks like an existing app state or a genuinely new module-local state candidate.",
+            "rules_boundary": "A match is a review hint only. It does not apply the state, merge the record, or change save data.",
+        },
+        {
+            "record_type": "terrain_types[]",
+            "diagnostic": "Cross-references package terrain/environment candidates against the Terrain Registry.",
+            "player_use": "See whether package terrain is likely an alias, a derived terrain, or a new terrain type needing review.",
+            "rules_boundary": "A match is a review hint only. It does not change map generation, spell legality, or table routing.",
+        },
+        {
+            "record_type": "supplement-shaped package fields",
+            "diagnostic": "Validates that locations, room_tiles, terrain_types, generators, campaign_state, and narrative are arrays when present.",
+            "player_use": "Catch malformed package review data before a future loader promotes it.",
+            "rules_boundary": "These fields remain declarative review data until a trusted loader or explicit rule implementation uses them.",
+        },
+    ]
     data["artwork_expansion_plan_table"] = [
         {
             "slot": "Module cover art",
