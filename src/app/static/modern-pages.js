@@ -1634,6 +1634,102 @@ function renderThematicDungeonSignoffChecklist() {
   return panel;
 }
 
+function tagGuildJobNumber(adventure) {
+  const text = `${adventure.tag_lead_detail || ""} ${adventure.name || ""} ${adventure.id || ""}`;
+  const explicit = text.match(/guild job\s+(\d{1,2})/i);
+  if (explicit) return Number(explicit[1]);
+  const tagId = String(adventure.id || "");
+  const suffix = tagId.match(/tag-guild-job-(\d{1,2})/i);
+  return suffix ? Number(suffix[1]) : 0;
+}
+
+function tagGuildJobGuidance(adventure) {
+  const text = `${adventure.tag_lead_detail || ""} ${adventure.tag_scene || ""} ${adventure.name || ""}`.toLowerCase();
+  if (text.includes("clean up my castle")) return "Clean Up My Castle: track ten-room completion, no exit/re-entry, foe-count pay, and the 1-Clue portrait cache before Guild payout.";
+  if (text.includes("gorungar")) return "Gorungar: confirm archer count/proxy, poison/surprise notes, killed-or-captured outcome, and armband/coin-bag reward.";
+  if (text.includes("griffin")) return "Griffin Omelets: track mountain checks, nest search, egg count, carrying limits, egg break checks, and intact/broken egg payment.";
+  if (text.includes("portrait")) return "A Portrait in Red: track outbound checks, persuasion/ejected characters, return checks, painting snatch, artist survival, and commission payout.";
+  if (text.includes("sewer")) return "Sewers Search: use sewer vermin/minion procedures, spend 3 Clues to reveal the thief, capture-alive bonus, and post-adventure disease checks.";
+  if (text.includes("monoceros")) return "Monoceros Hunt: track hunting rolls, 3-Clue shortcut risk, capture-alive condition, forbidden damage types, hide checks, and reward eligibility.";
+  if (text.includes("rumor")) return "Guild Job routed to Rumor: review both the Guild Job commission and the nested Rumor route/reward/XP closeout.";
+  if (text.includes("thematic dungeon")) return "Guild Job routed to Thematic Dungeon: review both the Guild Job commission and the nested theme procedure/reward closeout.";
+  return "Check generated module metadata for the Guild Job commission, nested result, proof condition, payment, XP, Guild coffers/share, and closeout state.";
+}
+
+function tagGuildJobAuditRows(adventure) {
+  const number = tagGuildJobNumber(adventure);
+  return [
+    ["Guild Job result", number ? `Guild Job ${number}` : "Generated Guild Job", "Confirm this is the intended Guild Job table result before Start Adventure."],
+    ["Job procedure", tagGuildJobGuidance(adventure), "Procedure metadata comes from the generated manifest. Exact values, rolls, reward amounts, and consequences remain with the PDF/player signoff."],
+    ["Play focus", "Commission -> proof/procedure -> payment/reward -> Guild closeout", "Guild Jobs are official work: proving the job condition matters as much as clearing the room."],
+    ["Signoff", "Job proof, capture-alive route, Clue spends, payment, XP, Guild coffers/share, banking/storage, and closeout review", "Use Adventures Guild Actions during play, then review the Adventures Guild Action Log before creating another job."],
+  ];
+}
+
+function renderGuildJobLeadAuditPanel(adventureSelect = null) {
+  const panel = card("TAG Guild Job Leads", "Audit installed Guild Job modules before play. Each row helps confirm the commission, nested result, proof condition, payment, XP, Guild obligations, and closeout signoff.");
+  const jobs = tagGeneratedAdventures().filter((adventure) => String(adventure.tag_lead_type || "").toLowerCase() === "guild_job");
+  if (!jobs.length) {
+    panel.appendChild(el("p", "muted", "No Guild Job modules are installed yet. Create a Guild Job lead in Go Adventure or Guild Management, then use this panel to review it before Start Adventure."));
+    const emptyActions = actions();
+    emptyActions.append(
+      link("Job Rules", ruleReferenceHref("tag_guild_job_playthrough_audit", "TAG guild job playthrough audit"), "Open the Rules Reference entry for the app-owned Guild Job playthrough audit workflow.", "link-button secondary"),
+      link("Job Table", "/modern/tables?help=tag_guild_job_playthrough_audit_table", "Open the modern Tables entry for Guild Job audit surfaces and PDF boundaries.", "link-button secondary")
+    );
+    panel.appendChild(emptyActions);
+    return panel;
+  }
+  for (const adventure of jobs.slice(0, 12)) {
+    const row = el("div", "modern-row");
+    row.title = "Guild Job audit row: confirms which job commission this is and which proof, payment, XP, Guild, banking, and storage checks should be reviewed.";
+    row.append(
+      el("strong", "", adventure.name || adventure.id),
+      el("span", "muted", `${adventure.tag_lead_detail || "Guild Job"}${adventure.tag_pdf_pages ? ` · ${adventure.tag_pdf_pages}` : ""}`)
+    );
+    for (const [title, body, hint] of tagGuildJobAuditRows(adventure)) {
+      row.appendChild(modernStatusRow(title, body, hint));
+    }
+    const rowActions = actions();
+    rowActions.append(
+      button("Select Job", "Switch Start New Adventure to Imported Adventure Module and select this Guild Job lead.", async () => {
+        const type = document.getElementById("modern-adventure-type");
+        if (type) type.value = "imported";
+        if (adventureSelect) {
+          adventureSelect.replaceChildren(...optionRows(adventureOptions("imported")));
+          adventureSelect.value = adventure.id;
+        }
+        writeModernPrefs({ lastAdventureType: "imported", lastAdventureId: adventure.id || "" });
+        setStatus(`Selected Guild Job lead ${adventure.name || adventure.id}. Review setup and closeout gates before starting.`);
+      }),
+      link("Rules", ruleReferenceHref("tag_guild_job_playthrough_audit", "TAG guild job playthrough audit"), "Open the Rules Reference entry for Guild Job playthrough audit guidance.", "link-button secondary"),
+      link("Table", "/modern/tables?help=tag_guild_job_playthrough_audit_table", "Open the modern Tables row documenting this Guild Job audit surface.", "link-button secondary")
+    );
+    row.appendChild(rowActions);
+    panel.appendChild(row);
+  }
+  return panel;
+}
+
+function renderGuildJobSignoffChecklist() {
+  const panel = card("Guild Job Signoff Checklist", "Use this app-owned checklist after a TAG Guild Job. It focuses on proof, job-specific payment, Guild obligations, and closeout.");
+  const checks = [
+    ["Commission", "Confirm the Guild Job table result and any nested minor quest, Rumor, or Thematic Dungeon result.", "Guild Jobs can hand off to another generated family; keep the official job wrapper visible."],
+    ["Proof and procedure", "Resolve foe-count pay, capture-alive outcome, egg/portrait/sewer/monoceros procedures, Clue spends, or nested route choices.", "Use Adventures Guild Actions so the campaign log explains why payment or reward changed."],
+    ["Payment and rewards", "Check party pay, bonus/forfeit conditions, item rewards, XP markers, Guild share, bank deposits, and storage consequences.", "Jobs often fail or change payout based on proof, survival, capture, or carried goods."],
+    ["Closeout", "Review Guild upkeep, availability reroll reset, unresolved guidance, and the Adventures Guild Action Log before creating another job.", "Guild Jobs are closeout-sensitive because Guild benefits and coffers can drift between sessions."],
+  ];
+  for (const [title, body, hint] of checks) {
+    panel.appendChild(modernStatusRow(title, body, hint));
+  }
+  const panelActions = actions();
+  panelActions.append(
+    link("Job Rules", ruleReferenceHref("tag_guild_job_playthrough_audit", "TAG guild job playthrough audit"), "Open the Rules Reference entry for Guild Job signoff guidance.", "link-button secondary"),
+    link("Guild", "/modern/guild", "Open Guild Management to review coffers, benefits, Guild jobs, and closeout prompts.", "link-button secondary")
+  );
+  panel.appendChild(panelActions);
+  return panel;
+}
+
 function sessionRecencyKey(session) {
   return String(session?.updated_at || session?.saved_at || session?.created_at || session?.id || "");
 }
@@ -5751,6 +5847,8 @@ function renderAdventureManagement() {
     renderTreasureMapSignoffChecklist(),
     renderThematicDungeonLeadAuditPanel(),
     renderThematicDungeonSignoffChecklist(),
+    renderGuildJobLeadAuditPanel(),
+    renderGuildJobSignoffChecklist(),
   ]);
   rootEl.append(tabs, ...Object.values(panels));
   const storedTab = window.sessionStorage.getItem(ADVENTURE_MANAGEMENT_TAB_KEY);
@@ -6089,6 +6187,9 @@ async function renderGoAdventure() {
   addGoAdventureTab("reference", "Reference / Playtest", "Capture playtest issues and review closeout/reference context.", [
     renderPlaytestTriagePanel("go-adventure"),
     renderAdventureCloseoutCockpit("Go Adventure"),
+    renderTagLeadSelectorPanel(),
+    renderGuildJobLeadAuditPanel(adventure),
+    renderGuildJobSignoffChecklist(),
     renderTagActionLogExplorer(),
   ]);
   rootEl.append(tabs, ...Object.values(panels));

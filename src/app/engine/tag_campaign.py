@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from math import ceil
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -5881,6 +5882,43 @@ def _tag_enrich_thematic_profile(profile: dict[str, object], lead_detail: str) -
     }
 
 
+def _guild_job_result_from_detail(lead_detail: str) -> int:
+    match = re.search(r"Guild Job\s+(\d+)", lead_detail, flags=re.IGNORECASE)
+    if match:
+        return max(1, min(6, int(match.group(1))))
+    return 0
+
+
+def _tag_enrich_guild_job_profile(profile: dict[str, object], lead_detail: str) -> dict[str, object]:
+    job_number = _guild_job_result_from_detail(lead_detail)
+    title = str(profile.get("title") or lead_detail)
+    signoff_checks = [
+        "Confirm the printed Guild Job result and any nested minor quest, rumor, or thematic dungeon result before accepting generated shortcuts.",
+        "Record job-specific proof, capture-alive outcome, Clue spend, route, or procedure result in Adventures Guild Actions.",
+        "Review payment, Guild coffers/share, banking/storage, XP, and closeout tasks before starting the next lead.",
+    ]
+    module_profile = dict(profile.get("module_profile") or {})
+    module_signoff = list(module_profile.get("signoff_checks") or [])
+    module_profile["signoff_checks"] = [*module_signoff, *[item for item in signoff_checks if item not in module_signoff]]
+    module_procedure = list(module_profile.get("procedure") or [])
+    module_profile["procedure"] = [
+        *module_procedure,
+        f"Guild Job audit focus: play {title} as paid Guild work with proof, reward accounting, and closeout signoff.",
+    ]
+    return {
+        **profile,
+        "guild_job_result": job_number,
+        "audit_family": "guild_job_playthrough",
+        "playthrough_focus": f"Audit {title} as official Guild work: make the job condition, proof, reward, and Guild closeout visible.",
+        "entry_guidance": "Open with the Guild commission, patron pressure, and the practical reason this work must be recorded cleanly.",
+        "side_guidance": "Use side rooms as evidence, bookkeeping, clue-gate, or procedure beats; if they affect pay or proof, record them before the finale.",
+        "complication_guidance": "Resolve the job-specific procedure deliberately: foe counts, capture-alive choices, tracking checks, escort losses, sewer searches, or nested lead handoffs.",
+        "finale_guidance": "Before closing the job, verify payment conditions, captured-or-killed result, reward modifiers, XP, Guild coffers/share, banking/storage, and closeout tasks.",
+        "signoff_checks": signoff_checks,
+        "module_profile": module_profile,
+    }
+
+
 def _tag_prompt_action_from_profile(action: object) -> dict[str, object] | None:
     if not isinstance(action, dict) or not action.get("label"):
         return None
@@ -6347,6 +6385,8 @@ def _tag_manifest(
         profile = _tag_enrich_treasure_map_profile(profile, lead_detail)
     if lead_type == "thematic_dungeon":
         profile = _tag_enrich_thematic_profile(profile, lead_detail)
+    if lead_type == "guild_job":
+        profile = _tag_enrich_guild_job_profile(profile, lead_detail)
     profile = _apply_tag_narrative_override(profile, lead_type=lead_type, label=title, lead_detail=lead_detail)
     title = str(profile.get("module_title") or title)
     objective = str(profile.get("objective") or objective)
@@ -6390,6 +6430,7 @@ def _tag_manifest(
                 "rumor_number": profile.get("rumor_number", 0),
                 "treasure_map_destination": profile.get("treasure_map_destination", 0),
                 "thematic_dungeon_number": profile.get("thematic_dungeon_number", 0),
+                "guild_job_result": profile.get("guild_job_result", 0),
                 "playthrough_focus": profile.get("playthrough_focus", ""),
                 "signoff_checks": profile.get("signoff_checks", []),
                 "scene_graph_terminal_actions": _tag_profile_actions(profile, "final_prompt_actions"),

@@ -1276,6 +1276,31 @@ def test_tag_remaining_themes_carry_pdf_module_profiles() -> None:
             assert {"bandit_stolen_goods_check", "capture_alive", "bandit_chieftain_capture"} <= action_values
 
 
+def test_tag_guild_job_manifests_include_playthrough_audit_guidance(monkeypatch) -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 3)
+    monkeypatch.setattr(tag_campaign, "roll_d12", lambda: 6)
+
+    for detail in range(1, 7):
+        manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="guild_job", detail=str(detail))
+        assert validate_adventure_manifest(manifest, rules_repo=repo).valid
+        reference = manifest["source"]["parameters"]["tag_reference"]
+
+        assert reference["lead_type"] == "guild_job"
+        assert reference["audit_family"] == "guild_job_playthrough"
+        assert reference["guild_job_result"] == detail
+        assert reference["playthrough_focus"]
+        assert reference["signoff_checks"]
+        assert "Guild Job audit focus" in reference["module_profile"]["procedure"][-1]
+        assert "Confirm the printed Guild Job result" in reference["module_profile"]["signoff_checks"][-3]
+        assert reference["room_prompts"]["tag-lead-entry"]["checklist"]
+        assert reference["room_prompts"]["tag-complication"]["checklist"]
+        assert reference["room_prompts"]["tag-final-scene"]["checklist"]
+        assert any("Guild" in item or "banking" in item for item in reference["room_prompts"]["tag-final-scene"]["checklist"])
+        assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in reference["room_prompts"].values())
+
+
 def test_all_generated_tag_modules_have_playable_scene_actions_and_clean_room_copy(monkeypatch) -> None:
     repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
     cases = {

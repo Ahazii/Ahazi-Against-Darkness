@@ -3657,6 +3657,32 @@ def _rules_tables_payload() -> dict:
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]
+    data["tag_guild_job_playthrough_audit_table"] = [
+        {
+            "surface": "Guild Job audit metadata",
+            "shown_in": "Generated Adventures Guild Guild Job manifests and exploration prompt panels.",
+            "player_use": "Carries Guild Job result, play focus, entry guidance, procedure guidance, finale guidance, job-specific procedure reminders, and closeout checks for generated Guild Job leads.",
+            "pdf_boundary": "App-authored atmosphere and workflow notes only; exact job text, roll outcomes, reward values, and consequences remain with the PDF/player signoff.",
+        },
+        {
+            "surface": "TAG Guild Job Leads panel",
+            "shown_in": "Go Adventure and Adventure Management.",
+            "player_use": "Lists installed Guild Job modules with commission metadata, nested result metadata, prompt counts, proof/payment/XP/Guild signoff reminders, and quick Select Job/Rules/Table actions.",
+            "pdf_boundary": "Displays generated manifest metadata and app checklist text, not copied Guild Job prose.",
+        },
+        {
+            "surface": "Guild Job Signoff Checklist",
+            "shown_in": "Go Adventure and Adventure Management.",
+            "player_use": "Guides review of the official commission, nested minor quest/Rumor/Thematic result, proof condition, payment, XP, Guild share, banking/storage, and closeout tasks.",
+            "pdf_boundary": "Checklist points to what the player should verify; it does not quote or replace the printed TAG Guild Job rules.",
+        },
+        {
+            "surface": "Job prompt checklist",
+            "shown_in": "Exploration room detail panel.",
+            "player_use": "Shows room-specific reminders beside Adventures Guild Action buttons for castle cleanup pay, Gorungar bounty route, griffin eggs, portrait escort, sewer search, monoceros capture, and nested lead handoffs.",
+            "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
+        },
+    ]
     data["character_management_readiness_table"] = [
         {
             "area": "Roster filters",

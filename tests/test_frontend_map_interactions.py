@@ -2682,6 +2682,11 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG Thematic Dungeon Leads" in MODERN_PAGES_JS
     assert "Thematic Dungeon Signoff Checklist" in MODERN_PAGES_JS
     assert "tag_thematic_dungeon_playthrough_audit" in MODERN_PAGES_JS
+    assert "renderGuildJobLeadAuditPanel" in MODERN_PAGES_JS
+    assert "TAG Guild Job Leads" in MODERN_PAGES_JS
+    assert "Guild Job Signoff Checklist" in MODERN_PAGES_JS
+    assert "tag_guild_job_playthrough_audit" in MODERN_PAGES_JS
+    assert "Select Job" in MODERN_PAGES_JS
     assert "Adventures Guild Action Log" in MODERN_PAGES_JS
     assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
     assert "Start\", \"Start a fresh adventure" in MODERN_PAGES_JS

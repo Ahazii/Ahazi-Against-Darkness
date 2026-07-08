@@ -367,6 +367,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "tag_generated_adventure_signoff_table",
     "tag_generated_lead_structure_table",
     "tag_generated_prompt_playtest_table",
+    "tag_guild_job_playthrough_audit_table",
     "tag_rumor_playthrough_audit_table",
     "tag_thematic_dungeon_playthrough_audit_table",
     "tag_treasure_map_playthrough_audit_table",
