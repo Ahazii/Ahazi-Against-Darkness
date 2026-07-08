@@ -3546,7 +3546,7 @@
     },
     {
       "id": "reference_table_collapsible_navigation_table",
-      "title": "Reference and Table Collapsible Navigation Table",
+      "title": "Reference Table Collapsible Navigation Table",
       "category": "app_assets",
       "source_page": 0,
       "keywords": [
@@ -3556,7 +3556,7 @@
         "search",
         "navigation"
       ],
-      "summary": "Tables documents collapsed-by-default navigation on Rules Reference and Tables List, plus trimmed search behavior.",
+      "summary": "Tables documents collapsed-by-default navigation on Rules Reference and Tables List, plus robust trimmed search behavior.",
       "body": "The modern Tables page includes reference_table_collapsible_navigation_table. It documents the Rules Reference and Tables List presentation pattern: category/family groups and individual reference/table cards default to collapsed, while Expand All and Collapse All remain available. Search text is trimmed and repeated spaces are collapsed before matching, so a trailing space in searches such as Adventure still returns the same results. This is navigation and presentation only; it does not alter table data, rule text, source references, supplement badges, or printed outcomes.",
       "implementation_status": "implemented"
     },

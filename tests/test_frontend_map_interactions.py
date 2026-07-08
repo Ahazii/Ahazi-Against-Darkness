@@ -2792,6 +2792,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "modernTableFamily",
         "modern-table-preview-mount",
         "normalizedSearchNeedle",
+        "modernTextMatchesNeedle",
         "Supplement Library (read-only)",
         "Developer tools unlocked.",
         "Packaged manifests",
@@ -2885,12 +2886,18 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
 
 def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -> None:
     assert "const needle = normalizedSearchNeedle(search.value);" in MODERN_PAGES_JS
+    assert "function modernTextMatchesNeedle(text, needle)" in MODERN_PAGES_JS
+    assert '.replace(/[\\u200B-\\u200D\\uFEFF]/g, "")' in MODERN_PAGES_JS
+    assert "terms.every((term) => value.includes(term))" in MODERN_PAGES_JS
+    assert "modernTextMatchesNeedle(`${entry.title}" in MODERN_PAGES_JS
+    assert "modernTextMatchesNeedle(modernSearchText(modernState.tables[key]), needle)" in MODERN_PAGES_JS
     assert "rows.length <= 25 || Boolean(search.value)" not in MODERN_PAGES_JS
     assert "rows.length <= 8" not in MODERN_PAGES_JS
     assert "keys.length <= 30 || Boolean(search.value)" not in MODERN_PAGES_JS
     assert "groupKeys.length <= 4 && keys.length <= 12" not in MODERN_PAGES_JS
     assert "function normalizedSearchNeedle(value)" in MODERN_PAGES_JS
-    assert ".trim().replace(/\\s+/g, \" \").toLowerCase()" in MODERN_PAGES_JS
+    assert ".normalize(\"NFKC\")" in MODERN_PAGES_JS
+    assert ".replace(/\\s+/g, \" \")" in MODERN_PAGES_JS
 
 
 def test_legacy_dashboard_cards_link_to_modern_pages_not_old_home_actions() -> None:

@@ -394,7 +394,21 @@ function searchTerms(needle) {
 }
 
 function normalizedSearchNeedle(value) {
-  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function modernTextMatchesNeedle(text, needle) {
+  const value = normalizedSearchNeedle(text);
+  const query = normalizedSearchNeedle(needle);
+  if (!query) return true;
+  if (value.includes(query)) return true;
+  const terms = searchTerms(query);
+  return Boolean(terms.length) && terms.every((term) => value.includes(term));
 }
 
 function appendHighlightedText(node, text, needle) {
@@ -6124,7 +6138,7 @@ async function renderRulesReference() {
       .filter((entry) => source.value !== "app" || !entry.source_page)
       .filter((entry) => source.value !== "art" || artworkForReference(entry).length)
       .filter((entry) => supplementFilterMatches(inferredSupplementIdsForText(`${entry.id || ""} ${entry.title || ""} ${entry.summary || ""} ${entry.body || ""} ${entry.source || ""} ${(entry.keywords || []).join(" ")}`), supplementFilter.value))
-      .filter((entry) => `${entry.title} ${entry.summary || ""} ${entry.body} ${entry.category || ""} ${entry.implementation_status || ""} ${entry.source_page || ""} ${(entry.keywords || []).join(" ")} ${artworkForReference(entry).map((art) => `${art.title} ${art.summary} ${art.source_pdf}`).join(" ")}`.toLowerCase().includes(needle))
+      .filter((entry) => modernTextMatchesNeedle(`${entry.title} ${entry.summary || ""} ${entry.body} ${entry.category || ""} ${entry.implementation_status || ""} ${entry.source_page || ""} ${(entry.keywords || []).join(" ")} ${artworkForReference(entry).map((art) => `${art.title} ${art.summary} ${art.source_pdf}`).join(" ")}`, needle))
       .sort((a, b) => String(a[sort.value] || "").localeCompare(String(b[sort.value] || ""), undefined, { numeric: true }) || String(a.title || "").localeCompare(String(b.title || "")));
     const byCategory = rows.reduce((groups, entry) => {
       const key = entry.category || "rules";
@@ -6229,7 +6243,7 @@ function modernTablePreview(value, needle = "") {
     ? value
     : modernTableRows(value);
   const visibleRows = rowNeedle
-    ? rows.filter((row) => modernSearchText(row).toLowerCase().includes(rowNeedle))
+    ? rows.filter((row) => modernTextMatchesNeedle(modernSearchText(row), rowNeedle))
     : rows;
   const box = el("div", "modern-list-tall");
   if (!visibleRows.length) {
@@ -6289,9 +6303,9 @@ async function renderTables() {
       if (artworkFilter.value === "without" && artworkForTable(key).length) return false;
       if (!supplementFilterMatches(supplementIdsForTable(key, modernState.tables[key]), supplementFilter.value)) return false;
       if (!needle) return true;
-      return key.toLowerCase().includes(needle)
-        || modernSearchText(modernState.tables[key]).toLowerCase().includes(needle)
-        || artworkForTable(key).map((art) => `${art.title} ${art.summary} ${art.source_pdf}`).join(" ").toLowerCase().includes(needle);
+      return modernTextMatchesNeedle(key, needle)
+        || modernTextMatchesNeedle(modernSearchText(modernState.tables[key]), needle)
+        || modernTextMatchesNeedle(artworkForTable(key).map((art) => `${art.title} ${art.summary} ${art.source_pdf}`).join(" "), needle);
     });
     keys.sort((a, b) => {
       if (sort.value === "rows") {
@@ -6331,7 +6345,7 @@ async function renderTables() {
         if (tableArt.length) details.appendChild(renderArtworkRows(tableArt.slice(0, 4), { compact: true }));
         const previewMount = el("div", "modern-table-preview-mount");
         const renderPreview = () => {
-          const rowNeedle = key.toLowerCase().includes(needle) ? "" : needle;
+          const rowNeedle = modernTextMatchesNeedle(key, needle) ? "" : needle;
           if (previewMount.dataset.loaded === "1" && previewMount.dataset.needle === rowNeedle) return;
           previewMount.replaceChildren(modernTablePreview(value, rowNeedle));
           previewMount.dataset.loaded = "1";
