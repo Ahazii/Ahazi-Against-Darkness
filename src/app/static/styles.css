@@ -1112,6 +1112,19 @@ h2 {
   grid-column: 2;
 }
 
+.modern-resolver-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modern-resolver-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
 .modern-reference-group,
 .modern-table-group {
   background: #11130f;

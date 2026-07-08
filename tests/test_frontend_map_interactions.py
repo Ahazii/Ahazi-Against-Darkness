@@ -2838,6 +2838,15 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "existing status strings and counters remain the save format",
         "renderStateRegistryPanel",
         "Terrain Registry (read-only)",
+        "Registry Resolver (read-only)",
+        "modern-registry-resolve-state-labels",
+        "Resolve State Labels",
+        "/api/registry/resolve/states?",
+        "modern-registry-resolve-environment",
+        "modern-registry-resolve-terrain",
+        "modern-registry-resolve-tile-catalog",
+        "Resolve Terrain Context",
+        "/api/registry/resolve/terrain?",
         "Terrain diagnostics",
         "modern-terrain-registry-search",
         "modern-terrain-registry-kind",
@@ -2857,6 +2866,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
     assert "syncStartSupplementProfile();\n  const readiness" not in MODERN_PAGES_JS
     assert "tools.appendChild(renderSupplementRegistryPanel());" in MODERN_PAGES_JS
     assert ".modern-registry-row > summary" in STYLES_CSS
+    assert ".modern-resolver-section" in STYLES_CSS
     assert "justify-items: start;" in STYLES_CSS
     assert ".modern-inline-list" in STYLES_CSS
     assert "overflow-wrap: anywhere;" in STYLES_CSS

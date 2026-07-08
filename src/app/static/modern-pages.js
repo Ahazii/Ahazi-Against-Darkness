@@ -3721,6 +3721,86 @@ function renderTerrainRegistryPanel() {
   return panel;
 }
 
+function registryResolverMatchRow(title, match, type) {
+  const definition = type === "state" ? match?.state : match;
+  if (!definition) {
+    return modernStatusRow(title, "No registry match", "The resolver did not find a metadata row for this value.");
+  }
+  const source = definition.source || {};
+  const page = Number(source.page || 0) > 0 ? ` p.${source.page}` : "";
+  const sourceText = `${source.source_pdf || "Current project data"}${page} · ${source.topic || (type === "state" ? "State" : "Terrain")}`;
+  const row = el("details", "modern-row modern-registry-row");
+  row.appendChild(registrySummary(definition.name || definition.id, `${definition.id} · ${sourceText}`));
+  if (type === "state") {
+    row.append(
+      modernStatusRow("Family / scope", `${modernTitleFromKey(definition.family)} · ${modernTitleFromKey(definition.scope)} · ${modernTitleFromKey(definition.value_type)}`, "State taxonomy for future state-instance migration."),
+      modernStatusRow("Legacy mappings", stateLegacyMappingText(definition), "Legacy labels, fields, or item suffixes that matched this state."),
+      modernStatusRow("Hover", definition.ui?.hover || "No hover text recorded.", "Player-facing explanation from the State Registry.")
+    );
+  } else {
+    row.append(
+      modernStatusRow("Kind", modernTitleFromKey(definition.kind), "Terrain taxonomy for future terrain-instance migration."),
+      modernStatusRow("Legacy mappings", terrainLegacyMappingText(definition), "Legacy environment, terrain, or tile-catalog values that matched this record."),
+      modernStatusRow("Interactions", (definition.interactions || []).join("; ") || "None recorded", "Current rules that read or care about this terrain.")
+    );
+  }
+  return row;
+}
+
+function renderRegistryResolverPanel() {
+  const panel = card(
+    "Registry Resolver (read-only)",
+    "Diagnostic lookup for checking which State or Terrain Registry rows match today's legacy labels and terrain fields."
+  );
+  panel.classList.add("modern-registry-panel");
+  panel.title = "Read-only resolver. This does not write character/session state, change terrain, or apply rules.";
+
+  const stateLabels = input("text", "modern-registry-resolve-state-labels", "Enter one or more visible effect/status labels, separated by commas.");
+  stateLabels.placeholder = "Cursed (-1 Def), Poisoned L5, Longsword (poisoned)";
+  const stateResults = el("div", "modern-list");
+  const stateRun = button("Resolve State Labels", "Match visible status/effect labels against the State Registry without changing saves.", async () => {
+    stateResults.replaceChildren();
+    const params = new URLSearchParams();
+    params.set("labels", stateLabels.value || "");
+    const payload = await api(`/api/registry/resolve/states?${params.toString()}`);
+    stateResults.appendChild(modernStatusRow("Lookup", `${payload.matches?.length || 0} label result(s)`, "Read-only State Registry resolver result."));
+    for (const match of payload.matches || []) {
+      stateResults.appendChild(registryResolverMatchRow(match.label || "Label", match, "state"));
+    }
+    if (!(payload.matches || []).length) stateResults.appendChild(modernStatusRow("Result", "No labels entered", "Enter visible effect/status labels first."));
+  });
+
+  const stateSection = el("div", "modern-resolver-section");
+  stateSection.append(field("State/effect labels", stateLabels), stateRun, stateResults);
+
+  const environment = input("text", "modern-registry-resolve-environment", "Legacy environment value such as dungeon, caverns, or fungal_grottoes.");
+  environment.placeholder = "dungeon";
+  const terrain = input("text", "modern-registry-resolve-terrain", "Legacy terrain value such as indoor, forest, river, or outdoor.");
+  terrain.placeholder = "indoor";
+  const tileCatalog = input("text", "modern-registry-resolve-tile-catalog", "Optional tile catalog such as forsaken_depths_rivers.");
+  tileCatalog.placeholder = "forsaken_depths_rivers";
+  const terrainResults = el("div", "modern-list");
+  const terrainRun = button("Resolve Terrain Context", "Match environment, terrain, and tile catalog values against the Terrain Registry without changing the map.", async () => {
+    terrainResults.replaceChildren();
+    const params = new URLSearchParams();
+    if (environment.value) params.set("environment", environment.value);
+    if (terrain.value) params.set("terrain", terrain.value);
+    if (tileCatalog.value) params.set("tile_catalog", tileCatalog.value);
+    const payload = await api(`/api/registry/resolve/terrain?${params.toString()}`);
+    terrainResults.appendChild(modernStatusRow("Lookup", `${payload.matches?.length || 0} terrain match(es)`, "Read-only Terrain Registry resolver result."));
+    for (const match of payload.matches || []) terrainResults.appendChild(registryResolverMatchRow(match.name || match.id, match, "terrain"));
+    if (!(payload.matches || []).length) terrainResults.appendChild(modernStatusRow("Result", "No terrain records matched", "Try environment=dungeon and terrain=indoor, or tile_catalog=forsaken_depths_rivers."));
+  });
+
+  const terrainSection = el("div", "modern-resolver-section");
+  const terrainFields = el("div", "modern-grid three");
+  terrainFields.append(field("Environment", environment), field("Terrain", terrain), field("Tile catalog", tileCatalog));
+  terrainSection.append(terrainFields, terrainRun, terrainResults);
+
+  panel.append(stateSection, terrainSection);
+  return panel;
+}
+
 function renderSettings() {
   const prefs = readModernPrefs();
   const selectedSupplements = new Set(modernState.preferences?.enabled_supplement_ids || ["expanded-edition-core"]);
@@ -3816,7 +3896,7 @@ function renderSettings() {
     setStatus("Settings saved.");
     await refreshCoreAndRender();
   }, ""));
-  rootEl.append(panel, supplementPrefsCard, renderSupplementRegistryPanel(), renderStateRegistryPanel(), renderTerrainRegistryPanel(), rulesCard);
+  rootEl.append(panel, supplementPrefsCard, renderSupplementRegistryPanel(), renderStateRegistryPanel(), renderRegistryResolverPanel(), renderTerrainRegistryPanel(), rulesCard);
 }
 
 function renderAiAdventures() {

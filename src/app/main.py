@@ -2994,6 +2994,12 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Read-only metadata lookup. Existing terrain helpers still decide spell availability, table routing, and map behavior.",
         },
         {
+            "helper": "Settings / Registry Resolver",
+            "module": "src/app/static/modern-pages.js",
+            "player_use": "Lets users check visible state labels and terrain context against the resolver APIs without browser developer tools.",
+            "rules_boundary": "Read-only diagnostic panel; resolving a label does not apply or remove a state and resolving terrain does not change the map.",
+        },
+        {
             "helper": "/api/registry/resolve/states",
             "module": "src/app/main.py",
             "player_use": "Diagnostic API for resolving one or more legacy labels to State Registry rows.",
