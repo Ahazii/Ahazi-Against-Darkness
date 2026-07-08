@@ -6692,9 +6692,81 @@ async function renderRulePdfManager() {
     for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
     if (candidates.length) assignment.appendChild(new Option("Page-boundary candidates", "page_boundary_candidate"));
     const results = el("div", "modern-list");
-    const pdfFrame = el("iframe", "modern-source-pdf-frame");
-    pdfFrame.title = `Source PDF preview for ${payload.source_id || "supplement source"}`;
-    if (payload.source_pdf_url) pdfFrame.src = payload.source_pdf_url;
+    const firstPdfPage = Number(sourceItems.find((item) => item.pdf_page)?.pdf_page || 1);
+    const pdfViewer = el("div", "modern-source-pdf-viewer");
+    const pdfToolbar = actions();
+    const pageInput = input("number", "modern-source-pdf-page", "PDF page to preview beside the extracted text.", String(firstPdfPage));
+    pageInput.min = "1";
+    const pdfCanvas = el("div", "modern-source-pdf-canvas");
+    const pdfImage = el("img", "modern-source-pdf-image");
+    pdfImage.alt = `Rendered source PDF page for ${payload.source_id || "supplement source"}`;
+    const pdfStatus = el("p", "muted", "");
+    let pdfZoom = 1;
+    let pdfPanX = 0;
+    let pdfPanY = 0;
+    let pdfDragging = false;
+    let pdfDragStartX = 0;
+    let pdfDragStartY = 0;
+    let pdfStartPanX = 0;
+    let pdfStartPanY = 0;
+    function applyPdfTransform() {
+      pdfImage.style.transform = `translate(${pdfPanX}px, ${pdfPanY}px) scale(${pdfZoom})`;
+      pdfStatus.textContent = `PDF page ${pageInput.value || firstPdfPage} · zoom ${Math.round(pdfZoom * 100)}%`;
+    }
+    function setPdfPage(page) {
+      const pageNo = Math.max(1, Number(page) || 1);
+      pageInput.value = String(pageNo);
+      pdfPanX = 0;
+      pdfPanY = 0;
+      pdfImage.src = payload.source_pdf_page_url ? `${payload.source_pdf_page_url}?page=${encodeURIComponent(pageNo)}` : "";
+      applyPdfTransform();
+    }
+    function setPdfZoom(nextZoom) {
+      pdfZoom = Math.min(4, Math.max(0.35, nextZoom));
+      applyPdfTransform();
+    }
+    pdfToolbar.append(
+      button("Prev", "Show the previous PDF page.", () => setPdfPage(Number(pageInput.value || 1) - 1)),
+      button("Next", "Show the next PDF page.", () => setPdfPage(Number(pageInput.value || 1) + 1)),
+      button("Zoom In", "Increase PDF preview zoom.", () => setPdfZoom(pdfZoom + 0.15)),
+      button("Zoom Out", "Decrease PDF preview zoom.", () => setPdfZoom(pdfZoom - 0.15)),
+      button("Reset View", "Reset PDF zoom and pan.", () => {
+        pdfZoom = 1;
+        pdfPanX = 0;
+        pdfPanY = 0;
+        applyPdfTransform();
+      })
+    );
+    pageInput.addEventListener("change", () => setPdfPage(pageInput.value));
+    pdfCanvas.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      setPdfZoom(pdfZoom + (event.deltaY < 0 ? 0.12 : -0.12));
+    }, { passive: false });
+    pdfCanvas.addEventListener("pointerdown", (event) => {
+      pdfDragging = true;
+      pdfCanvas.setPointerCapture(event.pointerId);
+      pdfDragStartX = event.clientX;
+      pdfDragStartY = event.clientY;
+      pdfStartPanX = pdfPanX;
+      pdfStartPanY = pdfPanY;
+    });
+    pdfCanvas.addEventListener("pointermove", (event) => {
+      if (!pdfDragging) return;
+      pdfPanX = pdfStartPanX + event.clientX - pdfDragStartX;
+      pdfPanY = pdfStartPanY + event.clientY - pdfDragStartY;
+      applyPdfTransform();
+    });
+    pdfCanvas.addEventListener("pointerup", (event) => {
+      pdfDragging = false;
+      try {
+        pdfCanvas.releasePointerCapture(event.pointerId);
+      } catch {
+        /* pointer may already be released */
+      }
+    });
+    pdfCanvas.appendChild(pdfImage);
+    pdfViewer.append(field("PDF page", pageInput), pdfToolbar, pdfCanvas, pdfStatus);
+    setPdfPage(firstPdfPage);
     async function reloadCurrentScan(message = "Source scan refreshed.") {
       const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}`);
       renderSourceScanDetail(detail, mount);
@@ -6767,6 +6839,9 @@ async function renderRulePdfManager() {
       for (const block of matches.slice(0, 120)) {
         const item = document.createElement("details");
         item.className = "modern-row";
+        item.addEventListener("toggle", () => {
+          if (item.open && block.pdf_page) setPdfPage(block.pdf_page);
+        });
         const summary = document.createElement("summary");
         summary.append(
           el("strong", "", block.page_label || `p.${block.source_page || "?"}`),
@@ -6787,7 +6862,7 @@ async function renderRulePdfManager() {
     const reviewPanel = el("div", "modern-source-review-panel");
     reviewPanel.append(field("Search source blocks", search), field("Assignment filter", assignment), results);
     const reviewGrid = el("div", "modern-source-review-grid");
-    reviewGrid.append(pdfFrame, reviewPanel);
+    reviewGrid.append(pdfViewer, reviewPanel);
     mount.replaceChildren(
       modernStatusRow("Selected source scan", `${payload.source_id || "source"} · ${payload.source_pdf || "Source PDF"} · ${blocks.length} block(s) · ${candidates.length} page-boundary candidate(s)`, `Printed page offset: ${payload.page_offset || 0}. Exact copied prose remains local in DATA_DIR/Supplements/_sources.`),
       reviewGrid

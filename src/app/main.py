@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import re
+import shutil
+import subprocess
 from typing import Any
 from urllib.parse import quote
 
@@ -605,6 +607,44 @@ async def rule_pdf_file(filename: str) -> FileResponse:
     return FileResponse(pdf_path, media_type="application/pdf", filename=pdf_path.name)
 
 
+@app.get("/api/rules/pdf-page/{filename:path}")
+async def rule_pdf_page_image(filename: str, page: int = 1) -> FileResponse:
+    if page < 1:
+        raise HTTPException(status_code=400, detail="PDF page must be 1 or greater.")
+    pdf_path = _resolve_user_rule_pdf(filename)
+    pdftoppm = shutil.which("pdftoppm")
+    if not pdftoppm:
+        raise HTTPException(status_code=500, detail="PDF page renderer is unavailable; install poppler-utils in the container image.")
+    render_dir = settings.data_dir / "Supplements" / "_sources" / "_pdf_page_cache" / re.sub(r"[^a-z0-9._-]+", "-", pdf_path.stem.lower()).strip(".-")
+    render_dir.mkdir(parents=True, exist_ok=True)
+    output_prefix = render_dir / f"page-{page:04d}"
+    output = render_dir / f"page-{page:04d}.png"
+    if not output.exists() or output.stat().st_mtime < pdf_path.stat().st_mtime:
+        result = subprocess.run(
+            [
+                pdftoppm,
+                "-f",
+                str(page),
+                "-l",
+                str(page),
+                "-singlefile",
+                "-png",
+                "-r",
+                "150",
+                str(pdf_path),
+                str(output_prefix),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+        if result.returncode != 0 or not output.is_file():
+            detail = (result.stderr or result.stdout or "no renderer output").strip()
+            raise HTTPException(status_code=400, detail=f"Could not render PDF page {page}: {detail}")
+    return FileResponse(output, media_type="image/png")
+
+
 @app.post("/api/rules/upload-pdf")
 async def upload_rule_pdf(request: Request) -> dict[str, Any]:
     raw_filename = request.query_params.get("filename") or request.headers.get("x-filename") or "rules.pdf"
@@ -699,6 +739,7 @@ async def supplement_source_scan_detail(source_id: str) -> dict[str, Any]:
     return {
         **payload,
         "source_pdf_url": f"/api/rules/pdf/{quote(filename)}" if filename else "",
+        "source_pdf_page_url": f"/api/rules/pdf-page/{quote(filename)}" if filename else "",
     }
 
 

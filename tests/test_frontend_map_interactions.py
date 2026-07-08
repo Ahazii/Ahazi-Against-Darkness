@@ -2940,7 +2940,13 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "page-boundary candidates" in MODERN_PAGES_JS
     assert "sourceScanDetailMounts" in MODERN_PAGES_JS
     assert "modern-source-review-grid" in MODERN_PAGES_JS
-    assert "modern-source-pdf-frame" in MODERN_PAGES_JS
+    assert "modern-source-pdf-viewer" in MODERN_PAGES_JS
+    assert "modern-source-pdf-canvas" in MODERN_PAGES_JS
+    assert "modern-source-pdf-image" in MODERN_PAGES_JS
+    assert "source_pdf_page_url" in MODERN_PAGES_JS
+    assert "pdfCanvas.addEventListener(\"wheel\"" in MODERN_PAGES_JS
+    assert "pdfCanvas.addEventListener(\"pointerdown\"" in MODERN_PAGES_JS
+    assert "setPdfPage(block.pdf_page)" in MODERN_PAGES_JS
     assert "Save Block" in MODERN_PAGES_JS
     assert "Split Block" in MODERN_PAGES_JS
     assert "Merge Next" in MODERN_PAGES_JS

@@ -1231,12 +1231,37 @@ button.is-working::after {
   min-width: 0;
 }
 
-.modern-source-pdf-frame {
+.modern-source-pdf-viewer {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.modern-source-pdf-canvas {
+  position: relative;
   width: 100%;
   min-height: 72vh;
+  max-height: 78vh;
+  overflow: hidden;
   border: 1px solid #3c3a30;
   border-radius: 6px;
   background: #0f100d;
+  cursor: grab;
+  touch-action: none;
+}
+
+.modern-source-pdf-canvas:active {
+  cursor: grabbing;
+}
+
+.modern-source-pdf-image {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+  transform-origin: center top;
+  transition: transform 120ms ease;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .modern-source-review-panel,
@@ -1534,7 +1559,7 @@ button.is-working::after {
     grid-template-columns: 1fr;
   }
 
-  .modern-source-pdf-frame {
+  .modern-source-pdf-canvas {
     min-height: 34rem;
   }
 

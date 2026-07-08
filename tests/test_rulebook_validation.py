@@ -879,6 +879,44 @@ def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch)
     assert "Beta part 2" in merge_payload["block"]["text"]
     detail = client.get("/api/supplements/source-scans/mixed-book").json()
     assert detail["source_pdf_url"] == "/api/rules/pdf/Mixed%20Book.pdf"
+    assert detail["source_pdf_page_url"] == "/api/rules/pdf-page/Mixed%20Book.pdf"
+
+
+def test_rule_pdf_page_preview_renders_cached_png(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Mixed Book.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(main_module.shutil, "which", lambda name: "pdftoppm" if name == "pdftoppm" else None)
+
+    def fake_run(command, capture_output, text, check, timeout):
+        output_prefix = Path(command[-1])
+        output_prefix.parent.mkdir(parents=True, exist_ok=True)
+        output_prefix.with_suffix(".png").write_bytes(b"fake-png")
+
+        class Result:
+            returncode = 0
+            stderr = ""
+            stdout = ""
+
+        return Result()
+
+    monkeypatch.setattr(main_module.subprocess, "run", fake_run)
+
+    response = TestClient(main_module.app).get("/api/rules/pdf-page/Mixed%20Book.pdf?page=2")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content == b"fake-png"
 
 
 def test_spell_and_scroll_tables_present(tables: dict) -> None:
