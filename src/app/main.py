@@ -71,15 +71,19 @@ from .engine.roster_sync import (
     unlock_characters_for_session,
 )
 from .engine.supplement_sources import (
+    extract_supplement_source_artwork,
     list_supplement_source_scans,
     load_supplement_source_scan,
     merge_selected_supplement_source_blocks,
     merge_supplement_source_block,
+    move_supplement_source_block,
     pdf_source_settings,
     scan_supplement_source_pdf,
     set_pdf_source_page_offset,
     split_supplement_source_block,
+    supplement_source_artwork_path,
     supplement_source_scan_path,
+    update_supplement_source_artwork,
     update_supplement_source_block,
 )
 from .engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_lines, upgrade_tag_manifest
@@ -725,6 +729,23 @@ async def scan_supplement_source(payload: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=f"Could not scan supplement source: {exc}") from exc
 
 
+@app.post("/api/supplements/source-artwork")
+async def extract_supplement_artwork(payload: dict[str, Any]) -> dict[str, Any]:
+    filename = str(payload.get("filename") or "").strip()
+    if not filename:
+        candidates = sorted(settings.rules_dir.glob("*.pdf"))
+        if not candidates:
+            raise HTTPException(status_code=404, detail="Upload a PDF first.")
+        pdf_path = candidates[0]
+    else:
+        pdf_path = _resolve_user_rule_pdf(filename)
+    page_offset = _payload_or_saved_page_offset(payload, pdf_path)
+    try:
+        return extract_supplement_source_artwork(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Could not extract supplement artwork: {exc}") from exc
+
+
 @app.get("/api/supplements/source-scans")
 async def supplement_source_scans() -> dict[str, Any]:
     return {"scans": list_supplement_source_scans(settings.data_dir)}
@@ -750,6 +771,19 @@ async def save_supplement_source_block(source_id: str, block_id: str, payload: d
         return update_supplement_source_block(settings.data_dir, source_id, block_id, payload)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Source block not found.") from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/move")
+async def move_source_block(source_id: str, block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    direction = str(payload.get("direction") or "")
+    if direction not in {"up", "down"}:
+        raise HTTPException(status_code=400, detail="Move direction must be up or down.")
+    try:
+        return move_supplement_source_block(settings.data_dir, source_id, block_id, direction)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source block not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/split")
@@ -785,6 +819,24 @@ async def merge_selected_source_blocks(source_id: str, payload: dict[str, Any]) 
         raise HTTPException(status_code=404, detail="One or more selected source blocks were not found.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.patch("/api/supplements/source-scans/{source_id}/artwork/{artwork_id:path}")
+async def save_supplement_source_artwork(source_id: str, artwork_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return update_supplement_source_artwork(settings.data_dir, source_id, artwork_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Artwork candidate not found.") from exc
+
+
+@app.get("/api/supplements/source-scans/{source_id}/artwork/{filename:path}")
+async def supplement_source_artwork_file(source_id: str, filename: str) -> FileResponse:
+    path = supplement_source_artwork_path(settings.data_dir, source_id, filename)
+    base = (settings.data_dir / "Supplements" / "_sources").resolve()
+    resolved = path.resolve()
+    if not resolved.is_relative_to(base) or not resolved.is_file():
+        raise HTTPException(status_code=404, detail="Artwork candidate not found.")
+    return FileResponse(resolved)
 
 
 @app.get("/api/rules/local-text-index")

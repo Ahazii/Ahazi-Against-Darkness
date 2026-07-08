@@ -8,6 +8,26 @@ from typing import Any
 from .pdf_text_index import display_page_number, extract_rule_pdf_pages, page_label
 
 
+SOURCE_ARTWORK_CATEGORIES = {
+    "unknown",
+    "foe",
+    "npc",
+    "character_class",
+    "room",
+    "dungeon",
+    "location",
+    "item_equipment",
+    "terrain",
+    "map",
+    "tile",
+    "filler_decorative",
+    "cover_title_page",
+    "symbol_icon",
+    "review_later",
+    "ignore",
+}
+
+
 SOURCE_BLOCK_ASSIGNMENTS = {
     "unassigned",
     "title_page",
@@ -54,6 +74,10 @@ def supplement_source_folder(data_dir: Path, source_id: str) -> Path:
 
 def supplement_source_scan_path(data_dir: Path, source_id: str) -> Path:
     return supplement_source_folder(data_dir, source_id) / "source_blocks.json"
+
+
+def supplement_source_artwork_dir(data_dir: Path, source_id: str) -> Path:
+    return supplement_source_folder(data_dir, source_id) / "artwork"
 
 
 def supplement_source_settings_path(data_dir: Path) -> Path:
@@ -128,6 +152,16 @@ def _review_blocks_from_existing(existing: dict[str, Any]) -> list[dict[str, Any
     blocks = existing.get("blocks")
     if isinstance(blocks, list):
         return [block for block in blocks if isinstance(block, dict)]
+    return []
+
+
+def _review_artwork_from_existing(existing: dict[str, Any]) -> list[dict[str, Any]]:
+    reviewed = existing.get("reviewed_artwork")
+    if isinstance(reviewed, list) and reviewed:
+        return [item for item in reviewed if isinstance(item, dict)]
+    raw = existing.get("raw_artwork")
+    if isinstance(raw, list):
+        return [item for item in raw if isinstance(item, dict)]
     return []
 
 
@@ -212,10 +246,13 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page
         "page_offset": int(page_offset),
         "note": "Local/private PDF source blocks for human review and supplement assignment. Exact text remains in DATA_DIR. Re-scans update raw_blocks; reviewed_blocks preserve human edits.",
         "assignment_options": sorted(SOURCE_BLOCK_ASSIGNMENTS),
+        "artwork_categories": sorted(SOURCE_ARTWORK_CATEGORIES),
         "raw_blocks": raw_blocks,
         "reviewed_blocks": reviewed_blocks,
         "blocks": reviewed_blocks,
         "continuation_candidates": continuation_candidates,
+        "raw_artwork": existing.get("raw_artwork", []),
+        "reviewed_artwork": _review_artwork_from_existing(existing),
     }
     supplement_source_scan_path(data_dir, source_id).write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     return {
@@ -242,18 +279,30 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     if not isinstance(payload, dict):
         return {"schema_version": 1, "source_id": source_id, "blocks": []}
     reviewed = _review_blocks_from_existing(payload)
+    reviewed_artwork = _review_artwork_from_existing(payload)
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
+    payload["reviewed_artwork"] = reviewed_artwork
+    payload["artwork"] = reviewed_artwork
     if "raw_blocks" not in payload:
         payload["raw_blocks"] = [dict(block) for block in reviewed]
+    if "raw_artwork" not in payload:
+        payload["raw_artwork"] = [dict(item) for item in reviewed_artwork]
+    payload["assignment_options"] = sorted(SOURCE_BLOCK_ASSIGNMENTS)
+    payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
     return payload
 
 
 def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     payload["source_id"] = str(payload.get("source_id") or source_id)
     reviewed = _review_blocks_from_existing(payload)
+    reviewed_artwork = _review_artwork_from_existing(payload)
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
+    payload["reviewed_artwork"] = reviewed_artwork
+    payload["artwork"] = reviewed_artwork
+    payload["assignment_options"] = sorted(SOURCE_BLOCK_ASSIGNMENTS)
+    payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
     path = supplement_source_scan_path(data_dir, source_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -360,6 +409,109 @@ def merge_selected_supplement_source_blocks(data_dir: Path, source_id: str, bloc
     return {"block": merged, "message": f"Merged {len(selected)} selected source blocks."}
 
 
+def move_supplement_source_block(data_dir: Path, source_id: str, block_id: str, direction: str) -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    blocks = payload.get("reviewed_blocks", [])
+    for index, block in enumerate(blocks):
+        if not isinstance(block, dict) or block.get("id") != block_id:
+            continue
+        target = index - 1 if direction == "up" else index + 1
+        if target < 0 or target >= len(blocks):
+            raise ValueError("Source block cannot move any further in that direction.")
+        blocks[index], blocks[target] = blocks[target], blocks[index]
+        for order, item in enumerate(blocks, start=1):
+            if isinstance(item, dict):
+                item["review_order"] = order
+        payload["reviewed_blocks"] = blocks
+        save_supplement_source_scan(data_dir, source_id, payload)
+        return {"block": blocks[target], "message": f"Moved source block {direction}."}
+    raise KeyError(block_id)
+
+
+def extract_supplement_source_artwork(data_dir: Path, pdf_path: Path, *, now: str, page_offset: int = 0) -> dict[str, Any]:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:  # pragma: no cover - dependency is present in app image/tests
+        raise RuntimeError("pypdf is required to extract PDF artwork images.") from exc
+
+    set_pdf_source_page_offset(data_dir, pdf_path, page_offset)
+    source_id = supplement_source_id(pdf_path)
+    payload = load_supplement_source_scan(data_dir, source_id)
+    artwork_dir = supplement_source_artwork_dir(data_dir, source_id) / "raw"
+    artwork_dir.mkdir(parents=True, exist_ok=True)
+    reader = PdfReader(str(pdf_path))
+    raw_records: list[dict[str, Any]] = []
+    for page_index, page in enumerate(reader.pages, start=1):
+        try:
+            images = list(page.images)
+        except Exception:  # noqa: BLE001 - PDF image extraction support varies
+            images = []
+        for image_index, image in enumerate(images, start=1):
+            image_name = Path(str(getattr(image, "name", "") or f"image-{image_index}.bin")).name
+            extension = Path(image_name).suffix.lower() or ".bin"
+            filename = f"page-{page_index:03d}-image-{image_index:02d}{extension}"
+            data = getattr(image, "data", b"")
+            if not isinstance(data, bytes) or not data:
+                continue
+            (artwork_dir / filename).write_bytes(data)
+            source_page = display_page_number(page_index, page_offset)
+            raw_records.append(
+                {
+                    "id": f"{source_id}-art-p{source_page}-pdf{page_index}-i{image_index:02d}",
+                    "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
+                    "source_page": source_page,
+                    "pdf_page": page_index,
+                    "page_label": page_label(page_index, page_offset),
+                    "filename": filename,
+                    "asset_url": f"/api/supplements/source-scans/{source_id}/artwork/{filename}",
+                    "title": f"Page {source_page} image {image_index}",
+                    "category": "unknown",
+                    "review_status": "unreviewed",
+                    "notes": "",
+                }
+            )
+    existing_reviewed = _review_artwork_from_existing(payload)
+    existing_by_filename = {str(item.get("filename") or ""): item for item in existing_reviewed if isinstance(item, dict)}
+    reviewed_artwork = [existing_by_filename.get(str(item.get("filename") or ""), dict(item)) for item in raw_records]
+    payload["raw_artwork"] = raw_records
+    payload["reviewed_artwork"] = reviewed_artwork
+    payload["artwork"] = reviewed_artwork
+    payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
+    payload["artwork_updated_at"] = now
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {
+        "source_id": source_id,
+        "raw_artwork": len(raw_records),
+        "reviewed_artwork": len(reviewed_artwork),
+        "path": str(artwork_dir),
+        "message": f"Extracted {len(raw_records)} artwork candidate(s) from {pdf_path.name}; reviewed artwork metadata was preserved where filenames matched.",
+    }
+
+
+def update_supplement_source_artwork(data_dir: Path, source_id: str, artwork_id: str, changes: dict[str, Any]) -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    for item in payload.get("reviewed_artwork", []):
+        if not isinstance(item, dict) or item.get("id") != artwork_id:
+            continue
+        if "title" in changes:
+            item["title"] = str(changes.get("title") or "").strip()
+        if "category" in changes:
+            category = str(changes.get("category") or "unknown")
+            item["category"] = category if category in SOURCE_ARTWORK_CATEGORIES else "unknown"
+        if "review_status" in changes:
+            item["review_status"] = str(changes.get("review_status") or "unreviewed")
+        if "notes" in changes:
+            item["notes"] = str(changes.get("notes") or "")
+        save_supplement_source_scan(data_dir, source_id, payload)
+        return {"artwork": item, "message": "Artwork review saved."}
+    raise KeyError(artwork_id)
+
+
+def supplement_source_artwork_path(data_dir: Path, source_id: str, filename: str) -> Path:
+    safe = Path(str(filename or "")).name
+    return supplement_source_artwork_dir(data_dir, source_id) / "raw" / safe
+
+
 def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
     root = supplement_sources_root(data_dir)
     if not root.exists():
@@ -371,6 +523,7 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
         blocks = [block for block in payload.get("blocks", []) if isinstance(block, dict)]
         raw_blocks = [block for block in payload.get("raw_blocks", []) if isinstance(block, dict)]
         continuation_candidates = [block for block in payload.get("continuation_candidates", []) if isinstance(block, dict)]
+        artwork = [item for item in payload.get("reviewed_artwork", []) if isinstance(item, dict)]
         assignments: dict[str, int] = {}
         reviewed = 0
         for block in blocks:
@@ -387,6 +540,7 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
                 "blocks": len(blocks),
                 "raw_blocks": len(raw_blocks),
                 "continuation_candidates": len(continuation_candidates),
+                "artwork": len(artwork),
                 "reviewed_blocks": reviewed,
                 "assignment_counts": assignments,
                 "path": str(scan_path),

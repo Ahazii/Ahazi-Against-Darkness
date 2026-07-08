@@ -166,7 +166,13 @@ Home screen rule browsing:
   lets a human reviewer save assignments, split oversized blocks at the cursor,
   and merge selected adjacent blocks before later conversion into structured
   supplement data. Re-scans update `raw_blocks`; human-reviewed edits and
-  assignments live in `reviewed_blocks` and are preserved separately.
+  assignments live in `reviewed_blocks` and are preserved separately. Reviewed
+  block order is user-controlled with move up/down actions because PDF text
+  extraction can interleave columns, captions, boxed text, and artwork.
+  Workbench artwork extraction stores raw embedded image candidates under the
+  same source folder and keeps reviewed artwork names, categories, and notes in
+  `reviewed_artwork` so useful illustrations can later be promoted into the
+  user asset library.
   Workbench scans can store both `pdf_page` and the offset-adjusted printed
   `source_page`; use `page_offset` when a PDF cover/front matter shifts the
   viewer page number away from the printed book page.

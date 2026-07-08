@@ -796,6 +796,7 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
             "blocks": 3,
             "raw_blocks": 3,
             "continuation_candidates": 1,
+            "artwork": 0,
             "reviewed_blocks": 0,
             "assignment_counts": {"unassigned": 3},
             "path": str(path),
@@ -910,9 +911,57 @@ def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch)
     ).json()
     assert "Beta part 1" in merge_payload["block"]["text"]
     assert "Beta part 2" in merge_payload["block"]["text"]
+    move_payload = client.post(
+        "/api/supplements/source-scans/mixed-book/blocks/mixed-book-p1-b001/move",
+        json={"direction": "down"},
+    ).json()
+    assert move_payload["block"]["id"] == "mixed-book-p1-b001"
+    saved = client.get("/api/supplements/source-scans/mixed-book").json()
+    assert saved["blocks"][1]["id"] == "mixed-book-p1-b001"
     detail = client.get("/api/supplements/source-scans/mixed-book").json()
     assert detail["source_pdf_url"] == "/api/rules/pdf/Mixed%20Book.pdf"
     assert detail["source_pdf_page_url"] == "/api/rules/pdf-page/Mixed%20Book.pdf"
+
+
+def test_source_artwork_extraction_and_review_preserves_metadata(tmp_path: Path, monkeypatch) -> None:
+    import sys
+    import types
+
+    from app.engine import supplement_sources
+
+    class FakeImage:
+        name = "portrait.png"
+        data = b"png-data"
+
+    class FakePage:
+        images = [FakeImage()]
+
+    class FakeReader:
+        def __init__(self, _path: str):
+            self.pages = [FakePage()]
+
+    monkeypatch.setitem(sys.modules, "pypdf", types.SimpleNamespace(PdfReader=FakeReader))
+    pdf = tmp_path / "Artwork Book.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+
+    result = supplement_sources.extract_supplement_source_artwork(tmp_path, pdf, now="2026-07-09T10:00:00Z", page_offset=-1)
+    assert result["raw_artwork"] == 1
+    payload = supplement_sources.load_supplement_source_scan(tmp_path, "artwork-book")
+    art = payload["reviewed_artwork"][0]
+    assert art["page_label"] == "p.1 (PDF p.1)" or art["page_label"] == "p.1"
+    assert art["category"] == "unknown"
+    assert (tmp_path / "Supplements" / "_sources" / "artwork-book" / "artwork" / "raw" / "page-001-image-01.png").read_bytes() == b"png-data"
+
+    supplement_sources.update_supplement_source_artwork(
+        tmp_path,
+        "artwork-book",
+        art["id"],
+        {"title": "Goblin portrait", "category": "foe", "notes": "Use for goblin entry.", "review_status": "checked"},
+    )
+    supplement_sources.extract_supplement_source_artwork(tmp_path, pdf, now="2026-07-09T10:01:00Z", page_offset=-1)
+    payload = supplement_sources.load_supplement_source_scan(tmp_path, "artwork-book")
+    assert payload["reviewed_artwork"][0]["title"] == "Goblin portrait"
+    assert payload["reviewed_artwork"][0]["category"] == "foe"
 
 
 def test_rule_pdf_page_preview_renders_cached_png(tmp_path: Path, monkeypatch) -> None:

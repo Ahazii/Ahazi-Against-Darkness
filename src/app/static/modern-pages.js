@@ -6680,12 +6680,13 @@ async function renderRulePdfManager() {
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, value]) => `${key}: ${value}`);
     const summary = parts.length ? parts.join("; ") : "No assignment counts yet.";
-    return `${summary}${scan.continuation_candidates ? `; page-boundary candidates: ${scan.continuation_candidates}` : ""}`;
+    return `${summary}${scan.continuation_candidates ? `; page-boundary candidates: ${scan.continuation_candidates}` : ""}${scan.artwork ? `; artwork: ${scan.artwork}` : ""}`;
   }
   const sourceScanDetailMounts = [];
   function renderSourceScanDetail(payload, mount) {
     const blocks = Array.isArray(payload.blocks) ? payload.blocks.map((block) => ({ ...block, source_item_type: "block" })) : [];
     const candidates = Array.isArray(payload.continuation_candidates) ? payload.continuation_candidates.map((block) => ({ ...block, source_item_type: "page-boundary candidate" })) : [];
+    const artworkItems = Array.isArray(payload.artwork) ? payload.artwork : [];
     const sourceItems = blocks.concat(candidates);
     const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
     const assignment = select("modern-source-block-assignment", "Filter by current manual assignment.", [["", "All assignments"]]);
@@ -6812,6 +6813,20 @@ async function renderRulePdfManager() {
               body: JSON.stringify({ parts }),
             });
             await reloadCurrentScan("Source block split.");
+          })),
+          button("Move Up", "Move this reviewed block above the previous reviewed block.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
+            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/move`, {
+              method: "POST",
+              body: JSON.stringify({ direction: "up" }),
+            });
+            await reloadCurrentScan("Source block moved up.");
+          })),
+          button("Move Down", "Move this reviewed block below the next reviewed block.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
+            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/move`, {
+              method: "POST",
+              body: JSON.stringify({ direction: "down" }),
+            });
+            await reloadCurrentScan("Source block moved down.");
           }))
         );
       }
@@ -6867,13 +6882,62 @@ async function renderRulePdfManager() {
       }
       if (matches.length > 120) results.appendChild(el("p", "muted", `Showing first 120 matches. Narrow the search to inspect the remaining ${matches.length - 120}.`));
     }
+    function renderArtworkPanel() {
+      const panel = el("div", "modern-source-artwork-panel");
+      panel.appendChild(modernStatusRow("Artwork candidates", `${artworkItems.length} reviewed candidate(s)`, "Extracted embedded PDF images are best-effort. Name and categorise useful images here; reviewed metadata is preserved across re-extraction."));
+      if (!artworkItems.length) {
+        panel.appendChild(el("p", "muted", "No artwork candidates extracted yet. Use Extract Artwork Candidates from the source scan list after selecting the PDF."));
+        return panel;
+      }
+      const categories = payload.artwork_categories || ["unknown"];
+      for (const item of artworkItems.slice(0, 80)) {
+        const row = document.createElement("details");
+        row.className = "modern-row";
+        const summary = document.createElement("summary");
+        summary.append(
+          el("strong", "", item.title || item.id || "Artwork candidate"),
+          el("span", "muted", ` · ${item.page_label || `p.${item.source_page || "?"}`} · ${item.category || "unknown"}`)
+        );
+        const img = el("img", "modern-source-artwork-image");
+        img.alt = item.title || item.id || "Artwork candidate";
+        if (item.asset_url) img.src = item.asset_url;
+        const titleInput = input("text", `modern-source-artwork-title-${item.id}`, "Name this artwork for later reuse.", item.title || "");
+        const categorySelect = select(`modern-source-artwork-category-${item.id}`, "Categorise this artwork for future game use.", categories.map((category) => [category, category.replace(/_/g, " ")]));
+        categorySelect.value = item.category || "unknown";
+        const notesInput = document.createElement("textarea");
+        notesInput.className = "modern-source-block-text compact";
+        notesInput.title = "Review notes for this artwork candidate.";
+        notesInput.value = item.notes || "";
+        const artActions = actions();
+        artActions.append(
+          button("Save Artwork", "Save artwork name, category, and notes.", async (btn) => runWithButtonProgress(btn, "Saving artwork...", async () => {
+            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/artwork/${encodeURIComponent(item.id)}`, {
+              method: "PATCH",
+              body: JSON.stringify({ title: titleInput.value, category: categorySelect.value, notes: notesInput.value, review_status: "checked" }),
+            });
+            await reloadCurrentScan("Artwork review saved.");
+          }))
+        );
+        row.append(
+          summary,
+          img,
+          field("Artwork name", titleInput),
+          field("Artwork category", categorySelect),
+          field("Artwork notes", notesInput),
+          artActions
+        );
+        panel.appendChild(row);
+      }
+      if (artworkItems.length > 80) panel.appendChild(el("p", "muted", `Showing first 80 artwork candidates. ${artworkItems.length - 80} more are stored in the source file.`));
+      return panel;
+    }
     search.addEventListener("input", draw);
     assignment.addEventListener("change", draw);
     mount.classList.remove("hidden");
     const reviewPanel = el("div", "modern-source-review-panel");
     const selectionActions = actions();
     selectionActions.append(mergeSelectedButton);
-    reviewPanel.append(field("Search source blocks", search), field("Assignment filter", assignment), selectionStatus, selectionActions, results);
+    reviewPanel.append(renderArtworkPanel(), field("Search source blocks", search), field("Assignment filter", assignment), selectionStatus, selectionActions, results);
     const reviewGrid = el("div", "modern-source-review-grid");
     reviewGrid.append(pdfViewer, reviewPanel);
     mount.replaceChildren(
@@ -6912,7 +6976,7 @@ async function renderRulePdfManager() {
       const body = el("div", "");
       body.append(
         el("strong", "", scan.source_id || "source scan"),
-        el("p", "muted", `${scan.source_pdf || "PDF"} · ${scan.blocks || 0} block(s) · ${scan.continuation_candidates || 0} page-boundary candidate(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
+        el("p", "muted", `${scan.source_pdf || "PDF"} · ${scan.blocks || 0} block(s) · ${scan.artwork || 0} artwork · ${scan.continuation_candidates || 0} page-boundary candidate(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
         el("p", "muted", sourceScanAssignmentSummary(scan))
       );
       const scanRow = el("div", "modern-row");
@@ -7008,6 +7072,23 @@ async function renderRulePdfManager() {
       } catch (error) {
         const message = error?.message || "Source scan failed.";
         showRulePdfResult("error", message, "Source scan failed");
+        throw error;
+      }
+    })),
+    button("Extract Artwork Candidates", "Extract embedded artwork candidates from the selected PDF into DATA_DIR/Supplements/_sources for naming and categorisation.", async (btn) => runWithButtonProgress(btn, "Extracting artwork...", async () => {
+      try {
+        showRulePdfResult("ok", "Extracting embedded artwork candidates into the local supplement review workspace.", "Artwork extraction in progress");
+        const result = await api("/api/supplements/source-artwork", {
+          method: "POST",
+          body: JSON.stringify({ filename: uploadedSelect.value, page_offset: Number(pageOffset.value || 0) }),
+        });
+        const message = result.message || `Extracted ${result.raw_artwork || 0} artwork candidate(s).`;
+        setStatus(message);
+        showRulePdfResult("ok", message, "Artwork extraction complete");
+        await refreshSourceScans();
+      } catch (error) {
+        const message = error?.message || "Artwork extraction failed.";
+        showRulePdfResult("error", message, "Artwork extraction failed");
         throw error;
       }
     })),

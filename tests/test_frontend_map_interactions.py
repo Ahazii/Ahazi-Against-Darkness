@@ -2951,10 +2951,18 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "setPdfPage(block.pdf_page)" in MODERN_PAGES_JS
     assert "Save Block" in MODERN_PAGES_JS
     assert "Split At Cursor" in MODERN_PAGES_JS
+    assert "Move Up" in MODERN_PAGES_JS
+    assert "Move Down" in MODERN_PAGES_JS
     assert "Merge Selected" in MODERN_PAGES_JS
     assert "selectedBlockIds" in MODERN_PAGES_JS
     assert "/blocks/merge-selected" in MODERN_PAGES_JS
+    assert "/move" in MODERN_PAGES_JS
     assert "modern-row-selected" in MODERN_PAGES_JS
+    assert "Extract Artwork Candidates" in MODERN_PAGES_JS
+    assert "/api/supplements/source-artwork" in MODERN_PAGES_JS
+    assert "Artwork candidates" in MODERN_PAGES_JS
+    assert "Save Artwork" in MODERN_PAGES_JS
+    assert "modern-source-artwork-image" in MODERN_PAGES_JS
     assert "source_settings" in MODERN_PAGES_JS
     assert "DATA_DIR/Supplements/_sources" in MODERN_PAGES_JS
     assert "Extracting Adventures Guild narrative..." in MODERN_PAGES_JS

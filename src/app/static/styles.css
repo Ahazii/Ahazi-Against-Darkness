@@ -1276,6 +1276,22 @@ button.is-working::after {
   min-width: 0;
 }
 
+.modern-source-artwork-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.modern-source-artwork-image {
+  display: block;
+  max-width: min(100%, 28rem);
+  max-height: 24rem;
+  object-fit: contain;
+  border: 1px solid #3c3a30;
+  border-radius: 6px;
+  background: #0f100d;
+}
+
 .modern-source-block-search-preview {
   display: grid;
   gap: 4px;
