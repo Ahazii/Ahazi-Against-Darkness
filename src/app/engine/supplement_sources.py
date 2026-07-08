@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -466,8 +468,57 @@ def extract_supplement_source_artwork(data_dir: Path, pdf_path: Path, *, now: st
                     "asset_url": f"/api/supplements/source-scans/{source_id}/artwork/{filename}",
                     "title": f"Page {source_page} image {image_index}",
                     "category": "unknown",
+                    "candidate_type": "embedded_image",
                     "review_status": "unreviewed",
                     "notes": "",
+                }
+            )
+    if not raw_records:
+        pdftoppm = shutil.which("pdftoppm")
+        if not pdftoppm:
+            raise RuntimeError("No embedded PDF images were exposed, and pdftoppm is unavailable for rendered-page artwork fallback.")
+        rendered_dir = supplement_source_artwork_dir(data_dir, source_id) / "rendered_pages"
+        rendered_dir.mkdir(parents=True, exist_ok=True)
+        for page_index in range(1, len(reader.pages) + 1):
+            filename = f"page-{page_index:03d}-render.png"
+            output_prefix = rendered_dir / f"page-{page_index:03d}-render"
+            output = rendered_dir / filename
+            result = subprocess.run(
+                [
+                    pdftoppm,
+                    "-f",
+                    str(page_index),
+                    "-l",
+                    str(page_index),
+                    "-singlefile",
+                    "-png",
+                    "-r",
+                    "150",
+                    str(pdf_path),
+                    str(output_prefix),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+            if result.returncode != 0 or not output.is_file():
+                continue
+            source_page = display_page_number(page_index, page_offset)
+            raw_records.append(
+                {
+                    "id": f"{source_id}-art-render-p{source_page}-pdf{page_index}",
+                    "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
+                    "source_page": source_page,
+                    "pdf_page": page_index,
+                    "page_label": page_label(page_index, page_offset),
+                    "filename": filename,
+                    "asset_url": f"/api/supplements/source-scans/{source_id}/artwork/{filename}",
+                    "title": f"Rendered page {source_page}",
+                    "category": "review_later",
+                    "candidate_type": "rendered_page",
+                    "review_status": "unreviewed",
+                    "notes": "Rendered full PDF page because no embedded artwork images were exposed. Use as a review/crop source.",
                 }
             )
     existing_reviewed = _review_artwork_from_existing(payload)
@@ -509,7 +560,10 @@ def update_supplement_source_artwork(data_dir: Path, source_id: str, artwork_id:
 
 def supplement_source_artwork_path(data_dir: Path, source_id: str, filename: str) -> Path:
     safe = Path(str(filename or "")).name
-    return supplement_source_artwork_dir(data_dir, source_id) / "raw" / safe
+    raw = supplement_source_artwork_dir(data_dir, source_id) / "raw" / safe
+    if raw.is_file():
+        return raw
+    return supplement_source_artwork_dir(data_dir, source_id) / "rendered_pages" / safe
 
 
 def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:

@@ -2961,6 +2961,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Extract Artwork Candidates" in MODERN_PAGES_JS
     assert "/api/supplements/source-artwork" in MODERN_PAGES_JS
     assert "Artwork candidates" in MODERN_PAGES_JS
+    assert "renders full PDF pages as review/crop candidates" in MODERN_PAGES_JS
+    assert "candidate_type" in MODERN_PAGES_JS
     assert "Save Artwork" in MODERN_PAGES_JS
     assert "modern-source-artwork-image" in MODERN_PAGES_JS
     assert "source_settings" in MODERN_PAGES_JS

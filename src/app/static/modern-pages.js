@@ -6884,7 +6884,7 @@ async function renderRulePdfManager() {
     }
     function renderArtworkPanel() {
       const panel = el("div", "modern-source-artwork-panel");
-      panel.appendChild(modernStatusRow("Artwork candidates", `${artworkItems.length} reviewed candidate(s)`, "Extracted embedded PDF images are best-effort. Name and categorise useful images here; reviewed metadata is preserved across re-extraction."));
+      panel.appendChild(modernStatusRow("Artwork candidates", `${artworkItems.length} reviewed candidate(s)`, "Embedded image extraction is best-effort. If the PDF exposes no images, the app renders full PDF pages as review/crop candidates; reviewed metadata is preserved across re-extraction."));
       if (!artworkItems.length) {
         panel.appendChild(el("p", "muted", "No artwork candidates extracted yet. Use Extract Artwork Candidates from the source scan list after selecting the PDF."));
         return panel;
@@ -6896,7 +6896,7 @@ async function renderRulePdfManager() {
         const summary = document.createElement("summary");
         summary.append(
           el("strong", "", item.title || item.id || "Artwork candidate"),
-          el("span", "muted", ` · ${item.page_label || `p.${item.source_page || "?"}`} · ${item.category || "unknown"}`)
+          el("span", "muted", ` · ${item.page_label || `p.${item.source_page || "?"}`} · ${item.category || "unknown"} · ${String(item.candidate_type || "embedded_image").replace(/_/g, " ")}`)
         );
         const img = el("img", "modern-source-artwork-image");
         img.alt = item.title || item.id || "Artwork candidate";

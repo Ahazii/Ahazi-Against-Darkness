@@ -172,7 +172,9 @@ Home screen rule browsing:
   Workbench artwork extraction stores raw embedded image candidates under the
   same source folder and keeps reviewed artwork names, categories, and notes in
   `reviewed_artwork` so useful illustrations can later be promoted into the
-  user asset library.
+  user asset library. When a PDF exposes no embedded image objects, the
+  extractor renders full PDF pages as `rendered_page` candidates for later
+  crop/review work.
   Workbench scans can store both `pdf_page` and the offset-adjusted printed
   `source_page`; use `page_offset` when a PDF cover/front matter shifts the
   viewer page number away from the printed book page.

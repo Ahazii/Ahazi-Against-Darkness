@@ -964,6 +964,45 @@ def test_source_artwork_extraction_and_review_preserves_metadata(tmp_path: Path,
     assert payload["reviewed_artwork"][0]["category"] == "foe"
 
 
+def test_source_artwork_extraction_renders_pages_when_no_embedded_images(tmp_path: Path, monkeypatch) -> None:
+    import sys
+    import types
+
+    from app.engine import supplement_sources
+
+    class FakePage:
+        images = []
+
+    class FakeReader:
+        def __init__(self, _path: str):
+            self.pages = [FakePage(), FakePage()]
+
+    def fake_run(command, capture_output, text, check, timeout):
+        output_prefix = Path(command[-1])
+        output_prefix.parent.mkdir(parents=True, exist_ok=True)
+        output_prefix.with_suffix(".png").write_bytes(b"rendered-page")
+
+        class Result:
+            returncode = 0
+            stderr = ""
+            stdout = ""
+
+        return Result()
+
+    monkeypatch.setitem(sys.modules, "pypdf", types.SimpleNamespace(PdfReader=FakeReader))
+    monkeypatch.setattr(supplement_sources.shutil, "which", lambda name: "pdftoppm" if name == "pdftoppm" else None)
+    monkeypatch.setattr(supplement_sources.subprocess, "run", fake_run)
+    pdf = tmp_path / "Circular Art.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+
+    result = supplement_sources.extract_supplement_source_artwork(tmp_path, pdf, now="2026-07-09T11:00:00Z", page_offset=0)
+    assert result["raw_artwork"] == 2
+    payload = supplement_sources.load_supplement_source_scan(tmp_path, "circular-art")
+    assert payload["reviewed_artwork"][0]["candidate_type"] == "rendered_page"
+    assert payload["reviewed_artwork"][0]["category"] == "review_later"
+    assert (tmp_path / "Supplements" / "_sources" / "circular-art" / "artwork" / "rendered_pages" / "page-001-render.png").read_bytes() == b"rendered-page"
+
+
 def test_rule_pdf_page_preview_renders_cached_png(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 
