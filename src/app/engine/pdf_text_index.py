@@ -80,6 +80,18 @@ def extract_rule_pdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
         raise
 
 
+def display_page_number(pdf_page: int, page_offset: int = 0) -> int:
+    printed_page = int(pdf_page) + int(page_offset)
+    return printed_page if printed_page > 0 else int(pdf_page)
+
+
+def page_label(pdf_page: int, page_offset: int = 0) -> str:
+    display_page = display_page_number(pdf_page, page_offset)
+    if int(page_offset) and display_page != int(pdf_page):
+        return f"p.{display_page} (PDF p.{int(pdf_page)})"
+    return f"p.{display_page}"
+
+
 def load_local_rule_text_index(rules_dir: Path) -> dict[str, Any]:
     path = local_rule_text_index_path(rules_dir)
     if not path.exists():
@@ -178,7 +190,7 @@ def merge_local_rule_text_reference(
     return {**payload, "count": len(merged), "entries": merged, "local_rule_text": local_rule_text_status(rules_dir)}
 
 
-def build_rule_text_index_for_pdf(rules_dir: Path, pdf_path: Path, *, now: str) -> dict[str, Any]:
+def build_rule_text_index_for_pdf(rules_dir: Path, pdf_path: Path, *, now: str, page_offset: int = 0) -> dict[str, Any]:
     rules_dir.mkdir(parents=True, exist_ok=True)
     pages = extract_rule_pdf_pages(pdf_path)
     existing = load_local_rule_text_index(rules_dir)
@@ -196,16 +208,21 @@ def build_rule_text_index_for_pdf(rules_dir: Path, pdf_path: Path, *, now: str) 
     stem = re.sub(r"[^a-z0-9]+", "-", pdf_path.stem.lower()).strip("-") or "rules-pdf"
     for page in pages:
         page_number = int(page["page"])
+        source_page = display_page_number(page_number, page_offset)
+        label = page_label(page_number, page_offset)
         text = str(page["text"])
         entries.append(
             {
                 "id": f"local-pdf-{stem}-p{page_number}",
-                "title": f"{pdf_path.stem} p.{page_number}",
+                "title": f"{pdf_path.stem} {label}",
                 "category": "pdf_text",
                 "implementation_status": "local_exact",
-                "source_page": page_number,
+                "source_page": source_page,
+                "pdf_page": page_number,
+                "page_offset": int(page_offset),
+                "page_label": label,
                 "source": source,
-                "summary": f"Exact local PDF text from {pdf_path.name}, page {page_number}.",
+                "summary": f"Exact local PDF text from {pdf_path.name}, {label}.",
                 "body": text,
                 "extraction_methods": list(page.get("methods") or []),
                 "keywords": [pdf_path.stem, pdf_path.name, "exact pdf text", "local rules pdf"],
@@ -218,6 +235,7 @@ def build_rule_text_index_for_pdf(rules_dir: Path, pdf_path: Path, *, now: str) 
             "size_bytes": pdf_path.stat().st_size,
             "indexed_at": now,
             "pages_indexed": len(pages),
+            "page_offset": int(page_offset),
         }
     )
     index = {
@@ -232,6 +250,7 @@ def build_rule_text_index_for_pdf(rules_dir: Path, pdf_path: Path, *, now: str) 
         "filename": pdf_path.name,
         "pages_indexed": len(pages),
         "entries_indexed": len(pages),
+        "page_offset": int(page_offset),
         "index_path": str(local_rule_text_index_path(rules_dir)),
         "message": f"Indexed {len(pages)} page(s) from {pdf_path.name} into DATA_DIR/rules/rule_text_index.json.",
         "index_status": local_rule_text_status(rules_dir),

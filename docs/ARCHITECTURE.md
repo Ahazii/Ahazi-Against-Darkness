@@ -154,6 +154,9 @@ Home screen rule browsing:
   blocks with source page and extraction method so a human reviewer can later
   classify them as rules, adventure narrative, foes, equipment, locations,
   states, terrain, tables, maps, room tiles, ignored text, or manual-entry work.
+  Workbench scans can store both `pdf_page` and the offset-adjusted printed
+  `source_page`; use `page_offset` when a PDF cover/front matter shifts the
+  viewer page number away from the printed book page.
 
 Home screen character UI:
 

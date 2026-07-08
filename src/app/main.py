@@ -490,6 +490,13 @@ def _resolve_user_rule_pdf(filename: str) -> Path:
     return resolved
 
 
+def _payload_page_offset(payload: dict[str, Any]) -> int:
+    try:
+        return int(payload.get("page_offset") or 0)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Page offset must be a whole number.") from exc
+
+
 def _tag_narrative_override_status() -> dict[str, Any]:
     path = tag_narrative_overrides_path()
     status: dict[str, Any] = {
@@ -620,6 +627,7 @@ async def extract_tag_narrative(payload: dict[str, Any]) -> dict[str, Any]:
 @app.post("/api/rules/index-pdf-text")
 async def index_rule_pdf_text(payload: dict[str, Any]) -> dict[str, Any]:
     filename = str(payload.get("filename") or "").strip()
+    page_offset = _payload_page_offset(payload)
     if not filename:
         candidates = sorted(settings.rules_dir.glob("*.pdf"))
         if not candidates:
@@ -628,7 +636,7 @@ async def index_rule_pdf_text(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         pdf_path = _resolve_user_rule_pdf(filename)
     try:
-        return build_rule_text_index_for_pdf(settings.rules_dir, pdf_path, now=now_utc())
+        return build_rule_text_index_for_pdf(settings.rules_dir, pdf_path, now=now_utc(), page_offset=page_offset)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Could not index rule PDF text: {exc}") from exc
 
@@ -636,6 +644,7 @@ async def index_rule_pdf_text(payload: dict[str, Any]) -> dict[str, Any]:
 @app.post("/api/supplements/source-scan")
 async def scan_supplement_source(payload: dict[str, Any]) -> dict[str, Any]:
     filename = str(payload.get("filename") or "").strip()
+    page_offset = _payload_page_offset(payload)
     if not filename:
         candidates = sorted(settings.rules_dir.glob("*.pdf"))
         if not candidates:
@@ -644,7 +653,7 @@ async def scan_supplement_source(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         pdf_path = _resolve_user_rule_pdf(filename)
     try:
-        return scan_supplement_source_pdf(settings.data_dir, pdf_path, now=now_utc())
+        return scan_supplement_source_pdf(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Could not scan supplement source: {exc}") from exc
 

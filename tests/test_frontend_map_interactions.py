@@ -2301,6 +2301,7 @@ def test_modern_dashboard_status_and_developer_tools_are_demoted() -> None:
     assert "function scrollPanelIntoView(panel)" in MODERN_PAGES_JS
     assert "async function toggleRevealedPanel(mount, buildPanel, openedStatus = \"\")" in MODERN_PAGES_JS
     assert "button.is-working" in STYLES_CSS
+    assert "@keyframes modern-button-spin" in STYLES_CSS
     assert "await toggleRevealedPanel(rulePdfMount, renderRulePdfManager" in MODERN_PAGES_JS
     assert "button(\"Artwork Manager\"" in MODERN_PAGES_JS
     assert "await toggleRevealedPanel(artworkMount, () => renderArtworkManager()" in MODERN_PAGES_JS
@@ -2926,6 +2927,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Developer Tables" in MODERN_PAGES_JS
     assert "Index Exact Rules Text" in MODERN_PAGES_JS
     assert "Indexing exact rules text..." in MODERN_PAGES_JS
+    assert "modern-rule-pdf-page-offset" in MODERN_PAGES_JS
+    assert "printed page = PDF page + offset" in MODERN_PAGES_JS
+    assert "page_offset: Number(pageOffset.value || 0)" in MODERN_PAGES_JS
+    assert "item.page_label ? ` · ${item.page_label}`" in MODERN_PAGES_JS
     assert "Scan Source Blocks" in MODERN_PAGES_JS
     assert "/api/supplements/source-scan" in MODERN_PAGES_JS
     assert "DATA_DIR/Supplements/_sources" in MODERN_PAGES_JS

@@ -640,6 +640,41 @@ def test_index_rule_pdf_text_writes_local_appdata_index(tmp_path: Path, monkeypa
     assert index["entries"][0]["source"] == "DATA_DIR/rules/Owned Rules.pdf"
 
 
+def test_index_rule_pdf_text_applies_manual_printed_page_offset(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import pdf_text_index
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Troublesome Towns.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        pdf_text_index,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 8, "text": "House of Ill Repute", "methods": ["layout"]}],
+    )
+
+    payload = TestClient(main_module.app).post(
+        "/api/rules/index-pdf-text",
+        json={"filename": "Troublesome Towns.pdf", "page_offset": -6},
+    ).json()
+    assert payload["page_offset"] == -6
+    index = json.loads((rules_dir / "rule_text_index.json").read_text(encoding="utf-8"))
+    entry = index["entries"][0]
+    assert entry["pdf_page"] == 8
+    assert entry["source_page"] == 2
+    assert entry["page_label"] == "p.2 (PDF p.8)"
+    assert index["documents"][0]["page_offset"] == -6
+
+
 def test_rule_pdf_page_extraction_uses_layout_and_positioned_text() -> None:
     from app.engine import pdf_text_index
 
@@ -678,12 +713,17 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
         ],
     )
 
-    result = supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:00:00Z")
+    result = supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:00:00Z", page_offset=-1)
     assert result["blocks"] == 2
+    assert result["page_offset"] == -1
     path = tmp_path / "Supplements" / "_sources" / "troublesome-towns" / "source_blocks.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["page_offset"] == -1
     assert payload["blocks"][0]["assignment"] == "unassigned"
     assert payload["blocks"][0]["text"] == "House of Ill Repute"
+    assert payload["blocks"][0]["pdf_page"] == 3
+    assert payload["blocks"][0]["source_page"] == 2
+    assert payload["blocks"][0]["page_label"] == "p.2 (PDF p.3)"
     assert payload["blocks"][0]["extraction_methods"] == ["plain", "layout"]
 
 

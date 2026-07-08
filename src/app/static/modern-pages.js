@@ -6349,7 +6349,7 @@ async function renderRulesReference() {
           : "Show or hide the player-facing rule reference text for this entry.";
         rowSummary.append(
           highlightedEl("strong", "", item.title || item.id, needle),
-          el("span", "muted", `${modernStatusLabel(item.implementation_status)}${item.source_page ? ` · p.${item.source_page}` : ""}`)
+          el("span", "muted", `${modernStatusLabel(item.implementation_status)}${item.page_label ? ` · ${item.page_label}` : item.source_page ? ` · p.${item.source_page}` : ""}`)
         );
         row.appendChild(rowSummary);
         if (item.summary) row.appendChild(highlightedEl("p", "modern-home-status", item.summary, needle));
@@ -6661,6 +6661,7 @@ async function renderRulePdfManager() {
   const file = input("file", "modern-rule-pdf-upload", "Choose an owned rules PDF from your computer to upload to the server.");
   file.accept = "application/pdf,.pdf";
   const uploadedSelect = select("modern-rule-pdf-select", "Uploaded DATA_DIR/rules PDF to extract from.", [["", "Choose uploaded PDF"]]);
+  const pageOffset = input("number", "modern-rule-pdf-page-offset", "Optional printed-page offset. The app calculates printed page = PDF page + offset. Example: if PDF page 7 is printed page 1, enter -6.", "0");
   const overwrite = input("checkbox", "modern-rule-pdf-overwrite", "Overwrite existing fields in DATA_DIR/tag_scene_narrative_overrides.json. Leave off to preserve local edits.");
   const status = el("div", "modern-list");
   const resultBox = el("div", "modern-list");
@@ -6679,7 +6680,7 @@ async function renderRulePdfManager() {
     for (const item of payload.uploaded || []) {
       uploadedSelect.appendChild(new Option(`${item.filename} (${Math.round((item.size_bytes || 0) / 1024)} KB)`, item.filename));
     }
-    const indexedDocs = (textIndex.documents || []).map((item) => `${item.filename}: ${item.pages_indexed || 0} page(s)`).join("; ");
+    const indexedDocs = (textIndex.documents || []).map((item) => `${item.filename}: ${item.pages_indexed || 0} page(s)${item.page_offset ? `, offset ${item.page_offset}` : ""}`).join("; ");
     status.replaceChildren(
       modernStatusRow("Uploaded PDFs", `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, "These PDFs are user data beside game.db and can be backed up from the appdata folder."),
       modernStatusRow("Rules text index", textIndex.exists ? `${textIndex.entry_count || 0} exact page entr${textIndex.entry_count === 1 ? "y" : "ies"} from ${textIndex.document_count || 0} PDF(s)` : "No exact text index yet", indexedDocs || "Build this from uploaded PDFs when you want exact PDF wording searchable in the player Rules Reference."),
@@ -6722,7 +6723,7 @@ async function renderRulePdfManager() {
         showRulePdfResult("ok", "Indexing exact rules text. Large PDFs can take a little while; this panel will update when the server finishes.", "Indexing in progress");
         const result = await api("/api/rules/index-pdf-text", {
           method: "POST",
-          body: JSON.stringify({ filename: uploadedSelect.value }),
+          body: JSON.stringify({ filename: uploadedSelect.value, page_offset: Number(pageOffset.value || 0) }),
         });
         const message = result.message || `Indexed ${result.entries_indexed || 0} page(s).`;
         setStatus(message);
@@ -6739,7 +6740,7 @@ async function renderRulePdfManager() {
         showRulePdfResult("ok", "Scanning PDF source blocks into the local supplement review workspace.", "Source scan in progress");
         const result = await api("/api/supplements/source-scan", {
           method: "POST",
-          body: JSON.stringify({ filename: uploadedSelect.value }),
+          body: JSON.stringify({ filename: uploadedSelect.value, page_offset: Number(pageOffset.value || 0) }),
         });
         const message = result.message || `Scanned ${result.blocks || 0} source block(s).`;
         setStatus(message);
@@ -6774,11 +6775,12 @@ async function renderRulePdfManager() {
   panel.append(
     field("Rules PDF", file),
     field("Uploaded PDF", uploadedSelect),
+    field("Printed page offset", pageOffset),
     field("Overwrite local edits", overwrite),
     row,
     resultBox,
     status,
-    el("p", "muted", "Rules text indexing stores exact PDF page text only in DATA_DIR/rules/rule_text_index.json for private local search. Source block scans create local review files under DATA_DIR/Supplements/_sources for future manual assignment. TAG narrative extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
+    el("p", "muted", "Rules text indexing stores exact PDF page text only in DATA_DIR/rules/rule_text_index.json for private local search. Use Printed page offset when the PDF viewer page differs from the printed book page: if PDF page 7 is printed page 1, enter -6. Source block scans create local review files under DATA_DIR/Supplements/_sources for future manual assignment. TAG narrative extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
   );
   return panel;
 }

@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .pdf_text_index import extract_rule_pdf_pages
+from .pdf_text_index import display_page_number, extract_rule_pdf_pages, page_label
 
 
 SOURCE_BLOCK_ASSIGNMENTS = {
@@ -52,20 +52,23 @@ def _page_text_blocks(text: str) -> list[str]:
     return blocks
 
 
-def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str) -> dict[str, Any]:
+def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page_offset: int = 0) -> dict[str, Any]:
     source_id = supplement_source_id(pdf_path)
     folder = supplement_source_folder(data_dir, source_id)
     folder.mkdir(parents=True, exist_ok=True)
     existing = load_supplement_source_scan(data_dir, source_id)
-    existing_by_text = {
-        (int(block.get("source_page") or 0), str(block.get("text") or "")): block
-        for block in existing.get("blocks", [])
-        if isinstance(block, dict)
-    }
+    existing_by_text: dict[tuple[int, str], dict[str, Any]] = {}
+    for block in existing.get("blocks", []):
+        if not isinstance(block, dict):
+            continue
+        text = str(block.get("text") or "")
+        pdf_page = int(block.get("pdf_page") or block.get("source_page") or 0)
+        existing_by_text[(pdf_page, text)] = block
     blocks: list[dict[str, Any]] = []
     pages = extract_rule_pdf_pages(pdf_path)
     for page in pages:
         page_no = int(page.get("page") or 0)
+        source_page = display_page_number(page_no, page_offset)
         methods = list(page.get("methods") or [])
         for index, text in enumerate(_page_text_blocks(str(page.get("text") or "")), start=1):
             previous = existing_by_text.get((page_no, text), {})
@@ -76,7 +79,10 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str) -> d
                 {
                     "id": f"{source_id}-p{page_no}-b{index:03d}",
                     "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
-                    "source_page": page_no,
+                    "source_page": source_page,
+                    "pdf_page": page_no,
+                    "page_offset": int(page_offset),
+                    "page_label": page_label(page_no, page_offset),
                     "block_index": index,
                     "assignment": assignment,
                     "review_status": str(previous.get("review_status") or "unreviewed"),
@@ -90,6 +96,7 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str) -> d
         "source_id": source_id,
         "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
         "updated_at": now,
+        "page_offset": int(page_offset),
         "note": "Local/private PDF source blocks for human review and supplement assignment. Exact text remains in DATA_DIR.",
         "assignment_options": sorted(SOURCE_BLOCK_ASSIGNMENTS),
         "blocks": blocks,
@@ -100,6 +107,7 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str) -> d
         "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
         "blocks": len(blocks),
         "pages": len(pages),
+        "page_offset": int(page_offset),
         "path": str(supplement_source_scan_path(data_dir, source_id)),
         "message": f"Scanned {len(blocks)} review block(s) from {pdf_path.name} into DATA_DIR/Supplements/_sources/{source_id}/source_blocks.json.",
     }
