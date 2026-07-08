@@ -122,3 +122,34 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     except (OSError, json.JSONDecodeError):
         return {"schema_version": 1, "source_id": source_id, "blocks": []}
     return payload if isinstance(payload, dict) else {"schema_version": 1, "source_id": source_id, "blocks": []}
+
+
+def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
+    root = supplement_sources_root(data_dir)
+    if not root.exists():
+        return []
+    scans: list[dict[str, Any]] = []
+    for scan_path in sorted(root.glob("*/source_blocks.json")):
+        source_id = scan_path.parent.name
+        payload = load_supplement_source_scan(data_dir, source_id)
+        blocks = [block for block in payload.get("blocks", []) if isinstance(block, dict)]
+        assignments: dict[str, int] = {}
+        reviewed = 0
+        for block in blocks:
+            assignment = str(block.get("assignment") or "unassigned")
+            assignments[assignment] = assignments.get(assignment, 0) + 1
+            if str(block.get("review_status") or "") not in {"", "unreviewed"}:
+                reviewed += 1
+        scans.append(
+            {
+                "source_id": str(payload.get("source_id") or source_id),
+                "source_pdf": str(payload.get("source_pdf") or ""),
+                "updated_at": str(payload.get("updated_at") or ""),
+                "page_offset": int(payload.get("page_offset") or 0),
+                "blocks": len(blocks),
+                "reviewed_blocks": reviewed,
+                "assignment_counts": assignments,
+                "path": str(scan_path),
+            }
+        )
+    return scans

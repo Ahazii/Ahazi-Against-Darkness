@@ -725,6 +725,19 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
     assert payload["blocks"][0]["source_page"] == 2
     assert payload["blocks"][0]["page_label"] == "p.2 (PDF p.3)"
     assert payload["blocks"][0]["extraction_methods"] == ["plain", "layout"]
+    scans = supplement_sources.list_supplement_source_scans(tmp_path)
+    assert scans == [
+        {
+            "source_id": "troublesome-towns",
+            "source_pdf": "DATA_DIR/rules/Troublesome Towns.pdf",
+            "updated_at": "2026-07-08T11:00:00Z",
+            "page_offset": -1,
+            "blocks": 2,
+            "reviewed_blocks": 0,
+            "assignment_counts": {"unassigned": 2},
+            "path": str(path),
+        }
+    ]
 
 
 def test_supplement_source_scan_preserves_existing_assignment(tmp_path: Path, monkeypatch) -> None:

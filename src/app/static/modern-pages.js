@@ -6672,6 +6672,86 @@ async function renderRulePdfManager() {
     if (!Array.isArray(warnings) || !warnings.length) return "No suspected cut-off entries.";
     return warnings.slice(0, 8).join(" ");
   }
+  const sourceScanStatus = el("div", "modern-list");
+  const sourceScanDetail = el("div", "modern-list");
+  function sourceScanAssignmentSummary(scan) {
+    const counts = scan.assignment_counts || {};
+    const parts = Object.entries(counts)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => `${key}: ${value}`);
+    return parts.length ? parts.join("; ") : "No assignment counts yet.";
+  }
+  function renderSourceScanDetail(payload) {
+    const blocks = Array.isArray(payload.blocks) ? payload.blocks : [];
+    const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
+    const assignment = select("modern-source-block-assignment", "Filter by current manual assignment.", [["", "All assignments"]]);
+    for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
+    const results = el("div", "modern-list");
+    function draw() {
+      const needle = search.value;
+      const assignmentNeedle = assignment.value;
+      const matches = blocks.filter((block) => {
+        if (assignmentNeedle && block.assignment !== assignmentNeedle) return false;
+        return modernTextMatchesNeedle(`${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
+      });
+      results.replaceChildren(modernStatusRow("Visible source blocks", `${matches.length} of ${blocks.length}`, "This view is read-only for now; assignment editing comes in the next workbench step."));
+      for (const block of matches.slice(0, 120)) {
+        const item = document.createElement("details");
+        item.className = "modern-row";
+        const summary = document.createElement("summary");
+        summary.append(
+          el("strong", "", block.page_label || `p.${block.source_page || "?"}`),
+          el("span", "muted", ` · ${block.assignment || "unassigned"} · block ${block.block_index || "?"}`)
+        );
+        item.appendChild(summary);
+        item.append(
+          el("p", "muted", `${block.id || "source block"}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
+          highlightedEl("p", "modern-pre-wrap", block.text || "", needle)
+        );
+        results.appendChild(item);
+      }
+      if (matches.length > 120) results.appendChild(el("p", "muted", `Showing first 120 matches. Narrow the search to inspect the remaining ${matches.length - 120}.`));
+    }
+    search.addEventListener("input", draw);
+    assignment.addEventListener("change", draw);
+    sourceScanDetail.replaceChildren(
+      modernStatusRow("Selected source scan", `${payload.source_pdf || payload.source_id || "Source PDF"} · ${blocks.length} block(s)`, `Printed page offset: ${payload.page_offset || 0}. Exact copied prose remains local in DATA_DIR/Supplements/_sources.`),
+      field("Search source blocks", search),
+      field("Assignment filter", assignment),
+      results
+    );
+    draw();
+  }
+  async function refreshSourceScans() {
+    const payload = await api("/api/supplements/source-scans");
+    const scans = payload.scans || [];
+    sourceScanStatus.replaceChildren();
+    if (!scans.length) {
+      sourceScanStatus.appendChild(modernStatusRow("Source block scans", "No scans yet", "Use Scan Source Blocks after uploading or selecting a PDF."));
+      sourceScanDetail.replaceChildren();
+      return;
+    }
+    sourceScanStatus.appendChild(modernStatusRow("Source block scans", `${scans.length} local scan(s)`, "These are local/private review files in DATA_DIR/Supplements/_sources."));
+    for (const scan of scans) {
+      const row = actions("modern-row-actions");
+      row.append(
+        button("View Blocks", `Open read-only source blocks for ${scan.source_id}.`, async (btn) => runWithButtonProgress(btn, "Loading source blocks...", async () => {
+          const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(scan.source_id)}`);
+          renderSourceScanDetail(detail);
+          scrollPanelIntoView(sourceScanDetail, "Source scan opened.");
+        }))
+      );
+      const body = el("div", "");
+      body.append(
+        el("strong", "", scan.source_id || "source scan"),
+        el("p", "muted", `${scan.source_pdf || "PDF"} · ${scan.blocks || 0} block(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
+        el("p", "muted", sourceScanAssignmentSummary(scan))
+      );
+      const scanRow = el("div", "modern-row");
+      scanRow.append(body, row);
+      sourceScanStatus.appendChild(scanRow);
+    }
+  }
   async function refreshList() {
     const payload = await api("/api/rules/pdfs");
     const override = payload.override_status || {};
@@ -6693,6 +6773,7 @@ async function renderRulePdfManager() {
     );
   }
   await refreshList();
+  await refreshSourceScans();
   const row = actions();
   row.append(
     button("Upload PDF", "Upload the selected PDF into DATA_DIR/rules on the server.", async (btn) => runWithButtonProgress(btn, "Uploading PDF...", async () => {
@@ -6745,6 +6826,7 @@ async function renderRulePdfManager() {
         const message = result.message || `Scanned ${result.blocks || 0} source block(s).`;
         setStatus(message);
         showRulePdfResult("ok", `${message} Manual assignment UI is the next workbench step.`, "Source scan complete");
+        await refreshSourceScans();
       } catch (error) {
         const message = error?.message || "Source scan failed.";
         showRulePdfResult("error", message, "Source scan failed");
@@ -6776,10 +6858,13 @@ async function renderRulePdfManager() {
     field("Rules PDF", file),
     field("Uploaded PDF", uploadedSelect),
     field("Printed page offset", pageOffset),
+    el("p", "muted", "Page offset example: if PDF page 7 is printed page 1, enter -6. Leave this at 0 when the PDF viewer page number and printed book page number already match."),
     field("Overwrite local edits", overwrite),
     row,
     resultBox,
     status,
+    sourceScanStatus,
+    sourceScanDetail,
     el("p", "muted", "Rules text indexing stores exact PDF page text only in DATA_DIR/rules/rule_text_index.json for private local search. Use Printed page offset when the PDF viewer page differs from the printed book page: if PDF page 7 is printed page 1, enter -6. Source block scans create local review files under DATA_DIR/Supplements/_sources for future manual assignment. TAG narrative extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
   );
   return panel;

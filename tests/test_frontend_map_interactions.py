@@ -2929,10 +2929,14 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Indexing exact rules text..." in MODERN_PAGES_JS
     assert "modern-rule-pdf-page-offset" in MODERN_PAGES_JS
     assert "printed page = PDF page + offset" in MODERN_PAGES_JS
+    assert "Page offset example: if PDF page 7 is printed page 1, enter -6." in MODERN_PAGES_JS
     assert "page_offset: Number(pageOffset.value || 0)" in MODERN_PAGES_JS
     assert "item.page_label ? ` · ${item.page_label}`" in MODERN_PAGES_JS
     assert "Scan Source Blocks" in MODERN_PAGES_JS
     assert "/api/supplements/source-scan" in MODERN_PAGES_JS
+    assert "/api/supplements/source-scans" in MODERN_PAGES_JS
+    assert "View Blocks" in MODERN_PAGES_JS
+    assert "Visible source blocks" in MODERN_PAGES_JS
     assert "DATA_DIR/Supplements/_sources" in MODERN_PAGES_JS
     assert "Extracting Adventures Guild narrative..." in MODERN_PAGES_JS
     assert "/api/rules/index-pdf-text" in MODERN_PAGES_JS

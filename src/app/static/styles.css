@@ -1218,6 +1218,11 @@ button.is-working::after {
   overflow: auto;
 }
 
+.modern-pre-wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .modern-card input:not([type="checkbox"]):not([type="radio"]),
 .modern-card select {
   width: min(100%, 22rem);

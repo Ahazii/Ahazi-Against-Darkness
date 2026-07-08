@@ -67,7 +67,12 @@ from .engine.roster_sync import (
     sync_party_members_to_roster,
     unlock_characters_for_session,
 )
-from .engine.supplement_sources import scan_supplement_source_pdf
+from .engine.supplement_sources import (
+    list_supplement_source_scans,
+    load_supplement_source_scan,
+    scan_supplement_source_pdf,
+    supplement_source_scan_path,
+)
 from .engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_lines, upgrade_tag_manifest
 from .engine.tag_campaign import merge_tag_pdf_narrative_overrides, tag_narrative_overrides_path
 from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
@@ -656,6 +661,20 @@ async def scan_supplement_source(payload: dict[str, Any]) -> dict[str, Any]:
         return scan_supplement_source_pdf(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Could not scan supplement source: {exc}") from exc
+
+
+@app.get("/api/supplements/source-scans")
+async def supplement_source_scans() -> dict[str, Any]:
+    return {"scans": list_supplement_source_scans(settings.data_dir)}
+
+
+@app.get("/api/supplements/source-scans/{source_id}")
+async def supplement_source_scan_detail(source_id: str) -> dict[str, Any]:
+    path = supplement_source_scan_path(settings.data_dir, source_id)
+    payload = load_supplement_source_scan(settings.data_dir, source_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Source scan not found.")
+    return payload
 
 
 @app.get("/api/rules/local-text-index")
