@@ -639,6 +639,27 @@ def test_index_rule_pdf_text_writes_local_appdata_index(tmp_path: Path, monkeypa
     assert index["entries"][0]["source"] == "DATA_DIR/rules/Owned Rules.pdf"
 
 
+def test_rule_pdf_page_extraction_uses_layout_and_positioned_text() -> None:
+    from app import main as main_module
+
+    class FakePage:
+        def extract_text(self, *args, **kwargs):
+            visitor = kwargs.get("visitor_text")
+            if visitor:
+                visitor("One Bite", None, None, None, None)
+                visitor("At A Time", None, None, None, None)
+                return "ignored visitor return"
+            if kwargs.get("extraction_mode") == "layout":
+                return "Sidebar Box\nOne Bite At A Time"
+            return "Normal flowing page text only."
+
+    variants = main_module._extract_rule_page_texts(FakePage())
+    body = "\n".join(item["text"] for item in variants)
+    assert [item["method"] for item in variants] == ["plain", "layout", "positioned"]
+    assert "One Bite At A Time" in body
+    assert "One Bite At A Time" in main_module._clean_rule_pdf_text(body)
+
+
 def test_spell_and_scroll_tables_present(tables: dict) -> None:
     for key in (
         "basic_spells_table",

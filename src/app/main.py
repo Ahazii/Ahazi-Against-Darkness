@@ -495,6 +495,44 @@ def _clean_rule_pdf_text(text: str) -> str:
     return cleaned.strip()
 
 
+def _rule_pdf_text_fingerprint(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text or "")).strip().lower()
+
+
+def _extract_rule_page_texts(page: Any) -> list[dict[str, str]]:
+    variants: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    def add_variant(method: str, text: str) -> None:
+        cleaned = _clean_rule_pdf_text(text)
+        fingerprint = _rule_pdf_text_fingerprint(cleaned)
+        if not fingerprint or fingerprint in seen:
+            return
+        seen.add(fingerprint)
+        variants.append({"method": method, "text": cleaned})
+
+    try:
+        add_variant("plain", page.extract_text(extraction_mode="plain") or "")
+    except TypeError:
+        add_variant("plain", page.extract_text() or "")
+    try:
+        add_variant("layout", page.extract_text(extraction_mode="layout") or "")
+    except Exception:  # noqa: BLE001
+        pass
+    fragments: list[str] = []
+
+    def visit_text(text: str, *_args: Any) -> None:
+        if str(text or "").strip():
+            fragments.append(str(text))
+
+    try:
+        page.extract_text(visitor_text=visit_text)
+        add_variant("positioned", " ".join(fragment.strip() for fragment in fragments if fragment.strip()))
+    except Exception:  # noqa: BLE001
+        pass
+    return variants
+
+
 def _extract_rule_pdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
     try:
         from pypdf import PdfReader
@@ -504,10 +542,11 @@ def _extract_rule_pdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
         reader = PdfReader(str(pdf_path))
         pages: list[dict[str, Any]] = []
         for index, page in enumerate(reader.pages, start=1):
-            text = _clean_rule_pdf_text(page.extract_text() or "")
-            if not text:
+            variants = _extract_rule_page_texts(page)
+            if not variants:
                 continue
-            pages.append({"page": index, "text": text})
+            text = _clean_rule_pdf_text("\n\n".join(item["text"] for item in variants))
+            pages.append({"page": index, "text": text, "methods": [item["method"] for item in variants]})
         return pages
     except Exception as exc:  # noqa: BLE001
         message = str(exc)
@@ -646,6 +685,7 @@ def _build_rule_text_index_for_pdf(pdf_path: Path) -> dict[str, Any]:
                 "source": source,
                 "summary": f"Exact local PDF text from {pdf_path.name}, page {page_number}.",
                 "body": text,
+                "extraction_methods": list(page.get("methods") or []),
                 "keywords": [pdf_path.stem, pdf_path.name, "exact pdf text", "local rules pdf"],
             }
         )
