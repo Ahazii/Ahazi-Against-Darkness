@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from copy import deepcopy
 from typing import Any
 
@@ -299,6 +300,60 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
 
 def state_registry() -> list[dict[str, Any]]:
     return deepcopy(STATE_DEFINITIONS)
+
+
+def registry_text_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item or "").strip()]
+    if isinstance(value, dict):
+        values: list[str] = []
+        for item in value.values():
+            values.extend(registry_text_list(item))
+        return values
+    text = str(value).strip()
+    return [text] if text else []
+
+
+def normalize_legacy_state_label(label: str) -> tuple[str, str]:
+    raw = str(label or "").strip().lower()
+    base = re.sub(r"\s*\([^)]*\)\s*", " ", raw)
+    base = re.sub(r"[^a-z0-9+ -]", " ", base)
+    base = " ".join(base.split())
+    return raw, base
+
+
+def state_definition_for_status(label: str, states: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
+    raw, base = normalize_legacy_state_label(label)
+    if not raw:
+        return None
+    registry = states if states is not None else STATE_DEFINITIONS
+    for definition in registry:
+        mappings = definition.get("legacy_mappings") if isinstance(definition.get("legacy_mappings"), dict) else {}
+        exact = [item.lower() for item in registry_text_list(mappings.get("statuses"))]
+        if any(item == raw or item == base for item in exact):
+            return deepcopy(definition)
+        status_text = [item.lower() for item in registry_text_list(mappings.get("status_text"))]
+        if any(item in raw or item in base for item in status_text):
+            return deepcopy(definition)
+        prefixes = [item.lower() for item in registry_text_list(mappings.get("status_prefixes"))]
+        if any(raw.startswith(item) or base.startswith(item) for item in prefixes):
+            return deepcopy(definition)
+        suffixes = [item.lower() for item in registry_text_list(mappings.get("item_suffixes"))]
+        if any(item in raw for item in suffixes):
+            return deepcopy(definition)
+    return None
+
+
+def state_definitions_for_statuses(labels: list[str], states: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    matches: dict[str, dict[str, Any]] = {}
+    registry = states if states is not None else STATE_DEFINITIONS
+    for label in labels:
+        definition = state_definition_for_status(label, registry)
+        if definition and definition.get("id"):
+            matches[str(definition["id"])] = definition
+    return list(matches.values())
 
 
 def state_registry_diagnostics(states: list[dict[str, Any]] | None = None) -> list[dict[str, str]]:

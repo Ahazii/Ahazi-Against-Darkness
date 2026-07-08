@@ -345,6 +345,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "character_management_readiness_table",
     "developer_preferences_table",
     "active_registry_tooltips_table",
+    "registry_resolver_helpers_table",
     "exploration_narrative_layout_table",
     "exploration_objective_clarity_table",
     "go_adventure_closeout_gate_table",

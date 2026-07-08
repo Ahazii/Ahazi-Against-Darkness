@@ -188,6 +188,50 @@ def terrain_registry() -> list[dict[str, Any]]:
     return deepcopy(TERRAIN_DEFINITIONS)
 
 
+def registry_text_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item or "").strip()]
+    if isinstance(value, dict):
+        values: list[str] = []
+        for item in value.values():
+            values.extend(registry_text_list(item))
+        return values
+    text = str(value).strip()
+    return [text] if text else []
+
+
+def terrain_definitions_for_context(
+    *,
+    environment: str | None = None,
+    terrain: str | None = None,
+    tile_catalog: str | None = None,
+    terrain_registry_records: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    values = {
+        str(item).strip().lower()
+        for item in (environment, terrain, tile_catalog)
+        if str(item or "").strip()
+    }
+    if not values:
+        return []
+    registry = terrain_registry_records if terrain_registry_records is not None else TERRAIN_DEFINITIONS
+    matches: list[dict[str, Any]] = []
+    for definition in registry:
+        mappings = definition.get("legacy_mappings") if isinstance(definition.get("legacy_mappings"), dict) else {}
+        mapped_values = [
+            str(definition.get("id") or ""),
+            *registry_text_list(mappings.get("environment")),
+            *registry_text_list(mappings.get("terrain")),
+            *registry_text_list(mappings.get("tile_catalog")),
+        ]
+        normalized = {item.strip().lower() for item in mapped_values if item.strip()}
+        if values.intersection(normalized):
+            matches.append(deepcopy(definition))
+    return matches
+
+
 def terrain_registry_diagnostics(terrain: list[dict[str, Any]] | None = None) -> list[dict[str, str]]:
     registry = terrain if terrain is not None else TERRAIN_DEFINITIONS
     diagnostics: list[dict[str, str]] = []

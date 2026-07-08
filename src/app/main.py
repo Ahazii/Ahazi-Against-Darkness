@@ -2935,6 +2935,26 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "This explains the current map/session terrain fields; map generation, table routing, and encounter outcomes still use the existing PDF-backed helpers.",
         },
     ]
+    data["registry_resolver_helpers_table"] = [
+        {
+            "helper": "state_definition_for_status",
+            "module": "src/app/engine/states.py",
+            "player_use": "Lets UI, reports, tests, and future supplement loaders resolve legacy status/effect labels to State Registry rows consistently.",
+            "rules_boundary": "Read-only metadata lookup. The helper does not apply, cure, expire, or save state instances.",
+        },
+        {
+            "helper": "state_definitions_for_statuses",
+            "module": "src/app/engine/states.py",
+            "player_use": "Deduplicates multiple visible labels that point at the same State Registry row.",
+            "rules_boundary": "It identifies matching metadata only; current status strings/counters remain authoritative.",
+        },
+        {
+            "helper": "terrain_definitions_for_context",
+            "module": "src/app/engine/terrain_registry.py",
+            "player_use": "Resolves environment, terrain, and tile-catalog values to Terrain Registry rows for reports, UI, and future module work.",
+            "rules_boundary": "Read-only metadata lookup. Existing terrain helpers still decide spell availability, table routing, and map behavior.",
+        },
+    ]
     data["playtest_triage_workflow_table"] = [
         {
             "field": "Area",
