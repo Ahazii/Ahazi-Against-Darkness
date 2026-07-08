@@ -1844,6 +1844,8 @@ def test_status_effect_chips_have_hover_text() -> None:
     assert ".registry-context-panel" in STYLES_CSS
     assert ".party-state-registry-panel" in STYLES_CSS
     assert "active_registry_tooltips_table" in MAIN_PY
+    assert "/api/registry/resolve/states" in MAIN_PY
+    assert "/api/registry/resolve/terrain" in MAIN_PY
     assert "Shield bonus applies" in APP_JS
     assert "Blessed Temple/Shrine: +1 Attack vs undead and demon foes until one such foe is slain." in APP_JS
     assert "Magic Resistance" in APP_JS

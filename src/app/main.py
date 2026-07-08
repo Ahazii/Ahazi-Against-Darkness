@@ -709,6 +709,45 @@ async def list_terrain() -> dict[str, Any]:
     return terrain_payload()
 
 
+@app.get("/api/registry/resolve/states")
+async def resolve_state_registry_labels(request: Request) -> dict[str, Any]:
+    from .engine.states import state_definition_for_status
+
+    labels = [str(item).strip() for item in request.query_params.getlist("label") if str(item).strip()]
+    if not labels:
+        label_text = str(request.query_params.get("labels") or "").strip()
+        labels = [item.strip() for item in label_text.split(",") if item.strip()]
+    matches = []
+    for label in labels:
+        definition = state_definition_for_status(label)
+        matches.append({"label": label, "state": definition})
+    return {"read_only": True, "labels": labels, "matches": matches}
+
+
+@app.get("/api/registry/resolve/terrain")
+async def resolve_terrain_registry_context(
+    environment: str | None = None,
+    terrain: str | None = None,
+    tile_catalog: str | None = None,
+) -> dict[str, Any]:
+    from .engine.terrain_registry import terrain_definitions_for_context
+
+    matches = terrain_definitions_for_context(
+        environment=environment,
+        terrain=terrain,
+        tile_catalog=tile_catalog,
+    )
+    return {
+        "read_only": True,
+        "context": {
+            "environment": environment,
+            "terrain": terrain,
+            "tile_catalog": tile_catalog,
+        },
+        "matches": matches,
+    }
+
+
 @app.get("/api/rules/classes")
 async def list_classes(ruleset_profile_id: str | None = None) -> list[CharacterClass]:
     classes = rules.classes()
@@ -2953,6 +2992,18 @@ def _rules_tables_payload() -> dict:
             "module": "src/app/engine/terrain_registry.py",
             "player_use": "Resolves environment, terrain, and tile-catalog values to Terrain Registry rows for reports, UI, and future module work.",
             "rules_boundary": "Read-only metadata lookup. Existing terrain helpers still decide spell availability, table routing, and map behavior.",
+        },
+        {
+            "helper": "/api/registry/resolve/states",
+            "module": "src/app/main.py",
+            "player_use": "Diagnostic API for resolving one or more legacy labels to State Registry rows.",
+            "rules_boundary": "Read-only lookup for tooling and debugging; it does not write session or character state.",
+        },
+        {
+            "helper": "/api/registry/resolve/terrain",
+            "module": "src/app/main.py",
+            "player_use": "Diagnostic API for resolving environment, terrain, and tile catalog context to Terrain Registry rows.",
+            "rules_boundary": "Read-only lookup for tooling and debugging; it does not change terrain, map generation, or spell legality.",
         },
     ]
     data["playtest_triage_workflow_table"] = [

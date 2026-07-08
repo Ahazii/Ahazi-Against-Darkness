@@ -3605,7 +3605,7 @@
         "legacy mappings"
       ],
       "summary": "Tables documents backend read-only helpers that resolve legacy state and terrain values to registry rows.",
-      "body": "The modern Tables page includes registry_resolver_helpers_table. It documents read-only backend helpers in states.py and terrain_registry.py that match legacy status/effect labels, environment values, terrain values, and tile catalogs to State Registry and Terrain Registry rows. These helpers are infrastructure for UI, reports, tests, and future supplement loaders. They do not apply states, migrate saves, resolve spell legality, route tables, or change map behavior.",
+      "body": "The modern Tables page includes registry_resolver_helpers_table. It documents read-only backend helpers in states.py and terrain_registry.py, plus diagnostic resolver APIs under /api/registry/resolve, that match legacy status/effect labels, environment values, terrain values, and tile catalogs to State Registry and Terrain Registry rows. These helpers are infrastructure for UI, reports, tests, developer tooling, and future supplement loaders. They do not apply states, migrate saves, resolve spell legality, route tables, or change map behavior.",
       "implementation_status": "implemented"
     },
     {

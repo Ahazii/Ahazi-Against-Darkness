@@ -560,7 +560,7 @@ Default mode should remain dark unless the user chooses otherwise or system sett
 - Show the read-only State Registry in Settings beside the Supplement Library.
 - Make the read-only State Registry searchable/filterable by family, scope, source supplement, and review status before adding state-instance mutation.
 - Adventure View room details now show active registry-backed state/status matches in the Registry Context block. Party Sheet summaries and expanded State Context rows show whether each hero's visible effects map to State Registry rows, and status-chip hovers append matching State Registry metadata to the existing rules tooltip when a legacy status string maps to a registry row.
-- Backend resolver helpers now map legacy status/effect labels to State Registry rows so future loaders and reports do not need to duplicate matching logic.
+- Backend resolver helpers and diagnostic APIs now map legacy status/effect labels to State Registry rows so future loaders and reports do not need to duplicate matching logic.
 
 Good first candidates:
 
@@ -582,7 +582,7 @@ Good first candidates:
 - Show a read-only Terrain Registry in Settings and explain the difference between terrain, maps, and room tiles.
 - Make the read-only Terrain Registry searchable/filterable by kind, source supplement, review status, and interaction group before adding terrain-instance mutation.
 - Adventure View room details now show the current terrain registry match in the Registry Context block, and Play Context terrain hovers expose matching Terrain Registry metadata while leaving map/session terrain fields as the active save format.
-- Backend resolver helpers now map environment, terrain, and tile-catalog values to Terrain Registry rows without changing spell, map, or table-routing logic.
+- Backend resolver helpers and diagnostic APIs now map environment, terrain, and tile-catalog values to Terrain Registry rows without changing spell, map, or table-routing logic.
 
 ### Phase 4: Session Supplement Lock
 
