@@ -2911,6 +2911,13 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "function normalizedSearchNeedle(value)" in MODERN_PAGES_JS
     assert ".normalize(\"NFKC\")" in MODERN_PAGES_JS
     assert ".replace(/\\s+/g, \" \")" in MODERN_PAGES_JS
+    assert "function developerReferenceHref(entryId, fallbackQuery = \"\")" in MODERN_PAGES_JS
+    assert "function developerTablesHref(tableKey = \"\")" in MODERN_PAGES_JS
+    assert "function modernReferenceAudience()" in MODERN_PAGES_JS
+    assert "/api/rules/reference?audience=" in MODERN_PAGES_JS
+    assert "/api/rules/tables?audience=" in MODERN_PAGES_JS
+    assert "Developer Reference" in MODERN_PAGES_JS
+    assert "Developer Tables" in MODERN_PAGES_JS
 
 
 def test_legacy_dashboard_cards_link_to_modern_pages_not_old_home_actions() -> None:

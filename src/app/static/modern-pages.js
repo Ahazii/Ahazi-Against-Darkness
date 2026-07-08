@@ -132,19 +132,19 @@ const PAGE_HELP_QUERIES = {
 };
 
 const PAGE_HELP_REFS = {
-  characters: "home_character_sheets",
-  troupes: "campaign_membership_boundaries",
+  characters: "",
+  troupes: "",
   guild: "tag_guild_closeout_guidance",
-  parties: "campaign_membership_boundaries",
+  parties: "",
   equipment: "equipment_shop",
   banking: "tag_settlement_campaign",
   settlement: "tag_settlement_campaign",
-  campaign: "campaign_command_center",
-  "adventure-management": "go_adventure_closeout_gates",
-  "go-adventure": "go_adventure_closeout_gates",
-  "rules-reference": "rules_artwork_registry",
-  tables: "rules_tables_index",
-  library: "pdf_artwork_boundary",
+  campaign: "",
+  "adventure-management": "",
+  "go-adventure": "",
+  "rules-reference": "",
+  tables: "",
+  library: "",
 };
 
 const statusEl = document.getElementById("modern-status");
@@ -275,6 +275,23 @@ function helpLink(label, href, title) {
 function ruleReferenceHref(entryId, fallbackQuery = "") {
   if (entryId) return `/modern/rules-reference?entry=${encodeURIComponent(entryId)}`;
   return `/modern/rules-reference?help=${encodeURIComponent(fallbackQuery || "rules reference")}`;
+}
+
+function developerReferenceHref(entryId, fallbackQuery = "") {
+  const params = new URLSearchParams({ audience: "developer" });
+  if (entryId) params.set("entry", entryId);
+  else params.set("help", fallbackQuery || "developer reference");
+  return `/modern/rules-reference?${params.toString()}`;
+}
+
+function developerTablesHref(tableKey = "") {
+  const params = new URLSearchParams({ audience: "developer" });
+  if (tableKey) params.set("search", tableKey);
+  return `/modern/tables?${params.toString()}`;
+}
+
+function modernReferenceAudience() {
+  return new URLSearchParams(window.location.search).get("audience") === "developer" ? "developer" : "player";
 }
 
 function actions() {
@@ -6213,12 +6230,17 @@ async function renderGoAdventure() {
 }
 
 async function renderRulesReference() {
-  if (!modernState.rulesReference.length) {
-    const payload = await api("/api/rules/reference");
-    modernState.rulesReference = Array.isArray(payload) ? payload : (payload.entries || []);
-  }
+  const audience = modernReferenceAudience();
+  const payload = await api(`/api/rules/reference?audience=${encodeURIComponent(audience)}`);
+  modernState.rulesReference = Array.isArray(payload) ? payload : (payload.entries || []);
   await loadArtwork();
-  const panel = card("Rules Reference", "Search every curated implementation reference entry from the app reference index.");
+  const isDeveloper = audience === "developer";
+  const panel = card(
+    isDeveloper ? "Developer Reference" : "Rules Reference",
+    isDeveloper
+      ? "Search app-owned implementation notes, workflow references, diagnostics, and maintenance boundaries."
+      : "Search implemented player-facing rule references. Exact PDF wording belongs in local DATA_DIR/rules indexes created from PDFs you manually provide, not in git."
+  );
   const search = input("search", "modern-rules-search", "Filter rules reference entries.");
   const params = new URLSearchParams(window.location.search);
   const helpQuery = params.get("help");
@@ -6228,7 +6250,7 @@ async function renderRulesReference() {
   const category = select("modern-rules-category", "Filter by rules category.", [["", "All categories"], ...categories.map((item) => [item, item])]);
   const statuses = [...new Set(modernState.rulesReference.map((entry) => entry.implementation_status || "reference"))].sort();
   const status = select("modern-rules-status", "Filter by implementation status.", [["", "All statuses"], ...statuses.map((item) => [item, modernStatusLabel(item)])]);
-  const source = select("modern-rules-source", "Filter entries by whether they cite a printed source page or have artwork slots.", [["", "All source refs"], ["with", "With source page"], ["app", "App-only / no source page"], ["art", "With artwork slot"]]);
+  const source = select("modern-rules-source", "Filter entries by whether they cite a printed source page or have artwork slots.", [["", "All source refs"], ["with", "With source page"], ...(isDeveloper ? [["app", "App-only / no source page"]] : []), ["art", "With artwork slot"]]);
   const supplementFilter = select("modern-rules-supplement", "Filter by inferred supplement context. Enabled defaults uses the saved Settings supplement list and always includes locked core.", supplementFilterOptions());
   const sort = select("modern-rules-sort", "Sort rules reference entries.", [["category", "Category"], ["title", "Title"], ["implementation_status", "Status"], ["source_page", "Source page"]]);
   const results = el("div", "modern-list");
@@ -6265,7 +6287,7 @@ async function renderRulesReference() {
     }, {});
     const summary = el("p", "muted", exactEntryId
       ? `${rows.length ? "Exact" : "No"} rule reference match for ${exactEntryId}.`
-      : `${rows.length} matching rule reference entr${rows.length === 1 ? "y" : "ies"} across ${Object.keys(byCategory).length} categor${Object.keys(byCategory).length === 1 ? "y" : "ies"}.`);
+      : `${rows.length} matching ${isDeveloper ? "developer" : "player"} reference entr${rows.length === 1 ? "y" : "ies"} across ${Object.keys(byCategory).length} categor${Object.keys(byCategory).length === 1 ? "y" : "ies"}.`);
     results.appendChild(summary);
     for (const [groupName, items] of Object.entries(byCategory).sort(([a], [b]) => a.localeCompare(b))) {
       const group = document.createElement("details");
@@ -6281,7 +6303,9 @@ async function renderRulesReference() {
         row.className = "modern-row modern-reference-card";
         row.open = Boolean(exactEntryId);
         const rowSummary = document.createElement("summary");
-        rowSummary.title = "Show or hide the full implementation note for this rule reference.";
+        rowSummary.title = isDeveloper
+          ? "Show or hide the full developer implementation note for this reference."
+          : "Show or hide the player-facing rule reference text for this entry.";
         rowSummary.append(
           highlightedEl("strong", "", item.title || item.id, needle),
           el("span", "muted", `${modernStatusLabel(item.implementation_status)}${item.source_page ? ` · p.${item.source_page}` : ""}`)
@@ -6307,7 +6331,9 @@ async function renderRulesReference() {
         el(
           "p",
           "modern-home-status in-progress",
-          "No matching rules reference entries. Clear filters or search by rule name, implementation status, keyword, source page, or body text."
+          isDeveloper
+            ? "No matching developer reference entries. Clear filters or search by workflow, table, implementation status, keyword, source page, or body text."
+            : "No matching player rules reference entries. Clear filters or search by rule name, source page, keyword, or local exact-PDF wording once indexed."
         )
       );
     }
@@ -6385,9 +6411,16 @@ function modernTablePreview(value, needle = "") {
 }
 
 async function renderTables() {
-  if (!Object.keys(modernState.tables).length) modernState.tables = await api("/api/rules/tables");
+  const audience = modernReferenceAudience();
+  modernState.tables = await api(`/api/rules/tables?audience=${encodeURIComponent(audience)}`);
   await loadArtwork();
-  const panel = card("Tables List", "Search every structured rules and app table exposed by the game.");
+  const isDeveloper = audience === "developer";
+  const panel = card(
+    isDeveloper ? "Developer Tables" : "Tables List",
+    isDeveloper
+      ? "Search internal app tables for workflows, registries, validation, imported package review, and diagnostics."
+      : "Search implemented player-facing tables from rules PDFs and generated PDF-backed catalogs."
+  );
   const search = input("search", "modern-table-search", "Search by table name or entry text.");
   const params = new URLSearchParams(window.location.search);
   const helpQuery = params.get("help");
@@ -6439,7 +6472,7 @@ async function renderTables() {
       return groups;
     }, {});
     const artworkCount = keys.filter((key) => artworkForTable(key).length).length;
-    results.appendChild(el("p", "muted", `${keys.length} matching table${keys.length === 1 ? "" : "s"} across ${Object.keys(byFamily).length} famil${Object.keys(byFamily).length === 1 ? "y" : "ies"} · ${artworkCount} with artwork slots.`));
+    results.appendChild(el("p", "muted", `${keys.length} matching ${isDeveloper ? "developer" : "player"} table${keys.length === 1 ? "" : "s"} across ${Object.keys(byFamily).length} famil${Object.keys(byFamily).length === 1 ? "y" : "ies"} · ${artworkCount} with artwork slots.`));
     for (const [groupName, groupKeys] of Object.entries(byFamily).sort(([a], [b]) => a.localeCompare(b))) {
       const group = document.createElement("details");
       group.className = "modern-row modern-table-group";
@@ -6479,7 +6512,9 @@ async function renderTables() {
       results.appendChild(group);
     }
     if (!keys.length) {
-      results.appendChild(el("p", "modern-home-status in-progress", "No matching tables. Clear filters or search by table name, row text, roll result, monster, item, tile, icon, or source term."));
+      results.appendChild(el("p", "modern-home-status in-progress", isDeveloper
+        ? "No matching developer tables. Clear filters or search by workflow, registry, validation, package, artwork, or diagnostic term."
+        : "No matching player tables. Clear filters or search by table name, row text, roll result, monster, item, tile, or source term."));
     }
   };
   search.addEventListener("input", draw);
@@ -6720,6 +6755,8 @@ async function renderDeveloper() {
     link("Adventure Module Creator", "/modern/developer", "Placeholder for future adventure-from-scratch creator."),
     link("Map Elements Editor", "/static/tile-editor.html", "Open the existing map element editor as its own page."),
     link("Icon Editor", "/static/icon-editor.html", "Open the existing icon editor as its own page."),
+    link("Developer Reference", developerReferenceHref("", "developer reference"), "Open app-only implementation notes, workflow references, diagnostics, and maintenance boundaries.", "link-button secondary"),
+    link("Developer Tables", developerTablesHref(), "Open internal app tables for workflows, registries, validation, package review, artwork, and diagnostics.", "link-button secondary"),
     button("Rules PDF Import", "Show or hide the rules PDF upload and local TAG narrative extraction tool.", async () => {
       if (!rulePdfMount.childElementCount) rulePdfMount.appendChild(await renderRulePdfManager());
       rulePdfMount.classList.toggle("hidden");

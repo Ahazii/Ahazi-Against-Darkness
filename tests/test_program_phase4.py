@@ -548,7 +548,7 @@ def test_campaign_api_lists_tag_services(client: TestClient) -> None:
 
 
 def test_rules_tables_api_includes_modern_large_reference_groups(client: TestClient) -> None:
-    response = client.get("/api/rules/tables")
+    response = client.get("/api/rules/tables", params={"audience": "all"})
     assert response.status_code == 200
     payload = response.json()
     for key in [

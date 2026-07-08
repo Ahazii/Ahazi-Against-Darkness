@@ -2271,13 +2271,23 @@ async def tile_room_code_reference(catalog: str = "ee") -> dict:
 
 
 @app.get("/api/rules/tables")
-async def list_tables() -> dict:
-    return _rules_tables_payload()
+async def list_tables(audience: str | None = None) -> dict:
+    return _rules_tables_payload(audience=audience)
 
 
 @app.get("/api/rules/reference")
-async def rules_reference(q: str | None = None, category: str | None = None, implementation_status: str | None = None) -> dict:
-    return rules.search_reference(q=q, category=category, implementation_status=implementation_status)
+async def rules_reference(
+    q: str | None = None,
+    category: str | None = None,
+    implementation_status: str | None = None,
+    audience: str | None = None,
+) -> dict:
+    return rules.search_reference(
+        q=q,
+        category=category,
+        implementation_status=implementation_status,
+        audience=audience,
+    )
 
 
 @app.get("/api/rules/artwork")
@@ -2294,7 +2304,94 @@ async def rules_artwork() -> dict:
     return {"entries": entries}
 
 
-def _rules_tables_payload() -> dict:
+DEVELOPER_RULE_TABLE_KEYWORDS = (
+    "adventure_management",
+    "adventure_package",
+    "adventure_pdf",
+    "application_artwork",
+    "artwork",
+    "campaign_assignment",
+    "campaign_chronicle",
+    "campaign_command",
+    "campaign_worldbuilder",
+    "character_management",
+    "collapsible",
+    "developer",
+    "guidance_task",
+    "registry",
+    "readiness",
+    "resolver",
+    "session_supplement",
+    "settings",
+    "supplement_manifest",
+    "supplement_reference",
+    "tooltip",
+    "workflow",
+)
+
+DEVELOPER_RULE_TABLE_KEYS = {
+    "active_registry_tooltips_table",
+    "adventure_closeout_workflow_table",
+    "campaign_worldbuilder_schema_table",
+    "exploration_narrative_layout_table",
+    "exploration_objective_clarity_table",
+    "go_adventure_closeout_gate_table",
+    "go_adventure_setup_readiness_table",
+    "go_adventure_tabbed_workflow_table",
+    "icon_registry_table",
+    "item_tooltip_coverage_table",
+    "modern_dashboard_management_table",
+    "modern_tag_workflow_table",
+    "playtest_triage_workflow_table",
+    "state_registry_navigation_table",
+    "tag_closeout_checklist_automation_table",
+    "tag_generated_adventure_signoff_table",
+    "tag_generated_lead_structure_table",
+    "tag_generated_prompt_playtest_table",
+    "tag_guild_job_playthrough_audit_table",
+    "tag_rumor_playthrough_audit_table",
+    "tag_thematic_dungeon_playthrough_audit_table",
+    "tag_treasure_map_playthrough_audit_table",
+    "terrain_registry_navigation_table",
+    "user_artwork_placeholders_table",
+}
+
+
+def _normalized_rules_audience(audience: str | None) -> str:
+    normalized = (audience or "player").strip().lower()
+    return normalized if normalized in {"player", "developer", "all"} else "player"
+
+
+def _app_only_reference_ids() -> set[str]:
+    return {
+        str(entry.get("id"))
+        for entry in rules.rulebook_reference()
+        if entry.get("id") and int(entry.get("source_page") or 0) == 0
+    }
+
+
+def _is_developer_rule_table(key: str, app_only_reference_ids: set[str]) -> bool:
+    return (
+        key in DEVELOPER_RULE_TABLE_KEYS
+        or key in app_only_reference_ids
+        or any(keyword in key for keyword in DEVELOPER_RULE_TABLE_KEYWORDS)
+    )
+
+
+def _filter_rules_tables_payload(data: dict, audience: str | None) -> dict:
+    normalized = _normalized_rules_audience(audience)
+    if normalized == "all":
+        return data
+    app_only_reference_ids = _app_only_reference_ids()
+    filtered = {
+        key: value
+        for key, value in data.items()
+        if (normalized == "developer") == _is_developer_rule_table(key, app_only_reference_ids)
+    }
+    return filtered
+
+
+def _rules_tables_payload(audience: str | None = None) -> dict:
     data = dict(rules.dungeon_tables())
     shop = rules.equipment_shop()
     expert_catalog = rules.expert_skills()
@@ -3797,7 +3894,7 @@ def _rules_tables_payload() -> dict:
         }
         for tier, spec in TIER_ENTRY.items()
     ]
-    return data
+    return _filter_rules_tables_payload(data, audience)
 
 
 @app.get("/api/rules/expert-skills")

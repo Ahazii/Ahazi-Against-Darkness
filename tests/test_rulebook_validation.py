@@ -421,9 +421,26 @@ def test_home_rules_tables_are_all_classified_for_pdf_compliance() -> None:
 
     from app.main import app
 
-    payload = TestClient(app).get("/api/rules/tables").json()
+    payload = TestClient(app).get("/api/rules/tables", params={"audience": "all"}).json()
     actual = {key for key in payload if key not in META_TABLE_KEYS and key != "open_items"}
     assert actual == VERIFIED_RULE_TABLE_KEYS
+
+
+def test_player_rules_tables_hide_app_workflow_tables() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    payload = TestClient(app).get("/api/rules/tables").json()
+    assert "equipment_shop_table" in payload
+    assert "monster_bestiary_table" in payload
+    assert "settings_collapsible_panels_table" not in payload
+    assert "tag_guild_job_playthrough_audit_table" not in payload
+    assert "adventure_package_schema_table" not in payload
+    developer_payload = TestClient(app).get("/api/rules/tables", params={"audience": "developer"}).json()
+    assert "equipment_shop_table" not in developer_payload
+    assert "settings_collapsible_panels_table" in developer_payload
+    assert "adventure_package_schema_table" in developer_payload
 
 
 def test_secrets_table_matches_expanded_secret_catalog(tables: dict) -> None:
@@ -531,10 +548,14 @@ def test_rules_reference_api_returns_entries() -> None:
 
     client = TestClient(app)
     payload = client.get("/api/rules/reference").json()
-    assert payload["count"] >= 110
+    assert payload["audience"] == "player"
     assert any(entry.get("id") == "resting" for entry in payload["entries"])
+    assert not any(entry.get("id") == "settings_collapsible_panels_table" for entry in payload["entries"])
     search = client.get("/api/rules/reference", params={"q": "rage"}).json()
     assert search["count"] >= 1
+    developer_payload = client.get("/api/rules/reference", params={"audience": "developer"}).json()
+    assert developer_payload["audience"] == "developer"
+    assert any(entry.get("id") == "settings_collapsible_panels_table" for entry in developer_payload["entries"])
 
 
 def test_spell_and_scroll_tables_present(tables: dict) -> None:

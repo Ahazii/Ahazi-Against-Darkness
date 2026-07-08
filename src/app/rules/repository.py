@@ -307,8 +307,16 @@ class RulesRepository:
         q: str | None = None,
         category: str | None = None,
         implementation_status: str | None = None,
+        audience: str | None = None,
     ) -> dict[str, Any]:
         entries = self.rulebook_reference()
+        normalized_audience = (audience or "player").strip().lower()
+        if normalized_audience not in {"player", "developer", "all"}:
+            normalized_audience = "player"
+        if normalized_audience == "player":
+            entries = [entry for entry in entries if int(entry.get("source_page") or 0) > 0]
+        elif normalized_audience == "developer":
+            entries = [entry for entry in entries if int(entry.get("source_page") or 0) == 0]
         if category:
             normalized = category.strip().lower()
             entries = [entry for entry in entries if str(entry.get("category", "")).lower() == normalized]
@@ -348,4 +356,11 @@ class RulesRepository:
                 scored = [(score(entry), entry) for entry in entries]
                 entries = [entry for points, entry in scored if points > 0]
                 entries.sort(key=lambda entry: score(entry), reverse=True)
-        return {"query": q, "category": category, "implementation_status": implementation_status, "count": len(entries), "entries": entries}
+        return {
+            "query": q,
+            "category": category,
+            "implementation_status": implementation_status,
+            "audience": normalized_audience,
+            "count": len(entries),
+            "entries": entries,
+        }

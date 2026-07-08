@@ -139,7 +139,7 @@ def test_rulebook_reference_table_mentions_resolve_to_home_tables() -> None:
     root = Path(__file__).resolve().parents[1]
     rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
     entries = rules.rulebook_reference()
-    table_keys = set(TestClient(app).get("/api/rules/tables").json())
+    table_keys = set(TestClient(app).get("/api/rules/tables", params={"audience": "all"}).json())
     mentioned: set[str] = set()
     for entry in entries:
         text = " ".join(str(entry.get(key, "")) for key in ("title", "summary", "body"))
@@ -160,7 +160,7 @@ def test_rules_tables_index_covers_every_verified_home_table() -> None:
     index_body = by_id["rules_tables_index"]["body"]
     table_keys = {
         key
-        for key in TestClient(app).get("/api/rules/tables").json()
+        for key in TestClient(app).get("/api/rules/tables", params={"audience": "all"}).json()
         if key not in {"ruleset_status", "validation", "open_items"}
     }
 
