@@ -2059,7 +2059,7 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "Generated Adventures Guild leads use their scene reward buttons and closeout signoff" in APP_JS
     assert 'id="session-adventure-title"' in INDEX_HTML
     assert "function sessionAdventureTitleText" in APP_JS
-    assert "Rules PDF Import" in MODERN_PAGES_JS
+    assert "PDF / Supplement Workbench" in MODERN_PAGES_JS
     assert "/api/rules/upload-pdf" in MODERN_PAGES_JS
     assert "/api/rules/extract-tag-narrative" in MODERN_PAGES_JS
     assert "tag_scene_narrative_overrides.json" in MODERN_PAGES_JS
@@ -2297,7 +2297,13 @@ def test_modern_dashboard_status_and_developer_tools_are_demoted() -> None:
     assert grid_append < needs_append < closeout_append
     assert "function collapseCard(panel" in MODERN_PAGES_JS
     assert "const artworkMount = el(\"div\", \"modern-dev-artwork-manager hidden\")" in MODERN_PAGES_JS
+    assert "function runWithButtonProgress(btn, busyLabel, work)" in MODERN_PAGES_JS
+    assert "function scrollPanelIntoView(panel)" in MODERN_PAGES_JS
+    assert "async function toggleRevealedPanel(mount, buildPanel, openedStatus = \"\")" in MODERN_PAGES_JS
+    assert "button.is-working" in STYLES_CSS
+    assert "await toggleRevealedPanel(rulePdfMount, renderRulePdfManager" in MODERN_PAGES_JS
     assert "button(\"Artwork Manager\"" in MODERN_PAGES_JS
+    assert "await toggleRevealedPanel(artworkMount, () => renderArtworkManager()" in MODERN_PAGES_JS
     assert "tools.appendChild(artworkMount)" in MODERN_PAGES_JS
 
 
@@ -2919,6 +2925,11 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Developer Reference" in MODERN_PAGES_JS
     assert "Developer Tables" in MODERN_PAGES_JS
     assert "Index Exact Rules Text" in MODERN_PAGES_JS
+    assert "Indexing exact rules text..." in MODERN_PAGES_JS
+    assert "Scan Source Blocks" in MODERN_PAGES_JS
+    assert "/api/supplements/source-scan" in MODERN_PAGES_JS
+    assert "DATA_DIR/Supplements/_sources" in MODERN_PAGES_JS
+    assert "Extracting Adventures Guild narrative..." in MODERN_PAGES_JS
     assert "/api/rules/index-pdf-text" in MODERN_PAGES_JS
     assert "rule_text_index.json" in MODERN_PAGES_JS
 

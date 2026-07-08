@@ -613,6 +613,7 @@ def test_index_rule_pdf_text_writes_local_appdata_index(tmp_path: Path, monkeypa
     from fastapi.testclient import TestClient
 
     from app import main as main_module
+    from app.engine import pdf_text_index
 
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir()
@@ -623,8 +624,8 @@ def test_index_rule_pdf_text_writes_local_appdata_index(tmp_path: Path, monkeypa
         replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
     )
     monkeypatch.setattr(
-        main_module,
-        "_extract_rule_pdf_pages",
+        pdf_text_index,
+        "extract_rule_pdf_pages",
         lambda _path: [{"page": 3, "text": "Exact private wording about madness checks."}],
     )
 
@@ -640,7 +641,7 @@ def test_index_rule_pdf_text_writes_local_appdata_index(tmp_path: Path, monkeypa
 
 
 def test_rule_pdf_page_extraction_uses_layout_and_positioned_text() -> None:
-    from app import main as main_module
+    from app.engine import pdf_text_index
 
     class FakePage:
         def extract_text(self, *args, **kwargs):
@@ -653,11 +654,75 @@ def test_rule_pdf_page_extraction_uses_layout_and_positioned_text() -> None:
                 return "Sidebar Box\nOne Bite At A Time"
             return "Normal flowing page text only."
 
-    variants = main_module._extract_rule_page_texts(FakePage())
+    variants = pdf_text_index.extract_rule_page_texts(FakePage())
     body = "\n".join(item["text"] for item in variants)
     assert [item["method"] for item in variants] == ["plain", "layout", "positioned"]
     assert "One Bite At A Time" in body
-    assert "One Bite At A Time" in main_module._clean_rule_pdf_text(body)
+    assert "One Bite At A Time" in pdf_text_index.clean_rule_pdf_text(body)
+
+
+def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, monkeypatch) -> None:
+    from app.engine import supplement_sources
+
+    pdf = tmp_path / "Troublesome Towns.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [
+            {
+                "page": 3,
+                "text": "House of Ill Repute\n\nQuest (Steal): A shady geezer offers a reward.",
+                "methods": ["plain", "layout"],
+            }
+        ],
+    )
+
+    result = supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:00:00Z")
+    assert result["blocks"] == 2
+    path = tmp_path / "Supplements" / "_sources" / "troublesome-towns" / "source_blocks.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["blocks"][0]["assignment"] == "unassigned"
+    assert payload["blocks"][0]["text"] == "House of Ill Repute"
+    assert payload["blocks"][0]["extraction_methods"] == ["plain", "layout"]
+
+
+def test_supplement_source_scan_preserves_existing_assignment(tmp_path: Path, monkeypatch) -> None:
+    from app.engine import supplement_sources
+
+    pdf = tmp_path / "Mixed Book.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+    source_dir = tmp_path / "Supplements" / "_sources" / "mixed-book"
+    source_dir.mkdir(parents=True)
+    (source_dir / "source_blocks.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source_id": "mixed-book",
+                "blocks": [
+                    {
+                        "source_page": 4,
+                        "text": "Foe: Clockwork Beggar L4",
+                        "assignment": "foe",
+                        "review_status": "checked",
+                        "notes": "Manual review kept.",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 4, "text": "Foe: Clockwork Beggar L4", "methods": ["layout"]}],
+    )
+
+    supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:05:00Z")
+    payload = json.loads((source_dir / "source_blocks.json").read_text(encoding="utf-8"))
+    assert payload["blocks"][0]["assignment"] == "foe"
+    assert payload["blocks"][0]["review_status"] == "checked"
+    assert payload["blocks"][0]["notes"] == "Manual review kept."
 
 
 def test_spell_and_scroll_tables_present(tables: dict) -> None:

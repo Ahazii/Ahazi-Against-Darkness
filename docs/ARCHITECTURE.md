@@ -145,10 +145,15 @@ Home screen rule browsing:
   be discoverable there or in a structured Rules table; large catalogs belong in
   structured JSON plus the home Rules tables panel.
 - `DATA_DIR/rules/rule_text_index.json` is optional local/private user data.
-  The Developer Rules PDF panel can build it from manually uploaded PDFs in
+  The Developer PDF / Supplement Workbench can build it from manually uploaded PDFs in
   `DATA_DIR/rules/`; `GET /api/rules/reference` merges those exact page-text
   entries into the player Rules Reference search. The file is never packaged in
   git and should be backed up with the rest of the appdata folder.
+- `DATA_DIR/Supplements/_sources/<source_id>/source_blocks.json` is the first
+  supplement workbench capture format. It stores unassigned exact PDF text
+  blocks with source page and extraction method so a human reviewer can later
+  classify them as rules, adventure narrative, foes, equipment, locations,
+  states, terrain, tables, maps, room tiles, ignored text, or manual-entry work.
 
 Home screen character UI:
 

@@ -542,6 +542,12 @@ h2 {
   justify-content: flex-start;
 }
 
+.modern-actions button.is-working,
+button.is-working {
+  cursor: progress;
+  opacity: 0.78;
+}
+
 .modern-filterbar,
 .modern-picker {
   display: grid;

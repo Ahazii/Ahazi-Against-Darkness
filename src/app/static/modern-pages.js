@@ -200,8 +200,48 @@ function button(label, title, onClick, className = "secondary") {
   const btn = el("button", className, label);
   btn.type = "button";
   btn.title = title;
-  btn.addEventListener("click", () => Promise.resolve().then(() => onClick()).catch(handleError));
+  btn.dataset.defaultLabel = label;
+  btn.addEventListener("click", () => Promise.resolve().then(() => onClick(btn)).catch(handleError));
   return btn;
+}
+
+function setButtonWorking(btn, working, label = "") {
+  if (!btn) return;
+  btn.disabled = Boolean(working);
+  btn.classList.toggle("is-working", Boolean(working));
+  btn.setAttribute("aria-busy", working ? "true" : "false");
+  if (working && label) btn.textContent = label;
+  if (!working) btn.textContent = btn.dataset.defaultLabel || btn.textContent;
+}
+
+async function runWithButtonProgress(btn, busyLabel, work) {
+  setButtonWorking(btn, true, busyLabel);
+  setStatus(busyLabel);
+  try {
+    return await work();
+  } finally {
+    setButtonWorking(btn, false);
+  }
+}
+
+function scrollPanelIntoView(panel) {
+  if (!panel || panel.classList.contains("hidden")) return;
+  window.requestAnimationFrame(() => {
+    panel.scrollIntoView({
+      block: "start",
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth",
+    });
+  });
+}
+
+async function toggleRevealedPanel(mount, buildPanel, openedStatus = "") {
+  if (!mount.childElementCount) mount.appendChild(await buildPanel());
+  const willOpen = mount.classList.contains("hidden");
+  mount.classList.toggle("hidden");
+  if (willOpen) {
+    if (openedStatus) setStatus(openedStatus);
+    scrollPanelIntoView(mount);
+  }
 }
 
 function link(label, href, title, className = "link-button secondary") {
@@ -6617,7 +6657,7 @@ function renderArtworkManager() {
 }
 
 async function renderRulePdfManager() {
-  const panel = card("Rules PDF Upload and Text Extraction", "Upload owned rules PDFs into DATA_DIR/rules, index exact page text for the player Rules Reference, or extract supported The Adventures Guild scene prose into the local narrative override beside game.db.");
+  const panel = card("PDF / Supplement Workbench", "Upload owned PDFs into DATA_DIR/rules, index exact page text for the player Rules Reference, or run specialist extractors while the broader supplement review workbench is built.");
   const file = input("file", "modern-rule-pdf-upload", "Choose an owned rules PDF from your computer to upload to the server.");
   file.accept = "application/pdf,.pdf";
   const uploadedSelect = select("modern-rule-pdf-select", "Uploaded DATA_DIR/rules PDF to extract from.", [["", "Choose uploaded PDF"]]);
@@ -6654,7 +6694,7 @@ async function renderRulePdfManager() {
   await refreshList();
   const row = actions();
   row.append(
-    button("Upload PDF", "Upload the selected PDF into DATA_DIR/rules on the server.", async () => {
+    button("Upload PDF", "Upload the selected PDF into DATA_DIR/rules on the server.", async (btn) => runWithButtonProgress(btn, "Uploading PDF...", async () => {
       const chosen = file.files?.[0];
       if (!chosen) throw new Error("Choose a PDF file first.");
       const response = await fetch(`/api/rules/upload-pdf?filename=${encodeURIComponent(chosen.name)}`, {
@@ -6676,9 +6716,10 @@ async function renderRulePdfManager() {
       setStatus(result.message || "PDF uploaded.");
       showRulePdfResult("ok", result.message || "PDF uploaded.", "Upload complete");
       await refreshList();
-    }),
-    button("Index Exact Rules Text", "Extract exact searchable page text from the selected uploaded PDF into DATA_DIR/rules/rule_text_index.json. This is local/private user data and is not committed.", async () => {
+    })),
+    button("Index Exact Rules Text", "Extract exact searchable page text from the selected uploaded PDF into DATA_DIR/rules/rule_text_index.json. This is local/private user data and is not committed.", async (btn) => runWithButtonProgress(btn, "Indexing exact rules text...", async () => {
       try {
+        showRulePdfResult("ok", "Indexing exact rules text. Large PDFs can take a little while; this panel will update when the server finishes.", "Indexing in progress");
         const result = await api("/api/rules/index-pdf-text", {
           method: "POST",
           body: JSON.stringify({ filename: uploadedSelect.value }),
@@ -6692,9 +6733,26 @@ async function renderRulePdfManager() {
         showRulePdfResult("error", message, "Indexing failed");
         throw error;
       }
-    }),
-    button("Extract Adventures Guild Narrative", "Extract supported Tales from The Adventures Guild Rumor/Scene prose from the selected uploaded PDF into DATA_DIR/tag_scene_narrative_overrides.json.", async () => {
+    })),
+    button("Scan Source Blocks", "Extract unassigned review blocks from the selected PDF into DATA_DIR/Supplements/_sources for later manual classification as rules, foes, locations, tables, equipment, classes, states, terrain, or narrative.", async (btn) => runWithButtonProgress(btn, "Scanning PDF source blocks...", async () => {
       try {
+        showRulePdfResult("ok", "Scanning PDF source blocks into the local supplement review workspace.", "Source scan in progress");
+        const result = await api("/api/supplements/source-scan", {
+          method: "POST",
+          body: JSON.stringify({ filename: uploadedSelect.value }),
+        });
+        const message = result.message || `Scanned ${result.blocks || 0} source block(s).`;
+        setStatus(message);
+        showRulePdfResult("ok", `${message} Manual assignment UI is the next workbench step.`, "Source scan complete");
+      } catch (error) {
+        const message = error?.message || "Source scan failed.";
+        showRulePdfResult("error", message, "Source scan failed");
+        throw error;
+      }
+    })),
+    button("Extract Adventures Guild Narrative", "Extract supported Tales from The Adventures Guild Rumor/Scene prose from the selected uploaded PDF into DATA_DIR/tag_scene_narrative_overrides.json.", async (btn) => runWithButtonProgress(btn, "Extracting Adventures Guild narrative...", async () => {
+      try {
+        showRulePdfResult("ok", "Extracting Adventures Guild narrative into the local override file.", "Extraction in progress");
         const result = await api("/api/rules/extract-tag-narrative", {
           method: "POST",
           body: JSON.stringify({ filename: uploadedSelect.value, overwrite: overwrite.checked }),
@@ -6709,7 +6767,7 @@ async function renderRulePdfManager() {
         showRulePdfResult("error", message, "Extraction failed");
         throw error;
       }
-    }),
+    })),
     link("Player Rules Reference", "/modern/rules-reference?search=local_exact", "Open the player Rules Reference. Search for exact wording from locally indexed PDFs.", "link-button secondary"),
     link("Narrative Override Reference", ruleReferenceHref("tag_local_narrative_overrides", "tag narrative overrides"), "Open the Rules Reference entry for local narrative overrides.", "link-button secondary")
   );
@@ -6720,7 +6778,7 @@ async function renderRulePdfManager() {
     row,
     resultBox,
     status,
-    el("p", "muted", "Rules text indexing stores exact PDF page text only in DATA_DIR/rules/rule_text_index.json for private local search. TAG narrative extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
+    el("p", "muted", "Rules text indexing stores exact PDF page text only in DATA_DIR/rules/rule_text_index.json for private local search. Source block scans create local review files under DATA_DIR/Supplements/_sources for future manual assignment. TAG narrative extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
   );
   return panel;
 }
@@ -6778,13 +6836,11 @@ async function renderDeveloper() {
     link("Icon Editor", "/static/icon-editor.html", "Open the existing icon editor as its own page."),
     link("Developer Reference", developerReferenceHref("", "developer reference"), "Open app-only implementation notes, workflow references, diagnostics, and maintenance boundaries.", "link-button secondary"),
     link("Developer Tables", developerTablesHref(), "Open internal app tables for workflows, registries, validation, package review, artwork, and diagnostics.", "link-button secondary"),
-    button("Rules PDF Import", "Show or hide the rules PDF upload and local TAG narrative extraction tool.", async () => {
-      if (!rulePdfMount.childElementCount) rulePdfMount.appendChild(await renderRulePdfManager());
-      rulePdfMount.classList.toggle("hidden");
+    button("PDF / Supplement Workbench", "Show or hide local PDF upload, exact text indexing, and specialist supplement extraction tools.", async () => {
+      await toggleRevealedPanel(rulePdfMount, renderRulePdfManager, "PDF / Supplement Workbench opened.");
     }),
     button("Artwork Manager", "Show or hide the artwork slot manager for DATA_DIR/assets paths, missing files, and linked Rules Reference entries.", async () => {
-      if (!artworkMount.childElementCount) artworkMount.appendChild(renderArtworkManager());
-      artworkMount.classList.toggle("hidden");
+      await toggleRevealedPanel(artworkMount, () => renderArtworkManager(), "Artwork Manager opened.");
     })
   );
   tools.appendChild(row);
