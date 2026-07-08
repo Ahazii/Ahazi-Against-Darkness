@@ -156,9 +156,15 @@ Home screen rule browsing:
   states, terrain, tables, maps, room tiles, ignored text, or manual-entry work.
   The Developer PDF / Supplement Workbench lists these local scans and opens a
   read-only searchable block browser before any assignment is written.
+  Uploaded PDF source settings are stored in
+  `DATA_DIR/Supplements/_sources/source_settings.json`; the printed-page offset
+  is reused by both exact text indexing and source block scanning.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.
+  The block review view shows the uploaded PDF beside the extracted text and
+  lets a human reviewer save assignments, split oversized blocks, and merge
+  adjacent blocks before later conversion into structured supplement data.
   Workbench scans can store both `pdf_page` and the offset-adjusted printed
   `source_page`; use `page_offset` when a PDF cover/front matter shifts the
   viewer page number away from the printed book page.

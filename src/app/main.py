@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
@@ -70,8 +71,13 @@ from .engine.roster_sync import (
 from .engine.supplement_sources import (
     list_supplement_source_scans,
     load_supplement_source_scan,
+    merge_supplement_source_block,
+    pdf_source_settings,
     scan_supplement_source_pdf,
+    set_pdf_source_page_offset,
+    split_supplement_source_block,
     supplement_source_scan_path,
+    update_supplement_source_block,
 )
 from .engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_lines, upgrade_tag_manifest
 from .engine.tag_campaign import merge_tag_pdf_narrative_overrides, tag_narrative_overrides_path
@@ -502,6 +508,14 @@ def _payload_page_offset(payload: dict[str, Any]) -> int:
         raise HTTPException(status_code=400, detail="Page offset must be a whole number.") from exc
 
 
+def _payload_or_saved_page_offset(payload: dict[str, Any], pdf_path: Path) -> int:
+    if "page_offset" not in payload:
+        return int(pdf_source_settings(settings.data_dir, pdf_path).get("page_offset") or 0)
+    page_offset = _payload_page_offset(payload)
+    set_pdf_source_page_offset(settings.data_dir, pdf_path, page_offset)
+    return page_offset
+
+
 def _tag_narrative_override_status() -> dict[str, Any]:
     path = tag_narrative_overrides_path()
     status: dict[str, Any] = {
@@ -561,6 +575,7 @@ async def list_rule_pdfs() -> dict[str, Any]:
             "filename": path.name,
             "size_bytes": path.stat().st_size,
             "source": "DATA_DIR/rules",
+            "source_settings": pdf_source_settings(settings.data_dir, path),
         }
         for path in sorted(settings.rules_dir.glob("*.pdf"))
         if path.is_file()
@@ -582,6 +597,12 @@ async def list_rule_pdfs() -> dict[str, Any]:
         "override_status": _tag_narrative_override_status(),
         "local_text_index": local_rule_text_status(settings.rules_dir),
     }
+
+
+@app.get("/api/rules/pdf/{filename:path}")
+async def rule_pdf_file(filename: str) -> FileResponse:
+    pdf_path = _resolve_user_rule_pdf(filename)
+    return FileResponse(pdf_path, media_type="application/pdf", filename=pdf_path.name)
 
 
 @app.post("/api/rules/upload-pdf")
@@ -632,7 +653,6 @@ async def extract_tag_narrative(payload: dict[str, Any]) -> dict[str, Any]:
 @app.post("/api/rules/index-pdf-text")
 async def index_rule_pdf_text(payload: dict[str, Any]) -> dict[str, Any]:
     filename = str(payload.get("filename") or "").strip()
-    page_offset = _payload_page_offset(payload)
     if not filename:
         candidates = sorted(settings.rules_dir.glob("*.pdf"))
         if not candidates:
@@ -640,6 +660,7 @@ async def index_rule_pdf_text(payload: dict[str, Any]) -> dict[str, Any]:
         pdf_path = candidates[0]
     else:
         pdf_path = _resolve_user_rule_pdf(filename)
+    page_offset = _payload_or_saved_page_offset(payload, pdf_path)
     try:
         return build_rule_text_index_for_pdf(settings.rules_dir, pdf_path, now=now_utc(), page_offset=page_offset)
     except Exception as exc:  # noqa: BLE001
@@ -649,7 +670,6 @@ async def index_rule_pdf_text(payload: dict[str, Any]) -> dict[str, Any]:
 @app.post("/api/supplements/source-scan")
 async def scan_supplement_source(payload: dict[str, Any]) -> dict[str, Any]:
     filename = str(payload.get("filename") or "").strip()
-    page_offset = _payload_page_offset(payload)
     if not filename:
         candidates = sorted(settings.rules_dir.glob("*.pdf"))
         if not candidates:
@@ -657,6 +677,7 @@ async def scan_supplement_source(payload: dict[str, Any]) -> dict[str, Any]:
         pdf_path = candidates[0]
     else:
         pdf_path = _resolve_user_rule_pdf(filename)
+    page_offset = _payload_or_saved_page_offset(payload, pdf_path)
     try:
         return scan_supplement_source_pdf(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset)
     except Exception as exc:  # noqa: BLE001
@@ -674,7 +695,43 @@ async def supplement_source_scan_detail(source_id: str) -> dict[str, Any]:
     payload = load_supplement_source_scan(settings.data_dir, source_id)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Source scan not found.")
-    return payload
+    filename = str(payload.get("source_pdf") or "").replace("\\", "/").split("/")[-1]
+    return {
+        **payload,
+        "source_pdf_url": f"/api/rules/pdf/{quote(filename)}" if filename else "",
+    }
+
+
+@app.patch("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}")
+async def save_supplement_source_block(source_id: str, block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return update_supplement_source_block(settings.data_dir, source_id, block_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source block not found.") from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/split")
+async def split_source_block(source_id: str, block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    parts = payload.get("parts") if isinstance(payload.get("parts"), list) else []
+    try:
+        return split_supplement_source_block(settings.data_dir, source_id, block_id, [str(part) for part in parts])
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source block not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/merge")
+async def merge_source_block(source_id: str, block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    direction = str(payload.get("direction") or "next")
+    if direction not in {"next", "previous"}:
+        raise HTTPException(status_code=400, detail="Merge direction must be next or previous.")
+    try:
+        return merge_supplement_source_block(settings.data_dir, source_id, block_id, direction)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source block not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/rules/local-text-index")

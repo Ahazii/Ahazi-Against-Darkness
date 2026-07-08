@@ -675,6 +675,51 @@ def test_index_rule_pdf_text_applies_manual_printed_page_offset(tmp_path: Path, 
     assert index["documents"][0]["page_offset"] == -6
 
 
+def test_pdf_source_offset_is_reused_for_indexing_and_source_scans(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import pdf_text_index, supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Troublesome Towns.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 8, "text": "House of Ill Repute", "methods": ["layout"]}],
+    )
+    monkeypatch.setattr(
+        pdf_text_index,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 8, "text": "House of Ill Repute", "methods": ["layout"]}],
+    )
+    client = TestClient(main_module.app)
+
+    scan_payload = client.post(
+        "/api/supplements/source-scan",
+        json={"filename": "Troublesome Towns.pdf", "page_offset": -6},
+    ).json()
+    assert scan_payload["page_offset"] == -6
+    pdfs = client.get("/api/rules/pdfs").json()
+    assert pdfs["uploaded"][0]["source_settings"]["page_offset"] == -6
+
+    index_payload = client.post(
+        "/api/rules/index-pdf-text",
+        json={"filename": "Troublesome Towns.pdf"},
+    ).json()
+    assert index_payload["page_offset"] == -6
+    index = json.loads((rules_dir / "rule_text_index.json").read_text(encoding="utf-8"))
+    assert index["entries"][0]["page_label"] == "p.2 (PDF p.8)"
+
+
 def test_rule_pdf_page_extraction_uses_layout_and_positioned_text() -> None:
     from app.engine import pdf_text_index
 
@@ -787,6 +832,53 @@ def test_supplement_source_scan_preserves_existing_assignment(tmp_path: Path, mo
     assert payload["blocks"][0]["assignment"] == "foe"
     assert payload["blocks"][0]["review_status"] == "checked"
     assert payload["blocks"][0]["notes"] == "Manual review kept."
+
+
+def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Mixed Book.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 1, "text": "Alpha\n\nBeta", "methods": ["layout"]}],
+    )
+    client = TestClient(main_module.app)
+    client.post("/api/supplements/source-scan", json={"filename": "Mixed Book.pdf"})
+
+    save_payload = client.patch(
+        "/api/supplements/source-scans/mixed-book/blocks/mixed-book-p1-b001",
+        json={"text": "Alpha edited", "assignment": "rule_text", "review_status": "checked"},
+    ).json()
+    assert save_payload["block"]["assignment"] == "rule_text"
+    assert save_payload["block"]["text"] == "Alpha edited"
+
+    split_payload = client.post(
+        "/api/supplements/source-scans/mixed-book/blocks/mixed-book-p1-b002/split",
+        json={"parts": ["Beta part 1", "Beta part 2"]},
+    ).json()
+    assert len(split_payload["blocks"]) == 2
+
+    merge_payload = client.post(
+        "/api/supplements/source-scans/mixed-book/blocks/mixed-book-p1-b002-split01/merge",
+        json={"direction": "next"},
+    ).json()
+    assert "Beta part 1" in merge_payload["block"]["text"]
+    assert "Beta part 2" in merge_payload["block"]["text"]
+    detail = client.get("/api/supplements/source-scans/mixed-book").json()
+    assert detail["source_pdf_url"] == "/api/rules/pdf/Mixed%20Book.pdf"
 
 
 def test_spell_and_scroll_tables_present(tables: dict) -> None:

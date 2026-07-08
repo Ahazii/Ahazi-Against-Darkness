@@ -44,6 +44,57 @@ def supplement_source_scan_path(data_dir: Path, source_id: str) -> Path:
     return supplement_source_folder(data_dir, source_id) / "source_blocks.json"
 
 
+def supplement_source_settings_path(data_dir: Path) -> Path:
+    return supplement_sources_root(data_dir) / "source_settings.json"
+
+
+def _load_source_settings(data_dir: Path) -> dict[str, Any]:
+    path = supplement_source_settings_path(data_dir)
+    if not path.exists():
+        return {"schema_version": 1, "sources": {}}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"schema_version": 1, "sources": {}}
+    return payload if isinstance(payload, dict) else {"schema_version": 1, "sources": {}}
+
+
+def _write_source_settings(data_dir: Path, payload: dict[str, Any]) -> None:
+    path = supplement_source_settings_path(data_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def pdf_source_settings(data_dir: Path, pdf_path: Path) -> dict[str, Any]:
+    source_id = supplement_source_id(pdf_path)
+    payload = _load_source_settings(data_dir)
+    sources = payload.get("sources") if isinstance(payload.get("sources"), dict) else {}
+    settings = sources.get(source_id) if isinstance(sources.get(source_id), dict) else {}
+    return {
+        "source_id": source_id,
+        "filename": pdf_path.name,
+        "page_offset": int(settings.get("page_offset") or 0),
+    }
+
+
+def set_pdf_source_page_offset(data_dir: Path, pdf_path: Path, page_offset: int) -> dict[str, Any]:
+    source_id = supplement_source_id(pdf_path)
+    payload = _load_source_settings(data_dir)
+    sources = payload.get("sources")
+    if not isinstance(sources, dict):
+        sources = {}
+        payload["sources"] = sources
+    previous = sources.get(source_id) if isinstance(sources.get(source_id), dict) else {}
+    sources[source_id] = {
+        **previous,
+        "source_id": source_id,
+        "filename": pdf_path.name,
+        "page_offset": int(page_offset),
+    }
+    _write_source_settings(data_dir, payload)
+    return sources[source_id]
+
+
 def _page_text_blocks(text: str) -> list[str]:
     raw = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
     blocks = [block.strip() for block in re.split(r"\n\s*\n+", raw) if block.strip()]
@@ -59,6 +110,7 @@ def _source_block_id(source_id: str, source_page: int, pdf_page: int, index: int
 
 
 def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page_offset: int = 0) -> dict[str, Any]:
+    set_pdf_source_page_offset(data_dir, pdf_path, page_offset)
     source_id = supplement_source_id(pdf_path)
     folder = supplement_source_folder(data_dir, source_id)
     folder.mkdir(parents=True, exist_ok=True)
@@ -161,6 +213,86 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     except (OSError, json.JSONDecodeError):
         return {"schema_version": 1, "source_id": source_id, "blocks": []}
     return payload if isinstance(payload, dict) else {"schema_version": 1, "source_id": source_id, "blocks": []}
+
+
+def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    payload["source_id"] = str(payload.get("source_id") or source_id)
+    path = supplement_source_scan_path(data_dir, source_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    return payload
+
+
+def update_supplement_source_block(data_dir: Path, source_id: str, block_id: str, changes: dict[str, Any]) -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    for block in payload.get("blocks", []):
+        if not isinstance(block, dict) or block.get("id") != block_id:
+            continue
+        if "text" in changes:
+            block["text"] = str(changes.get("text") or "").strip()
+        if "assignment" in changes:
+            assignment = str(changes.get("assignment") or "unassigned")
+            block["assignment"] = assignment if assignment in SOURCE_BLOCK_ASSIGNMENTS else "unassigned"
+        if "review_status" in changes:
+            block["review_status"] = str(changes.get("review_status") or "unreviewed")
+        if "notes" in changes:
+            block["notes"] = str(changes.get("notes") or "")
+        save_supplement_source_scan(data_dir, source_id, payload)
+        return {"block": block, "message": "Source block saved."}
+    raise KeyError(block_id)
+
+
+def split_supplement_source_block(data_dir: Path, source_id: str, block_id: str, parts: list[str]) -> dict[str, Any]:
+    clean_parts = [str(part).strip() for part in parts if str(part).strip()]
+    if len(clean_parts) < 2:
+        raise ValueError("Split needs at least two non-empty blocks.")
+    payload = load_supplement_source_scan(data_dir, source_id)
+    blocks = payload.get("blocks", [])
+    for index, block in enumerate(blocks):
+        if not isinstance(block, dict) or block.get("id") != block_id:
+            continue
+        replacement = []
+        for part_index, text in enumerate(clean_parts, start=1):
+            replacement.append(
+                {
+                    **block,
+                    "id": f"{block_id}-split{part_index:02d}",
+                    "text": text,
+                    "block_index": f"{block.get('block_index') or index + 1}.{part_index}",
+                    "review_status": "edited",
+                    "notes": str(block.get("notes") or ""),
+                }
+            )
+        payload["blocks"] = blocks[:index] + replacement + blocks[index + 1 :]
+        save_supplement_source_scan(data_dir, source_id, payload)
+        return {"blocks": replacement, "message": f"Split source block into {len(replacement)} blocks."}
+    raise KeyError(block_id)
+
+
+def merge_supplement_source_block(data_dir: Path, source_id: str, block_id: str, direction: str = "next") -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    blocks = payload.get("blocks", [])
+    for index, block in enumerate(blocks):
+        if not isinstance(block, dict) or block.get("id") != block_id:
+            continue
+        other_index = index - 1 if direction == "previous" else index + 1
+        if other_index < 0 or other_index >= len(blocks) or not isinstance(blocks[other_index], dict):
+            raise ValueError("No adjacent source block is available to merge.")
+        first_index, second_index = sorted([index, other_index])
+        first = blocks[first_index]
+        second = blocks[second_index]
+        merged = {
+            **first,
+            "id": f"{first.get('id')}-merged-{second.get('id')}",
+            "text": f"{first.get('text') or ''}\n\n{second.get('text') or ''}".strip(),
+            "review_status": "edited",
+            "notes": "Merged manually in the PDF / Supplement Workbench.",
+            "merged_block_ids": [first.get("id"), second.get("id")],
+        }
+        payload["blocks"] = blocks[:first_index] + [merged] + blocks[second_index + 1 :]
+        save_supplement_source_scan(data_dir, source_id, payload)
+        return {"block": merged, "message": "Merged adjacent source blocks."}
+    raise KeyError(block_id)
 
 
 def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:

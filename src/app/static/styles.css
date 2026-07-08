@@ -1223,6 +1223,39 @@ button.is-working::after {
   overflow-wrap: anywhere;
 }
 
+.modern-source-review-grid {
+  display: grid;
+  grid-template-columns: minmax(22rem, 0.92fr) minmax(24rem, 1.08fr);
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.modern-source-pdf-frame {
+  width: 100%;
+  min-height: 72vh;
+  border: 1px solid #3c3a30;
+  border-radius: 6px;
+  background: #0f100d;
+}
+
+.modern-source-review-panel,
+.modern-source-block-editor {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.modern-source-block-text {
+  min-height: 11rem;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+.modern-source-block-text.compact {
+  min-height: 6rem;
+}
+
 .modern-card input:not([type="checkbox"]):not([type="radio"]),
 .modern-card select {
   width: min(100%, 22rem);
@@ -1230,8 +1263,8 @@ button.is-working::after {
 }
 
 .modern-card textarea {
-  width: min(100%, 42rem);
-  max-width: 42rem;
+  width: 100%;
+  max-width: 100%;
 }
 
 .modern-card button,
@@ -1495,6 +1528,14 @@ button.is-working::after {
 
   .modern-page-summary {
     grid-template-rows: none;
+  }
+
+  .modern-source-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modern-source-pdf-frame {
+    min-height: 34rem;
   }
 
   .modern-page-head.has-artwork #modern-page-help,

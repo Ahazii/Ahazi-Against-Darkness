@@ -2939,6 +2939,13 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Visible source blocks" in MODERN_PAGES_JS
     assert "page-boundary candidates" in MODERN_PAGES_JS
     assert "sourceScanDetailMounts" in MODERN_PAGES_JS
+    assert "modern-source-review-grid" in MODERN_PAGES_JS
+    assert "modern-source-pdf-frame" in MODERN_PAGES_JS
+    assert "Save Block" in MODERN_PAGES_JS
+    assert "Split Block" in MODERN_PAGES_JS
+    assert "Merge Next" in MODERN_PAGES_JS
+    assert "Merge Previous" in MODERN_PAGES_JS
+    assert "source_settings" in MODERN_PAGES_JS
     assert "DATA_DIR/Supplements/_sources" in MODERN_PAGES_JS
     assert "Extracting Adventures Guild narrative..." in MODERN_PAGES_JS
     assert "/api/rules/index-pdf-text" in MODERN_PAGES_JS

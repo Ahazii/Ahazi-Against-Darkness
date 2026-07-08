@@ -6665,6 +6665,7 @@ async function renderRulePdfManager() {
   const overwrite = input("checkbox", "modern-rule-pdf-overwrite", "Overwrite existing fields in DATA_DIR/tag_scene_narrative_overrides.json. Leave off to preserve local edits.");
   const status = el("div", "modern-list");
   const resultBox = el("div", "modern-list");
+  const uploadedPdfSettings = new Map();
   function showRulePdfResult(kind, message, title = "Rules PDF Import") {
     resultBox.replaceChildren(modernStatusRow(title, message, kind === "error" ? "Fix the issue shown here, then run Extract Adventures Guild Narrative again." : "This is the latest upload/extraction result."));
   }
@@ -6691,6 +6692,70 @@ async function renderRulePdfManager() {
     for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
     if (candidates.length) assignment.appendChild(new Option("Page-boundary candidates", "page_boundary_candidate"));
     const results = el("div", "modern-list");
+    const pdfFrame = el("iframe", "modern-source-pdf-frame");
+    pdfFrame.title = `Source PDF preview for ${payload.source_id || "supplement source"}`;
+    if (payload.source_pdf_url) pdfFrame.src = payload.source_pdf_url;
+    async function reloadCurrentScan(message = "Source scan refreshed.") {
+      const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}`);
+      renderSourceScanDetail(detail, mount);
+      setStatus(message);
+    }
+    function blockEditor(block, needle) {
+      const textArea = document.createElement("textarea");
+      textArea.className = "modern-source-block-text";
+      textArea.title = "Edit the reviewed source block text. This changes only the local DATA_DIR source block file, not the PDF.";
+      textArea.value = block.text || "";
+      const assignmentEdit = select(`modern-source-block-assignment-${block.id}`, "Assign this reviewed block to the kind of supplement data it represents.", [["", "Choose assignment"]]);
+      for (const option of payload.assignment_options || []) assignmentEdit.appendChild(new Option(option, option));
+      assignmentEdit.value = block.assignment || "unassigned";
+      const splitArea = document.createElement("textarea");
+      splitArea.className = "modern-source-block-text compact";
+      splitArea.title = "Split this block by separating new blocks with a blank line.";
+      splitArea.placeholder = "Paste edited split blocks here, separated by a blank line.";
+      const actionsRow = actions();
+      if (block.source_item_type !== "page-boundary candidate") {
+        actionsRow.append(
+          button("Save Block", "Save edited text, assignment, and review status for this source block.", async (btn) => runWithButtonProgress(btn, "Saving block...", async () => {
+            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}`, {
+              method: "PATCH",
+              body: JSON.stringify({ text: textArea.value, assignment: assignmentEdit.value || "unassigned", review_status: "edited" }),
+            });
+            await reloadCurrentScan("Source block saved.");
+          })),
+          button("Split Block", "Split this source block into multiple editable blocks using the blank-line separated text below.", async (btn) => runWithButtonProgress(btn, "Splitting block...", async () => {
+            const parts = splitArea.value.split(/\n\s*\n+/).map((part) => part.trim()).filter(Boolean);
+            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/split`, {
+              method: "POST",
+              body: JSON.stringify({ parts }),
+            });
+            await reloadCurrentScan("Source block split.");
+          })),
+          button("Merge Next", "Merge this source block with the next block in the scan. Use this when text continues into the following block or page.", async (btn) => runWithButtonProgress(btn, "Merging block...", async () => {
+            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/merge`, {
+              method: "POST",
+              body: JSON.stringify({ direction: "next" }),
+            });
+            await reloadCurrentScan("Source block merged with next block.");
+          })),
+          button("Merge Previous", "Merge this source block with the previous block in the scan. Use this when this block continues previous page text.", async (btn) => runWithButtonProgress(btn, "Merging block...", async () => {
+            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/merge`, {
+              method: "POST",
+              body: JSON.stringify({ direction: "previous" }),
+            });
+            await reloadCurrentScan("Source block merged with previous block.");
+          }))
+        );
+      }
+      const editor = el("div", "modern-source-block-editor");
+      editor.append(
+        field("Reviewed text", textArea),
+        field("Assignment", assignmentEdit),
+        field("Split text", splitArea),
+        actionsRow,
+        highlightedEl("p", "modern-pre-wrap", block.text || "", needle)
+      );
+      return editor;
+    }
     function draw() {
       const needle = search.value;
       const assignmentNeedle = assignment.value;
@@ -6710,7 +6775,7 @@ async function renderRulePdfManager() {
         item.appendChild(summary);
         item.append(
           el("p", "muted", `${block.page_label || ""}${block.id ? ` · ${block.id}` : ""}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
-          highlightedEl("p", "modern-pre-wrap", block.text || "", needle)
+          blockEditor(block, needle)
         );
         results.appendChild(item);
       }
@@ -6719,11 +6784,13 @@ async function renderRulePdfManager() {
     search.addEventListener("input", draw);
     assignment.addEventListener("change", draw);
     mount.classList.remove("hidden");
+    const reviewPanel = el("div", "modern-source-review-panel");
+    reviewPanel.append(field("Search source blocks", search), field("Assignment filter", assignment), results);
+    const reviewGrid = el("div", "modern-source-review-grid");
+    reviewGrid.append(pdfFrame, reviewPanel);
     mount.replaceChildren(
       modernStatusRow("Selected source scan", `${payload.source_id || "source"} · ${payload.source_pdf || "Source PDF"} · ${blocks.length} block(s) · ${candidates.length} page-boundary candidate(s)`, `Printed page offset: ${payload.page_offset || 0}. Exact copied prose remains local in DATA_DIR/Supplements/_sources.`),
-      field("Search source blocks", search),
-      field("Assignment filter", assignment),
-      results
+      reviewGrid
     );
     draw();
   }
@@ -6769,10 +6836,16 @@ async function renderRulePdfManager() {
     const payload = await api("/api/rules/pdfs");
     const override = payload.override_status || {};
     const textIndex = payload.local_text_index || {};
+    const previousPdf = uploadedSelect.value;
+    uploadedPdfSettings.clear();
     uploadedSelect.replaceChildren(new Option("Choose uploaded PDF", ""));
     for (const item of payload.uploaded || []) {
+      uploadedPdfSettings.set(item.filename, item.source_settings || {});
       uploadedSelect.appendChild(new Option(`${item.filename} (${Math.round((item.size_bytes || 0) / 1024)} KB)`, item.filename));
     }
+    if (previousPdf && uploadedPdfSettings.has(previousPdf)) uploadedSelect.value = previousPdf;
+    const selectedSettings = uploadedPdfSettings.get(uploadedSelect.value);
+    if (selectedSettings) pageOffset.value = String(selectedSettings.page_offset || 0);
     const indexedDocs = (textIndex.documents || []).map((item) => `${item.filename}: ${item.pages_indexed || 0} page(s)${item.page_offset ? `, offset ${item.page_offset}` : ""}`).join("; ");
     status.replaceChildren(
       modernStatusRow("Uploaded PDFs", `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, "These PDFs are user data beside game.db and can be backed up from the appdata folder."),
@@ -6785,6 +6858,10 @@ async function renderRulePdfManager() {
       modernStatusRow("PDF boundary", "Local-only copied prose", "Exact PDF prose is written only to DATA_DIR files such as rules/rule_text_index.json and tag_scene_narrative_overrides.json. It is not committed or redistributed by the app repository.")
     );
   }
+  uploadedSelect.addEventListener("change", () => {
+    const selectedSettings = uploadedPdfSettings.get(uploadedSelect.value);
+    pageOffset.value = String(selectedSettings?.page_offset || 0);
+  });
   await refreshList();
   await refreshSourceScans();
   const row = actions();
