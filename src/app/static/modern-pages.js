@@ -250,6 +250,22 @@ function card(title, body = "") {
   return node;
 }
 
+function collapsibleSettingsPanel(panel, title, body = "") {
+  const details = document.createElement("details");
+  details.className = panel.className || "modern-card";
+  details.classList.add("modern-collapsible", "modern-settings-panel");
+  details.title = panel.title || `Open ${title}.`;
+  const summary = document.createElement("summary");
+  summary.appendChild(el("strong", "", title));
+  if (body) summary.appendChild(el("span", "muted", body));
+  details.appendChild(summary);
+  for (const child of [...panel.childNodes]) {
+    if (child.matches?.("h3") || (child.matches?.("p.muted") && child.textContent === body)) continue;
+    details.appendChild(child);
+  }
+  return details;
+}
+
 function helpLink(label, href, title) {
   const anchor = link(label, href, title, "help-ref-link");
   anchor.setAttribute("aria-label", title);
@@ -3804,15 +3820,16 @@ function renderRegistryResolverPanel() {
 function renderSettings() {
   const prefs = readModernPrefs();
   const selectedSupplements = new Set(modernState.preferences?.enabled_supplement_ids || ["expanded-edition-core"]);
-  rootEl.appendChild(renderGuide("Settings Workflow", [
+  const guidePanel = renderGuide("Settings Workflow", [
     "Settings affect dashboard defaults and Go Adventure choices; they do not delete rules data.",
     "Supplement switches are saved defaults for new sessions. Go Adventure preselects them, lets you adjust the list for that session, and locks the final supplement snapshot when play starts.",
     "The State Registry is read-only for now; existing status strings and counters remain the save format.",
     "The Terrain Registry is read-only for now; current map/session terrain fields remain the save format.",
     "Legacy ruleset/profile controls still decide which profiles appear as preferred random-adventure choices.",
     "TAG banking toggles which finance workflow the dashboard emphasizes."
-  ], "", "settings ruleset profile"));
-  const panel = card("Settings / Options", "Save dashboard preferences for starting adventures. These preferences are used by Go Adventure.");
+  ], "", "settings ruleset profile");
+  const settingsBody = "Save dashboard preferences for starting adventures. These preferences are used by Go Adventure.";
+  const panel = card("Settings / Options", settingsBody);
   const tag = input("checkbox", "modern-tag-banking", "Use TAG banking for campaign finance actions instead of only the legacy home-bank flow.");
   tag.checked = Boolean(modernState.campaign?.tag_banking_enabled);
   const defaultProfile = select("modern-rules-profile", "Legacy default ruleset profile for random adventures. New sessions now also snapshot active supplement ids.", modernState.rulesProfiles.map((p) => [p.id, p.label]));
@@ -3823,7 +3840,8 @@ function renderSettings() {
   const xp = select("modern-default-xp-system", "Default XP system.", [["classical", "Classical"], ["slow_and_sure", "Slow and Sure"], ["old_school", "Old School"], ["slower_advancement", "Slower Advancement"]]);
   xp.value = prefs.defaultXpSystem || "classical";
   panel.append(field("TAG banking", tag), field("Default random ruleset (legacy)", defaultProfile), field("Default map mode", mapMode), field("Default map limit", mapLimit), field("XP system", xp));
-  const supplementPrefsCard = card("Enabled Supplements (default)", "Saved default list for new sessions. Expanded Edition is locked on; Go Adventure can adjust optional supplements per session before locking the snapshot.");
+  const supplementPrefsBody = "Saved default list for new sessions. Expanded Edition is locked on; Go Adventure can adjust optional supplements per session before locking the snapshot.";
+  const supplementPrefsCard = card("Enabled Supplements (default)", supplementPrefsBody);
   const supplements = Array.isArray(modernState.supplements?.supplements) ? modernState.supplements.supplements : [];
   const supplementPrefChecks = new Map();
   function selectedDefaultSupplementIds() {
@@ -3864,7 +3882,8 @@ function renderSettings() {
     supplementPrefsCard.appendChild(row);
   }
   syncDefaultSupplementRows();
-  const rulesCard = card("Legacy Ruleset Profiles", "Legacy compatibility controls for which ruleset profiles appear as preferred options on Go Adventure. This does not enable, disable, or delete supplement content.");
+  const rulesBody = "Legacy compatibility controls for which ruleset profiles appear as preferred options on Go Adventure. This does not enable, disable, or delete supplement content.";
+  const rulesCard = card("Legacy Ruleset Profiles", rulesBody);
   for (const profile of modernState.rulesProfiles) {
     const checkbox = input("checkbox", `modern-enabled-ruleset-${profile.id}`, `Show ${profile.label} as an available legacy ruleset profile in Go Adventure. This only changes dashboard filtering; it does not remove rules data or change supplement activation.`);
     const enabled = prefs.enabledRulesets ? prefs.enabledRulesets.includes(profile.id) : true;
@@ -3896,7 +3915,16 @@ function renderSettings() {
     setStatus("Settings saved.");
     await refreshCoreAndRender();
   }, ""));
-  rootEl.append(panel, supplementPrefsCard, renderSupplementRegistryPanel(), renderStateRegistryPanel(), renderRegistryResolverPanel(), renderTerrainRegistryPanel(), rulesCard);
+  rootEl.append(
+    collapsibleSettingsPanel(guidePanel, "Settings Workflow", "What these settings do and do not change."),
+    collapsibleSettingsPanel(panel, "Settings / Options", settingsBody),
+    collapsibleSettingsPanel(supplementPrefsCard, "Enabled Supplements (default)", supplementPrefsBody),
+    collapsibleSettingsPanel(renderSupplementRegistryPanel(), "Supplement Library (read-only)", "Known packaged and local supplement records."),
+    collapsibleSettingsPanel(renderStateRegistryPanel(), "State Registry (read-only)", "Search and inspect metadata for current and future state records."),
+    collapsibleSettingsPanel(renderRegistryResolverPanel(), "Registry Resolver (read-only)", "Resolve visible labels and terrain fields against registry metadata."),
+    collapsibleSettingsPanel(renderTerrainRegistryPanel(), "Terrain Registry (read-only)", "Search and inspect metadata for terrain, environments, and tile contexts."),
+    collapsibleSettingsPanel(rulesCard, "Legacy Ruleset Profiles", rulesBody)
+  );
 }
 
 function renderAiAdventures() {

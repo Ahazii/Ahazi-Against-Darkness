@@ -3012,6 +3012,29 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Read-only lookup for tooling and debugging; it does not change terrain, map generation, or spell legality.",
         },
     ]
+    data["settings_collapsible_panels_table"] = [
+        {
+            "surface": "Settings / Options",
+            "panel": "Settings Workflow",
+            "default_state": "collapsed",
+            "player_use": "Keep the guidance text available without taking over the page.",
+            "rules_boundary": "Presentation only; opening or closing the panel changes no preferences or rules.",
+        },
+        {
+            "surface": "Settings / Options",
+            "panel": "Settings / Options",
+            "default_state": "collapsed",
+            "player_use": "Open only when editing defaults such as TAG banking, legacy profile, map mode, map limit, or XP system.",
+            "rules_boundary": "Saving still uses the same explicit Save Preferences action.",
+        },
+        {
+            "surface": "Settings / Options",
+            "panel": "Enabled Supplements / Registries / Resolver / Legacy Profiles",
+            "default_state": "collapsed",
+            "player_use": "Scan the page as a list of sections, then expand only the supplement, state, terrain, resolver, or legacy-profile area needed.",
+            "rules_boundary": "Collapsing a panel hides controls only visually; it does not disable supplements, remove registry metadata, or change ruleset profiles.",
+        },
+    ]
     data["playtest_triage_workflow_table"] = [
         {
             "field": "Area",

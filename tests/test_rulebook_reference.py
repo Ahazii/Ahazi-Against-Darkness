@@ -83,6 +83,7 @@ APP_ONLY_REFERENCE_IDS = {
     "adventure_package_schema_table",
     "active_registry_tooltips_table",
     "registry_resolver_helpers_table",
+    "settings_collapsible_panels_table",
     "session_supplement_snapshot_table",
     "state_registry_navigation_table",
     "supplement_manifest_registry_table",

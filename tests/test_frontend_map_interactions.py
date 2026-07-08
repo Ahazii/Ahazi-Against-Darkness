@@ -2861,6 +2861,15 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "Locked supplements",
         "sessionSupplementSummary",
         "legacy session: no supplement snapshot",
+        "function collapsibleSettingsPanel(panel, title, body = \"\")",
+        "modern-settings-panel",
+        "collapsibleSettingsPanel(panel, \"Settings / Options\"",
+        "collapsibleSettingsPanel(supplementPrefsCard, \"Enabled Supplements (default)\"",
+        "collapsibleSettingsPanel(renderSupplementRegistryPanel(), \"Supplement Library (read-only)\"",
+        "collapsibleSettingsPanel(renderStateRegistryPanel(), \"State Registry (read-only)\"",
+        "collapsibleSettingsPanel(renderRegistryResolverPanel(), \"Registry Resolver (read-only)\"",
+        "collapsibleSettingsPanel(renderTerrainRegistryPanel(), \"Terrain Registry (read-only)\"",
+        "collapsibleSettingsPanel(rulesCard, \"Legacy Ruleset Profiles\"",
     ]:
         assert label in MODERN_PAGES_JS
     assert "syncStartSupplementProfile();\n  const readiness" not in MODERN_PAGES_JS
