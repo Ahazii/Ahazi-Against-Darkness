@@ -6244,8 +6244,9 @@ async function renderRulesReference() {
   const search = input("search", "modern-rules-search", "Filter rules reference entries.");
   const params = new URLSearchParams(window.location.search);
   const helpQuery = params.get("help");
+  const searchQuery = params.get("search");
   const exactEntryId = params.get("entry");
-  if (helpQuery) search.value = helpQuery;
+  if (searchQuery || helpQuery) search.value = searchQuery || helpQuery;
   const categories = [...new Set(modernState.rulesReference.map((entry) => entry.category || "rules"))].sort();
   const category = select("modern-rules-category", "Filter by rules category.", [["", "All categories"], ...categories.map((item) => [item, item])]);
   const statuses = [...new Set(modernState.rulesReference.map((entry) => entry.implementation_status || "reference"))].sort();
@@ -6616,7 +6617,7 @@ function renderArtworkManager() {
 }
 
 async function renderRulePdfManager() {
-  const panel = card("Rules PDF Upload and Text Extraction", "Upload owned rules PDFs into DATA_DIR/rules, then extract supported The Adventures Guild scene prose into the local narrative override file beside game.db.");
+  const panel = card("Rules PDF Upload and Text Extraction", "Upload owned rules PDFs into DATA_DIR/rules, index exact page text for the player Rules Reference, or extract supported The Adventures Guild scene prose into the local narrative override beside game.db.");
   const file = input("file", "modern-rule-pdf-upload", "Choose an owned rules PDF from your computer to upload to the server.");
   file.accept = "application/pdf,.pdf";
   const uploadedSelect = select("modern-rule-pdf-select", "Uploaded DATA_DIR/rules PDF to extract from.", [["", "Choose uploaded PDF"]]);
@@ -6633,18 +6634,21 @@ async function renderRulePdfManager() {
   async function refreshList() {
     const payload = await api("/api/rules/pdfs");
     const override = payload.override_status || {};
+    const textIndex = payload.local_text_index || {};
     uploadedSelect.replaceChildren(new Option("Choose uploaded PDF", ""));
     for (const item of payload.uploaded || []) {
       uploadedSelect.appendChild(new Option(`${item.filename} (${Math.round((item.size_bytes || 0) / 1024)} KB)`, item.filename));
     }
+    const indexedDocs = (textIndex.documents || []).map((item) => `${item.filename}: ${item.pages_indexed || 0} page(s)`).join("; ");
     status.replaceChildren(
       modernStatusRow("Uploaded PDFs", `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, "These PDFs are user data beside game.db and can be backed up from the appdata folder."),
+      modernStatusRow("Rules text index", textIndex.exists ? `${textIndex.entry_count || 0} exact page entr${textIndex.entry_count === 1 ? "y" : "ies"} from ${textIndex.document_count || 0} PDF(s)` : "No exact text index yet", indexedDocs || "Build this from uploaded PDFs when you want exact PDF wording searchable in the player Rules Reference."),
       modernStatusRow("Override file", payload.override_path || "DATA_DIR/tag_scene_narrative_overrides.json", "Generated modules use this local editable file for player-facing scene prose."),
       modernStatusRow("Extracted narrative", override.exists ? `${override.rumors || 0} rumor(s), ${override.scenes || 0} scene(s), ${override.scene_branches || 0} branch(es)` : "No local override file found", override.error || "Counts are read from DATA_DIR/tag_scene_narrative_overrides.json and show what generated Adventures Guild modules can use."),
       modernStatusRow("Extraction warnings", `${(override.extraction_warnings || []).length} suspected issue(s)`, extractionWarningSummary(override.extraction_warnings)),
       modernStatusRow("Last extraction", override.modified_at || "Not extracted yet", "Timestamp is the local override file modified time on the server."),
       modernStatusRow("Packaged PDFs", `${(payload.packaged || []).length} bundled/local Rules folder file(s) visible read-only`, "Upload copies into DATA_DIR/rules when you want extraction to write local override data."),
-      modernStatusRow("PDF boundary", "Local-only copied prose", "Exact PDF prose is written only to DATA_DIR/tag_scene_narrative_overrides.json and is not committed or redistributed by the app repository.")
+      modernStatusRow("PDF boundary", "Local-only copied prose", "Exact PDF prose is written only to DATA_DIR files such as rules/rule_text_index.json and tag_scene_narrative_overrides.json. It is not committed or redistributed by the app repository.")
     );
   }
   await refreshList();
@@ -6673,6 +6677,22 @@ async function renderRulePdfManager() {
       showRulePdfResult("ok", result.message || "PDF uploaded.", "Upload complete");
       await refreshList();
     }),
+    button("Index Exact Rules Text", "Extract exact searchable page text from the selected uploaded PDF into DATA_DIR/rules/rule_text_index.json. This is local/private user data and is not committed.", async () => {
+      try {
+        const result = await api("/api/rules/index-pdf-text", {
+          method: "POST",
+          body: JSON.stringify({ filename: uploadedSelect.value }),
+        });
+        const message = result.message || `Indexed ${result.entries_indexed || 0} page(s).`;
+        setStatus(message);
+        showRulePdfResult("ok", `${message} Open Rules Reference and search for exact wording from this PDF.`, "Rules text indexed");
+        await refreshList();
+      } catch (error) {
+        const message = error?.message || "Rules text indexing failed.";
+        showRulePdfResult("error", message, "Indexing failed");
+        throw error;
+      }
+    }),
     button("Extract Adventures Guild Narrative", "Extract supported Tales from The Adventures Guild Rumor/Scene prose from the selected uploaded PDF into DATA_DIR/tag_scene_narrative_overrides.json.", async () => {
       try {
         const result = await api("/api/rules/extract-tag-narrative", {
@@ -6690,6 +6710,7 @@ async function renderRulePdfManager() {
         throw error;
       }
     }),
+    link("Player Rules Reference", "/modern/rules-reference?search=local_exact", "Open the player Rules Reference. Search for exact wording from locally indexed PDFs.", "link-button secondary"),
     link("Narrative Override Reference", ruleReferenceHref("tag_local_narrative_overrides", "tag narrative overrides"), "Open the Rules Reference entry for local narrative overrides.", "link-button secondary")
   );
   panel.append(
@@ -6699,7 +6720,7 @@ async function renderRulePdfManager() {
     row,
     resultBox,
     status,
-    el("p", "muted", "Extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
+    el("p", "muted", "Rules text indexing stores exact PDF page text only in DATA_DIR/rules/rule_text_index.json for private local search. TAG narrative extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
   );
   return panel;
 }

@@ -558,6 +558,87 @@ def test_rules_reference_api_returns_entries() -> None:
     assert any(entry.get("id") == "settings_collapsible_panels_table" for entry in developer_payload["entries"])
 
 
+def test_rules_reference_merges_local_exact_pdf_text_index(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "rule_text_index.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "updated_at": "2026-07-08T10:00:00Z",
+                "documents": [{"filename": "Owned Rules.pdf", "pages_indexed": 1}],
+                "entries": [
+                    {
+                        "id": "local-pdf-owned-rules-p12",
+                        "title": "Owned Rules p.12",
+                        "category": "pdf_text",
+                        "implementation_status": "local_exact",
+                        "source_page": 12,
+                        "source": "DATA_DIR/rules/Owned Rules.pdf",
+                        "summary": "Exact local PDF text.",
+                        "body": "Exact private wording about lantern oil and dungeon doors.",
+                        "keywords": ["Owned Rules.pdf", "local rules pdf"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+
+    client = TestClient(main_module.app)
+    player_payload = client.get("/api/rules/reference", params={"q": "lantern oil"}).json()
+    assert player_payload["local_rule_text"]["entry_count"] == 1
+    assert any(entry["id"] == "local-pdf-owned-rules-p12" for entry in player_payload["entries"])
+    developer_payload = client.get(
+        "/api/rules/reference",
+        params={"audience": "developer", "q": "lantern oil"},
+    ).json()
+    assert not any(entry["id"] == "local-pdf-owned-rules-p12" for entry in developer_payload["entries"])
+
+
+def test_index_rule_pdf_text_writes_local_appdata_index(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Owned Rules.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        main_module,
+        "_extract_rule_pdf_pages",
+        lambda _path: [{"page": 3, "text": "Exact private wording about madness checks."}],
+    )
+
+    payload = TestClient(main_module.app).post(
+        "/api/rules/index-pdf-text",
+        json={"filename": "Owned Rules.pdf"},
+    ).json()
+    assert payload["pages_indexed"] == 1
+    index = json.loads((rules_dir / "rule_text_index.json").read_text(encoding="utf-8"))
+    assert index["documents"][0]["filename"] == "Owned Rules.pdf"
+    assert index["entries"][0]["body"] == "Exact private wording about madness checks."
+    assert index["entries"][0]["source"] == "DATA_DIR/rules/Owned Rules.pdf"
+
+
 def test_spell_and_scroll_tables_present(tables: dict) -> None:
     for key in (
         "basic_spells_table",

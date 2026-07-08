@@ -484,6 +484,198 @@ def _resolve_user_rule_pdf(filename: str) -> Path:
     return resolved
 
 
+def _local_rule_text_index_path() -> Path:
+    return settings.rules_dir / "rule_text_index.json"
+
+
+def _clean_rule_pdf_text(text: str) -> str:
+    cleaned = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def _extract_rule_pdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("pypdf is required to extract uploaded rule PDF text.") from exc
+    try:
+        reader = PdfReader(str(pdf_path))
+        pages: list[dict[str, Any]] = []
+        for index, page in enumerate(reader.pages, start=1):
+            text = _clean_rule_pdf_text(page.extract_text() or "")
+            if not text:
+                continue
+            pages.append({"page": index, "text": text})
+        return pages
+    except Exception as exc:  # noqa: BLE001
+        message = str(exc)
+        if "cryptography" in message.lower() or "aes" in message.lower():
+            raise RuntimeError(
+                "This PDF uses AES encryption/protection. Install the cryptography Python package "
+                "in the running server image, then rebuild/restart the container and index again."
+            ) from exc
+        raise
+
+
+def _load_local_rule_text_index() -> dict[str, Any]:
+    path = _local_rule_text_index_path()
+    if not path.exists():
+        return {"schema_version": 1, "updated_at": "", "documents": [], "entries": []}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"schema_version": 1, "updated_at": "", "documents": [], "entries": []}
+    if not isinstance(data, dict):
+        return {"schema_version": 1, "updated_at": "", "documents": [], "entries": []}
+    data.setdefault("schema_version", 1)
+    data.setdefault("updated_at", "")
+    data.setdefault("documents", [])
+    data.setdefault("entries", [])
+    return data
+
+
+def _local_rule_text_status() -> dict[str, Any]:
+    data = _load_local_rule_text_index()
+    entries = [entry for entry in data.get("entries", []) if isinstance(entry, dict)]
+    documents = [item for item in data.get("documents", []) if isinstance(item, dict)]
+    return {
+        "path": str(_local_rule_text_index_path()),
+        "exists": _local_rule_text_index_path().exists(),
+        "updated_at": str(data.get("updated_at") or ""),
+        "documents": documents,
+        "document_count": len(documents),
+        "entry_count": len(entries),
+    }
+
+
+def _local_rule_text_entries() -> list[dict[str, Any]]:
+    data = _load_local_rule_text_index()
+    entries: list[dict[str, Any]] = []
+    for entry in data.get("entries", []):
+        if not isinstance(entry, dict):
+            continue
+        body = str(entry.get("body") or "")
+        if not body.strip():
+            continue
+        item = dict(entry)
+        item.setdefault("category", "pdf_text")
+        item.setdefault("implementation_status", "local_exact")
+        item.setdefault("keywords", [])
+        entries.append(item)
+    return entries
+
+
+def _rule_reference_entry_matches(
+    entry: dict[str, Any],
+    *,
+    q: str | None = None,
+    category: str | None = None,
+    implementation_status: str | None = None,
+) -> bool:
+    if category and str(entry.get("category", "")).lower() != category.strip().lower():
+        return False
+    if implementation_status and str(entry.get("implementation_status", "")).lower() != implementation_status.strip().lower():
+        return False
+    query = " ".join(str(q or "").split()).strip().lower()
+    if not query:
+        return True
+    haystack = " ".join(
+        [
+            str(entry.get("id") or ""),
+            str(entry.get("title") or ""),
+            str(entry.get("summary") or ""),
+            str(entry.get("body") or ""),
+            str(entry.get("source") or ""),
+            " ".join(str(item) for item in entry.get("keywords", []) if item is not None),
+        ]
+    ).lower()
+    return all(term in haystack for term in query.split())
+
+
+def _merge_local_rule_text_reference(
+    payload: dict[str, Any],
+    *,
+    audience: str | None = None,
+    q: str | None = None,
+    category: str | None = None,
+    implementation_status: str | None = None,
+) -> dict[str, Any]:
+    normalized = _normalized_rules_audience(audience)
+    if normalized == "developer":
+        return payload
+    entries = [
+        entry
+        for entry in _local_rule_text_entries()
+        if _rule_reference_entry_matches(entry, q=q, category=category, implementation_status=implementation_status)
+    ]
+    if not entries:
+        return {**payload, "local_rule_text": _local_rule_text_status()}
+    merged = [*payload.get("entries", []), *entries]
+    return {**payload, "count": len(merged), "entries": merged, "local_rule_text": _local_rule_text_status()}
+
+
+def _build_rule_text_index_for_pdf(pdf_path: Path) -> dict[str, Any]:
+    settings.rules_dir.mkdir(parents=True, exist_ok=True)
+    pages = _extract_rule_pdf_pages(pdf_path)
+    now = now_utc()
+    existing = _load_local_rule_text_index()
+    source = f"DATA_DIR/rules/{pdf_path.name}"
+    entries = [
+        entry
+        for entry in existing.get("entries", [])
+        if isinstance(entry, dict) and entry.get("source") != source
+    ]
+    documents = [
+        item
+        for item in existing.get("documents", [])
+        if isinstance(item, dict) and item.get("filename") != pdf_path.name
+    ]
+    stem = re.sub(r"[^a-z0-9]+", "-", pdf_path.stem.lower()).strip("-") or "rules-pdf"
+    for page in pages:
+        page_number = int(page["page"])
+        text = str(page["text"])
+        entries.append(
+            {
+                "id": f"local-pdf-{stem}-p{page_number}",
+                "title": f"{pdf_path.stem} p.{page_number}",
+                "category": "pdf_text",
+                "implementation_status": "local_exact",
+                "source_page": page_number,
+                "source": source,
+                "summary": f"Exact local PDF text from {pdf_path.name}, page {page_number}.",
+                "body": text,
+                "keywords": [pdf_path.stem, pdf_path.name, "exact pdf text", "local rules pdf"],
+            }
+        )
+    documents.append(
+        {
+            "filename": pdf_path.name,
+            "source": source,
+            "size_bytes": pdf_path.stat().st_size,
+            "indexed_at": now,
+            "pages_indexed": len(pages),
+        }
+    )
+    index = {
+        "schema_version": 1,
+        "updated_at": now,
+        "note": "Local/private exact rules PDF text. This file lives in DATA_DIR/rules and must not be committed.",
+        "documents": sorted(documents, key=lambda item: str(item.get("filename", "")).lower()),
+        "entries": sorted(entries, key=lambda item: (str(item.get("source", "")).lower(), int(item.get("source_page") or 0))),
+    }
+    _local_rule_text_index_path().write_text(json.dumps(index, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {
+        "filename": pdf_path.name,
+        "pages_indexed": len(pages),
+        "entries_indexed": len(pages),
+        "index_path": str(_local_rule_text_index_path()),
+        "message": f"Indexed {len(pages)} page(s) from {pdf_path.name} into DATA_DIR/rules/rule_text_index.json.",
+        "index_status": _local_rule_text_status(),
+    }
+
+
 def _tag_narrative_override_status() -> dict[str, Any]:
     path = tag_narrative_overrides_path()
     status: dict[str, Any] = {
@@ -562,6 +754,7 @@ async def list_rule_pdfs() -> dict[str, Any]:
         "rules_dir": str(settings.rules_dir),
         "override_path": str(tag_narrative_overrides_path()),
         "override_status": _tag_narrative_override_status(),
+        "local_text_index": _local_rule_text_status(),
     }
 
 
@@ -608,6 +801,27 @@ async def extract_tag_narrative(payload: dict[str, Any]) -> dict[str, Any]:
         "override_status": _tag_narrative_override_status(),
         "message": f"Extracted TAG narrative from {pdf_path.name} into DATA_DIR/{tag_narrative_overrides_path().name}.",
     }
+
+
+@app.post("/api/rules/index-pdf-text")
+async def index_rule_pdf_text(payload: dict[str, Any]) -> dict[str, Any]:
+    filename = str(payload.get("filename") or "").strip()
+    if not filename:
+        candidates = sorted(settings.rules_dir.glob("*.pdf"))
+        if not candidates:
+            raise HTTPException(status_code=404, detail="Upload a rules PDF first.")
+        pdf_path = candidates[0]
+    else:
+        pdf_path = _resolve_user_rule_pdf(filename)
+    try:
+        return _build_rule_text_index_for_pdf(pdf_path)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Could not index rule PDF text: {exc}") from exc
+
+
+@app.get("/api/rules/local-text-index")
+async def local_rule_text_index_status() -> dict[str, Any]:
+    return _local_rule_text_status()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -2282,11 +2496,18 @@ async def rules_reference(
     implementation_status: str | None = None,
     audience: str | None = None,
 ) -> dict:
-    return rules.search_reference(
+    payload = rules.search_reference(
         q=q,
         category=category,
         implementation_status=implementation_status,
         audience=audience,
+    )
+    return _merge_local_rule_text_reference(
+        payload,
+        audience=audience,
+        q=q,
+        category=category,
+        implementation_status=implementation_status,
     )
 
 

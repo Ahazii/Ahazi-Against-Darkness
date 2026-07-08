@@ -144,6 +144,11 @@ Home screen rule browsing:
   full PDF transcription. Player-facing rules implemented by the engine should
   be discoverable there or in a structured Rules table; large catalogs belong in
   structured JSON plus the home Rules tables panel.
+- `DATA_DIR/rules/rule_text_index.json` is optional local/private user data.
+  The Developer Rules PDF panel can build it from manually uploaded PDFs in
+  `DATA_DIR/rules/`; `GET /api/rules/reference` merges those exact page-text
+  entries into the player Rules Reference search. The file is never packaged in
+  git and should be backed up with the rest of the appdata folder.
 
 Home screen character UI:
 

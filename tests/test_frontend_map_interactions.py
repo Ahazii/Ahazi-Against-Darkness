@@ -2918,6 +2918,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/api/rules/tables?audience=" in MODERN_PAGES_JS
     assert "Developer Reference" in MODERN_PAGES_JS
     assert "Developer Tables" in MODERN_PAGES_JS
+    assert "Index Exact Rules Text" in MODERN_PAGES_JS
+    assert "/api/rules/index-pdf-text" in MODERN_PAGES_JS
+    assert "rule_text_index.json" in MODERN_PAGES_JS
 
 
 def test_legacy_dashboard_cards_link_to_modern_pages_not_old_home_actions() -> None:
