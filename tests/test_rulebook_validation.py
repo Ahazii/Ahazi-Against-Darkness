@@ -709,22 +709,32 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
                 "page": 3,
                 "text": "House of Ill Repute\n\nQuest (Steal): A shady geezer offers a reward.",
                 "methods": ["plain", "layout"],
+            },
+            {
+                "page": 4,
+                "text": "continued indenture contract.",
+                "methods": ["plain", "layout"],
             }
         ],
     )
 
     result = supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:00:00Z", page_offset=-1)
-    assert result["blocks"] == 2
+    assert result["blocks"] == 3
+    assert result["continuation_candidates"] == 1
     assert result["page_offset"] == -1
     path = tmp_path / "Supplements" / "_sources" / "troublesome-towns" / "source_blocks.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["page_offset"] == -1
     assert payload["blocks"][0]["assignment"] == "unassigned"
+    assert payload["blocks"][0]["id"] == "troublesome-towns-p2-pdf3-b001"
     assert payload["blocks"][0]["text"] == "House of Ill Repute"
     assert payload["blocks"][0]["pdf_page"] == 3
     assert payload["blocks"][0]["source_page"] == 2
     assert payload["blocks"][0]["page_label"] == "p.2 (PDF p.3)"
     assert payload["blocks"][0]["extraction_methods"] == ["plain", "layout"]
+    assert payload["continuation_candidates"][0]["page_label"] == "p.2 (PDF p.3) to p.3 (PDF p.4)"
+    assert payload["continuation_candidates"][0]["assignment"] == "page_boundary_candidate"
+    assert "continued indenture contract" in payload["continuation_candidates"][0]["text"]
     scans = supplement_sources.list_supplement_source_scans(tmp_path)
     assert scans == [
         {
@@ -732,9 +742,10 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
             "source_pdf": "DATA_DIR/rules/Troublesome Towns.pdf",
             "updated_at": "2026-07-08T11:00:00Z",
             "page_offset": -1,
-            "blocks": 2,
+            "blocks": 3,
+            "continuation_candidates": 1,
             "reviewed_blocks": 0,
-            "assignment_counts": {"unassigned": 2},
+            "assignment_counts": {"unassigned": 3},
             "path": str(path),
         }
     ]

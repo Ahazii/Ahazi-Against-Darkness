@@ -6673,39 +6673,43 @@ async function renderRulePdfManager() {
     return warnings.slice(0, 8).join(" ");
   }
   const sourceScanStatus = el("div", "modern-list");
-  const sourceScanDetail = el("div", "modern-list");
   function sourceScanAssignmentSummary(scan) {
     const counts = scan.assignment_counts || {};
     const parts = Object.entries(counts)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, value]) => `${key}: ${value}`);
-    return parts.length ? parts.join("; ") : "No assignment counts yet.";
+    const summary = parts.length ? parts.join("; ") : "No assignment counts yet.";
+    return `${summary}${scan.continuation_candidates ? `; page-boundary candidates: ${scan.continuation_candidates}` : ""}`;
   }
-  function renderSourceScanDetail(payload) {
-    const blocks = Array.isArray(payload.blocks) ? payload.blocks : [];
+  const sourceScanDetailMounts = [];
+  function renderSourceScanDetail(payload, mount) {
+    const blocks = Array.isArray(payload.blocks) ? payload.blocks.map((block) => ({ ...block, source_item_type: "block" })) : [];
+    const candidates = Array.isArray(payload.continuation_candidates) ? payload.continuation_candidates.map((block) => ({ ...block, source_item_type: "page-boundary candidate" })) : [];
+    const sourceItems = blocks.concat(candidates);
     const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
     const assignment = select("modern-source-block-assignment", "Filter by current manual assignment.", [["", "All assignments"]]);
     for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
+    if (candidates.length) assignment.appendChild(new Option("Page-boundary candidates", "page_boundary_candidate"));
     const results = el("div", "modern-list");
     function draw() {
       const needle = search.value;
       const assignmentNeedle = assignment.value;
-      const matches = blocks.filter((block) => {
+      const matches = sourceItems.filter((block) => {
         if (assignmentNeedle && block.assignment !== assignmentNeedle) return false;
-        return modernTextMatchesNeedle(`${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
+        return modernTextMatchesNeedle(`${block.id || ""} ${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
       });
-      results.replaceChildren(modernStatusRow("Visible source blocks", `${matches.length} of ${blocks.length}`, "This view is read-only for now; assignment editing comes in the next workbench step."));
+      results.replaceChildren(modernStatusRow("Visible source blocks", `${matches.length} of ${sourceItems.length}`, "This view is read-only for now; page-boundary candidates combine the last block of one PDF page with the first block of the next for review."));
       for (const block of matches.slice(0, 120)) {
         const item = document.createElement("details");
         item.className = "modern-row";
         const summary = document.createElement("summary");
         summary.append(
           el("strong", "", block.page_label || `p.${block.source_page || "?"}`),
-          el("span", "muted", ` · ${block.assignment || "unassigned"} · block ${block.block_index || "?"}`)
+          el("span", "muted", ` · ${block.assignment || "unassigned"} · ${block.source_item_type === "page-boundary candidate" ? "page boundary" : `block ${block.block_index || "?"}`}`)
         );
         item.appendChild(summary);
         item.append(
-          el("p", "muted", `${block.id || "source block"}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
+          el("p", "muted", `${block.page_label || ""}${block.id ? ` · ${block.id}` : ""}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
           highlightedEl("p", "modern-pre-wrap", block.text || "", needle)
         );
         results.appendChild(item);
@@ -6714,8 +6718,9 @@ async function renderRulePdfManager() {
     }
     search.addEventListener("input", draw);
     assignment.addEventListener("change", draw);
-    sourceScanDetail.replaceChildren(
-      modernStatusRow("Selected source scan", `${payload.source_pdf || payload.source_id || "Source PDF"} · ${blocks.length} block(s)`, `Printed page offset: ${payload.page_offset || 0}. Exact copied prose remains local in DATA_DIR/Supplements/_sources.`),
+    mount.classList.remove("hidden");
+    mount.replaceChildren(
+      modernStatusRow("Selected source scan", `${payload.source_id || "source"} · ${payload.source_pdf || "Source PDF"} · ${blocks.length} block(s) · ${candidates.length} page-boundary candidate(s)`, `Printed page offset: ${payload.page_offset || 0}. Exact copied prose remains local in DATA_DIR/Supplements/_sources.`),
       field("Search source blocks", search),
       field("Assignment filter", assignment),
       results
@@ -6726,29 +6731,37 @@ async function renderRulePdfManager() {
     const payload = await api("/api/supplements/source-scans");
     const scans = payload.scans || [];
     sourceScanStatus.replaceChildren();
+    sourceScanDetailMounts.length = 0;
     if (!scans.length) {
       sourceScanStatus.appendChild(modernStatusRow("Source block scans", "No scans yet", "Use Scan Source Blocks after uploading or selecting a PDF."));
-      sourceScanDetail.replaceChildren();
       return;
     }
     sourceScanStatus.appendChild(modernStatusRow("Source block scans", `${scans.length} local scan(s)`, "These are local/private review files in DATA_DIR/Supplements/_sources."));
     for (const scan of scans) {
       const row = actions("modern-row-actions");
+      const detailMount = el("div", "modern-source-scan-detail hidden");
+      sourceScanDetailMounts.push(detailMount);
       row.append(
         button("View Blocks", `Open read-only source blocks for ${scan.source_id}.`, async (btn) => runWithButtonProgress(btn, "Loading source blocks...", async () => {
           const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(scan.source_id)}`);
-          renderSourceScanDetail(detail);
-          scrollPanelIntoView(sourceScanDetail, "Source scan opened.");
+          sourceScanDetailMounts.forEach((mount) => {
+            if (mount !== detailMount) {
+              mount.classList.add("hidden");
+              mount.replaceChildren();
+            }
+          });
+          renderSourceScanDetail(detail, detailMount);
+          scrollPanelIntoView(detailMount, "Source scan opened.");
         }))
       );
       const body = el("div", "");
       body.append(
         el("strong", "", scan.source_id || "source scan"),
-        el("p", "muted", `${scan.source_pdf || "PDF"} · ${scan.blocks || 0} block(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
+        el("p", "muted", `${scan.source_pdf || "PDF"} · ${scan.blocks || 0} block(s) · ${scan.continuation_candidates || 0} page-boundary candidate(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
         el("p", "muted", sourceScanAssignmentSummary(scan))
       );
       const scanRow = el("div", "modern-row");
-      scanRow.append(body, row);
+      scanRow.append(body, row, detailMount);
       sourceScanStatus.appendChild(scanRow);
     }
   }
@@ -6864,7 +6877,6 @@ async function renderRulePdfManager() {
     resultBox,
     status,
     sourceScanStatus,
-    sourceScanDetail,
     el("p", "muted", "Rules text indexing stores exact PDF page text only in DATA_DIR/rules/rule_text_index.json for private local search. Use Printed page offset when the PDF viewer page differs from the printed book page: if PDF page 7 is printed page 1, enter -6. Source block scans create local review files under DATA_DIR/Supplements/_sources for future manual assignment. TAG narrative extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
   );
   return panel;

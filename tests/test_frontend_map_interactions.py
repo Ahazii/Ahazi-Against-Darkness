@@ -2937,6 +2937,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/api/supplements/source-scans" in MODERN_PAGES_JS
     assert "View Blocks" in MODERN_PAGES_JS
     assert "Visible source blocks" in MODERN_PAGES_JS
+    assert "page-boundary candidates" in MODERN_PAGES_JS
+    assert "sourceScanDetailMounts" in MODERN_PAGES_JS
     assert "DATA_DIR/Supplements/_sources" in MODERN_PAGES_JS
     assert "Extracting Adventures Guild narrative..." in MODERN_PAGES_JS
     assert "/api/rules/index-pdf-text" in MODERN_PAGES_JS
