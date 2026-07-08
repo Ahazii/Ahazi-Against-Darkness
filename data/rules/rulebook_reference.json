@@ -3351,8 +3351,8 @@
         "guild jobs",
         "reference"
       ],
-      "summary": "Go Adventure is split into Start, Resume, Generate, Guild Jobs, and Reference tabs.",
-      "body": "Go Adventure now starts with a short Start tab for new sessions and compact setup/closeout status icons. Backend Setup Check and Closeout Gate enforcement remains, but the old full panels are replaced by click-through issue detail dialogs and an override checkbox only when overridable guidance/closeout warnings exist. Resume separates active sessions and saved games. Generate contains Adventures Guild lead creation and audit panels for Rumors, Treasure Maps, and Thematic Dungeons. The Generate Random checkbox chooses both the lead family and result; when unchecked, the selected Lead Type chooses the family and the app rolls within that family. Reference holds closeout, generated lead signoff, Adventures Guild Action Log, Rules Reference, and Tables links. This is app workflow organization; printed adventure rules remain in the source PDFs and targeted reference entries.",
+      "summary": "Go Adventure is split into Start, Resume, and Reference / Playtest tabs with collapsed-by-default panels.",
+      "body": "Go Adventure now starts with a compact Start tab for new sessions and setup/closeout status icons. Backend Setup Check and Closeout Gate enforcement remains, but large panels default collapsed and issue details open only when clicked. Resume separates active sessions and saved games. Reference / Playtest holds Playtest Triage, closeout, generated lead review, TAG Guild Job review, signoff checklist, Adventures Guild Action Log, Rules Reference, and Tables links. All Go Adventure tab panels default collapsed, and generated lead rows/Guild Job rows are collapsed inside their panels so a single installed module does not fill the page. This is app workflow organization; printed adventure rules remain in the source PDFs and targeted reference entries.",
       "implementation_status": "implemented"
     },
     {
@@ -3465,8 +3465,8 @@
         "tabs",
         "workflow"
       ],
-      "summary": "Tables documents the Start, Resume, Generate, Guild Jobs, and Reference Go Adventure tabs.",
-      "body": "The modern Tables page includes go_adventure_tabbed_workflow_table. It documents what each Go Adventure tab contains, when the player should use it, how the Generate Random checkbox chooses TAG lead family/result, and where the PDF boundary sits for generated Adventures Guild leads and session management.",
+      "summary": "Tables documents the Start, Resume, and Reference / Playtest Go Adventure tabs.",
+      "body": "The modern Tables page includes go_adventure_tabbed_workflow_table. It documents what each Go Adventure tab contains, that tab panels and generated lead rows default collapsed, when the player should expand each section, and where the PDF boundary sits for generated Adventures Guild leads and session management.",
       "implementation_status": "implemented"
     },
     {

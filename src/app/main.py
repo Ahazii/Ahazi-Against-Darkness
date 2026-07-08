@@ -2597,32 +2597,20 @@ def _rules_tables_payload() -> dict:
     data["go_adventure_tabbed_workflow_table"] = [
         {
             "tab": "Start",
-            "contains": "Start New Adventure controls plus setup and closeout status icons. Clicking an icon opens the exact issue list; full Setup Check and Closeout Gate panels are no longer shown.",
-            "player_use": "Choose party/module/rules and start; click the status icons only when the app reports setup, closeout, or guidance issues.",
+            "contains": "Collapsed Start New Adventure, Session Supplements, and Adventure Workflow panels. Start New Adventure contains the setup and closeout status icons.",
+            "player_use": "Expand Start New Adventure when choosing party/module/rules and starting; click status icons only when the app reports setup, closeout, or guidance issues.",
             "rules_boundary": "Start checks remain enforced by the backend; printed rules still control adventure resolution.",
         },
         {
             "tab": "Resume",
-            "contains": "Active sessions and saved games.",
-            "player_use": "Continue existing play without confusing it with creating a fresh adventure.",
+            "contains": "Collapsed Resume Adventure, Saved Games, and Need a module? panels.",
+            "player_use": "Expand only the resume or saved-game section needed, without confusing existing play with creating a fresh adventure.",
             "rules_boundary": "No rules automation; this is session management.",
         },
         {
-            "tab": "Generate",
-            "contains": "TAG Workflow Summary, Adventures Guild lead creation, and Rumor, Treasure Map, and Thematic Dungeon audit/signoff panels.",
-            "player_use": "Use Random to let the app choose the lead family and result, or uncheck it to choose the family and let the app roll within that family.",
-            "rules_boundary": "The app rolls fixed lead family/result values when requested; printed choices remain player choices.",
-        },
-        {
-            "tab": "Guild Jobs",
-            "contains": "Guild Job guidance and a shortcut to select the Guild Job generator.",
-            "player_use": "Use when the adventure comes from Guild work rather than a normal random start.",
-            "rules_boundary": "Guild Job procedure support is app-authored workflow around TAG source references.",
-        },
-        {
-            "tab": "Reference",
-            "contains": "Closeout, generated-lead signoff, Adventures Guild Action Log, Rules Reference, and Tables links.",
-            "player_use": "Review after play or before creating another lead.",
+            "tab": "Reference / Playtest",
+            "contains": "Collapsed Playtest Triage, Go Adventure closeout, Generated Adventures Guild Leads, TAG Guild Job Leads, Guild Job Signoff Checklist, and Adventures Guild Action Log panels.",
+            "player_use": "Review after play or before creating another lead. Generated lead rows and Guild Job rows are also collapsed so one installed lead does not fill the page.",
             "rules_boundary": "Reference links point to implementation notes and source pages; they do not copy full PDF text.",
         },
     ]

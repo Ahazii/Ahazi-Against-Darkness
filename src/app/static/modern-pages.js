@@ -1330,12 +1330,16 @@ function renderTagLeadSelectorPanel(adventureSelect = null) {
     return panel;
   }
   for (const adventure of leads.slice(0, 8)) {
-    const row = el("div", "modern-row");
+    const row = document.createElement("details");
+    row.className = "modern-row modern-collapsible";
     row.title = `${adventure.notes || "Generated Adventures Guild module."} ${adventure.tag_pdf_pages ? `Source ${adventure.tag_pdf_pages}.` : ""}`;
-    row.append(
+    const rowSummary = document.createElement("summary");
+    rowSummary.title = "Show or hide this generated Adventures Guild lead audit row.";
+    rowSummary.append(
       el("strong", "", adventure.name || adventure.id),
       el("span", "muted", `${modernTitleFromKey(adventure.tag_lead_type || "tag lead")} · ${adventure.tag_scene || adventure.tag_lead_detail || "generated module"}${adventure.tag_pdf_pages ? ` · ${adventure.tag_pdf_pages}` : ""}`)
     );
+    row.appendChild(rowSummary);
     for (const [title, body, hint] of tagLeadStatusRows(adventure)) {
       row.appendChild(modernStatusRow(title, body, hint));
     }
@@ -1680,12 +1684,16 @@ function renderGuildJobLeadAuditPanel(adventureSelect = null) {
     return panel;
   }
   for (const adventure of jobs.slice(0, 12)) {
-    const row = el("div", "modern-row");
+    const row = document.createElement("details");
+    row.className = "modern-row modern-collapsible";
     row.title = "Guild Job audit row: confirms which job commission this is and which proof, payment, XP, Guild, banking, and storage checks should be reviewed.";
-    row.append(
+    const rowSummary = document.createElement("summary");
+    rowSummary.title = "Show or hide this Guild Job audit row.";
+    rowSummary.append(
       el("strong", "", adventure.name || adventure.id),
       el("span", "muted", `${adventure.tag_lead_detail || "Guild Job"}${adventure.tag_pdf_pages ? ` · ${adventure.tag_pdf_pages}` : ""}`)
     );
+    row.appendChild(rowSummary);
     for (const [title, body, hint] of tagGuildJobAuditRows(adventure)) {
       row.appendChild(modernStatusRow(title, body, hint));
     }
@@ -6182,15 +6190,23 @@ async function renderGoAdventure() {
     panelEl.append(...nodes.filter(Boolean));
     panels[key] = panelEl;
   }
-  addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, supplementPreferenceCard, workflowGuide]);
-  addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [sessions, saved, management]);
+  addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [
+    collapseCard(panel),
+    collapseCard(supplementPreferenceCard),
+    collapseCard(workflowGuide),
+  ]);
+  addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [
+    collapseCard(sessions),
+    collapseCard(saved),
+    collapseCard(management),
+  ]);
   addGoAdventureTab("reference", "Reference / Playtest", "Capture playtest issues and review closeout/reference context.", [
-    renderPlaytestTriagePanel("go-adventure"),
-    renderAdventureCloseoutCockpit("Go Adventure"),
-    renderTagLeadSelectorPanel(),
-    renderGuildJobLeadAuditPanel(adventure),
-    renderGuildJobSignoffChecklist(),
-    renderTagActionLogExplorer(),
+    collapseCard(renderPlaytestTriagePanel("go-adventure")),
+    collapseCard(renderAdventureCloseoutCockpit("Go Adventure")),
+    collapseCard(renderTagLeadSelectorPanel()),
+    collapseCard(renderGuildJobLeadAuditPanel(adventure)),
+    collapseCard(renderGuildJobSignoffChecklist()),
+    collapseCard(renderTagActionLogExplorer()),
   ]);
   rootEl.append(tabs, ...Object.values(panels));
   activateGoAdventureTab("start");

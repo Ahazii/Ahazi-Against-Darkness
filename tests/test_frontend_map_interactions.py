@@ -2312,11 +2312,14 @@ def test_go_adventure_start_uses_status_icons_not_setup_panels() -> None:
     assert "function selectedStartSupplementIds()" in MODERN_PAGES_JS[go_start:]
     assert "active_supplement_ids: selectedStartSupplementIds()" in MODERN_PAGES_JS[go_start:]
     assert "syncStartSupplementProfile({ userChanged: true })" in MODERN_PAGES_JS[go_start:]
-    assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, supplementPreferenceCard, workflowGuide])' in MODERN_PAGES_JS
+    assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [' in MODERN_PAGES_JS
+    assert "collapseCard(supplementPreferenceCard)" in MODERN_PAGES_JS[go_start:]
+    assert "collapseCard(workflowGuide)" in MODERN_PAGES_JS[go_start:]
     assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate])' not in MODERN_PAGES_JS
     assert "button.modern-dashboard-status-icon" in STYLES_CSS
     assert ".modern-start-status-icons" in STYLES_CSS
-    assert "full Setup Check and Closeout Gate panels are no longer shown" in MAIN_PY
+    assert "Collapsed Start New Adventure, Session Supplements, and Adventure Workflow panels" in MAIN_PY
+    assert "Collapsed Playtest Triage, Go Adventure closeout, Generated Adventures Guild Leads" in MAIN_PY
 
 
 def test_mass_blessing_ui_sends_targets_and_conditions() -> None:
@@ -2687,6 +2690,11 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Guild Job Signoff Checklist" in MODERN_PAGES_JS
     assert "tag_guild_job_playthrough_audit" in MODERN_PAGES_JS
     assert "Select Job" in MODERN_PAGES_JS
+    assert "collapseCard(panel)" in MODERN_PAGES_JS
+    assert "collapseCard(renderTagLeadSelectorPanel())" in MODERN_PAGES_JS
+    assert "collapseCard(renderGuildJobLeadAuditPanel(adventure))" in MODERN_PAGES_JS
+    assert "Show or hide this generated Adventures Guild lead audit row." in MODERN_PAGES_JS
+    assert "Show or hide this Guild Job audit row." in MODERN_PAGES_JS
     assert "Adventures Guild Action Log" in MODERN_PAGES_JS
     assert "tag_generated_prompt_playtest" in MODERN_PAGES_JS
     assert "Start\", \"Start a fresh adventure" in MODERN_PAGES_JS
