@@ -393,6 +393,10 @@ function searchTerms(needle) {
     .slice(0, 8);
 }
 
+function normalizedSearchNeedle(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 function appendHighlightedText(node, text, needle) {
   const value = String(text ?? "");
   const terms = searchTerms(needle);
@@ -6111,7 +6115,7 @@ async function renderRulesReference() {
   panel.append(controls, rowActions, results);
   const draw = () => {
     results.replaceChildren();
-    const needle = search.value.toLowerCase();
+    const needle = normalizedSearchNeedle(search.value);
     const rows = modernState.rulesReference
       .filter((entry) => !exactEntryId || entry.id === exactEntryId)
       .filter((entry) => !category.value || (entry.category || "rules") === category.value)
@@ -6135,7 +6139,7 @@ async function renderRulesReference() {
     for (const [groupName, items] of Object.entries(byCategory).sort(([a], [b]) => a.localeCompare(b))) {
       const group = document.createElement("details");
       group.className = "modern-row modern-reference-group";
-      group.open = Boolean(exactEntryId) || rows.length <= 25 || Boolean(search.value);
+      group.open = Boolean(exactEntryId);
       const groupSummary = document.createElement("summary");
       groupSummary.title = `Show or hide ${items.length} ${groupName} reference entries.`;
       groupSummary.append(el("strong", "", modernTitleFromKey(groupName)), el("span", "muted", `${items.length} entr${items.length === 1 ? "y" : "ies"}`));
@@ -6144,7 +6148,7 @@ async function renderRulesReference() {
       for (const item of items) {
         const row = document.createElement("details");
         row.className = "modern-row modern-reference-card";
-        row.open = Boolean(exactEntryId) || rows.length <= 8;
+        row.open = Boolean(exactEntryId);
         const rowSummary = document.createElement("summary");
         rowSummary.title = "Show or hide the full implementation note for this rule reference.";
         rowSummary.append(
@@ -6220,11 +6224,12 @@ function supplementIdsForTable(key, value) {
 }
 
 function modernTablePreview(value, needle = "") {
+  const rowNeedle = normalizedSearchNeedle(needle);
   const rows = Array.isArray(value)
     ? value
     : modernTableRows(value);
-  const visibleRows = needle
-    ? rows.filter((row) => modernSearchText(row).toLowerCase().includes(needle))
+  const visibleRows = rowNeedle
+    ? rows.filter((row) => modernSearchText(row).toLowerCase().includes(rowNeedle))
     : rows;
   const box = el("div", "modern-list-tall");
   if (!visibleRows.length) {
@@ -6238,9 +6243,9 @@ function modernTablePreview(value, needle = "") {
       const detail = Object.entries(row)
         .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(", ") : String(val)}`)
         .join(" | ");
-      line.append(highlightedEl("strong", "", String(title), needle), highlightedEl("span", "muted", detail, needle));
+      line.append(highlightedEl("strong", "", String(title), rowNeedle), highlightedEl("span", "muted", detail, rowNeedle));
     } else {
-      line.append(highlightedEl("span", "", String(row), needle));
+      line.append(highlightedEl("span", "", String(row), rowNeedle));
     }
     box.appendChild(line);
   }
@@ -6277,7 +6282,7 @@ async function renderTables() {
   panel.append(controls, rowActions, results);
   const draw = () => {
     results.replaceChildren();
-    const needle = search.value.toLowerCase();
+    const needle = normalizedSearchNeedle(search.value);
     const keys = Object.keys(modernState.tables).filter((key) => {
       if (family.value && modernTableFamily(key) !== family.value) return false;
       if (artworkFilter.value === "with" && !artworkForTable(key).length) return false;
@@ -6307,7 +6312,6 @@ async function renderTables() {
     for (const [groupName, groupKeys] of Object.entries(byFamily).sort(([a], [b]) => a.localeCompare(b))) {
       const group = document.createElement("details");
       group.className = "modern-row modern-table-group";
-      group.open = keys.length <= 30 || Boolean(search.value);
       const groupSummary = document.createElement("summary");
       groupSummary.title = `Show or hide ${groupKeys.length} ${groupName} tables.`;
       const rowsInGroup = groupKeys.reduce((total, key) => total + modernTableRowCount(modernState.tables[key]), 0);
@@ -6318,7 +6322,6 @@ async function renderTables() {
         const value = modernState.tables[key];
         const details = document.createElement("details");
         details.className = "modern-row modern-table-card";
-        details.open = groupKeys.length <= 4 && keys.length <= 12;
         const summary = document.createElement("summary");
         summary.title = "Show or hide this table's rows.";
         const tableArt = artworkForTable(key);

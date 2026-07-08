@@ -2902,6 +2902,29 @@ def _rules_tables_payload() -> dict:
             "rules_boundary": "Badges are derived from ids, titles, keywords, source strings, and table keys; exact mechanics still belong to the PDF-backed implementation.",
         },
     ]
+    data["reference_table_collapsible_navigation_table"] = [
+        {
+            "surface": "Rules Reference",
+            "panel": "Category groups and reference cards",
+            "default_state": "collapsed",
+            "player_use": "Search or filter to get a shorter list, then expand only the category and reference entry being checked.",
+            "rules_boundary": "Presentation only; collapsed entries remain searchable and no rule text, status, source page, or supplement context changes.",
+        },
+        {
+            "surface": "Tables List",
+            "panel": "Family groups and table cards",
+            "default_state": "collapsed",
+            "player_use": "Search or filter to find the right table family, then expand only the exact table rows needed for play or review.",
+            "rules_boundary": "Presentation only; collapsed tables remain the same data and no table lookup or roll result changes.",
+        },
+        {
+            "surface": "Rules Reference / Tables List",
+            "panel": "Search normalization",
+            "default_state": "trimmed query",
+            "player_use": "Trailing spaces and repeated spaces are ignored so searches like 'Adventure ' still match Adventure entries.",
+            "rules_boundary": "Search cleanup affects navigation only; it does not broaden or reinterpret printed rules.",
+        },
+    ]
     data["state_registry_navigation_table"] = [
         {
             "surface": "Settings / Options",

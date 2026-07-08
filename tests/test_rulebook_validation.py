@@ -348,6 +348,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "active_registry_tooltips_table",
     "registry_resolver_helpers_table",
     "settings_collapsible_panels_table",
+    "reference_table_collapsible_navigation_table",
     "exploration_narrative_layout_table",
     "exploration_objective_clarity_table",
     "go_adventure_closeout_gate_table",
