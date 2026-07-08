@@ -163,8 +163,10 @@ Home screen rule browsing:
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.
   The block review view shows the uploaded PDF beside the extracted text and
-  lets a human reviewer save assignments, split oversized blocks, and merge
-  adjacent blocks before later conversion into structured supplement data.
+  lets a human reviewer save assignments, split oversized blocks at the cursor,
+  and merge selected adjacent blocks before later conversion into structured
+  supplement data. Re-scans update `raw_blocks`; human-reviewed edits and
+  assignments live in `reviewed_blocks` and are preserved separately.
   Workbench scans can store both `pdf_page` and the offset-adjusted printed
   `source_page`; use `page_offset` when a PDF cover/front matter shifts the
   viewer page number away from the printed book page.

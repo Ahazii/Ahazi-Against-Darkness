@@ -1103,6 +1103,11 @@ button.is-working::after {
   overflow-wrap: anywhere;
 }
 
+.modern-row.modern-row-selected {
+  border-color: rgba(201, 162, 39, 0.78);
+  background: rgba(201, 162, 39, 0.1);
+}
+
 .modern-registry-panel {
   justify-items: stretch;
   text-align: left;

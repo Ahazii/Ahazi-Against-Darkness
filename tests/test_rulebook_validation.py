@@ -770,6 +770,12 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
     path = tmp_path / "Supplements" / "_sources" / "troublesome-towns" / "source_blocks.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["page_offset"] == -1
+    assert "title_page" in payload["assignment_options"]
+    assert "table_of_contents" in payload["assignment_options"]
+    assert "artwork_filler" in payload["assignment_options"]
+    assert "history" in payload["assignment_options"]
+    assert payload["raw_blocks"][0]["text"] == "House of Ill Repute"
+    assert payload["reviewed_blocks"][0]["text"] == "House of Ill Repute"
     assert payload["blocks"][0]["assignment"] == "unassigned"
     assert payload["blocks"][0]["id"] == "troublesome-towns-p2-pdf3-b001"
     assert payload["blocks"][0]["text"] == "House of Ill Repute"
@@ -788,6 +794,7 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
             "updated_at": "2026-07-08T11:00:00Z",
             "page_offset": -1,
             "blocks": 3,
+            "raw_blocks": 3,
             "continuation_candidates": 1,
             "reviewed_blocks": 0,
             "assignment_counts": {"unassigned": 3},
@@ -832,6 +839,32 @@ def test_supplement_source_scan_preserves_existing_assignment(tmp_path: Path, mo
     assert payload["blocks"][0]["assignment"] == "foe"
     assert payload["blocks"][0]["review_status"] == "checked"
     assert payload["blocks"][0]["notes"] == "Manual review kept."
+    assert payload["reviewed_blocks"][0]["assignment"] == "foe"
+    assert payload["raw_blocks"][0]["text"] == "Foe: Clockwork Beggar L4"
+
+
+def test_supplement_source_rescan_preserves_reviewed_edits_when_raw_blocks_change(tmp_path: Path, monkeypatch) -> None:
+    from app.engine import supplement_sources
+
+    pdf = tmp_path / "Mutable Book.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+    pages = [{"page": 1, "text": "Original block", "methods": ["layout"]}]
+    monkeypatch.setattr(supplement_sources, "extract_rule_pdf_pages", lambda _path: pages)
+
+    supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:05:00Z")
+    supplement_sources.update_supplement_source_block(
+        tmp_path,
+        "mutable-book",
+        "mutable-book-p1-b001",
+        {"text": "Reviewed edited block", "assignment": "title_page", "review_status": "checked"},
+    )
+    pages[:] = [{"page": 1, "text": "Changed raw extraction", "methods": ["layout"]}]
+    supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:06:00Z")
+
+    payload = json.loads((tmp_path / "Supplements" / "_sources" / "mutable-book" / "source_blocks.json").read_text(encoding="utf-8"))
+    assert payload["raw_blocks"][0]["text"] == "Changed raw extraction"
+    assert payload["reviewed_blocks"][0]["text"] == "Reviewed edited block"
+    assert payload["reviewed_blocks"][0]["assignment"] == "title_page"
 
 
 def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch) -> None:
@@ -872,8 +905,8 @@ def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch)
     assert len(split_payload["blocks"]) == 2
 
     merge_payload = client.post(
-        "/api/supplements/source-scans/mixed-book/blocks/mixed-book-p1-b002-split01/merge",
-        json={"direction": "next"},
+        "/api/supplements/source-scans/mixed-book/blocks/merge-selected",
+        json={"block_ids": ["mixed-book-p1-b002-split01", "mixed-book-p1-b002-split02"]},
     ).json()
     assert "Beta part 1" in merge_payload["block"]["text"]
     assert "Beta part 2" in merge_payload["block"]["text"]

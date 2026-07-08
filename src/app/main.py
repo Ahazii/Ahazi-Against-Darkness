@@ -73,6 +73,7 @@ from .engine.roster_sync import (
 from .engine.supplement_sources import (
     list_supplement_source_scans,
     load_supplement_source_scan,
+    merge_selected_supplement_source_blocks,
     merge_supplement_source_block,
     pdf_source_settings,
     scan_supplement_source_pdf,
@@ -771,6 +772,17 @@ async def merge_source_block(source_id: str, block_id: str, payload: dict[str, A
         return merge_supplement_source_block(settings.data_dir, source_id, block_id, direction)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Source block not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/merge-selected")
+async def merge_selected_source_blocks(source_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    block_ids = payload.get("block_ids") if isinstance(payload.get("block_ids"), list) else []
+    try:
+        return merge_selected_supplement_source_blocks(settings.data_dir, source_id, [str(block_id) for block_id in block_ids])
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="One or more selected source blocks were not found.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -6692,6 +6692,8 @@ async function renderRulePdfManager() {
     for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
     if (candidates.length) assignment.appendChild(new Option("Page-boundary candidates", "page_boundary_candidate"));
     const results = el("div", "modern-list");
+    const selectedBlockIds = new Set();
+    const selectionStatus = el("p", "muted", "No source blocks selected.");
     const firstPdfPage = Number(sourceItems.find((item) => item.pdf_page)?.pdf_page || 1);
     const pdfViewer = el("div", "modern-source-pdf-viewer");
     const pdfToolbar = actions();
@@ -6772,6 +6774,18 @@ async function renderRulePdfManager() {
       renderSourceScanDetail(detail, mount);
       setStatus(message);
     }
+    function updateSelectionStatus() {
+      selectionStatus.textContent = selectedBlockIds.size
+        ? `${selectedBlockIds.size} source block(s) selected. Select adjacent blocks, then use Merge Selected.`
+        : "No source blocks selected.";
+    }
+    const mergeSelectedButton = button("Merge Selected", "Merge the selected adjacent source blocks into one reviewed block.", async (btn) => runWithButtonProgress(btn, "Merging selected...", async () => {
+      await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/merge-selected`, {
+        method: "POST",
+        body: JSON.stringify({ block_ids: Array.from(selectedBlockIds) }),
+      });
+      await reloadCurrentScan("Selected source blocks merged.");
+    }));
     function blockEditor(block, needle) {
       const textArea = document.createElement("textarea");
       textArea.className = "modern-source-block-text";
@@ -6780,10 +6794,6 @@ async function renderRulePdfManager() {
       const assignmentEdit = select(`modern-source-block-assignment-${block.id}`, "Assign this reviewed block to the kind of supplement data it represents.", [["", "Choose assignment"]]);
       for (const option of payload.assignment_options || []) assignmentEdit.appendChild(new Option(option, option));
       assignmentEdit.value = block.assignment || "unassigned";
-      const splitArea = document.createElement("textarea");
-      splitArea.className = "modern-source-block-text compact";
-      splitArea.title = "Split this block by separating new blocks with a blank line.";
-      splitArea.placeholder = "Paste edited split blocks here, separated by a blank line.";
       const actionsRow = actions();
       if (block.source_item_type !== "page-boundary candidate") {
         actionsRow.append(
@@ -6794,27 +6804,14 @@ async function renderRulePdfManager() {
             });
             await reloadCurrentScan("Source block saved.");
           })),
-          button("Split Block", "Split this source block into multiple editable blocks using the blank-line separated text below.", async (btn) => runWithButtonProgress(btn, "Splitting block...", async () => {
-            const parts = splitArea.value.split(/\n\s*\n+/).map((part) => part.trim()).filter(Boolean);
+          button("Split At Cursor", "Split this source block at the cursor position in the reviewed text field.", async (btn) => runWithButtonProgress(btn, "Splitting block...", async () => {
+            const cursor = Number(textArea.selectionStart || 0);
+            const parts = [textArea.value.slice(0, cursor), textArea.value.slice(cursor)].map((part) => part.trim()).filter(Boolean);
             await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/split`, {
               method: "POST",
               body: JSON.stringify({ parts }),
             });
             await reloadCurrentScan("Source block split.");
-          })),
-          button("Merge Next", "Merge this source block with the next block in the scan. Use this when text continues into the following block or page.", async (btn) => runWithButtonProgress(btn, "Merging block...", async () => {
-            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/merge`, {
-              method: "POST",
-              body: JSON.stringify({ direction: "next" }),
-            });
-            await reloadCurrentScan("Source block merged with next block.");
-          })),
-          button("Merge Previous", "Merge this source block with the previous block in the scan. Use this when this block continues previous page text.", async (btn) => runWithButtonProgress(btn, "Merging block...", async () => {
-            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/merge`, {
-              method: "POST",
-              body: JSON.stringify({ direction: "previous" }),
-            });
-            await reloadCurrentScan("Source block merged with previous block.");
           }))
         );
       }
@@ -6827,7 +6824,6 @@ async function renderRulePdfManager() {
         searchPreview,
         field("Reviewed text", textArea),
         field("Assignment", assignmentEdit),
-        field("Split text", splitArea),
         actionsRow
       );
       return editor;
@@ -6847,10 +6843,21 @@ async function renderRulePdfManager() {
           if (item.open && block.pdf_page) setPdfPage(block.pdf_page);
         });
         const summary = document.createElement("summary");
+        const selectBox = input("checkbox", `modern-source-block-select-${block.id}`, "Select this block for Merge Selected.");
+        selectBox.checked = selectedBlockIds.has(block.id);
+        selectBox.addEventListener("click", (event) => event.stopPropagation());
+        selectBox.addEventListener("change", () => {
+          if (selectBox.checked) selectedBlockIds.add(block.id);
+          else selectedBlockIds.delete(block.id);
+          item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
+          updateSelectionStatus();
+        });
         summary.append(
+          selectBox,
           el("strong", "", block.page_label || `p.${block.source_page || "?"}`),
           el("span", "muted", ` · ${block.assignment || "unassigned"} · ${block.source_item_type === "page-boundary candidate" ? "page boundary" : `block ${block.block_index || "?"}`}`)
         );
+        item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
         item.appendChild(summary);
         item.append(
           el("p", "muted", `${block.page_label || ""}${block.id ? ` · ${block.id}` : ""}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
@@ -6864,7 +6871,9 @@ async function renderRulePdfManager() {
     assignment.addEventListener("change", draw);
     mount.classList.remove("hidden");
     const reviewPanel = el("div", "modern-source-review-panel");
-    reviewPanel.append(field("Search source blocks", search), field("Assignment filter", assignment), results);
+    const selectionActions = actions();
+    selectionActions.append(mergeSelectedButton);
+    reviewPanel.append(field("Search source blocks", search), field("Assignment filter", assignment), selectionStatus, selectionActions, results);
     const reviewGrid = el("div", "modern-source-review-grid");
     reviewGrid.append(pdfViewer, reviewPanel);
     mount.replaceChildren(

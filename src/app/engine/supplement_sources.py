@@ -10,6 +10,18 @@ from .pdf_text_index import display_page_number, extract_rule_pdf_pages, page_la
 
 SOURCE_BLOCK_ASSIGNMENTS = {
     "unassigned",
+    "title_page",
+    "table_of_contents",
+    "credits",
+    "introduction",
+    "history",
+    "lore",
+    "artwork_filler",
+    "advertisement",
+    "index",
+    "designer_notes",
+    "example_play",
+    "legal",
     "rule_text",
     "adventure_narrative",
     "location",
@@ -109,6 +121,16 @@ def _source_block_id(source_id: str, source_page: int, pdf_page: int, index: int
     return f"{source_id}-p{source_page}-pdf{pdf_page}-b{index:03d}"
 
 
+def _review_blocks_from_existing(existing: dict[str, Any]) -> list[dict[str, Any]]:
+    reviewed = existing.get("reviewed_blocks")
+    if isinstance(reviewed, list) and reviewed:
+        return [block for block in reviewed if isinstance(block, dict)]
+    blocks = existing.get("blocks")
+    if isinstance(blocks, list):
+        return [block for block in blocks if isinstance(block, dict)]
+    return []
+
+
 def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page_offset: int = 0) -> dict[str, Any]:
     set_pdf_source_page_offset(data_dir, pdf_path, page_offset)
     source_id = supplement_source_id(pdf_path)
@@ -116,13 +138,14 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page
     folder.mkdir(parents=True, exist_ok=True)
     existing = load_supplement_source_scan(data_dir, source_id)
     existing_by_text: dict[tuple[int, str], dict[str, Any]] = {}
-    for block in existing.get("blocks", []):
+    existing_reviewed_blocks = _review_blocks_from_existing(existing)
+    for block in existing_reviewed_blocks:
         if not isinstance(block, dict):
             continue
         text = str(block.get("text") or "")
         pdf_page = int(block.get("pdf_page") or block.get("source_page") or 0)
         existing_by_text[(pdf_page, text)] = block
-    blocks: list[dict[str, Any]] = []
+    raw_blocks: list[dict[str, Any]] = []
     blocks_by_pdf_page: dict[int, list[dict[str, Any]]] = {}
     pages = extract_rule_pdf_pages(pdf_path)
     for page in pages:
@@ -148,7 +171,7 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page
                 "extraction_methods": methods,
                 "notes": str(previous.get("notes") or ""),
             }
-            blocks.append(block)
+            raw_blocks.append(block)
             blocks_by_pdf_page.setdefault(page_no, []).append(block)
     continuation_candidates: list[dict[str, Any]] = []
     for left_page, right_page in zip(sorted(blocks_by_pdf_page), sorted(blocks_by_pdf_page)[1:]):
@@ -180,27 +203,31 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page
                 "notes": "Possible page-spanning text. Review before assigning or copying into a supplement.",
             }
         )
+    reviewed_blocks = existing_reviewed_blocks or [dict(block) for block in raw_blocks]
     payload = {
         "schema_version": 1,
         "source_id": source_id,
         "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
         "updated_at": now,
         "page_offset": int(page_offset),
-        "note": "Local/private PDF source blocks for human review and supplement assignment. Exact text remains in DATA_DIR.",
+        "note": "Local/private PDF source blocks for human review and supplement assignment. Exact text remains in DATA_DIR. Re-scans update raw_blocks; reviewed_blocks preserve human edits.",
         "assignment_options": sorted(SOURCE_BLOCK_ASSIGNMENTS),
-        "blocks": blocks,
+        "raw_blocks": raw_blocks,
+        "reviewed_blocks": reviewed_blocks,
+        "blocks": reviewed_blocks,
         "continuation_candidates": continuation_candidates,
     }
     supplement_source_scan_path(data_dir, source_id).write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     return {
         "source_id": source_id,
         "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
-        "blocks": len(blocks),
+        "blocks": len(reviewed_blocks),
+        "raw_blocks": len(raw_blocks),
         "continuation_candidates": len(continuation_candidates),
         "pages": len(pages),
         "page_offset": int(page_offset),
         "path": str(supplement_source_scan_path(data_dir, source_id)),
-        "message": f"Scanned {len(blocks)} review block(s) and {len(continuation_candidates)} page-boundary candidate(s) from {pdf_path.name} into DATA_DIR/Supplements/_sources/{source_id}/source_blocks.json.",
+        "message": f"Scanned {len(raw_blocks)} raw block(s), preserved {len(reviewed_blocks)} reviewed block(s), and found {len(continuation_candidates)} page-boundary candidate(s) from {pdf_path.name}.",
     }
 
 
@@ -212,11 +239,21 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {"schema_version": 1, "source_id": source_id, "blocks": []}
-    return payload if isinstance(payload, dict) else {"schema_version": 1, "source_id": source_id, "blocks": []}
+    if not isinstance(payload, dict):
+        return {"schema_version": 1, "source_id": source_id, "blocks": []}
+    reviewed = _review_blocks_from_existing(payload)
+    payload["reviewed_blocks"] = reviewed
+    payload["blocks"] = reviewed
+    if "raw_blocks" not in payload:
+        payload["raw_blocks"] = [dict(block) for block in reviewed]
+    return payload
 
 
 def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     payload["source_id"] = str(payload.get("source_id") or source_id)
+    reviewed = _review_blocks_from_existing(payload)
+    payload["reviewed_blocks"] = reviewed
+    payload["blocks"] = reviewed
     path = supplement_source_scan_path(data_dir, source_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -225,7 +262,7 @@ def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[st
 
 def update_supplement_source_block(data_dir: Path, source_id: str, block_id: str, changes: dict[str, Any]) -> dict[str, Any]:
     payload = load_supplement_source_scan(data_dir, source_id)
-    for block in payload.get("blocks", []):
+    for block in payload.get("reviewed_blocks", []):
         if not isinstance(block, dict) or block.get("id") != block_id:
             continue
         if "text" in changes:
@@ -247,7 +284,7 @@ def split_supplement_source_block(data_dir: Path, source_id: str, block_id: str,
     if len(clean_parts) < 2:
         raise ValueError("Split needs at least two non-empty blocks.")
     payload = load_supplement_source_scan(data_dir, source_id)
-    blocks = payload.get("blocks", [])
+    blocks = payload.get("reviewed_blocks", [])
     for index, block in enumerate(blocks):
         if not isinstance(block, dict) or block.get("id") != block_id:
             continue
@@ -263,7 +300,7 @@ def split_supplement_source_block(data_dir: Path, source_id: str, block_id: str,
                     "notes": str(block.get("notes") or ""),
                 }
             )
-        payload["blocks"] = blocks[:index] + replacement + blocks[index + 1 :]
+        payload["reviewed_blocks"] = blocks[:index] + replacement + blocks[index + 1 :]
         save_supplement_source_scan(data_dir, source_id, payload)
         return {"blocks": replacement, "message": f"Split source block into {len(replacement)} blocks."}
     raise KeyError(block_id)
@@ -271,7 +308,7 @@ def split_supplement_source_block(data_dir: Path, source_id: str, block_id: str,
 
 def merge_supplement_source_block(data_dir: Path, source_id: str, block_id: str, direction: str = "next") -> dict[str, Any]:
     payload = load_supplement_source_scan(data_dir, source_id)
-    blocks = payload.get("blocks", [])
+    blocks = payload.get("reviewed_blocks", [])
     for index, block in enumerate(blocks):
         if not isinstance(block, dict) or block.get("id") != block_id:
             continue
@@ -289,10 +326,38 @@ def merge_supplement_source_block(data_dir: Path, source_id: str, block_id: str,
             "notes": "Merged manually in the PDF / Supplement Workbench.",
             "merged_block_ids": [first.get("id"), second.get("id")],
         }
-        payload["blocks"] = blocks[:first_index] + [merged] + blocks[second_index + 1 :]
+        payload["reviewed_blocks"] = blocks[:first_index] + [merged] + blocks[second_index + 1 :]
         save_supplement_source_scan(data_dir, source_id, payload)
         return {"block": merged, "message": "Merged adjacent source blocks."}
     raise KeyError(block_id)
+
+
+def merge_selected_supplement_source_blocks(data_dir: Path, source_id: str, block_ids: list[str]) -> dict[str, Any]:
+    clean_ids = [str(block_id) for block_id in block_ids if str(block_id)]
+    if len(clean_ids) < 2:
+        raise ValueError("Select at least two blocks to merge.")
+    payload = load_supplement_source_scan(data_dir, source_id)
+    blocks = payload.get("reviewed_blocks", [])
+    indexes = [index for index, block in enumerate(blocks) if isinstance(block, dict) and block.get("id") in clean_ids]
+    if len(indexes) != len(set(clean_ids)):
+        raise KeyError("One or more selected source blocks were not found.")
+    indexes = sorted(indexes)
+    if indexes != list(range(indexes[0], indexes[-1] + 1)):
+        raise ValueError("Selected blocks must be adjacent before they can be merged.")
+    selected = [blocks[index] for index in indexes]
+    first = selected[0]
+    last = selected[-1]
+    merged = {
+        **first,
+        "id": f"{first.get('id')}-merged-{last.get('id')}",
+        "text": "\n\n".join(str(block.get("text") or "").strip() for block in selected if str(block.get("text") or "").strip()),
+        "review_status": "edited",
+        "notes": "Merged manually from selected adjacent blocks in the PDF / Supplement Workbench.",
+        "merged_block_ids": [block.get("id") for block in selected],
+    }
+    payload["reviewed_blocks"] = blocks[: indexes[0]] + [merged] + blocks[indexes[-1] + 1 :]
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {"block": merged, "message": f"Merged {len(selected)} selected source blocks."}
 
 
 def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
@@ -304,6 +369,7 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
         source_id = scan_path.parent.name
         payload = load_supplement_source_scan(data_dir, source_id)
         blocks = [block for block in payload.get("blocks", []) if isinstance(block, dict)]
+        raw_blocks = [block for block in payload.get("raw_blocks", []) if isinstance(block, dict)]
         continuation_candidates = [block for block in payload.get("continuation_candidates", []) if isinstance(block, dict)]
         assignments: dict[str, int] = {}
         reviewed = 0
@@ -319,6 +385,7 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
                 "updated_at": str(payload.get("updated_at") or ""),
                 "page_offset": int(payload.get("page_offset") or 0),
                 "blocks": len(blocks),
+                "raw_blocks": len(raw_blocks),
                 "continuation_candidates": len(continuation_candidates),
                 "reviewed_blocks": reviewed,
                 "assignment_counts": assignments,
