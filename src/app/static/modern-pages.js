@@ -545,6 +545,24 @@ function modernStatusRowHighlighted(title, body, hint = "", needle = "") {
   return row;
 }
 
+function modernInfoPanel(title, subtitle, fields, hint = "") {
+  const panel = document.createElement("details");
+  panel.className = "modern-row modern-info-panel";
+  if (hint) panel.title = hint;
+  const summary = document.createElement("summary");
+  summary.append(el("strong", "", title), el("span", "muted", ` · ${subtitle}`));
+  const grid = el("dl", "modern-info-grid");
+  for (const fieldDef of fields.filter(Boolean)) {
+    const term = el("dt", "", fieldDef.label || "");
+    const value = Array.isArray(fieldDef.value) ? fieldDef.value.filter(Boolean).join("\n") : String(fieldDef.value ?? "");
+    const desc = el("dd", "", value || "None");
+    if (fieldDef.hint) desc.title = fieldDef.hint;
+    grid.append(term, desc);
+  }
+  panel.append(summary, grid);
+  return panel;
+}
+
 function formatSnapshotDetail(detail) {
   if (detail == null) return "";
   if (Array.isArray(detail)) return detail.filter(Boolean).join("\n");
@@ -7102,7 +7120,14 @@ async function renderRulePdfManager() {
     const reviewGrid = el("div", "modern-source-review-grid");
     reviewGrid.append(pdfViewer, reviewPanel);
     mount.replaceChildren(
-      modernStatusRow("Selected source scan", `${payload.source_id || "source"} · ${payload.source_pdf || "Source PDF"} · ${blocks.length} block(s) · ${candidates.length} page-boundary candidate(s)`, `Printed page offset: ${payload.page_offset || 0}. Exact copied prose remains local in DATA_DIR/Supplements/_sources.`),
+      modernInfoPanel("Selected source scan", payload.source_id || "source", [
+        { label: "Source PDF", value: payload.source_pdf || "Source PDF" },
+        { label: "Text blocks", value: `${blocks.length}` },
+        { label: "Boundary candidates", value: `${candidates.length}` },
+        { label: "Artwork candidates", value: `${artworkItems.length}` },
+        { label: "Printed page offset", value: `${payload.page_offset || 0}`, hint: "Used when PDF viewer pages differ from printed book pages." },
+        { label: "Local data", value: "DATA_DIR/Supplements/_sources", hint: "Exact copied prose and review metadata remain local appdata." },
+      ], "Exact copied prose remains local in DATA_DIR/Supplements/_sources."),
       reviewGrid
     );
     draw();
@@ -7117,7 +7142,11 @@ async function renderRulePdfManager() {
       sourceScanStatus.appendChild(modernStatusRow("Source block scans", "No scans yet", "Use Scan Source Blocks after uploading or selecting a PDF."));
       return;
     }
-    sourceScanStatus.appendChild(modernStatusRow("Supplement source packages", `${packages.length || scans.length} package(s), ${scans.length} local source scan(s)`, "A supplement package can contain multiple PDFs: main rules, adventure text, maps, extra sheets, or bonus documents. Use the same package id when scanning related documents."));
+    sourceScanStatus.appendChild(modernInfoPanel("Supplement source packages", `${packages.length || scans.length} package(s)`, [
+      { label: "Packages", value: `${packages.length || scans.length}`, hint: "A supplement package can contain multiple source PDFs and attached maps/images." },
+      { label: "Source scans", value: `${scans.length}`, hint: "Local PDF source scans stored under DATA_DIR/Supplements/_sources." },
+      { label: "Grouping rule", value: "Use the same package id for related documents.", hint: "Examples: main rules, adventure text, maps, extra sheets, errata, or bonus documents." },
+    ], "A supplement package can contain multiple PDFs: main rules, adventure text, maps, extra sheets, or bonus documents."));
     function appendScanRow(scan, parent) {
       const row = actions("modern-row-actions");
       const detailMount = el("div", "modern-source-scan-detail hidden");
@@ -7264,7 +7293,15 @@ async function renderRulePdfManager() {
           setStatus("Selected package source assets deleted.");
         }))
       );
-      parent.append(modernStatusRow("Package Assets", `${topLevelAssets.length} source asset(s), ${assets.length - topLevelAssets.length} extracted child asset(s)`, "Source images, maps, and tile sheets are listed here. Extracted tiles appear as a collapsible child list inside their parent tile sheet asset."), bulkStatus, bulkActions);
+      parent.append(
+        modernInfoPanel("Package Assets", `${topLevelAssets.length} source asset(s), ${assets.length - topLevelAssets.length} extracted child asset(s)`, [
+          { label: "Source assets", value: `${topLevelAssets.length}`, hint: "Original package-level maps, handouts, tile sheets, and imported images." },
+          { label: "Extracted children", value: `${assets.length - topLevelAssets.length}`, hint: "Tiles or artwork extracted from a parent source asset." },
+          { label: "Layout", value: "Source assets first; extracted children nested under their parent.", hint: "This keeps tools and generated assets from overwhelming the package list." },
+        ], "Asset rows remain collapsed by default. Select several with checkboxes, including shift-click ranges, then delete them together."),
+        bulkStatus,
+        bulkActions
+      );
       for (const [assetIndex, asset] of topLevelAssets.entries()) {
         const row = document.createElement("details");
         row.className = "modern-row";
@@ -7619,14 +7656,16 @@ async function renderRulePdfManager() {
     }
     const indexedDocs = (textIndex.documents || []).map((item) => `${item.filename}: ${item.pages_indexed || 0} page(s)${item.page_offset ? `, offset ${item.page_offset}` : ""}`).join("; ");
     status.replaceChildren(
-      modernStatusRow("Uploaded PDFs", `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, "These PDFs are user data beside game.db and can be backed up from the appdata folder."),
-      modernStatusRow("Rules text index", textIndex.exists ? `${textIndex.entry_count || 0} exact page entr${textIndex.entry_count === 1 ? "y" : "ies"} from ${textIndex.document_count || 0} PDF(s)` : "No exact text index yet", indexedDocs || "Build this from uploaded PDFs when you want exact PDF wording searchable in the player Rules Reference."),
-      modernStatusRow("Override file", payload.override_path || "DATA_DIR/tag_scene_narrative_overrides.json", "Generated modules use this local editable file for player-facing scene prose."),
-      modernStatusRow("Extracted narrative", override.exists ? `${override.rumors || 0} rumor(s), ${override.scenes || 0} scene(s), ${override.scene_branches || 0} branch(es)` : "No local override file found", override.error || "Counts are read from DATA_DIR/tag_scene_narrative_overrides.json and show what generated Adventures Guild modules can use."),
-      modernStatusRow("Extraction warnings", `${(override.extraction_warnings || []).length} suspected issue(s)`, extractionWarningSummary(override.extraction_warnings)),
-      modernStatusRow("Last extraction", override.modified_at || "Not extracted yet", "Timestamp is the local override file modified time on the server."),
-      modernStatusRow("Packaged PDFs", `${(payload.packaged || []).length} bundled/local Rules folder file(s) visible read-only`, "Upload copies into DATA_DIR/rules when you want extraction to write local override data."),
-      modernStatusRow("PDF boundary", "Local-only copied prose", "Exact PDF prose is written only to DATA_DIR files such as rules/rule_text_index.json and tag_scene_narrative_overrides.json. It is not committed or redistributed by the app repository.")
+      modernInfoPanel("PDF import status", `${(payload.uploaded || []).length} uploaded PDF(s), ${(payload.packaged || []).length} packaged PDF(s)`, [
+        { label: "Uploaded PDFs", value: `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, hint: "These PDFs are user data beside game.db and can be backed up from the appdata folder." },
+        { label: "Rules text index", value: textIndex.exists ? `${textIndex.entry_count || 0} exact page entr${textIndex.entry_count === 1 ? "y" : "ies"} from ${textIndex.document_count || 0} PDF(s)` : "No exact text index yet", hint: indexedDocs || "Build this from uploaded PDFs when you want exact PDF wording searchable in the player Rules Reference." },
+        { label: "Override file", value: payload.override_path || "DATA_DIR/tag_scene_narrative_overrides.json", hint: "Generated modules use this local editable file for player-facing scene prose." },
+        { label: "Extracted narrative", value: override.exists ? `${override.rumors || 0} rumor(s), ${override.scenes || 0} scene(s), ${override.scene_branches || 0} branch(es)` : "No local override file found", hint: override.error || "Counts are read from DATA_DIR/tag_scene_narrative_overrides.json and show what generated Adventures Guild modules can use." },
+        { label: "Extraction warnings", value: `${(override.extraction_warnings || []).length} suspected issue(s)`, hint: extractionWarningSummary(override.extraction_warnings) },
+        { label: "Last extraction", value: override.modified_at || "Not extracted yet", hint: "Timestamp is the local override file modified time on the server." },
+        { label: "Packaged PDFs", value: `${(payload.packaged || []).length} bundled/local Rules folder file(s) visible read-only`, hint: "Upload copies into DATA_DIR/rules when you want extraction to write local override data." },
+        { label: "PDF boundary", value: "Local-only copied prose", hint: "Exact PDF prose is written only to DATA_DIR files such as rules/rule_text_index.json and tag_scene_narrative_overrides.json. It is not committed or redistributed by the app repository." },
+      ], "Collapsed by default because these are reference fields, not primary actions.")
     );
   }
   uploadedSelect.addEventListener("change", () => {

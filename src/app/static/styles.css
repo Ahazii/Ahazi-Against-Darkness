@@ -1103,6 +1103,34 @@ button.is-working::after {
   overflow-wrap: anywhere;
 }
 
+.modern-info-panel > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  justify-content: flex-start;
+}
+
+.modern-info-grid {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.34fr) minmax(12rem, 1fr);
+  gap: 6px 12px;
+  margin: 8px 0 0;
+}
+
+.modern-info-grid dt {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.modern-info-grid dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .modern-row.modern-row-selected {
   border-color: rgba(201, 162, 39, 0.78);
   background: rgba(201, 162, 39, 0.1);
@@ -1649,6 +1677,15 @@ button.is-working::after {
 
   .modern-source-pdf-canvas {
     min-height: 34rem;
+  }
+
+  .modern-info-grid {
+    grid-template-columns: 1fr;
+    gap: 3px 0;
+  }
+
+  .modern-info-grid dd {
+    padding-bottom: 5px;
   }
 
   .modern-page-head.has-artwork #modern-page-help,

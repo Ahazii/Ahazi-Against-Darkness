@@ -183,7 +183,10 @@ Home screen rule browsing:
   package's top-level source asset list. Package asset rows keep tools separate
   from review data: row-level buttons open a single active tool area for Manual
   Mask or Auto Split, while the whole source asset and extracted child assets
-  remain in the data area below.
+  remain in the data area below. Field-like status summaries in the workbench
+  use collapsed compact info panels instead of long stacks of status rows; this
+  keeps uploaded-PDF/index/package counts available without pushing review work
+  down the page.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.

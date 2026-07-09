@@ -2929,6 +2929,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/api/app/version" in MODERN_PAGES_JS
     assert "modern-version" in MODERN_PAGES_JS
     assert "Indexing exact rules text..." in MODERN_PAGES_JS
+    assert "function modernInfoPanel" in MODERN_PAGES_JS
+    assert "modern-info-panel" in STYLES_CSS
+    assert "modern-info-grid" in STYLES_CSS
+    assert "PDF import status" in MODERN_PAGES_JS
     assert "modern-rule-pdf-page-offset" in MODERN_PAGES_JS
     assert "modern-rule-pdf-supplement-id" in MODERN_PAGES_JS
     assert "modern-supplement-source-asset-upload" in MODERN_PAGES_JS
@@ -2968,6 +2972,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "View Blocks" in MODERN_PAGES_JS
     assert "Page source blocks" in MODERN_PAGES_JS
     assert "Supplement source packages" in MODERN_PAGES_JS
+    assert "Selected source scan" in MODERN_PAGES_JS
     assert "package asset(s)" in MODERN_PAGES_JS
     assert "Open Asset" in MODERN_PAGES_JS
     assert "Page artwork" in MODERN_PAGES_JS
