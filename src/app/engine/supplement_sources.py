@@ -787,6 +787,75 @@ def _unique_source_block_id(base_id: str, used_ids: set[str]) -> str:
     return candidate
 
 
+def _normalise_source_review_text(text: Any) -> str:
+    return re.sub(r"\s+", " ", str(text or "")).strip().casefold()
+
+
+def _merged_source_review_text(blocks: list[dict[str, Any]]) -> str:
+    kept: list[tuple[str, str]] = []
+    for block in blocks:
+        text = str(block.get("text") or "").strip()
+        normalised = _normalise_source_review_text(text)
+        if not normalised:
+            continue
+        if any(normalised == seen or (len(normalised) >= 40 and normalised in seen) for seen, _ in kept):
+            continue
+        kept = [
+            (seen, kept_text)
+            for seen, kept_text in kept
+            if not (len(seen) >= 40 and seen in normalised)
+        ]
+        kept.append((normalised, text))
+    return "\n\n".join(text for _, text in kept)
+
+
+def _renumber_source_review_blocks(blocks: list[dict[str, Any]]) -> None:
+    for order, block in enumerate(blocks, start=1):
+        if isinstance(block, dict):
+            block["review_order"] = order
+
+
+def _dedupe_reviewed_source_blocks(blocks: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    kept: list[dict[str, Any]] = []
+    text_by_page: dict[tuple[str, str], list[tuple[str, int]]] = {}
+    removed = 0
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        assignment = str(block.get("assignment") or "unassigned")
+        normalised = _normalise_source_review_text(block.get("text"))
+        if assignment == "ignore" or len(normalised) < 80:
+            kept.append(block)
+            continue
+        page_key = str(block.get("pdf_page") or block.get("source_page") or block.get("page_label") or "")
+        bucket_key = (page_key, assignment)
+        bucket = text_by_page.setdefault(bucket_key, [])
+        duplicate_of: int | None = None
+        replace_indexes: list[int] = []
+        for seen_text, kept_index in bucket:
+            if normalised == seen_text or normalised in seen_text:
+                duplicate_of = kept_index
+                break
+            if seen_text in normalised:
+                replace_indexes.append(kept_index)
+        if duplicate_of is not None:
+            removed += 1
+            continue
+        for kept_index in sorted(replace_indexes, reverse=True):
+            removed += 1
+            kept.pop(kept_index)
+            for entries in text_by_page.values():
+                entries[:] = [
+                    (text, index - 1 if index > kept_index else index)
+                    for text, index in entries
+                    if index != kept_index
+                ]
+        bucket.append((normalised, len(kept)))
+        kept.append(block)
+    _renumber_source_review_blocks(kept)
+    return kept, removed
+
+
 def split_matching_supplement_source_phrase_to_ignore(data_dir: Path, source_id: str, phrase: str) -> dict[str, Any]:
     pattern = _source_phrase_pattern(phrase)
     payload = load_supplement_source_scan(data_dir, source_id)
@@ -861,16 +930,17 @@ def split_matching_supplement_source_phrase_to_ignore(data_dir: Path, source_id:
             next_blocks.append({**block, "assignment": "ignore", "review_status": "edited"})
     if not ignored_occurrences:
         raise ValueError("No occurrences of that phrase were found in reviewed source blocks.")
-    for order, block in enumerate(next_blocks, start=1):
-        block["review_order"] = order
+    next_blocks, duplicate_removed = _dedupe_reviewed_source_blocks(next_blocks)
     payload["reviewed_blocks"] = next_blocks
     save_supplement_source_scan(data_dir, source_id, payload)
+    dedupe_note = f" Removed {duplicate_removed} duplicate reviewed block(s)." if duplicate_removed else ""
     return {
         "phrase": str(phrase or "").strip(),
         "changed_blocks": changed_blocks,
         "ignored_occurrences": ignored_occurrences,
         "blocks": len(next_blocks),
-        "message": f"Split {ignored_occurrences} occurrence(s) into ignored source blocks across {changed_blocks} reviewed block(s).",
+        "duplicate_blocks_removed": duplicate_removed,
+        "message": f"Split {ignored_occurrences} occurrence(s) into ignored source blocks across {changed_blocks} reviewed block(s).{dedupe_note}",
     }
 
 
@@ -889,19 +959,20 @@ def merge_supplement_source_block(data_dir: Path, source_id: str, block_id: str,
         merged = {
             **first,
             "id": f"{first.get('id')}-merged-{second.get('id')}",
-            "text": f"{first.get('text') or ''}\n\n{second.get('text') or ''}".strip(),
+            "text": _merged_source_review_text([first, second]),
             "review_status": "edited",
             "notes": "Merged manually in the PDF / Supplement Workbench.",
             "merged_block_ids": [first.get("id"), second.get("id")],
         }
-        payload["reviewed_blocks"] = blocks[:first_index] + [merged] + blocks[second_index + 1 :]
+        next_blocks, _duplicate_removed = _dedupe_reviewed_source_blocks(blocks[:first_index] + [merged] + blocks[second_index + 1 :])
+        payload["reviewed_blocks"] = next_blocks
         save_supplement_source_scan(data_dir, source_id, payload)
         return {"block": merged, "message": "Merged adjacent source blocks."}
     raise KeyError(block_id)
 
 
 def merge_selected_supplement_source_blocks(data_dir: Path, source_id: str, block_ids: list[str]) -> dict[str, Any]:
-    clean_ids = [str(block_id) for block_id in block_ids if str(block_id)]
+    clean_ids = list(dict.fromkeys(str(block_id) for block_id in block_ids if str(block_id)))
     if len(clean_ids) < 2:
         raise ValueError("Select at least two blocks to merge.")
     payload = load_supplement_source_scan(data_dir, source_id)
@@ -910,22 +981,44 @@ def merge_selected_supplement_source_blocks(data_dir: Path, source_id: str, bloc
     if len(indexes) != len(set(clean_ids)):
         raise KeyError("One or more selected source blocks were not found.")
     indexes = sorted(indexes)
-    if indexes != list(range(indexes[0], indexes[-1] + 1)):
-        raise ValueError("Selected blocks must be adjacent before they can be merged.")
+    selected_id_set = set(clean_ids)
+    intervening = [
+        block
+        for index, block in enumerate(blocks[indexes[0] : indexes[-1] + 1], start=indexes[0])
+        if isinstance(block, dict)
+        and block.get("id") not in selected_id_set
+        and str(block.get("assignment") or "unassigned") != "ignore"
+    ]
+    if intervening:
+        raise ValueError("Selected blocks can only skip hidden ignored snippets. Select any visible intervening blocks before merging.")
     selected = [blocks[index] for index in indexes]
     first = selected[0]
     last = selected[-1]
     merged = {
         **first,
         "id": f"{first.get('id')}-merged-{last.get('id')}",
-        "text": "\n\n".join(str(block.get("text") or "").strip() for block in selected if str(block.get("text") or "").strip()),
+        "text": _merged_source_review_text(selected),
         "review_status": "edited",
-        "notes": "Merged manually from selected adjacent blocks in the PDF / Supplement Workbench.",
+        "notes": "Merged manually from selected visible blocks in the PDF / Supplement Workbench.",
         "merged_block_ids": [block.get("id") for block in selected],
     }
-    payload["reviewed_blocks"] = blocks[: indexes[0]] + [merged] + blocks[indexes[-1] + 1 :]
+    next_blocks: list[dict[str, Any]] = []
+    merged_inserted = False
+    for index, block in enumerate(blocks):
+        if not isinstance(block, dict):
+            continue
+        if index == indexes[0] and not merged_inserted:
+            next_blocks.append(merged)
+            merged_inserted = True
+            continue
+        if block.get("id") in selected_id_set:
+            continue
+        next_blocks.append(block)
+    next_blocks, duplicate_removed = _dedupe_reviewed_source_blocks(next_blocks)
+    payload["reviewed_blocks"] = next_blocks
     save_supplement_source_scan(data_dir, source_id, payload)
-    return {"block": merged, "message": f"Merged {len(selected)} selected source blocks."}
+    dedupe_note = f" Removed {duplicate_removed} duplicate reviewed block(s)." if duplicate_removed else ""
+    return {"block": merged, "duplicate_blocks_removed": duplicate_removed, "message": f"Merged {len(selected)} selected source blocks.{dedupe_note}"}
 
 
 def move_supplement_source_block(data_dir: Path, source_id: str, block_id: str, direction: str) -> dict[str, Any]:

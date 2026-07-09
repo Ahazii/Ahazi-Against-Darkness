@@ -969,6 +969,88 @@ def test_source_block_search_phrase_can_be_split_into_ignored_blocks(tmp_path: P
     assert all(block["review_status"] == "edited" for block in ignored)
 
 
+def test_selected_source_blocks_can_merge_across_hidden_ignored_snippets(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Hidden Footer Book.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 1, "text": "Alpha rule\n\nRepeated footer\n\nBeta rule", "methods": ["layout"]}],
+    )
+    client = TestClient(main_module.app)
+    client.post("/api/supplements/source-scan", json={"filename": "Hidden Footer Book.pdf"})
+    client.patch(
+        "/api/supplements/source-scans/hidden-footer-book/blocks/hidden-footer-book-p1-b002",
+        json={"assignment": "ignore", "review_status": "edited"},
+    )
+
+    merged = client.post(
+        "/api/supplements/source-scans/hidden-footer-book/blocks/merge-selected",
+        json={"block_ids": ["hidden-footer-book-p1-b001", "hidden-footer-book-p1-b003"]},
+    )
+
+    assert merged.status_code == 200
+    assert merged.json()["block"]["text"] == "Alpha rule\n\nBeta rule"
+    saved = client.get("/api/supplements/source-scans/hidden-footer-book").json()
+    assert [block["assignment"] for block in saved["blocks"]] == ["unassigned", "ignore"]
+    assert saved["blocks"][1]["text"] == "Repeated footer"
+
+
+def test_ignore_phrase_removes_duplicate_review_blocks_on_same_page(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Duplicate Footer Book.pdf").write_bytes(b"%PDF-local-test")
+    repeated_rule = (
+        "Real rule text that was extracted twice from the same PDF page because the "
+        "layout and positioned extractors overlapped around a decorative page area."
+    )
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [
+            {"page": 1, "text": f"James Banner\n{repeated_rule}\n\nJames Banner\n{repeated_rule}", "methods": ["layout"]},
+        ],
+    )
+    client = TestClient(main_module.app)
+    client.post("/api/supplements/source-scan", json={"filename": "Duplicate Footer Book.pdf"})
+
+    payload = client.post(
+        "/api/supplements/source-scans/duplicate-footer-book/blocks/split-ignore-phrase",
+        json={"phrase": "James Banner"},
+    ).json()
+
+    assert payload["ignored_occurrences"] == 2
+    assert payload["duplicate_blocks_removed"] == 1
+    saved = client.get("/api/supplements/source-scans/duplicate-footer-book").json()
+    kept = [block for block in saved["blocks"] if block["assignment"] != "ignore"]
+    assert [block["text"] for block in kept] == [repeated_rule]
+
+
 def test_source_block_table_draft_can_be_reviewed_and_saved(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 
