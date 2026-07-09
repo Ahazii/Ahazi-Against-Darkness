@@ -2994,7 +2994,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "source_pdf_page_url" in MODERN_PAGES_JS
     assert "pdfCanvas.addEventListener(\"wheel\"" in MODERN_PAGES_JS
     assert "pdfCanvas.addEventListener(\"pointerdown\"" in MODERN_PAGES_JS
-    assert "goPdfPage(block.pdf_page)" in MODERN_PAGES_JS
+    assert "function previewPdfPage(page)" in MODERN_PAGES_JS
+    assert "previewPdfPage(block.pdf_page)" in MODERN_PAGES_JS
+    assert "if (item.open && block.pdf_page) previewPdfPage(block.pdf_page)" in MODERN_PAGES_JS
+    assert "if (row.open && item.pdf_page) previewPdfPage(item.pdf_page)" in MODERN_PAGES_JS
     assert "Save Block" in MODERN_PAGES_JS
     assert "Edit Block" in MODERN_PAGES_JS
     assert "Inspect Candidate" in MODERN_PAGES_JS

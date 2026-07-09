@@ -6871,6 +6871,9 @@ async function renderRulePdfManager() {
       draw();
       redrawArtwork();
     }
+    function previewPdfPage(page) {
+      setPdfPage(page);
+    }
     function setPdfZoom(nextZoom) {
       pdfZoom = Math.min(4, Math.max(0.35, nextZoom));
       applyPdfTransform();
@@ -7099,7 +7102,7 @@ async function renderRulePdfManager() {
       return editor;
     }
     async function openTableDraftFromBlock(block, needle = "") {
-      if (block.pdf_page) goPdfPage(block.pdf_page);
+      if (block.pdf_page) previewPdfPage(block.pdf_page);
       const draft = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/table-draft`, {
         method: "POST",
         body: JSON.stringify({ title: block.page_label || "" }),
@@ -7125,7 +7128,7 @@ async function renderRulePdfManager() {
         const tableActions = actions();
         tableActions.append(
           button("Edit Table Draft", "Open this reviewed table in the active review tool.", () => {
-            if (table.pdf_page) goPdfPage(table.pdf_page);
+            if (table.pdf_page) previewPdfPage(table.pdf_page);
             openSourceTool(`Reviewed Table - ${table.title || table.id}`, tableDraftEditor(table, sourceBlock.text || "", search.value));
           })
         );
@@ -7163,7 +7166,7 @@ async function renderRulePdfManager() {
         const item = document.createElement("details");
         item.className = "modern-row";
         item.addEventListener("toggle", () => {
-          if (item.open && block.pdf_page) goPdfPage(block.pdf_page);
+          if (item.open && block.pdf_page) previewPdfPage(block.pdf_page);
         });
         const summary = document.createElement("summary");
         const selectBox = input("checkbox", `modern-source-block-select-${block.id}`, "Select this block for Merge Selected.");
@@ -7185,7 +7188,7 @@ async function renderRulePdfManager() {
         const blockActions = actions();
         blockActions.append(
           button(block.source_item_type === "page-boundary candidate" ? "Inspect Candidate" : "Edit Block", "Open this source block in the active review tool without filling the row with edit controls.", () => {
-            if (block.pdf_page) goPdfPage(block.pdf_page);
+            if (block.pdf_page) previewPdfPage(block.pdf_page);
             openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, needle));
           })
         );
@@ -7227,7 +7230,7 @@ async function renderRulePdfManager() {
           const row = document.createElement("details");
           row.className = "modern-row";
           row.addEventListener("toggle", () => {
-            if (row.open && item.pdf_page) goPdfPage(item.pdf_page);
+            if (row.open && item.pdf_page) previewPdfPage(item.pdf_page);
           });
           const summary = document.createElement("summary");
           summary.append(
@@ -7240,7 +7243,7 @@ async function renderRulePdfManager() {
           const artActions = actions();
           artActions.append(
             button("Edit Artwork", "Open this artwork candidate in the active review tool without filling every row with edit fields.", () => {
-              if (item.pdf_page) goPdfPage(item.pdf_page);
+              if (item.pdf_page) previewPdfPage(item.pdf_page);
               openSourceTool(`${item.title || item.id || "Artwork candidate"} · ${item.category || "unknown"}`, artworkEditor(item, categories));
             })
           );
