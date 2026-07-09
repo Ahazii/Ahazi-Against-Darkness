@@ -72,6 +72,7 @@ from .engine.roster_sync import (
 )
 from .engine.supplement_sources import (
     add_supplement_package_asset,
+    delete_supplement_package_asset,
     extract_supplement_source_artwork,
     list_supplement_source_packages,
     list_supplement_source_scans,
@@ -865,6 +866,14 @@ async def supplement_source_scans() -> dict[str, Any]:
 async def save_supplement_package_asset(supplement_id: str, asset_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     try:
         return update_supplement_package_asset(settings.data_dir, supplement_id, asset_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Supplement package source asset not found.") from exc
+
+
+@app.delete("/api/supplements/source-packages/{supplement_id}/assets/{asset_id:path}")
+async def remove_supplement_package_asset(supplement_id: str, asset_id: str) -> dict[str, Any]:
+    try:
+        return delete_supplement_package_asset(settings.data_dir, supplement_id, asset_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Supplement package source asset not found.") from exc
 

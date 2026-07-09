@@ -6768,6 +6768,19 @@ async function renderRulePdfManager() {
     }
     return response.json();
   }
+  function cropRectFromInputs(image, xInput, yInput, wInput, hInput) {
+    if (!image.complete || !image.naturalWidth || !image.naturalHeight) throw new Error("Image preview is not loaded yet.");
+    const x = Math.max(0, Number(xInput.value || 0));
+    const y = Math.max(0, Number(yInput.value || 0));
+    const w = Math.max(1, Number(wInput.value || image.naturalWidth));
+    const h = Math.max(1, Number(hInput.value || image.naturalHeight));
+    return {
+      x: Math.min(x, image.naturalWidth - 1),
+      y: Math.min(y, image.naturalHeight - 1),
+      w: Math.min(w, image.naturalWidth - Math.min(x, image.naturalWidth - 1)),
+      h: Math.min(h, image.naturalHeight - Math.min(y, image.naturalHeight - 1)),
+    };
+  }
   function workbenchSection(title, subtitle, body) {
     const details = document.createElement("details");
     details.className = "modern-row modern-source-review-section";
@@ -7145,6 +7158,16 @@ async function renderRulePdfManager() {
             setStatus("Package source asset saved.");
           }))
         );
+        rowActions.append(
+          button("Delete Asset", "Delete this package source asset and remove its image file from DATA_DIR. Use this to remove unwanted auto-split tiles.", async (btn) => runWithButtonProgress(btn, "Deleting asset...", async () => {
+            if (!window.confirm(`Delete ${asset.title || asset.filename || asset.id}? This removes the imported package image file.`)) return;
+            await api(`/api/supplements/source-packages/${encodeURIComponent(pkg.supplement_id)}/assets/${encodeURIComponent(asset.id)}`, {
+              method: "DELETE",
+            });
+            await refreshSourceScans();
+            setStatus("Package source asset deleted.");
+          }))
+        );
         if (asset.asset_url) rowActions.append(link("Open Asset", asset.asset_url, "Open this imported package source asset in a new tab.", "link-button secondary"));
         row.append(field("Asset title", titleInput), field("Artwork/module assignment", categorySelect), field("Asset notes", notesInput), rowActions);
         if (asset.asset_url) {
@@ -7152,6 +7175,46 @@ async function renderRulePdfManager() {
           preview.alt = asset.filename || "Package source asset";
           preview.src = asset.asset_url;
           row.appendChild(preview);
+          const manualCrop = el("div", "modern-list");
+          const cropName = input("text", `modern-package-asset-crop-name-${pkg.supplement_id}-${asset.id}`, "Name or die-roll id for this cropped tile/art resource, such as 01, 12, chapel, or north_bridge.", "");
+          const cropX = input("number", `modern-package-asset-crop-x-${pkg.supplement_id}-${asset.id}`, "Crop X coordinate in source pixels.", "0");
+          const cropY = input("number", `modern-package-asset-crop-y-${pkg.supplement_id}-${asset.id}`, "Crop Y coordinate in source pixels.", "0");
+          const cropW = input("number", `modern-package-asset-crop-w-${pkg.supplement_id}-${asset.id}`, "Crop width in source pixels.", "");
+          const cropH = input("number", `modern-package-asset-crop-h-${pkg.supplement_id}-${asset.id}`, "Crop height in source pixels.", "");
+          const cropActions = actions("modern-row-actions");
+          cropActions.append(
+            button("Use Full Image Size", "Fill crop width and height from the source image dimensions.", () => {
+              if (!preview.complete || !preview.naturalWidth || !preview.naturalHeight) throw new Error("Image preview is not loaded yet.");
+              cropW.value = String(preview.naturalWidth);
+              cropH.value = String(preview.naturalHeight);
+            }),
+            button("Save Manual Crop", "Crop the selected source-pixel rectangle and import it as a named room_tile asset.", async (btn) => runWithButtonProgress(btn, "Saving crop...", async () => {
+              const name = String(cropName.value || "").trim();
+              if (!name) throw new Error("Enter a tile/art name or die roll first.");
+              const rect = cropRectFromInputs(preview, cropX, cropY, cropW, cropH);
+              const blob = await imageToCanvasBlob(preview, rect);
+              const baseName = String(asset.filename || asset.id || "source-art").replace(/\.[^.]+$/, "");
+              await uploadPackageAssetBlob(pkg, blob, `${baseName}-crop-${name}.png`, {
+                asset_kind: categorySelect.value === "room_tile_sheet" ? "room_tile" : "map_or_image",
+                category: categorySelect.value === "room_tile_sheet" ? "room_tile" : (categorySelect.value || "unknown"),
+                title: name.match(/^\d+$/) ? `Tile ${name}` : name,
+                parent_asset_id: asset.id || "",
+                notes: `Manual rectangular crop from ${asset.filename || asset.id || "source image"}: x=${Math.round(rect.x)}, y=${Math.round(rect.y)}, w=${Math.round(rect.w)}, h=${Math.round(rect.h)}.`,
+              });
+              await refreshSourceScans();
+              setStatus(`Imported manual crop ${name}.`);
+            }))
+          );
+          manualCrop.append(
+            modernStatusRow("Manual Crop", "One tile/art resource at a time", "For hand-drawn sheets that do not align to a grid, enter source-pixel crop bounds, name the tile or die roll, then save it as its own resource. Freehand polygon crop is planned after this rectangular workflow."),
+            field("Tile/art name or die roll", cropName),
+            field("Crop X", cropX),
+            field("Crop Y", cropY),
+            field("Crop width", cropW),
+            field("Crop height", cropH),
+            cropActions
+          );
+          row.appendChild(workbenchSection("Manual crop", "Save one named tile/art resource", manualCrop));
           const splitter = el("div", "modern-list");
           const rowsInput = input("number", `modern-package-asset-rows-${pkg.supplement_id}-${asset.id}`, "Number of tile rows in this sheet.", "6");
           const colsInput = input("number", `modern-package-asset-cols-${pkg.supplement_id}-${asset.id}`, "Number of tile columns in this sheet.", "6");

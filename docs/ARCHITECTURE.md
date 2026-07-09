@@ -170,9 +170,11 @@ Home screen rule browsing:
   with the same package id. These files are package-level evidence/source
   material rather than page-scanned rule text. Package source assets carry
   reviewer metadata such as title, category, status, and notes. The current
-  workbench can split equal-grid tile sheets in the browser and upload each crop
-  back as a named `room_tile` package asset; D66 label helpers support tile
-  names such as `01`, `02`, `11`, `12`, etc.
+  workbench can delete unwanted imported/cropped assets, split equal-grid tile
+  sheets in the browser, or save one manual rectangular crop at a time for
+  hand-drawn sheets that do not align to a grid. Each crop uploads back as a
+  named package asset; D66 label helpers support tile names such as `01`, `02`,
+  `11`, `12`, etc.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.

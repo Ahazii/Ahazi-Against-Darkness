@@ -313,6 +313,40 @@ def update_supplement_package_asset(data_dir: Path, package_id: str, asset_id: s
     raise KeyError(asset_id)
 
 
+def delete_supplement_package_asset(data_dir: Path, package_id: str, asset_id: str) -> dict[str, Any]:
+    payload = _load_source_settings(data_dir)
+    packages = _package_settings(payload)
+    safe_package_id = supplement_package_id(package_id, "supplement-package")
+    package = packages.get(safe_package_id) if isinstance(packages.get(safe_package_id), dict) else None
+    if package is None:
+        raise KeyError(package_id)
+    assets = package.get("assets") if isinstance(package.get("assets"), list) else []
+    kept: list[dict[str, Any]] = []
+    removed: dict[str, Any] | None = None
+    for asset in assets:
+        if isinstance(asset, dict) and asset.get("id") == asset_id:
+            removed = asset
+            continue
+        if isinstance(asset, dict):
+            kept.append(asset)
+    if removed is None:
+        raise KeyError(asset_id)
+    filename = str(removed.get("filename") or "")
+    if filename:
+        path = supplement_package_asset_path(data_dir, safe_package_id, filename)
+        base = supplement_package_asset_dir(data_dir, safe_package_id).resolve()
+        try:
+            resolved = path.resolve()
+            if resolved.is_relative_to(base) and resolved.is_file():
+                resolved.unlink()
+        except OSError:
+            pass
+    package["assets"] = kept
+    packages[safe_package_id] = package
+    _write_source_settings(data_dir, payload)
+    return {"asset_id": asset_id, "message": "Package source asset deleted."}
+
+
 def _page_text_blocks(text: str) -> list[str]:
     raw = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
     blocks = [block.strip() for block in re.split(r"\n\s*\n+", raw) if block.strip()]

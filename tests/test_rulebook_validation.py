@@ -1015,6 +1015,11 @@ def test_supplement_package_asset_upload_and_serve(tmp_path: Path, monkeypatch) 
     served = client.get("/api/supplements/source-packages/treacheries-town/assets/World%20Map.png")
     assert served.status_code == 200
     assert served.content == b"png-bytes"
+    delete = client.delete("/api/supplements/source-packages/treacheries-town/assets/world-map")
+    assert delete.status_code == 200
+    packages = client.get("/api/supplements/source-scans").json()["packages"]
+    assert packages[0]["asset_count"] == 0
+    assert not (tmp_path / "Supplements" / "_sources" / "_package_assets" / "treacheries-town" / "World Map.png").exists()
 
 
 def test_app_version_endpoint_reads_version_file() -> None:
