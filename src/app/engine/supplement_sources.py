@@ -91,6 +91,38 @@ def supplement_package_id(value: str | None, fallback: str) -> str:
     return slug or "supplement-package"
 
 
+GENERIC_SUPPLEMENT_PACKAGE_IDS = {"", "package", "supplement", "supplement-package", "module"}
+GENERIC_SUPPLEMENT_PACKAGE_TITLES = {"", "package", "supplement", "supplement package", "module"}
+
+
+def _source_pdf_stem(value: str | None) -> str:
+    raw = str(value or "").replace("\\", "/").rsplit("/", 1)[-1]
+    return Path(raw).stem.strip()
+
+
+def _friendly_source_title(value: str | None, source_pdf: str | None = None, source_id: str | None = None) -> str:
+    title = str(value or "").strip()
+    if title and ("/" in title or "\\" in title):
+        title = _source_pdf_stem(title)
+    if title.lower() in GENERIC_SUPPLEMENT_PACKAGE_TITLES:
+        title = ""
+    if not title:
+        title = _source_pdf_stem(source_pdf)
+    if not title:
+        title = str(source_id or "").replace("-", " ").replace("_", " ").strip()
+    return re.sub(r"\s+", " ", title.replace("_", " ")).strip() or "Supplement Package"
+
+
+def _source_package_id(scan: dict[str, Any], known_package_ids: set[str] | None = None) -> str:
+    source_id = str(scan.get("source_id") or "supplement")
+    raw = supplement_package_id(str(scan.get("supplement_id") or ""), source_id)
+    if raw in GENERIC_SUPPLEMENT_PACKAGE_IDS:
+        return source_id
+    if known_package_ids and raw not in known_package_ids and source_id in known_package_ids:
+        return source_id
+    return raw
+
+
 def supplement_source_folder(data_dir: Path, source_id: str) -> Path:
     safe = re.sub(r"[^a-z0-9._-]+", "-", source_id.lower()).strip(".-")
     return supplement_sources_root(data_dir) / (safe or "pdf-source")
@@ -992,7 +1024,7 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
             {
                 "source_id": str(payload.get("source_id") or source_id),
                 "supplement_id": str(payload.get("supplement_id") or supplement_package_id(None, source_id)),
-                "supplement_title": str(payload.get("supplement_title") or payload.get("source_pdf") or source_id),
+                "supplement_title": _friendly_source_title(payload.get("supplement_title"), payload.get("source_pdf"), source_id),
                 "source_pdf": str(payload.get("source_pdf") or ""),
                 "updated_at": str(payload.get("updated_at") or ""),
                 "page_offset": int(payload.get("page_offset") or 0),
@@ -1013,14 +1045,16 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
     grouped: dict[str, dict[str, Any]] = {}
     settings = _load_source_settings(data_dir)
     setting_packages = settings.get("packages") if isinstance(settings.get("packages"), dict) else {}
+    known_package_ids: set[str] = set()
     for package_id, package_payload in setting_packages.items():
         if not isinstance(package_payload, dict):
             continue
         safe_id = supplement_package_id(str(package_payload.get("supplement_id") or package_id), str(package_id))
+        known_package_ids.add(safe_id)
         assets = [item for item in package_payload.get("assets", []) if isinstance(item, dict)]
         grouped[safe_id] = {
             "supplement_id": safe_id,
-            "supplement_title": str(package_payload.get("supplement_title") or safe_id),
+            "supplement_title": _friendly_source_title(package_payload.get("supplement_title"), None, safe_id),
             "source_count": 0,
             "asset_count": len(assets),
             "asset_categories": sorted(SUPPLEMENT_PACKAGE_ASSET_CATEGORIES),
@@ -1032,12 +1066,13 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
             "assets": assets,
         }
     for scan in list_supplement_source_scans(data_dir):
-        package_id = supplement_package_id(str(scan.get("supplement_id") or ""), str(scan.get("source_id") or "supplement"))
+        package_id = _source_package_id(scan, known_package_ids)
+        scan["supplement_id"] = package_id
         package = grouped.setdefault(
             package_id,
             {
                 "supplement_id": package_id,
-                "supplement_title": str(scan.get("supplement_title") or package_id),
+                "supplement_title": _friendly_source_title(scan.get("supplement_title"), scan.get("source_pdf"), package_id),
                 "source_count": 0,
                 "asset_count": 0,
                 "asset_categories": sorted(SUPPLEMENT_PACKAGE_ASSET_CATEGORIES),
@@ -1049,6 +1084,8 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
                 "assets": [],
             },
         )
+        if str(package.get("supplement_title") or "").strip().lower() in GENERIC_SUPPLEMENT_PACKAGE_TITLES:
+            package["supplement_title"] = _friendly_source_title(scan.get("supplement_title"), scan.get("source_pdf"), package_id)
         package["source_count"] = int(package.get("source_count") or 0) + 1
         package["blocks"] = int(package.get("blocks") or 0) + int(scan.get("blocks") or 0)
         package["artwork"] = int(package.get("artwork") or 0) + int(scan.get("artwork") or 0)

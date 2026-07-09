@@ -7814,8 +7814,8 @@ async function renderRulePdfManager() {
     if (packages.length) {
       for (const pkg of packages) {
         const sourceList = el("div", "modern-list");
-        appendAssetRows(pkg, sourceList);
         for (const scan of pkg.sources || []) appendScanRow(scan, sourceList);
+        appendAssetRows(pkg, sourceList);
         const section = workbenchSection(
           pkg.supplement_title || pkg.supplement_id || "Supplement package",
           `${pkg.source_count || 0} source PDF(s), ${pkg.asset_count || 0} package asset(s), ${pkg.blocks || 0} block(s), ${pkg.artwork || 0} artwork, ${pkg.tables || 0} table draft(s)`,

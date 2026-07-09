@@ -3023,6 +3023,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "modern-source-review-scope" in MODERN_PAGES_JS
     assert "Whole document" in MODERN_PAGES_JS
     assert "Switch Review scope to Whole document" in MODERN_PAGES_JS
+    source_package_loop = MODERN_PAGES_JS.index("for (const pkg of packages)")
+    assert MODERN_PAGES_JS.index("for (const scan of pkg.sources || []) appendScanRow(scan, sourceList);", source_package_loop) < MODERN_PAGES_JS.index("appendAssetRows(pkg, sourceList);", source_package_loop)
     assert "Supplement source packages" in MODERN_PAGES_JS
     assert "Selected source scan" in MODERN_PAGES_JS
     assert "package asset(s)" in MODERN_PAGES_JS

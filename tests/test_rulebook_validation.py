@@ -1048,6 +1048,78 @@ def test_source_scans_can_share_one_supplement_package(tmp_path: Path, monkeypat
     assert detail["supplement_title"] == "Treacheries of the Troublesome Towns"
 
 
+def test_supplement_source_packages_normalize_legacy_generic_metadata(tmp_path: Path) -> None:
+    from app.engine import supplement_sources
+
+    root = tmp_path / "Supplements" / "_sources"
+    (root / "crucible-of-classic-critters").mkdir(parents=True)
+    (root / "treacheries-of-the-troublesome-towns-tome-2").mkdir(parents=True)
+    (root / "source_settings.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "sources": {
+                    "crucible-of-classic-critters": {
+                        "source_id": "crucible-of-classic-critters",
+                        "filename": "Crucible_of_Classic_Critters.pdf",
+                        "page_offset": -2,
+                        "supplement_id": "supplement-package",
+                        "supplement_title": "Supplement Package",
+                    },
+                    "treacheries-of-the-troublesome-towns-tome-2": {
+                        "source_id": "treacheries-of-the-troublesome-towns-tome-2",
+                        "filename": "Treacheries of the Troublesome Towns TOME 2.pdf",
+                        "page_offset": -6,
+                    },
+                },
+                "packages": {
+                    "crucible-of-classic-critters": {
+                        "supplement_id": "crucible-of-classic-critters",
+                        "supplement_title": "Crucible_of_Classic_Critters",
+                        "assets": [{"id": "forest-paths", "filename": "Forest Paths.png"}],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (root / "crucible-of-classic-critters" / "source_blocks.json").write_text(
+        json.dumps(
+            {
+                "source_id": "crucible-of-classic-critters",
+                "supplement_id": "supplement-package",
+                "supplement_title": "Supplement Package",
+                "source_pdf": "DATA_DIR/rules/Crucible_of_Classic_Critters.pdf",
+                "blocks": [{"id": "c-p1-b001", "assignment": "unassigned"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (root / "treacheries-of-the-troublesome-towns-tome-2" / "source_blocks.json").write_text(
+        json.dumps(
+            {
+                "source_id": "treacheries-of-the-troublesome-towns-tome-2",
+                "source_pdf": "DATA_DIR/rules/Treacheries of the Troublesome Towns TOME 2.pdf",
+                "blocks": [{"id": "t-p1-b001", "assignment": "unassigned"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    packages = supplement_sources.list_supplement_source_packages(tmp_path)
+
+    assert [package["supplement_id"] for package in packages] == [
+        "crucible-of-classic-critters",
+        "treacheries-of-the-troublesome-towns-tome-2",
+    ]
+    assert packages[0]["supplement_title"] == "Crucible of Classic Critters"
+    assert packages[0]["source_count"] == 1
+    assert packages[0]["asset_count"] == 1
+    assert packages[0]["sources"][0]["supplement_id"] == "crucible-of-classic-critters"
+    assert packages[1]["supplement_title"] == "Treacheries of the Troublesome Towns TOME 2"
+    assert "DATA_DIR/rules" not in packages[1]["supplement_title"]
+
+
 def test_supplement_package_asset_upload_and_serve(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 
