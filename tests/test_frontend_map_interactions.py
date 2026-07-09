@@ -3078,6 +3078,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "if (row.open && item.pdf_page) previewPdfPage(item.pdf_page)" in MODERN_PAGES_JS
     assert "Save Block" in MODERN_PAGES_JS
     assert "const editSelectedButton = button(\"Edit\"" in MODERN_PAGES_JS
+    assert "const splitSelectedButton = button(\"Split\"" in MODERN_PAGES_JS
+    assert "activeBlockEditor" in MODERN_PAGES_JS
+    assert "splitBlockAtCursor" in MODERN_PAGES_JS
+    assert "click Split again or use Split At Cursor" in MODERN_PAGES_JS
     assert "openSourceTool(`${block.page_label" in MODERN_PAGES_JS
     assert "Draft Table" in MODERN_PAGES_JS
     assert "Save Reviewed Table" in MODERN_PAGES_JS
@@ -3086,6 +3090,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/table-draft" in MODERN_PAGES_JS
     assert "/tables/" in MODERN_PAGES_JS
     assert "Split At Cursor" in MODERN_PAGES_JS
+    assert "selectionActions.append(applyAssignmentButton, mergeSelectedButton, editSelectedButton, splitSelectedButton, draftTableButton, moveUpButton, moveDownButton)" in MODERN_PAGES_JS
     assert "Move Up" in MODERN_PAGES_JS
     assert "Move Down" in MODERN_PAGES_JS
     assert "Merge" in MODERN_PAGES_JS

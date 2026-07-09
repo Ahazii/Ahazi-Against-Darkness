@@ -7011,12 +7011,38 @@ async function renderRulePdfManager() {
       if (!block) throw new Error(`${actionLabel} needs exactly one reviewed source block selected.`);
       return block;
     }
+    let activeBlockEditor = null;
+    async function splitBlockAtCursor(block, textValue, cursorPosition) {
+      if (!block || block.source_item_type === "page-boundary candidate") throw new Error("Split needs exactly one reviewed source block selected.");
+      const sourceText = String(textValue || "");
+      const cursor = Math.max(0, Math.min(Number(cursorPosition || 0), sourceText.length));
+      const parts = [sourceText.slice(0, cursor), sourceText.slice(cursor)]
+        .map((part) => part.trim())
+        .filter(Boolean);
+      if (parts.length < 2) throw new Error("Place the cursor inside the block text before splitting. The cursor cannot be at the start or end.");
+      await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/split`, {
+        method: "POST",
+        body: JSON.stringify({ parts }),
+      });
+      await reloadCurrentScan("Source block split at cursor.");
+    }
     const editSelectedButton = button("Edit", "Open the selected source block in the active review tool. Select exactly one text block on the right.", () => {
       const block = selectedAnyBlock();
       if (!block) throw new Error("Select exactly one source block to edit.");
       if (block.pdf_page) previewPdfPage(block.pdf_page);
       openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, search.value));
     });
+    const splitSelectedButton = button("Split", "Split one selected reviewed text block. First click Split to open the editor, place the cursor in Reviewed text, then click Split again or use Split At Cursor in the editor.", async (btn) => runWithButtonProgress(btn, "Preparing split...", async () => {
+      const block = requireSelectedReviewedBlock("Split");
+      if (activeBlockEditor?.blockId === block.id && activeBlockEditor.textArea && document.body.contains(activeBlockEditor.textArea)) {
+        await splitBlockAtCursor(block, activeBlockEditor.textArea.value, activeBlockEditor.textArea.selectionStart);
+        return;
+      }
+      if (block.pdf_page) previewPdfPage(block.pdf_page);
+      openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, search.value));
+      activeBlockEditor?.textArea?.focus();
+      setStatus("Place the cursor in Reviewed text, then click Split again or use Split At Cursor in the editor.");
+    }));
     const draftTableButton = button("Draft Table", "Parse the selected table-assigned source block into editable machine rows. Select exactly one reviewed block assigned as table.", async (btn) => runWithButtonProgress(btn, "Drafting table...", async () => {
       const block = requireSelectedReviewedBlock("Draft Table");
       if (block.assignment !== "table") throw new Error("Assign the selected block as table before drafting machine rows.");
@@ -7066,13 +7092,7 @@ async function renderRulePdfManager() {
             await reloadCurrentScan("Source block saved.");
           })),
           button("Split At Cursor", "Split this source block at the cursor position in the reviewed text field.", async (btn) => runWithButtonProgress(btn, "Splitting block...", async () => {
-            const cursor = Number(textArea.selectionStart || 0);
-            const parts = [textArea.value.slice(0, cursor), textArea.value.slice(cursor)].map((part) => part.trim()).filter(Boolean);
-            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/split`, {
-              method: "POST",
-              body: JSON.stringify({ parts }),
-            });
-            await reloadCurrentScan("Source block split.");
+            await splitBlockAtCursor(block, textArea.value, textArea.selectionStart);
           })),
           button("Move Up", "Move this reviewed block above the previous reviewed block.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
             await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/move`, {
@@ -7101,9 +7121,11 @@ async function renderRulePdfManager() {
         field("Assignment", assignmentEdit),
         actionsRow
       );
+      activeBlockEditor = { blockId: block.id, textArea };
       return editor;
     }
     function artworkEditor(item, categories) {
+      activeBlockEditor = null;
       const editor = el("div", "modern-source-block-editor");
       const img = el("img", "modern-source-artwork-image");
       img.alt = item.title || item.id || "Artwork candidate";
@@ -7135,6 +7157,7 @@ async function renderRulePdfManager() {
       return editor;
     }
     function tableDraftEditor(table, sourceText = "", needle = "") {
+      activeBlockEditor = null;
       const editor = el("div", "modern-source-table-review-grid");
       const sourcePanel = el("div", "modern-source-block-editor");
       sourcePanel.append(
@@ -7410,7 +7433,7 @@ async function renderRulePdfManager() {
     const reviewPanel = el("div", "modern-source-review-panel");
     const selectionActions = actions();
     selectionActions.classList.add("modern-source-control-actions");
-    selectionActions.append(applyAssignmentButton, mergeSelectedButton, editSelectedButton, draftTableButton, moveUpButton, moveDownButton);
+    selectionActions.append(applyAssignmentButton, mergeSelectedButton, editSelectedButton, splitSelectedButton, draftTableButton, moveUpButton, moveDownButton);
     const controlFields = el("div", "modern-source-controls-grid");
     controlFields.append(
       field("Search", search),
