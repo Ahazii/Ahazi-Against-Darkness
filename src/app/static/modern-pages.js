@@ -6853,6 +6853,7 @@ async function renderRulePdfManager() {
     const selectedBlockIds = new Set([...sourceWorkbenchState.selectedBlockIds].filter((blockId) => sourceItems.some((item) => item.id === blockId)));
     const selectionStatus = el("p", "muted", "No source blocks selected.");
     const firstPdfPage = Number(sourceItems.find((item) => item.pdf_page)?.pdf_page || 1);
+    const leftRail = el("div", "modern-source-left-rail");
     const pdfViewer = el("div", "modern-source-pdf-viewer");
     const pdfToolbar = actions();
     const pageInput = input("number", "modern-source-pdf-page", "PDF page to preview beside the extracted text.", String(sourceWorkbenchState.page || firstPdfPage));
@@ -6938,7 +6939,13 @@ async function renderRulePdfManager() {
       }
     });
     pdfCanvas.appendChild(pdfImage);
-    pdfViewer.append(field("PDF page", pageInput), pdfToolbar, pdfCanvas, pdfStatus);
+    pdfViewer.append(
+      modernStatusRow("PDF preview", payload.source_pdf || "Source PDF", "Pan with drag, zoom with the mouse wheel, and use the page field to jump to the printed source you are reviewing."),
+      field("PDF page", pageInput),
+      pdfToolbar,
+      pdfCanvas,
+      pdfStatus
+    );
     setPdfPage(sourceWorkbenchState.page || firstPdfPage);
     function saveCurrentWorkbenchState() {
       sourceWorkbenchState.sourceId = payload.source_id || sourceWorkbenchState.sourceId;
@@ -7398,18 +7405,23 @@ async function renderRulePdfManager() {
     mount.classList.remove("hidden");
     const reviewPanel = el("div", "modern-source-review-panel");
     const selectionActions = actions();
+    selectionActions.classList.add("modern-source-control-actions");
     selectionActions.append(applyAssignmentButton, mergeSelectedButton, editSelectedButton, draftTableButton, moveUpButton, moveDownButton);
-    const blockTools = el("div", "modern-list");
+    const controlFields = el("div", "modern-source-controls-grid");
+    controlFields.append(
+      field("Search", search),
+      field("Scope", reviewScope),
+      field("Filter", assignment),
+      field("Assign to", bulkAssignment)
+    );
+    const blockTools = el("div", "modern-source-controls-panel");
     blockTools.append(
       modernStatusRow("Source Review Controls", "Selected blocks", "These controls affect selected text blocks in the module contents on the right."),
-      field("Search source blocks and artwork", search),
-      field("Review scope", reviewScope),
-      field("Assignment filter", assignment),
-      field("Apply assignment", bulkAssignment),
+      controlFields,
       selectionStatus,
       selectionActions
     );
-    pdfViewer.appendChild(blockTools);
+    leftRail.append(blockTools, pdfViewer);
     reviewPanel.append(
       modernStatusRow("Module contents", `${sourceItems.length} text block/candidate item(s)`, "Whole document is the default. Unassigned blocks appear first, then assigned categories. Use the left controls to change selected text blocks."),
       sourceToolMount,
@@ -7418,7 +7430,7 @@ async function renderRulePdfManager() {
       results
     );
     const reviewGrid = el("div", "modern-source-review-grid");
-    reviewGrid.append(pdfViewer, reviewPanel);
+    reviewGrid.append(leftRail, reviewPanel);
     mount.replaceChildren(
       modernInfoPanel("Selected source scan", payload.source_id || "source", [
         { label: "Source PDF", value: payload.source_pdf || "Source PDF" },

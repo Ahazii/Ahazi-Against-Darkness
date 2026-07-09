@@ -1258,23 +1258,76 @@ button.is-working::after {
 
 .modern-source-review-grid {
   display: grid;
-  grid-template-columns: minmax(22rem, 0.92fr) minmax(24rem, 1.08fr);
-  gap: 12px;
+  grid-template-columns: minmax(20rem, 0.82fr) minmax(28rem, 1.18fr);
+  gap: 14px;
   align-items: start;
   min-width: 0;
+}
+
+.modern-source-left-rail {
+  position: sticky;
+  top: 10px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+  max-height: calc(100vh - 128px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.modern-source-controls-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(201, 162, 39, 0.38);
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(201, 162, 39, 0.1), rgba(15, 16, 13, 0.96));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.modern-source-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.modern-source-controls-grid .modern-field {
+  min-width: 0;
+}
+
+.modern-source-controls-grid input:not([type="checkbox"]):not([type="radio"]),
+.modern-source-controls-grid select {
+  width: 100%;
+  max-width: none;
+}
+
+.modern-source-control-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.modern-source-control-actions button {
+  min-height: 34px;
+  padding: 7px 9px;
+  justify-self: stretch;
 }
 
 .modern-source-pdf-viewer {
   display: grid;
   gap: 8px;
   min-width: 0;
+  align-content: start;
 }
 
 .modern-source-pdf-canvas {
   position: relative;
   width: 100%;
-  min-height: 72vh;
-  max-height: 78vh;
+  min-height: 22rem;
+  max-height: clamp(24rem, 48vh, 38rem);
   overflow: hidden;
   border: 1px solid #3c3a30;
   border-radius: 6px;
@@ -1308,10 +1361,6 @@ button.is-working::after {
   display: grid;
   gap: 10px;
   min-width: 0;
-}
-
-.modern-source-pdf-viewer > .modern-list {
-  align-content: start;
 }
 
 .modern-source-tool-panel {
@@ -1728,8 +1777,21 @@ button.is-working::after {
     grid-template-columns: 1fr;
   }
 
+  .modern-source-left-rail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .modern-source-controls-grid,
+  .modern-source-control-actions {
+    grid-template-columns: 1fr;
+  }
+
   .modern-source-pdf-canvas {
-    min-height: 34rem;
+    min-height: 24rem;
+    max-height: 58vh;
   }
 
   .modern-info-grid {
