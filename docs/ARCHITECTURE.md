@@ -175,8 +175,12 @@ Home screen rule browsing:
   masked crop at a time for hand-drawn sheets that do not align to a grid. The
   mask cropper currently supports additive rectangles/squares and
   circles/ovals; each saved mask uploads back as a transparent PNG package
-  asset. D66 label helpers support tile names such as `01`, `02`, `11`, `12`,
-  etc.
+  asset. The cropper draws at the source image aspect ratio and uses explicit
+  draw/pan modes plus zoom controls so reviewers can inspect large pages without
+  distorting crop coordinates. D66 label helpers support tile names such as
+  `01`, `02`, `11`, `12`, etc. Extracted child tiles are grouped as a
+  collapsible list under the parent tile-sheet asset rather than cluttering the
+  package's top-level source asset list.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.

@@ -1292,15 +1292,34 @@ button.is-working::after {
   background: #0f100d;
 }
 
-.modern-mask-canvas {
-  display: block;
-  width: min(100%, 980px);
+.modern-source-artwork-image.compact {
+  max-width: min(100%, 14rem);
+  max-height: 12rem;
+}
+
+.modern-mask-canvas-viewport {
+  width: 100%;
   max-height: 72vh;
+  min-height: 18rem;
+  overflow: hidden;
   border: 1px solid #6f5c23;
   border-radius: 6px;
   background: #0f100d;
+  touch-action: none;
+}
+
+.modern-mask-canvas {
+  display: block;
+  max-width: none;
+  max-height: none;
+  transform-origin: 0 0;
   cursor: crosshair;
   touch-action: none;
+  user-select: none;
+}
+
+.modern-mask-canvas.is-panning {
+  cursor: grab;
 }
 
 .modern-version {

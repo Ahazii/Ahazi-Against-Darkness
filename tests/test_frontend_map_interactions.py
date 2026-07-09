@@ -2938,8 +2938,16 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Fill D66 Labels" in MODERN_PAGES_JS
     assert "Mask Crop" in MODERN_PAGES_JS
     assert "Save Mask Asset" in MODERN_PAGES_JS
+    assert "Draw Mode" in MODERN_PAGES_JS
+    assert "Pan Mode" in MODERN_PAGES_JS
+    assert "Zoom In" in MODERN_PAGES_JS
+    assert "Zoom Out" in MODERN_PAGES_JS
+    assert "Reset View" in MODERN_PAGES_JS
+    assert "modern-mask-canvas-viewport" in MODERN_PAGES_JS
     assert "Delete Asset" in MODERN_PAGES_JS
     assert "Delete Selected Assets" in MODERN_PAGES_JS
+    assert "Extracted tiles" in MODERN_PAGES_JS
+    assert "Delete Selected Tiles" in MODERN_PAGES_JS
     assert "maskToCanvasBlob" in MODERN_PAGES_JS
     assert "modern-mask-canvas" in MODERN_PAGES_JS
     assert "room_tile_sheet" in MODERN_PAGES_JS

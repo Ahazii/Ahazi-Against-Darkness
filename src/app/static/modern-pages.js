@@ -7150,6 +7150,101 @@ async function renderRulePdfManager() {
       const selectedAssets = new Set();
       let lastAssetIndex = -1;
       const assets = pkg.assets || [];
+      const assetIds = new Set(assets.map((asset) => String(asset.id || "")).filter(Boolean));
+      const childAssetsByParent = new Map();
+      for (const asset of assets) {
+        const parentId = String(asset.parent_asset_id || "");
+        if (!parentId) continue;
+        if (!childAssetsByParent.has(parentId)) childAssetsByParent.set(parentId, []);
+        childAssetsByParent.get(parentId).push(asset);
+      }
+      const topLevelAssets = assets.filter((asset) => !asset.parent_asset_id || !assetIds.has(String(asset.parent_asset_id || "")));
+      function deleteAsset(assetId) {
+        return api(`/api/supplements/source-packages/${encodeURIComponent(pkg.supplement_id)}/assets/${encodeURIComponent(assetId)}`, { method: "DELETE" });
+      }
+      async function deleteAssetAndChildren(asset) {
+        for (const child of childAssetsByParent.get(String(asset.id || "")) || []) {
+          if (child.id) await deleteAsset(child.id);
+        }
+        if (asset.id) await deleteAsset(asset.id);
+      }
+      function renderChildAssetList(childAssets) {
+        const childPanel = el("div", "modern-list");
+        const selectedChildren = new Set();
+        let lastChildIndex = -1;
+        const childStatus = el("p", "muted", "No extracted tiles selected.");
+        function updateChildStatus() {
+          childStatus.textContent = selectedChildren.size ? `${selectedChildren.size} extracted tile asset(s) selected.` : "No extracted tiles selected.";
+        }
+        const childActions = actions("modern-row-actions");
+        childActions.append(
+          button("Delete Selected Tiles", "Delete selected child tile assets under this source sheet. Shift-click tile checkboxes to select a range.", async (btn) => runWithButtonProgress(btn, "Deleting selected tiles...", async () => {
+            if (!selectedChildren.size) throw new Error("Select one or more extracted tiles first.");
+            if (!window.confirm(`Delete ${selectedChildren.size} selected extracted tile asset(s)? This removes the imported image files.`)) return;
+            for (const assetId of Array.from(selectedChildren)) await deleteAsset(assetId);
+            selectedChildren.clear();
+            await refreshSourceScans();
+            setStatus("Selected extracted tile assets deleted.");
+          }))
+        );
+        childPanel.append(modernStatusRow("Extracted tiles", `${childAssets.length} child tile/art asset(s)`, "Tiles produced from this source sheet are kept here so the workbench follows the supplement document instead of becoming one long flat asset list."), childStatus, childActions);
+        for (const [childIndex, child] of childAssets.entries()) {
+          const childRow = document.createElement("details");
+          childRow.className = "modern-row compact";
+          const childSummary = document.createElement("summary");
+          const childSelect = input("checkbox", `modern-package-child-asset-select-${pkg.supplement_id}-${child.id}`, "Select this extracted tile for bulk delete.");
+          childSelect.addEventListener("click", (event) => {
+            event.stopPropagation();
+            childSelect.dataset.shiftClick = event.shiftKey ? "1" : "0";
+          });
+          childSelect.addEventListener("change", () => {
+            if (childSelect.dataset.shiftClick === "1" && lastChildIndex >= 0) {
+              const [start, end] = [lastChildIndex, childIndex].sort((left, right) => left - right);
+              for (let index = start; index <= end; index += 1) {
+                const rangeAsset = childAssets[index];
+                if (rangeAsset?.id) selectedChildren.add(rangeAsset.id);
+                const box = document.getElementById(`modern-package-child-asset-select-${pkg.supplement_id}-${rangeAsset?.id}`);
+                if (box) box.checked = true;
+              }
+            } else if (childSelect.checked) {
+              selectedChildren.add(child.id);
+            } else {
+              selectedChildren.delete(child.id);
+            }
+            childSelect.dataset.shiftClick = "0";
+            lastChildIndex = childIndex;
+            updateChildStatus();
+          });
+          childSummary.append(
+            childSelect,
+            el("strong", "", child.title || child.filename || child.id || "Extracted tile"),
+            el("span", "muted", ` · ${child.category || "room_tile"} · ${Math.round((child.size_bytes || 0) / 1024)} KB`)
+          );
+          childRow.appendChild(childSummary);
+          if (child.asset_url) {
+            const childPreview = el("img", "modern-source-artwork-image compact");
+            childPreview.alt = child.filename || "Extracted tile";
+            childPreview.src = child.asset_url;
+            childRow.appendChild(childPreview);
+          }
+          const childRowActions = actions("modern-row-actions");
+          if (child.asset_url) childRowActions.append(link("Open Tile", child.asset_url, "Open this extracted tile asset in a new tab.", "link-button secondary"));
+          childRowActions.append(
+            button("Delete Tile", "Delete this extracted child tile asset.", async (btn) => runWithButtonProgress(btn, "Deleting tile...", async () => {
+              if (!window.confirm(`Delete ${child.title || child.filename || child.id}? This removes the imported tile image file.`)) return;
+              await deleteAsset(child.id);
+              await refreshSourceScans();
+              setStatus("Extracted tile asset deleted.");
+            }))
+          );
+          childRow.append(
+            modernStatusRow("Source", child.filename || child.id || "Extracted tile", child.notes || "Child asset generated from this source sheet."),
+            childRowActions
+          );
+          childPanel.appendChild(childRow);
+        }
+        return childPanel;
+      }
       const bulkActions = actions("modern-row-actions");
       const bulkStatus = el("p", "muted", "No package assets selected.");
       function setAssetSelection(assetId, checked) {
@@ -7161,16 +7256,16 @@ async function renderRulePdfManager() {
         button("Delete Selected Assets", "Delete all selected package source assets. Shift-click asset checkboxes to select a range.", async (btn) => runWithButtonProgress(btn, "Deleting selected assets...", async () => {
           if (!selectedAssets.size) throw new Error("Select one or more package assets first.");
           if (!window.confirm(`Delete ${selectedAssets.size} selected package asset(s)? This removes the imported image files.`)) return;
-          for (const assetId of Array.from(selectedAssets)) {
-            await api(`/api/supplements/source-packages/${encodeURIComponent(pkg.supplement_id)}/assets/${encodeURIComponent(assetId)}`, { method: "DELETE" });
+          for (const asset of topLevelAssets) {
+            if (selectedAssets.has(asset.id)) await deleteAssetAndChildren(asset);
           }
           selectedAssets.clear();
           await refreshSourceScans();
           setStatus("Selected package source assets deleted.");
         }))
       );
-      parent.append(modernStatusRow("Package Assets", `${assets.length} image/map/tile asset(s)`, "Asset rows are collapsed by default. Select several with checkboxes, including shift-click ranges, then delete them together."), bulkStatus, bulkActions);
-      for (const [assetIndex, asset] of assets.entries()) {
+      parent.append(modernStatusRow("Package Assets", `${topLevelAssets.length} source asset(s), ${assets.length - topLevelAssets.length} extracted child asset(s)`, "Source images, maps, and tile sheets are listed here. Extracted tiles appear as a collapsible child list inside their parent tile sheet asset."), bulkStatus, bulkActions);
+      for (const [assetIndex, asset] of topLevelAssets.entries()) {
         const row = document.createElement("details");
         row.className = "modern-row";
         const summary = document.createElement("summary");
@@ -7183,7 +7278,7 @@ async function renderRulePdfManager() {
           if (assetSelect.dataset.shiftClick === "1" && lastAssetIndex >= 0) {
             const [start, end] = [lastAssetIndex, assetIndex].sort((left, right) => left - right);
             for (let index = start; index <= end; index += 1) {
-              const rangeAsset = assets[index];
+              const rangeAsset = topLevelAssets[index];
               if (rangeAsset?.id) selectedAssets.add(rangeAsset.id);
               const box = document.getElementById(`modern-package-asset-select-${pkg.supplement_id}-${rangeAsset?.id}`);
               if (box) box.checked = true;
@@ -7222,9 +7317,7 @@ async function renderRulePdfManager() {
         rowActions.append(
           button("Delete Asset", "Delete this package source asset and remove its image file from DATA_DIR. Use this to remove unwanted auto-split tiles.", async (btn) => runWithButtonProgress(btn, "Deleting asset...", async () => {
             if (!window.confirm(`Delete ${asset.title || asset.filename || asset.id}? This removes the imported package image file.`)) return;
-            await api(`/api/supplements/source-packages/${encodeURIComponent(pkg.supplement_id)}/assets/${encodeURIComponent(asset.id)}`, {
-              method: "DELETE",
-            });
+            await deleteAssetAndChildren(asset);
             await refreshSourceScans();
             setStatus("Package source asset deleted.");
           }))
@@ -7239,13 +7332,58 @@ async function renderRulePdfManager() {
           const maskCrop = el("div", "modern-list");
           const maskName = input("text", `modern-package-asset-mask-name-${pkg.supplement_id}-${asset.id}`, "Name or die-roll id for this masked tile/art resource, such as 01, 12, chapel, or north_bridge.", "");
           const shapeMode = select(`modern-package-asset-mask-shape-${pkg.supplement_id}-${asset.id}`, "Shape to draw into the additive mask.", [["rect", "Rectangle / square"], ["ellipse", "Circle / oval"]]);
+          const maskMode = select(`modern-package-asset-mask-mode-${pkg.supplement_id}-${asset.id}`, "Choose Draw mode to create mask shapes, or Pan mode to move around a zoomed image.", [["draw", "Draw Mode"], ["pan", "Pan Mode"]]);
+          const maskViewport = el("div", "modern-mask-canvas-viewport");
           const maskCanvas = document.createElement("canvas");
           maskCanvas.className = "modern-mask-canvas";
+          maskViewport.appendChild(maskCanvas);
           const maskStatus = el("p", "muted", "Open this section, then drag on the image to add mask shapes.");
           const maskShapes = [];
           let maskDragging = false;
+          let panDragging = false;
           let maskStart = null;
+          let panStart = null;
           let draftShape = null;
+          let maskZoom = 1;
+          let maskPanX = 0;
+          let maskPanY = 0;
+          let maskViewInitialized = false;
+          function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+          }
+          function updateMaskStatus() {
+            const modeText = maskMode.value === "pan" ? "Pan mode: drag to move the zoomed image." : `Draw mode: drag to add ${shapeMode.value === "ellipse" ? "a circle/oval" : "a square/rectangle"}.`;
+            maskStatus.textContent = `${maskShapes.length} saved mask shape(s). Zoom ${Math.round(maskZoom * 100)}%. ${modeText}`;
+          }
+          function applyMaskTransform() {
+            maskCanvas.style.transform = `translate(${maskPanX}px, ${maskPanY}px) scale(${maskZoom})`;
+            maskCanvas.classList.toggle("is-panning", maskMode.value === "pan");
+            updateMaskStatus();
+          }
+          function resetMaskView() {
+            if (!preview.complete || !preview.naturalWidth || !preview.naturalHeight) return;
+            const viewportWidth = Math.max(320, maskViewport.clientWidth || 980);
+            const viewportHeight = Math.max(240, Math.min(window.innerHeight * 0.72, 760));
+            maskZoom = clamp(Math.min(viewportWidth / preview.naturalWidth, viewportHeight / preview.naturalHeight, 1), 0.08, 8);
+            maskPanX = 0;
+            maskPanY = 0;
+            maskViewInitialized = true;
+            applyMaskTransform();
+          }
+          function zoomMask(delta, focusEvent = null) {
+            const previousZoom = maskZoom;
+            const nextZoom = clamp(maskZoom * delta, 0.08, 8);
+            if (Math.abs(nextZoom - previousZoom) < 0.001) return;
+            if (focusEvent) {
+              const rect = maskCanvas.getBoundingClientRect();
+              const focusX = focusEvent.clientX - rect.left;
+              const focusY = focusEvent.clientY - rect.top;
+              maskPanX -= focusX * (nextZoom / previousZoom - 1);
+              maskPanY -= focusY * (nextZoom / previousZoom - 1);
+            }
+            maskZoom = nextZoom;
+            applyMaskTransform();
+          }
           function canvasPoint(event) {
             const rect = maskCanvas.getBoundingClientRect();
             const scaleX = maskCanvas.width / rect.width;
@@ -7259,59 +7397,81 @@ async function renderRulePdfManager() {
           }
           function drawMaskCanvas() {
             if (!preview.complete || !preview.naturalWidth || !preview.naturalHeight) return;
-            const maxWidth = 980;
-            const scale = Math.min(1, maxWidth / preview.naturalWidth);
-            maskCanvas.width = Math.max(1, Math.round(preview.naturalWidth * scale));
-            maskCanvas.height = Math.max(1, Math.round(preview.naturalHeight * scale));
+            maskCanvas.width = Math.max(1, Math.round(preview.naturalWidth));
+            maskCanvas.height = Math.max(1, Math.round(preview.naturalHeight));
             const ctx = maskCanvas.getContext("2d");
             ctx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
             ctx.drawImage(preview, 0, 0, maskCanvas.width, maskCanvas.height);
             ctx.lineWidth = 3;
             for (const shape of maskShapes.concat(draftShape ? [draftShape] : [])) {
-              const sx = shape.x * scale;
-              const sy = shape.y * scale;
-              const sw = shape.w * scale;
-              const sh = shape.h * scale;
               ctx.save();
               ctx.fillStyle = "rgba(201, 162, 39, 0.24)";
               ctx.strokeStyle = "#f5d66b";
               ctx.beginPath();
-              if (shape.type === "ellipse") ctx.ellipse(sx + sw / 2, sy + sh / 2, Math.abs(sw / 2), Math.abs(sh / 2), 0, 0, Math.PI * 2);
-              else ctx.rect(sx, sy, sw, sh);
+              if (shape.type === "ellipse") ctx.ellipse(shape.x + shape.w / 2, shape.y + shape.h / 2, Math.abs(shape.w / 2), Math.abs(shape.h / 2), 0, 0, Math.PI * 2);
+              else ctx.rect(shape.x, shape.y, shape.w, shape.h);
               ctx.fill();
               ctx.stroke();
               ctx.restore();
             }
-            maskStatus.textContent = `${maskShapes.length} saved mask shape(s). Drag to add ${shapeMode.value === "ellipse" ? "a circle/oval" : "a square/rectangle"}.`;
-          }
-          function pointToNatural(point) {
-            return { x: point.x * (preview.naturalWidth / maskCanvas.width), y: point.y * (preview.naturalHeight / maskCanvas.height) };
+            if (!maskViewInitialized) resetMaskView();
+            else applyMaskTransform();
           }
           preview.addEventListener("load", drawMaskCanvas);
           maskCanvas.addEventListener("pointerdown", (event) => {
             if (!preview.complete || !preview.naturalWidth || !preview.naturalHeight) return;
+            if (maskMode.value === "pan") {
+              panDragging = true;
+              panStart = { x: event.clientX, y: event.clientY, panX: maskPanX, panY: maskPanY };
+              maskCanvas.setPointerCapture(event.pointerId);
+              return;
+            }
             maskDragging = true;
             maskCanvas.setPointerCapture(event.pointerId);
-            maskStart = pointToNatural(canvasPoint(event));
+            maskStart = canvasPoint(event);
             draftShape = null;
           });
           maskCanvas.addEventListener("pointermove", (event) => {
+            if (panDragging && panStart) {
+              maskPanX = panStart.panX + event.clientX - panStart.x;
+              maskPanY = panStart.panY + event.clientY - panStart.y;
+              applyMaskTransform();
+              return;
+            }
             if (!maskDragging || !maskStart) return;
-            draftShape = normalizeShape(maskStart, pointToNatural(canvasPoint(event)), shapeMode.value);
+            draftShape = normalizeShape(maskStart, canvasPoint(event), shapeMode.value);
             drawMaskCanvas();
           });
           maskCanvas.addEventListener("pointerup", (event) => {
+            if (panDragging) {
+              panDragging = false;
+              panStart = null;
+              try { maskCanvas.releasePointerCapture(event.pointerId); } catch { /* pointer already released */ }
+              return;
+            }
             if (!maskDragging || !maskStart) return;
             maskDragging = false;
             try { maskCanvas.releasePointerCapture(event.pointerId); } catch { /* pointer already released */ }
-            const shape = normalizeShape(maskStart, pointToNatural(canvasPoint(event)), shapeMode.value);
+            const shape = normalizeShape(maskStart, canvasPoint(event), shapeMode.value);
             if (shape.w >= 4 && shape.h >= 4) maskShapes.push(shape);
             draftShape = null;
             maskStart = null;
             drawMaskCanvas();
           });
+          maskViewport.addEventListener("wheel", (event) => {
+            event.preventDefault();
+            zoomMask(event.deltaY < 0 ? 1.12 : 0.88, event);
+          }, { passive: false });
+          shapeMode.addEventListener("change", updateMaskStatus);
+          maskMode.addEventListener("change", applyMaskTransform);
           const maskActions = actions("modern-row-actions");
           maskActions.append(
+            button("Zoom In", "Zoom into the mask crop image without changing its shape or saved crop coordinates.", () => zoomMask(1.2)),
+            button("Zoom Out", "Zoom out of the mask crop image without changing its shape or saved crop coordinates.", () => zoomMask(0.84)),
+            button("Reset View", "Fit the image back into the crop viewport and reset pan.", () => {
+              resetMaskView();
+              drawMaskCanvas();
+            }),
             button("Undo Shape", "Remove the last mask shape.", () => {
               maskShapes.pop();
               drawMaskCanvas();
@@ -7340,7 +7500,8 @@ async function renderRulePdfManager() {
             modernStatusRow("Mask Crop", "Draw rectangles, squares, circles, and ovals", "Use several additive shapes to cover an irregular hand-drawn tile or artwork. The saved asset becomes a transparent PNG cropped to the mask bounds."),
             field("Tile/art name or die roll", maskName),
             field("Mask shape", shapeMode),
-            maskCanvas,
+            field("Canvas mode", maskMode),
+            maskViewport,
             maskStatus,
             maskActions
           );
@@ -7398,6 +7559,8 @@ async function renderRulePdfManager() {
           );
           row.appendChild(workbenchSection("Split tile sheet", "Creates named room tile assets from this image", splitter));
         }
+        const childAssets = childAssetsByParent.get(String(asset.id || "")) || [];
+        if (childAssets.length) row.appendChild(workbenchSection("Extracted tiles", `${childAssets.length} child tile/art asset(s) under this source sheet`, renderChildAssetList(childAssets)));
         parent.appendChild(row);
       }
     }
