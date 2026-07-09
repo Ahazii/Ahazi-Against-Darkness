@@ -186,7 +186,10 @@ Home screen rule browsing:
   remain in the data area below. Field-like status summaries in the workbench
   use collapsed compact info panels instead of long stacks of status rows; this
   keeps uploaded-PDF/index/package counts available without pushing review work
-  down the page.
+  down the page. Source block and artwork candidate rows follow the same
+  separation: rows show compact previews and an Edit/Inspect command, while the
+  selected block or artwork opens in one active review tool panel above the
+  page-led lists.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.

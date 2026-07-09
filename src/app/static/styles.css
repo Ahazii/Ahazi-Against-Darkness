@@ -1304,6 +1304,21 @@ button.is-working::after {
   min-width: 0;
 }
 
+.modern-source-tool-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(201, 162, 39, 0.34);
+  border-radius: 6px;
+  background: rgba(201, 162, 39, 0.06);
+}
+
+.modern-source-preview-text {
+  max-height: 8rem;
+  overflow: auto;
+}
+
 .modern-source-artwork-panel {
   display: grid;
   gap: 8px;

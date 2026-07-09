@@ -2983,6 +2983,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "page-boundary candidates" in MODERN_PAGES_JS
     assert "sourceScanDetailMounts" in MODERN_PAGES_JS
     assert "modern-source-review-grid" in MODERN_PAGES_JS
+    assert "Active review tool" in MODERN_PAGES_JS
+    assert "modern-source-tool-panel" in STYLES_CSS
+    assert "modern-source-preview-text" in STYLES_CSS
     assert "modern-source-pdf-viewer" in MODERN_PAGES_JS
     assert "modern-source-pdf-canvas" in MODERN_PAGES_JS
     assert "modern-source-pdf-image" in MODERN_PAGES_JS
@@ -2991,6 +2994,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "pdfCanvas.addEventListener(\"pointerdown\"" in MODERN_PAGES_JS
     assert "goPdfPage(block.pdf_page)" in MODERN_PAGES_JS
     assert "Save Block" in MODERN_PAGES_JS
+    assert "Edit Block" in MODERN_PAGES_JS
+    assert "Inspect Candidate" in MODERN_PAGES_JS
     assert "Split At Cursor" in MODERN_PAGES_JS
     assert "Move Up" in MODERN_PAGES_JS
     assert "Move Down" in MODERN_PAGES_JS
@@ -3005,6 +3010,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "renders full PDF pages as review/crop candidates" in MODERN_PAGES_JS
     assert "candidate_type" in MODERN_PAGES_JS
     assert "Save Artwork" in MODERN_PAGES_JS
+    assert "Edit Artwork" in MODERN_PAGES_JS
+    assert "Artwork summary" in MODERN_PAGES_JS
     assert "modern-source-artwork-image" in MODERN_PAGES_JS
     assert "source_settings" in MODERN_PAGES_JS
     assert "DATA_DIR/Supplements/_sources" in MODERN_PAGES_JS

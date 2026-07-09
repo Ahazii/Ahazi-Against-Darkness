@@ -6933,6 +6933,15 @@ async function renderRulePdfManager() {
       });
       await reloadCurrentScan("Selected source blocks merged.");
     }));
+    const sourceToolMount = el("div", "modern-source-tool-panel hidden");
+    function openSourceTool(title, toolBody) {
+      sourceToolMount.classList.remove("hidden");
+      sourceToolMount.replaceChildren(
+        modernStatusRow("Active review tool", title, "The source PDF, page text block list, and artwork list remain visible while this selected item is edited here."),
+        toolBody
+      );
+      scrollPanelIntoView(sourceToolMount);
+    }
     function blockEditor(block, needle) {
       const textArea = document.createElement("textarea");
       textArea.className = "modern-source-block-text";
@@ -6989,6 +6998,37 @@ async function renderRulePdfManager() {
       );
       return editor;
     }
+    function artworkEditor(item, categories) {
+      const editor = el("div", "modern-source-block-editor");
+      const img = el("img", "modern-source-artwork-image");
+      img.alt = item.title || item.id || "Artwork candidate";
+      if (item.asset_url) img.src = item.asset_url;
+      const titleInput = input("text", `modern-source-artwork-title-${item.id}`, "Name this artwork for later reuse.", item.title || "");
+      const categorySelect = select(`modern-source-artwork-category-${item.id}`, "Categorise this artwork for future game use.", categories.map((category) => [category, category.replace(/_/g, " ")]));
+      categorySelect.value = item.category || "unknown";
+      const notesInput = document.createElement("textarea");
+      notesInput.className = "modern-source-block-text compact";
+      notesInput.title = "Review notes for this artwork candidate.";
+      notesInput.value = item.notes || "";
+      const artActions = actions();
+      artActions.append(
+        button("Save Artwork", "Save artwork name, category, and notes.", async (btn) => runWithButtonProgress(btn, "Saving artwork...", async () => {
+          await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/artwork/${encodeURIComponent(item.id)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ title: titleInput.value, category: categorySelect.value, notes: notesInput.value, review_status: "checked" }),
+          });
+          await reloadCurrentScan("Artwork review saved.");
+        }))
+      );
+      editor.append(
+        img,
+        field("Artwork name", titleInput),
+        field("Artwork category", categorySelect),
+        field("Artwork notes", notesInput),
+        artActions
+      );
+      return editor;
+    }
     function draw() {
       const needle = search.value;
       const assignmentNeedle = assignment.value;
@@ -7027,9 +7067,17 @@ async function renderRulePdfManager() {
         );
         item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
         item.appendChild(summary);
+        const blockActions = actions();
+        blockActions.append(
+          button(block.source_item_type === "page-boundary candidate" ? "Inspect Candidate" : "Edit Block", "Open this source block in the active review tool without filling the row with edit controls.", () => {
+            if (block.pdf_page) goPdfPage(block.pdf_page);
+            openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, needle));
+          })
+        );
         item.append(
           el("p", "muted", `${block.page_label || ""}${block.id ? ` · ${block.id}` : ""}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
-          blockEditor(block, needle)
+          highlightedEl("p", "modern-pre-wrap modern-source-preview-text", block.text || "", needle),
+          blockActions
         );
         results.appendChild(item);
       }
@@ -7067,29 +7115,22 @@ async function renderRulePdfManager() {
           const img = el("img", "modern-source-artwork-image");
           img.alt = item.title || item.id || "Artwork candidate";
           if (item.asset_url) img.src = item.asset_url;
-          const titleInput = input("text", `modern-source-artwork-title-${item.id}`, "Name this artwork for later reuse.", item.title || "");
-          const categorySelect = select(`modern-source-artwork-category-${item.id}`, "Categorise this artwork for future game use.", categories.map((category) => [category, category.replace(/_/g, " ")]));
-          categorySelect.value = item.category || "unknown";
-          const notesInput = document.createElement("textarea");
-          notesInput.className = "modern-source-block-text compact";
-          notesInput.title = "Review notes for this artwork candidate.";
-          notesInput.value = item.notes || "";
           const artActions = actions();
           artActions.append(
-            button("Save Artwork", "Save artwork name, category, and notes.", async (btn) => runWithButtonProgress(btn, "Saving artwork...", async () => {
-              await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/artwork/${encodeURIComponent(item.id)}`, {
-                method: "PATCH",
-                body: JSON.stringify({ title: titleInput.value, category: categorySelect.value, notes: notesInput.value, review_status: "checked" }),
-              });
-              await reloadCurrentScan("Artwork review saved.");
-            }))
+            button("Edit Artwork", "Open this artwork candidate in the active review tool without filling every row with edit fields.", () => {
+              if (item.pdf_page) goPdfPage(item.pdf_page);
+              openSourceTool(`${item.title || item.id || "Artwork candidate"} · ${item.category || "unknown"}`, artworkEditor(item, categories));
+            })
           );
           row.append(
             summary,
             img,
-            field("Artwork name", titleInput),
-            field("Artwork category", categorySelect),
-            field("Artwork notes", notesInput),
+            modernInfoPanel("Artwork summary", item.title || item.id || "Artwork candidate", [
+              { label: "Page", value: item.page_label || `p.${item.source_page || "?"}` },
+              { label: "Category", value: item.category || "unknown" },
+              { label: "Type", value: String(item.candidate_type || "embedded_image").replace(/_/g, " ") },
+              { label: "Notes", value: item.notes || "None" },
+            ], "Use Edit Artwork to change title, category, notes, and review status."),
             artActions
           );
           artworkResults.appendChild(row);
@@ -7114,6 +7155,7 @@ async function renderRulePdfManager() {
     blockTools.append(field("Search source blocks and artwork", search), field("Assignment filter", assignment), selectionStatus, selectionActions, results);
     reviewPanel.append(
       modernStatusRow("Page review", `PDF page ${pageInput.value || firstPdfPage}`, "By default this panel follows the PDF page. Enter a search term to search across the whole source document."),
+      sourceToolMount,
       workbenchSection("Page artwork", `${artworkItems.length} candidate(s) in this document`, renderArtworkPanel()),
       workbenchSection("Page text blocks", `${sourceItems.length} block/candidate item(s) in this document`, blockTools)
     );
