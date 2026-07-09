@@ -7304,6 +7304,16 @@ async function renderRulePdfManager() {
         notesInput.title = "Review notes for this package image source asset.";
         notesInput.value = asset.notes || "";
         const rowActions = actions("modern-row-actions");
+        const assetToolMount = el("div", "modern-asset-tool-panel hidden");
+        function openAssetTool(title, toolBody, afterOpen = () => {}) {
+          assetToolMount.classList.remove("hidden");
+          assetToolMount.replaceChildren(
+            modernStatusRow("Active asset tool", title, "Asset tools open here only when selected. The source asset and extracted child assets remain below as review data."),
+            toolBody
+          );
+          afterOpen();
+          scrollPanelIntoView(assetToolMount);
+        }
         rowActions.append(
           button("Save Asset", "Save title, assignment category, and notes for this package source image.", async (btn) => runWithButtonProgress(btn, "Saving asset...", async () => {
             await api(`/api/supplements/source-packages/${encodeURIComponent(pkg.supplement_id)}/assets/${encodeURIComponent(asset.id)}`, {
@@ -7323,12 +7333,17 @@ async function renderRulePdfManager() {
           }))
         );
         if (asset.asset_url) rowActions.append(link("Open Asset", asset.asset_url, "Open this imported package source asset in a new tab.", "link-button secondary"));
-        row.append(field("Asset title", titleInput), field("Artwork/module assignment", categorySelect), field("Asset notes", notesInput), rowActions);
+        row.append(field("Asset title", titleInput), field("Artwork/module assignment", categorySelect), field("Asset notes", notesInput), rowActions, assetToolMount);
         if (asset.asset_url) {
           const preview = el("img", "modern-source-artwork-image");
           preview.alt = asset.filename || "Package source asset";
           preview.src = asset.asset_url;
-          row.appendChild(preview);
+          const sourceAssetPanel = el("div", "modern-source-asset-data");
+          sourceAssetPanel.append(
+            modernStatusRow("Whole source asset", asset.filename || asset.id || "Imported image", "This is the original imported package asset. Use the row buttons above to extract masked artwork or auto-split a regular grid."),
+            preview
+          );
+          row.appendChild(sourceAssetPanel);
           const maskCrop = el("div", "modern-list");
           const maskName = input("text", `modern-package-asset-mask-name-${pkg.supplement_id}-${asset.id}`, "Name or die-roll id for this masked tile/art resource, such as 01, 12, chapel, or north_bridge.", "");
           const shapeMode = select(`modern-package-asset-mask-shape-${pkg.supplement_id}-${asset.id}`, "Shape to draw into the additive mask.", [["rect", "Rectangle / square"], ["ellipse", "Circle / oval"]]);
@@ -7505,11 +7520,11 @@ async function renderRulePdfManager() {
             maskStatus,
             maskActions
           );
-          const maskSection = workbenchSection("Mask crop", "Draw shapes on a large image and save one asset", maskCrop);
-          maskSection.addEventListener("toggle", () => {
-            if (maskSection.open) drawMaskCanvas();
-          });
-          row.appendChild(maskSection);
+          rowActions.append(
+            button("Manual Mask", "Open the manual mask cropper for this source asset. Use it for hand-drawn tiles or artwork that does not align to a regular grid.", () => {
+              openAssetTool("Manual Mask - draw rectangles/squares/circles/ovals over this source asset", maskCrop, drawMaskCanvas);
+            })
+          );
           const splitter = el("div", "modern-list");
           const rowsInput = input("number", `modern-package-asset-rows-${pkg.supplement_id}-${asset.id}`, "Number of tile rows in this sheet.", "6");
           const colsInput = input("number", `modern-package-asset-cols-${pkg.supplement_id}-${asset.id}`, "Number of tile columns in this sheet.", "6");
@@ -7557,7 +7572,11 @@ async function renderRulePdfManager() {
             field("Tile labels", labelsInput),
             splitActions
           );
-          row.appendChild(workbenchSection("Split tile sheet", "Creates named room tile assets from this image", splitter));
+          rowActions.append(
+            button("Auto Split", "Open the equal-grid tile splitter for this source asset. Use Manual Mask instead for hand-drawn or irregular sheets.", () => {
+              openAssetTool("Auto Split - create named tiles from an equal grid", splitter);
+            })
+          );
         }
         const childAssets = childAssetsByParent.get(String(asset.id || "")) || [];
         if (childAssets.length) row.appendChild(workbenchSection("Extracted tiles", `${childAssets.length} child tile/art asset(s) under this source sheet`, renderChildAssetList(childAssets)));

@@ -2936,6 +2936,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/api/supplements/source-asset" in MODERN_PAGES_JS
     assert "Split Grid To Tiles" in MODERN_PAGES_JS
     assert "Fill D66 Labels" in MODERN_PAGES_JS
+    assert "Manual Mask" in MODERN_PAGES_JS
+    assert "Auto Split" in MODERN_PAGES_JS
+    assert "Active asset tool" in MODERN_PAGES_JS
+    assert "modern-asset-tool-panel" in MODERN_PAGES_JS
     assert "Mask Crop" in MODERN_PAGES_JS
     assert "Save Mask Asset" in MODERN_PAGES_JS
     assert "Draw Mode" in MODERN_PAGES_JS

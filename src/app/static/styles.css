@@ -1282,6 +1282,20 @@ button.is-working::after {
   min-width: 0;
 }
 
+.modern-source-asset-data,
+.modern-asset-tool-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.modern-asset-tool-panel {
+  padding: 10px;
+  border: 1px solid rgba(201, 162, 39, 0.34);
+  border-radius: 6px;
+  background: rgba(201, 162, 39, 0.06);
+}
+
 .modern-source-artwork-image {
   display: block;
   max-width: min(100%, 28rem);

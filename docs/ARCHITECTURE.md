@@ -180,7 +180,10 @@ Home screen rule browsing:
   distorting crop coordinates. D66 label helpers support tile names such as
   `01`, `02`, `11`, `12`, etc. Extracted child tiles are grouped as a
   collapsible list under the parent tile-sheet asset rather than cluttering the
-  package's top-level source asset list.
+  package's top-level source asset list. Package asset rows keep tools separate
+  from review data: row-level buttons open a single active tool area for Manual
+  Mask or Auto Split, while the whole source asset and extracted child assets
+  remain in the data area below.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.
