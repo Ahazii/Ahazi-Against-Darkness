@@ -85,6 +85,33 @@ def _event_listener_body(target: str, event: str, src: str) -> str:
     raise AssertionError(f"Could not find closing brace for {target}.{event} listener")
 
 
+def _event_listener_bodies(target: str, event: str, src: str) -> list[str]:
+    """Return every `target.addEventListener("event", ... => { ... })` handler body."""
+    marker = f'{target}.addEventListener("{event}",'
+    bodies: list[str] = []
+    cursor = 0
+    while True:
+        start = src.find(marker, cursor)
+        if start == -1:
+            break
+        brace = src.find("{", start)
+        assert brace != -1, f"{target}.{event} listener body not found in app.js"
+        depth = 0
+        for j, ch in enumerate(src[brace:], brace):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    bodies.append(src[brace + 1 : j])
+                    cursor = j + 1
+                    break
+        else:
+            raise AssertionError(f"Could not find closing brace for {target}.{event} listener")
+    assert bodies, f"{target}.{event} listener not found in app.js"
+    return bodies
+
+
 def _compact(src: str) -> str:
     return re.sub(r"\s+", "", src)
 
@@ -2190,7 +2217,7 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert ".modern-warning-list" in STYLES_CSS
     assert "/api/adventures/packages" in MODERN_PAGES_JS
     assert "function renderAdventurePackageManager" in MODERN_PAGES_JS
-    assert "Promise.resolve().then(() => onClick()).catch(handleError)" in MODERN_PAGES_JS
+    assert "Promise.resolve().then(() => onClick(btn)).catch(handleError)" in MODERN_PAGES_JS
     assert "PDF Importer Module List" in MODERN_PAGES_JS
     assert "Scan New PDFs" in MODERN_PAGES_JS
     assert "Rescan All PDFs" in MODERN_PAGES_JS
@@ -2277,6 +2304,27 @@ def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable()
     assert ".modern-location-preview-grid" in STYLES_CSS
     assert "/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/review" in MODERN_PAGES_JS
     assert "/api/adventures/packages/${encodeURIComponent(pkg.package_id)}/extract-candidates" in MODERN_PAGES_JS
+
+
+def test_source_scan_detail_toggles_preview_without_redrawing_rows() -> None:
+    """
+    Source review rows must stay mounted when opened. Calling the full page
+    navigation/redraw path from a details toggle re-renders the list and makes
+    the row flash open then immediately close.
+    """
+    block_toggles = _event_listener_bodies("item", "toggle", MODERN_PAGES_JS)
+    artwork_toggles = _event_listener_bodies("row", "toggle", MODERN_PAGES_JS)
+    source_preview_toggles = [
+        body for body in [*block_toggles, *artwork_toggles]
+        if "previewPdfPage(" in body
+    ]
+    assert len(source_preview_toggles) >= 2
+    for body in source_preview_toggles:
+        assert "previewPdfPage(" in body
+        assert "goPdfPage(" not in body
+        assert "draw()" not in body
+        assert "drawArtwork()" not in body
+        assert "renderSourceScanDetail(" not in body
 
 
 def test_current_objective_and_tag_actions_dialog_layout_is_not_squeezed() -> None:
@@ -2806,7 +2854,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "sessionStorage.setItem(\"ahazi-modern-dev-unlocked\"",
         "availability reroll ${campaign.tag_guild_availability_reroll_used",
         "modernTablePreview",
-        "matching rule reference",
+        "matching ${isDeveloper ? \"developer\" : \"player\"} reference entr",
         "modern-rules-status",
         "modern-table-family",
         "modernTableFamily",
