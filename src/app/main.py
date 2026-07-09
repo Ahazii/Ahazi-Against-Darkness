@@ -73,6 +73,7 @@ from .engine.roster_sync import (
 from .engine.supplement_sources import (
     add_supplement_package_asset,
     delete_supplement_package_asset,
+    draft_supplement_source_table,
     extract_supplement_source_artwork,
     list_supplement_source_packages,
     list_supplement_source_scans,
@@ -91,6 +92,7 @@ from .engine.supplement_sources import (
     update_supplement_package_asset,
     update_supplement_source_artwork,
     update_supplement_source_block,
+    upsert_supplement_source_table,
 )
 from .engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_lines, upgrade_tag_manifest
 from .engine.tag_campaign import merge_tag_pdf_narrative_overrides, tag_narrative_overrides_path
@@ -898,6 +900,24 @@ async def save_supplement_source_block(source_id: str, block_id: str, payload: d
         return update_supplement_source_block(settings.data_dir, source_id, block_id, payload)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Source block not found.") from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/table-draft")
+async def draft_source_block_table(source_id: str, block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return draft_supplement_source_table(settings.data_dir, source_id, block_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source block not found.") from exc
+
+
+@app.put("/api/supplements/source-scans/{source_id}/tables/{table_id:path}")
+async def save_source_reviewed_table(source_id: str, table_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    table_payload = dict(payload)
+    table_payload["id"] = table_id
+    try:
+        return upsert_supplement_source_table(settings.data_dir, source_id, table_payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source scan not found.") from exc
 
 
 @app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/move")
@@ -3594,6 +3614,12 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "records": "PDF source rows stay playable=false until a validated adventure.json manifest exists.",
             "purpose": "Prevent source PDFs from appearing as broken modules in Go Adventure.",
             "pdf_boundary": "A reviewed manifest remains the source of playable room graph data.",
+        },
+        {
+            "field": "Reviewed table drafts",
+            "records": "Blocks assigned as table can be parsed into editable key/result/notes rows and saved as reviewed_tables in DATA_DIR/Supplements/_sources/<source_id>/source_blocks.json.",
+            "purpose": "Let a reviewer compare exact extracted PDF text with a machine table draft before any supplement loader or rules module consumes it.",
+            "pdf_boundary": "Saved table drafts are local review data only; they do not become active rules until promoted by trusted code.",
         },
     ]
     data["adventure_package_schema_table"] = [

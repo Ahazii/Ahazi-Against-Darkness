@@ -162,9 +162,9 @@ Home screen rule browsing:
   settings file also stores `supplement_id` and `supplement_title`, because a
   playable supplement may be assembled from several source PDFs: a main book,
   map sheet, extra adventure booklet, errata file, or bonus document. Each
-  source document keeps its own offset, raw blocks, reviewed blocks, and
-  artwork, while the workbench groups them under one supplement package id for
-  later manifest/export work.
+  source document keeps its own offset, raw blocks, reviewed blocks,
+  reviewed table drafts, and artwork, while the workbench groups them under one
+  supplement package id for later manifest/export work.
   Non-PDF source assets such as PNG/JPG/WebP maps or handouts are stored under
   `DATA_DIR/Supplements/_sources/_package_assets/<supplement_id>/` and listed
   with the same package id. These files are package-level evidence/source
@@ -189,7 +189,10 @@ Home screen rule browsing:
   down the page. Source block and artwork candidate rows follow the same
   separation: rows show compact previews and an Edit/Inspect command, while the
   selected block or artwork opens in one active review tool panel above the
-  page-led lists.
+  page-led lists. Blocks assigned as `table` can be drafted into editable
+  machine rows beside the exact source text; reviewed table drafts are stored in
+  `reviewed_tables` and are not active rules until a later trusted loader
+  promotes them.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.

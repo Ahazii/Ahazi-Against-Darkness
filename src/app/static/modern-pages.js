@@ -6827,6 +6827,7 @@ async function renderRulePdfManager() {
     const blocks = Array.isArray(payload.blocks) ? payload.blocks.map((block) => ({ ...block, source_item_type: "block" })) : [];
     const candidates = Array.isArray(payload.continuation_candidates) ? payload.continuation_candidates.map((block) => ({ ...block, source_item_type: "page-boundary candidate" })) : [];
     const artworkItems = Array.isArray(payload.artwork) ? payload.artwork : [];
+    const reviewedTables = Array.isArray(payload.tables) ? payload.tables : [];
     const sourceItems = blocks.concat(candidates);
     const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
     const assignment = select("modern-source-block-assignment", "Filter by current manual assignment.", [["", "All assignments"]]);
@@ -7029,6 +7030,120 @@ async function renderRulePdfManager() {
       );
       return editor;
     }
+    function tableDraftEditor(table, sourceText = "", needle = "") {
+      const editor = el("div", "modern-source-table-review-grid");
+      const sourcePanel = el("div", "modern-source-block-editor");
+      sourcePanel.append(
+        modernInfoPanel("Source block", table.page_label || "PDF source", [
+          { label: "Block id", value: table.source_block_id || "Manual table" },
+          { label: "Source PDF", value: table.source_pdf || payload.source_pdf || "Source PDF" },
+          { label: "Parser status", value: table.parser_status || "draft" },
+        ], "Exact extracted text remains beside the machine table draft for review."),
+        highlightedEl("p", "modern-pre-wrap modern-source-preview-text tall", sourceText || "No source text available.", needle)
+      );
+      const draftPanel = el("div", "modern-source-block-editor");
+      const tableIdInput = input("text", `modern-source-table-id-${table.id || "new"}`, "Stable machine id for this reviewed table. Use lowercase words separated by underscores.", table.id || "");
+      const titleInput = input("text", `modern-source-table-title-${table.id || "new"}`, "Human-readable table title from the PDF.", table.title || "");
+      const notesInput = document.createElement("textarea");
+      notesInput.className = "modern-source-block-text compact";
+      notesInput.title = "Reviewer notes about parsing, uncertain rows, or future loader work.";
+      notesInput.value = table.notes || "";
+      const rowsMount = el("div", "modern-table-draft-rows");
+      function addDraftRow(row = {}) {
+        const rowNode = el("div", "modern-table-draft-row");
+        const keyInput = input("text", "", "Dice result, key, range, or lookup value.", row.key || "");
+        const resultInput = input("text", "", "Machine-readable row text. Keep wording reviewed against the PDF before promoting.", row.result || "");
+        const noteInput = input("text", "", "Optional row note or uncertainty marker.", row.notes || "");
+        const deleteButton = button("Delete Row", "Remove this draft row from the reviewed table.", () => rowNode.remove());
+        rowNode.append(field("Key", keyInput), field("Result", resultInput), field("Notes", noteInput), deleteButton);
+        rowsMount.appendChild(rowNode);
+      }
+      for (const row of table.rows || []) addDraftRow(row);
+      if (!rowsMount.children.length) addDraftRow();
+      const tableActions = actions();
+      tableActions.append(
+        button("Add Row", "Add one editable row to this machine table draft.", () => addDraftRow()),
+        button("Save Reviewed Table", "Save this table draft into DATA_DIR/Supplements/_sources beside the source block scan.", async (btn) => runWithButtonProgress(btn, "Saving reviewed table...", async () => {
+          const tableId = String(tableIdInput.value || "").trim();
+          if (!tableId) throw new Error("Enter a table id before saving.");
+          const rows = [...rowsMount.querySelectorAll(".modern-table-draft-row")].map((rowNode) => {
+            const inputs = rowNode.querySelectorAll("input");
+            return {
+              key: inputs[0]?.value || "",
+              result: inputs[1]?.value || "",
+              notes: inputs[2]?.value || "",
+            };
+          });
+          await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/tables/${encodeURIComponent(tableId)}`, {
+            method: "PUT",
+            body: JSON.stringify({
+              ...table,
+              id: tableId,
+              title: titleInput.value,
+              notes: notesInput.value,
+              rows,
+              review_status: "reviewed",
+            }),
+          });
+          await reloadCurrentScan("Reviewed table saved.");
+        }))
+      );
+      draftPanel.append(
+        field("Table id", tableIdInput),
+        field("Table title", titleInput),
+        field("Table notes", notesInput),
+        rowsMount,
+        tableActions
+      );
+      editor.append(sourcePanel, draftPanel);
+      return editor;
+    }
+    async function openTableDraftFromBlock(block, needle = "") {
+      if (block.pdf_page) goPdfPage(block.pdf_page);
+      const draft = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/table-draft`, {
+        method: "POST",
+        body: JSON.stringify({ title: block.page_label || "" }),
+      });
+      openSourceTool(`Table Draft - ${draft.table?.title || block.page_label || block.id}`, tableDraftEditor(draft.table || {}, block.text || "", needle));
+    }
+    function renderReviewedTablesPanel() {
+      const panel = el("div", "modern-list");
+      panel.appendChild(modernInfoPanel("Reviewed table drafts", `${reviewedTables.length} table draft(s)`, [
+        { label: "Storage", value: "DATA_DIR/Supplements/_sources/<source>/source_blocks.json" },
+        { label: "Status", value: reviewedTables.length ? "Local reviewed tables available" : "No reviewed table drafts yet" },
+        { label: "Next step", value: "Assign a block as table, then use Draft Table." },
+      ], "These are reviewed machine table drafts, not active game rules yet."));
+      for (const table of reviewedTables) {
+        const row = document.createElement("details");
+        row.className = "modern-row";
+        const summary = document.createElement("summary");
+        summary.append(
+          el("strong", "", table.title || table.id || "Reviewed table"),
+          el("span", "muted", ` · ${(table.rows || []).length} row(s) · ${table.page_label || "source block"}`)
+        );
+        const sourceBlock = blocks.find((block) => block.id === table.source_block_id) || {};
+        const tableActions = actions();
+        tableActions.append(
+          button("Edit Table Draft", "Open this reviewed table in the active review tool.", () => {
+            if (table.pdf_page) goPdfPage(table.pdf_page);
+            openSourceTool(`Reviewed Table - ${table.title || table.id}`, tableDraftEditor(table, sourceBlock.text || "", search.value));
+          })
+        );
+        row.append(
+          summary,
+          modernInfoPanel("Table summary", table.id || "reviewed table", [
+            { label: "Title", value: table.title || "" },
+            { label: "Rows", value: `${(table.rows || []).length}` },
+            { label: "Source", value: table.page_label || table.source_block_id || "" },
+            { label: "Review status", value: table.review_status || "draft" },
+            { label: "Notes", value: table.notes || "None" },
+          ], "Use Edit Table Draft to inspect source text beside machine rows."),
+          tableActions
+        );
+        panel.appendChild(row);
+      }
+      return panel;
+    }
     function draw() {
       const needle = search.value;
       const assignmentNeedle = assignment.value;
@@ -7074,6 +7189,13 @@ async function renderRulePdfManager() {
             openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, needle));
           })
         );
+        if (block.assignment === "table" && block.source_item_type !== "page-boundary candidate") {
+          blockActions.append(
+            button("Draft Table", "Parse this table-assigned source block into editable machine rows beside the exact extracted text.", async (btn) => runWithButtonProgress(btn, "Drafting table...", async () => {
+              await openTableDraftFromBlock(block, needle);
+            }))
+          );
+        }
         item.append(
           el("p", "muted", `${block.page_label || ""}${block.id ? ` · ${block.id}` : ""}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
           highlightedEl("p", "modern-pre-wrap modern-source-preview-text", block.text || "", needle),
@@ -7156,6 +7278,7 @@ async function renderRulePdfManager() {
     reviewPanel.append(
       modernStatusRow("Page review", `PDF page ${pageInput.value || firstPdfPage}`, "By default this panel follows the PDF page. Enter a search term to search across the whole source document."),
       sourceToolMount,
+      workbenchSection("Reviewed tables", `${reviewedTables.length} table draft(s) in this source`, renderReviewedTablesPanel()),
       workbenchSection("Page artwork", `${artworkItems.length} candidate(s) in this document`, renderArtworkPanel()),
       workbenchSection("Page text blocks", `${sourceItems.length} block/candidate item(s) in this document`, blockTools)
     );
@@ -7167,6 +7290,7 @@ async function renderRulePdfManager() {
         { label: "Text blocks", value: `${blocks.length}` },
         { label: "Boundary candidates", value: `${candidates.length}` },
         { label: "Artwork candidates", value: `${artworkItems.length}` },
+        { label: "Reviewed tables", value: `${reviewedTables.length}` },
         { label: "Printed page offset", value: `${payload.page_offset || 0}`, hint: "Used when PDF viewer pages differ from printed book pages." },
         { label: "Local data", value: "DATA_DIR/Supplements/_sources", hint: "Exact copied prose and review metadata remain local appdata." },
       ], "Exact copied prose remains local in DATA_DIR/Supplements/_sources."),
@@ -7209,7 +7333,7 @@ async function renderRulePdfManager() {
       const body = el("div", "");
       body.append(
         el("strong", "", scan.source_id || "source scan"),
-        el("p", "muted", `${scan.source_pdf || "PDF"} · package ${scan.supplement_id || "supplement"} · ${scan.blocks || 0} block(s) · ${scan.artwork || 0} artwork · ${scan.continuation_candidates || 0} page-boundary candidate(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
+        el("p", "muted", `${scan.source_pdf || "PDF"} · package ${scan.supplement_id || "supplement"} · ${scan.blocks || 0} block(s) · ${scan.artwork || 0} artwork · ${scan.tables || 0} table draft(s) · ${scan.continuation_candidates || 0} page-boundary candidate(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
         el("p", "muted", sourceScanAssignmentSummary(scan))
       );
       const scanRow = el("div", "modern-row");
@@ -7669,7 +7793,7 @@ async function renderRulePdfManager() {
         for (const scan of pkg.sources || []) appendScanRow(scan, sourceList);
         const section = workbenchSection(
           pkg.supplement_title || pkg.supplement_id || "Supplement package",
-          `${pkg.source_count || 0} source PDF(s), ${pkg.asset_count || 0} package asset(s), ${pkg.blocks || 0} block(s), ${pkg.artwork || 0} artwork`,
+          `${pkg.source_count || 0} source PDF(s), ${pkg.asset_count || 0} package asset(s), ${pkg.blocks || 0} block(s), ${pkg.artwork || 0} artwork, ${pkg.tables || 0} table draft(s)`,
           sourceList
         );
         sourceScanStatus.appendChild(section);

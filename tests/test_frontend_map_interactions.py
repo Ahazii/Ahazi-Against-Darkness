@@ -2986,6 +2986,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Active review tool" in MODERN_PAGES_JS
     assert "modern-source-tool-panel" in STYLES_CSS
     assert "modern-source-preview-text" in STYLES_CSS
+    assert "modern-source-table-review-grid" in STYLES_CSS
+    assert "modern-table-draft-row" in STYLES_CSS
     assert "modern-source-pdf-viewer" in MODERN_PAGES_JS
     assert "modern-source-pdf-canvas" in MODERN_PAGES_JS
     assert "modern-source-pdf-image" in MODERN_PAGES_JS
@@ -2996,6 +2998,12 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Save Block" in MODERN_PAGES_JS
     assert "Edit Block" in MODERN_PAGES_JS
     assert "Inspect Candidate" in MODERN_PAGES_JS
+    assert "Draft Table" in MODERN_PAGES_JS
+    assert "Save Reviewed Table" in MODERN_PAGES_JS
+    assert "Reviewed tables" in MODERN_PAGES_JS
+    assert "Table Draft" in MODERN_PAGES_JS
+    assert "/table-draft" in MODERN_PAGES_JS
+    assert "/tables/" in MODERN_PAGES_JS
     assert "Split At Cursor" in MODERN_PAGES_JS
     assert "Move Up" in MODERN_PAGES_JS
     assert "Move Down" in MODERN_PAGES_JS

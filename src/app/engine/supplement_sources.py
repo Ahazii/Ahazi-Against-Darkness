@@ -381,6 +381,137 @@ def _review_artwork_from_existing(existing: dict[str, Any]) -> list[dict[str, An
     return []
 
 
+def _review_tables_from_existing(existing: dict[str, Any]) -> list[dict[str, Any]]:
+    reviewed = existing.get("reviewed_tables")
+    if isinstance(reviewed, list):
+        return [item for item in reviewed if isinstance(item, dict)]
+    tables = existing.get("tables")
+    if isinstance(tables, list):
+        return [item for item in tables if isinstance(item, dict)]
+    return []
+
+
+def _table_id_from_title(source_id: str, title: str, block_id: str = "") -> str:
+    base = re.sub(r"[^a-z0-9]+", "_", str(title or "").lower()).strip("_")
+    if not base:
+        base = re.sub(r"[^a-z0-9]+", "_", str(block_id or "").lower()).strip("_")
+    if not base:
+        base = "reviewed_table"
+    prefix = re.sub(r"[^a-z0-9]+", "_", str(source_id or "source").lower()).strip("_") or "source"
+    return f"{prefix}_{base}_table"
+
+
+def _clean_table_title(text: str, fallback: str) -> str:
+    for line in str(text or "").replace("\r\n", "\n").replace("\r", "\n").splitlines():
+        clean = line.strip(" :-\t")
+        if clean:
+            return clean[:120]
+    return fallback
+
+
+def _parse_table_rows(text: str) -> tuple[list[dict[str, Any]], str]:
+    rows: list[dict[str, Any]] = []
+    pending: dict[str, Any] | None = None
+    unmatched: list[str] = []
+    row_pattern = re.compile(
+        r"^\s*(?P<key>(?:d?\d{1,3}|[A-Z])(?:\s*[-\u2013\u2014]\s*(?:d?\d{1,3}|[A-Z]))?|\d{1,2}[.)])\s+[:.)-]?\s*(?P<result>.+?)\s*$",
+        re.IGNORECASE,
+    )
+    for raw_line in str(text or "").replace("\r\n", "\n").replace("\r", "\n").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        match = row_pattern.match(line)
+        if match:
+            pending = {
+                "key": re.sub(r"\s+", "", match.group("key").rstrip(".)")),
+                "result": match.group("result").strip(),
+                "notes": "",
+            }
+            rows.append(pending)
+        elif pending:
+            pending["result"] = f"{pending.get('result') or ''} {line}".strip()
+        else:
+            unmatched.append(line)
+    status = "parsed" if rows else "manual_entry_needed"
+    if unmatched and rows:
+        status = "parsed_with_unmatched_header"
+    return rows, status
+
+
+def draft_supplement_source_table(data_dir: Path, source_id: str, block_id: str, changes: dict[str, Any] | None = None) -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    blocks = payload.get("reviewed_blocks", [])
+    block = next((item for item in blocks if isinstance(item, dict) and item.get("id") == block_id), None)
+    if block is None:
+        raise KeyError(block_id)
+    changes = changes or {}
+    title = str(changes.get("title") or _clean_table_title(str(block.get("text") or ""), str(block.get("page_label") or "Reviewed table"))).strip()
+    table_id = str(changes.get("table_id") or _table_id_from_title(source_id, title, block_id)).strip()
+    rows, parser_status = _parse_table_rows(str(block.get("text") or ""))
+    table = {
+        "id": table_id,
+        "title": title,
+        "source_block_id": block_id,
+        "source_pdf": str(block.get("source_pdf") or payload.get("source_pdf") or ""),
+        "source_page": block.get("source_page"),
+        "pdf_page": block.get("pdf_page"),
+        "page_label": str(block.get("page_label") or ""),
+        "assignment": "table",
+        "columns": ["key", "result", "notes"],
+        "rows": rows,
+        "parser_status": parser_status,
+        "review_status": "draft",
+        "notes": str(changes.get("notes") or ""),
+    }
+    return {"table": table, "message": f"Drafted {len(rows)} table row(s) from source block."}
+
+
+def upsert_supplement_source_table(data_dir: Path, source_id: str, table_payload: dict[str, Any]) -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    table_id = str(table_payload.get("id") or "").strip()
+    if not table_id:
+        table_id = _table_id_from_title(source_id, str(table_payload.get("title") or ""), str(table_payload.get("source_block_id") or ""))
+    rows = table_payload.get("rows") if isinstance(table_payload.get("rows"), list) else []
+    clean_rows: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("key") or "").strip()
+        result = str(row.get("result") or "").strip()
+        notes = str(row.get("notes") or "").strip()
+        if not key and not result and not notes:
+            continue
+        clean_rows.append({"key": key, "result": result, "notes": notes})
+    table = {
+        "id": table_id,
+        "title": str(table_payload.get("title") or table_id).strip(),
+        "source_block_id": str(table_payload.get("source_block_id") or ""),
+        "source_pdf": str(table_payload.get("source_pdf") or payload.get("source_pdf") or ""),
+        "source_page": table_payload.get("source_page"),
+        "pdf_page": table_payload.get("pdf_page"),
+        "page_label": str(table_payload.get("page_label") or ""),
+        "assignment": "table",
+        "columns": ["key", "result", "notes"],
+        "rows": clean_rows,
+        "parser_status": str(table_payload.get("parser_status") or "manual_reviewed"),
+        "review_status": str(table_payload.get("review_status") or "reviewed"),
+        "notes": str(table_payload.get("notes") or ""),
+    }
+    tables = _review_tables_from_existing(payload)
+    replaced = False
+    for index, existing in enumerate(tables):
+        if str(existing.get("id") or "") == table_id:
+            tables[index] = table
+            replaced = True
+            break
+    if not replaced:
+        tables.append(table)
+    payload["reviewed_tables"] = tables
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {"table": table, "message": f"Saved reviewed table {table_id} with {len(clean_rows)} row(s)."}
+
+
 def scan_supplement_source_pdf(
     data_dir: Path,
     pdf_path: Path,
@@ -491,6 +622,7 @@ def scan_supplement_source_pdf(
         "continuation_candidates": continuation_candidates,
         "raw_artwork": existing.get("raw_artwork", []),
         "reviewed_artwork": _review_artwork_from_existing(existing),
+        "reviewed_tables": _review_tables_from_existing(existing),
     }
     supplement_source_scan_path(data_dir, source_id).write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     return {
@@ -522,10 +654,13 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     payload["supplement_title"] = str(payload.get("supplement_title") or payload.get("source_pdf") or source_id)
     reviewed = _review_blocks_from_existing(payload)
     reviewed_artwork = _review_artwork_from_existing(payload)
+    reviewed_tables = _review_tables_from_existing(payload)
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
     payload["reviewed_artwork"] = reviewed_artwork
     payload["artwork"] = reviewed_artwork
+    payload["reviewed_tables"] = reviewed_tables
+    payload["tables"] = reviewed_tables
     if "raw_blocks" not in payload:
         payload["raw_blocks"] = [dict(block) for block in reviewed]
     if "raw_artwork" not in payload:
@@ -539,10 +674,13 @@ def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[st
     payload["source_id"] = str(payload.get("source_id") or source_id)
     reviewed = _review_blocks_from_existing(payload)
     reviewed_artwork = _review_artwork_from_existing(payload)
+    reviewed_tables = _review_tables_from_existing(payload)
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
     payload["reviewed_artwork"] = reviewed_artwork
     payload["artwork"] = reviewed_artwork
+    payload["reviewed_tables"] = reviewed_tables
+    payload["tables"] = reviewed_tables
     payload["assignment_options"] = sorted(SOURCE_BLOCK_ASSIGNMENTS)
     payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
     path = supplement_source_scan_path(data_dir, source_id)
@@ -842,6 +980,7 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
         raw_blocks = [block for block in payload.get("raw_blocks", []) if isinstance(block, dict)]
         continuation_candidates = [block for block in payload.get("continuation_candidates", []) if isinstance(block, dict)]
         artwork = [item for item in payload.get("reviewed_artwork", []) if isinstance(item, dict)]
+        tables = [item for item in payload.get("reviewed_tables", []) if isinstance(item, dict)]
         assignments: dict[str, int] = {}
         reviewed = 0
         for block in blocks:
@@ -861,6 +1000,7 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
                 "raw_blocks": len(raw_blocks),
                 "continuation_candidates": len(continuation_candidates),
                 "artwork": len(artwork),
+                "tables": len(tables),
                 "reviewed_blocks": reviewed,
                 "assignment_counts": assignments,
                 "path": str(scan_path),
@@ -886,6 +1026,7 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
             "asset_categories": sorted(SUPPLEMENT_PACKAGE_ASSET_CATEGORIES),
             "blocks": 0,
             "artwork": 0,
+            "tables": 0,
             "reviewed_blocks": 0,
             "sources": [],
             "assets": assets,
@@ -902,6 +1043,7 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
                 "asset_categories": sorted(SUPPLEMENT_PACKAGE_ASSET_CATEGORIES),
                 "blocks": 0,
                 "artwork": 0,
+                "tables": 0,
                 "reviewed_blocks": 0,
                 "sources": [],
                 "assets": [],
@@ -910,6 +1052,7 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
         package["source_count"] = int(package.get("source_count") or 0) + 1
         package["blocks"] = int(package.get("blocks") or 0) + int(scan.get("blocks") or 0)
         package["artwork"] = int(package.get("artwork") or 0) + int(scan.get("artwork") or 0)
+        package["tables"] = int(package.get("tables") or 0) + int(scan.get("tables") or 0)
         package["reviewed_blocks"] = int(package.get("reviewed_blocks") or 0) + int(scan.get("reviewed_blocks") or 0)
         package["sources"].append(scan)
     return sorted(grouped.values(), key=lambda item: str(item.get("supplement_title") or item.get("supplement_id") or ""))

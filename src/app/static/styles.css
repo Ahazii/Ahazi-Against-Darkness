@@ -1319,6 +1319,34 @@ button.is-working::after {
   overflow: auto;
 }
 
+.modern-source-preview-text.tall {
+  max-height: 34rem;
+}
+
+.modern-source-table-review-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(22rem, 1.1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+.modern-table-draft-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.modern-table-draft-row {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.25fr) minmax(12rem, 1fr) minmax(8rem, 0.45fr) auto;
+  gap: 8px;
+  align-items: end;
+  padding: 8px;
+  border: 1px solid #3c3a30;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
 .modern-source-artwork-panel {
   display: grid;
   gap: 8px;
@@ -1701,6 +1729,11 @@ button.is-working::after {
 
   .modern-info-grid dd {
     padding-bottom: 5px;
+  }
+
+  .modern-source-table-review-grid,
+  .modern-table-draft-row {
+    grid-template-columns: 1fr;
   }
 
   .modern-page-head.has-artwork #modern-page-help,

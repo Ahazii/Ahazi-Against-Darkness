@@ -799,6 +799,7 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
             "raw_blocks": 3,
             "continuation_candidates": 1,
             "artwork": 0,
+            "tables": 0,
             "reviewed_blocks": 0,
             "assignment_counts": {"unassigned": 3},
             "path": str(path),
@@ -923,6 +924,82 @@ def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch)
     detail = client.get("/api/supplements/source-scans/mixed-book").json()
     assert detail["source_pdf_url"] == "/api/rules/pdf/Mixed%20Book.pdf"
     assert detail["source_pdf_page_url"] == "/api/rules/pdf-page/Mixed%20Book.pdf"
+
+
+def test_source_block_table_draft_can_be_reviewed_and_saved(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Small Tables.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [
+            {
+                "page": 2,
+                "text": "Tiny Trouble Table\n1 Rats in the cellar\n2 Goblin at the gate\n3-6 Nothing happens",
+                "methods": ["layout"],
+            }
+        ],
+    )
+
+    client = TestClient(main_module.app)
+    client.post("/api/supplements/source-scan", json={"filename": "Small Tables.pdf"})
+    client.patch(
+        "/api/supplements/source-scans/small-tables/blocks/small-tables-p2-b001",
+        json={"assignment": "table", "review_status": "checked"},
+    )
+    merged = client.post(
+        "/api/supplements/source-scans/small-tables/blocks/merge-selected",
+        json={
+            "block_ids": [
+                "small-tables-p2-b001",
+                "small-tables-p2-b002",
+                "small-tables-p2-b003",
+                "small-tables-p2-b004",
+            ]
+        },
+    ).json()
+    table_block_id = merged["block"]["id"]
+    client.patch(
+        f"/api/supplements/source-scans/small-tables/blocks/{table_block_id}",
+        json={"assignment": "table", "review_status": "checked"},
+    )
+
+    draft = client.post(
+        f"/api/supplements/source-scans/small-tables/blocks/{table_block_id}/table-draft",
+        json={"title": "Tiny Trouble Table"},
+    ).json()
+    assert draft["table"]["source_block_id"] == table_block_id
+    assert draft["table"]["id"] == "small_tables_tiny_trouble_table_table"
+    assert [row["key"] for row in draft["table"]["rows"]] == ["1", "2", "3-6"]
+    assert draft["table"]["rows"][1]["result"] == "Goblin at the gate"
+
+    draft["table"]["rows"].append({"key": "7", "result": "Reviewer-added row", "notes": "manual"})
+    draft["table"]["review_status"] = "reviewed"
+    saved = client.put(
+        "/api/supplements/source-scans/small-tables/tables/small_tables_tiny_trouble_table_table",
+        json=draft["table"],
+    ).json()
+    assert saved["table"]["review_status"] == "reviewed"
+    assert len(saved["table"]["rows"]) == 4
+
+    detail = client.get("/api/supplements/source-scans/small-tables").json()
+    assert detail["tables"][0]["title"] == "Tiny Trouble Table"
+    assert detail["tables"][0]["rows"][-1]["notes"] == "manual"
+    packages = client.get("/api/supplements/source-scans").json()["packages"]
+    assert packages[0]["tables"] == 1
 
 
 def test_source_scans_can_share_one_supplement_package(tmp_path: Path, monkeypatch) -> None:
