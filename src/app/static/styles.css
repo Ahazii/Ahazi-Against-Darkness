@@ -1292,6 +1292,17 @@ button.is-working::after {
   background: #0f100d;
 }
 
+.modern-mask-canvas {
+  display: block;
+  width: min(100%, 980px);
+  max-height: 72vh;
+  border: 1px solid #6f5c23;
+  border-radius: 6px;
+  background: #0f100d;
+  cursor: crosshair;
+  touch-action: none;
+}
+
 .modern-version {
   color: var(--muted);
   min-width: auto;

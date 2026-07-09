@@ -2936,10 +2936,12 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/api/supplements/source-asset" in MODERN_PAGES_JS
     assert "Split Grid To Tiles" in MODERN_PAGES_JS
     assert "Fill D66 Labels" in MODERN_PAGES_JS
-    assert "Manual Crop" in MODERN_PAGES_JS
-    assert "Save Manual Crop" in MODERN_PAGES_JS
+    assert "Mask Crop" in MODERN_PAGES_JS
+    assert "Save Mask Asset" in MODERN_PAGES_JS
     assert "Delete Asset" in MODERN_PAGES_JS
-    assert "cropRectFromInputs" in MODERN_PAGES_JS
+    assert "Delete Selected Assets" in MODERN_PAGES_JS
+    assert "maskToCanvasBlob" in MODERN_PAGES_JS
+    assert "modern-mask-canvas" in MODERN_PAGES_JS
     assert "room_tile_sheet" in MODERN_PAGES_JS
     assert "imageToCanvasBlob" in MODERN_PAGES_JS
     assert "_package_assets" in MODERN_PAGES_JS
