@@ -200,6 +200,7 @@ def pdf_source_settings(data_dir: Path, pdf_path: Path) -> dict[str, Any]:
     settings = sources.get(source_id) if isinstance(sources.get(source_id), dict) else {}
     package_id = supplement_package_id(settings.get("supplement_id"), source_id)
     return {
+        "configured": bool(settings),
         "source_id": source_id,
         "filename": pdf_path.name,
         "page_offset": int(settings.get("page_offset") or 0),
@@ -239,6 +240,215 @@ def set_pdf_source_metadata(
 
 def set_pdf_source_page_offset(data_dir: Path, pdf_path: Path, page_offset: int) -> dict[str, Any]:
     return set_pdf_source_metadata(data_dir, pdf_path, page_offset=page_offset)
+
+
+def _relabel_page_record(record: dict[str, Any], page_offset: int) -> bool:
+    try:
+        pdf_page = int(record.get("pdf_page") or 0)
+    except (TypeError, ValueError):
+        return False
+    if pdf_page < 1:
+        return False
+    old_source_page = record.get("source_page")
+    record["source_page"] = display_page_number(pdf_page, page_offset)
+    record["page_offset"] = int(page_offset)
+    try:
+        pdf_page_end = int(record.get("pdf_page_end") or 0)
+    except (TypeError, ValueError):
+        pdf_page_end = 0
+    if pdf_page_end > 0:
+        record["source_page_end"] = display_page_number(pdf_page_end, page_offset)
+        record["page_label"] = f"{page_label(pdf_page, page_offset)} to {page_label(pdf_page_end, page_offset)}"
+    else:
+        record["page_label"] = page_label(pdf_page, page_offset)
+    title = str(record.get("title") or "")
+    if re.fullmatch(r"Page\s+-?\d+\s+image\s+\d+", title, flags=re.IGNORECASE):
+        image_number = title.rsplit(" ", 1)[-1]
+        record["title"] = f"Page {record['source_page']} image {image_number}"
+    elif re.fullmatch(r"Rendered\s+page\s+-?\d+", title, flags=re.IGNORECASE):
+        record["title"] = f"Rendered page {record['source_page']}"
+    return old_source_page != record["source_page"]
+
+
+def _merge_orphaned_package_assets(
+    data_dir: Path,
+    settings_payload: dict[str, Any],
+    *,
+    old_package_id: str,
+    new_package_id: str,
+    new_package_title: str,
+    moving_source_id: str,
+) -> int:
+    if old_package_id == new_package_id:
+        return 0
+    sources = settings_payload.get("sources") if isinstance(settings_payload.get("sources"), dict) else {}
+    if any(
+        supplement_package_id(source.get("supplement_id"), str(source_id)) == old_package_id
+        for source_id, source in sources.items()
+        if isinstance(source, dict)
+    ):
+        return 0
+    known_package_ids = {
+        supplement_package_id(str(package.get("supplement_id") or package_id), str(package_id))
+        for package_id, package in _package_settings(settings_payload).items()
+        if isinstance(package, dict)
+    }
+    for scan_path in supplement_sources_root(data_dir).glob("*/source_blocks.json"):
+        if scan_path.parent.name == moving_source_id:
+            continue
+        try:
+            scan = json.loads(scan_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(scan, dict) and _source_package_id({**scan, "source_id": scan_path.parent.name}, known_package_ids) == old_package_id:
+            return 0
+    packages = _package_settings(settings_payload)
+    old_package = packages.get(old_package_id) if isinstance(packages.get(old_package_id), dict) else None
+    if old_package is None:
+        return 0
+    new_package = packages.get(new_package_id) if isinstance(packages.get(new_package_id), dict) else {
+        "supplement_id": new_package_id,
+        "supplement_title": new_package_title,
+        "assets": [],
+    }
+    existing_assets = [item for item in new_package.get("assets", []) if isinstance(item, dict)]
+    existing_names = {str(item.get("filename") or "") for item in existing_assets}
+    old_dir = supplement_package_asset_dir(data_dir, old_package_id)
+    new_dir = supplement_package_asset_dir(data_dir, new_package_id)
+    migrated = 0
+    for asset in old_package.get("assets", []):
+        if not isinstance(asset, dict):
+            continue
+        filename = Path(str(asset.get("filename") or "")).name
+        if not filename:
+            continue
+        source_path = old_dir / filename
+        target_path = new_dir / filename
+        if filename not in existing_names:
+            new_dir.mkdir(parents=True, exist_ok=True)
+            if source_path.is_file() and not target_path.exists():
+                shutil.move(str(source_path), str(target_path))
+            moved = dict(asset)
+            moved["asset_url"] = f"/api/supplements/source-packages/{new_package_id}/assets/{filename}"
+            existing_assets.append(moved)
+            existing_names.add(filename)
+            migrated += 1
+        elif source_path.is_file():
+            if not target_path.exists():
+                new_dir.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(source_path), str(target_path))
+            else:
+                source_path.unlink()
+    new_package.update({
+        "supplement_id": new_package_id,
+        "supplement_title": new_package_title,
+        "assets": existing_assets,
+    })
+    packages[new_package_id] = new_package
+    del packages[old_package_id]
+    if old_dir.is_dir() and not any(old_dir.iterdir()):
+        old_dir.rmdir()
+    return migrated
+
+
+def update_supplement_source_metadata(
+    data_dir: Path,
+    source_id: str,
+    *,
+    page_offset: int,
+    supplement_id: str | None = None,
+    supplement_title: str | None = None,
+    source_filename: str = "",
+) -> dict[str, Any]:
+    """Apply printed-page and package metadata to every existing review artifact."""
+    clean_source_id = supplement_package_id(source_id, "pdf-source")
+    payload = load_supplement_source_scan(data_dir, clean_source_id)
+    settings_payload = _load_source_settings(data_dir)
+    settings_sources = settings_payload.get("sources") if isinstance(settings_payload.get("sources"), dict) else {}
+    previous_settings = settings_sources.get(clean_source_id) if isinstance(settings_sources.get(clean_source_id), dict) else {}
+    source_pdf = str(payload.get("source_pdf") or previous_settings.get("filename") or source_filename or "")
+    filename = Path(source_pdf.replace("\\", "/")).name
+    if not filename:
+        raise KeyError(clean_source_id)
+    old_package_id = supplement_package_id(
+        str(payload.get("supplement_id") or previous_settings.get("supplement_id") or ""),
+        clean_source_id,
+    )
+    new_package_id = supplement_package_id(supplement_id, old_package_id)
+    new_package_title = str(
+        supplement_title
+        or payload.get("supplement_title")
+        or previous_settings.get("supplement_title")
+        or _friendly_source_title(None, filename, new_package_id)
+    ).strip()
+    settings_sources[clean_source_id] = {
+        **previous_settings,
+        "source_id": clean_source_id,
+        "filename": filename,
+        "page_offset": int(page_offset),
+        "supplement_id": new_package_id,
+        "supplement_title": new_package_title,
+    }
+    settings_payload["sources"] = settings_sources
+
+    relabelled = 0
+    seen_lists: set[int] = set()
+    for key in (
+        "raw_blocks",
+        "reviewed_blocks",
+        "blocks",
+        "continuation_candidates",
+        "raw_artwork",
+        "reviewed_artwork",
+        "artwork",
+        "reviewed_tables",
+        "tables",
+    ):
+        records = payload.get(key)
+        if not isinstance(records, list) or id(records) in seen_lists:
+            continue
+        seen_lists.add(id(records))
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            record["supplement_id"] = new_package_id
+            record["supplement_title"] = new_package_title
+            if _relabel_page_record(record, page_offset):
+                relabelled += 1
+    payload.update({
+        "supplement_id": new_package_id,
+        "supplement_title": new_package_title,
+        "page_offset": int(page_offset),
+    })
+    migrated_assets = _merge_orphaned_package_assets(
+        data_dir,
+        settings_payload,
+        old_package_id=old_package_id,
+        new_package_id=new_package_id,
+        new_package_title=new_package_title,
+        moving_source_id=clean_source_id,
+    )
+    packages = _package_settings(settings_payload)
+    target_package = packages.get(new_package_id) if isinstance(packages.get(new_package_id), dict) else {}
+    packages[new_package_id] = {
+        **target_package,
+        "supplement_id": new_package_id,
+        "supplement_title": new_package_title,
+        "assets": target_package.get("assets") if isinstance(target_package.get("assets"), list) else [],
+    }
+    _write_source_settings(data_dir, settings_payload)
+    if supplement_source_scan_path(data_dir, clean_source_id).exists():
+        save_supplement_source_scan(data_dir, clean_source_id, payload)
+    return {
+        "source_id": clean_source_id,
+        "filename": filename,
+        "page_offset": int(page_offset),
+        "supplement_id": new_package_id,
+        "supplement_title": new_package_title,
+        "previous_supplement_id": old_package_id,
+        "records_relabelled": relabelled,
+        "assets_migrated": migrated_assets,
+    }
 
 
 def _package_settings(payload: dict[str, Any]) -> dict[str, Any]:

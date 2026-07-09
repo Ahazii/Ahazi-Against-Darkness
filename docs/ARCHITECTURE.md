@@ -165,6 +165,13 @@ Home screen rule browsing:
   source document keeps its own offset, raw blocks, reviewed blocks,
   reviewed table drafts, and artwork, while the workbench groups them under one
   supplement package id for later manifest/export work.
+  `PATCH /api/supplements/source-metadata` can correct a source's package id,
+  title, and printed-page offset after extraction. It recalculates page labels
+  from immutable `pdf_page` values across raw/reviewed blocks, assigned and
+  unassigned content, continuation metadata, artwork, reviewed tables, and the
+  local exact-text index. Stable block ids and human review edits are retained.
+  If the source was the final member of a mistaken package, package assets are
+  moved into the corrected package and duplicate filenames are consolidated.
   Non-PDF source assets such as PNG/JPG/WebP maps or handouts are stored under
   `DATA_DIR/Supplements/_sources/_package_assets/<supplement_id>/` and listed
   with the same package id. These files are package-level evidence/source
@@ -213,7 +220,9 @@ Home screen rule browsing:
   crop/review work.
   Workbench scans can store both `pdf_page` and the offset-adjusted printed
   `source_page`; use `page_offset` when a PDF cover/front matter shifts the
-  viewer page number away from the printed book page.
+  viewer page number away from the printed book page. The offset is editable
+  after import; re-indexing, rescanning, and artwork re-extraction are not
+  required merely to correct printed page references.
 
 Home screen character UI:
 

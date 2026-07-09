@@ -278,3 +278,46 @@ def build_rule_text_index_for_pdf(rules_dir: Path, pdf_path: Path, *, now: str, 
         "message": f"Indexed {len(pages)} page(s) from {pdf_path.name} into DATA_DIR/rules/rule_text_index.json.",
         "index_status": local_rule_text_status(rules_dir),
     }
+
+
+def update_rule_text_index_page_offset(rules_dir: Path, pdf_path: Path, *, page_offset: int, now: str) -> dict[str, Any]:
+    """Relabel an already-indexed PDF without extracting its text again."""
+    index = load_local_rule_text_index(rules_dir)
+    source = f"DATA_DIR/rules/{pdf_path.name}"
+    changed_entries = 0
+    for entry in index.get("entries", []):
+        if not isinstance(entry, dict) or str(entry.get("source") or "") != source:
+            continue
+        try:
+            pdf_page = int(entry.get("pdf_page") or 0)
+        except (TypeError, ValueError):
+            continue
+        if pdf_page < 1:
+            continue
+        label = page_label(pdf_page, page_offset)
+        entry["source_page"] = display_page_number(pdf_page, page_offset)
+        entry["page_offset"] = int(page_offset)
+        entry["page_label"] = label
+        entry["title"] = f"{pdf_path.stem} {label}"
+        entry["summary"] = f"Exact local PDF text from {pdf_path.name}, {label}."
+        changed_entries += 1
+
+    changed_documents = 0
+    for document in index.get("documents", []):
+        if not isinstance(document, dict) or str(document.get("filename") or "") != pdf_path.name:
+            continue
+        document["page_offset"] = int(page_offset)
+        changed_documents += 1
+
+    if changed_entries or changed_documents:
+        index["updated_at"] = now
+        index["entries"] = sorted(
+            [entry for entry in index.get("entries", []) if isinstance(entry, dict)],
+            key=lambda item: (str(item.get("source", "")).lower(), int(item.get("pdf_page") or 0)),
+        )
+        local_rule_text_index_path(rules_dir).write_text(json.dumps(index, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {
+        "entries_updated": changed_entries,
+        "documents_updated": changed_documents,
+        "page_offset": int(page_offset),
+    }

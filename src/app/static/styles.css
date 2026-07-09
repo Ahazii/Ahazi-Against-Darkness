@@ -1413,6 +1413,37 @@ button.is-working::after {
   padding: 4px 7px;
 }
 
+.modern-source-metadata-controls {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) auto;
+  gap: 4px;
+  align-items: end;
+  min-width: 0;
+}
+
+.modern-source-metadata-controls .modern-field {
+  gap: 2px;
+  min-width: 0;
+}
+
+.modern-source-metadata-controls .modern-label {
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.modern-source-metadata-controls input {
+  width: 100%;
+  max-width: none;
+  min-height: 28px;
+  padding: 4px 7px;
+}
+
+.modern-source-metadata-controls button {
+  min-height: 28px;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
 .modern-source-action-groups {
   display: grid;
   grid-template-columns: repeat(5, minmax(3.9rem, 1fr));
@@ -2055,6 +2086,7 @@ button.is-working::after {
   .modern-source-import-grid,
   .modern-source-picker-bar,
   .modern-source-controls-grid,
+  .modern-source-metadata-controls,
   .modern-source-action-groups,
   .modern-source-control-actions,
   .modern-source-pdf-toolbar,

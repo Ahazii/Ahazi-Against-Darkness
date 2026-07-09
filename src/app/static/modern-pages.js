@@ -6857,6 +6857,13 @@ async function renderRulePdfManager() {
     selectedBlockIds: new Set(),
     scrollY: 0,
   };
+  let activeWorkbenchPackage = null;
+  function useActiveWorkbenchPackage() {
+    if (!activeWorkbenchPackage?.supplement_id) throw new Error("Open the destination module in the workbench first.");
+    supplementId.value = activeWorkbenchPackage.supplement_id;
+    supplementTitle.value = activeWorkbenchPackage.supplement_title || activeWorkbenchPackage.supplement_id;
+    return activeWorkbenchPackage;
+  }
   function persistSourceWorkbenchState() {
     window.sessionStorage.setItem("ahazi-source-workbench-package", sourceWorkbenchState.packageId || "");
     window.sessionStorage.setItem("ahazi-source-workbench-source", sourceWorkbenchState.sourceId || "");
@@ -6876,6 +6883,27 @@ async function renderRulePdfManager() {
       ["page", "Current PDF page"],
       ["document", "Whole document"],
     ]);
+    const sourceOffset = input("number", `modern-source-offset-${payload.source_id || "source"}`, "Correct the printed-page offset after indexing, block scanning, artwork extraction, or manual assignment. This relabels every raw and reviewed record without re-extracting the PDF.", String(payload.page_offset || 0));
+    const applySourceMetadataButton = button("✓ Metadata", "Apply the printed-page offset and current module identity to this source PDF. Assigned and unassigned blocks, artwork, table drafts, boundary metadata, and exact-text index entries are updated together; reviewed text and block IDs are preserved.", async (btn) => runWithButtonProgress(btn, "Applying metadata...", async () => {
+      const filename = String(payload.source_pdf || "").replace(/\\/g, "/").split("/").pop();
+      if (!filename) throw new Error("This source scan has no uploaded PDF filename.");
+      const result = await api("/api/supplements/source-metadata", {
+        method: "PATCH",
+        body: JSON.stringify({
+          filename,
+          page_offset: Number(sourceOffset.value || 0),
+          supplement_id: activeWorkbenchPackage?.supplement_id || payload.supplement_id,
+          supplement_title: activeWorkbenchPackage?.supplement_title || payload.supplement_title,
+        }),
+      });
+      pageOffset.value = String(result.page_offset || 0);
+      supplementId.value = result.supplement_id || "";
+      supplementTitle.value = result.supplement_title || "";
+      setStatus(result.message || "Source metadata applied.");
+      showRulePdfResult("ok", result.message || "Source metadata applied.", "Source metadata updated");
+      await refreshList();
+      await refreshSourceScans();
+    }));
     for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
     search.value = sourceWorkbenchState.search || "";
     assignment.value = sourceWorkbenchState.assignment || "";
@@ -7675,6 +7703,8 @@ async function renderRulePdfManager() {
       field("Filter", assignment),
       field("Assign to", bulkAssignment)
     );
+    const sourceMetadataControls = el("div", "modern-source-metadata-controls");
+    sourceMetadataControls.append(field("Printed page offset", sourceOffset), applySourceMetadataButton);
     const blockTools = el("div", "modern-source-controls-panel");
     blockTools.append(
       compactInfoStrip("Source controls", [
@@ -7682,6 +7712,7 @@ async function renderRulePdfManager() {
         { label: "Target", value: "content tree" },
       ], "These controls affect selected text blocks in the module contents tree."),
       controlFields,
+      sourceMetadataControls,
       selectionStatus,
       selectionActions
     );
@@ -7745,6 +7776,9 @@ async function renderRulePdfManager() {
       moduleWorkbenchMount.replaceChildren();
       sourcePickerBar.replaceChildren(field("Imported module", moduleSelect));
       if (!pkg) return;
+      activeWorkbenchPackage = pkg;
+      supplementId.value = pkg.supplement_id || "";
+      supplementTitle.value = pkg.supplement_title || pkg.supplement_id || "";
       sourceWorkbenchState.packageId = pkg.supplement_id || "";
       persistSourceWorkbenchState();
       const sourceMount = el("div", "modern-source-scan-detail");
@@ -8286,8 +8320,16 @@ async function renderRulePdfManager() {
   uploadedSelect.addEventListener("change", () => {
     const selectedSettings = uploadedPdfSettings.get(uploadedSelect.value);
     pageOffset.value = String(selectedSettings?.page_offset || 0);
-    supplementId.value = selectedSettings?.supplement_id || suggestedSupplementId(uploadedSelect.value);
-    supplementTitle.value = selectedSettings?.supplement_title || suggestedSupplementTitle(uploadedSelect.value);
+    if (selectedSettings?.configured) {
+      supplementId.value = selectedSettings.supplement_id || suggestedSupplementId(uploadedSelect.value);
+      supplementTitle.value = selectedSettings.supplement_title || suggestedSupplementTitle(uploadedSelect.value);
+    } else if (activeWorkbenchPackage?.supplement_id) {
+      supplementId.value = activeWorkbenchPackage.supplement_id;
+      supplementTitle.value = activeWorkbenchPackage.supplement_title || activeWorkbenchPackage.supplement_id;
+    } else {
+      supplementId.value = suggestedSupplementId(uploadedSelect.value);
+      supplementTitle.value = suggestedSupplementTitle(uploadedSelect.value);
+    }
   });
   await refreshList();
   await refreshSourceScans();
@@ -8315,6 +8357,23 @@ async function renderRulePdfManager() {
       setStatus(result.message || "PDF uploaded.");
       showRulePdfResult("ok", result.message || "PDF uploaded.", "Upload complete");
       await refreshList();
+      uploadedSelect.value = result.filename || chosen.name;
+      uploadedSelect.dispatchEvent(new Event("change"));
+    })),
+    button("⊕ Module", "Use Open Module: copy the module currently open below into the Package id and Package title fields. Use this before scanning or extracting a companion PDF so it remains inside that supplement.", () => {
+      const pkg = useActiveWorkbenchPackage();
+      setStatus(`New source actions will attach to ${pkg.supplement_title || pkg.supplement_id}.`);
+    }),
+    button("✓ Metadata", "Apply Source Metadata: correct the printed-page offset and package membership after indexing or extraction. This updates the exact-text index, assigned and unassigned blocks, artwork, table drafts, and page labels without rescanning or losing review work.", async (btn) => runWithButtonProgress(btn, "Applying source metadata...", async () => {
+      if (!uploadedSelect.value) throw new Error("Choose an uploaded PDF first.");
+      const result = await api("/api/supplements/source-metadata", {
+        method: "PATCH",
+        body: JSON.stringify(sourceMetadataPayload()),
+      });
+      setStatus(result.message || "Source metadata applied.");
+      showRulePdfResult("ok", result.message || "Source metadata applied.", "Source metadata updated");
+      await refreshList();
+      await refreshSourceScans();
     })),
     button("↑ Asset", "Upload Package Map/Image: attach the selected map, handout, or image file to the current supplement package. Use this for separate PNG/JPG map files that belong with the same module.", async (btn) => runWithButtonProgress(btn, "Uploading package asset...", async () => {
       const chosen = sourceAssetFile.files?.[0];

@@ -3146,6 +3146,11 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Artwork summary" in MODERN_PAGES_JS
     assert "modern-source-artwork-image" in MODERN_PAGES_JS
     assert "source_settings" in MODERN_PAGES_JS
+    assert "/api/supplements/source-metadata" in MODERN_PAGES_JS
+    assert "Use Open Module" in MODERN_PAGES_JS
+    assert "Apply Source Metadata" in MODERN_PAGES_JS
+    assert "modern-source-metadata-controls" in MODERN_PAGES_JS
+    assert "modern-source-metadata-controls" in STYLES_CSS
     assert "DATA_DIR/Supplements/_sources" in MODERN_PAGES_JS
     assert "Extracting Adventures Guild narrative..." in MODERN_PAGES_JS
     assert "/api/rules/index-pdf-text" in MODERN_PAGES_JS

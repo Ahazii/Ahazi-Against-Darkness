@@ -70,7 +70,10 @@ current with every rules or content change.
   duplicate cleanup tool for local imported PDFs. The workbench also has a
   guarded source reset that removes reviewed blocks, reviewed tables, extracted
   artwork, package assets, and rendered PDF page cache for a selected source so
-  a PDF can be reimported from a genuinely clean local state.
+  a PDF can be reimported from a genuinely clean local state. Printed-page
+  offsets and package membership can also be corrected after indexing and
+  extraction; existing assignments, edited blocks, artwork review, table
+  drafts, and exact-text index entries are relabelled without rescanning.
 
 ## Preserved Source Material
 

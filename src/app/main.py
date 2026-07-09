@@ -92,10 +92,12 @@ from .engine.supplement_sources import (
     split_supplement_source_block,
     supplement_package_asset_path,
     supplement_source_artwork_path,
+    supplement_source_id,
     supplement_source_scan_path,
     update_supplement_package_asset,
     update_supplement_source_artwork,
     update_supplement_source_block,
+    update_supplement_source_metadata,
     upsert_supplement_source_table,
 )
 from .engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_lines, upgrade_tag_manifest
@@ -113,6 +115,7 @@ from .engine.pdf_text_index import (
     build_rule_text_index_for_pdf,
     local_rule_text_status,
     merge_local_rule_text_reference,
+    update_rule_text_index_page_offset,
 )
 from .engine.tier_skills import (
     class_tricks_implementation_rows,
@@ -824,6 +827,44 @@ async def extract_supplement_artwork(payload: dict[str, Any]) -> dict[str, Any]:
         return extract_supplement_source_artwork(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset, **source_meta)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Could not extract supplement artwork: {exc}") from exc
+
+
+@app.patch("/api/supplements/source-metadata")
+async def apply_supplement_source_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+    filename = str(payload.get("filename") or "").strip()
+    if not filename:
+        raise HTTPException(status_code=400, detail="Choose an uploaded PDF first.")
+    pdf_path = _resolve_user_rule_pdf(filename)
+    page_offset = _payload_page_offset(payload)
+    source_id = supplement_source_id(pdf_path)
+    try:
+        result = update_supplement_source_metadata(
+            settings.data_dir,
+            source_id,
+            page_offset=page_offset,
+            supplement_id=str(payload.get("supplement_id") or "").strip() or None,
+            supplement_title=str(payload.get("supplement_title") or "").strip() or None,
+            source_filename=pdf_path.name,
+        )
+        index_result = update_rule_text_index_page_offset(
+            settings.rules_dir,
+            pdf_path,
+            page_offset=page_offset,
+            now=now_utc(),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Uploaded PDF source metadata could not be found.") from exc
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"Could not apply source metadata: {exc}") from exc
+    return {
+        **result,
+        "index_entries_relabelled": index_result["entries_updated"],
+        "message": (
+            f"Applied offset {page_offset} and package {result['supplement_title']} to {filename}. "
+            f"Relabelled {result['records_relabelled']} review record(s) and "
+            f"{index_result['entries_updated']} exact-text index page(s)."
+        ),
+    }
 
 
 @app.post("/api/supplements/source-asset")

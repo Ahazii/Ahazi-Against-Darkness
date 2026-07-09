@@ -720,6 +720,140 @@ def test_pdf_source_offset_is_reused_for_indexing_and_source_scans(tmp_path: Pat
     assert index["entries"][0]["page_label"] == "p.2 (PDF p.8)"
 
 
+def test_source_metadata_relabels_existing_review_data_and_moves_package(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import pdf_text_index, supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    pdf = rules_dir / "Companion Book.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+    pages = [
+        {"page": 7, "text": "Assigned rule text", "methods": ["layout"]},
+        {"page": 8, "text": "Unassigned adventure text", "methods": ["layout"]},
+    ]
+    monkeypatch.setattr(main_module, "settings", replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir))
+    monkeypatch.setattr(supplement_sources, "extract_rule_pdf_pages", lambda _path: pages)
+    monkeypatch.setattr(pdf_text_index, "extract_rule_pdf_pages", lambda _path: pages)
+    client = TestClient(main_module.app)
+
+    scan = client.post(
+        "/api/supplements/source-scan",
+        json={"filename": pdf.name, "supplement_id": "supplement-package", "supplement_title": "Supplement Package"},
+    ).json()
+    source_id = scan["source_id"]
+    client.post("/api/rules/index-pdf-text", json={"filename": pdf.name})
+    detail = supplement_sources.load_supplement_source_scan(tmp_path, source_id)
+    detail["reviewed_blocks"][0]["assignment"] = "rule_text"
+    detail["raw_artwork"] = [
+        {
+            "id": "art-1",
+            "pdf_page": 7,
+            "source_page": 7,
+            "page_label": "p.7",
+            "title": "Page 7 image 1",
+            "category": "foe",
+        }
+    ]
+    detail["reviewed_artwork"] = [dict(detail["raw_artwork"][0])]
+    detail["reviewed_tables"] = [
+        {"id": "table-1", "pdf_page": 8, "source_page": 8, "page_label": "p.8", "title": "Foes"}
+    ]
+    supplement_sources.save_supplement_source_scan(tmp_path, source_id, detail)
+    asset = client.post(
+        "/api/supplements/source-asset?filename=Map.png&supplement_id=supplement-package&supplement_title=Supplement%20Package",
+        content=b"map-bytes",
+        headers={"content-type": "image/png"},
+    )
+    assert asset.status_code == 200
+    client.post(
+        "/api/supplements/source-asset?filename=Handout.png&supplement_id=supplement-package&supplement_title=Supplement%20Package",
+        content=b"handout-bytes",
+        headers={"content-type": "image/png"},
+    )
+    client.post(
+        "/api/supplements/source-asset?filename=Map.png&supplement_id=crucible-of-classic-critters&supplement_title=Crucible%20of%20Classic%20Critters",
+        content=b"map-bytes",
+        headers={"content-type": "image/png"},
+    )
+
+    response = client.patch(
+        "/api/supplements/source-metadata",
+        json={
+            "filename": pdf.name,
+            "page_offset": -6,
+            "supplement_id": "crucible-of-classic-critters",
+            "supplement_title": "Crucible of Classic Critters",
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["previous_supplement_id"] == "supplement-package"
+    assert result["supplement_id"] == "crucible-of-classic-critters"
+    assert result["assets_migrated"] == 1
+    assert result["index_entries_relabelled"] == 2
+
+    saved = client.get(f"/api/supplements/source-scans/{source_id}").json()
+    assert saved["page_offset"] == -6
+    assert saved["blocks"][0]["assignment"] == "rule_text"
+    assert saved["blocks"][0]["source_page"] == 1
+    assert saved["blocks"][0]["page_label"] == "p.1 (PDF p.7)"
+    assert saved["blocks"][1]["assignment"] == "unassigned"
+    assert saved["artwork"][0]["source_page"] == 1
+    assert saved["artwork"][0]["title"] == "Page 1 image 1"
+    assert saved["tables"][0]["source_page"] == 2
+    assert saved["continuation_candidates"][0]["page_label"] == "p.1 (PDF p.7) to p.2 (PDF p.8)"
+    assert all(item["supplement_id"] == "crucible-of-classic-critters" for item in saved["blocks"])
+
+    index = json.loads((rules_dir / "rule_text_index.json").read_text(encoding="utf-8"))
+    assert [entry["source_page"] for entry in index["entries"]] == [1, 2]
+    assert index["documents"][0]["page_offset"] == -6
+    packages = client.get("/api/supplements/source-scans").json()["packages"]
+    assert [package["supplement_id"] for package in packages] == ["crucible-of-classic-critters"]
+    assert packages[0]["source_count"] == 1
+    assert packages[0]["asset_count"] == 2
+    moved_asset = tmp_path / "Supplements" / "_sources" / "_package_assets" / "crucible-of-classic-critters" / "Map.png"
+    assert moved_asset.read_bytes() == b"map-bytes"
+    moved_handout = tmp_path / "Supplements" / "_sources" / "_package_assets" / "crucible-of-classic-critters" / "Handout.png"
+    assert moved_handout.read_bytes() == b"handout-bytes"
+    assert not (tmp_path / "Supplements" / "_sources" / "_package_assets" / "supplement-package").exists()
+
+
+def test_source_metadata_can_be_saved_before_indexing_or_scanning(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "New Companion.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(main_module, "settings", replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir))
+
+    response = TestClient(main_module.app).patch(
+        "/api/supplements/source-metadata",
+        json={
+            "filename": "New Companion.pdf",
+            "page_offset": -4,
+            "supplement_id": "existing-module",
+            "supplement_title": "Existing Module",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = TestClient(main_module.app).get("/api/rules/pdfs").json()
+    settings = payload["uploaded"][0]["source_settings"]
+    assert settings["configured"] is True
+    assert settings["page_offset"] == -4
+    assert settings["supplement_id"] == "existing-module"
+    assert settings["supplement_title"] == "Existing Module"
+
+
 def test_rule_pdf_page_extraction_uses_layout_and_positioned_text() -> None:
     from app.engine import pdf_text_index
 
