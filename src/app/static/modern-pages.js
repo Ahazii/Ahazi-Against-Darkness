@@ -6674,6 +6674,8 @@ async function renderRulePdfManager() {
   const panel = card("PDF / Supplement Workbench", "Upload owned PDFs into DATA_DIR/rules, index exact page text for the player Rules Reference, or run specialist extractors while the broader supplement review workbench is built.");
   const file = input("file", "modern-rule-pdf-upload", "Choose an owned rules PDF from your computer to upload to the server.");
   file.accept = "application/pdf,.pdf";
+  const sourceAssetFile = input("file", "modern-supplement-source-asset-upload", "Choose a map, handout, or image source file to attach to the selected supplement package.");
+  sourceAssetFile.accept = "image/png,image/jpeg,image/webp,image/gif,image/bmp,image/svg+xml,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tif,.tiff,.svg";
   const uploadedSelect = select("modern-rule-pdf-select", "Uploaded DATA_DIR/rules PDF to extract from.", [["", "Choose uploaded PDF"]]);
   const pageOffset = input("number", "modern-rule-pdf-page-offset", "Optional printed-page offset. The app calculates printed page = PDF page + offset. Example: if PDF page 7 is printed page 1, enter -6.", "0");
   const supplementId = input("text", "modern-rule-pdf-supplement-id", "Supplement package id. Use the same id for multiple PDFs that belong to one supplement package.", "");
@@ -7037,7 +7039,7 @@ async function renderRulePdfManager() {
     const packages = payload.packages || [];
     sourceScanStatus.replaceChildren();
     sourceScanDetailMounts.length = 0;
-    if (!scans.length) {
+    if (!scans.length && !packages.length) {
       sourceScanStatus.appendChild(modernStatusRow("Source block scans", "No scans yet", "Use Scan Source Blocks after uploading or selecting a PDF."));
       return;
     }
@@ -7069,13 +7071,34 @@ async function renderRulePdfManager() {
       scanRow.append(body, row, detailMount);
       parent.appendChild(scanRow);
     }
+    function appendAssetRows(pkg, parent) {
+      for (const asset of pkg.assets || []) {
+        const row = el("div", "modern-row");
+        const body = el("div", "");
+        body.append(
+          el("strong", "", asset.filename || asset.id || "Package asset"),
+          el("p", "muted", `${asset.asset_kind || "map_or_image"} · ${Math.round((asset.size_bytes || 0) / 1024)} KB · ${asset.content_type || "source asset"}`)
+        );
+        const rowActions = actions("modern-row-actions");
+        if (asset.asset_url) rowActions.append(link("Open Asset", asset.asset_url, "Open this imported package source asset in a new tab.", "link-button secondary"));
+        row.append(body, rowActions);
+        if (asset.asset_url) {
+          const preview = el("img", "modern-source-artwork-image");
+          preview.alt = asset.filename || "Package source asset";
+          preview.src = asset.asset_url;
+          row.appendChild(preview);
+        }
+        parent.appendChild(row);
+      }
+    }
     if (packages.length) {
       for (const pkg of packages) {
         const sourceList = el("div", "modern-list");
+        appendAssetRows(pkg, sourceList);
         for (const scan of pkg.sources || []) appendScanRow(scan, sourceList);
         const section = workbenchSection(
           pkg.supplement_title || pkg.supplement_id || "Supplement package",
-          `${pkg.source_count || 0} source document(s), ${pkg.blocks || 0} block(s), ${pkg.artwork || 0} artwork`,
+          `${pkg.source_count || 0} source PDF(s), ${pkg.asset_count || 0} package asset(s), ${pkg.blocks || 0} block(s), ${pkg.artwork || 0} artwork`,
           sourceList
         );
         sourceScanStatus.appendChild(section);
@@ -7146,6 +7169,30 @@ async function renderRulePdfManager() {
       setStatus(result.message || "PDF uploaded.");
       showRulePdfResult("ok", result.message || "PDF uploaded.", "Upload complete");
       await refreshList();
+    })),
+    button("Upload Package Map/Image", "Attach the selected map, handout, or image file to the current supplement package. Use this for separate PNG/JPG map files that belong with the same module.", async (btn) => runWithButtonProgress(btn, "Uploading package asset...", async () => {
+      const chosen = sourceAssetFile.files?.[0];
+      if (!chosen) throw new Error("Choose a map or image file first.");
+      const metadata = sourceMetadataPayload();
+      const response = await fetch(`/api/supplements/source-asset?filename=${encodeURIComponent(chosen.name)}&supplement_id=${encodeURIComponent(metadata.supplement_id)}&supplement_title=${encodeURIComponent(metadata.supplement_title)}&asset_kind=map_or_image`, {
+        method: "POST",
+        headers: { "Content-Type": chosen.type || "application/octet-stream" },
+        body: await chosen.arrayBuffer(),
+      });
+      if (!response.ok) {
+        let detail = response.statusText;
+        try {
+          const payload = await response.json();
+          detail = payload.detail || detail;
+        } catch {
+          /* keep status text */
+        }
+        throw new Error(detail);
+      }
+      const result = await response.json();
+      setStatus(result.message || "Package source asset uploaded.");
+      showRulePdfResult("ok", result.message || "Package source asset uploaded.", "Package asset uploaded");
+      await refreshSourceScans();
     })),
     button("Index Exact Rules Text", "Extract exact searchable page text from the selected uploaded PDF into DATA_DIR/rules/rule_text_index.json. This is local/private user data and is not committed.", async (btn) => runWithButtonProgress(btn, "Indexing exact rules text...", async () => {
       try {
@@ -7221,18 +7268,19 @@ async function renderRulePdfManager() {
   );
   panel.append(
     field("Rules PDF", file),
+    field("Package map/image source", sourceAssetFile),
     field("Uploaded PDF", uploadedSelect),
     field("Supplement package id", supplementId),
     field("Supplement package title", supplementTitle),
     field("Printed page offset", pageOffset),
-    el("p", "muted", "Use the same supplement package id for every PDF, map sheet, or bonus document that belongs to the same future playable supplement. Each source still keeps its own page offset and review blocks."),
+    el("p", "muted", "Use the same supplement package id for every PDF, map sheet, image, or bonus document that belongs to the same future playable supplement. Each PDF source still keeps its own page offset and review blocks; imported image files are stored as package source assets."),
     el("p", "muted", "Page offset example: if PDF page 7 is printed page 1, enter -6. Leave this at 0 when the PDF viewer page number and printed book page number already match."),
     field("Overwrite local edits", overwrite),
     row,
     resultBox,
     status,
     sourceScanStatus,
-    el("p", "muted", "Rules text indexing stores exact PDF page text only in DATA_DIR/rules/rule_text_index.json for private local search. Use Printed page offset when the PDF viewer page differs from the printed book page: if PDF page 7 is printed page 1, enter -6. Source block scans create local review files under DATA_DIR/Supplements/_sources for future manual assignment. TAG narrative extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
+    el("p", "muted", "Rules text indexing stores exact PDF page text only in DATA_DIR/rules/rule_text_index.json for private local search. Use Printed page offset when the PDF viewer page differs from the printed book page: if PDF page 7 is printed page 1, enter -6. Source block scans create local review files under DATA_DIR/Supplements/_sources for future manual assignment. Package map/image uploads create local source assets under DATA_DIR/Supplements/_sources/_package_assets. TAG narrative extraction currently supports Tales from The Adventures Guild Rumor/Scene prose. AES/protected PDFs require the server image to include the cryptography Python package. Exact copied prose is written only to DATA_DIR and is not committed to the app repository.")
   );
   return panel;
 }

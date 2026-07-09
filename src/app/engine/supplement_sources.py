@@ -87,6 +87,16 @@ def supplement_source_artwork_dir(data_dir: Path, source_id: str) -> Path:
     return supplement_source_folder(data_dir, source_id) / "artwork"
 
 
+def supplement_package_asset_dir(data_dir: Path, package_id: str) -> Path:
+    safe = supplement_package_id(package_id, "supplement-package")
+    return supplement_sources_root(data_dir) / "_package_assets" / safe
+
+
+def supplement_package_asset_path(data_dir: Path, package_id: str, filename: str) -> Path:
+    safe_name = Path(str(filename or "")).name
+    return supplement_package_asset_dir(data_dir, package_id) / safe_name
+
+
 def supplement_source_settings_path(data_dir: Path) -> Path:
     return supplement_sources_root(data_dir) / "source_settings.json"
 
@@ -154,6 +164,94 @@ def set_pdf_source_metadata(
 
 def set_pdf_source_page_offset(data_dir: Path, pdf_path: Path, page_offset: int) -> dict[str, Any]:
     return set_pdf_source_metadata(data_dir, pdf_path, page_offset=page_offset)
+
+
+def _package_settings(payload: dict[str, Any]) -> dict[str, Any]:
+    packages = payload.get("packages")
+    if not isinstance(packages, dict):
+        packages = {}
+        payload["packages"] = packages
+    return packages
+
+
+def upsert_supplement_package(
+    data_dir: Path,
+    *,
+    supplement_id: str | None,
+    supplement_title: str | None,
+    fallback: str,
+) -> dict[str, Any]:
+    payload = _load_source_settings(data_dir)
+    packages = _package_settings(payload)
+    package_id = supplement_package_id(supplement_id, fallback)
+    previous = packages.get(package_id) if isinstance(packages.get(package_id), dict) else {}
+    title = str(supplement_title or previous.get("supplement_title") or fallback).strip() or fallback
+    packages[package_id] = {
+        **previous,
+        "supplement_id": package_id,
+        "supplement_title": title,
+        "assets": previous.get("assets") if isinstance(previous.get("assets"), list) else [],
+    }
+    _write_source_settings(data_dir, payload)
+    return packages[package_id]
+
+
+def add_supplement_package_asset(
+    data_dir: Path,
+    *,
+    filename: str,
+    data: bytes,
+    content_type: str,
+    supplement_id: str | None,
+    supplement_title: str | None,
+    asset_kind: str = "map_or_image",
+    now: str = "",
+) -> dict[str, Any]:
+    clean_name = Path(str(filename or "")).name.strip()
+    if not clean_name:
+        raise ValueError("Missing source asset filename.")
+    package = upsert_supplement_package(data_dir, supplement_id=supplement_id, supplement_title=supplement_title, fallback=Path(clean_name).stem)
+    package_id = str(package.get("supplement_id") or supplement_package_id(None, Path(clean_name).stem))
+    asset_dir = supplement_package_asset_dir(data_dir, package_id)
+    asset_dir.mkdir(parents=True, exist_ok=True)
+    target = (asset_dir / clean_name).resolve()
+    if not target.is_relative_to(asset_dir.resolve()):
+        raise ValueError("Invalid source asset filename.")
+    target.write_bytes(data)
+
+    payload = _load_source_settings(data_dir)
+    packages = _package_settings(payload)
+    stored_package = packages.get(package_id) if isinstance(packages.get(package_id), dict) else dict(package)
+    assets = stored_package.get("assets") if isinstance(stored_package.get("assets"), list) else []
+    asset_id = supplement_package_id(Path(clean_name).stem, "asset")
+    record = {
+        "id": asset_id,
+        "filename": clean_name,
+        "asset_kind": str(asset_kind or "map_or_image"),
+        "content_type": str(content_type or ""),
+        "size_bytes": len(data),
+        "updated_at": now,
+        "asset_url": f"/api/supplements/source-packages/{package_id}/assets/{clean_name}",
+        "notes": "",
+    }
+    next_assets = [item for item in assets if not isinstance(item, dict) or item.get("filename") != clean_name]
+    next_assets.append(record)
+    stored_package.update(
+        {
+            "supplement_id": package_id,
+            "supplement_title": str(package.get("supplement_title") or package_id),
+            "assets": next_assets,
+        }
+    )
+    packages[package_id] = stored_package
+    _write_source_settings(data_dir, payload)
+    return {
+        "supplement_id": package_id,
+        "supplement_title": stored_package["supplement_title"],
+        "asset": record,
+        "path": str(target),
+        "message": f"Imported {clean_name} into supplement package {stored_package['supplement_title']}.",
+    }
 
 
 def _page_text_blocks(text: str) -> list[str]:
@@ -680,6 +778,24 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
 
 def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
     grouped: dict[str, dict[str, Any]] = {}
+    settings = _load_source_settings(data_dir)
+    setting_packages = settings.get("packages") if isinstance(settings.get("packages"), dict) else {}
+    for package_id, package_payload in setting_packages.items():
+        if not isinstance(package_payload, dict):
+            continue
+        safe_id = supplement_package_id(str(package_payload.get("supplement_id") or package_id), str(package_id))
+        assets = [item for item in package_payload.get("assets", []) if isinstance(item, dict)]
+        grouped[safe_id] = {
+            "supplement_id": safe_id,
+            "supplement_title": str(package_payload.get("supplement_title") or safe_id),
+            "source_count": 0,
+            "asset_count": len(assets),
+            "blocks": 0,
+            "artwork": 0,
+            "reviewed_blocks": 0,
+            "sources": [],
+            "assets": assets,
+        }
     for scan in list_supplement_source_scans(data_dir):
         package_id = supplement_package_id(str(scan.get("supplement_id") or ""), str(scan.get("source_id") or "supplement"))
         package = grouped.setdefault(
@@ -688,10 +804,12 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
                 "supplement_id": package_id,
                 "supplement_title": str(scan.get("supplement_title") or package_id),
                 "source_count": 0,
+                "asset_count": 0,
                 "blocks": 0,
                 "artwork": 0,
                 "reviewed_blocks": 0,
                 "sources": [],
+                "assets": [],
             },
         )
         package["source_count"] = int(package.get("source_count") or 0) + 1

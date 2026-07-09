@@ -165,6 +165,10 @@ Home screen rule browsing:
   source document keeps its own offset, raw blocks, reviewed blocks, and
   artwork, while the workbench groups them under one supplement package id for
   later manifest/export work.
+  Non-PDF source assets such as PNG/JPG/WebP maps or handouts are stored under
+  `DATA_DIR/Supplements/_sources/_package_assets/<supplement_id>/` and listed
+  with the same package id. These files are package-level evidence/source
+  material rather than page-scanned rule text.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.

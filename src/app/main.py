@@ -71,6 +71,7 @@ from .engine.roster_sync import (
     unlock_characters_for_session,
 )
 from .engine.supplement_sources import (
+    add_supplement_package_asset,
     extract_supplement_source_artwork,
     list_supplement_source_packages,
     list_supplement_source_scans,
@@ -83,6 +84,7 @@ from .engine.supplement_sources import (
     set_pdf_source_metadata,
     set_pdf_source_page_offset,
     split_supplement_source_block,
+    supplement_package_asset_path,
     supplement_source_artwork_path,
     supplement_source_scan_path,
     update_supplement_source_artwork,
@@ -454,6 +456,7 @@ def _restore_missing_recovery_members(session: SessionState) -> bool:
 
 ICON_FILE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
 RULE_PDF_EXTENSIONS = {".pdf"}
+SUPPLEMENT_SOURCE_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff", ".svg"}
 
 
 def app_version() -> str:
@@ -524,6 +527,17 @@ def _safe_rule_pdf_filename(filename: str) -> str:
     if not stem:
         stem = "uploaded_rules"
     return f"{stem[:120]}.pdf"
+
+
+def _safe_source_asset_filename(filename: str) -> str:
+    name = Path(filename or "").name.strip()
+    suffix = Path(name).suffix.lower()
+    if suffix not in SUPPLEMENT_SOURCE_ASSET_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Upload a map/image file such as .png, .jpg, .jpeg, .webp, .gif, .bmp, .tif, .tiff, or .svg.")
+    stem = re.sub(r"[^A-Za-z0-9._ -]+", "_", Path(name).stem).strip(" ._")
+    if not stem:
+        stem = "supplement_source_asset"
+    return f"{stem[:120]}{suffix}"
 
 
 def _resolve_user_rule_pdf(filename: str) -> Path:
@@ -803,6 +817,33 @@ async def extract_supplement_artwork(payload: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=f"Could not extract supplement artwork: {exc}") from exc
 
 
+@app.post("/api/supplements/source-asset")
+async def upload_supplement_source_asset(request: Request) -> dict[str, Any]:
+    raw_filename = request.query_params.get("filename") or request.headers.get("x-filename") or "supplement-map.png"
+    filename = _safe_source_asset_filename(raw_filename)
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Uploaded source asset is empty.")
+    supplement_id = str(request.query_params.get("supplement_id") or "").strip()
+    supplement_title = str(request.query_params.get("supplement_title") or "").strip()
+    asset_kind = str(request.query_params.get("asset_kind") or "map_or_image").strip() or "map_or_image"
+    try:
+        return add_supplement_package_asset(
+            settings.data_dir,
+            filename=filename,
+            data=body,
+            content_type=request.headers.get("content-type") or "",
+            supplement_id=supplement_id or None,
+            supplement_title=supplement_title or None,
+            asset_kind=asset_kind,
+            now=now_utc(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail=f"Could not write supplement source asset: {exc}") from exc
+
+
 @app.get("/api/supplements/source-scans")
 async def supplement_source_scans() -> dict[str, Any]:
     return {
@@ -896,6 +937,16 @@ async def supplement_source_artwork_file(source_id: str, filename: str) -> FileR
     resolved = path.resolve()
     if not resolved.is_relative_to(base) or not resolved.is_file():
         raise HTTPException(status_code=404, detail="Artwork candidate not found.")
+    return FileResponse(resolved)
+
+
+@app.get("/api/supplements/source-packages/{supplement_id}/assets/{filename:path}")
+async def supplement_source_package_asset_file(supplement_id: str, filename: str) -> FileResponse:
+    path = supplement_package_asset_path(settings.data_dir, supplement_id, filename)
+    base = (settings.data_dir / "Supplements" / "_sources" / "_package_assets").resolve()
+    resolved = path.resolve()
+    if not resolved.is_relative_to(base) or not resolved.is_file():
+        raise HTTPException(status_code=404, detail="Supplement package source asset not found.")
     return FileResponse(resolved)
 
 

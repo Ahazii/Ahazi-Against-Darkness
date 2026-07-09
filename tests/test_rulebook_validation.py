@@ -971,6 +971,42 @@ def test_source_scans_can_share_one_supplement_package(tmp_path: Path, monkeypat
     assert detail["supplement_title"] == "Treacheries of the Troublesome Towns"
 
 
+def test_supplement_package_asset_upload_and_serve(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    client = TestClient(main_module.app)
+
+    response = client.post(
+        "/api/supplements/source-asset?filename=World Map.png&supplement_id=treacheries-town&supplement_title=Treacheries%20of%20the%20Troublesome%20Towns&asset_kind=map_or_image",
+        content=b"png-bytes",
+        headers={"content-type": "image/png"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["supplement_id"] == "treacheries-town"
+    assert payload["asset"]["filename"] == "World Map.png"
+    assert payload["asset"]["asset_url"] == "/api/supplements/source-packages/treacheries-town/assets/World Map.png"
+    assert (tmp_path / "Supplements" / "_sources" / "_package_assets" / "treacheries-town" / "World Map.png").read_bytes() == b"png-bytes"
+
+    packages = client.get("/api/supplements/source-scans").json()["packages"]
+    assert packages[0]["asset_count"] == 1
+    assert packages[0]["assets"][0]["filename"] == "World Map.png"
+    served = client.get("/api/supplements/source-packages/treacheries-town/assets/World%20Map.png")
+    assert served.status_code == 200
+    assert served.content == b"png-bytes"
+
+
 def test_app_version_endpoint_reads_version_file() -> None:
     from fastapi.testclient import TestClient
 

@@ -2931,6 +2931,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Indexing exact rules text..." in MODERN_PAGES_JS
     assert "modern-rule-pdf-page-offset" in MODERN_PAGES_JS
     assert "modern-rule-pdf-supplement-id" in MODERN_PAGES_JS
+    assert "modern-supplement-source-asset-upload" in MODERN_PAGES_JS
+    assert "Upload Package Map/Image" in MODERN_PAGES_JS
+    assert "/api/supplements/source-asset" in MODERN_PAGES_JS
+    assert "_package_assets" in MODERN_PAGES_JS
     assert "Use the same supplement package id" in MODERN_PAGES_JS
     assert "printed page = PDF page + offset" in MODERN_PAGES_JS
     assert "Page offset example: if PDF page 7 is printed page 1, enter -6." in MODERN_PAGES_JS
@@ -2942,6 +2946,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "View Blocks" in MODERN_PAGES_JS
     assert "Page source blocks" in MODERN_PAGES_JS
     assert "Supplement source packages" in MODERN_PAGES_JS
+    assert "package asset(s)" in MODERN_PAGES_JS
+    assert "Open Asset" in MODERN_PAGES_JS
     assert "Page artwork" in MODERN_PAGES_JS
     assert "Page text blocks" in MODERN_PAGES_JS
     assert "Showing reviewed blocks and page-boundary candidates for PDF page" in MODERN_PAGES_JS
