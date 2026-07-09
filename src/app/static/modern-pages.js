@@ -6709,7 +6709,7 @@ async function renderRulePdfManager() {
     if (!Array.isArray(warnings) || !warnings.length) return "No suspected cut-off entries.";
     return warnings.slice(0, 8).join(" ");
   }
-  const sourceScanStatus = el("div", "modern-list");
+  const sourceScanStatus = el("div", "modern-list modern-source-scan-status");
   function suggestedSupplementId(filename) {
     return String(filename || "")
       .replace(/\.pdf$/i, "")
@@ -6856,6 +6856,8 @@ async function renderRulePdfManager() {
     const leftRail = el("div", "modern-source-left-rail");
     const pdfViewer = el("div", "modern-source-pdf-viewer");
     const pdfToolbar = actions();
+    pdfToolbar.classList.add("modern-source-pdf-actions");
+    const pdfControlBar = el("div", "modern-source-pdf-toolbar");
     const pageInput = input("number", "modern-source-pdf-page", "PDF page to preview beside the extracted text.", String(sourceWorkbenchState.page || firstPdfPage));
     pageInput.min = "1";
     const pdfCanvas = el("div", "modern-source-pdf-canvas");
@@ -6939,10 +6941,12 @@ async function renderRulePdfManager() {
       }
     });
     pdfCanvas.appendChild(pdfImage);
-    pdfViewer.append(
-      modernStatusRow("PDF preview", payload.source_pdf || "Source PDF", "Pan with drag, zoom with the mouse wheel, and use the page field to jump to the printed source you are reviewing."),
+    pdfControlBar.append(
       field("PDF page", pageInput),
-      pdfToolbar,
+      pdfToolbar
+    );
+    pdfViewer.append(
+      pdfControlBar,
       pdfCanvas,
       pdfStatus
     );

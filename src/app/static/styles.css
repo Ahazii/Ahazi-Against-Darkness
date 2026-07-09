@@ -1251,6 +1251,11 @@ button.is-working::after {
   overflow: auto;
 }
 
+.modern-source-scan-status {
+  max-height: none;
+  overflow: visible;
+}
+
 .modern-pre-wrap {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1265,15 +1270,12 @@ button.is-working::after {
 }
 
 .modern-source-left-rail {
-  position: sticky;
-  top: 10px;
+  position: relative;
   display: grid;
   gap: 10px;
   align-content: start;
   min-width: 0;
-  max-height: calc(100vh - 128px);
-  overflow: auto;
-  padding-right: 2px;
+  overflow: visible;
 }
 
 .modern-source-controls-panel {
@@ -1323,11 +1325,40 @@ button.is-working::after {
   align-content: start;
 }
 
+.modern-source-pdf-toolbar {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.35fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+  min-width: 0;
+}
+
+.modern-source-pdf-toolbar .modern-field {
+  min-width: 0;
+}
+
+.modern-source-pdf-toolbar input {
+  width: 100%;
+  max-width: none;
+}
+
+.modern-source-pdf-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.modern-source-pdf-actions button {
+  min-height: 34px;
+  padding: 7px 8px;
+  justify-self: stretch;
+}
+
 .modern-source-pdf-canvas {
   position: relative;
   width: 100%;
-  min-height: 22rem;
-  max-height: clamp(24rem, 48vh, 38rem);
+  height: clamp(28rem, 58vh, 46rem);
+  min-height: 26rem;
   overflow: hidden;
   border: 1px solid #3c3a30;
   border-radius: 6px;
@@ -1779,19 +1810,19 @@ button.is-working::after {
 
   .modern-source-left-rail {
     position: static;
-    max-height: none;
     overflow: visible;
-    padding-right: 0;
   }
 
   .modern-source-controls-grid,
-  .modern-source-control-actions {
+  .modern-source-control-actions,
+  .modern-source-pdf-toolbar,
+  .modern-source-pdf-actions {
     grid-template-columns: 1fr;
   }
 
   .modern-source-pdf-canvas {
+    height: 58vh;
     min-height: 24rem;
-    max-height: 58vh;
   }
 
   .modern-info-grid {

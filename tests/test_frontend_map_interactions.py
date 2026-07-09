@@ -3027,8 +3027,12 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "modern-source-controls-panel" in MODERN_PAGES_JS
     assert "modern-source-controls-grid" in MODERN_PAGES_JS
     assert "modern-source-control-actions" in MODERN_PAGES_JS
+    assert "modern-source-pdf-toolbar" in MODERN_PAGES_JS
+    assert "modern-source-pdf-actions" in MODERN_PAGES_JS
+    assert "modern-list modern-source-scan-status" in MODERN_PAGES_JS
     assert "leftRail.append(blockTools, pdfViewer)" in MODERN_PAGES_JS
     assert "pdfViewer.appendChild(blockTools)" not in MODERN_PAGES_JS
+    assert "modernStatusRow(\"PDF preview\"" not in MODERN_PAGES_JS
     assert "Module contents" in MODERN_PAGES_JS
     assert "Apply Assignment" in MODERN_PAGES_JS
     assert "modern-source-review-scope" in MODERN_PAGES_JS
@@ -3053,6 +3057,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "modern-source-controls-panel" in STYLES_CSS
     assert "modern-source-controls-grid" in STYLES_CSS
     assert "modern-source-control-actions" in STYLES_CSS
+    assert "modern-source-pdf-toolbar" in STYLES_CSS
+    assert "modern-source-pdf-actions" in STYLES_CSS
+    assert "modern-source-scan-status" in STYLES_CSS
     assert "modern-source-review-grid" in MODERN_PAGES_JS
     assert "Active review tool" in MODERN_PAGES_JS
     assert "modern-source-tool-panel" in STYLES_CSS
