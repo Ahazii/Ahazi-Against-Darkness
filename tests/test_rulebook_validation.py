@@ -926,6 +926,48 @@ def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch)
     assert detail["source_pdf_page_url"] == "/api/rules/pdf-page/Mixed%20Book.pdf"
 
 
+def test_source_block_search_phrase_can_be_split_into_ignored_blocks(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Repeated Footer.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [
+            {"page": 1, "text": "Troublesome Towns\n\nReal rule before Troublesome\nTowns real rule after", "methods": ["layout"]},
+            {"page": 2, "text": "Troublesome Towns", "methods": ["layout"]},
+        ],
+    )
+    client = TestClient(main_module.app)
+    client.post("/api/supplements/source-scan", json={"filename": "Repeated Footer.pdf"})
+
+    payload = client.post(
+        "/api/supplements/source-scans/repeated-footer/blocks/split-ignore-phrase",
+        json={"phrase": "Troublesome Towns"},
+    ).json()
+
+    assert payload["ignored_occurrences"] == 3
+    assert payload["changed_blocks"] == 3
+    saved = client.get("/api/supplements/source-scans/repeated-footer").json()
+    ignored = [block for block in saved["blocks"] if block["assignment"] == "ignore"]
+    kept = [block for block in saved["blocks"] if block["assignment"] != "ignore"]
+    assert [block["text"] for block in ignored] == ["Troublesome Towns", "Troublesome\nTowns", "Troublesome Towns"]
+    assert [block["text"] for block in kept] == ["Real rule before", "real rule after"]
+    assert all(block["review_status"] == "edited" for block in ignored)
+
+
 def test_source_block_table_draft_can_be_reviewed_and_saved(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 

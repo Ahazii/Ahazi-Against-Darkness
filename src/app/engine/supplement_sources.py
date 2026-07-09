@@ -767,6 +767,113 @@ def split_supplement_source_block(data_dir: Path, source_id: str, block_id: str,
     raise KeyError(block_id)
 
 
+def _source_phrase_pattern(phrase: str) -> re.Pattern[str]:
+    clean_parts = [part for part in re.split(r"\s+", str(phrase or "").strip()) if part]
+    if not clean_parts:
+        raise ValueError("Enter a phrase to split and ignore.")
+    clean_phrase = " ".join(clean_parts)
+    if len(clean_phrase) < 3:
+        raise ValueError("The ignore phrase must be at least 3 characters long.")
+    return re.compile(r"\s+".join(re.escape(part) for part in clean_parts), re.IGNORECASE)
+
+
+def _unique_source_block_id(base_id: str, used_ids: set[str]) -> str:
+    candidate = base_id
+    suffix = 1
+    while candidate in used_ids:
+        suffix += 1
+        candidate = f"{base_id}-{suffix:02d}"
+    used_ids.add(candidate)
+    return candidate
+
+
+def split_matching_supplement_source_phrase_to_ignore(data_dir: Path, source_id: str, phrase: str) -> dict[str, Any]:
+    pattern = _source_phrase_pattern(phrase)
+    payload = load_supplement_source_scan(data_dir, source_id)
+    blocks = payload.get("reviewed_blocks", [])
+    if not isinstance(blocks, list):
+        blocks = []
+    used_ids = {str(block.get("id") or "") for block in blocks if isinstance(block, dict) and block.get("id")}
+    next_blocks: list[dict[str, Any]] = []
+    changed_blocks = 0
+    ignored_occurrences = 0
+    for index, block in enumerate(blocks, start=1):
+        if not isinstance(block, dict):
+            continue
+        text = str(block.get("text") or "")
+        matches = list(pattern.finditer(text))
+        if not matches:
+            next_blocks.append(block)
+            continue
+        if str(block.get("assignment") or "") == "ignore" and all(match.start() == 0 and match.end() == len(text) for match in matches):
+            next_blocks.append(block)
+            continue
+        changed_blocks += 1
+        base_id = str(block.get("id") or f"{source_id}-block-{index:03d}")
+        cursor = 0
+        part_index = 1
+        replacement: list[dict[str, Any]] = []
+        for match in matches:
+            before = text[cursor : match.start()].strip()
+            if before:
+                replacement.append(
+                    {
+                        **block,
+                        "id": _unique_source_block_id(f"{base_id}-keep{part_index:02d}", used_ids),
+                        "text": before,
+                        "block_index": f"{block.get('block_index') or index}.{part_index}",
+                        "review_status": "edited",
+                    }
+                )
+                part_index += 1
+            ignored_text = text[match.start() : match.end()].strip()
+            if ignored_text:
+                ignored_occurrences += 1
+                note = f"Auto-split ignored phrase: {ignored_text[:120]}"
+                existing_note = str(block.get("notes") or "").strip()
+                replacement.append(
+                    {
+                        **block,
+                        "id": _unique_source_block_id(f"{base_id}-ignore{part_index:02d}", used_ids),
+                        "text": ignored_text,
+                        "assignment": "ignore",
+                        "block_index": f"{block.get('block_index') or index}.{part_index}",
+                        "review_status": "edited",
+                        "notes": f"{existing_note}\n{note}".strip(),
+                    }
+                )
+                part_index += 1
+            cursor = match.end()
+        after = text[cursor:].strip()
+        if after:
+            replacement.append(
+                {
+                    **block,
+                    "id": _unique_source_block_id(f"{base_id}-keep{part_index:02d}", used_ids),
+                    "text": after,
+                    "block_index": f"{block.get('block_index') or index}.{part_index}",
+                    "review_status": "edited",
+                }
+            )
+        if replacement:
+            next_blocks.extend(replacement)
+        else:
+            next_blocks.append({**block, "assignment": "ignore", "review_status": "edited"})
+    if not ignored_occurrences:
+        raise ValueError("No occurrences of that phrase were found in reviewed source blocks.")
+    for order, block in enumerate(next_blocks, start=1):
+        block["review_order"] = order
+    payload["reviewed_blocks"] = next_blocks
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {
+        "phrase": str(phrase or "").strip(),
+        "changed_blocks": changed_blocks,
+        "ignored_occurrences": ignored_occurrences,
+        "blocks": len(next_blocks),
+        "message": f"Split {ignored_occurrences} occurrence(s) into ignored source blocks across {changed_blocks} reviewed block(s).",
+    }
+
+
 def merge_supplement_source_block(data_dir: Path, source_id: str, block_id: str, direction: str = "next") -> dict[str, Any]:
     payload = load_supplement_source_scan(data_dir, source_id)
     blocks = payload.get("reviewed_blocks", [])

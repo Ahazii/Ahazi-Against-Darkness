@@ -6996,6 +6996,22 @@ async function renderRulePdfManager() {
       }
       await reloadCurrentScan("Selected source blocks assigned.");
     }));
+    const ignorePhraseButton = button("Ignore Phrase", "Use the current Search text as a literal phrase. Every occurrence in this source document is split into its own reviewed block and assigned to ignore.", async (btn) => runWithButtonProgress(btn, "Splitting ignored phrase...", async () => {
+      const phrase = String(search.value || "").trim();
+      if (!phrase) throw new Error("Enter the repeated phrase in Search before using Ignore Phrase.");
+      const confirmed = window.confirm(`Split every occurrence of "${phrase}" in this source document into separate ignored blocks? This changes the local reviewed source blocks.`);
+      if (!confirmed) {
+        setStatus("Ignore phrase cancelled.");
+        return;
+      }
+      const result = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/split-ignore-phrase`, {
+        method: "POST",
+        body: JSON.stringify({ phrase }),
+      });
+      selectedBlockIds.clear();
+      sourceWorkbenchState.selectedBlockIds = new Set();
+      await reloadCurrentScan(result.message || "Matching phrase split into ignored blocks.");
+    }));
     function selectedReviewedBlock() {
       if (selectedBlockIds.size !== 1) return null;
       const blockId = Array.from(selectedBlockIds)[0];
@@ -7433,7 +7449,7 @@ async function renderRulePdfManager() {
     const reviewPanel = el("div", "modern-source-review-panel");
     const selectionActions = actions();
     selectionActions.classList.add("modern-source-control-actions");
-    selectionActions.append(applyAssignmentButton, mergeSelectedButton, editSelectedButton, splitSelectedButton, draftTableButton, moveUpButton, moveDownButton);
+    selectionActions.append(applyAssignmentButton, ignorePhraseButton, mergeSelectedButton, editSelectedButton, splitSelectedButton, draftTableButton, moveUpButton, moveDownButton);
     const controlFields = el("div", "modern-source-controls-grid");
     controlFields.append(
       field("Search", search),

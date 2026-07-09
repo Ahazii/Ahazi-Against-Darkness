@@ -3035,6 +3035,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "modernStatusRow(\"PDF preview\"" not in MODERN_PAGES_JS
     assert "Module contents" in MODERN_PAGES_JS
     assert "Apply Assignment" in MODERN_PAGES_JS
+    assert "Ignore Phrase" in MODERN_PAGES_JS
+    assert "/blocks/split-ignore-phrase" in MODERN_PAGES_JS
+    assert "current Search text as a literal phrase" in MODERN_PAGES_JS
     assert "modern-source-review-scope" in MODERN_PAGES_JS
     assert "Whole document" in MODERN_PAGES_JS
     assert "Switch Review scope to Whole document" in MODERN_PAGES_JS
@@ -3090,7 +3093,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/table-draft" in MODERN_PAGES_JS
     assert "/tables/" in MODERN_PAGES_JS
     assert "Split At Cursor" in MODERN_PAGES_JS
-    assert "selectionActions.append(applyAssignmentButton, mergeSelectedButton, editSelectedButton, splitSelectedButton, draftTableButton, moveUpButton, moveDownButton)" in MODERN_PAGES_JS
+    assert "selectionActions.append(applyAssignmentButton, ignorePhraseButton, mergeSelectedButton, editSelectedButton, splitSelectedButton, draftTableButton, moveUpButton, moveDownButton)" in MODERN_PAGES_JS
     assert "Move Up" in MODERN_PAGES_JS
     assert "Move Down" in MODERN_PAGES_JS
     assert "Merge" in MODERN_PAGES_JS

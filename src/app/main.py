@@ -85,6 +85,7 @@ from .engine.supplement_sources import (
     scan_supplement_source_pdf,
     set_pdf_source_metadata,
     set_pdf_source_page_offset,
+    split_matching_supplement_source_phrase_to_ignore,
     split_supplement_source_block,
     supplement_package_asset_path,
     supplement_source_artwork_path,
@@ -940,6 +941,17 @@ async def split_source_block(source_id: str, block_id: str, payload: dict[str, A
         return split_supplement_source_block(settings.data_dir, source_id, block_id, [str(part) for part in parts])
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Source block not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/split-ignore-phrase")
+async def split_ignored_source_phrase(source_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    phrase = str(payload.get("phrase") or "")
+    try:
+        return split_matching_supplement_source_phrase_to_ignore(settings.data_dir, source_id, phrase)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source scan not found.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
