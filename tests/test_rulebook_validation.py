@@ -1129,6 +1129,64 @@ def test_source_duplicate_review_endpoint_finds_and_removes_checked_blocks(tmp_p
     assert saved["duplicate_cleanup_log"][0]["removed_block_ids"] == [duplicate_id]
 
 
+def test_source_scan_reset_removes_review_workspace_and_package_assets(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Crucible of Classic Critters.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 1, "text": "Title page\n\nCredits page", "methods": ["layout"]}],
+    )
+    client = TestClient(main_module.app)
+    scan = client.post(
+        "/api/supplements/source-scan",
+        json={
+            "filename": "Crucible of Classic Critters.pdf",
+            "supplement_id": "crucible-of-classic-critters",
+            "supplement_title": "Crucible of Classic Critters",
+        },
+    ).json()
+    source_id = scan["source_id"]
+    client.patch(
+        f"/api/supplements/source-scans/{source_id}/blocks/{source_id}-p1-b001",
+        json={"assignment": "title_page", "review_status": "checked"},
+    )
+    client.post(
+        f"/api/supplements/source-scans/{source_id}/blocks/{source_id}-p1-b001/table-draft",
+        json={"title": "Temporary Table"},
+    )
+    asset_dir = tmp_path / "Supplements" / "_sources" / "_package_assets" / "crucible-of-classic-critters"
+    asset_dir.mkdir(parents=True)
+    (asset_dir / "tile.png").write_bytes(b"asset")
+    cache_dir = tmp_path / "Supplements" / "_sources" / "_pdf_page_cache" / "crucible-of-classic-critters"
+    cache_dir.mkdir(parents=True)
+    (cache_dir / "page-0001.png").write_bytes(b"cache")
+
+    reset = client.delete(f"/api/supplements/source-scans/{source_id}")
+
+    assert reset.status_code == 200
+    assert "Reset source workspace" in reset.json()["message"]
+    assert not (tmp_path / "Supplements" / "_sources" / source_id).exists()
+    assert not asset_dir.exists()
+    assert not cache_dir.exists()
+    settings = json.loads((tmp_path / "Supplements" / "_sources" / "source_settings.json").read_text(encoding="utf-8"))
+    assert source_id not in settings.get("sources", {})
+    assert "crucible-of-classic-critters" not in settings.get("packages", {})
+
+
 def test_source_block_table_draft_can_be_reviewed_and_saved(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 

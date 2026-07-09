@@ -156,6 +156,23 @@ def supplement_source_settings_path(data_dir: Path) -> Path:
     return supplement_sources_root(data_dir) / "source_settings.json"
 
 
+def supplement_source_pdf_page_cache_dir(data_dir: Path, source_pdf: str | None, source_id: str = "") -> Path:
+    stem = _source_pdf_stem(source_pdf) or source_id or "pdf-source"
+    safe = re.sub(r"[^a-z0-9._-]+", "-", stem.lower()).strip(".-")
+    return supplement_sources_root(data_dir) / "_pdf_page_cache" / (safe or "pdf-source")
+
+
+def _remove_tree_inside(root: Path, target: Path) -> bool:
+    root_resolved = root.resolve(strict=False)
+    target_resolved = target.resolve(strict=False)
+    if root_resolved != target_resolved and root_resolved not in target_resolved.parents:
+        raise ValueError(f"Refusing to remove path outside supplement source workspace: {target}")
+    if not target.exists():
+        return False
+    shutil.rmtree(target)
+    return True
+
+
 def _load_source_settings(data_dir: Path) -> dict[str, Any]:
     path = supplement_source_settings_path(data_dir)
     if not path.exists():
@@ -170,6 +187,9 @@ def _load_source_settings(data_dir: Path) -> dict[str, Any]:
 def _write_source_settings(data_dir: Path, payload: dict[str, Any]) -> None:
     path = supplement_source_settings_path(data_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
+    payload.setdefault("schema_version", 1)
+    payload.setdefault("sources", {})
+    payload.setdefault("packages", {})
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
@@ -1003,6 +1023,70 @@ def delete_supplement_source_blocks(data_dir: Path, source_id: str, block_ids: l
         "removed_count": len(removed),
         "removed_block_ids": [str(block.get("id") or "") for block in removed],
         "message": f"Removed {len(removed)} reviewed source block(s).",
+    }
+
+
+def reset_supplement_source_workspace(data_dir: Path, source_id: str) -> dict[str, Any]:
+    clean_source_id = supplement_package_id(source_id, "pdf-source")
+    root = supplement_sources_root(data_dir)
+    settings_payload = _load_source_settings(data_dir)
+    settings_sources = settings_payload.get("sources") if isinstance(settings_payload.get("sources"), dict) else {}
+    settings_packages = settings_payload.get("packages") if isinstance(settings_payload.get("packages"), dict) else {}
+    settings_payload["sources"] = settings_sources
+    settings_payload["packages"] = settings_packages
+
+    source_settings = settings_sources.get(clean_source_id) if isinstance(settings_sources.get(clean_source_id), dict) else {}
+    scan_payload = load_supplement_source_scan(data_dir, clean_source_id)
+    scan_path = supplement_source_scan_path(data_dir, clean_source_id)
+    source_pdf = str(scan_payload.get("source_pdf") or source_settings.get("filename") or "")
+    raw_package_id = str(scan_payload.get("supplement_id") or source_settings.get("supplement_id") or "")
+    package_ids = {clean_source_id}
+    if raw_package_id:
+        package_ids.add(supplement_package_id(raw_package_id, clean_source_id))
+    if raw_package_id.lower() in GENERIC_SUPPLEMENT_PACKAGE_IDS:
+        package_ids.add("supplement-package")
+
+    known_package_ids = {
+        supplement_package_id(str(payload.get("supplement_id") or package_id), str(package_id))
+        for package_id, payload in settings_packages.items()
+        if isinstance(payload, dict)
+    }
+    package_ids.add(_source_package_id({**scan_payload, **source_settings, "source_id": clean_source_id}, known_package_ids))
+
+    removed_paths: list[str] = []
+    removed_settings: list[str] = []
+
+    for target in [
+        supplement_source_folder(data_dir, clean_source_id),
+        supplement_source_pdf_page_cache_dir(data_dir, source_pdf, clean_source_id),
+    ]:
+        if _remove_tree_inside(root, target):
+            removed_paths.append(str(target))
+
+    if clean_source_id in settings_sources:
+        del settings_sources[clean_source_id]
+        removed_settings.append(f"sources.{clean_source_id}")
+
+    for package_id in sorted(package_ids):
+        if package_id in settings_packages:
+            del settings_packages[package_id]
+            removed_settings.append(f"packages.{package_id}")
+        package_dir = supplement_package_asset_dir(data_dir, package_id)
+        if _remove_tree_inside(root, package_dir):
+            removed_paths.append(str(package_dir))
+
+    if not scan_path.exists() and not removed_paths and not removed_settings:
+        raise KeyError(clean_source_id)
+
+    _write_source_settings(data_dir, settings_payload)
+    return {
+        "source_id": clean_source_id,
+        "removed_paths": removed_paths,
+        "removed_settings": removed_settings,
+        "message": (
+            f"Reset source workspace for {clean_source_id}. "
+            "Reviewed blocks, reviewed tables, extracted artwork, package assets, and rendered page cache were removed."
+        ),
     }
 
 

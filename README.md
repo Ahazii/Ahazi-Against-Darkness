@@ -67,7 +67,10 @@ current with every rules or content change.
 - PDF / Supplement Workbench source scans under `DATA_DIR/Supplements/_sources`
   support manual block assignment, page-offset metadata, package assets,
   explicit overwrite/rebuild of reviewed source blocks, and a review-first
-  duplicate cleanup tool for local imported PDFs
+  duplicate cleanup tool for local imported PDFs. The workbench also has a
+  guarded source reset that removes reviewed blocks, reviewed tables, extracted
+  artwork, package assets, and rendered PDF page cache for a selected source so
+  a PDF can be reimported from a genuinely clean local state.
 
 ## Preserved Source Material
 

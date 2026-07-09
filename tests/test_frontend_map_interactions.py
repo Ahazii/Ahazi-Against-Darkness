@@ -3019,7 +3019,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/api/supplements/source-scans" in MODERN_PAGES_JS
     assert "View Blocks" not in MODERN_PAGES_JS
     assert "Text blocks" in MODERN_PAGES_JS
-    assert "Page boundary candidates" in MODERN_PAGES_JS
+    assert "Page boundary candidates" not in MODERN_PAGES_JS
     assert "modern-source-module-select" in MODERN_PAGES_JS
     assert "Imported module" in MODERN_PAGES_JS
     assert "Source controls" in MODERN_PAGES_JS
@@ -3050,6 +3050,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "≋ Dups" in MODERN_PAGES_JS
     assert "/duplicates" in MODERN_PAGES_JS
     assert "/blocks/delete" in MODERN_PAGES_JS
+    assert "↺ Reset" in MODERN_PAGES_JS
+    assert "method: \"DELETE\"" in MODERN_PAGES_JS
+    assert "Type RESET" in MODERN_PAGES_JS
     assert "Showing first ${renderLimit} in this category" in MODERN_PAGES_JS
     assert "current Search text as a literal phrase" in MODERN_PAGES_JS
     assert "modern-source-review-scope" in MODERN_PAGES_JS
@@ -3073,7 +3076,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Counts update as the current page, search, assignment filter, and manual review categories change." in MODERN_PAGES_JS
     assert "Search hit preview" in MODERN_PAGES_JS
     assert "modern-source-block-search-preview" in MODERN_PAGES_JS
-    assert "Page boundary candidates" in MODERN_PAGES_JS
+    assert "Page boundary candidates" not in MODERN_PAGES_JS
     assert "modern-source-module-workbench" in STYLES_CSS
     assert "modern-source-left-rail" in STYLES_CSS
     assert "modern-source-controls-panel" in STYLES_CSS
@@ -3123,6 +3126,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "actionGroup(\"Select\", [selectVisibleButton, clearSelectionButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Assign\", [applyAssignmentButton, ignorePhraseButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Blocks\", [mergeSelectedButton, editSelectedButton, splitSelectedButton])" in MODERN_PAGES_JS
+    assert "actionGroup(\"Clean\", [duplicateReviewButton, resetSourceButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Extract\", [draftTableButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Order\", [moveUpButton, moveDownButton])" in MODERN_PAGES_JS
     assert "Move Up" in MODERN_PAGES_JS

@@ -84,6 +84,7 @@ from .engine.supplement_sources import (
     merge_supplement_source_block,
     move_supplement_source_block,
     pdf_source_settings,
+    reset_supplement_source_workspace,
     scan_supplement_source_pdf,
     set_pdf_source_metadata,
     set_pdf_source_page_offset,
@@ -896,6 +897,18 @@ async def supplement_source_scan_detail(source_id: str) -> dict[str, Any]:
         "source_pdf_url": f"/api/rules/pdf/{quote(filename)}" if filename else "",
         "source_pdf_page_url": f"/api/rules/pdf-page/{quote(filename)}" if filename else "",
     }
+
+
+@app.delete("/api/supplements/source-scans/{source_id}")
+async def reset_source_scan_workspace(source_id: str) -> dict[str, Any]:
+    try:
+        return reset_supplement_source_workspace(settings.data_dir, source_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source scan not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail=f"Could not reset source workspace: {exc}") from exc
 
 
 @app.get("/api/supplements/source-scans/{source_id}/duplicates")

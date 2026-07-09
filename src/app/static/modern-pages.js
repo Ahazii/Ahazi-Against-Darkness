@@ -6867,10 +6867,9 @@ async function renderRulePdfManager() {
   }
   function renderSourceScanDetail(payload, mount) {
     const blocks = Array.isArray(payload.blocks) ? payload.blocks.map((block) => ({ ...block, source_item_type: "block" })) : [];
-    const candidates = Array.isArray(payload.continuation_candidates) ? payload.continuation_candidates.map((block) => ({ ...block, source_item_type: "page-boundary candidate" })) : [];
     const artworkItems = Array.isArray(payload.artwork) ? payload.artwork : [];
     const reviewedTables = Array.isArray(payload.tables) ? payload.tables : [];
-    const sourceItems = blocks.concat(candidates);
+    const sourceItems = blocks;
     const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
     const assignment = select("modern-source-block-assignment", "Filter by current manual assignment.", [["", "All assignments"]]);
     const reviewScope = select("modern-source-review-scope", "Choose whether the block and artwork lists follow the current PDF page or show the whole source document.", [
@@ -6878,7 +6877,6 @@ async function renderRulePdfManager() {
       ["document", "Whole document"],
     ]);
     for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
-    if (candidates.length) assignment.appendChild(new Option("Page-boundary candidates", "page_boundary_candidate"));
     search.value = sourceWorkbenchState.search || "";
     assignment.value = sourceWorkbenchState.assignment || "";
     reviewScope.value = sourceWorkbenchState.scope || "document";
@@ -7046,7 +7044,7 @@ async function renderRulePdfManager() {
       sourceWorkbenchState.selectedBlockIds = new Set();
       await reloadCurrentScan(result.message || "Matching phrase split into ignored blocks.");
     }));
-    const selectVisibleButton = button("☑ Shown", "Select all visible reviewed text blocks in the current search/filter/page scope. Page-boundary candidates are not selected.", () => {
+    const selectVisibleButton = button("☑ Shown", "Select all visible reviewed text blocks in the current search/filter/page scope. Ignored snippets stay hidden unless the filter is set to Ignore.", () => {
       for (const blockId of visibleSelectableBlockIds) selectedBlockIds.add(blockId);
       updateSelectionStatus();
       draw();
@@ -7079,7 +7077,7 @@ async function renderRulePdfManager() {
       const parts = [sourceText.slice(0, cursor), sourceText.slice(cursor)]
         .map((part) => part.trim())
         .filter(Boolean);
-      if (parts.length < 2) throw new Error("Place the cursor inside the block text before splitting. The cursor cannot be at the start or end.");
+      if (parts.length < 2) throw new Error("Click inside Reviewed text at the exact split point first. The split point cannot be at the start or end of the block.");
       await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/split`, {
         method: "POST",
         body: JSON.stringify({ parts }),
@@ -7127,6 +7125,20 @@ async function renderRulePdfManager() {
     const duplicateReviewButton = button("≋ Dups", "Find probable same-page duplicate reviewed text blocks. The review tool shows what will be kept and which duplicate blocks are suggested for removal before anything is deleted.", async (btn) => runWithButtonProgress(btn, "Finding duplicates...", async () => {
       const duplicatePayload = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/duplicates`);
       openSourceTool("Probable duplicate review", duplicateReviewTool(duplicatePayload));
+    }));
+    const resetSourceButton = button("↺ Reset", "Completely reset this selected source scan. This removes reviewed blocks, reviewed tables, extracted artwork, package assets for this source/package, and rendered page cache from DATA_DIR so the next import starts fresh.", async (btn) => runWithButtonProgress(btn, "Resetting source...", async () => {
+      const typed = window.prompt(`Type RESET to completely remove the local reviewed source workspace for ${payload.source_id}. This keeps the uploaded PDF but deletes reviewed blocks, tables, artwork candidates, package assets, and cached pages.`);
+      if (typed !== "RESET") {
+        setStatus("Source reset cancelled.");
+        return;
+      }
+      const result = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}`, { method: "DELETE" });
+      selectedBlockIds.clear();
+      sourceWorkbenchState.selectedBlockIds = new Set();
+      sourceWorkbenchState.sourceId = "";
+      persistSourceWorkbenchState();
+      mount.replaceChildren(el("p", "muted", result.message || "Source workspace reset. Reimport or rescan the PDF to start fresh."));
+      setStatus(result.message || "Source workspace reset.");
     }));
     const sourceToolMount = el("div", "modern-source-tool-panel hidden");
     function openSourceTool(title, toolBody) {
@@ -7510,27 +7522,24 @@ async function renderRulePdfManager() {
         return modernTextMatchesNeedle(`${item.id || ""} ${item.page_label || ""} ${item.category || ""} ${item.title || ""} ${item.notes || ""}`, needle);
       });
       const unassignedCount = blocks.filter((block) => (block.assignment || "unassigned") === "unassigned").length;
-      const boundaryCount = candidates.length;
       const scopeText = hasSearch ? "search" : documentScope ? "document" : `PDF p.${activePage}`;
       results.replaceChildren(
         compactInfoStrip("Module contents", [
           { label: "Scope", value: scopeText },
           { label: "Text", value: `${matches.length}/${sourceItems.length}` },
           { label: "Unassigned", value: `${unassignedCount}` },
-          { label: "Boundary", value: `${boundaryCount}` },
           { label: "Tables", value: `${reviewedTables.length}` },
           { label: "Artwork", value: `${artworkMatches.length}/${artworkItems.length}` },
         ], "Counts update as the current page, search, assignment filter, and manual review categories change.")
       );
       const groupRank = (key) => {
         if (key === "unassigned") return "00";
-        if (key === "page_boundary_candidate") return "01";
         if (key === "ignore") return "99";
         return `10-${key}`;
       };
       const grouped = new Map();
       for (const block of matches) {
-        const key = block.source_item_type === "page-boundary candidate" ? "page_boundary_candidate" : (block.assignment || "unassigned");
+        const key = block.assignment || "unassigned";
         if (!grouped.has(key)) grouped.set(key, []);
         grouped.get(key).push(block);
       }
@@ -7547,7 +7556,7 @@ async function renderRulePdfManager() {
         if (groupBlocks.length > renderLimit) {
           branchBody.appendChild(el("p", "muted", `Showing first ${renderLimit} in this category. Narrow the search or filter to inspect the remaining ${groupBlocks.length - renderLimit}.`));
         }
-        const groupTitle = groupKey === "page_boundary_candidate" ? "Page boundary candidates" : modernTitleFromKey(groupKey || "unassigned");
+        const groupTitle = modernTitleFromKey(groupKey || "unassigned");
         textTree.appendChild(treeBranch(groupTitle, `${groupBlocks.length}`, branchBody, {
           open: groupKey === "unassigned" || hasSearch,
           hint: groupKey === "unassigned" ? "Primary review queue. Select blocks here, then use the left controls to assign, merge, move, edit, split, or draft tables." : "Assigned content remains in document order within this category.",
@@ -7655,7 +7664,7 @@ async function renderRulePdfManager() {
       actionGroup("Select", [selectVisibleButton, clearSelectionButton]),
       actionGroup("Assign", [applyAssignmentButton, ignorePhraseButton]),
       actionGroup("Blocks", [mergeSelectedButton, editSelectedButton, splitSelectedButton]),
-      actionGroup("Clean", [duplicateReviewButton]),
+      actionGroup("Clean", [duplicateReviewButton, resetSourceButton]),
       actionGroup("Extract", [draftTableButton]),
       actionGroup("Order", [moveUpButton, moveDownButton])
     );
@@ -7687,7 +7696,6 @@ async function renderRulePdfManager() {
       compactInfoStrip("Selected source scan", [
         { label: "Source", value: payload.source_id || "source" },
         { label: "Text", value: `${blocks.length}` },
-        { label: "Boundary", value: `${candidates.length}` },
         { label: "Artwork", value: `${artworkItems.length}` },
         { label: "Tables", value: `${reviewedTables.length}` },
         { label: "Offset", value: `${payload.page_offset || 0}`, hint: "Used when PDF viewer pages differ from printed book pages." },
