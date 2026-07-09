@@ -55,6 +55,21 @@ def extract_rule_page_texts(page: Any) -> list[dict[str, str]]:
     return variants
 
 
+def primary_rule_page_text_variant(variants: list[dict[str, str]]) -> dict[str, str]:
+    clean_variants = [variant for variant in variants if rule_pdf_text_fingerprint(variant.get("text", ""))]
+    if not clean_variants:
+        return {"method": "", "text": ""}
+    lengths = [len(rule_pdf_text_fingerprint(variant.get("text", ""))) for variant in clean_variants]
+    longest = max(lengths) if lengths else 0
+    by_method = {str(variant.get("method") or ""): variant for variant in clean_variants}
+    preferred = ["layout", "plain", "positioned"]
+    for method in preferred:
+        variant = by_method.get(method)
+        if variant and len(rule_pdf_text_fingerprint(variant.get("text", ""))) >= int(longest * 0.85):
+            return variant
+    return max(clean_variants, key=lambda variant: len(rule_pdf_text_fingerprint(variant.get("text", ""))))
+
+
 def extract_rule_pdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
     try:
         from pypdf import PdfReader
@@ -67,8 +82,16 @@ def extract_rule_pdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
             variants = extract_rule_page_texts(page)
             if not variants:
                 continue
-            text = clean_rule_pdf_text("\n\n".join(item["text"] for item in variants))
-            pages.append({"page": index, "text": text, "methods": [item["method"] for item in variants]})
+            primary = primary_rule_page_text_variant(variants)
+            text = clean_rule_pdf_text(primary.get("text", ""))
+            pages.append(
+                {
+                    "page": index,
+                    "text": text,
+                    "methods": [item["method"] for item in variants],
+                    "primary_method": primary.get("method", ""),
+                }
+            )
         return pages
     except Exception as exc:  # noqa: BLE001
         message = str(exc)

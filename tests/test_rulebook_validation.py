@@ -738,6 +738,8 @@ def test_rule_pdf_page_extraction_uses_layout_and_positioned_text() -> None:
     body = "\n".join(item["text"] for item in variants)
     assert [item["method"] for item in variants] == ["plain", "layout", "positioned"]
     assert "One Bite At A Time" in body
+    assert pdf_text_index.primary_rule_page_text_variant(variants)["method"] == "layout"
+    assert "Normal flowing page text only." not in pdf_text_index.primary_rule_page_text_variant(variants)["text"]
     assert "One Bite At A Time" in pdf_text_index.clean_rule_pdf_text(body)
 
 
@@ -770,6 +772,8 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
     path = tmp_path / "Supplements" / "_sources" / "troublesome-towns" / "source_blocks.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["page_offset"] == -1
+    assert "front_cover" in payload["assignment_options"]
+    assert "back_cover" in payload["assignment_options"]
     assert "title_page" in payload["assignment_options"]
     assert "table_of_contents" in payload["assignment_options"]
     assert "artwork_filler" in payload["assignment_options"]
@@ -869,6 +873,35 @@ def test_supplement_source_rescan_preserves_reviewed_edits_when_raw_blocks_chang
     assert payload["raw_blocks"][0]["text"] == "Changed raw extraction"
     assert payload["reviewed_blocks"][0]["text"] == "Reviewed edited block"
     assert payload["reviewed_blocks"][0]["assignment"] == "title_page"
+
+
+def test_supplement_source_scan_overwrite_rebuilds_reviewed_blocks(tmp_path: Path, monkeypatch) -> None:
+    from app.engine import supplement_sources
+
+    pdf = tmp_path / "Overwrite Book.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+    pages = [{"page": 1, "text": "Original block", "methods": ["layout"]}]
+    monkeypatch.setattr(supplement_sources, "extract_rule_pdf_pages", lambda _path: pages)
+
+    supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:05:00Z")
+    supplement_sources.update_supplement_source_block(
+        tmp_path,
+        "overwrite-book",
+        "overwrite-book-p1-b001",
+        {"text": "Reviewed title edit", "assignment": "title_page", "review_status": "checked"},
+    )
+    pages[:] = [{"page": 1, "text": "Fresh raw block", "methods": ["layout"]}]
+    preserved = supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:06:00Z")
+    assert preserved["overwrite"] is False
+    payload = json.loads((tmp_path / "Supplements" / "_sources" / "overwrite-book" / "source_blocks.json").read_text(encoding="utf-8"))
+    assert payload["reviewed_blocks"][0]["text"] == "Reviewed title edit"
+    assert payload["reviewed_blocks"][0]["assignment"] == "title_page"
+
+    rebuilt = supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:07:00Z", overwrite=True)
+    assert rebuilt["overwrite"] is True
+    payload = json.loads((tmp_path / "Supplements" / "_sources" / "overwrite-book" / "source_blocks.json").read_text(encoding="utf-8"))
+    assert payload["reviewed_blocks"][0]["text"] == "Fresh raw block"
+    assert payload["reviewed_blocks"][0]["assignment"] == "unassigned"
 
 
 def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch) -> None:
@@ -1049,6 +1082,51 @@ def test_ignore_phrase_removes_duplicate_review_blocks_on_same_page(tmp_path: Pa
     saved = client.get("/api/supplements/source-scans/duplicate-footer-book").json()
     kept = [block for block in saved["blocks"] if block["assignment"] != "ignore"]
     assert [block["text"] for block in kept] == [repeated_rule]
+
+
+def test_source_duplicate_review_endpoint_finds_and_removes_checked_blocks(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Duplicate Blocks.pdf").write_bytes(b"%PDF-local-test")
+    repeated_rule = (
+        "This same rule paragraph was extracted twice on one page and should be reviewed "
+        "as a duplicate candidate before deleting either reviewed source block."
+    )
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 1, "text": f"{repeated_rule}\n\n{repeated_rule}", "methods": ["layout"]}],
+    )
+    client = TestClient(main_module.app)
+    client.post("/api/supplements/source-scan", json={"filename": "Duplicate Blocks.pdf"})
+
+    duplicates = client.get("/api/supplements/source-scans/duplicate-blocks/duplicates").json()
+    assert duplicates["group_count"] == 1
+    assert duplicates["suggested_duplicate_count"] == 1
+    duplicate_id = duplicates["groups"][0]["suggested_duplicate_block_ids"][0]
+
+    removed = client.post(
+        "/api/supplements/source-scans/duplicate-blocks/blocks/delete",
+        json={"block_ids": [duplicate_id], "reason": "test duplicate cleanup"},
+    ).json()
+
+    assert removed["removed_count"] == 1
+    saved = client.get("/api/supplements/source-scans/duplicate-blocks").json()
+    assert len(saved["blocks"]) == 1
+    assert saved["blocks"][0]["text"] == repeated_rule
+    assert saved["duplicate_cleanup_log"][0]["removed_block_ids"] == [duplicate_id]
 
 
 def test_source_block_table_draft_can_be_reviewed_and_saved(tmp_path: Path, monkeypatch) -> None:

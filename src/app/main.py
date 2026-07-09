@@ -73,8 +73,10 @@ from .engine.roster_sync import (
 from .engine.supplement_sources import (
     add_supplement_package_asset,
     delete_supplement_package_asset,
+    delete_supplement_source_blocks,
     draft_supplement_source_table,
     extract_supplement_source_artwork,
+    find_supplement_source_duplicate_blocks,
     list_supplement_source_packages,
     list_supplement_source_scans,
     load_supplement_source_scan,
@@ -798,8 +800,9 @@ async def scan_supplement_source(payload: dict[str, Any]) -> dict[str, Any]:
         pdf_path = _resolve_user_rule_pdf(filename)
     page_offset = _payload_or_saved_page_offset(payload, pdf_path)
     source_meta = _payload_source_metadata(payload, pdf_path)
+    overwrite = bool(payload.get("overwrite", False))
     try:
-        return scan_supplement_source_pdf(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset, **source_meta)
+        return scan_supplement_source_pdf(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset, overwrite=overwrite, **source_meta)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Could not scan supplement source: {exc}") from exc
 
@@ -895,12 +898,32 @@ async def supplement_source_scan_detail(source_id: str) -> dict[str, Any]:
     }
 
 
+@app.get("/api/supplements/source-scans/{source_id}/duplicates")
+async def supplement_source_scan_duplicates(source_id: str) -> dict[str, Any]:
+    try:
+        return find_supplement_source_duplicate_blocks(settings.data_dir, source_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source scan not found.") from exc
+
+
 @app.patch("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}")
 async def save_supplement_source_block(source_id: str, block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     try:
         return update_supplement_source_block(settings.data_dir, source_id, block_id, payload)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Source block not found.") from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/delete")
+async def delete_source_blocks(source_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    block_ids = payload.get("block_ids") if isinstance(payload.get("block_ids"), list) else []
+    reason = str(payload.get("reason") or "manual duplicate cleanup")
+    try:
+        return delete_supplement_source_blocks(settings.data_dir, source_id, [str(block_id) for block_id in block_ids], reason)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="One or more selected source blocks were not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/table-draft")

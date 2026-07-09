@@ -64,6 +64,10 @@ current with every rules or content change.
   `DATA_DIR/tag_scene_narrative_overrides.json`, and generated Adventures Guild
   modules can refresh older saved sessions from that local-only prose without
   committing copied PDF text to the repository
+- PDF / Supplement Workbench source scans under `DATA_DIR/Supplements/_sources`
+  support manual block assignment, page-offset metadata, package assets,
+  explicit overwrite/rebuild of reviewed source blocks, and a review-first
+  duplicate cleanup tool for local imported PDFs
 
 ## Preserved Source Material
 

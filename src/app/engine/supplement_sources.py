@@ -22,6 +22,8 @@ SOURCE_ARTWORK_CATEGORIES = {
     "terrain",
     "map",
     "tile",
+    "front_cover",
+    "back_cover",
     "filler_decorative",
     "cover_title_page",
     "symbol_icon",
@@ -41,6 +43,8 @@ SUPPLEMENT_PACKAGE_ASSET_CATEGORIES = {
     "npc_art",
     "item_equipment_art",
     "cover_title_art",
+    "front_cover_art",
+    "back_cover_art",
     "handout",
     "filler_art_reference",
     "ignore",
@@ -49,6 +53,8 @@ SUPPLEMENT_PACKAGE_ASSET_CATEGORIES = {
 
 SOURCE_BLOCK_ASSIGNMENTS = {
     "unassigned",
+    "front_cover",
+    "back_cover",
     "title_page",
     "table_of_contents",
     "credits",
@@ -552,6 +558,7 @@ def scan_supplement_source_pdf(
     page_offset: int = 0,
     supplement_id: str | None = None,
     supplement_title: str | None = None,
+    overwrite: bool = False,
 ) -> dict[str, Any]:
     source_settings = set_pdf_source_metadata(
         data_dir,
@@ -636,7 +643,7 @@ def scan_supplement_source_pdf(
                 "notes": "Possible page-spanning text. Review before assigning or copying into a supplement.",
             }
         )
-    reviewed_blocks = existing_reviewed_blocks or [dict(block) for block in raw_blocks]
+    reviewed_blocks = [dict(block) for block in raw_blocks] if overwrite else existing_reviewed_blocks or [dict(block) for block in raw_blocks]
     payload = {
         "schema_version": 1,
         "source_id": source_id,
@@ -645,7 +652,7 @@ def scan_supplement_source_pdf(
         "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
         "updated_at": now,
         "page_offset": int(page_offset),
-        "note": "Local/private PDF source blocks for human review and supplement assignment. Exact text remains in DATA_DIR. Re-scans update raw_blocks; reviewed_blocks preserve human edits.",
+        "note": "Local/private PDF source blocks for human review and supplement assignment. Exact text remains in DATA_DIR. Re-scans update raw_blocks; reviewed_blocks preserve human edits unless overwrite is requested.",
         "assignment_options": sorted(SOURCE_BLOCK_ASSIGNMENTS),
         "artwork_categories": sorted(SOURCE_ARTWORK_CATEGORIES),
         "raw_blocks": raw_blocks,
@@ -664,11 +671,16 @@ def scan_supplement_source_pdf(
         "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
         "blocks": len(reviewed_blocks),
         "raw_blocks": len(raw_blocks),
+        "overwrite": bool(overwrite),
         "continuation_candidates": len(continuation_candidates),
         "pages": len(pages),
         "page_offset": int(page_offset),
         "path": str(supplement_source_scan_path(data_dir, source_id)),
-        "message": f"Scanned {len(raw_blocks)} raw block(s), preserved {len(reviewed_blocks)} reviewed block(s), and found {len(continuation_candidates)} page-boundary candidate(s) from {pdf_path.name}.",
+        "message": (
+            f"Scanned {len(raw_blocks)} raw block(s), "
+            f"{'rebuilt' if overwrite else 'preserved'} {len(reviewed_blocks)} reviewed block(s), "
+            f"and found {len(continuation_candidates)} page-boundary candidate(s) from {pdf_path.name}."
+        ),
     }
 
 
@@ -854,6 +866,144 @@ def _dedupe_reviewed_source_blocks(blocks: list[dict[str, Any]]) -> tuple[list[d
         kept.append(block)
     _renumber_source_review_blocks(kept)
     return kept, removed
+
+
+def _source_duplicate_preview(text: Any, limit: int = 360) -> str:
+    preview = re.sub(r"\s+", " ", str(text or "")).strip()
+    return preview if len(preview) <= limit else f"{preview[:limit].rstrip()}..."
+
+
+def reviewed_source_duplicate_groups(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    buckets: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        assignment = str(block.get("assignment") or "unassigned")
+        normalised = _normalise_source_review_text(block.get("text"))
+        if assignment == "ignore" or len(normalised) < 40:
+            continue
+        page_key = str(block.get("pdf_page") or block.get("source_page") or block.get("page_label") or "")
+        bucket_key = (page_key, assignment)
+        page_groups = buckets.setdefault(bucket_key, [])
+        matched: dict[str, Any] | None = None
+        for group in page_groups:
+            canonical = str(group.get("canonical") or "")
+            if normalised == canonical or normalised in canonical or canonical in normalised:
+                matched = group
+                break
+        if matched is None:
+            page_groups.append({"canonical": normalised, "items": [(normalised, block)]})
+        else:
+            matched["items"].append((normalised, block))
+            if len(normalised) > len(str(matched.get("canonical") or "")):
+                matched["canonical"] = normalised
+
+    groups: list[dict[str, Any]] = []
+    for page_groups in buckets.values():
+        for group in page_groups:
+            items = list(group.get("items") or [])
+            if len(items) < 2:
+                continue
+            ordered_items = sorted(enumerate(items), key=lambda item: (-len(item[1][0]), item[0]))
+            keep_index = ordered_items[0][0]
+            keep_block = items[keep_index][1]
+            duplicates = [block for index, (_normalised, block) in enumerate(items) if index != keep_index]
+            if not duplicates:
+                continue
+            group_id = f"dup-{len(groups) + 1:03d}-{keep_block.get('pdf_page') or keep_block.get('source_page') or 'page'}"
+            groups.append(
+                {
+                    "id": group_id,
+                    "reason": "same-page duplicate or contained text",
+                    "assignment": str(keep_block.get("assignment") or "unassigned"),
+                    "page_label": str(keep_block.get("page_label") or ""),
+                    "pdf_page": keep_block.get("pdf_page"),
+                    "source_page": keep_block.get("source_page"),
+                    "keep_block": {
+                        "id": keep_block.get("id"),
+                        "page_label": keep_block.get("page_label"),
+                        "block_index": keep_block.get("block_index"),
+                        "assignment": keep_block.get("assignment") or "unassigned",
+                        "text": str(keep_block.get("text") or ""),
+                        "preview": _source_duplicate_preview(keep_block.get("text")),
+                    },
+                    "duplicate_blocks": [
+                        {
+                            "id": block.get("id"),
+                            "page_label": block.get("page_label"),
+                            "block_index": block.get("block_index"),
+                            "assignment": block.get("assignment") or "unassigned",
+                            "text": str(block.get("text") or ""),
+                            "preview": _source_duplicate_preview(block.get("text")),
+                        }
+                        for block in duplicates
+                    ],
+                    "suggested_duplicate_block_ids": [str(block.get("id")) for block in duplicates if block.get("id")],
+                    "candidate_count": len(items),
+                }
+            )
+    return groups
+
+
+def find_supplement_source_duplicate_blocks(data_dir: Path, source_id: str) -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    path = supplement_source_scan_path(data_dir, source_id)
+    if not path.exists():
+        raise KeyError(source_id)
+    blocks = payload.get("reviewed_blocks", [])
+    if not isinstance(blocks, list):
+        blocks = []
+    groups = reviewed_source_duplicate_groups(blocks)
+    duplicate_ids = [block_id for group in groups for block_id in group.get("suggested_duplicate_block_ids", [])]
+    return {
+        "source_id": source_id,
+        "group_count": len(groups),
+        "suggested_duplicate_count": len(duplicate_ids),
+        "groups": groups,
+        "message": f"Found {len(groups)} probable duplicate group(s), with {len(duplicate_ids)} suggested removable block(s).",
+    }
+
+
+def delete_supplement_source_blocks(data_dir: Path, source_id: str, block_ids: list[str], reason: str = "") -> dict[str, Any]:
+    clean_ids = list(dict.fromkeys(str(block_id) for block_id in block_ids if str(block_id)))
+    if not clean_ids:
+        raise ValueError("Select at least one source block to remove.")
+    payload = load_supplement_source_scan(data_dir, source_id)
+    path = supplement_source_scan_path(data_dir, source_id)
+    if not path.exists():
+        raise KeyError(source_id)
+    blocks = payload.get("reviewed_blocks", [])
+    if not isinstance(blocks, list):
+        blocks = []
+    remove_ids = set(clean_ids)
+    kept: list[dict[str, Any]] = []
+    removed: list[dict[str, Any]] = []
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        if str(block.get("id") or "") in remove_ids:
+            removed.append(block)
+            continue
+        kept.append(block)
+    if len(removed) != len(remove_ids):
+        raise KeyError("One or more selected source blocks were not found.")
+    _renumber_source_review_blocks(kept)
+    log = payload.get("duplicate_cleanup_log") if isinstance(payload.get("duplicate_cleanup_log"), list) else []
+    log.append(
+        {
+            "removed_block_ids": [str(block.get("id") or "") for block in removed],
+            "reason": str(reason or "manual duplicate cleanup"),
+        }
+    )
+    payload["duplicate_cleanup_log"] = log
+    payload["reviewed_blocks"] = kept
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {
+        "source_id": source_id,
+        "removed_count": len(removed),
+        "removed_block_ids": [str(block.get("id") or "") for block in removed],
+        "message": f"Removed {len(removed)} reviewed source block(s).",
+    }
 
 
 def split_matching_supplement_source_phrase_to_ignore(data_dir: Path, source_id: str, phrase: str) -> dict[str, Any]:

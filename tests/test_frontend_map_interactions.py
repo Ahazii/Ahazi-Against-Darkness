@@ -3047,6 +3047,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "hasSearch && !assignmentNeedle && block.assignment === \"ignore\"" in MODERN_PAGES_JS
     assert "Ignored snippets are hidden from normal search unless you filter to Ignore." in MODERN_PAGES_JS
     assert "/blocks/split-ignore-phrase" in MODERN_PAGES_JS
+    assert "≋ Dups" in MODERN_PAGES_JS
+    assert "/duplicates" in MODERN_PAGES_JS
+    assert "/blocks/delete" in MODERN_PAGES_JS
+    assert "Showing first ${renderLimit} in this category" in MODERN_PAGES_JS
     assert "current Search text as a literal phrase" in MODERN_PAGES_JS
     assert "modern-source-review-scope" in MODERN_PAGES_JS
     assert "Whole document" in MODERN_PAGES_JS

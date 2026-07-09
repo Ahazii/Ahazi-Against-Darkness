@@ -6698,7 +6698,7 @@ async function renderRulePdfManager() {
   const pageOffset = input("number", "modern-rule-pdf-page-offset", "Optional printed-page offset. The app calculates printed page = PDF page + offset. Example: if PDF page 7 is printed page 1, enter -6.", "0");
   const supplementId = input("text", "modern-rule-pdf-supplement-id", "Supplement package id. Use the same id for multiple PDFs that belong to one supplement package.", "");
   const supplementTitle = input("text", "modern-rule-pdf-supplement-title", "Human-readable supplement package title. This groups multiple source documents into one future playable supplement.", "");
-  const overwrite = input("checkbox", "modern-rule-pdf-overwrite", "Overwrite existing fields in DATA_DIR/tag_scene_narrative_overrides.json. Leave off to preserve local edits.");
+  const overwrite = input("checkbox", "modern-rule-pdf-overwrite", "Overwrite local review data for actions that support it. Source Blocks rebuilds reviewed text blocks from fresh extraction; TAG narrative overwrites existing override fields. Uploaded PDFs and package assets are not deleted.");
   const status = el("div", "modern-list");
   const resultBox = el("div", "modern-list");
   const uploadedPdfSettings = new Map();
@@ -6730,6 +6730,7 @@ async function renderRulePdfManager() {
       page_offset: Number(pageOffset.value || 0),
       supplement_id: supplementId.value || suggestedSupplementId(uploadedSelect.value),
       supplement_title: supplementTitle.value || suggestedSupplementTitle(uploadedSelect.value),
+      overwrite: Boolean(overwrite.checked),
     };
   }
   function d66Labels() {
@@ -7123,6 +7124,10 @@ async function renderRulePdfManager() {
       });
       await reloadCurrentScan("Source block moved down.");
     }));
+    const duplicateReviewButton = button("≋ Dups", "Find probable same-page duplicate reviewed text blocks. The review tool shows what will be kept and which duplicate blocks are suggested for removal before anything is deleted.", async (btn) => runWithButtonProgress(btn, "Finding duplicates...", async () => {
+      const duplicatePayload = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/duplicates`);
+      openSourceTool("Probable duplicate review", duplicateReviewTool(duplicatePayload));
+    }));
     const sourceToolMount = el("div", "modern-source-tool-panel hidden");
     function openSourceTool(title, toolBody) {
       sourceToolMount.classList.remove("hidden");
@@ -7182,6 +7187,91 @@ async function renderRulePdfManager() {
       );
       activeBlockEditor = { blockId: block.id, textArea };
       return editor;
+    }
+    function duplicateReviewTool(duplicatePayload) {
+      activeBlockEditor = null;
+      const groups = duplicatePayload.groups || [];
+      const duplicateSelection = new Set(groups.flatMap((group) => group.suggested_duplicate_block_ids || []));
+      const panel = el("div", "modern-source-block-editor");
+      const statusLine = modernStatusRow(
+        "Duplicate candidates",
+        duplicatePayload.message || "No duplicate scan result.",
+        "Probable duplicates are same-page reviewed text blocks where one block exactly matches or contains another. Review before removing; ignored snippets are skipped."
+      );
+      const toolbar = actions();
+      toolbar.append(
+        button("Check Suggested", "Check every suggested duplicate block in this review result.", () => {
+          for (const group of groups) {
+            for (const blockId of group.suggested_duplicate_block_ids || []) duplicateSelection.add(blockId);
+          }
+          panel.querySelectorAll("input[data-duplicate-block-id]").forEach((checkbox) => {
+            checkbox.checked = true;
+          });
+        }),
+        button("Clear", "Clear all duplicate removal checks.", () => {
+          duplicateSelection.clear();
+          panel.querySelectorAll("input[data-duplicate-block-id]").forEach((checkbox) => {
+            checkbox.checked = false;
+          });
+        }),
+        button("Remove Checked", "Remove only the checked duplicate candidate blocks from reviewed source blocks. The kept block remains.", async (btn) => runWithButtonProgress(btn, "Removing duplicates...", async () => {
+          const blockIds = Array.from(duplicateSelection);
+          if (!blockIds.length) throw new Error("No duplicate blocks are checked for removal.");
+          const confirmed = window.confirm(`Remove ${blockIds.length} checked duplicate reviewed source block(s)? This only changes the local DATA_DIR source review file.`);
+          if (!confirmed) {
+            setStatus("Duplicate cleanup cancelled.");
+            return;
+          }
+          const result = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/delete`, {
+            method: "POST",
+            body: JSON.stringify({ block_ids: blockIds, reason: "manual duplicate cleanup from PDF / Supplement Workbench" }),
+          });
+          selectedBlockIds.clear();
+          sourceWorkbenchState.selectedBlockIds = new Set();
+          await reloadCurrentScan(result.message || "Duplicate source blocks removed.");
+        }))
+      );
+      const list = el("div", "modern-list");
+      if (!groups.length) {
+        list.appendChild(el("p", "muted", "No probable duplicate reviewed blocks found in this source."));
+      }
+      for (const group of groups.slice(0, 80)) {
+        const row = document.createElement("details");
+        row.className = "modern-row";
+        const summary = document.createElement("summary");
+        summary.append(
+          el("strong", "", `${group.page_label || "Source page"} · ${modernTitleFromKey(group.assignment || "unassigned")}`),
+          el("span", "muted", ` · ${group.duplicate_blocks?.length || 0} suggested removal(s)`)
+        );
+        const keep = group.keep_block || {};
+        const keepPanel = modernInfoPanel("Keep", `${keep.page_label || ""} · block ${keep.block_index || "?"}`, [
+          { label: "Block id", value: keep.id || "" },
+          { label: "Preview", value: keep.preview || "" },
+        ], "This is the longest or most complete reviewed block in the probable duplicate group.");
+        const removals = el("div", "modern-list");
+        for (const candidate of group.duplicate_blocks || []) {
+          const line = el("label", "modern-check-row");
+          const checkbox = input("checkbox", `modern-source-duplicate-${candidate.id}`, "Mark this reviewed block for duplicate cleanup removal.");
+          checkbox.dataset.duplicateBlockId = candidate.id || "";
+          checkbox.checked = duplicateSelection.has(candidate.id);
+          checkbox.addEventListener("change", () => {
+            if (checkbox.checked) duplicateSelection.add(candidate.id);
+            else duplicateSelection.delete(candidate.id);
+          });
+          line.append(
+            checkbox,
+            el("span", "", `${candidate.page_label || ""} · block ${candidate.block_index || "?"} · ${candidate.preview || candidate.id || ""}`)
+          );
+          removals.appendChild(line);
+        }
+        row.append(summary, keepPanel, removals);
+        list.appendChild(row);
+      }
+      if (groups.length > 80) {
+        list.appendChild(el("p", "muted", `Showing first 80 duplicate groups. Remove some, then run Dups again for the remaining ${groups.length - 80}.`));
+      }
+      panel.append(statusLine, toolbar, list);
+      return panel;
     }
     function artworkEditor(item, categories) {
       activeBlockEditor = null;
@@ -7446,15 +7536,16 @@ async function renderRulePdfManager() {
       }
       const textTree = el("div", "modern-source-tree-children");
       const orderedGroups = Array.from(grouped.entries()).sort(([left], [right]) => groupRank(left).localeCompare(groupRank(right)));
-      let rendered = 0;
       const renderLimit = 160;
       for (const [groupKey, groupBlocks] of orderedGroups) {
-        if (rendered >= renderLimit) break;
         const branchBody = el("div", "modern-source-tree-children");
-        for (const block of groupBlocks) {
-          if (rendered >= renderLimit) break;
+        let rendered = 0;
+        for (const block of groupBlocks.slice(0, renderLimit)) {
           rendered += 1;
           branchBody.appendChild(renderSourceBlockTreeItem(block, needle));
+        }
+        if (groupBlocks.length > renderLimit) {
+          branchBody.appendChild(el("p", "muted", `Showing first ${renderLimit} in this category. Narrow the search or filter to inspect the remaining ${groupBlocks.length - renderLimit}.`));
         }
         const groupTitle = groupKey === "page_boundary_candidate" ? "Page boundary candidates" : modernTitleFromKey(groupKey || "unassigned");
         textTree.appendChild(treeBranch(groupTitle, `${groupBlocks.length}`, branchBody, {
@@ -7462,7 +7553,6 @@ async function renderRulePdfManager() {
           hint: groupKey === "unassigned" ? "Primary review queue. Select blocks here, then use the left controls to assign, merge, move, edit, split, or draft tables." : "Assigned content remains in document order within this category.",
         }));
       }
-      if (matches.length > renderLimit) textTree.appendChild(el("p", "muted", `Showing first ${renderLimit} matches. Narrow the search or filter to inspect the remaining ${matches.length - renderLimit}.`));
       const sourceTree = el("div", "modern-source-tree-children");
       sourceTree.append(
         treeBranch("Text blocks", `${matches.length}`, textTree, { open: true }),
@@ -7565,6 +7655,7 @@ async function renderRulePdfManager() {
       actionGroup("Select", [selectVisibleButton, clearSelectionButton]),
       actionGroup("Assign", [applyAssignmentButton, ignorePhraseButton]),
       actionGroup("Blocks", [mergeSelectedButton, editSelectedButton, splitSelectedButton]),
+      actionGroup("Clean", [duplicateReviewButton]),
       actionGroup("Extract", [draftTableButton]),
       actionGroup("Order", [moveUpButton, moveDownButton])
     );
