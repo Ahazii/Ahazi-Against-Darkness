@@ -6831,6 +6831,10 @@ async function renderRulePdfManager() {
     const sourceItems = blocks.concat(candidates);
     const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
     const assignment = select("modern-source-block-assignment", "Filter by current manual assignment.", [["", "All assignments"]]);
+    const reviewScope = select("modern-source-review-scope", "Choose whether the block and artwork lists follow the current PDF page or show the whole source document.", [
+      ["page", "Current PDF page"],
+      ["document", "Whole document"],
+    ]);
     for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
     if (candidates.length) assignment.appendChild(new Option("Page-boundary candidates", "page_boundary_candidate"));
     const results = el("div", "modern-list");
@@ -7151,17 +7155,24 @@ async function renderRulePdfManager() {
       const needle = search.value;
       const assignmentNeedle = assignment.value;
       const activePage = Math.max(1, Number(pageInput.value || firstPdfPage) || 1);
-      const globalSearch = Boolean(searchTerms(needle).length);
+      const hasSearch = Boolean(searchTerms(needle).length);
+      const documentScope = reviewScope.value === "document" || hasSearch;
       const matches = sourceItems.filter((block) => {
         if (assignmentNeedle && block.assignment !== assignmentNeedle) return false;
-        if (!globalSearch) {
+        if (!documentScope) {
           const startPage = Number(block.pdf_page || 0);
           const endPage = Number(block.pdf_page_end || startPage);
           if (activePage < startPage || activePage > endPage) return false;
         }
         return modernTextMatchesNeedle(`${block.id || ""} ${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
       });
-      results.replaceChildren(modernStatusRow(globalSearch ? "Matching source blocks" : "Page source blocks", `${matches.length} of ${sourceItems.length}`, globalSearch ? "Search is showing matching blocks across this whole source document." : `Showing reviewed blocks and page-boundary candidates for PDF page ${activePage}.`));
+      const scopeTitle = hasSearch ? "Matching source blocks" : documentScope ? "All source blocks" : "Page source blocks";
+      const scopeHint = hasSearch
+        ? "Search is showing matching blocks across this whole source document."
+        : documentScope
+          ? "Showing every reviewed source block and page-boundary candidate in this document. Use Current PDF page when reviewing page-by-page beside the PDF preview."
+          : `Showing reviewed blocks and page-boundary candidates for PDF page ${activePage}. Switch Review scope to Whole document to see all ${sourceItems.length}.`;
+      results.replaceChildren(modernStatusRow(scopeTitle, `${matches.length} of ${sourceItems.length}`, scopeHint));
       for (const block of matches.slice(0, 120)) {
         const item = document.createElement("details");
         item.className = "modern-row";
@@ -7220,12 +7231,19 @@ async function renderRulePdfManager() {
       function drawArtwork() {
         const activePage = Math.max(1, Number(pageInput.value || firstPdfPage) || 1);
         const needle = search.value;
-        const globalSearch = Boolean(searchTerms(needle).length);
+        const hasSearch = Boolean(searchTerms(needle).length);
+        const documentScope = reviewScope.value === "document" || hasSearch;
         const matches = artworkItems.filter((item) => {
-          if (!globalSearch && Number(item.pdf_page || 0) !== activePage) return false;
+          if (!documentScope && Number(item.pdf_page || 0) !== activePage) return false;
           return modernTextMatchesNeedle(`${item.id || ""} ${item.page_label || ""} ${item.category || ""} ${item.title || ""} ${item.notes || ""}`, needle);
         });
-        artworkResults.replaceChildren(modernStatusRow(globalSearch ? "Matching artwork" : "Page artwork", `${matches.length} of ${artworkItems.length}`, globalSearch ? "Search is showing matching artwork across this whole source document." : `Showing artwork candidates for PDF page ${activePage}.`));
+        const scopeTitle = hasSearch ? "Matching artwork" : documentScope ? "All artwork" : "Page artwork";
+        const scopeHint = hasSearch
+          ? "Search is showing matching artwork across this whole source document."
+          : documentScope
+            ? "Showing every artwork candidate in this document. Use Current PDF page when reviewing page-by-page beside the PDF preview."
+            : `Showing artwork candidates for PDF page ${activePage}. Switch Review scope to Whole document to see all ${artworkItems.length}.`;
+        artworkResults.replaceChildren(modernStatusRow(scopeTitle, `${matches.length} of ${artworkItems.length}`, scopeHint));
         for (const item of matches.slice(0, 80)) {
           const row = document.createElement("details");
           row.className = "modern-row";
@@ -7272,18 +7290,22 @@ async function renderRulePdfManager() {
       redrawArtwork();
     });
     assignment.addEventListener("change", draw);
+    reviewScope.addEventListener("change", () => {
+      draw();
+      redrawArtwork();
+    });
     mount.classList.remove("hidden");
     const reviewPanel = el("div", "modern-source-review-panel");
     const selectionActions = actions();
     selectionActions.append(mergeSelectedButton);
     const blockTools = el("div", "modern-list");
-    blockTools.append(field("Search source blocks and artwork", search), field("Assignment filter", assignment), selectionStatus, selectionActions, results);
+    blockTools.append(field("Search source blocks and artwork", search), field("Review scope", reviewScope), field("Assignment filter", assignment), selectionStatus, selectionActions, results);
     reviewPanel.append(
-      modernStatusRow("Page review", `PDF page ${pageInput.value || firstPdfPage}`, "By default this panel follows the PDF page. Enter a search term to search across the whole source document."),
+      modernStatusRow("Page review", `PDF page ${pageInput.value || firstPdfPage}`, "By default the lists follow the current PDF page. Change Review scope to Whole document, or enter a search term, to see blocks and artwork across the whole source."),
       sourceToolMount,
       workbenchSection("Reviewed tables", `${reviewedTables.length} table draft(s) in this source`, renderReviewedTablesPanel()),
       workbenchSection("Page artwork", `${artworkItems.length} candidate(s) in this document`, renderArtworkPanel()),
-      workbenchSection("Page text blocks", `${sourceItems.length} block/candidate item(s) in this document`, blockTools)
+      workbenchSection("Text blocks", `${sourceItems.length} block/candidate item(s) in this document`, blockTools)
     );
     const reviewGrid = el("div", "modern-source-review-grid");
     reviewGrid.append(pdfViewer, reviewPanel);

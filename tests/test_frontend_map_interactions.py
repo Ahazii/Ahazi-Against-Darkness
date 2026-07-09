@@ -3019,12 +3019,16 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/api/supplements/source-scans" in MODERN_PAGES_JS
     assert "View Blocks" in MODERN_PAGES_JS
     assert "Page source blocks" in MODERN_PAGES_JS
+    assert "All source blocks" in MODERN_PAGES_JS
+    assert "modern-source-review-scope" in MODERN_PAGES_JS
+    assert "Whole document" in MODERN_PAGES_JS
+    assert "Switch Review scope to Whole document" in MODERN_PAGES_JS
     assert "Supplement source packages" in MODERN_PAGES_JS
     assert "Selected source scan" in MODERN_PAGES_JS
     assert "package asset(s)" in MODERN_PAGES_JS
     assert "Open Asset" in MODERN_PAGES_JS
     assert "Page artwork" in MODERN_PAGES_JS
-    assert "Page text blocks" in MODERN_PAGES_JS
+    assert "Text blocks" in MODERN_PAGES_JS
     assert "Showing reviewed blocks and page-boundary candidates for PDF page" in MODERN_PAGES_JS
     assert "Search hit preview" in MODERN_PAGES_JS
     assert "modern-source-block-search-preview" in MODERN_PAGES_JS
