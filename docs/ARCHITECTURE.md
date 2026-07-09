@@ -168,7 +168,11 @@ Home screen rule browsing:
   Non-PDF source assets such as PNG/JPG/WebP maps or handouts are stored under
   `DATA_DIR/Supplements/_sources/_package_assets/<supplement_id>/` and listed
   with the same package id. These files are package-level evidence/source
-  material rather than page-scanned rule text.
+  material rather than page-scanned rule text. Package source assets carry
+  reviewer metadata such as title, category, status, and notes. The current
+  workbench can split equal-grid tile sheets in the browser and upload each crop
+  back as a named `room_tile` package asset; D66 label helpers support tile
+  names such as `01`, `02`, `11`, `12`, etc.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.

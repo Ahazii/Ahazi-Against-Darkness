@@ -30,6 +30,23 @@ SOURCE_ARTWORK_CATEGORIES = {
 }
 
 
+SUPPLEMENT_PACKAGE_ASSET_CATEGORIES = {
+    "unknown",
+    "world_map",
+    "dungeon_map",
+    "location_map",
+    "room_tile_sheet",
+    "room_tile",
+    "foe_art",
+    "npc_art",
+    "item_equipment_art",
+    "cover_title_art",
+    "handout",
+    "filler_art_reference",
+    "ignore",
+}
+
+
 SOURCE_BLOCK_ASSIGNMENTS = {
     "unassigned",
     "title_page",
@@ -205,6 +222,10 @@ def add_supplement_package_asset(
     supplement_id: str | None,
     supplement_title: str | None,
     asset_kind: str = "map_or_image",
+    title: str = "",
+    category: str = "unknown",
+    notes: str = "",
+    parent_asset_id: str = "",
     now: str = "",
 ) -> dict[str, Any]:
     clean_name = Path(str(filename or "")).name.strip()
@@ -223,16 +244,25 @@ def add_supplement_package_asset(
     packages = _package_settings(payload)
     stored_package = packages.get(package_id) if isinstance(packages.get(package_id), dict) else dict(package)
     assets = stored_package.get("assets") if isinstance(stored_package.get("assets"), list) else []
+    previous = next((item for item in assets if isinstance(item, dict) and item.get("filename") == clean_name), {})
     asset_id = supplement_package_id(Path(clean_name).stem, "asset")
+    clean_category = str(category or previous.get("category") or "unknown")
+    if clean_category not in SUPPLEMENT_PACKAGE_ASSET_CATEGORIES:
+        clean_category = "unknown"
     record = {
+        **previous,
         "id": asset_id,
         "filename": clean_name,
         "asset_kind": str(asset_kind or "map_or_image"),
+        "title": str(title or previous.get("title") or Path(clean_name).stem).strip() or Path(clean_name).stem,
+        "category": clean_category,
+        "review_status": str(previous.get("review_status") or "unreviewed"),
         "content_type": str(content_type or ""),
         "size_bytes": len(data),
         "updated_at": now,
         "asset_url": f"/api/supplements/source-packages/{package_id}/assets/{clean_name}",
-        "notes": "",
+        "notes": str(notes or previous.get("notes") or ""),
+        "parent_asset_id": str(parent_asset_id or previous.get("parent_asset_id") or ""),
     }
     next_assets = [item for item in assets if not isinstance(item, dict) or item.get("filename") != clean_name]
     next_assets.append(record)
@@ -252,6 +282,35 @@ def add_supplement_package_asset(
         "path": str(target),
         "message": f"Imported {clean_name} into supplement package {stored_package['supplement_title']}.",
     }
+
+
+def update_supplement_package_asset(data_dir: Path, package_id: str, asset_id: str, changes: dict[str, Any]) -> dict[str, Any]:
+    payload = _load_source_settings(data_dir)
+    packages = _package_settings(payload)
+    safe_package_id = supplement_package_id(package_id, "supplement-package")
+    package = packages.get(safe_package_id) if isinstance(packages.get(safe_package_id), dict) else None
+    if package is None:
+        raise KeyError(package_id)
+    assets = package.get("assets") if isinstance(package.get("assets"), list) else []
+    for asset in assets:
+        if not isinstance(asset, dict) or asset.get("id") != asset_id:
+            continue
+        if "title" in changes:
+            asset["title"] = str(changes.get("title") or "").strip()
+        if "category" in changes:
+            category = str(changes.get("category") or "unknown")
+            asset["category"] = category if category in SUPPLEMENT_PACKAGE_ASSET_CATEGORIES else "unknown"
+        if "review_status" in changes:
+            asset["review_status"] = str(changes.get("review_status") or "unreviewed")
+        if "asset_kind" in changes:
+            asset["asset_kind"] = str(changes.get("asset_kind") or "map_or_image")
+        if "notes" in changes:
+            asset["notes"] = str(changes.get("notes") or "")
+        package["assets"] = assets
+        packages[safe_package_id] = package
+        _write_source_settings(data_dir, payload)
+        return {"asset": asset, "message": "Package source asset saved."}
+    raise KeyError(asset_id)
 
 
 def _page_text_blocks(text: str) -> list[str]:
@@ -790,6 +849,7 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
             "supplement_title": str(package_payload.get("supplement_title") or safe_id),
             "source_count": 0,
             "asset_count": len(assets),
+            "asset_categories": sorted(SUPPLEMENT_PACKAGE_ASSET_CATEGORIES),
             "blocks": 0,
             "artwork": 0,
             "reviewed_blocks": 0,
@@ -805,6 +865,7 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
                 "supplement_title": str(scan.get("supplement_title") or package_id),
                 "source_count": 0,
                 "asset_count": 0,
+                "asset_categories": sorted(SUPPLEMENT_PACKAGE_ASSET_CATEGORIES),
                 "blocks": 0,
                 "artwork": 0,
                 "reviewed_blocks": 0,

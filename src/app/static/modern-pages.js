@@ -6723,6 +6723,51 @@ async function renderRulePdfManager() {
       supplement_title: supplementTitle.value || suggestedSupplementTitle(uploadedSelect.value),
     };
   }
+  function d66Labels() {
+    const labels = [];
+    for (let tens = 0; tens <= 5; tens += 1) {
+      for (let ones = 1; ones <= 6; ones += 1) labels.push(`${tens}${ones}`);
+    }
+    return labels;
+  }
+  function imageToCanvasBlob(image, rect) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(rect.w));
+    canvas.height = Math.max(1, Math.round(rect.h));
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, Math.round(rect.x), Math.round(rect.y), Math.round(rect.w), Math.round(rect.h), 0, 0, canvas.width, canvas.height);
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not create cropped tile image.")), "image/png");
+    });
+  }
+  async function uploadPackageAssetBlob(pkg, blob, filename, params = {}) {
+    const query = new URLSearchParams({
+      filename,
+      supplement_id: pkg.supplement_id || supplementId.value || "supplement-package",
+      supplement_title: pkg.supplement_title || supplementTitle.value || "Supplement Package",
+      asset_kind: params.asset_kind || "map_or_image",
+      category: params.category || "unknown",
+      title: params.title || filename.replace(/\.[^.]+$/, ""),
+      notes: params.notes || "",
+      parent_asset_id: params.parent_asset_id || "",
+    });
+    const response = await fetch(`/api/supplements/source-asset?${query.toString()}`, {
+      method: "POST",
+      headers: { "Content-Type": blob.type || "image/png" },
+      body: await blob.arrayBuffer(),
+    });
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const payload = await response.json();
+        detail = payload.detail || detail;
+      } catch {
+        /* keep status text */
+      }
+      throw new Error(detail);
+    }
+    return response.json();
+  }
   function workbenchSection(title, subtitle, body) {
     const details = document.createElement("details");
     details.className = "modern-row modern-source-review-section";
@@ -7072,21 +7117,89 @@ async function renderRulePdfManager() {
       parent.appendChild(scanRow);
     }
     function appendAssetRows(pkg, parent) {
+      const categories = pkg.asset_categories || ["unknown", "world_map", "dungeon_map", "room_tile_sheet", "room_tile"];
       for (const asset of pkg.assets || []) {
-        const row = el("div", "modern-row");
-        const body = el("div", "");
-        body.append(
-          el("strong", "", asset.filename || asset.id || "Package asset"),
-          el("p", "muted", `${asset.asset_kind || "map_or_image"} · ${Math.round((asset.size_bytes || 0) / 1024)} KB · ${asset.content_type || "source asset"}`)
+        const row = document.createElement("details");
+        row.className = "modern-row";
+        const summary = document.createElement("summary");
+        summary.append(
+          el("strong", "", asset.title || asset.filename || asset.id || "Package asset"),
+          el("span", "muted", ` · ${asset.category || "unknown"} · ${Math.round((asset.size_bytes || 0) / 1024)} KB`)
         );
+        row.appendChild(summary);
+        const titleInput = input("text", `modern-package-asset-title-${pkg.supplement_id}-${asset.id}`, "Name this artwork/map resource for the future supplement module.", asset.title || asset.filename || "");
+        const categorySelect = select(`modern-package-asset-category-${pkg.supplement_id}-${asset.id}`, "Assign this source image to the supplement artwork/map/tile bucket it represents.", categories.map((category) => [category, category.replace(/_/g, " ")]));
+        categorySelect.value = asset.category || "unknown";
+        const notesInput = document.createElement("textarea");
+        notesInput.className = "modern-source-block-text compact";
+        notesInput.title = "Review notes for this package image source asset.";
+        notesInput.value = asset.notes || "";
         const rowActions = actions("modern-row-actions");
+        rowActions.append(
+          button("Save Asset", "Save title, assignment category, and notes for this package source image.", async (btn) => runWithButtonProgress(btn, "Saving asset...", async () => {
+            await api(`/api/supplements/source-packages/${encodeURIComponent(pkg.supplement_id)}/assets/${encodeURIComponent(asset.id)}`, {
+              method: "PATCH",
+              body: JSON.stringify({ title: titleInput.value, category: categorySelect.value, notes: notesInput.value, review_status: "checked" }),
+            });
+            await refreshSourceScans();
+            setStatus("Package source asset saved.");
+          }))
+        );
         if (asset.asset_url) rowActions.append(link("Open Asset", asset.asset_url, "Open this imported package source asset in a new tab.", "link-button secondary"));
-        row.append(body, rowActions);
+        row.append(field("Asset title", titleInput), field("Artwork/module assignment", categorySelect), field("Asset notes", notesInput), rowActions);
         if (asset.asset_url) {
           const preview = el("img", "modern-source-artwork-image");
           preview.alt = asset.filename || "Package source asset";
           preview.src = asset.asset_url;
           row.appendChild(preview);
+          const splitter = el("div", "modern-list");
+          const rowsInput = input("number", `modern-package-asset-rows-${pkg.supplement_id}-${asset.id}`, "Number of tile rows in this sheet.", "6");
+          const colsInput = input("number", `modern-package-asset-cols-${pkg.supplement_id}-${asset.id}`, "Number of tile columns in this sheet.", "6");
+          const labelsInput = document.createElement("textarea");
+          labelsInput.className = "modern-source-block-text compact";
+          labelsInput.title = "Tile names to apply in row order. Use D66 labels for Expanded Edition-style tile sheets.";
+          labelsInput.value = d66Labels().join(", ");
+          const splitActions = actions("modern-row-actions");
+          splitActions.append(
+            button("Fill D66 Labels", "Fill labels as 01-06, 11-16, 21-26, 31-36, 41-46, 51-56.", () => {
+              labelsInput.value = d66Labels().join(", ");
+            }),
+            button("Split Grid To Tiles", "Crop this image into equal grid cells and import each crop as a room_tile package asset using the labels in row order.", async (btn) => runWithButtonProgress(btn, "Splitting tile sheet...", async () => {
+              const image = preview;
+              if (!image.complete || !image.naturalWidth || !image.naturalHeight) throw new Error("Image preview is not loaded yet.");
+              const rows = Math.max(1, Number(rowsInput.value || 1));
+              const cols = Math.max(1, Number(colsInput.value || 1));
+              const labels = labelsInput.value.split(/[\s,;]+/).map((value) => value.trim()).filter(Boolean);
+              const cellW = image.naturalWidth / cols;
+              const cellH = image.naturalHeight / rows;
+              let count = 0;
+              for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
+                for (let colIndex = 0; colIndex < cols; colIndex += 1) {
+                  const label = labels[count] || `${rowIndex + 1}-${colIndex + 1}`;
+                  const blob = await imageToCanvasBlob(image, { x: colIndex * cellW, y: rowIndex * cellH, w: cellW, h: cellH });
+                  const baseName = String(asset.filename || asset.id || "tile-sheet").replace(/\.[^.]+$/, "");
+                  await uploadPackageAssetBlob(pkg, blob, `${baseName}-tile-${label}.png`, {
+                    asset_kind: "room_tile",
+                    category: "room_tile",
+                    title: `Tile ${label}`,
+                    parent_asset_id: asset.id || "",
+                    notes: `Cropped from ${asset.filename || asset.id || "tile sheet"} at row ${rowIndex + 1}, column ${colIndex + 1}.`,
+                  });
+                  count += 1;
+                }
+              }
+              await refreshSourceScans();
+              setStatus(`Imported ${count} room tile asset(s) from ${asset.filename || "tile sheet"}.`);
+            }))
+          );
+          splitter.append(
+            modernStatusRow("Tile Sheet Splitter", "Manual equal-grid crop", "Assign the source image as Room Tile Sheet, set rows/columns, then split into room_tile assets. For EE D66 sheets, use labels 01-06, 11-16, etc."),
+            field("Rows", rowsInput),
+            field("Columns", colsInput),
+            field("Tile labels", labelsInput),
+            splitActions
+          );
+          row.appendChild(workbenchSection("Split tile sheet", "Creates named room tile assets from this image", splitter));
         }
         parent.appendChild(row);
       }

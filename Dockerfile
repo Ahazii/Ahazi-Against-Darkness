@@ -28,6 +28,7 @@ RUN apt-get update \
   && useradd --uid ${APP_UID} --gid ${APP_GID} --create-home ${APP_USER}
 
 COPY src ./src
+COPY VERSION ./VERSION
 COPY data ./data
 COPY docs ./docs
 COPY assets ./assets

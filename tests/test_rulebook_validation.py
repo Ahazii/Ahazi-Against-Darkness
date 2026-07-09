@@ -1002,6 +1002,16 @@ def test_supplement_package_asset_upload_and_serve(tmp_path: Path, monkeypatch) 
     packages = client.get("/api/supplements/source-scans").json()["packages"]
     assert packages[0]["asset_count"] == 1
     assert packages[0]["assets"][0]["filename"] == "World Map.png"
+    assert "room_tile_sheet" in packages[0]["asset_categories"]
+    save = client.patch(
+        "/api/supplements/source-packages/treacheries-town/assets/world-map",
+        json={"title": "Troublesome Towns World Map", "category": "world_map", "notes": "Use as campaign map.", "review_status": "checked"},
+    )
+    assert save.status_code == 200
+    assert save.json()["asset"]["category"] == "world_map"
+    packages = client.get("/api/supplements/source-scans").json()["packages"]
+    assert packages[0]["assets"][0]["title"] == "Troublesome Towns World Map"
+    assert packages[0]["assets"][0]["notes"] == "Use as campaign map."
     served = client.get("/api/supplements/source-packages/treacheries-town/assets/World%20Map.png")
     assert served.status_code == 200
     assert served.content == b"png-bytes"

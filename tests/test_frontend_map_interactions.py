@@ -2934,6 +2934,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "modern-supplement-source-asset-upload" in MODERN_PAGES_JS
     assert "Upload Package Map/Image" in MODERN_PAGES_JS
     assert "/api/supplements/source-asset" in MODERN_PAGES_JS
+    assert "Split Grid To Tiles" in MODERN_PAGES_JS
+    assert "Fill D66 Labels" in MODERN_PAGES_JS
+    assert "room_tile_sheet" in MODERN_PAGES_JS
+    assert "imageToCanvasBlob" in MODERN_PAGES_JS
     assert "_package_assets" in MODERN_PAGES_JS
     assert "Use the same supplement package id" in MODERN_PAGES_JS
     assert "printed page = PDF page + offset" in MODERN_PAGES_JS

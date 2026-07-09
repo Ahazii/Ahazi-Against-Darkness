@@ -87,6 +87,7 @@ from .engine.supplement_sources import (
     supplement_package_asset_path,
     supplement_source_artwork_path,
     supplement_source_scan_path,
+    update_supplement_package_asset,
     update_supplement_source_artwork,
     update_supplement_source_block,
 )
@@ -827,6 +828,10 @@ async def upload_supplement_source_asset(request: Request) -> dict[str, Any]:
     supplement_id = str(request.query_params.get("supplement_id") or "").strip()
     supplement_title = str(request.query_params.get("supplement_title") or "").strip()
     asset_kind = str(request.query_params.get("asset_kind") or "map_or_image").strip() or "map_or_image"
+    title = str(request.query_params.get("title") or "").strip()
+    category = str(request.query_params.get("category") or "unknown").strip() or "unknown"
+    notes = str(request.query_params.get("notes") or "").strip()
+    parent_asset_id = str(request.query_params.get("parent_asset_id") or "").strip()
     try:
         return add_supplement_package_asset(
             settings.data_dir,
@@ -836,6 +841,10 @@ async def upload_supplement_source_asset(request: Request) -> dict[str, Any]:
             supplement_id=supplement_id or None,
             supplement_title=supplement_title or None,
             asset_kind=asset_kind,
+            title=title,
+            category=category,
+            notes=notes,
+            parent_asset_id=parent_asset_id,
             now=now_utc(),
         )
     except ValueError as exc:
@@ -850,6 +859,14 @@ async def supplement_source_scans() -> dict[str, Any]:
         "scans": list_supplement_source_scans(settings.data_dir),
         "packages": list_supplement_source_packages(settings.data_dir),
     }
+
+
+@app.patch("/api/supplements/source-packages/{supplement_id}/assets/{asset_id:path}")
+async def save_supplement_package_asset(supplement_id: str, asset_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return update_supplement_package_asset(settings.data_dir, supplement_id, asset_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Supplement package source asset not found.") from exc
 
 
 @app.get("/api/supplements/source-scans/{source_id}")
