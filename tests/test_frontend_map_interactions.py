@@ -3027,6 +3027,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "modern-source-controls-panel" in MODERN_PAGES_JS
     assert "modern-source-controls-grid" in MODERN_PAGES_JS
     assert "modern-source-action-groups" in MODERN_PAGES_JS
+    assert "actionGroup(\"Select\"" in MODERN_PAGES_JS
     assert "actionGroup(\"Assign\"" in MODERN_PAGES_JS
     assert "actionGroup(\"Blocks\"" in MODERN_PAGES_JS
     assert "actionGroup(\"Extract\"" in MODERN_PAGES_JS
@@ -3040,6 +3041,11 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Module contents" in MODERN_PAGES_JS
     assert "✓ Apply" in MODERN_PAGES_JS
     assert "⊘ Ignore" in MODERN_PAGES_JS
+    assert "☑ Shown" in MODERN_PAGES_JS
+    assert "☐ Clear" in MODERN_PAGES_JS
+    assert "visibleSelectableBlockIds" in MODERN_PAGES_JS
+    assert "hasSearch && !assignmentNeedle && block.assignment === \"ignore\"" in MODERN_PAGES_JS
+    assert "Ignored snippets are hidden from normal search unless you filter to Ignore." in MODERN_PAGES_JS
     assert "/blocks/split-ignore-phrase" in MODERN_PAGES_JS
     assert "current Search text as a literal phrase" in MODERN_PAGES_JS
     assert "modern-source-review-scope" in MODERN_PAGES_JS
@@ -3106,6 +3112,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/table-draft" in MODERN_PAGES_JS
     assert "/tables/" in MODERN_PAGES_JS
     assert "Split At Cursor" in MODERN_PAGES_JS
+    assert "actionGroup(\"Select\", [selectVisibleButton, clearSelectionButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Assign\", [applyAssignmentButton, ignorePhraseButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Blocks\", [mergeSelectedButton, editSelectedButton, splitSelectedButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Extract\", [draftTableButton])" in MODERN_PAGES_JS

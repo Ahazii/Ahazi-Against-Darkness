@@ -6883,6 +6883,7 @@ async function renderRulePdfManager() {
     reviewScope.value = sourceWorkbenchState.scope || "document";
     const results = el("div", "modern-source-tree");
     const selectedBlockIds = new Set([...sourceWorkbenchState.selectedBlockIds].filter((blockId) => sourceItems.some((item) => item.id === blockId)));
+    let visibleSelectableBlockIds = [];
     const selectionStatus = el("p", "muted", "No source blocks selected.");
     const firstPdfPage = Number(sourceItems.find((item) => item.pdf_page)?.pdf_page || 1);
     const leftRail = el("div", "modern-source-left-rail");
@@ -7031,7 +7032,7 @@ async function renderRulePdfManager() {
     const ignorePhraseButton = button("⊘ Ignore", "Use the current Search text as a literal phrase. Every occurrence in this source document is split into its own reviewed block and assigned to ignore.", async (btn) => runWithButtonProgress(btn, "Splitting ignored phrase...", async () => {
       const phrase = String(search.value || "").trim();
       if (!phrase) throw new Error("Enter the repeated phrase in Search before using Ignore Phrase.");
-      const confirmed = window.confirm(`Split every occurrence of "${phrase}" in this source document into separate ignored blocks? This changes the local reviewed source blocks.`);
+      const confirmed = window.confirm(`Split every occurrence of "${phrase}" into separate ignored snippets and remove it from the surrounding reviewed text blocks? Ignored snippets are hidden from normal search unless you filter to Ignore.`);
       if (!confirmed) {
         setStatus("Ignore phrase cancelled.");
         return;
@@ -7044,6 +7045,16 @@ async function renderRulePdfManager() {
       sourceWorkbenchState.selectedBlockIds = new Set();
       await reloadCurrentScan(result.message || "Matching phrase split into ignored blocks.");
     }));
+    const selectVisibleButton = button("☑ Shown", "Select all visible reviewed text blocks in the current search/filter/page scope. Page-boundary candidates are not selected.", () => {
+      for (const blockId of visibleSelectableBlockIds) selectedBlockIds.add(blockId);
+      updateSelectionStatus();
+      draw();
+    });
+    const clearSelectionButton = button("☐ Clear", "Clear the current source block selection.", () => {
+      selectedBlockIds.clear();
+      updateSelectionStatus();
+      draw();
+    });
     function selectedReviewedBlock() {
       if (selectedBlockIds.size !== 1) return null;
       const blockId = Array.from(selectedBlockIds)[0];
@@ -7392,6 +7403,7 @@ async function renderRulePdfManager() {
       const documentScope = reviewScope.value === "document" || hasSearch;
       const matches = sourceItems.filter((block) => {
         if (assignmentNeedle && block.assignment !== assignmentNeedle) return false;
+        if (hasSearch && !assignmentNeedle && block.assignment === "ignore") return false;
         if (!documentScope) {
           const startPage = Number(block.pdf_page || 0);
           const endPage = Number(block.pdf_page_end || startPage);
@@ -7399,6 +7411,10 @@ async function renderRulePdfManager() {
         }
         return modernTextMatchesNeedle(`${block.id || ""} ${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
       });
+      visibleSelectableBlockIds = matches
+        .filter((block) => block.source_item_type !== "page-boundary candidate" && block.assignment !== "ignore")
+        .map((block) => block.id)
+        .filter(Boolean);
       const artworkMatches = artworkItems.filter((item) => {
         if (!documentScope && Number(item.pdf_page || 0) !== activePage) return false;
         return modernTextMatchesNeedle(`${item.id || ""} ${item.page_label || ""} ${item.category || ""} ${item.title || ""} ${item.notes || ""}`, needle);
@@ -7546,6 +7562,7 @@ async function renderRulePdfManager() {
     const reviewPanel = el("div", "modern-source-review-panel");
     const selectionActions = el("div", "modern-source-action-groups");
     selectionActions.append(
+      actionGroup("Select", [selectVisibleButton, clearSelectionButton]),
       actionGroup("Assign", [applyAssignmentButton, ignorePhraseButton]),
       actionGroup("Blocks", [mergeSelectedButton, editSelectedButton, splitSelectedButton]),
       actionGroup("Extract", [draftTableButton]),

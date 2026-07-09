@@ -965,6 +965,7 @@ def test_source_block_search_phrase_can_be_split_into_ignored_blocks(tmp_path: P
     kept = [block for block in saved["blocks"] if block["assignment"] != "ignore"]
     assert [block["text"] for block in ignored] == ["Troublesome Towns", "Troublesome\nTowns", "Troublesome Towns"]
     assert [block["text"] for block in kept] == ["Real rule before", "real rule after"]
+    assert all("Troublesome" not in block["text"] for block in kept)
     assert all(block["review_status"] == "edited" for block in ignored)
 
 
