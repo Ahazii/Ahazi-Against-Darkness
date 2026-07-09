@@ -6710,15 +6710,6 @@ async function renderRulePdfManager() {
     return warnings.slice(0, 8).join(" ");
   }
   const sourceScanStatus = el("div", "modern-list");
-  function sourceScanAssignmentSummary(scan) {
-    const counts = scan.assignment_counts || {};
-    const parts = Object.entries(counts)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, value]) => `${key}: ${value}`);
-    const summary = parts.length ? parts.join("; ") : "No assignment counts yet.";
-    return `${summary}${scan.continuation_candidates ? `; page-boundary candidates: ${scan.continuation_candidates}` : ""}${scan.artwork ? `; artwork: ${scan.artwork}` : ""}`;
-  }
-  const sourceScanDetailMounts = [];
   function suggestedSupplementId(filename) {
     return String(filename || "")
       .replace(/\.pdf$/i, "")
@@ -6823,6 +6814,24 @@ async function renderRulePdfManager() {
     details.append(summary, body);
     return details;
   }
+  const sourceWorkbenchState = {
+    packageId: window.sessionStorage.getItem("ahazi-source-workbench-package") || "",
+    sourceId: window.sessionStorage.getItem("ahazi-source-workbench-source") || "",
+    search: window.sessionStorage.getItem("ahazi-source-workbench-search") || "",
+    assignment: window.sessionStorage.getItem("ahazi-source-workbench-assignment") || "",
+    scope: window.sessionStorage.getItem("ahazi-source-workbench-scope") || "document",
+    page: Number(window.sessionStorage.getItem("ahazi-source-workbench-page") || 0) || 0,
+    selectedBlockIds: new Set(),
+    scrollY: 0,
+  };
+  function persistSourceWorkbenchState() {
+    window.sessionStorage.setItem("ahazi-source-workbench-package", sourceWorkbenchState.packageId || "");
+    window.sessionStorage.setItem("ahazi-source-workbench-source", sourceWorkbenchState.sourceId || "");
+    window.sessionStorage.setItem("ahazi-source-workbench-search", sourceWorkbenchState.search || "");
+    window.sessionStorage.setItem("ahazi-source-workbench-assignment", sourceWorkbenchState.assignment || "");
+    window.sessionStorage.setItem("ahazi-source-workbench-scope", sourceWorkbenchState.scope || "document");
+    window.sessionStorage.setItem("ahazi-source-workbench-page", String(sourceWorkbenchState.page || ""));
+  }
   function renderSourceScanDetail(payload, mount) {
     const blocks = Array.isArray(payload.blocks) ? payload.blocks.map((block) => ({ ...block, source_item_type: "block" })) : [];
     const candidates = Array.isArray(payload.continuation_candidates) ? payload.continuation_candidates.map((block) => ({ ...block, source_item_type: "page-boundary candidate" })) : [];
@@ -6837,13 +6846,16 @@ async function renderRulePdfManager() {
     ]);
     for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
     if (candidates.length) assignment.appendChild(new Option("Page-boundary candidates", "page_boundary_candidate"));
+    search.value = sourceWorkbenchState.search || "";
+    assignment.value = sourceWorkbenchState.assignment || "";
+    reviewScope.value = sourceWorkbenchState.scope || "document";
     const results = el("div", "modern-list");
-    const selectedBlockIds = new Set();
+    const selectedBlockIds = new Set([...sourceWorkbenchState.selectedBlockIds].filter((blockId) => sourceItems.some((item) => item.id === blockId)));
     const selectionStatus = el("p", "muted", "No source blocks selected.");
     const firstPdfPage = Number(sourceItems.find((item) => item.pdf_page)?.pdf_page || 1);
     const pdfViewer = el("div", "modern-source-pdf-viewer");
     const pdfToolbar = actions();
-    const pageInput = input("number", "modern-source-pdf-page", "PDF page to preview beside the extracted text.", String(firstPdfPage));
+    const pageInput = input("number", "modern-source-pdf-page", "PDF page to preview beside the extracted text.", String(sourceWorkbenchState.page || firstPdfPage));
     pageInput.min = "1";
     const pdfCanvas = el("div", "modern-source-pdf-canvas");
     const pdfImage = el("img", "modern-source-pdf-image");
@@ -6872,11 +6884,15 @@ async function renderRulePdfManager() {
     }
     function goPdfPage(page) {
       setPdfPage(page);
+      sourceWorkbenchState.page = Number(pageInput.value || firstPdfPage) || firstPdfPage;
+      persistSourceWorkbenchState();
       draw();
       redrawArtwork();
     }
     function previewPdfPage(page) {
       setPdfPage(page);
+      sourceWorkbenchState.page = Number(pageInput.value || firstPdfPage) || firstPdfPage;
+      persistSourceWorkbenchState();
     }
     function setPdfZoom(nextZoom) {
       pdfZoom = Math.min(4, Math.max(0.35, nextZoom));
@@ -6923,23 +6939,93 @@ async function renderRulePdfManager() {
     });
     pdfCanvas.appendChild(pdfImage);
     pdfViewer.append(field("PDF page", pageInput), pdfToolbar, pdfCanvas, pdfStatus);
-    setPdfPage(firstPdfPage);
+    setPdfPage(sourceWorkbenchState.page || firstPdfPage);
+    function saveCurrentWorkbenchState() {
+      sourceWorkbenchState.sourceId = payload.source_id || sourceWorkbenchState.sourceId;
+      sourceWorkbenchState.search = search.value || "";
+      sourceWorkbenchState.assignment = assignment.value || "";
+      sourceWorkbenchState.scope = reviewScope.value || "document";
+      sourceWorkbenchState.page = Number(pageInput.value || firstPdfPage) || firstPdfPage;
+      sourceWorkbenchState.selectedBlockIds = new Set(selectedBlockIds);
+      sourceWorkbenchState.scrollY = window.scrollY || 0;
+      persistSourceWorkbenchState();
+    }
     async function reloadCurrentScan(message = "Source scan refreshed.") {
+      saveCurrentWorkbenchState();
       const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}`);
       renderSourceScanDetail(detail, mount);
       setStatus(message);
+      window.requestAnimationFrame(() => window.scrollTo({ top: sourceWorkbenchState.scrollY || window.scrollY, behavior: "auto" }));
     }
     function updateSelectionStatus() {
       selectionStatus.textContent = selectedBlockIds.size
-        ? `${selectedBlockIds.size} source block(s) selected. Select adjacent blocks, then use Merge Selected.`
+        ? `${selectedBlockIds.size} source block(s) selected. Use the controls here to assign, merge, edit, move, or draft.`
         : "No source blocks selected.";
+      sourceWorkbenchState.selectedBlockIds = new Set(selectedBlockIds);
+      persistSourceWorkbenchState();
     }
-    const mergeSelectedButton = button("Merge Selected", "Merge the selected adjacent source blocks into one reviewed block.", async (btn) => runWithButtonProgress(btn, "Merging selected...", async () => {
+    const mergeSelectedButton = button("Merge", "Merge the selected adjacent source blocks into one reviewed block. Select blocks in document order on the right, then use this button.", async (btn) => runWithButtonProgress(btn, "Merging selected...", async () => {
       await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/merge-selected`, {
         method: "POST",
         body: JSON.stringify({ block_ids: Array.from(selectedBlockIds) }),
       });
       await reloadCurrentScan("Selected source blocks merged.");
+    }));
+    const bulkAssignment = select("modern-source-bulk-assignment", "Assignment to apply to selected text blocks.", [["", "Choose assignment"]]);
+    for (const option of payload.assignment_options || []) bulkAssignment.appendChild(new Option(option, option));
+    const applyAssignmentButton = button("Apply Assignment", "Apply the chosen assignment to every selected source block. This moves reviewed blocks into that category group.", async (btn) => runWithButtonProgress(btn, "Assigning blocks...", async () => {
+      const nextAssignment = bulkAssignment.value;
+      if (!nextAssignment) throw new Error("Choose an assignment first.");
+      if (!selectedBlockIds.size) throw new Error("Select one or more source blocks first.");
+      for (const blockId of Array.from(selectedBlockIds)) {
+        await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(blockId)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ assignment: nextAssignment, review_status: "edited" }),
+        });
+      }
+      await reloadCurrentScan("Selected source blocks assigned.");
+    }));
+    function selectedReviewedBlock() {
+      if (selectedBlockIds.size !== 1) return null;
+      const blockId = Array.from(selectedBlockIds)[0];
+      return blocks.find((block) => block.id === blockId) || null;
+    }
+    function selectedAnyBlock() {
+      if (selectedBlockIds.size !== 1) return null;
+      const blockId = Array.from(selectedBlockIds)[0];
+      return sourceItems.find((block) => block.id === blockId) || null;
+    }
+    function requireSelectedReviewedBlock(actionLabel) {
+      const block = selectedReviewedBlock();
+      if (!block) throw new Error(`${actionLabel} needs exactly one reviewed source block selected.`);
+      return block;
+    }
+    const editSelectedButton = button("Edit", "Open the selected source block in the active review tool. Select exactly one text block on the right.", () => {
+      const block = selectedAnyBlock();
+      if (!block) throw new Error("Select exactly one source block to edit.");
+      if (block.pdf_page) previewPdfPage(block.pdf_page);
+      openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, search.value));
+    });
+    const draftTableButton = button("Draft Table", "Parse the selected table-assigned source block into editable machine rows. Select exactly one reviewed block assigned as table.", async (btn) => runWithButtonProgress(btn, "Drafting table...", async () => {
+      const block = requireSelectedReviewedBlock("Draft Table");
+      if (block.assignment !== "table") throw new Error("Assign the selected block as table before drafting machine rows.");
+      await openTableDraftFromBlock(block, search.value);
+    }));
+    const moveUpButton = button("Move Up", "Move the selected reviewed block earlier in the underlying document order. Filters may hide neighbouring blocks.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
+      const block = requireSelectedReviewedBlock("Move Up");
+      await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/move`, {
+        method: "POST",
+        body: JSON.stringify({ direction: "up" }),
+      });
+      await reloadCurrentScan("Source block moved up.");
+    }));
+    const moveDownButton = button("Move Down", "Move the selected reviewed block later in the underlying document order. Filters may hide neighbouring blocks.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
+      const block = requireSelectedReviewedBlock("Move Down");
+      await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/move`, {
+        method: "POST",
+        body: JSON.stringify({ direction: "down" }),
+      });
+      await reloadCurrentScan("Source block moved down.");
     }));
     const sourceToolMount = el("div", "modern-source-tool-panel hidden");
     function openSourceTool(title, toolBody) {
@@ -7173,14 +7259,35 @@ async function renderRulePdfManager() {
           ? "Showing every reviewed source block and page-boundary candidate in this document. Use Current PDF page when reviewing page-by-page beside the PDF preview."
           : `Showing reviewed blocks and page-boundary candidates for PDF page ${activePage}. Switch Review scope to Whole document to see all ${sourceItems.length}.`;
       results.replaceChildren(modernStatusRow(scopeTitle, `${matches.length} of ${sourceItems.length}`, scopeHint));
-      for (const block of matches.slice(0, 120)) {
+      const groupRank = (key) => {
+        if (key === "unassigned") return "00";
+        if (key === "page_boundary_candidate") return "01";
+        if (key === "ignore") return "99";
+        return `10-${key}`;
+      };
+      const grouped = new Map();
+      for (const block of matches) {
+        const key = block.source_item_type === "page-boundary candidate" ? "page_boundary_candidate" : (block.assignment || "unassigned");
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(block);
+      }
+      const orderedGroups = Array.from(grouped.entries()).sort(([left], [right]) => groupRank(left).localeCompare(groupRank(right)));
+      let rendered = 0;
+      const renderLimit = 160;
+      for (const [groupKey, groupBlocks] of orderedGroups) {
+        if (rendered >= renderLimit) break;
+        const groupTitle = groupKey === "page_boundary_candidate" ? "Page Boundary Candidates" : modernTitleFromKey(groupKey || "unassigned");
+        results.appendChild(modernStatusRow(groupTitle, `${groupBlocks.length} item(s)`, groupKey === "unassigned" ? "Primary review queue. Select blocks here, then use the left controls to assign, merge, move, edit, or draft tables." : "Assigned content. These blocks remain in document order within this category."));
+        for (const block of groupBlocks) {
+          if (rendered >= renderLimit) break;
+          rendered += 1;
         const item = document.createElement("details");
         item.className = "modern-row";
         item.addEventListener("toggle", () => {
           if (item.open && block.pdf_page) previewPdfPage(block.pdf_page);
         });
         const summary = document.createElement("summary");
-        const selectBox = input("checkbox", `modern-source-block-select-${block.id}`, "Select this block for Merge Selected.");
+        const selectBox = input("checkbox", `modern-source-block-select-${block.id}`, "Select this block for the left-side workbench controls.");
         selectBox.checked = selectedBlockIds.has(block.id);
         selectBox.addEventListener("click", (event) => event.stopPropagation());
         selectBox.addEventListener("change", () => {
@@ -7196,28 +7303,14 @@ async function renderRulePdfManager() {
         );
         item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
         item.appendChild(summary);
-        const blockActions = actions();
-        blockActions.append(
-          button(block.source_item_type === "page-boundary candidate" ? "Inspect Candidate" : "Edit Block", "Open this source block in the active review tool without filling the row with edit controls.", () => {
-            if (block.pdf_page) previewPdfPage(block.pdf_page);
-            openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, needle));
-          })
-        );
-        if (block.assignment === "table" && block.source_item_type !== "page-boundary candidate") {
-          blockActions.append(
-            button("Draft Table", "Parse this table-assigned source block into editable machine rows beside the exact extracted text.", async (btn) => runWithButtonProgress(btn, "Drafting table...", async () => {
-              await openTableDraftFromBlock(block, needle);
-            }))
-          );
-        }
         item.append(
           el("p", "muted", `${block.page_label || ""}${block.id ? ` · ${block.id}` : ""}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
-          highlightedEl("p", "modern-pre-wrap modern-source-preview-text", block.text || "", needle),
-          blockActions
+          highlightedEl("p", "modern-pre-wrap modern-source-preview-text", block.text || "", needle)
         );
         results.appendChild(item);
       }
-      if (matches.length > 120) results.appendChild(el("p", "muted", `Showing first 120 matches. Narrow the search to inspect the remaining ${matches.length - 120}.`));
+      }
+      if (matches.length > renderLimit) results.appendChild(el("p", "muted", `Showing first ${renderLimit} matches. Narrow the search or filter to inspect the remaining ${matches.length - renderLimit}.`));
     }
     function renderArtworkPanel() {
       const panel = el("div", "modern-source-artwork-panel");
@@ -7286,26 +7379,43 @@ async function renderRulePdfManager() {
       return panel;
     }
     search.addEventListener("input", () => {
+      sourceWorkbenchState.search = search.value || "";
+      persistSourceWorkbenchState();
       draw();
       redrawArtwork();
     });
-    assignment.addEventListener("change", draw);
+    assignment.addEventListener("change", () => {
+      sourceWorkbenchState.assignment = assignment.value || "";
+      persistSourceWorkbenchState();
+      draw();
+    });
     reviewScope.addEventListener("change", () => {
+      sourceWorkbenchState.scope = reviewScope.value || "document";
+      persistSourceWorkbenchState();
       draw();
       redrawArtwork();
     });
     mount.classList.remove("hidden");
     const reviewPanel = el("div", "modern-source-review-panel");
     const selectionActions = actions();
-    selectionActions.append(mergeSelectedButton);
+    selectionActions.append(applyAssignmentButton, mergeSelectedButton, editSelectedButton, draftTableButton, moveUpButton, moveDownButton);
     const blockTools = el("div", "modern-list");
-    blockTools.append(field("Search source blocks and artwork", search), field("Review scope", reviewScope), field("Assignment filter", assignment), selectionStatus, selectionActions, results);
+    blockTools.append(
+      modernStatusRow("Source Review Controls", "Selected blocks", "These controls affect selected text blocks in the module contents on the right."),
+      field("Search source blocks and artwork", search),
+      field("Review scope", reviewScope),
+      field("Assignment filter", assignment),
+      field("Apply assignment", bulkAssignment),
+      selectionStatus,
+      selectionActions
+    );
+    pdfViewer.appendChild(blockTools);
     reviewPanel.append(
-      modernStatusRow("Page review", `PDF page ${pageInput.value || firstPdfPage}`, "By default the lists follow the current PDF page. Change Review scope to Whole document, or enter a search term, to see blocks and artwork across the whole source."),
+      modernStatusRow("Module contents", `${sourceItems.length} text block/candidate item(s)`, "Whole document is the default. Unassigned blocks appear first, then assigned categories. Use the left controls to change selected text blocks."),
       sourceToolMount,
       workbenchSection("Reviewed tables", `${reviewedTables.length} table draft(s) in this source`, renderReviewedTablesPanel()),
       workbenchSection("Page artwork", `${artworkItems.length} candidate(s) in this document`, renderArtworkPanel()),
-      workbenchSection("Text blocks", `${sourceItems.length} block/candidate item(s) in this document`, blockTools)
+      results
     );
     const reviewGrid = el("div", "modern-source-review-grid");
     reviewGrid.append(pdfViewer, reviewPanel);
@@ -7328,43 +7438,90 @@ async function renderRulePdfManager() {
     const scans = payload.scans || [];
     const packages = payload.packages || [];
     sourceScanStatus.replaceChildren();
-    sourceScanDetailMounts.length = 0;
     if (!scans.length && !packages.length) {
       sourceScanStatus.appendChild(modernStatusRow("Source block scans", "No scans yet", "Use Scan Source Blocks after uploading or selecting a PDF."));
       return;
     }
+    const moduleWorkbenchMount = el("div", "modern-source-module-workbench");
+    const moduleSelect = select("modern-source-module-select", "Choose the imported supplement module to review. A module may contain source PDFs plus attached map/image assets.", [["", "Choose module"]]);
+    const packageRows = packages.length
+      ? packages
+      : scans.map((scan) => ({
+        supplement_id: scan.supplement_id || scan.source_id,
+        supplement_title: scan.supplement_title || scan.source_id,
+        source_count: 1,
+        asset_count: 0,
+        blocks: scan.blocks || 0,
+        artwork: scan.artwork || 0,
+        tables: scan.tables || 0,
+        sources: [scan],
+        assets: [],
+      }));
+    for (const pkg of packageRows) {
+      const label = `${pkg.supplement_title || pkg.supplement_id || "Supplement Package"} (${pkg.source_count || 0} PDF${Number(pkg.source_count || 0) === 1 ? "" : "s"}, ${pkg.asset_count || 0} asset${Number(pkg.asset_count || 0) === 1 ? "" : "s"})`;
+      moduleSelect.appendChild(new Option(label, pkg.supplement_id || ""));
+    }
+    if (sourceWorkbenchState.packageId && packageRows.some((pkg) => pkg.supplement_id === sourceWorkbenchState.packageId)) {
+      moduleSelect.value = sourceWorkbenchState.packageId;
+    } else if (packageRows[0]?.supplement_id) {
+      moduleSelect.value = packageRows[0].supplement_id;
+      sourceWorkbenchState.packageId = moduleSelect.value;
+      persistSourceWorkbenchState();
+    }
+    async function openSelectedModule() {
+      const pkg = packageRows.find((item) => item.supplement_id === moduleSelect.value) || packageRows[0];
+      moduleWorkbenchMount.replaceChildren();
+      if (!pkg) return;
+      sourceWorkbenchState.packageId = pkg.supplement_id || "";
+      persistSourceWorkbenchState();
+      const sourceMount = el("div", "modern-source-scan-detail");
+      const sources = pkg.sources || [];
+      if (sources.length > 1) {
+        const sourceSelect = select("modern-source-document-select", "Choose which source document inside this module to review.", []);
+        for (const scan of sources) {
+          sourceSelect.appendChild(new Option(`${scan.supplement_title || scan.source_id} (${scan.blocks || 0} blocks, ${scan.artwork || 0} artwork)`, scan.source_id));
+        }
+        sourceSelect.value = sources.some((scan) => scan.source_id === sourceWorkbenchState.sourceId)
+          ? sourceWorkbenchState.sourceId
+          : sources[0].source_id;
+        sourceSelect.addEventListener("change", async () => {
+          sourceWorkbenchState.sourceId = sourceSelect.value;
+          sourceWorkbenchState.selectedBlockIds = new Set();
+          persistSourceWorkbenchState();
+          const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(sourceSelect.value)}`);
+          renderSourceScanDetail(detail, sourceMount);
+        });
+        moduleWorkbenchMount.appendChild(field("Source document", sourceSelect));
+      }
+      moduleWorkbenchMount.appendChild(sourceMount);
+      if (sources.length) {
+        const activeSource = sources.find((scan) => scan.source_id === sourceWorkbenchState.sourceId) || sources[0];
+        sourceWorkbenchState.sourceId = activeSource.source_id;
+        persistSourceWorkbenchState();
+        const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(activeSource.source_id)}`);
+        renderSourceScanDetail(detail, sourceMount);
+      } else {
+        sourceMount.appendChild(modernStatusRow("No source PDF scan", `${pkg.asset_count || 0} package asset(s)`, "This module currently has attached assets but no scanned PDF source blocks."));
+      }
+      if ((pkg.assets || []).length) {
+        const assetList = el("div", "modern-list");
+        appendAssetRows(pkg, assetList);
+        moduleWorkbenchMount.appendChild(workbenchSection("Package assets", `${pkg.asset_count || 0} map/image/tile asset(s)`, assetList));
+      }
+    }
+    moduleSelect.addEventListener("change", async () => {
+      sourceWorkbenchState.packageId = moduleSelect.value;
+      sourceWorkbenchState.sourceId = "";
+      sourceWorkbenchState.selectedBlockIds = new Set();
+      persistSourceWorkbenchState();
+      await openSelectedModule();
+    });
     sourceScanStatus.appendChild(modernInfoPanel("Supplement source packages", `${packages.length || scans.length} package(s)`, [
       { label: "Packages", value: `${packages.length || scans.length}`, hint: "A supplement package can contain multiple source PDFs and attached maps/images." },
       { label: "Source scans", value: `${scans.length}`, hint: "Local PDF source scans stored under DATA_DIR/Supplements/_sources." },
       { label: "Grouping rule", value: "Use the same package id for related documents.", hint: "Examples: main rules, adventure text, maps, extra sheets, errata, or bonus documents." },
     ], "A supplement package can contain multiple PDFs: main rules, adventure text, maps, extra sheets, or bonus documents."));
-    function appendScanRow(scan, parent) {
-      const row = actions("modern-row-actions");
-      const detailMount = el("div", "modern-source-scan-detail hidden");
-      sourceScanDetailMounts.push(detailMount);
-      row.append(
-        button("View Blocks", `Open read-only source blocks for ${scan.source_id}.`, async (btn) => runWithButtonProgress(btn, "Loading source blocks...", async () => {
-          const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(scan.source_id)}`);
-          sourceScanDetailMounts.forEach((mount) => {
-            if (mount !== detailMount) {
-              mount.classList.add("hidden");
-              mount.replaceChildren();
-            }
-          });
-          renderSourceScanDetail(detail, detailMount);
-          scrollPanelIntoView(detailMount, "Source scan opened.");
-        }))
-      );
-      const body = el("div", "");
-      body.append(
-        el("strong", "", scan.source_id || "source scan"),
-        el("p", "muted", `${scan.source_pdf || "PDF"} · package ${scan.supplement_id || "supplement"} · ${scan.blocks || 0} block(s) · ${scan.artwork || 0} artwork · ${scan.tables || 0} table draft(s) · ${scan.continuation_candidates || 0} page-boundary candidate(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
-        el("p", "muted", sourceScanAssignmentSummary(scan))
-      );
-      const scanRow = el("div", "modern-row");
-      scanRow.append(body, row, detailMount);
-      parent.appendChild(scanRow);
-    }
+    sourceScanStatus.append(field("Imported module", moduleSelect), moduleWorkbenchMount);
     function appendAssetRows(pkg, parent) {
       const categories = pkg.asset_categories || ["unknown", "world_map", "dungeon_map", "room_tile_sheet", "room_tile"];
       const selectedAssets = new Set();
@@ -7811,21 +7968,7 @@ async function renderRulePdfManager() {
         parent.appendChild(row);
       }
     }
-    if (packages.length) {
-      for (const pkg of packages) {
-        const sourceList = el("div", "modern-list");
-        for (const scan of pkg.sources || []) appendScanRow(scan, sourceList);
-        appendAssetRows(pkg, sourceList);
-        const section = workbenchSection(
-          pkg.supplement_title || pkg.supplement_id || "Supplement package",
-          `${pkg.source_count || 0} source PDF(s), ${pkg.asset_count || 0} package asset(s), ${pkg.blocks || 0} block(s), ${pkg.artwork || 0} artwork, ${pkg.tables || 0} table draft(s)`,
-          sourceList
-        );
-        sourceScanStatus.appendChild(section);
-      }
-    } else {
-      for (const scan of scans) appendScanRow(scan, sourceScanStatus);
-    }
+    await openSelectedModule();
   }
   async function refreshList() {
     const payload = await api("/api/rules/pdfs");

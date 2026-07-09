@@ -3017,14 +3017,21 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Scan Source Blocks" in MODERN_PAGES_JS
     assert "/api/supplements/source-scan" in MODERN_PAGES_JS
     assert "/api/supplements/source-scans" in MODERN_PAGES_JS
-    assert "View Blocks" in MODERN_PAGES_JS
+    assert "View Blocks" not in MODERN_PAGES_JS
     assert "Page source blocks" in MODERN_PAGES_JS
     assert "All source blocks" in MODERN_PAGES_JS
+    assert "modern-source-module-select" in MODERN_PAGES_JS
+    assert "Imported module" in MODERN_PAGES_JS
+    assert "Source Review Controls" in MODERN_PAGES_JS
+    assert "Module contents" in MODERN_PAGES_JS
+    assert "Apply Assignment" in MODERN_PAGES_JS
     assert "modern-source-review-scope" in MODERN_PAGES_JS
     assert "Whole document" in MODERN_PAGES_JS
     assert "Switch Review scope to Whole document" in MODERN_PAGES_JS
-    source_package_loop = MODERN_PAGES_JS.index("for (const pkg of packages)")
-    assert MODERN_PAGES_JS.index("for (const scan of pkg.sources || []) appendScanRow(scan, sourceList);", source_package_loop) < MODERN_PAGES_JS.index("appendAssetRows(pkg, sourceList);", source_package_loop)
+    assert "sourceWorkbenchState" in MODERN_PAGES_JS
+    assert "persistSourceWorkbenchState" in MODERN_PAGES_JS
+    source_module_open = MODERN_PAGES_JS.index("async function openSelectedModule()")
+    assert MODERN_PAGES_JS.index("renderSourceScanDetail(detail, sourceMount)", source_module_open) < MODERN_PAGES_JS.index("appendAssetRows(pkg, assetList);", source_module_open)
     assert "Supplement source packages" in MODERN_PAGES_JS
     assert "Selected source scan" in MODERN_PAGES_JS
     assert "package asset(s)" in MODERN_PAGES_JS
@@ -3035,7 +3042,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Search hit preview" in MODERN_PAGES_JS
     assert "modern-source-block-search-preview" in MODERN_PAGES_JS
     assert "page-boundary candidates" in MODERN_PAGES_JS
-    assert "sourceScanDetailMounts" in MODERN_PAGES_JS
+    assert "modern-source-module-workbench" in STYLES_CSS
     assert "modern-source-review-grid" in MODERN_PAGES_JS
     assert "Active review tool" in MODERN_PAGES_JS
     assert "modern-source-tool-panel" in STYLES_CSS
@@ -3053,8 +3060,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "if (item.open && block.pdf_page) previewPdfPage(block.pdf_page)" in MODERN_PAGES_JS
     assert "if (row.open && item.pdf_page) previewPdfPage(item.pdf_page)" in MODERN_PAGES_JS
     assert "Save Block" in MODERN_PAGES_JS
-    assert "Edit Block" in MODERN_PAGES_JS
-    assert "Inspect Candidate" in MODERN_PAGES_JS
+    assert "const editSelectedButton = button(\"Edit\"" in MODERN_PAGES_JS
+    assert "openSourceTool(`${block.page_label" in MODERN_PAGES_JS
     assert "Draft Table" in MODERN_PAGES_JS
     assert "Save Reviewed Table" in MODERN_PAGES_JS
     assert "Reviewed tables" in MODERN_PAGES_JS
@@ -3064,7 +3071,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Split At Cursor" in MODERN_PAGES_JS
     assert "Move Up" in MODERN_PAGES_JS
     assert "Move Down" in MODERN_PAGES_JS
-    assert "Merge Selected" in MODERN_PAGES_JS
+    assert "Merge" in MODERN_PAGES_JS
     assert "selectedBlockIds" in MODERN_PAGES_JS
     assert "/blocks/merge-selected" in MODERN_PAGES_JS
     assert "/move" in MODERN_PAGES_JS

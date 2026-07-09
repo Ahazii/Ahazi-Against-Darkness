@@ -1304,6 +1304,16 @@ button.is-working::after {
   min-width: 0;
 }
 
+.modern-source-module-workbench {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.modern-source-pdf-viewer > .modern-list {
+  align-content: start;
+}
+
 .modern-source-tool-panel {
   display: grid;
   gap: 8px;
