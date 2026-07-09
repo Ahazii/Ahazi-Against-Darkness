@@ -3009,24 +3009,28 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "room_tile_sheet" in MODERN_PAGES_JS
     assert "imageToCanvasBlob" in MODERN_PAGES_JS
     assert "_package_assets" in MODERN_PAGES_JS
-    assert "Use the same supplement package id" in MODERN_PAGES_JS
+    assert "Use one package id for every PDF, map sheet, image, or bonus document" in MODERN_PAGES_JS
     assert "printed page = PDF page + offset" in MODERN_PAGES_JS
-    assert "Page offset example: if PDF page 7 is printed page 1, enter -6." in MODERN_PAGES_JS
+    assert "Page offset example: PDF page 7 printed as page 1 uses -6." in MODERN_PAGES_JS
     assert "page_offset: Number(pageOffset.value || 0)" in MODERN_PAGES_JS
     assert "item.page_label ? ` · ${item.page_label}`" in MODERN_PAGES_JS
     assert "Scan Source Blocks" in MODERN_PAGES_JS
     assert "/api/supplements/source-scan" in MODERN_PAGES_JS
     assert "/api/supplements/source-scans" in MODERN_PAGES_JS
     assert "View Blocks" not in MODERN_PAGES_JS
-    assert "Page source blocks" in MODERN_PAGES_JS
-    assert "All source blocks" in MODERN_PAGES_JS
+    assert "Text blocks" in MODERN_PAGES_JS
+    assert "Page boundary candidates" in MODERN_PAGES_JS
     assert "modern-source-module-select" in MODERN_PAGES_JS
     assert "Imported module" in MODERN_PAGES_JS
-    assert "Source Review Controls" in MODERN_PAGES_JS
+    assert "Source controls" in MODERN_PAGES_JS
     assert "modern-source-left-rail" in MODERN_PAGES_JS
     assert "modern-source-controls-panel" in MODERN_PAGES_JS
     assert "modern-source-controls-grid" in MODERN_PAGES_JS
-    assert "modern-source-control-actions" in MODERN_PAGES_JS
+    assert "modern-source-action-groups" in MODERN_PAGES_JS
+    assert "actionGroup(\"Assign\"" in MODERN_PAGES_JS
+    assert "actionGroup(\"Blocks\"" in MODERN_PAGES_JS
+    assert "actionGroup(\"Extract\"" in MODERN_PAGES_JS
+    assert "actionGroup(\"Order\"" in MODERN_PAGES_JS
     assert "modern-source-pdf-toolbar" in MODERN_PAGES_JS
     assert "modern-source-pdf-actions" in MODERN_PAGES_JS
     assert "modern-list modern-source-scan-status" in MODERN_PAGES_JS
@@ -3034,8 +3038,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "pdfViewer.appendChild(blockTools)" not in MODERN_PAGES_JS
     assert "modernStatusRow(\"PDF preview\"" not in MODERN_PAGES_JS
     assert "Module contents" in MODERN_PAGES_JS
-    assert "Apply Assignment" in MODERN_PAGES_JS
-    assert "Ignore Phrase" in MODERN_PAGES_JS
+    assert "✓ Apply" in MODERN_PAGES_JS
+    assert "⊘ Ignore" in MODERN_PAGES_JS
     assert "/blocks/split-ignore-phrase" in MODERN_PAGES_JS
     assert "current Search text as a literal phrase" in MODERN_PAGES_JS
     assert "modern-source-review-scope" in MODERN_PAGES_JS
@@ -3047,19 +3051,28 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert MODERN_PAGES_JS.index("renderSourceScanDetail(detail, sourceMount)", source_module_open) < MODERN_PAGES_JS.index("appendAssetRows(pkg, assetList);", source_module_open)
     assert "Supplement source packages" in MODERN_PAGES_JS
     assert "Selected source scan" in MODERN_PAGES_JS
+    assert "modern-source-import-grid" in MODERN_PAGES_JS
+    assert "modern-source-picker-bar" in MODERN_PAGES_JS
+    assert "compactInfoStrip(\"PDF import status\"" in MODERN_PAGES_JS
+    assert "compactInfoStrip(\"Supplement source packages\"" in MODERN_PAGES_JS
+    assert "compactInfoStrip(\"Selected source scan\"" in MODERN_PAGES_JS
     assert "package asset(s)" in MODERN_PAGES_JS
     assert "Open Asset" in MODERN_PAGES_JS
     assert "Page artwork" in MODERN_PAGES_JS
     assert "Text blocks" in MODERN_PAGES_JS
-    assert "Showing reviewed blocks and page-boundary candidates for PDF page" in MODERN_PAGES_JS
+    assert "Counts update as the current page, search, assignment filter, and manual review categories change." in MODERN_PAGES_JS
     assert "Search hit preview" in MODERN_PAGES_JS
     assert "modern-source-block-search-preview" in MODERN_PAGES_JS
-    assert "page-boundary candidates" in MODERN_PAGES_JS
+    assert "Page boundary candidates" in MODERN_PAGES_JS
     assert "modern-source-module-workbench" in STYLES_CSS
     assert "modern-source-left-rail" in STYLES_CSS
     assert "modern-source-controls-panel" in STYLES_CSS
     assert "modern-source-controls-grid" in STYLES_CSS
-    assert "modern-source-control-actions" in STYLES_CSS
+    assert "modern-source-import-grid" in STYLES_CSS
+    assert "modern-source-picker-bar" in STYLES_CSS
+    assert "modern-source-compact-strip" in STYLES_CSS
+    assert "modern-source-action-groups" in STYLES_CSS
+    assert "modern-source-tree" in STYLES_CSS
     assert "modern-source-pdf-toolbar" in STYLES_CSS
     assert "modern-source-pdf-actions" in STYLES_CSS
     assert "modern-source-scan-status" in STYLES_CSS
@@ -3080,8 +3093,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "if (item.open && block.pdf_page) previewPdfPage(block.pdf_page)" in MODERN_PAGES_JS
     assert "if (row.open && item.pdf_page) previewPdfPage(item.pdf_page)" in MODERN_PAGES_JS
     assert "Save Block" in MODERN_PAGES_JS
-    assert "const editSelectedButton = button(\"Edit\"" in MODERN_PAGES_JS
-    assert "const splitSelectedButton = button(\"Split\"" in MODERN_PAGES_JS
+    assert "const editSelectedButton = button(\"✎ Edit\"" in MODERN_PAGES_JS
+    assert "const splitSelectedButton = button(\"⟂ Split\"" in MODERN_PAGES_JS
     assert "activeBlockEditor" in MODERN_PAGES_JS
     assert "splitBlockAtCursor" in MODERN_PAGES_JS
     assert "click Split again or use Split At Cursor" in MODERN_PAGES_JS
@@ -3093,7 +3106,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/table-draft" in MODERN_PAGES_JS
     assert "/tables/" in MODERN_PAGES_JS
     assert "Split At Cursor" in MODERN_PAGES_JS
-    assert "selectionActions.append(applyAssignmentButton, ignorePhraseButton, mergeSelectedButton, editSelectedButton, splitSelectedButton, draftTableButton, moveUpButton, moveDownButton)" in MODERN_PAGES_JS
+    assert "actionGroup(\"Assign\", [applyAssignmentButton, ignorePhraseButton])" in MODERN_PAGES_JS
+    assert "actionGroup(\"Blocks\", [mergeSelectedButton, editSelectedButton, splitSelectedButton])" in MODERN_PAGES_JS
+    assert "actionGroup(\"Extract\", [draftTableButton])" in MODERN_PAGES_JS
+    assert "actionGroup(\"Order\", [moveUpButton, moveDownButton])" in MODERN_PAGES_JS
     assert "Move Up" in MODERN_PAGES_JS
     assert "Move Down" in MODERN_PAGES_JS
     assert "Merge" in MODERN_PAGES_JS

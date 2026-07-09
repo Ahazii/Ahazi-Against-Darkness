@@ -6814,6 +6814,38 @@ async function renderRulePdfManager() {
     details.append(summary, body);
     return details;
   }
+  function compactInfoStrip(title, items, hint = "") {
+    const strip = el("div", "modern-source-compact-strip");
+    if (hint) strip.title = hint;
+    strip.appendChild(el("strong", "", title));
+    for (const item of items.filter(Boolean)) {
+      const label = typeof item === "string" ? item : item.label;
+      const value = typeof item === "string" ? "" : item.value;
+      const chip = el("span", "modern-source-compact-chip");
+      if (item.hint) chip.title = item.hint;
+      chip.append(el("span", "muted", label), value ? el("span", "", value) : document.createTextNode(""));
+      strip.appendChild(chip);
+    }
+    return strip;
+  }
+  function actionGroup(title, buttons) {
+    const group = el("div", "modern-source-action-group");
+    group.appendChild(el("span", "muted", title));
+    const row = el("div", "modern-source-action-row");
+    row.append(...buttons);
+    group.appendChild(row);
+    return group;
+  }
+  function treeBranch(title, count, body, options = {}) {
+    const details = document.createElement("details");
+    details.className = `modern-source-tree-branch ${options.className || ""}`.trim();
+    details.open = Boolean(options.open);
+    const summary = document.createElement("summary");
+    summary.append(el("strong", "", title), el("span", "modern-source-tree-count", String(count)));
+    if (options.hint) summary.title = options.hint;
+    details.append(summary, body);
+    return details;
+  }
   const sourceWorkbenchState = {
     packageId: window.sessionStorage.getItem("ahazi-source-workbench-package") || "",
     sourceId: window.sessionStorage.getItem("ahazi-source-workbench-source") || "",
@@ -6849,7 +6881,7 @@ async function renderRulePdfManager() {
     search.value = sourceWorkbenchState.search || "";
     assignment.value = sourceWorkbenchState.assignment || "";
     reviewScope.value = sourceWorkbenchState.scope || "document";
-    const results = el("div", "modern-list");
+    const results = el("div", "modern-source-tree");
     const selectedBlockIds = new Set([...sourceWorkbenchState.selectedBlockIds].filter((blockId) => sourceItems.some((item) => item.id === blockId)));
     const selectionStatus = el("p", "muted", "No source blocks selected.");
     const firstPdfPage = Number(sourceItems.find((item) => item.pdf_page)?.pdf_page || 1);
@@ -6902,11 +6934,11 @@ async function renderRulePdfManager() {
       applyPdfTransform();
     }
     pdfToolbar.append(
-      button("Prev", "Show the previous PDF page and review items on that page.", () => goPdfPage(Number(pageInput.value || 1) - 1)),
-      button("Next", "Show the next PDF page and review items on that page.", () => goPdfPage(Number(pageInput.value || 1) + 1)),
-      button("Zoom In", "Increase PDF preview zoom.", () => setPdfZoom(pdfZoom + 0.15)),
-      button("Zoom Out", "Decrease PDF preview zoom.", () => setPdfZoom(pdfZoom - 0.15)),
-      button("Reset View", "Reset PDF zoom and pan.", () => {
+      button("‹ Prev", "Show the previous PDF page and review items on that page.", () => goPdfPage(Number(pageInput.value || 1) - 1)),
+      button("Next ›", "Show the next PDF page and review items on that page.", () => goPdfPage(Number(pageInput.value || 1) + 1)),
+      button("+ Zoom", "Increase PDF preview zoom.", () => setPdfZoom(pdfZoom + 0.15)),
+      button("- Zoom", "Decrease PDF preview zoom.", () => setPdfZoom(pdfZoom - 0.15)),
+      button("⟲ Reset", "Reset PDF zoom and pan.", () => {
         pdfZoom = 1;
         pdfPanX = 0;
         pdfPanY = 0;
@@ -6975,7 +7007,7 @@ async function renderRulePdfManager() {
       sourceWorkbenchState.selectedBlockIds = new Set(selectedBlockIds);
       persistSourceWorkbenchState();
     }
-    const mergeSelectedButton = button("Merge", "Merge the selected adjacent source blocks into one reviewed block. Select blocks in document order on the right, then use this button.", async (btn) => runWithButtonProgress(btn, "Merging selected...", async () => {
+    const mergeSelectedButton = button("⇄ Merge", "Merge the selected adjacent source blocks into one reviewed block. Select blocks in document order on the right, then use this button.", async (btn) => runWithButtonProgress(btn, "Merging selected...", async () => {
       await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/merge-selected`, {
         method: "POST",
         body: JSON.stringify({ block_ids: Array.from(selectedBlockIds) }),
@@ -6984,7 +7016,7 @@ async function renderRulePdfManager() {
     }));
     const bulkAssignment = select("modern-source-bulk-assignment", "Assignment to apply to selected text blocks.", [["", "Choose assignment"]]);
     for (const option of payload.assignment_options || []) bulkAssignment.appendChild(new Option(option, option));
-    const applyAssignmentButton = button("Apply Assignment", "Apply the chosen assignment to every selected source block. This moves reviewed blocks into that category group.", async (btn) => runWithButtonProgress(btn, "Assigning blocks...", async () => {
+    const applyAssignmentButton = button("✓ Apply", "Apply the chosen assignment to every selected source block. This moves reviewed blocks into that category group.", async (btn) => runWithButtonProgress(btn, "Assigning blocks...", async () => {
       const nextAssignment = bulkAssignment.value;
       if (!nextAssignment) throw new Error("Choose an assignment first.");
       if (!selectedBlockIds.size) throw new Error("Select one or more source blocks first.");
@@ -6996,7 +7028,7 @@ async function renderRulePdfManager() {
       }
       await reloadCurrentScan("Selected source blocks assigned.");
     }));
-    const ignorePhraseButton = button("Ignore Phrase", "Use the current Search text as a literal phrase. Every occurrence in this source document is split into its own reviewed block and assigned to ignore.", async (btn) => runWithButtonProgress(btn, "Splitting ignored phrase...", async () => {
+    const ignorePhraseButton = button("⊘ Ignore", "Use the current Search text as a literal phrase. Every occurrence in this source document is split into its own reviewed block and assigned to ignore.", async (btn) => runWithButtonProgress(btn, "Splitting ignored phrase...", async () => {
       const phrase = String(search.value || "").trim();
       if (!phrase) throw new Error("Enter the repeated phrase in Search before using Ignore Phrase.");
       const confirmed = window.confirm(`Split every occurrence of "${phrase}" in this source document into separate ignored blocks? This changes the local reviewed source blocks.`);
@@ -7042,13 +7074,13 @@ async function renderRulePdfManager() {
       });
       await reloadCurrentScan("Source block split at cursor.");
     }
-    const editSelectedButton = button("Edit", "Open the selected source block in the active review tool. Select exactly one text block on the right.", () => {
+    const editSelectedButton = button("✎ Edit", "Open the selected source block in the active review tool. Select exactly one text block on the right.", () => {
       const block = selectedAnyBlock();
       if (!block) throw new Error("Select exactly one source block to edit.");
       if (block.pdf_page) previewPdfPage(block.pdf_page);
       openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, search.value));
     });
-    const splitSelectedButton = button("Split", "Split one selected reviewed text block. First click Split to open the editor, place the cursor in Reviewed text, then click Split again or use Split At Cursor in the editor.", async (btn) => runWithButtonProgress(btn, "Preparing split...", async () => {
+    const splitSelectedButton = button("⟂ Split", "Split one selected reviewed text block. First click Split to open the editor, place the cursor in Reviewed text, then click Split again or use Split At Cursor in the editor.", async (btn) => runWithButtonProgress(btn, "Preparing split...", async () => {
       const block = requireSelectedReviewedBlock("Split");
       if (activeBlockEditor?.blockId === block.id && activeBlockEditor.textArea && document.body.contains(activeBlockEditor.textArea)) {
         await splitBlockAtCursor(block, activeBlockEditor.textArea.value, activeBlockEditor.textArea.selectionStart);
@@ -7059,12 +7091,12 @@ async function renderRulePdfManager() {
       activeBlockEditor?.textArea?.focus();
       setStatus("Place the cursor in Reviewed text, then click Split again or use Split At Cursor in the editor.");
     }));
-    const draftTableButton = button("Draft Table", "Parse the selected table-assigned source block into editable machine rows. Select exactly one reviewed block assigned as table.", async (btn) => runWithButtonProgress(btn, "Drafting table...", async () => {
+    const draftTableButton = button("▦ Table", "Parse the selected table-assigned source block into editable machine rows. Select exactly one reviewed block assigned as table.", async (btn) => runWithButtonProgress(btn, "Drafting table...", async () => {
       const block = requireSelectedReviewedBlock("Draft Table");
       if (block.assignment !== "table") throw new Error("Assign the selected block as table before drafting machine rows.");
       await openTableDraftFromBlock(block, search.value);
     }));
-    const moveUpButton = button("Move Up", "Move the selected reviewed block earlier in the underlying document order. Filters may hide neighbouring blocks.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
+    const moveUpButton = button("↑ Up", "Move the selected reviewed block earlier in the underlying document order. Filters may hide neighbouring blocks.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
       const block = requireSelectedReviewedBlock("Move Up");
       await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/move`, {
         method: "POST",
@@ -7072,7 +7104,7 @@ async function renderRulePdfManager() {
       });
       await reloadCurrentScan("Source block moved up.");
     }));
-    const moveDownButton = button("Move Down", "Move the selected reviewed block later in the underlying document order. Filters may hide neighbouring blocks.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
+    const moveDownButton = button("↓ Down", "Move the selected reviewed block later in the underlying document order. Filters may hide neighbouring blocks.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
       const block = requireSelectedReviewedBlock("Move Down");
       await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/move`, {
         method: "POST",
@@ -7287,6 +7319,71 @@ async function renderRulePdfManager() {
       }
       return panel;
     }
+    function renderSourceBlockTreeItem(block, needle) {
+      const item = document.createElement("details");
+      item.className = "modern-source-tree-item";
+      item.addEventListener("toggle", () => {
+        if (item.open && block.pdf_page) previewPdfPage(block.pdf_page);
+      });
+      const summary = document.createElement("summary");
+      const selectBox = input("checkbox", `modern-source-block-select-${block.id}`, "Select this block for the left-side workbench controls.");
+      selectBox.checked = selectedBlockIds.has(block.id);
+      selectBox.addEventListener("click", (event) => event.stopPropagation());
+      selectBox.addEventListener("change", () => {
+        if (selectBox.checked) selectedBlockIds.add(block.id);
+        else selectedBlockIds.delete(block.id);
+        item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
+        updateSelectionStatus();
+      });
+      summary.append(
+        selectBox,
+        el("strong", "", block.page_label || `p.${block.source_page || "?"}`),
+        el("span", "muted", ` · ${block.source_item_type === "page-boundary candidate" ? "boundary" : `block ${block.block_index || "?"}`}`)
+      );
+      item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
+      item.appendChild(summary);
+      item.append(
+        el("p", "muted", `${block.id || ""}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
+        highlightedEl("p", "modern-pre-wrap modern-source-preview-text", block.text || "", needle)
+      );
+      return item;
+    }
+    function renderArtworkTreePanel(items, needle) {
+      const panel = el("div", "modern-source-tree-children");
+      const categories = payload.artwork_categories || ["unknown"];
+      if (!items.length) {
+        panel.appendChild(el("p", "muted", "No artwork candidates match the current page/search filter."));
+        return panel;
+      }
+      for (const item of items.slice(0, 80)) {
+        const row = document.createElement("details");
+        row.className = "modern-source-tree-item";
+        row.addEventListener("toggle", () => {
+          if (row.open && item.pdf_page) previewPdfPage(item.pdf_page);
+        });
+        const summary = document.createElement("summary");
+        summary.append(
+          el("strong", "", item.title || item.id || "Artwork candidate"),
+          el("span", "muted", ` · ${item.page_label || `p.${item.source_page || "?"}`} · ${item.category || "unknown"}`)
+        );
+        const artActions = actions();
+        artActions.append(
+          button("✎ Edit", "Open this artwork candidate in the active review tool.", () => {
+            if (item.pdf_page) previewPdfPage(item.pdf_page);
+            openSourceTool(`${item.title || item.id || "Artwork candidate"} · ${item.category || "unknown"}`, artworkEditor(item, categories));
+          })
+        );
+        row.append(
+          summary,
+          item.asset_url ? Object.assign(el("img", "modern-source-artwork-image compact"), { src: item.asset_url, alt: item.title || item.id || "Artwork candidate" }) : el("p", "muted", "No preview available."),
+          highlightedEl("p", "muted", `${String(item.candidate_type || "embedded_image").replace(/_/g, " ")} · ${item.notes || "No notes"}`, needle),
+          artActions
+        );
+        panel.appendChild(row);
+      }
+      if (items.length > 80) panel.appendChild(el("p", "muted", `Showing first 80 matching artwork candidates. ${items.length - 80} more match the current page/search filter.`));
+      return panel;
+    }
     function draw() {
       const needle = search.value;
       const assignmentNeedle = assignment.value;
@@ -7302,13 +7399,23 @@ async function renderRulePdfManager() {
         }
         return modernTextMatchesNeedle(`${block.id || ""} ${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
       });
-      const scopeTitle = hasSearch ? "Matching source blocks" : documentScope ? "All source blocks" : "Page source blocks";
-      const scopeHint = hasSearch
-        ? "Search is showing matching blocks across this whole source document."
-        : documentScope
-          ? "Showing every reviewed source block and page-boundary candidate in this document. Use Current PDF page when reviewing page-by-page beside the PDF preview."
-          : `Showing reviewed blocks and page-boundary candidates for PDF page ${activePage}. Switch Review scope to Whole document to see all ${sourceItems.length}.`;
-      results.replaceChildren(modernStatusRow(scopeTitle, `${matches.length} of ${sourceItems.length}`, scopeHint));
+      const artworkMatches = artworkItems.filter((item) => {
+        if (!documentScope && Number(item.pdf_page || 0) !== activePage) return false;
+        return modernTextMatchesNeedle(`${item.id || ""} ${item.page_label || ""} ${item.category || ""} ${item.title || ""} ${item.notes || ""}`, needle);
+      });
+      const unassignedCount = blocks.filter((block) => (block.assignment || "unassigned") === "unassigned").length;
+      const boundaryCount = candidates.length;
+      const scopeText = hasSearch ? "search" : documentScope ? "document" : `PDF p.${activePage}`;
+      results.replaceChildren(
+        compactInfoStrip("Module contents", [
+          { label: "Scope", value: scopeText },
+          { label: "Text", value: `${matches.length}/${sourceItems.length}` },
+          { label: "Unassigned", value: `${unassignedCount}` },
+          { label: "Boundary", value: `${boundaryCount}` },
+          { label: "Tables", value: `${reviewedTables.length}` },
+          { label: "Artwork", value: `${artworkMatches.length}/${artworkItems.length}` },
+        ], "Counts update as the current page, search, assignment filter, and manual review categories change.")
+      );
       const groupRank = (key) => {
         if (key === "unassigned") return "00";
         if (key === "page_boundary_candidate") return "01";
@@ -7321,46 +7428,36 @@ async function renderRulePdfManager() {
         if (!grouped.has(key)) grouped.set(key, []);
         grouped.get(key).push(block);
       }
+      const textTree = el("div", "modern-source-tree-children");
       const orderedGroups = Array.from(grouped.entries()).sort(([left], [right]) => groupRank(left).localeCompare(groupRank(right)));
       let rendered = 0;
       const renderLimit = 160;
       for (const [groupKey, groupBlocks] of orderedGroups) {
         if (rendered >= renderLimit) break;
-        const groupTitle = groupKey === "page_boundary_candidate" ? "Page Boundary Candidates" : modernTitleFromKey(groupKey || "unassigned");
-        results.appendChild(modernStatusRow(groupTitle, `${groupBlocks.length} item(s)`, groupKey === "unassigned" ? "Primary review queue. Select blocks here, then use the left controls to assign, merge, move, edit, or draft tables." : "Assigned content. These blocks remain in document order within this category."));
+        const branchBody = el("div", "modern-source-tree-children");
         for (const block of groupBlocks) {
           if (rendered >= renderLimit) break;
           rendered += 1;
-        const item = document.createElement("details");
-        item.className = "modern-row";
-        item.addEventListener("toggle", () => {
-          if (item.open && block.pdf_page) previewPdfPage(block.pdf_page);
-        });
-        const summary = document.createElement("summary");
-        const selectBox = input("checkbox", `modern-source-block-select-${block.id}`, "Select this block for the left-side workbench controls.");
-        selectBox.checked = selectedBlockIds.has(block.id);
-        selectBox.addEventListener("click", (event) => event.stopPropagation());
-        selectBox.addEventListener("change", () => {
-          if (selectBox.checked) selectedBlockIds.add(block.id);
-          else selectedBlockIds.delete(block.id);
-          item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
-          updateSelectionStatus();
-        });
-        summary.append(
-          selectBox,
-          el("strong", "", block.page_label || `p.${block.source_page || "?"}`),
-          el("span", "muted", ` · ${block.assignment || "unassigned"} · ${block.source_item_type === "page-boundary candidate" ? "page boundary" : `block ${block.block_index || "?"}`}`)
-        );
-        item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
-        item.appendChild(summary);
-        item.append(
-          el("p", "muted", `${block.page_label || ""}${block.id ? ` · ${block.id}` : ""}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
-          highlightedEl("p", "modern-pre-wrap modern-source-preview-text", block.text || "", needle)
-        );
-        results.appendChild(item);
+          branchBody.appendChild(renderSourceBlockTreeItem(block, needle));
+        }
+        const groupTitle = groupKey === "page_boundary_candidate" ? "Page boundary candidates" : modernTitleFromKey(groupKey || "unassigned");
+        textTree.appendChild(treeBranch(groupTitle, `${groupBlocks.length}`, branchBody, {
+          open: groupKey === "unassigned" || hasSearch,
+          hint: groupKey === "unassigned" ? "Primary review queue. Select blocks here, then use the left controls to assign, merge, move, edit, split, or draft tables." : "Assigned content remains in document order within this category.",
+        }));
       }
-      }
-      if (matches.length > renderLimit) results.appendChild(el("p", "muted", `Showing first ${renderLimit} matches. Narrow the search or filter to inspect the remaining ${matches.length - renderLimit}.`));
+      if (matches.length > renderLimit) textTree.appendChild(el("p", "muted", `Showing first ${renderLimit} matches. Narrow the search or filter to inspect the remaining ${matches.length - renderLimit}.`));
+      const sourceTree = el("div", "modern-source-tree-children");
+      sourceTree.append(
+        treeBranch("Text blocks", `${matches.length}`, textTree, { open: true }),
+        treeBranch("Reviewed tables", `${reviewedTables.length}`, renderReviewedTablesPanel(), { open: false }),
+        treeBranch("Artwork", `${artworkMatches.length}`, renderArtworkTreePanel(artworkMatches, needle), { open: false })
+      );
+      results.appendChild(treeBranch(payload.source_id || "Source document", `${sourceItems.length + artworkItems.length + reviewedTables.length}`, sourceTree, {
+        open: true,
+        className: "modern-source-tree-root",
+        hint: "Imported source document tree. Text, tables, artwork, and future data types sit under this document so review follows the PDF/source order.",
+      }));
     }
     function renderArtworkPanel() {
       const panel = el("div", "modern-source-artwork-panel");
@@ -7447,9 +7544,13 @@ async function renderRulePdfManager() {
     });
     mount.classList.remove("hidden");
     const reviewPanel = el("div", "modern-source-review-panel");
-    const selectionActions = actions();
-    selectionActions.classList.add("modern-source-control-actions");
-    selectionActions.append(applyAssignmentButton, ignorePhraseButton, mergeSelectedButton, editSelectedButton, splitSelectedButton, draftTableButton, moveUpButton, moveDownButton);
+    const selectionActions = el("div", "modern-source-action-groups");
+    selectionActions.append(
+      actionGroup("Assign", [applyAssignmentButton, ignorePhraseButton]),
+      actionGroup("Blocks", [mergeSelectedButton, editSelectedButton, splitSelectedButton]),
+      actionGroup("Extract", [draftTableButton]),
+      actionGroup("Order", [moveUpButton, moveDownButton])
+    );
     const controlFields = el("div", "modern-source-controls-grid");
     controlFields.append(
       field("Search", search),
@@ -7459,31 +7560,30 @@ async function renderRulePdfManager() {
     );
     const blockTools = el("div", "modern-source-controls-panel");
     blockTools.append(
-      modernStatusRow("Source Review Controls", "Selected blocks", "These controls affect selected text blocks in the module contents on the right."),
+      compactInfoStrip("Source controls", [
+        { label: "Selected", value: "blocks" },
+        { label: "Target", value: "content tree" },
+      ], "These controls affect selected text blocks in the module contents tree."),
       controlFields,
       selectionStatus,
       selectionActions
     );
     leftRail.append(blockTools, pdfViewer);
     reviewPanel.append(
-      modernStatusRow("Module contents", `${sourceItems.length} text block/candidate item(s)`, "Whole document is the default. Unassigned blocks appear first, then assigned categories. Use the left controls to change selected text blocks."),
       sourceToolMount,
-      workbenchSection("Reviewed tables", `${reviewedTables.length} table draft(s) in this source`, renderReviewedTablesPanel()),
-      workbenchSection("Page artwork", `${artworkItems.length} candidate(s) in this document`, renderArtworkPanel()),
       results
     );
     const reviewGrid = el("div", "modern-source-review-grid");
     reviewGrid.append(leftRail, reviewPanel);
     mount.replaceChildren(
-      modernInfoPanel("Selected source scan", payload.source_id || "source", [
-        { label: "Source PDF", value: payload.source_pdf || "Source PDF" },
-        { label: "Text blocks", value: `${blocks.length}` },
-        { label: "Boundary candidates", value: `${candidates.length}` },
-        { label: "Artwork candidates", value: `${artworkItems.length}` },
-        { label: "Reviewed tables", value: `${reviewedTables.length}` },
-        { label: "Printed page offset", value: `${payload.page_offset || 0}`, hint: "Used when PDF viewer pages differ from printed book pages." },
-        { label: "Local data", value: "DATA_DIR/Supplements/_sources", hint: "Exact copied prose and review metadata remain local appdata." },
-      ], "Exact copied prose remains local in DATA_DIR/Supplements/_sources."),
+      compactInfoStrip("Selected source scan", [
+        { label: "Source", value: payload.source_id || "source" },
+        { label: "Text", value: `${blocks.length}` },
+        { label: "Boundary", value: `${candidates.length}` },
+        { label: "Artwork", value: `${artworkItems.length}` },
+        { label: "Tables", value: `${reviewedTables.length}` },
+        { label: "Offset", value: `${payload.page_offset || 0}`, hint: "Used when PDF viewer pages differ from printed book pages." },
+      ], `${payload.source_pdf || "Source PDF"} · local DATA_DIR/Supplements/_sources review data.`),
       reviewGrid
     );
     draw();
@@ -7498,6 +7598,7 @@ async function renderRulePdfManager() {
       return;
     }
     const moduleWorkbenchMount = el("div", "modern-source-module-workbench");
+    const sourcePickerBar = el("div", "modern-source-picker-bar");
     const moduleSelect = select("modern-source-module-select", "Choose the imported supplement module to review. A module may contain source PDFs plus attached map/image assets.", [["", "Choose module"]]);
     const packageRows = packages.length
       ? packages
@@ -7526,11 +7627,19 @@ async function renderRulePdfManager() {
     async function openSelectedModule() {
       const pkg = packageRows.find((item) => item.supplement_id === moduleSelect.value) || packageRows[0];
       moduleWorkbenchMount.replaceChildren();
+      sourcePickerBar.replaceChildren(field("Imported module", moduleSelect));
       if (!pkg) return;
       sourceWorkbenchState.packageId = pkg.supplement_id || "";
       persistSourceWorkbenchState();
       const sourceMount = el("div", "modern-source-scan-detail");
       const sources = pkg.sources || [];
+      sourcePickerBar.appendChild(compactInfoStrip("Package", [
+        { label: "PDFs", value: `${pkg.source_count || sources.length || 0}` },
+        { label: "Assets", value: `${pkg.asset_count || 0}` },
+        { label: "Blocks", value: `${pkg.blocks || 0}` },
+        { label: "Artwork", value: `${pkg.artwork || 0}` },
+        { label: "Tables", value: `${pkg.tables || 0}` },
+      ], "Current supplement package counts. Source documents and package assets remain local review data until promoted into a playable supplement."));
       if (sources.length > 1) {
         const sourceSelect = select("modern-source-document-select", "Choose which source document inside this module to review.", []);
         for (const scan of sources) {
@@ -7546,7 +7655,7 @@ async function renderRulePdfManager() {
           const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(sourceSelect.value)}`);
           renderSourceScanDetail(detail, sourceMount);
         });
-        moduleWorkbenchMount.appendChild(field("Source document", sourceSelect));
+        sourcePickerBar.appendChild(field("Source document", sourceSelect));
       }
       moduleWorkbenchMount.appendChild(sourceMount);
       if (sources.length) {
@@ -7571,12 +7680,15 @@ async function renderRulePdfManager() {
       persistSourceWorkbenchState();
       await openSelectedModule();
     });
-    sourceScanStatus.appendChild(modernInfoPanel("Supplement source packages", `${packages.length || scans.length} package(s)`, [
-      { label: "Packages", value: `${packages.length || scans.length}`, hint: "A supplement package can contain multiple source PDFs and attached maps/images." },
-      { label: "Source scans", value: `${scans.length}`, hint: "Local PDF source scans stored under DATA_DIR/Supplements/_sources." },
-      { label: "Grouping rule", value: "Use the same package id for related documents.", hint: "Examples: main rules, adventure text, maps, extra sheets, errata, or bonus documents." },
-    ], "A supplement package can contain multiple PDFs: main rules, adventure text, maps, extra sheets, or bonus documents."));
-    sourceScanStatus.append(field("Imported module", moduleSelect), moduleWorkbenchMount);
+    sourceScanStatus.append(
+      compactInfoStrip("Supplement source packages", [
+        { label: "Packages", value: `${packages.length || scans.length}` },
+        { label: "Source scans", value: `${scans.length}` },
+        { label: "Rule", value: "same package id groups related files", hint: "Examples: main rules, adventure text, maps, extra sheets, errata, or bonus documents." },
+      ], "A supplement package can contain multiple PDFs, maps, extra sheets, or bonus documents."),
+      sourcePickerBar,
+      moduleWorkbenchMount
+    );
     function appendAssetRows(pkg, parent) {
       const categories = pkg.asset_categories || ["unknown", "world_map", "dungeon_map", "room_tile_sheet", "room_tile"];
       const selectedAssets = new Set();
@@ -8045,16 +8157,14 @@ async function renderRulePdfManager() {
     }
     const indexedDocs = (textIndex.documents || []).map((item) => `${item.filename}: ${item.pages_indexed || 0} page(s)${item.page_offset ? `, offset ${item.page_offset}` : ""}`).join("; ");
     status.replaceChildren(
-      modernInfoPanel("PDF import status", `${(payload.uploaded || []).length} uploaded PDF(s), ${(payload.packaged || []).length} packaged PDF(s)`, [
-        { label: "Uploaded PDFs", value: `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, hint: "These PDFs are user data beside game.db and can be backed up from the appdata folder." },
-        { label: "Rules text index", value: textIndex.exists ? `${textIndex.entry_count || 0} exact page entr${textIndex.entry_count === 1 ? "y" : "ies"} from ${textIndex.document_count || 0} PDF(s)` : "No exact text index yet", hint: indexedDocs || "Build this from uploaded PDFs when you want exact PDF wording searchable in the player Rules Reference." },
-        { label: "Override file", value: payload.override_path || "DATA_DIR/tag_scene_narrative_overrides.json", hint: "Generated modules use this local editable file for player-facing scene prose." },
-        { label: "Extracted narrative", value: override.exists ? `${override.rumors || 0} rumor(s), ${override.scenes || 0} scene(s), ${override.scene_branches || 0} branch(es)` : "No local override file found", hint: override.error || "Counts are read from DATA_DIR/tag_scene_narrative_overrides.json and show what generated Adventures Guild modules can use." },
-        { label: "Extraction warnings", value: `${(override.extraction_warnings || []).length} suspected issue(s)`, hint: extractionWarningSummary(override.extraction_warnings) },
-        { label: "Last extraction", value: override.modified_at || "Not extracted yet", hint: "Timestamp is the local override file modified time on the server." },
-        { label: "Packaged PDFs", value: `${(payload.packaged || []).length} bundled/local Rules folder file(s) visible read-only`, hint: "Upload copies into DATA_DIR/rules when you want extraction to write local override data." },
-        { label: "PDF boundary", value: "Local-only copied prose", hint: "Exact PDF prose is written only to DATA_DIR files such as rules/rule_text_index.json and tag_scene_narrative_overrides.json. It is not committed or redistributed by the app repository." },
-      ], "Collapsed by default because these are reference fields, not primary actions.")
+      compactInfoStrip("PDF import status", [
+        { label: "Uploaded", value: `${(payload.uploaded || []).length}` },
+        { label: "Index", value: textIndex.exists ? `${textIndex.entry_count || 0} entries / ${textIndex.document_count || 0} PDF(s)` : "none", hint: indexedDocs || "Build this from uploaded PDFs when you want exact PDF wording searchable in the player Rules Reference." },
+        { label: "Narrative", value: override.exists ? `${override.rumors || 0} rumor(s), ${override.scenes || 0} scene(s), ${override.scene_branches || 0} branch(es)` : "none", hint: override.error || "Counts are read from DATA_DIR/tag_scene_narrative_overrides.json and show what generated Adventures Guild modules can use." },
+        { label: "Warn", value: `${(override.extraction_warnings || []).length}`, hint: extractionWarningSummary(override.extraction_warnings) },
+        { label: "Packaged", value: `${(payload.packaged || []).length}` },
+        { label: "Boundary", value: "local DATA_DIR only", hint: "Exact PDF prose is written only to DATA_DIR files such as rules/rule_text_index.json and tag_scene_narrative_overrides.json. It is not committed or redistributed by the app repository." },
+      ], "Compact status for uploaded PDFs, local exact text index, narrative extraction, and local-only copied prose.")
     );
   }
   uploadedSelect.addEventListener("change", () => {
@@ -8067,7 +8177,7 @@ async function renderRulePdfManager() {
   await refreshSourceScans();
   const row = actions();
   row.append(
-    button("Upload PDF", "Upload the selected PDF into DATA_DIR/rules on the server.", async (btn) => runWithButtonProgress(btn, "Uploading PDF...", async () => {
+    button("↑ PDF", "Upload PDF: upload the selected PDF into DATA_DIR/rules on the server.", async (btn) => runWithButtonProgress(btn, "Uploading PDF...", async () => {
       const chosen = file.files?.[0];
       if (!chosen) throw new Error("Choose a PDF file first.");
       const response = await fetch(`/api/rules/upload-pdf?filename=${encodeURIComponent(chosen.name)}`, {
@@ -8090,7 +8200,7 @@ async function renderRulePdfManager() {
       showRulePdfResult("ok", result.message || "PDF uploaded.", "Upload complete");
       await refreshList();
     })),
-    button("Upload Package Map/Image", "Attach the selected map, handout, or image file to the current supplement package. Use this for separate PNG/JPG map files that belong with the same module.", async (btn) => runWithButtonProgress(btn, "Uploading package asset...", async () => {
+    button("↑ Asset", "Upload Package Map/Image: attach the selected map, handout, or image file to the current supplement package. Use this for separate PNG/JPG map files that belong with the same module.", async (btn) => runWithButtonProgress(btn, "Uploading package asset...", async () => {
       const chosen = sourceAssetFile.files?.[0];
       if (!chosen) throw new Error("Choose a map or image file first.");
       const metadata = sourceMetadataPayload();
@@ -8114,7 +8224,7 @@ async function renderRulePdfManager() {
       showRulePdfResult("ok", result.message || "Package source asset uploaded.", "Package asset uploaded");
       await refreshSourceScans();
     })),
-    button("Index Exact Rules Text", "Extract exact searchable page text from the selected uploaded PDF into DATA_DIR/rules/rule_text_index.json. This is local/private user data and is not committed.", async (btn) => runWithButtonProgress(btn, "Indexing exact rules text...", async () => {
+    button("⌕ Index", "Index Exact Rules Text: extract exact searchable page text from the selected uploaded PDF into DATA_DIR/rules/rule_text_index.json. This is local/private user data and is not committed.", async (btn) => runWithButtonProgress(btn, "Indexing exact rules text...", async () => {
       try {
         showRulePdfResult("ok", "Indexing exact rules text. Large PDFs can take a little while; this panel will update when the server finishes.", "Indexing in progress");
         const result = await api("/api/rules/index-pdf-text", {
@@ -8131,7 +8241,7 @@ async function renderRulePdfManager() {
         throw error;
       }
     })),
-    button("Scan Source Blocks", "Extract unassigned review blocks from the selected PDF into DATA_DIR/Supplements/_sources for later manual classification as rules, foes, locations, tables, equipment, classes, states, terrain, or narrative.", async (btn) => runWithButtonProgress(btn, "Scanning PDF source blocks...", async () => {
+    button("▤ Blocks", "Scan Source Blocks: extract unassigned review blocks from the selected PDF into DATA_DIR/Supplements/_sources for later manual classification as rules, foes, locations, tables, equipment, classes, states, terrain, or narrative.", async (btn) => runWithButtonProgress(btn, "Scanning PDF source blocks...", async () => {
       try {
         showRulePdfResult("ok", "Scanning PDF source blocks into the local supplement review workspace.", "Source scan in progress");
         const result = await api("/api/supplements/source-scan", {
@@ -8148,7 +8258,7 @@ async function renderRulePdfManager() {
         throw error;
       }
     })),
-    button("Extract Artwork Candidates", "Extract embedded artwork candidates from the selected PDF into DATA_DIR/Supplements/_sources for naming and categorisation.", async (btn) => runWithButtonProgress(btn, "Extracting artwork...", async () => {
+    button("◇ Art", "Extract Artwork Candidates: extract embedded artwork candidates from the selected PDF into DATA_DIR/Supplements/_sources for naming and categorisation.", async (btn) => runWithButtonProgress(btn, "Extracting artwork...", async () => {
       try {
         showRulePdfResult("ok", "Extracting embedded artwork candidates into the local supplement review workspace.", "Artwork extraction in progress");
         const result = await api("/api/supplements/source-artwork", {
@@ -8165,7 +8275,7 @@ async function renderRulePdfManager() {
         throw error;
       }
     })),
-    button("Extract Adventures Guild Narrative", "Extract supported Tales from The Adventures Guild Rumor/Scene prose from the selected uploaded PDF into DATA_DIR/tag_scene_narrative_overrides.json.", async (btn) => runWithButtonProgress(btn, "Extracting Adventures Guild narrative...", async () => {
+    button("TAG", "Extract Adventures Guild Narrative: extract supported Tales from The Adventures Guild Rumor/Scene prose from the selected uploaded PDF into DATA_DIR/tag_scene_narrative_overrides.json.", async (btn) => runWithButtonProgress(btn, "Extracting Adventures Guild narrative...", async () => {
       try {
         showRulePdfResult("ok", "Extracting Adventures Guild narrative into the local override file.", "Extraction in progress");
         const result = await api("/api/rules/extract-tag-narrative", {
@@ -8183,20 +8293,31 @@ async function renderRulePdfManager() {
         throw error;
       }
     })),
-    link("Player Rules Reference", "/modern/rules-reference?search=local_exact", "Open the player Rules Reference. Search for exact wording from locally indexed PDFs.", "link-button secondary"),
-    link("Narrative Override Reference", ruleReferenceHref("tag_local_narrative_overrides", "tag narrative overrides"), "Open the Rules Reference entry for local narrative overrides.", "link-button secondary")
+    link("Rules Ref", "/modern/rules-reference?search=local_exact", "Player Rules Reference: open the player Rules Reference and search exact wording from locally indexed PDFs.", "link-button secondary"),
+    link("Narrative Ref", ruleReferenceHref("tag_local_narrative_overrides", "tag narrative overrides"), "Narrative Override Reference: open the Rules Reference entry for local narrative overrides.", "link-button secondary")
+  );
+  row.classList.add("modern-source-import-actions");
+  const overwriteLine = el("label", "modern-check-row modern-source-overwrite");
+  overwriteLine.title = overwrite.title;
+  overwriteLine.append(overwrite, el("span", "", "Overwrite local edits"));
+  const importGrid = el("div", "modern-source-import-grid");
+  importGrid.append(
+    field("Rules PDF", file),
+    field("Package map/image", sourceAssetFile),
+    field("Uploaded PDF", uploadedSelect),
+    field("Package id", supplementId),
+    field("Package title", supplementTitle),
+    field("Printed page offset", pageOffset),
+    overwriteLine
+  );
+  const importPanel = el("div", "modern-source-import-panel");
+  importPanel.append(
+    importGrid,
+    row,
+    el("p", "muted", "Use one package id for every PDF, map sheet, image, or bonus document in the same future supplement. Page offset example: PDF page 7 printed as page 1 uses -6.")
   );
   panel.append(
-    field("Rules PDF", file),
-    field("Package map/image source", sourceAssetFile),
-    field("Uploaded PDF", uploadedSelect),
-    field("Supplement package id", supplementId),
-    field("Supplement package title", supplementTitle),
-    field("Printed page offset", pageOffset),
-    el("p", "muted", "Use the same supplement package id for every PDF, map sheet, image, or bonus document that belongs to the same future playable supplement. Each PDF source still keeps its own page offset and review blocks; imported image files are stored as package source assets."),
-    el("p", "muted", "Page offset example: if PDF page 7 is printed page 1, enter -6. Leave this at 0 when the PDF viewer page number and printed book page number already match."),
-    field("Overwrite local edits", overwrite),
-    row,
+    importPanel,
     resultBox,
     status,
     sourceScanStatus,
