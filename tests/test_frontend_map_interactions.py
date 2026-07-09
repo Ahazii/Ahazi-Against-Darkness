@@ -2926,8 +2926,12 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Developer Reference" in MODERN_PAGES_JS
     assert "Developer Tables" in MODERN_PAGES_JS
     assert "Index Exact Rules Text" in MODERN_PAGES_JS
+    assert "/api/app/version" in MODERN_PAGES_JS
+    assert "modern-version" in MODERN_PAGES_JS
     assert "Indexing exact rules text..." in MODERN_PAGES_JS
     assert "modern-rule-pdf-page-offset" in MODERN_PAGES_JS
+    assert "modern-rule-pdf-supplement-id" in MODERN_PAGES_JS
+    assert "Use the same supplement package id" in MODERN_PAGES_JS
     assert "printed page = PDF page + offset" in MODERN_PAGES_JS
     assert "Page offset example: if PDF page 7 is printed page 1, enter -6." in MODERN_PAGES_JS
     assert "page_offset: Number(pageOffset.value || 0)" in MODERN_PAGES_JS
@@ -2936,7 +2940,11 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "/api/supplements/source-scan" in MODERN_PAGES_JS
     assert "/api/supplements/source-scans" in MODERN_PAGES_JS
     assert "View Blocks" in MODERN_PAGES_JS
-    assert "Visible source blocks" in MODERN_PAGES_JS
+    assert "Page source blocks" in MODERN_PAGES_JS
+    assert "Supplement source packages" in MODERN_PAGES_JS
+    assert "Page artwork" in MODERN_PAGES_JS
+    assert "Page text blocks" in MODERN_PAGES_JS
+    assert "Showing reviewed blocks and page-boundary candidates for PDF page" in MODERN_PAGES_JS
     assert "Search hit preview" in MODERN_PAGES_JS
     assert "modern-source-block-search-preview" in MODERN_PAGES_JS
     assert "page-boundary candidates" in MODERN_PAGES_JS
@@ -2948,7 +2956,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "source_pdf_page_url" in MODERN_PAGES_JS
     assert "pdfCanvas.addEventListener(\"wheel\"" in MODERN_PAGES_JS
     assert "pdfCanvas.addEventListener(\"pointerdown\"" in MODERN_PAGES_JS
-    assert "setPdfPage(block.pdf_page)" in MODERN_PAGES_JS
+    assert "goPdfPage(block.pdf_page)" in MODERN_PAGES_JS
     assert "Save Block" in MODERN_PAGES_JS
     assert "Split At Cursor" in MODERN_PAGES_JS
     assert "Move Up" in MODERN_PAGES_JS

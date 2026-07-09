@@ -72,6 +72,7 @@ from .engine.roster_sync import (
 )
 from .engine.supplement_sources import (
     extract_supplement_source_artwork,
+    list_supplement_source_packages,
     list_supplement_source_scans,
     load_supplement_source_scan,
     merge_selected_supplement_source_blocks,
@@ -79,6 +80,7 @@ from .engine.supplement_sources import (
     move_supplement_source_block,
     pdf_source_settings,
     scan_supplement_source_pdf,
+    set_pdf_source_metadata,
     set_pdf_source_page_offset,
     split_supplement_source_block,
     supplement_source_artwork_path,
@@ -454,7 +456,34 @@ ICON_FILE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
 RULE_PDF_EXTENSIONS = {".pdf"}
 
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.26.0")
+def app_version() -> str:
+    version_path = settings.root_dir / "VERSION"
+    try:
+        version = version_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        version = "0.27.0"
+    return version or "0.27.0"
+
+
+APP_VERSION = app_version()
+
+
+def app_build_hash() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=settings.root_dir,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+app = FastAPI(title="Ahazi Against Darkness", version=APP_VERSION)
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/docs", StaticFiles(directory=settings.root_dir / "docs"), name="docs")
 app.mount("/Rules", StaticFiles(directory=settings.root_dir / "Rules", check_dir=False), name="rules-pdfs")
@@ -523,6 +552,22 @@ def _payload_or_saved_page_offset(payload: dict[str, Any], pdf_path: Path) -> in
     return page_offset
 
 
+def _payload_source_metadata(payload: dict[str, Any], pdf_path: Path) -> dict[str, str]:
+    existing = pdf_source_settings(settings.data_dir, pdf_path)
+    supplement_id = str(payload.get("supplement_id") or existing.get("supplement_id") or "").strip()
+    supplement_title = str(payload.get("supplement_title") or existing.get("supplement_title") or "").strip()
+    saved = set_pdf_source_metadata(
+        settings.data_dir,
+        pdf_path,
+        supplement_id=supplement_id or None,
+        supplement_title=supplement_title or None,
+    )
+    return {
+        "supplement_id": str(saved.get("supplement_id") or ""),
+        "supplement_title": str(saved.get("supplement_title") or ""),
+    }
+
+
 def _tag_narrative_override_status() -> dict[str, Any]:
     path = tag_narrative_overrides_path()
     status: dict[str, Any] = {
@@ -572,6 +617,15 @@ async def serve_asset(asset_path: str) -> FileResponse:
     if resolved is None:
         raise HTTPException(status_code=404, detail="Asset not found.")
     return FileResponse(resolved)
+
+
+@app.get("/api/app/version")
+async def app_version_status() -> dict[str, Any]:
+    return {
+        "name": "Ahazi Against Darkness",
+        "version": APP_VERSION,
+        "build": app_build_hash(),
+    }
 
 
 @app.get("/api/rules/pdfs")
@@ -706,6 +760,7 @@ async def index_rule_pdf_text(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         pdf_path = _resolve_user_rule_pdf(filename)
     page_offset = _payload_or_saved_page_offset(payload, pdf_path)
+    _payload_source_metadata(payload, pdf_path)
     try:
         return build_rule_text_index_for_pdf(settings.rules_dir, pdf_path, now=now_utc(), page_offset=page_offset)
     except Exception as exc:  # noqa: BLE001
@@ -723,8 +778,9 @@ async def scan_supplement_source(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         pdf_path = _resolve_user_rule_pdf(filename)
     page_offset = _payload_or_saved_page_offset(payload, pdf_path)
+    source_meta = _payload_source_metadata(payload, pdf_path)
     try:
-        return scan_supplement_source_pdf(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset)
+        return scan_supplement_source_pdf(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset, **source_meta)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Could not scan supplement source: {exc}") from exc
 
@@ -740,15 +796,19 @@ async def extract_supplement_artwork(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         pdf_path = _resolve_user_rule_pdf(filename)
     page_offset = _payload_or_saved_page_offset(payload, pdf_path)
+    source_meta = _payload_source_metadata(payload, pdf_path)
     try:
-        return extract_supplement_source_artwork(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset)
+        return extract_supplement_source_artwork(settings.data_dir, pdf_path, now=now_utc(), page_offset=page_offset, **source_meta)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Could not extract supplement artwork: {exc}") from exc
 
 
 @app.get("/api/supplements/source-scans")
 async def supplement_source_scans() -> dict[str, Any]:
-    return {"scans": list_supplement_source_scans(settings.data_dir)}
+    return {
+        "scans": list_supplement_source_scans(settings.data_dir),
+        "packages": list_supplement_source_packages(settings.data_dir),
+    }
 
 
 @app.get("/api/supplements/source-scans/{source_id}")

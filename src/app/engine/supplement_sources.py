@@ -69,6 +69,11 @@ def supplement_source_id(pdf_path: Path) -> str:
     return slug or "pdf-source"
 
 
+def supplement_package_id(value: str | None, fallback: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", str(value or fallback or "").lower()).strip("-")
+    return slug or "supplement-package"
+
+
 def supplement_source_folder(data_dir: Path, source_id: str) -> Path:
     safe = re.sub(r"[^a-z0-9._-]+", "-", source_id.lower()).strip(".-")
     return supplement_sources_root(data_dir) / (safe or "pdf-source")
@@ -108,14 +113,24 @@ def pdf_source_settings(data_dir: Path, pdf_path: Path) -> dict[str, Any]:
     payload = _load_source_settings(data_dir)
     sources = payload.get("sources") if isinstance(payload.get("sources"), dict) else {}
     settings = sources.get(source_id) if isinstance(sources.get(source_id), dict) else {}
+    package_id = supplement_package_id(settings.get("supplement_id"), source_id)
     return {
         "source_id": source_id,
         "filename": pdf_path.name,
         "page_offset": int(settings.get("page_offset") or 0),
+        "supplement_id": package_id,
+        "supplement_title": str(settings.get("supplement_title") or pdf_path.stem),
     }
 
 
-def set_pdf_source_page_offset(data_dir: Path, pdf_path: Path, page_offset: int) -> dict[str, Any]:
+def set_pdf_source_metadata(
+    data_dir: Path,
+    pdf_path: Path,
+    *,
+    page_offset: int | None = None,
+    supplement_id: str | None = None,
+    supplement_title: str | None = None,
+) -> dict[str, Any]:
     source_id = supplement_source_id(pdf_path)
     payload = _load_source_settings(data_dir)
     sources = payload.get("sources")
@@ -123,14 +138,22 @@ def set_pdf_source_page_offset(data_dir: Path, pdf_path: Path, page_offset: int)
         sources = {}
         payload["sources"] = sources
     previous = sources.get(source_id) if isinstance(sources.get(source_id), dict) else {}
+    package_id = supplement_package_id(supplement_id or previous.get("supplement_id"), source_id)
+    title = str(supplement_title or previous.get("supplement_title") or pdf_path.stem).strip() or pdf_path.stem
     sources[source_id] = {
         **previous,
         "source_id": source_id,
         "filename": pdf_path.name,
-        "page_offset": int(page_offset),
+        "page_offset": int(page_offset if page_offset is not None else previous.get("page_offset") or 0),
+        "supplement_id": package_id,
+        "supplement_title": title,
     }
     _write_source_settings(data_dir, payload)
     return sources[source_id]
+
+
+def set_pdf_source_page_offset(data_dir: Path, pdf_path: Path, page_offset: int) -> dict[str, Any]:
+    return set_pdf_source_metadata(data_dir, pdf_path, page_offset=page_offset)
 
 
 def _page_text_blocks(text: str) -> list[str]:
@@ -167,9 +190,25 @@ def _review_artwork_from_existing(existing: dict[str, Any]) -> list[dict[str, An
     return []
 
 
-def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page_offset: int = 0) -> dict[str, Any]:
-    set_pdf_source_page_offset(data_dir, pdf_path, page_offset)
+def scan_supplement_source_pdf(
+    data_dir: Path,
+    pdf_path: Path,
+    *,
+    now: str,
+    page_offset: int = 0,
+    supplement_id: str | None = None,
+    supplement_title: str | None = None,
+) -> dict[str, Any]:
+    source_settings = set_pdf_source_metadata(
+        data_dir,
+        pdf_path,
+        page_offset=page_offset,
+        supplement_id=supplement_id,
+        supplement_title=supplement_title,
+    )
     source_id = supplement_source_id(pdf_path)
+    package_id = supplement_package_id(source_settings.get("supplement_id"), source_id)
+    package_title = str(source_settings.get("supplement_title") or pdf_path.stem)
     folder = supplement_source_folder(data_dir, source_id)
     folder.mkdir(parents=True, exist_ok=True)
     existing = load_supplement_source_scan(data_dir, source_id)
@@ -195,6 +234,8 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page
                 assignment = "unassigned"
             block = {
                 "id": _source_block_id(source_id, source_page, page_no, index),
+                "supplement_id": package_id,
+                "supplement_title": package_title,
                 "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
                 "source_page": source_page,
                 "pdf_page": page_no,
@@ -224,6 +265,8 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page
         continuation_candidates.append(
             {
                 "id": f"{source_id}-p{left_source}-to-p{right_source}-pdf{left_page}-to-pdf{right_page}",
+                "supplement_id": package_id,
+                "supplement_title": package_title,
                 "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
                 "source_page": left_source,
                 "source_page_end": right_source,
@@ -243,6 +286,8 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page
     payload = {
         "schema_version": 1,
         "source_id": source_id,
+        "supplement_id": package_id,
+        "supplement_title": package_title,
         "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
         "updated_at": now,
         "page_offset": int(page_offset),
@@ -259,6 +304,8 @@ def scan_supplement_source_pdf(data_dir: Path, pdf_path: Path, *, now: str, page
     supplement_source_scan_path(data_dir, source_id).write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     return {
         "source_id": source_id,
+        "supplement_id": package_id,
+        "supplement_title": package_title,
         "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
         "blocks": len(reviewed_blocks),
         "raw_blocks": len(raw_blocks),
@@ -280,6 +327,8 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
         return {"schema_version": 1, "source_id": source_id, "blocks": []}
     if not isinstance(payload, dict):
         return {"schema_version": 1, "source_id": source_id, "blocks": []}
+    payload["supplement_id"] = str(payload.get("supplement_id") or supplement_package_id(None, source_id))
+    payload["supplement_title"] = str(payload.get("supplement_title") or payload.get("source_pdf") or source_id)
     reviewed = _review_blocks_from_existing(payload)
     reviewed_artwork = _review_artwork_from_existing(payload)
     payload["reviewed_blocks"] = reviewed
@@ -430,15 +479,33 @@ def move_supplement_source_block(data_dir: Path, source_id: str, block_id: str, 
     raise KeyError(block_id)
 
 
-def extract_supplement_source_artwork(data_dir: Path, pdf_path: Path, *, now: str, page_offset: int = 0) -> dict[str, Any]:
+def extract_supplement_source_artwork(
+    data_dir: Path,
+    pdf_path: Path,
+    *,
+    now: str,
+    page_offset: int = 0,
+    supplement_id: str | None = None,
+    supplement_title: str | None = None,
+) -> dict[str, Any]:
     try:
         from pypdf import PdfReader
     except ImportError as exc:  # pragma: no cover - dependency is present in app image/tests
         raise RuntimeError("pypdf is required to extract PDF artwork images.") from exc
 
-    set_pdf_source_page_offset(data_dir, pdf_path, page_offset)
+    source_settings = set_pdf_source_metadata(
+        data_dir,
+        pdf_path,
+        page_offset=page_offset,
+        supplement_id=supplement_id,
+        supplement_title=supplement_title,
+    )
     source_id = supplement_source_id(pdf_path)
+    package_id = supplement_package_id(source_settings.get("supplement_id"), source_id)
+    package_title = str(source_settings.get("supplement_title") or pdf_path.stem)
     payload = load_supplement_source_scan(data_dir, source_id)
+    payload["supplement_id"] = package_id
+    payload["supplement_title"] = package_title
     artwork_dir = supplement_source_artwork_dir(data_dir, source_id) / "raw"
     artwork_dir.mkdir(parents=True, exist_ok=True)
     reader = PdfReader(str(pdf_path))
@@ -460,6 +527,8 @@ def extract_supplement_source_artwork(data_dir: Path, pdf_path: Path, *, now: st
             raw_records.append(
                 {
                     "id": f"{source_id}-art-p{source_page}-pdf{page_index}-i{image_index:02d}",
+                    "supplement_id": package_id,
+                    "supplement_title": package_title,
                     "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
                     "source_page": source_page,
                     "pdf_page": page_index,
@@ -508,6 +577,8 @@ def extract_supplement_source_artwork(data_dir: Path, pdf_path: Path, *, now: st
             raw_records.append(
                 {
                     "id": f"{source_id}-art-render-p{source_page}-pdf{page_index}",
+                    "supplement_id": package_id,
+                    "supplement_title": package_title,
                     "source_pdf": f"DATA_DIR/rules/{pdf_path.name}",
                     "source_page": source_page,
                     "pdf_page": page_index,
@@ -532,6 +603,8 @@ def extract_supplement_source_artwork(data_dir: Path, pdf_path: Path, *, now: st
     save_supplement_source_scan(data_dir, source_id, payload)
     return {
         "source_id": source_id,
+        "supplement_id": package_id,
+        "supplement_title": package_title,
         "raw_artwork": len(raw_records),
         "reviewed_artwork": len(reviewed_artwork),
         "path": str(artwork_dir),
@@ -588,6 +661,8 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
         scans.append(
             {
                 "source_id": str(payload.get("source_id") or source_id),
+                "supplement_id": str(payload.get("supplement_id") or supplement_package_id(None, source_id)),
+                "supplement_title": str(payload.get("supplement_title") or payload.get("source_pdf") or source_id),
                 "source_pdf": str(payload.get("source_pdf") or ""),
                 "updated_at": str(payload.get("updated_at") or ""),
                 "page_offset": int(payload.get("page_offset") or 0),
@@ -601,3 +676,27 @@ def list_supplement_source_scans(data_dir: Path) -> list[dict[str, Any]]:
             }
         )
     return scans
+
+
+def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
+    grouped: dict[str, dict[str, Any]] = {}
+    for scan in list_supplement_source_scans(data_dir):
+        package_id = supplement_package_id(str(scan.get("supplement_id") or ""), str(scan.get("source_id") or "supplement"))
+        package = grouped.setdefault(
+            package_id,
+            {
+                "supplement_id": package_id,
+                "supplement_title": str(scan.get("supplement_title") or package_id),
+                "source_count": 0,
+                "blocks": 0,
+                "artwork": 0,
+                "reviewed_blocks": 0,
+                "sources": [],
+            },
+        )
+        package["source_count"] = int(package.get("source_count") or 0) + 1
+        package["blocks"] = int(package.get("blocks") or 0) + int(scan.get("blocks") or 0)
+        package["artwork"] = int(package.get("artwork") or 0) + int(scan.get("artwork") or 0)
+        package["reviewed_blocks"] = int(package.get("reviewed_blocks") or 0) + int(scan.get("reviewed_blocks") or 0)
+        package["sources"].append(scan)
+    return sorted(grouped.values(), key=lambda item: str(item.get("supplement_title") or item.get("supplement_id") or ""))

@@ -1292,6 +1292,19 @@ button.is-working::after {
   background: #0f100d;
 }
 
+.modern-version {
+  color: var(--muted);
+  min-width: auto;
+}
+
+.modern-source-review-section > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 .modern-source-block-search-preview {
   display: grid;
   gap: 4px;

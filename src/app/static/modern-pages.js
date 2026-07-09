@@ -15,6 +15,7 @@ const modernState = {
   supplements: { supplements: [], legacy_fields: [] },
   states: { states: [], legacy_fields: [] },
   terrain: { terrain: [], legacy_fields: [] },
+  appVersion: null,
 };
 
 const MODERN_PREFS_KEY = "ahazi-modern-dashboard-prefs";
@@ -157,6 +158,11 @@ const pageCompanionEl = document.getElementById("modern-page-companion");
 const pageArtworkEl = document.getElementById("modern-page-artwork");
 const navArtworkEl = document.getElementById("modern-nav-artwork");
 const rootEl = document.getElementById("modern-page-root");
+
+const versionEl = document.createElement("div");
+versionEl.className = "status modern-version";
+versionEl.textContent = "v...";
+document.querySelector(".topbar-actions")?.insertBefore(versionEl, statusEl);
 
 function currentPage() {
   const raw = window.location.pathname.replace(/^\/modern\/?/, "") || "home";
@@ -1939,7 +1945,7 @@ function adventureReadinessBlocks(rows) {
 }
 
 async function loadCore() {
-  const [classes, characters, parties, adventures, adventurePackages, sessions, campaign, profiles, preferences, supplements, states, terrain] = await Promise.all([
+  const [classes, characters, parties, adventures, adventurePackages, sessions, campaign, profiles, preferences, supplements, states, terrain, appVersion] = await Promise.all([
     api("/api/rules/classes"),
     api("/api/characters"),
     api("/api/parties"),
@@ -1952,6 +1958,7 @@ async function loadCore() {
     api("/api/supplements"),
     api("/api/states"),
     api("/api/terrain"),
+    api("/api/app/version"),
   ]);
   modernState.classes = classes;
   modernState.characters = characters;
@@ -1965,6 +1972,13 @@ async function loadCore() {
   modernState.supplements = supplements || { supplements: [], legacy_fields: [] };
   modernState.states = states || { states: [], legacy_fields: [] };
   modernState.terrain = terrain || { terrain: [], legacy_fields: [] };
+  modernState.appVersion = appVersion || null;
+  if (modernState.appVersion?.version) {
+    versionEl.textContent = `v${modernState.appVersion.version}`;
+    versionEl.title = modernState.appVersion.build
+      ? `Ahazi Against Darkness ${modernState.appVersion.version}; build ${modernState.appVersion.build}.`
+      : `Ahazi Against Darkness ${modernState.appVersion.version}.`;
+  }
 }
 
 async function refreshCoreAndRender() {
@@ -6662,6 +6676,8 @@ async function renderRulePdfManager() {
   file.accept = "application/pdf,.pdf";
   const uploadedSelect = select("modern-rule-pdf-select", "Uploaded DATA_DIR/rules PDF to extract from.", [["", "Choose uploaded PDF"]]);
   const pageOffset = input("number", "modern-rule-pdf-page-offset", "Optional printed-page offset. The app calculates printed page = PDF page + offset. Example: if PDF page 7 is printed page 1, enter -6.", "0");
+  const supplementId = input("text", "modern-rule-pdf-supplement-id", "Supplement package id. Use the same id for multiple PDFs that belong to one supplement package.", "");
+  const supplementTitle = input("text", "modern-rule-pdf-supplement-title", "Human-readable supplement package title. This groups multiple source documents into one future playable supplement.", "");
   const overwrite = input("checkbox", "modern-rule-pdf-overwrite", "Overwrite existing fields in DATA_DIR/tag_scene_narrative_overrides.json. Leave off to preserve local edits.");
   const status = el("div", "modern-list");
   const resultBox = el("div", "modern-list");
@@ -6683,6 +6699,36 @@ async function renderRulePdfManager() {
     return `${summary}${scan.continuation_candidates ? `; page-boundary candidates: ${scan.continuation_candidates}` : ""}${scan.artwork ? `; artwork: ${scan.artwork}` : ""}`;
   }
   const sourceScanDetailMounts = [];
+  function suggestedSupplementId(filename) {
+    return String(filename || "")
+      .replace(/\.pdf$/i, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "supplement-package";
+  }
+  function suggestedSupplementTitle(filename) {
+    return String(filename || "")
+      .replace(/\.pdf$/i, "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim() || "Supplement Package";
+  }
+  function sourceMetadataPayload() {
+    return {
+      filename: uploadedSelect.value,
+      page_offset: Number(pageOffset.value || 0),
+      supplement_id: supplementId.value || suggestedSupplementId(uploadedSelect.value),
+      supplement_title: supplementTitle.value || suggestedSupplementTitle(uploadedSelect.value),
+    };
+  }
+  function workbenchSection(title, subtitle, body) {
+    const details = document.createElement("details");
+    details.className = "modern-row modern-source-review-section";
+    const summary = document.createElement("summary");
+    summary.append(el("strong", "", title), el("span", "muted", ` · ${subtitle}`));
+    details.append(summary, body);
+    return details;
+  }
   function renderSourceScanDetail(payload, mount) {
     const blocks = Array.isArray(payload.blocks) ? payload.blocks.map((block) => ({ ...block, source_item_type: "block" })) : [];
     const candidates = Array.isArray(payload.continuation_candidates) ? payload.continuation_candidates.map((block) => ({ ...block, source_item_type: "page-boundary candidate" })) : [];
@@ -6712,6 +6758,7 @@ async function renderRulePdfManager() {
     let pdfDragStartY = 0;
     let pdfStartPanX = 0;
     let pdfStartPanY = 0;
+    let redrawArtwork = () => {};
     function applyPdfTransform() {
       pdfImage.style.transform = `translate(${pdfPanX}px, ${pdfPanY}px) scale(${pdfZoom})`;
       pdfStatus.textContent = `PDF page ${pageInput.value || firstPdfPage} · zoom ${Math.round(pdfZoom * 100)}%`;
@@ -6724,13 +6771,18 @@ async function renderRulePdfManager() {
       pdfImage.src = payload.source_pdf_page_url ? `${payload.source_pdf_page_url}?page=${encodeURIComponent(pageNo)}` : "";
       applyPdfTransform();
     }
+    function goPdfPage(page) {
+      setPdfPage(page);
+      draw();
+      redrawArtwork();
+    }
     function setPdfZoom(nextZoom) {
       pdfZoom = Math.min(4, Math.max(0.35, nextZoom));
       applyPdfTransform();
     }
     pdfToolbar.append(
-      button("Prev", "Show the previous PDF page.", () => setPdfPage(Number(pageInput.value || 1) - 1)),
-      button("Next", "Show the next PDF page.", () => setPdfPage(Number(pageInput.value || 1) + 1)),
+      button("Prev", "Show the previous PDF page and review items on that page.", () => goPdfPage(Number(pageInput.value || 1) - 1)),
+      button("Next", "Show the next PDF page and review items on that page.", () => goPdfPage(Number(pageInput.value || 1) + 1)),
       button("Zoom In", "Increase PDF preview zoom.", () => setPdfZoom(pdfZoom + 0.15)),
       button("Zoom Out", "Decrease PDF preview zoom.", () => setPdfZoom(pdfZoom - 0.15)),
       button("Reset View", "Reset PDF zoom and pan.", () => {
@@ -6740,7 +6792,7 @@ async function renderRulePdfManager() {
         applyPdfTransform();
       })
     );
-    pageInput.addEventListener("change", () => setPdfPage(pageInput.value));
+    pageInput.addEventListener("change", () => goPdfPage(pageInput.value));
     pdfCanvas.addEventListener("wheel", (event) => {
       event.preventDefault();
       setPdfZoom(pdfZoom + (event.deltaY < 0 ? 0.12 : -0.12));
@@ -6846,16 +6898,23 @@ async function renderRulePdfManager() {
     function draw() {
       const needle = search.value;
       const assignmentNeedle = assignment.value;
+      const activePage = Math.max(1, Number(pageInput.value || firstPdfPage) || 1);
+      const globalSearch = Boolean(searchTerms(needle).length);
       const matches = sourceItems.filter((block) => {
         if (assignmentNeedle && block.assignment !== assignmentNeedle) return false;
+        if (!globalSearch) {
+          const startPage = Number(block.pdf_page || 0);
+          const endPage = Number(block.pdf_page_end || startPage);
+          if (activePage < startPage || activePage > endPage) return false;
+        }
         return modernTextMatchesNeedle(`${block.id || ""} ${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
       });
-      results.replaceChildren(modernStatusRow("Visible source blocks", `${matches.length} of ${sourceItems.length}`, "This view is read-only for now; page-boundary candidates combine the last block of one PDF page with the first block of the next for review."));
+      results.replaceChildren(modernStatusRow(globalSearch ? "Matching source blocks" : "Page source blocks", `${matches.length} of ${sourceItems.length}`, globalSearch ? "Search is showing matching blocks across this whole source document." : `Showing reviewed blocks and page-boundary candidates for PDF page ${activePage}.`));
       for (const block of matches.slice(0, 120)) {
         const item = document.createElement("details");
         item.className = "modern-row";
         item.addEventListener("toggle", () => {
-          if (item.open && block.pdf_page) setPdfPage(block.pdf_page);
+          if (item.open && block.pdf_page) goPdfPage(block.pdf_page);
         });
         const summary = document.createElement("summary");
         const selectBox = input("checkbox", `modern-source-block-select-${block.id}`, "Select this block for Merge Selected.");
@@ -6884,60 +6943,86 @@ async function renderRulePdfManager() {
     }
     function renderArtworkPanel() {
       const panel = el("div", "modern-source-artwork-panel");
+      const artworkResults = el("div", "modern-list");
       panel.appendChild(modernStatusRow("Artwork candidates", `${artworkItems.length} reviewed candidate(s)`, "Embedded image extraction is best-effort. If the PDF exposes no images, the app renders full PDF pages as review/crop candidates; reviewed metadata is preserved across re-extraction."));
       if (!artworkItems.length) {
         panel.appendChild(el("p", "muted", "No artwork candidates extracted yet. Use Extract Artwork Candidates from the source scan list after selecting the PDF."));
         return panel;
       }
       const categories = payload.artwork_categories || ["unknown"];
-      for (const item of artworkItems.slice(0, 80)) {
-        const row = document.createElement("details");
-        row.className = "modern-row";
-        const summary = document.createElement("summary");
-        summary.append(
-          el("strong", "", item.title || item.id || "Artwork candidate"),
-          el("span", "muted", ` · ${item.page_label || `p.${item.source_page || "?"}`} · ${item.category || "unknown"} · ${String(item.candidate_type || "embedded_image").replace(/_/g, " ")}`)
-        );
-        const img = el("img", "modern-source-artwork-image");
-        img.alt = item.title || item.id || "Artwork candidate";
-        if (item.asset_url) img.src = item.asset_url;
-        const titleInput = input("text", `modern-source-artwork-title-${item.id}`, "Name this artwork for later reuse.", item.title || "");
-        const categorySelect = select(`modern-source-artwork-category-${item.id}`, "Categorise this artwork for future game use.", categories.map((category) => [category, category.replace(/_/g, " ")]));
-        categorySelect.value = item.category || "unknown";
-        const notesInput = document.createElement("textarea");
-        notesInput.className = "modern-source-block-text compact";
-        notesInput.title = "Review notes for this artwork candidate.";
-        notesInput.value = item.notes || "";
-        const artActions = actions();
-        artActions.append(
-          button("Save Artwork", "Save artwork name, category, and notes.", async (btn) => runWithButtonProgress(btn, "Saving artwork...", async () => {
-            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/artwork/${encodeURIComponent(item.id)}`, {
-              method: "PATCH",
-              body: JSON.stringify({ title: titleInput.value, category: categorySelect.value, notes: notesInput.value, review_status: "checked" }),
-            });
-            await reloadCurrentScan("Artwork review saved.");
-          }))
-        );
-        row.append(
-          summary,
-          img,
-          field("Artwork name", titleInput),
-          field("Artwork category", categorySelect),
-          field("Artwork notes", notesInput),
-          artActions
-        );
-        panel.appendChild(row);
+      function drawArtwork() {
+        const activePage = Math.max(1, Number(pageInput.value || firstPdfPage) || 1);
+        const needle = search.value;
+        const globalSearch = Boolean(searchTerms(needle).length);
+        const matches = artworkItems.filter((item) => {
+          if (!globalSearch && Number(item.pdf_page || 0) !== activePage) return false;
+          return modernTextMatchesNeedle(`${item.id || ""} ${item.page_label || ""} ${item.category || ""} ${item.title || ""} ${item.notes || ""}`, needle);
+        });
+        artworkResults.replaceChildren(modernStatusRow(globalSearch ? "Matching artwork" : "Page artwork", `${matches.length} of ${artworkItems.length}`, globalSearch ? "Search is showing matching artwork across this whole source document." : `Showing artwork candidates for PDF page ${activePage}.`));
+        for (const item of matches.slice(0, 80)) {
+          const row = document.createElement("details");
+          row.className = "modern-row";
+          row.addEventListener("toggle", () => {
+            if (row.open && item.pdf_page) goPdfPage(item.pdf_page);
+          });
+          const summary = document.createElement("summary");
+          summary.append(
+            el("strong", "", item.title || item.id || "Artwork candidate"),
+            el("span", "muted", ` · ${item.page_label || `p.${item.source_page || "?"}`} · ${item.category || "unknown"} · ${String(item.candidate_type || "embedded_image").replace(/_/g, " ")}`)
+          );
+          const img = el("img", "modern-source-artwork-image");
+          img.alt = item.title || item.id || "Artwork candidate";
+          if (item.asset_url) img.src = item.asset_url;
+          const titleInput = input("text", `modern-source-artwork-title-${item.id}`, "Name this artwork for later reuse.", item.title || "");
+          const categorySelect = select(`modern-source-artwork-category-${item.id}`, "Categorise this artwork for future game use.", categories.map((category) => [category, category.replace(/_/g, " ")]));
+          categorySelect.value = item.category || "unknown";
+          const notesInput = document.createElement("textarea");
+          notesInput.className = "modern-source-block-text compact";
+          notesInput.title = "Review notes for this artwork candidate.";
+          notesInput.value = item.notes || "";
+          const artActions = actions();
+          artActions.append(
+            button("Save Artwork", "Save artwork name, category, and notes.", async (btn) => runWithButtonProgress(btn, "Saving artwork...", async () => {
+              await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/artwork/${encodeURIComponent(item.id)}`, {
+                method: "PATCH",
+                body: JSON.stringify({ title: titleInput.value, category: categorySelect.value, notes: notesInput.value, review_status: "checked" }),
+              });
+              await reloadCurrentScan("Artwork review saved.");
+            }))
+          );
+          row.append(
+            summary,
+            img,
+            field("Artwork name", titleInput),
+            field("Artwork category", categorySelect),
+            field("Artwork notes", notesInput),
+            artActions
+          );
+          artworkResults.appendChild(row);
+        }
+        if (matches.length > 80) artworkResults.appendChild(el("p", "muted", `Showing first 80 matching artwork candidates. ${matches.length - 80} more match the current page/search filter.`));
       }
-      if (artworkItems.length > 80) panel.appendChild(el("p", "muted", `Showing first 80 artwork candidates. ${artworkItems.length - 80} more are stored in the source file.`));
+      redrawArtwork = drawArtwork;
+      panel.appendChild(artworkResults);
+      drawArtwork();
       return panel;
     }
-    search.addEventListener("input", draw);
+    search.addEventListener("input", () => {
+      draw();
+      redrawArtwork();
+    });
     assignment.addEventListener("change", draw);
     mount.classList.remove("hidden");
     const reviewPanel = el("div", "modern-source-review-panel");
     const selectionActions = actions();
     selectionActions.append(mergeSelectedButton);
-    reviewPanel.append(renderArtworkPanel(), field("Search source blocks", search), field("Assignment filter", assignment), selectionStatus, selectionActions, results);
+    const blockTools = el("div", "modern-list");
+    blockTools.append(field("Search source blocks and artwork", search), field("Assignment filter", assignment), selectionStatus, selectionActions, results);
+    reviewPanel.append(
+      modernStatusRow("Page review", `PDF page ${pageInput.value || firstPdfPage}`, "By default this panel follows the PDF page. Enter a search term to search across the whole source document."),
+      workbenchSection("Page artwork", `${artworkItems.length} candidate(s) in this document`, renderArtworkPanel()),
+      workbenchSection("Page text blocks", `${sourceItems.length} block/candidate item(s) in this document`, blockTools)
+    );
     const reviewGrid = el("div", "modern-source-review-grid");
     reviewGrid.append(pdfViewer, reviewPanel);
     mount.replaceChildren(
@@ -6949,14 +7034,15 @@ async function renderRulePdfManager() {
   async function refreshSourceScans() {
     const payload = await api("/api/supplements/source-scans");
     const scans = payload.scans || [];
+    const packages = payload.packages || [];
     sourceScanStatus.replaceChildren();
     sourceScanDetailMounts.length = 0;
     if (!scans.length) {
       sourceScanStatus.appendChild(modernStatusRow("Source block scans", "No scans yet", "Use Scan Source Blocks after uploading or selecting a PDF."));
       return;
     }
-    sourceScanStatus.appendChild(modernStatusRow("Source block scans", `${scans.length} local scan(s)`, "These are local/private review files in DATA_DIR/Supplements/_sources."));
-    for (const scan of scans) {
+    sourceScanStatus.appendChild(modernStatusRow("Supplement source packages", `${packages.length || scans.length} package(s), ${scans.length} local source scan(s)`, "A supplement package can contain multiple PDFs: main rules, adventure text, maps, extra sheets, or bonus documents. Use the same package id when scanning related documents."));
+    function appendScanRow(scan, parent) {
       const row = actions("modern-row-actions");
       const detailMount = el("div", "modern-source-scan-detail hidden");
       sourceScanDetailMounts.push(detailMount);
@@ -6976,12 +7062,26 @@ async function renderRulePdfManager() {
       const body = el("div", "");
       body.append(
         el("strong", "", scan.source_id || "source scan"),
-        el("p", "muted", `${scan.source_pdf || "PDF"} · ${scan.blocks || 0} block(s) · ${scan.artwork || 0} artwork · ${scan.continuation_candidates || 0} page-boundary candidate(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
+        el("p", "muted", `${scan.source_pdf || "PDF"} · package ${scan.supplement_id || "supplement"} · ${scan.blocks || 0} block(s) · ${scan.artwork || 0} artwork · ${scan.continuation_candidates || 0} page-boundary candidate(s) · ${scan.reviewed_blocks || 0} reviewed · offset ${scan.page_offset || 0}`),
         el("p", "muted", sourceScanAssignmentSummary(scan))
       );
       const scanRow = el("div", "modern-row");
       scanRow.append(body, row, detailMount);
-      sourceScanStatus.appendChild(scanRow);
+      parent.appendChild(scanRow);
+    }
+    if (packages.length) {
+      for (const pkg of packages) {
+        const sourceList = el("div", "modern-list");
+        for (const scan of pkg.sources || []) appendScanRow(scan, sourceList);
+        const section = workbenchSection(
+          pkg.supplement_title || pkg.supplement_id || "Supplement package",
+          `${pkg.source_count || 0} source document(s), ${pkg.blocks || 0} block(s), ${pkg.artwork || 0} artwork`,
+          sourceList
+        );
+        sourceScanStatus.appendChild(section);
+      }
+    } else {
+      for (const scan of scans) appendScanRow(scan, sourceScanStatus);
     }
   }
   async function refreshList() {
@@ -6997,7 +7097,11 @@ async function renderRulePdfManager() {
     }
     if (previousPdf && uploadedPdfSettings.has(previousPdf)) uploadedSelect.value = previousPdf;
     const selectedSettings = uploadedPdfSettings.get(uploadedSelect.value);
-    if (selectedSettings) pageOffset.value = String(selectedSettings.page_offset || 0);
+    if (selectedSettings) {
+      pageOffset.value = String(selectedSettings.page_offset || 0);
+      supplementId.value = selectedSettings.supplement_id || suggestedSupplementId(uploadedSelect.value);
+      supplementTitle.value = selectedSettings.supplement_title || suggestedSupplementTitle(uploadedSelect.value);
+    }
     const indexedDocs = (textIndex.documents || []).map((item) => `${item.filename}: ${item.pages_indexed || 0} page(s)${item.page_offset ? `, offset ${item.page_offset}` : ""}`).join("; ");
     status.replaceChildren(
       modernStatusRow("Uploaded PDFs", `${(payload.uploaded || []).length} file(s) in DATA_DIR/rules`, "These PDFs are user data beside game.db and can be backed up from the appdata folder."),
@@ -7013,6 +7117,8 @@ async function renderRulePdfManager() {
   uploadedSelect.addEventListener("change", () => {
     const selectedSettings = uploadedPdfSettings.get(uploadedSelect.value);
     pageOffset.value = String(selectedSettings?.page_offset || 0);
+    supplementId.value = selectedSettings?.supplement_id || suggestedSupplementId(uploadedSelect.value);
+    supplementTitle.value = selectedSettings?.supplement_title || suggestedSupplementTitle(uploadedSelect.value);
   });
   await refreshList();
   await refreshSourceScans();
@@ -7046,7 +7152,7 @@ async function renderRulePdfManager() {
         showRulePdfResult("ok", "Indexing exact rules text. Large PDFs can take a little while; this panel will update when the server finishes.", "Indexing in progress");
         const result = await api("/api/rules/index-pdf-text", {
           method: "POST",
-          body: JSON.stringify({ filename: uploadedSelect.value, page_offset: Number(pageOffset.value || 0) }),
+          body: JSON.stringify(sourceMetadataPayload()),
         });
         const message = result.message || `Indexed ${result.entries_indexed || 0} page(s).`;
         setStatus(message);
@@ -7063,7 +7169,7 @@ async function renderRulePdfManager() {
         showRulePdfResult("ok", "Scanning PDF source blocks into the local supplement review workspace.", "Source scan in progress");
         const result = await api("/api/supplements/source-scan", {
           method: "POST",
-          body: JSON.stringify({ filename: uploadedSelect.value, page_offset: Number(pageOffset.value || 0) }),
+          body: JSON.stringify(sourceMetadataPayload()),
         });
         const message = result.message || `Scanned ${result.blocks || 0} source block(s).`;
         setStatus(message);
@@ -7080,7 +7186,7 @@ async function renderRulePdfManager() {
         showRulePdfResult("ok", "Extracting embedded artwork candidates into the local supplement review workspace.", "Artwork extraction in progress");
         const result = await api("/api/supplements/source-artwork", {
           method: "POST",
-          body: JSON.stringify({ filename: uploadedSelect.value, page_offset: Number(pageOffset.value || 0) }),
+          body: JSON.stringify(sourceMetadataPayload()),
         });
         const message = result.message || `Extracted ${result.raw_artwork || 0} artwork candidate(s).`;
         setStatus(message);
@@ -7116,7 +7222,10 @@ async function renderRulePdfManager() {
   panel.append(
     field("Rules PDF", file),
     field("Uploaded PDF", uploadedSelect),
+    field("Supplement package id", supplementId),
+    field("Supplement package title", supplementTitle),
     field("Printed page offset", pageOffset),
+    el("p", "muted", "Use the same supplement package id for every PDF, map sheet, or bonus document that belongs to the same future playable supplement. Each source still keeps its own page offset and review blocks."),
     el("p", "muted", "Page offset example: if PDF page 7 is printed page 1, enter -6. Leave this at 0 when the PDF viewer page number and printed book page number already match."),
     field("Overwrite local edits", overwrite),
     row,

@@ -790,6 +790,8 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
     assert scans == [
         {
             "source_id": "troublesome-towns",
+            "supplement_id": "troublesome-towns",
+            "supplement_title": "Troublesome Towns",
             "source_pdf": "DATA_DIR/rules/Troublesome Towns.pdf",
             "updated_at": "2026-07-08T11:00:00Z",
             "page_offset": -1,
@@ -921,6 +923,62 @@ def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch)
     detail = client.get("/api/supplements/source-scans/mixed-book").json()
     assert detail["source_pdf_url"] == "/api/rules/pdf/Mixed%20Book.pdf"
     assert detail["source_pdf_page_url"] == "/api/rules/pdf-page/Mixed%20Book.pdf"
+
+
+def test_source_scans_can_share_one_supplement_package(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Town Tome 1.pdf").write_bytes(b"%PDF-local-test")
+    (rules_dir / "Town Tome 2.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir),
+    )
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda path: [{"page": 1, "text": f"Text from {Path(path).stem}", "methods": ["layout"]}],
+    )
+
+    client = TestClient(main_module.app)
+    for filename in ("Town Tome 1.pdf", "Town Tome 2.pdf"):
+        response = client.post(
+            "/api/supplements/source-scan",
+            json={
+                "filename": filename,
+                "supplement_id": "treacheries-town",
+                "supplement_title": "Treacheries of the Troublesome Towns",
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["supplement_id"] == "treacheries-town"
+
+    payload = client.get("/api/supplements/source-scans").json()
+    packages = payload["packages"]
+    assert len(packages) == 1
+    assert packages[0]["supplement_id"] == "treacheries-town"
+    assert packages[0]["source_count"] == 2
+    assert {source["source_id"] for source in packages[0]["sources"]} == {"town-tome-1", "town-tome-2"}
+    detail = client.get("/api/supplements/source-scans/town-tome-1").json()
+    assert detail["supplement_title"] == "Treacheries of the Troublesome Towns"
+
+
+def test_app_version_endpoint_reads_version_file() -> None:
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+
+    payload = TestClient(main_module.app).get("/api/app/version").json()
+    assert payload["name"] == "Ahazi Against Darkness"
+    assert payload["version"]
 
 
 def test_source_artwork_extraction_and_review_preserves_metadata(tmp_path: Path, monkeypatch) -> None:

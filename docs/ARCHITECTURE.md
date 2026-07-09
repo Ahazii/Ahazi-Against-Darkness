@@ -158,17 +158,25 @@ Home screen rule browsing:
   read-only searchable block browser before any assignment is written.
   Uploaded PDF source settings are stored in
   `DATA_DIR/Supplements/_sources/source_settings.json`; the printed-page offset
-  is reused by both exact text indexing and source block scanning.
+  is reused by both exact text indexing and source block scanning. The same
+  settings file also stores `supplement_id` and `supplement_title`, because a
+  playable supplement may be assembled from several source PDFs: a main book,
+  map sheet, extra adventure booklet, errata file, or bonus document. Each
+  source document keeps its own offset, raw blocks, reviewed blocks, and
+  artwork, while the workbench groups them under one supplement package id for
+  later manifest/export work.
   Scans also record page-boundary candidates by joining the last block of one
   PDF page with the first block of the next so text split across pages can be
   found and reviewed without silently changing the original extracted blocks.
-  The block review view shows the uploaded PDF beside the extracted text and
-  lets a human reviewer save assignments, split oversized blocks at the cursor,
-  and merge selected adjacent blocks before later conversion into structured
-  supplement data. Re-scans update `raw_blocks`; human-reviewed edits and
-  assignments live in `reviewed_blocks` and are preserved separately. Reviewed
-  block order is user-controlled with move up/down actions because PDF text
-  extraction can interleave columns, captions, boxed text, and artwork.
+  The block review view shows the uploaded PDF beside page-led extracted text
+  and artwork. Without a search term it follows the current PDF page; with a
+  search term it searches the whole selected source document. A human reviewer
+  can save assignments, split oversized blocks at the cursor, and merge
+  selected adjacent blocks before later conversion into structured supplement
+  data. Re-scans update `raw_blocks`; human-reviewed edits and assignments live
+  in `reviewed_blocks` and are preserved separately. Reviewed block order is
+  user-controlled with move up/down actions because PDF text extraction can
+  interleave columns, captions, boxed text, and artwork.
   Workbench artwork extraction stores raw embedded image candidates under the
   same source folder and keeps reviewed artwork names, categories, and notes in
   `reviewed_artwork` so useful illustrations can later be promoted into the
