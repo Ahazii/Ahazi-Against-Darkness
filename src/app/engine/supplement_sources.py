@@ -1614,7 +1614,10 @@ def merge_selected_supplement_source_blocks(data_dir: Path, source_id: str, bloc
         and str(block.get("assignment") or "unassigned") != "ignore"
     ]
     if intervening:
-        raise ValueError("Selected blocks can only skip hidden ignored snippets. Select any visible intervening blocks before merging.")
+        raise ValueError(
+            f"The selected range contains {len(intervening)} non-ignored intervening block(s). "
+            "Select them as well, or use Merge Page to combine every non-ignored block on that PDF page."
+        )
     selected = [blocks[index] for index in indexes]
     first = selected[0]
     last = selected[-1]
@@ -1643,6 +1646,64 @@ def merge_selected_supplement_source_blocks(data_dir: Path, source_id: str, bloc
     save_supplement_source_scan(data_dir, source_id, payload)
     dedupe_note = f" Removed {duplicate_removed} duplicate reviewed block(s)." if duplicate_removed else ""
     return {"block": merged, "duplicate_blocks_removed": duplicate_removed, "message": f"Merged {len(selected)} selected source blocks.{dedupe_note}"}
+
+
+def merge_supplement_source_page(data_dir: Path, source_id: str, block_id: str) -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    blocks = [block for block in payload.get("reviewed_blocks", []) if isinstance(block, dict)]
+    anchor = next((block for block in blocks if str(block.get("id") or "") == block_id), None)
+    if anchor is None:
+        raise KeyError(block_id)
+    pdf_page = int(anchor.get("pdf_page") or 0)
+    if pdf_page < 1:
+        raise ValueError("The selected block has no physical PDF page reference.")
+    page_blocks = [
+        block
+        for block in blocks
+        if int(block.get("pdf_page") or 0) == pdf_page
+        and str(block.get("assignment") or "unassigned") != "ignore"
+    ]
+    if len(page_blocks) < 2:
+        raise ValueError("This PDF page does not have at least two non-ignored blocks to merge.")
+    page_ids = {str(block.get("id") or "") for block in page_blocks}
+    page_assignments = {str(block.get("assignment") or "unassigned") for block in page_blocks}
+    first = page_blocks[0]
+    used_ids = {str(block.get("id") or "") for block in blocks}
+    merged = {
+        **first,
+        "id": _unique_source_block_id(f"{source_id}-pdf{pdf_page}-page-merge", used_ids),
+        "assignment": page_assignments.pop() if len(page_assignments) == 1 else "unassigned",
+        "text": _merged_source_review_text(page_blocks),
+        "review_status": "edited",
+        "notes": "Merged every non-ignored text block on this physical PDF page in the PDF / Supplement Workbench.",
+        "merged_block_ids": [block.get("id") for block in page_blocks],
+    }
+    next_blocks: list[dict[str, Any]] = []
+    merged_inserted = False
+    for block in blocks:
+        current_id = str(block.get("id") or "")
+        if current_id in page_ids:
+            if not merged_inserted:
+                next_blocks.append(merged)
+                merged_inserted = True
+            continue
+        next_blocks.append(block)
+    _renumber_source_review_blocks(next_blocks)
+    payload["reviewed_blocks"] = next_blocks
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {
+        "block": merged,
+        "merged_count": len(page_blocks),
+        "ignored_blocks_preserved": len(
+            [
+                block
+                for block in blocks
+                if int(block.get("pdf_page") or 0) == pdf_page
+                and str(block.get("assignment") or "unassigned") == "ignore"
+            ]
+        ),
+        "message": f"Merged {len(page_blocks)} non-ignored blocks from {first.get('page_label') or f'PDF page {pdf_page}'}."
+    }
 
 
 def move_supplement_source_block(data_dir: Path, source_id: str, block_id: str, direction: str) -> dict[str, Any]:

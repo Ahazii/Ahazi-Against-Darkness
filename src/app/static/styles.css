@@ -1495,6 +1495,11 @@ button.is-working::after {
   min-width: 5.5rem;
 }
 
+.modern-source-action-group:nth-child(3) {
+  flex-basis: 7.5rem;
+  min-width: 7.5rem;
+}
+
 .modern-source-action-group > span {
   color: var(--muted);
   font-size: 10px;

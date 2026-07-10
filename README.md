@@ -82,6 +82,8 @@ current with every rules or content change.
   source page and content tree usable together. Import fields, source actions,
   summary chips, and PDF controls wrap at reduced widths; the review columns
   stack automatically when the available workbench width becomes too narrow.
+  A dedicated Merge Page command combines every non-ignored fragment from one
+  physical PDF page without requiring the reviewer to select dozens of blocks.
   Reviewed blocks can also create
   package-level supplement requirements that preserve exact source wording while
   separately recording editable party eligibility, dependencies, triggers, and

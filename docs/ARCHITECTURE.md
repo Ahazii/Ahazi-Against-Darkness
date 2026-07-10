@@ -219,7 +219,13 @@ Home screen rule browsing:
   applies one assignment/status change to a selected set with one load and one
   save. Select Shown is based on expanded rendered rows, not merely the current
   data filter. Direct split stores the caret from the displayed block text and
-  does not require checkbox selection or a second editor.
+  does not require checkbox selection or a second editor. Selected-range merge
+  remains strict about non-ignored intervening blocks. Merge Page is the
+  page-cleanup path: using any selected block as the physical-page anchor, it
+  merges every non-ignored reviewed block on that PDF page in document order,
+  preserves ignored page furniture, and does not alter adjacent pages. If the
+  page fragments had mixed assignments, the merged block returns to Unassigned
+  so the reviewer must choose its category deliberately.
   The source review controls are sticky and compact, the PDF navigation controls
   overlay the preview, and a session-persisted draggable divider resizes the
   source/PDF column against the module-content tree. Assignment dropdowns carry

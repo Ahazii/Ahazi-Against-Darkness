@@ -1225,6 +1225,60 @@ def test_selected_source_blocks_can_merge_across_hidden_ignored_snippets(tmp_pat
     assert saved["blocks"][1]["text"] == "Repeated footer"
 
 
+def test_source_page_merge_combines_all_non_ignored_fragments_without_selection_limit(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Fragmented Book.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(main_module, "settings", replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir))
+    page_one = "\n\n".join(f"Page one fragment {index}" for index in range(1, 31))
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [
+            {"page": 4, "text": page_one, "methods": ["layout"]},
+            {"page": 5, "text": "First table", "methods": ["layout"]},
+        ],
+    )
+    client = TestClient(main_module.app)
+    client.post(
+        "/api/supplements/source-scan",
+        json={"filename": "Fragmented Book.pdf", "page_offset": -3},
+    )
+    client.patch(
+        "/api/supplements/source-scans/fragmented-book/blocks/fragmented-book-p1-pdf4-b005",
+        json={"assignment": "ignore", "review_status": "edited"},
+    )
+    client.patch(
+        "/api/supplements/source-scans/fragmented-book/blocks/fragmented-book-p1-pdf4-b006",
+        json={"assignment": "introduction", "review_status": "edited"},
+    )
+
+    merged = client.post(
+        "/api/supplements/source-scans/fragmented-book/blocks/fragmented-book-p1-pdf4-b001/merge-page"
+    )
+
+    assert merged.status_code == 200
+    result = merged.json()
+    assert result["merged_count"] == 29
+    assert result["ignored_blocks_preserved"] == 1
+    assert result["block"]["assignment"] == "unassigned"
+    assert "Page one fragment 1" in result["block"]["text"]
+    assert "Page one fragment 30" in result["block"]["text"]
+    assert "Page one fragment 5" not in result["block"]["text"]
+    saved = client.get("/api/supplements/source-scans/fragmented-book").json()["blocks"]
+    assert len(saved) == 3
+    assert [block["pdf_page"] for block in saved] == [4, 4, 5]
+    assert next(block for block in saved if block["assignment"] == "ignore")["text"] == "Page one fragment 5"
+    assert saved[-1]["text"] == "First table"
+
+
 def test_ignore_phrase_removes_duplicate_review_blocks_on_same_page(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 

@@ -3143,7 +3143,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Split At Cursor" in MODERN_PAGES_JS
     assert "actionGroup(\"Select\", [selectVisibleButton, clearSelectionButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Assign\", [applyAssignmentButton, ignorePhraseButton])" in MODERN_PAGES_JS
-    assert "actionGroup(\"Blocks\", [mergeSelectedButton, editSelectedButton, splitSelectedButton])" in MODERN_PAGES_JS
+    assert "actionGroup(\"Blocks\", [mergeSelectedButton, mergePageButton, editSelectedButton, splitSelectedButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Clean\", [duplicateReviewButton, resetSourceButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Extract\", [draftTableButton, requirementButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Order\", [moveUpButton, moveDownButton])" in MODERN_PAGES_JS
@@ -3152,6 +3152,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Merge" in MODERN_PAGES_JS
     assert "selectedBlockIds" in MODERN_PAGES_JS
     assert "/blocks/merge-selected" in MODERN_PAGES_JS
+    assert "/merge-page" in MODERN_PAGES_JS
     assert "/move" in MODERN_PAGES_JS
     assert "modern-row-selected" in MODERN_PAGES_JS
     assert "Extract Artwork Candidates" in MODERN_PAGES_JS

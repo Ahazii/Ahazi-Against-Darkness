@@ -82,6 +82,7 @@ from .engine.supplement_sources import (
     list_supplement_source_scans,
     load_supplement_source_scan,
     merge_selected_supplement_source_blocks,
+    merge_supplement_source_page,
     merge_supplement_source_block,
     move_supplement_source_block,
     pdf_source_settings,
@@ -1096,6 +1097,16 @@ async def merge_selected_source_blocks(source_id: str, payload: dict[str, Any]) 
         return merge_selected_supplement_source_blocks(settings.data_dir, source_id, [str(block_id) for block_id in block_ids])
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="One or more selected source blocks were not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/merge-page")
+async def merge_source_pdf_page(source_id: str, block_id: str) -> dict[str, Any]:
+    try:
+        return merge_supplement_source_page(settings.data_dir, source_id, block_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source block not found.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

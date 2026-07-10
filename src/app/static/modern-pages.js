@@ -7126,6 +7126,19 @@ async function renderRulePdfManager() {
       });
       await reloadCurrentScan("Selected source blocks merged.");
     }));
+    const mergePageButton = button("▤ Page", "Merge every non-ignored reviewed text block on one physical PDF page. Select any one or more blocks from that page first. This is useful when a page was extracted into many tiny fragments; ignored headers and footers remain separate.", async (btn) => runWithButtonProgress(btn, "Merging PDF page...", async () => {
+      const selected = blocks.filter((block) => selectedBlockIds.has(block.id));
+      if (!selected.length) throw new Error("Select at least one text block from the PDF page to merge.");
+      const pages = new Set(selected.map((block) => Number(block.pdf_page || 0)).filter((page) => page > 0));
+      if (pages.size !== 1) throw new Error("Merge Page needs selected blocks from exactly one physical PDF page.");
+      const anchor = selected[0];
+      const result = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(anchor.id)}/merge-page`, {
+        method: "POST",
+      });
+      selectedBlockIds.clear();
+      sourceWorkbenchState.selectedBlockIds = new Set();
+      await reloadCurrentScan(result.message || "PDF page blocks merged.");
+    }));
     const bulkAssignment = select("modern-source-bulk-assignment", "Assignment to apply to selected text blocks. Hover a category for its purpose.", [["", "Choose assignment"]]);
     appendAssignmentOptions(bulkAssignment);
     const applyAssignmentButton = button("✓ Apply", "Apply the chosen assignment to every selected source block. This moves reviewed blocks into that category group.", async (btn) => runWithButtonProgress(btn, "Assigning blocks...", async () => {
@@ -8004,7 +8017,7 @@ async function renderRulePdfManager() {
     selectionActions.append(
       actionGroup("Select", [selectVisibleButton, clearSelectionButton]),
       actionGroup("Assign", [applyAssignmentButton, ignorePhraseButton]),
-      actionGroup("Blocks", [mergeSelectedButton, editSelectedButton, splitSelectedButton]),
+      actionGroup("Blocks", [mergeSelectedButton, mergePageButton, editSelectedButton, splitSelectedButton]),
       actionGroup("Clean", [duplicateReviewButton, resetSourceButton]),
       actionGroup("Extract", [draftTableButton, requirementButton]),
       actionGroup("Order", [moveUpButton, moveDownButton])
