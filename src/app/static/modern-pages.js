@@ -7021,8 +7021,7 @@ async function renderRulePdfManager() {
       setPdfPage(page);
       sourceWorkbenchState.page = Number(pageInput.value || firstPdfPage) || firstPdfPage;
       persistSourceWorkbenchState();
-      draw();
-      redrawArtwork();
+      setStatus(`Showing PDF page ${sourceWorkbenchState.page}.`);
     }
     function previewPdfPage(page) {
       setPdfPage(page);
@@ -7061,6 +7060,14 @@ async function renderRulePdfManager() {
       resetPdfButton
     );
     pageInput.addEventListener("change", () => goPdfPage(pageInput.value));
+    pdfImage.addEventListener("load", () => {
+      pdfStatus.textContent = `PDF page ${pageInput.value || firstPdfPage} · zoom ${Math.round(pdfZoom * 100)}%`;
+    });
+    pdfImage.addEventListener("error", () => {
+      const page = pageInput.value || firstPdfPage;
+      pdfStatus.textContent = `Could not render PDF page ${page}.`;
+      setStatus(`Could not render PDF page ${page}. Check that it exists in the uploaded PDF.`);
+    });
     pdfCanvas.addEventListener("wheel", (event) => {
       event.preventDefault();
       setPdfZoom(pdfZoom + (event.deltaY < 0 ? 0.12 : -0.12));

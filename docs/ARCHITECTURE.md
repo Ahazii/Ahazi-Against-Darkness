@@ -186,6 +186,10 @@ Home screen rule browsing:
   eligibility, abilities, progression, and equipment restrictions. The shared
   source evidence, exact text, review status, state/weakness fields, and
   inactive-promotion boundary avoid creating disconnected import formats.
+  PDF viewer navigation changes the physical preview page without rebuilding the
+  source-content tree; this preserves the sticky viewer toolbar's active scroll
+  position during repeated Previous/Next review. Render failures are reported
+  in the viewer rather than silently leaving an unchanged image.
   The Developer PDF / Supplement Workbench lists these local scans and opens a
   read-only searchable block browser before any assignment is written.
   Uploaded PDF source settings are stored in

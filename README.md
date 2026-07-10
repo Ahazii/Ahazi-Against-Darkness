@@ -106,6 +106,9 @@ current with every rules or content change.
   categories and use **Profile** to record the appropriate riding, combat,
   ownership/training, eligibility, ability, progression, and equipment fields.
   All profiles remain local, provisional review data until validated promotion.
+  PDF preview **Previous** and **Next** update the physical PDF image without
+  rebuilding the workbench tree, keeping the navigation controls in their
+  active scroll position; a visible viewer message reports an unavailable page.
   Reviewed blocks can also create
   package-level supplement requirements that preserve exact source wording while
   separately recording editable party eligibility, dependencies, triggers, and
