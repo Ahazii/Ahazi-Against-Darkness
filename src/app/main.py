@@ -75,6 +75,7 @@ from .engine.supplement_sources import (
     delete_supplement_package_asset,
     delete_supplement_package_requirement,
     delete_supplement_source_blocks,
+    draft_supplement_source_profile,
     draft_supplement_source_table,
     extract_supplement_source_artwork,
     find_supplement_source_duplicate_blocks,
@@ -103,6 +104,7 @@ from .engine.supplement_sources import (
     update_supplement_source_block,
     update_supplement_source_blocks,
     update_supplement_source_metadata,
+    upsert_supplement_source_profile,
     upsert_supplement_source_table,
 )
 from .engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_lines, upgrade_tag_manifest
@@ -1041,6 +1043,26 @@ async def draft_source_block_table(source_id: str, block_id: str, payload: dict[
         return draft_supplement_source_table(settings.data_dir, source_id, block_id, payload)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Source block not found.") from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/profile-draft")
+async def draft_source_block_profile(source_id: str, block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return draft_supplement_source_profile(settings.data_dir, source_id, block_id, str(payload.get("profile_type") or ""))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source block not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.put("/api/supplements/source-scans/{source_id}/profiles/{profile_type}/{profile_id:path}")
+async def save_source_profile(source_id: str, profile_type: str, profile_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    profile_payload = dict(payload)
+    profile_payload["id"] = profile_id
+    try:
+        return upsert_supplement_source_profile(settings.data_dir, source_id, profile_type, profile_payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.put("/api/supplements/source-scans/{source_id}/tables/{table_id:path}")

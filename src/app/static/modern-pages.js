@@ -6930,6 +6930,9 @@ async function renderRulePdfManager() {
     const artworkItems = Array.isArray(payload.artwork) ? payload.artwork : [];
     const reviewedTables = Array.isArray(payload.tables) ? payload.tables : [];
     const reviewedFoes = Array.isArray(payload.foes) ? payload.foes : [];
+    const reviewedMounts = Array.isArray(payload.mounts) ? payload.mounts : [];
+    const reviewedCompanionAnimals = Array.isArray(payload.companion_animals) ? payload.companion_animals : [];
+    const reviewedCharacterClasses = Array.isArray(payload.character_classes) ? payload.character_classes : [];
     let packageRequirements = Array.isArray(activeWorkbenchPackage?.requirements) ? activeWorkbenchPackage.requirements.map((item) => ({ ...item })) : [];
     const sourceItems = blocks;
     const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
@@ -7290,6 +7293,19 @@ async function renderRulePdfManager() {
       await openTableDraftFromBlock(tableBlock, search.value);
       setStatus("Table draft opened. Review the source text and machine rows, then save the reviewed table.");
     }));
+    const profileButton = button("◇ Profile", "Create a provisional profile from one selected source block assigned as Foe, Mount, Companion Animal, or Character Class. This captures review data only and never activates gameplay rules.", async (btn) => runWithButtonProgress(btn, "Opening profile draft...", async () => {
+      const block = requireSelectedReviewedBlock("Profile");
+      const profileType = String(block.assignment || "");
+      if (!(profileType in (payload.profile_types || {}))) {
+        throw new Error("Assign this block as Foe, Mount, Companion Animal, or Character Class before creating its profile.");
+      }
+      const draft = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/profile-draft`, {
+        method: "POST",
+        body: JSON.stringify({ profile_type: profileType }),
+      });
+      if (block.pdf_page) previewPdfPage(block.pdf_page);
+      openSourceTool(`Profile - ${draft.profile?.name || block.title || block.page_label || block.id}`, profileEditor(draft.profile || {}, block.text || ""));
+    }));
     function requirementEditor(requirement = null, sourceBlock = null) {
       const record = requirement || {};
       const panel = el("div", "modern-source-requirement-editor");
@@ -7616,6 +7632,103 @@ async function renderRulePdfManager() {
       );
       return editor;
     }
+    function profileEditor(profile, sourceText = "") {
+      activeBlockEditor = null;
+      const profileType = String(profile.profile_type || "");
+      const editor = el("div", "modern-source-table-review-grid");
+      const sourcePanel = el("div", "modern-source-block-editor");
+      sourcePanel.append(
+        modernInfoPanel("Source evidence", profile.page_label || "PDF source", [
+          { label: "Profile type", value: modernTitleFromKey(profileType || "other") },
+          { label: "Block", value: profile.source_block_id || "Manual profile" },
+          { label: "Status", value: profile.review_status || "draft" },
+        ], "Exact PDF wording is preserved here. The fields beside it are local structured review data and remain inactive until future promotion."),
+        el("p", "modern-pre-wrap modern-source-preview-text tall", sourceText || profile.exact_source_text || "No source wording recorded.")
+      );
+      const draftPanel = el("div", "modern-source-block-editor");
+      const nameInput = input("text", `modern-source-profile-name-${profile.id || "new"}`, "Human-readable profile name. This does not alter the PDF source text.", profile.name || "");
+      const idInput = input("text", `modern-source-profile-id-${profile.id || "new"}`, "Stable machine id for this provisional profile. Use lowercase words separated by hyphens.", profile.id || "");
+      const descriptionInput = document.createElement("textarea");
+      descriptionInput.className = "modern-source-block-text compact";
+      descriptionInput.title = "Short local description distilled from the exact PDF wording.";
+      descriptionInput.value = profile.description || "";
+      const specialRulesInput = document.createElement("textarea");
+      specialRulesInput.className = "modern-source-block-text compact";
+      specialRulesInput.title = "Special rules, exceptions, or procedures copied/reviewed from the source.";
+      specialRulesInput.value = profile.special_rules || "";
+      const statesInput = input("text", `modern-source-profile-states-${profile.id || "new"}`, "Comma-separated states or conditions this profile can apply. They remain provisional until mapped to the State Registry.", (profile.states_inflicted || []).join(", "));
+      const weaknessesInput = input("text", `modern-source-profile-weaknesses-${profile.id || "new"}`, "Comma-separated weaknesses, immunities, resistances, or vulnerabilities.", (profile.weaknesses || []).join(", "));
+      const notesInput = document.createElement("textarea");
+      notesInput.className = "modern-source-block-text compact";
+      notesInput.title = "Reviewer notes, uncertainty, and implementation follow-up.";
+      notesInput.value = profile.notes || "";
+      let abilitiesInput = null;
+      const fields = [field("Profile name", nameInput), field("Profile id", idInput), field("Description", descriptionInput)];
+      const combatFields = () => [
+        field("Level", input("text", "", "Printed combat level.", profile.level || "")),
+        field("Attack", input("text", "", "Printed Attack value.", profile.attack || "")),
+        field("Defence", input("text", "", "Printed Defence value.", profile.defense || "")),
+        field("Category", input("text", "", "Printed combat category, such as minion, boss, vermin, or other classification.", profile.category || "")),
+        field("Quantity", input("text", "", "Fixed quantity or dice expression when this profile is encountered.", profile.quantity_expression || "")),
+        field("States inflicted", statesInput),
+        field("Weaknesses", weaknessesInput),
+      ];
+      let typedFields = [];
+      if (profileType === "foe") typedFields = combatFields();
+      if (profileType === "mount") {
+        typedFields = [
+          ...combatFields(),
+          field("Riding requirements", input("text", "", "Who can ride this mount and any printed training, class, level, or equipment requirements.", profile.riding_requirements || "")),
+          field("Movement", input("text", "", "Printed movement, travel, or terrain capability.", profile.movement || "")),
+          field("Carrying capacity", input("text", "", "Printed carrying, passenger, or load capacity.", profile.carrying_capacity || "")),
+        ];
+      }
+      if (profileType === "companion_animal") {
+        typedFields = [
+          ...combatFields(),
+          field("Owner / training", input("text", "", "Ownership, training, bonding, control, survival, or party-limit wording.", profile.owner_training || "")),
+        ];
+      }
+      if (profileType === "character_class") {
+        const abilities = document.createElement("textarea");
+        abilities.className = "modern-source-block-text compact";
+        abilities.title = "One class ability, spell, trick, or rule summary per line. Keep the exact evidence on the left.";
+        abilities.value = (profile.abilities || []).join("\n");
+        typedFields = [
+          field("Eligibility", input("text", "", "Who can select this class, including any level, ancestry, campaign, or supplement conditions.", profile.eligibility || "")),
+          field("Abilities", abilities),
+          field("Progression", input("text", "", "Level progression, advancement, spells, or tier wording.", profile.progression || "")),
+          field("Equipment restrictions", input("text", "", "Starting gear, armour, weapon, or equipment restrictions.", profile.equipment_restrictions || "")),
+        ];
+        abilitiesInput = abilities;
+      }
+      const actionsRow = actions();
+      actionsRow.append(button("Save Provisional Profile", "Save this local review profile. It remains inactive until a future supplement-promotion step validates it against the PDF.", async (btn) => runWithButtonProgress(btn, "Saving provisional profile...", async () => {
+        const typed = typedFields.map((entry) => entry.querySelector("input, textarea")).filter(Boolean);
+        const findTyped = (label) => typed.find((node) => node.closest("label")?.querySelector("span")?.textContent === label);
+        const valueFor = (label) => findTyped(label)?.value || "";
+        const result = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/profiles/${encodeURIComponent(profileType)}/${encodeURIComponent(idInput.value || profile.id)}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            ...profile,
+            id: idInput.value,
+            name: nameInput.value,
+            description: descriptionInput.value,
+            special_rules: specialRulesInput.value,
+            states_inflicted: statesInput.value,
+            weaknesses: weaknessesInput.value,
+            level: valueFor("Level"), attack: valueFor("Attack"), defense: valueFor("Defence"), category: valueFor("Category"), quantity_expression: valueFor("Quantity"),
+            riding_requirements: valueFor("Riding requirements"), movement: valueFor("Movement"), carrying_capacity: valueFor("Carrying capacity"), owner_training: valueFor("Owner / training"),
+            eligibility: valueFor("Eligibility"), abilities: abilitiesInput?.value || "", progression: valueFor("Progression"), equipment_restrictions: valueFor("Equipment restrictions"),
+            notes: notesInput.value, review_status: "provisional",
+          }),
+        });
+        await reloadCurrentScan(result.message || "Provisional profile saved.");
+      })));
+      draftPanel.append(...fields, ...typedFields, field("Special rules", specialRulesInput), field("Reviewer notes", notesInput), actionsRow);
+      editor.append(sourcePanel, draftPanel);
+      return editor;
+    }
     function tableDraftEditor(table, sourceText = "", needle = "") {
       activeBlockEditor = null;
       const editor = el("div", "modern-source-table-review-grid");
@@ -7831,6 +7944,34 @@ async function renderRulePdfManager() {
       }
       return panel;
     }
+    function renderProfilesPanel(profileType, profiles) {
+      const panel = el("div", "modern-list");
+      if (!profiles.length) {
+        panel.appendChild(el("p", "muted", `No provisional ${modernTitleFromKey(profileType)} profiles yet. Assign a source block to this category, then use Profile.`));
+        return panel;
+      }
+      for (const profile of profiles) {
+        const row = document.createElement("details");
+        row.className = "modern-row";
+        row.addEventListener("toggle", () => {
+          if (row.open && profile.pdf_page) previewPdfPage(profile.pdf_page);
+        });
+        const summary = document.createElement("summary");
+        summary.append(el("strong", "", profile.name || profile.id || modernTitleFromKey(profileType)), el("span", "muted", ` · ${profile.page_label || "source"} · ${profile.review_status || "provisional"}`));
+        const actionsRow = actions();
+        actionsRow.append(button("✎ Edit", "Open this local provisional profile beside its source wording.", () => {
+          if (profile.pdf_page) previewPdfPage(profile.pdf_page);
+          openSourceTool(`Profile - ${profile.name || profile.id}`, profileEditor(profile, profile.exact_source_text || ""));
+        }));
+        row.append(summary, modernInfoPanel("Provisional profile", profile.id || "profile", [
+          { label: "Description", value: profile.description || "Not recorded" },
+          { label: "Special rules", value: profile.special_rules || "None recorded" },
+          { label: "Source block", value: profile.source_block_id || "Not recorded" },
+        ], "This source-backed profile is local review data only. It does not yet add a mount, companion, foe, or class to playable sessions."), actionsRow);
+        panel.appendChild(row);
+      }
+      return panel;
+    }
     function renderRequirementsPanel() {
       const panel = el("div", "modern-list");
       if (!packageRequirements.length) {
@@ -7989,6 +8130,9 @@ async function renderRulePdfManager() {
           { label: "Unassigned", value: `${unassignedCount}` },
           { label: "Tables", value: `${reviewedTables.length}` },
           { label: "Foes", value: `${reviewedFoes.length}` },
+          { label: "Mounts", value: `${reviewedMounts.length}` },
+          { label: "Companions", value: `${reviewedCompanionAnimals.length}` },
+          { label: "Classes", value: `${reviewedCharacterClasses.length}` },
           { label: "Artwork", value: `${artworkMatches.length}/${artworkItems.length}` },
         ], "Counts update as the current page, search, assignment filter, and manual review categories change.")
       );
@@ -8060,9 +8204,12 @@ async function renderRulePdfManager() {
         treeBranch("Supplement requirements", `${packageRequirements.length}`, renderRequirementsPanel(), { open: false, hint: "Package-level eligibility, dependency, environment, and conditional table-routing records linked to exact source wording." }),
         treeBranch("Reviewed tables", `${reviewedTables.length}`, renderReviewedTablesPanel(), { open: false }),
         treeBranch("Provisional foes", `${reviewedFoes.length}`, renderProvisionalFoesPanel(), { open: false, hint: "Profiles created from reviewed Foe Encounter rows. They remain inactive until later supplement review promotes them." }),
+        treeBranch("Provisional mounts", `${reviewedMounts.length}`, renderProfilesPanel("mount", reviewedMounts), { open: false }),
+        treeBranch("Provisional companion animals", `${reviewedCompanionAnimals.length}`, renderProfilesPanel("companion_animal", reviewedCompanionAnimals), { open: false }),
+        treeBranch("Provisional character classes", `${reviewedCharacterClasses.length}`, renderProfilesPanel("character_class", reviewedCharacterClasses), { open: false }),
         treeBranch("Artwork", `${artworkMatches.length}`, renderArtworkTreePanel(artworkMatches, needle), { open: false })
       );
-      results.appendChild(treeBranch(payload.source_id || "Source document", `${sourceItems.length + artworkItems.length + reviewedTables.length + reviewedFoes.length + packageRequirements.length}`, sourceTree, {
+      results.appendChild(treeBranch(payload.source_id || "Source document", `${sourceItems.length + artworkItems.length + reviewedTables.length + reviewedFoes.length + reviewedMounts.length + reviewedCompanionAnimals.length + reviewedCharacterClasses.length + packageRequirements.length}`, sourceTree, {
         open: true,
         className: "modern-source-tree-root",
         hint: "Imported source document tree. Text, tables, artwork, and future data types sit under this document so review follows the PDF/source order.",
@@ -8162,7 +8309,7 @@ async function renderRulePdfManager() {
       actionGroup("Assign", [ignorePhraseButton]),
       actionGroup("Blocks", [mergeSelectedButton, mergePageButton, editSelectedButton, splitSelectedButton]),
       actionGroup("Clean", [duplicateReviewButton, hideDuplicateFragmentsButton, resetSourceButton]),
-      actionGroup("Extract", [draftTableButton, requirementButton]),
+      actionGroup("Extract", [draftTableButton, profileButton, requirementButton]),
       actionGroup("Order", [moveUpButton, moveDownButton])
     );
     const controlFields = el("div", "modern-source-controls-grid");

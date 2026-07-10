@@ -3142,6 +3142,11 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Foe name" in MODERN_PAGES_JS
     assert "Provisional foes" in MODERN_PAGES_JS
     assert "roll_expression" in MODERN_PAGES_JS
+    assert "Provisional mounts" in MODERN_PAGES_JS
+    assert "Provisional companion animals" in MODERN_PAGES_JS
+    assert "Provisional character classes" in MODERN_PAGES_JS
+    assert "const profileButton" in MODERN_PAGES_JS
+    assert "/profile-draft" in MODERN_PAGES_JS
     assert "Save Reviewed Table" in MODERN_PAGES_JS
     assert "Reviewed tables" in MODERN_PAGES_JS
     assert "Table Draft" in MODERN_PAGES_JS
@@ -3158,7 +3163,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "title: titleEdit.value" in MODERN_PAGES_JS
     assert "assignmentControl.append(bulkAssignment, applyAssignmentButton)" in MODERN_PAGES_JS
     assert "/blocks/hide-duplicate-fragments" in MODERN_PAGES_JS
-    assert "actionGroup(\"Extract\", [draftTableButton, requirementButton])" in MODERN_PAGES_JS
+    assert "actionGroup(\"Extract\", [draftTableButton, profileButton, requirementButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Order\", [moveUpButton, moveDownButton])" in MODERN_PAGES_JS
     assert "Move Up" in MODERN_PAGES_JS
     assert "Move Down" in MODERN_PAGES_JS

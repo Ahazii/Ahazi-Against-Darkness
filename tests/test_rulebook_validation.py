@@ -1577,6 +1577,38 @@ def test_foe_encounter_table_save_creates_linked_provisional_foe_profiles(tmp_pa
     assert detail["foes"][0]["states_inflicted"] == ["Poisoned", "Entangled"]
 
 
+def test_source_profiles_support_mount_companion_and_character_class_framework(tmp_path: Path, monkeypatch) -> None:
+    from app.engine import supplement_sources
+
+    pdf = tmp_path / "Profile Book.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 1, "text": "Dire Pony\n\nHound Companion\n\nBeastmaster", "methods": ["layout"]}],
+    )
+    supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-10T11:00:00Z")
+    source_id = "profile-book"
+    block_ids = [f"{source_id}-p1-b{index:03d}" for index in range(1, 4)]
+    for block_id, profile_type, name in zip(block_ids, ("mount", "companion_animal", "character_class"), ("Dire Pony", "Hound Companion", "Beastmaster"), strict=True):
+        supplement_sources.update_supplement_source_block(tmp_path, source_id, block_id, {"assignment": profile_type})
+        draft = supplement_sources.draft_supplement_source_profile(tmp_path, source_id, block_id)
+        assert draft["profile"]["profile_type"] == profile_type
+        saved = supplement_sources.upsert_supplement_source_profile(
+            tmp_path,
+            source_id,
+            profile_type,
+            {**draft["profile"], "name": name, "level": "2", "attack": "+1", "defense": "1", "movement": "Fast"},
+        )
+        assert saved["profile"]["name"] == name
+
+    detail = supplement_sources.load_supplement_source_scan(tmp_path, source_id)
+    assert detail["mounts"][0]["movement"] == "Fast"
+    assert detail["companion_animals"][0]["profile_type"] == "companion_animal"
+    assert detail["character_classes"][0]["profile_type"] == "character_class"
+    assert set(detail["profile_types"]) >= {"foe", "mount", "companion_animal", "character_class"}
+
+
 def test_source_scans_can_share_one_supplement_package(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 

@@ -101,6 +101,11 @@ current with every rules or content change.
   states, weaknesses, and special rules. A complete reviewed foe row creates a
   linked local provisional foe profile for later validation; it does not change
   gameplay or activate a supplement.
+  The same source-backed profile framework now covers **Mounts**, **Companion
+  Animals**, and **Character Classes**. Assign a reviewed block to one of those
+  categories and use **Profile** to record the appropriate riding, combat,
+  ownership/training, eligibility, ability, progression, and equipment fields.
+  All profiles remain local, provisional review data until validated promotion.
   Reviewed blocks can also create
   package-level supplement requirements that preserve exact source wording while
   separately recording editable party eligibility, dependencies, triggers, and

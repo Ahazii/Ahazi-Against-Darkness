@@ -179,6 +179,13 @@ Home screen rule browsing:
   local `reviewed_foes[]` profile linked to the source table/block/page. These
   profiles are explicitly `provisional`, visible in the source tree, and cannot
   affect gameplay until a future validated supplement loader promotes them.
+  The same common source-backed profile record supports `mount`,
+  `companion_animal`, and `character_class` assignments. Mount profiles capture
+  combat details plus riding requirements, movement, and carrying capacity;
+  companion-animal profiles add ownership/training; class profiles add
+  eligibility, abilities, progression, and equipment restrictions. The shared
+  source evidence, exact text, review status, state/weakness fields, and
+  inactive-promotion boundary avoid creating disconnected import formats.
   The Developer PDF / Supplement Workbench lists these local scans and opens a
   read-only searchable block browser before any assignment is written.
   Uploaded PDF source settings are stored in

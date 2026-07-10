@@ -13,6 +13,8 @@ from .pdf_text_index import display_page_number, extract_rule_pdf_pages, page_la
 SOURCE_ARTWORK_CATEGORIES = {
     "unknown",
     "foe",
+    "mount",
+    "companion_animal",
     "npc",
     "character_class",
     "room",
@@ -71,6 +73,8 @@ SOURCE_BLOCK_ASSIGNMENTS = {
     "adventure_narrative",
     "location",
     "foe",
+    "mount",
+    "companion_animal",
     "equipment",
     "character_class",
     "table",
@@ -103,6 +107,8 @@ SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS = {
     "adventure_narrative": "Exact narrative, boxed text, encounters, or branching adventure prose.",
     "location": "A named place with description, links, occupants, encounters, or map placement.",
     "foe": "A foe, monster, boss, minion, reaction, or combat profile.",
+    "mount": "A rideable animal or creature. This is review data until its riding rules are promoted.",
+    "companion_animal": "A domesticated companion animal that may accompany or fight beside the party. This is review data until its rules are promoted.",
     "equipment": "Equipment, treasure, consumables, services, or magic items.",
     "character_class": "A playable class, subclass, ancestry, or character option.",
     "table": "A printed lookup table that should later become reviewed machine rows.",
@@ -140,6 +146,21 @@ SUPPLEMENT_TABLE_TYPE_DESCRIPTIONS = {
 }
 
 SUPPLEMENT_TABLE_TYPES = set(SUPPLEMENT_TABLE_TYPE_DESCRIPTIONS)
+
+SUPPLEMENT_PROFILE_DESCRIPTIONS = {
+    "foe": "A combat foe, monster, boss, minion, or other hostile profile.",
+    "mount": "A rideable animal or creature with riding, movement, and carrying details.",
+    "companion_animal": "A domesticated animal companion with combat and ownership/training details.",
+    "character_class": "A playable class or character option with eligibility, abilities, progression, and equipment details.",
+}
+
+SUPPLEMENT_PROFILE_TYPES = set(SUPPLEMENT_PROFILE_DESCRIPTIONS)
+SUPPLEMENT_PROFILE_COLLECTIONS = {
+    "foe": "reviewed_foes",
+    "mount": "reviewed_mounts",
+    "companion_animal": "reviewed_companion_animals",
+    "character_class": "reviewed_character_classes",
+}
 
 
 def supplement_sources_root(data_dir: Path) -> Path:
@@ -829,6 +850,98 @@ def _review_foes_from_existing(existing: dict[str, Any]) -> list[dict[str, Any]]
     return []
 
 
+def _review_profiles_from_existing(existing: dict[str, Any], profile_type: str) -> list[dict[str, Any]]:
+    collection = SUPPLEMENT_PROFILE_COLLECTIONS.get(profile_type)
+    if not collection:
+        return []
+    if profile_type == "foe":
+        return _review_foes_from_existing(existing)
+    profiles = existing.get(collection)
+    return [item for item in profiles if isinstance(item, dict)] if isinstance(profiles, list) else []
+
+
+def _profile_id(source_id: str, profile_type: str, name: str, source_block_id: str = "") -> str:
+    return supplement_package_id(f"{source_id}-{profile_type}-{name or source_block_id}", f"provisional-{profile_type}")
+
+
+def draft_supplement_source_profile(data_dir: Path, source_id: str, block_id: str, profile_type: str = "") -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    block = next((item for item in payload.get("reviewed_blocks", []) if isinstance(item, dict) and item.get("id") == block_id), None)
+    if block is None:
+        raise KeyError(block_id)
+    resolved_type = str(profile_type or block.get("assignment") or "")
+    if resolved_type not in SUPPLEMENT_PROFILE_TYPES:
+        raise ValueError("Assign this source block as Foe, Mount, Companion Animal, or Character Class before creating its profile.")
+    first_line = next((line.strip() for line in str(block.get("text") or "").splitlines() if line.strip()), "")
+    name = str(block.get("title") or first_line or "").strip()[:160]
+    profile = {
+        "id": _profile_id(source_id, resolved_type, name, block_id),
+        "profile_type": resolved_type,
+        "name": name,
+        "source_block_id": block_id,
+        "source_pdf": str(block.get("source_pdf") or payload.get("source_pdf") or ""),
+        "source_page": block.get("source_page"),
+        "pdf_page": block.get("pdf_page"),
+        "page_label": str(block.get("page_label") or ""),
+        "exact_source_text": str(block.get("text") or ""),
+        "description": "",
+        "special_rules": "",
+        "states_inflicted": [],
+        "weaknesses": [],
+        "review_status": "draft",
+        "notes": "",
+    }
+    return {"profile": profile, "profile_descriptions": SUPPLEMENT_PROFILE_DESCRIPTIONS, "message": f"Drafted {resolved_type.replace('_', ' ')} profile from source block."}
+
+
+def upsert_supplement_source_profile(data_dir: Path, source_id: str, profile_type: str, profile_payload: dict[str, Any]) -> dict[str, Any]:
+    resolved_type = str(profile_type or profile_payload.get("profile_type") or "")
+    if resolved_type not in SUPPLEMENT_PROFILE_TYPES:
+        raise ValueError("Unknown provisional profile type.")
+    payload = load_supplement_source_scan(data_dir, source_id)
+    name = str(profile_payload.get("name") or "").strip()
+    if not name:
+        raise ValueError("Enter a profile name before saving.")
+    profile_id = str(profile_payload.get("id") or _profile_id(source_id, resolved_type, name, str(profile_payload.get("source_block_id") or ""))).strip()
+    profile = {
+        "id": profile_id,
+        "profile_type": resolved_type,
+        "name": name,
+        "source_block_id": str(profile_payload.get("source_block_id") or ""),
+        "source_pdf": str(profile_payload.get("source_pdf") or payload.get("source_pdf") or ""),
+        "source_page": profile_payload.get("source_page"),
+        "pdf_page": profile_payload.get("pdf_page"),
+        "page_label": str(profile_payload.get("page_label") or ""),
+        "exact_source_text": str(profile_payload.get("exact_source_text") or ""),
+        "description": str(profile_payload.get("description") or ""),
+        "special_rules": str(profile_payload.get("special_rules") or ""),
+        "states_inflicted": _clean_string_list(profile_payload.get("states_inflicted")),
+        "weaknesses": _clean_string_list(profile_payload.get("weaknesses")),
+        "level": str(profile_payload.get("level") or ""),
+        "attack": str(profile_payload.get("attack") or ""),
+        "defense": str(profile_payload.get("defense") or ""),
+        "category": str(profile_payload.get("category") or ""),
+        "quantity_expression": str(profile_payload.get("quantity_expression") or ""),
+        "riding_requirements": str(profile_payload.get("riding_requirements") or ""),
+        "movement": str(profile_payload.get("movement") or ""),
+        "carrying_capacity": str(profile_payload.get("carrying_capacity") or ""),
+        "owner_training": str(profile_payload.get("owner_training") or ""),
+        "eligibility": str(profile_payload.get("eligibility") or ""),
+        "abilities": _clean_string_list(profile_payload.get("abilities")),
+        "progression": str(profile_payload.get("progression") or ""),
+        "equipment_restrictions": str(profile_payload.get("equipment_restrictions") or ""),
+        "review_status": str(profile_payload.get("review_status") or "provisional"),
+        "notes": str(profile_payload.get("notes") or ""),
+    }
+    collection = SUPPLEMENT_PROFILE_COLLECTIONS[resolved_type]
+    profiles = _review_profiles_from_existing(payload, resolved_type)
+    next_profiles = [item for item in profiles if str(item.get("id") or "") != profile_id]
+    next_profiles.append(profile)
+    payload[collection] = next_profiles
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {"profile": profile, "message": f"Saved provisional {resolved_type.replace('_', ' ')} profile {name}."}
+
+
 def _table_id_from_title(source_id: str, title: str, block_id: str = "") -> str:
     base = re.sub(r"[^a-z0-9]+", "_", str(title or "").lower()).strip("_")
     if not base:
@@ -1156,6 +1269,9 @@ def scan_supplement_source_pdf(
         "reviewed_artwork": _review_artwork_from_existing(existing),
         "reviewed_tables": _review_tables_from_existing(existing),
         "reviewed_foes": _review_foes_from_existing(existing),
+        "reviewed_mounts": _review_profiles_from_existing(existing, "mount"),
+        "reviewed_companion_animals": _review_profiles_from_existing(existing, "companion_animal"),
+        "reviewed_character_classes": _review_profiles_from_existing(existing, "character_class"),
     }
     supplement_source_scan_path(data_dir, source_id).write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     return {
@@ -1194,6 +1310,9 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     reviewed_artwork = _review_artwork_from_existing(payload)
     reviewed_tables = _review_tables_from_existing(payload)
     reviewed_foes = _review_foes_from_existing(payload)
+    reviewed_mounts = _review_profiles_from_existing(payload, "mount")
+    reviewed_companion_animals = _review_profiles_from_existing(payload, "companion_animal")
+    reviewed_character_classes = _review_profiles_from_existing(payload, "character_class")
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
     payload["reviewed_artwork"] = reviewed_artwork
@@ -1202,6 +1321,12 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     payload["tables"] = reviewed_tables
     payload["reviewed_foes"] = reviewed_foes
     payload["foes"] = reviewed_foes
+    payload["reviewed_mounts"] = reviewed_mounts
+    payload["mounts"] = reviewed_mounts
+    payload["reviewed_companion_animals"] = reviewed_companion_animals
+    payload["companion_animals"] = reviewed_companion_animals
+    payload["reviewed_character_classes"] = reviewed_character_classes
+    payload["character_classes"] = reviewed_character_classes
     if "raw_blocks" not in payload:
         payload["raw_blocks"] = [dict(block) for block in reviewed]
     if "raw_artwork" not in payload:
@@ -1210,6 +1335,7 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     payload["assignment_descriptions"] = SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS
     payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
     payload["table_types"] = SUPPLEMENT_TABLE_TYPE_DESCRIPTIONS
+    payload["profile_types"] = SUPPLEMENT_PROFILE_DESCRIPTIONS
     return payload
 
 
@@ -1219,6 +1345,9 @@ def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[st
     reviewed_artwork = _review_artwork_from_existing(payload)
     reviewed_tables = _review_tables_from_existing(payload)
     reviewed_foes = _review_foes_from_existing(payload)
+    reviewed_mounts = _review_profiles_from_existing(payload, "mount")
+    reviewed_companion_animals = _review_profiles_from_existing(payload, "companion_animal")
+    reviewed_character_classes = _review_profiles_from_existing(payload, "character_class")
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
     payload["reviewed_artwork"] = reviewed_artwork
@@ -1227,10 +1356,17 @@ def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[st
     payload["tables"] = reviewed_tables
     payload["reviewed_foes"] = reviewed_foes
     payload["foes"] = reviewed_foes
+    payload["reviewed_mounts"] = reviewed_mounts
+    payload["mounts"] = reviewed_mounts
+    payload["reviewed_companion_animals"] = reviewed_companion_animals
+    payload["companion_animals"] = reviewed_companion_animals
+    payload["reviewed_character_classes"] = reviewed_character_classes
+    payload["character_classes"] = reviewed_character_classes
     payload["assignment_options"] = sorted(SOURCE_BLOCK_ASSIGNMENTS)
     payload["assignment_descriptions"] = SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS
     payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
     payload["table_types"] = SUPPLEMENT_TABLE_TYPE_DESCRIPTIONS
+    payload["profile_types"] = SUPPLEMENT_PROFILE_DESCRIPTIONS
     path = supplement_source_scan_path(data_dir, source_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
