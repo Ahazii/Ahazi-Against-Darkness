@@ -1511,12 +1511,27 @@ button.is-working::after {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 25px;
-  padding: 3px 5px;
+  min-height: 34px;
+  padding: 2px 3px;
   justify-self: stretch;
   font-size: 11px;
   line-height: 1.1;
   overflow: hidden;
+  white-space: nowrap;
+}
+
+.modern-source-action-row button[data-short-label]:not(.is-working)::after,
+.modern-source-pdf-actions button[data-short-label]:not(.is-working)::after {
+  content: attr(data-short-label);
+  display: block;
+  margin: 1px 0 0;
+  border: 0;
+  width: auto;
+  height: auto;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -1589,9 +1604,9 @@ button.is-working::after {
 }
 
 .modern-source-pdf-actions button {
-  width: 27px;
-  min-width: 27px;
-  min-height: 25px;
+  width: auto;
+  min-width: 35px;
+  min-height: 36px;
   padding: 2px;
   font-size: 11px;
   line-height: 1.1;

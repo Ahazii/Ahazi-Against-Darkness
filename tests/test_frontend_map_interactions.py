@@ -3105,6 +3105,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "max-height: clamp(44rem, 84vh, 68rem)" in STYLES_CSS
     assert "modern-source-column-divider" in MODERN_PAGES_JS
     assert "ahazi-source-workbench-left-width" in MODERN_PAGES_JS
+    assert "control.dataset.shortLabel = shortLabel" in MODERN_PAGES_JS
+    assert "previousPdfButton, \"Prev\"" in MODERN_PAGES_JS
+    assert "content: attr(data-short-label)" in STYLES_CSS
     assert "Supplement requirements" in MODERN_PAGES_JS
     assert "exact source wording" in MODERN_PAGES_JS
     assert "modern-source-table-review-grid" in STYLES_CSS

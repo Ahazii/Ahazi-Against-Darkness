@@ -6836,8 +6836,12 @@ async function renderRulePdfManager() {
     for (const control of buttons) {
       const fullLabel = String(control.textContent || "").trim();
       const compactLabel = fullLabel.split(/\s+/, 1)[0] || fullLabel;
+      const textLabel = fullLabel.slice(compactLabel.length).trim();
+      const shortLabel = textLabel === "Requirement" ? "Req." : textLabel;
       control.setAttribute("aria-label", `${title}: ${fullLabel}`);
       control.dataset.fullLabel = fullLabel;
+      control.dataset.shortLabel = shortLabel;
+      control.dataset.defaultLabel = compactLabel;
       control.textContent = compactLabel;
     }
     row.append(...buttons);
@@ -7025,17 +7029,32 @@ async function renderRulePdfManager() {
       pdfZoom = Math.min(4, Math.max(0.35, nextZoom));
       applyPdfTransform();
     }
-    pdfToolbar.append(
-      button("‹", "Previous PDF page.", () => goPdfPage(Number(pageInput.value || 1) - 1)),
-      button("›", "Next PDF page.", () => goPdfPage(Number(pageInput.value || 1) + 1)),
-      button("+", "Zoom into the PDF preview. The mouse wheel also zooms.", () => setPdfZoom(pdfZoom + 0.15)),
-      button("−", "Zoom out of the PDF preview. The mouse wheel also zooms.", () => setPdfZoom(pdfZoom - 0.15)),
-      button("⟲", "Reset PDF zoom and pan.", () => {
+    const previousPdfButton = button("‹", "Previous PDF page.", () => goPdfPage(Number(pageInput.value || 1) - 1));
+    const nextPdfButton = button("›", "Next PDF page.", () => goPdfPage(Number(pageInput.value || 1) + 1));
+    const zoomInPdfButton = button("+", "Zoom into the PDF preview. The mouse wheel also zooms.", () => setPdfZoom(pdfZoom + 0.15));
+    const zoomOutPdfButton = button("−", "Zoom out of the PDF preview. The mouse wheel also zooms.", () => setPdfZoom(pdfZoom - 0.15));
+    const resetPdfButton = button("⟲", "Reset PDF zoom and pan.", () => {
         pdfZoom = 1;
         pdfPanX = 0;
         pdfPanY = 0;
         applyPdfTransform();
-      })
+      });
+    for (const [control, label] of [
+      [previousPdfButton, "Prev"],
+      [nextPdfButton, "Next"],
+      [zoomInPdfButton, "In"],
+      [zoomOutPdfButton, "Out"],
+      [resetPdfButton, "Reset"],
+    ]) {
+      control.dataset.shortLabel = label;
+      control.setAttribute("aria-label", control.title);
+    }
+    pdfToolbar.append(
+      previousPdfButton,
+      nextPdfButton,
+      zoomInPdfButton,
+      zoomOutPdfButton,
+      resetPdfButton
     );
     pageInput.addEventListener("change", () => goPdfPage(pageInput.value));
     pdfCanvas.addEventListener("wheel", (event) => {
