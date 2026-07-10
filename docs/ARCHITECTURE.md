@@ -220,6 +220,23 @@ Home screen rule browsing:
   save. Select Shown is based on expanded rendered rows, not merely the current
   data filter. Direct split stores the caret from the displayed block text and
   does not require checkbox selection or a second editor.
+  The source review controls are sticky and compact, the PDF navigation controls
+  overlay the preview, and a session-persisted draggable divider resizes the
+  source/PDF column against the module-content tree. Assignment dropdowns carry
+  category-specific hover descriptions so introduction, title pages, covers,
+  playable tables, and ignored page furniture have explicit review boundaries.
+  Package records in `source_settings.json` may also contain `requirements[]`.
+  A requirement links immutable exact wording and source page/block references
+  to an editable machine interpretation: eligibility scope/level, dependency,
+  environment, enforcement, trigger, replaced tables, and retained core tables.
+  This lets introduction prose remain categorised as introduction while also
+  supplying conditional table-routing data for a future trusted supplement
+  loader. Requirement records are review data and do not activate gameplay yet.
+  Primary PDF text selection rejects extraction variants that mostly repeat a
+  shorter clean variant, avoiding doubled contents/column text. Text visible in
+  rendered artwork but absent from the PDF text layer is not fabricated; the
+  reviewer must correct it manually until a visual OCR candidate workflow is
+  implemented.
   Workbench artwork extraction stores raw embedded image candidates under the
   same source folder and keeps reviewed artwork names, categories, and notes in
   `reviewed_artwork` so useful illustrations can later be promoted into the

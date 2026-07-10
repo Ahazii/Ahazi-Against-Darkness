@@ -83,6 +83,51 @@ SOURCE_BLOCK_ASSIGNMENTS = {
 }
 
 
+SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS = {
+    "unassigned": "Not reviewed yet. Keep new extraction results here until their purpose is known.",
+    "front_cover": "The outside front cover of a source volume.",
+    "back_cover": "The outside back cover of a source volume.",
+    "title_page": "An internal title or half-title page, separate from the front cover.",
+    "table_of_contents": "A contents listing used for source navigation, not a playable rules table.",
+    "credits": "Authors, artists, editors, copyright, and publication credits.",
+    "introduction": "Opening guidance explaining the supplement, its audience, scope, or how to use it.",
+    "history": "Historical background or chronology relevant to the setting.",
+    "lore": "Setting fiction, culture, legends, or world background that is not itself a rule.",
+    "artwork_filler": "Decorative text fragments, captions, or filler associated with artwork.",
+    "advertisement": "Promotional material for other products.",
+    "index": "An alphabetical or topical index of source pages.",
+    "designer_notes": "Author commentary about design intent or optional interpretation.",
+    "example_play": "Worked examples that demonstrate rules or play procedures.",
+    "legal": "Licensing, trademarks, disclaimers, and other legal notices.",
+    "rule_text": "Exact source wording that defines or modifies a playable rule.",
+    "adventure_narrative": "Exact narrative, boxed text, encounters, or branching adventure prose.",
+    "location": "A named place with description, links, occupants, encounters, or map placement.",
+    "foe": "A foe, monster, boss, minion, reaction, or combat profile.",
+    "equipment": "Equipment, treasure, consumables, services, or magic items.",
+    "character_class": "A playable class, subclass, ancestry, or character option.",
+    "table": "A printed lookup table that should later become reviewed machine rows.",
+    "state": "A condition or persistent state applied to characters, foes, equipment, or play.",
+    "terrain": "A terrain or environment type with playable effects.",
+    "map": "Map content, map keys, regions, routes, or map-specific instructions.",
+    "room_tile": "A random-dungeon room tile, tile key, exits, die result, or tile instructions.",
+    "ignore": "Repeated headers, footers, page furniture, or material intentionally excluded from the module.",
+    "manual_entry": "Reviewer-created replacement text used when PDF extraction is incomplete or incorrect.",
+}
+
+
+SUPPLEMENT_REQUIREMENT_TYPES = {
+    "party_eligibility",
+    "dependency",
+    "environment",
+    "table_routing",
+    "procedure",
+    "other",
+}
+
+
+SUPPLEMENT_REQUIREMENT_ENFORCEMENT = {"information", "warning", "hard_gate", "conditional_routing"}
+
+
 def supplement_sources_root(data_dir: Path) -> Path:
     return data_dir / "Supplements" / "_sources"
 
@@ -233,6 +278,18 @@ def set_pdf_source_metadata(
         "page_offset": int(page_offset if page_offset is not None else previous.get("page_offset") or 0),
         "supplement_id": package_id,
         "supplement_title": title,
+    }
+    packages = payload.get("packages")
+    if not isinstance(packages, dict):
+        packages = {}
+        payload["packages"] = packages
+    previous_package = packages.get(package_id) if isinstance(packages.get(package_id), dict) else {}
+    packages[package_id] = {
+        **previous_package,
+        "supplement_id": package_id,
+        "supplement_title": title,
+        "assets": previous_package.get("assets") if isinstance(previous_package.get("assets"), list) else [],
+        "requirements": previous_package.get("requirements") if isinstance(previous_package.get("requirements"), list) else [],
     }
     _write_source_settings(data_dir, payload)
     return sources[source_id]
@@ -476,9 +533,101 @@ def upsert_supplement_package(
         "supplement_id": package_id,
         "supplement_title": title,
         "assets": previous.get("assets") if isinstance(previous.get("assets"), list) else [],
+        "requirements": previous.get("requirements") if isinstance(previous.get("requirements"), list) else [],
     }
     _write_source_settings(data_dir, payload)
     return packages[package_id]
+
+
+def _clean_string_list(value: Any) -> list[str]:
+    values = value if isinstance(value, list) else re.split(r"[,\n;]+", str(value or ""))
+    return [str(item).strip() for item in values if str(item).strip()]
+
+
+def upsert_supplement_package_requirement(
+    data_dir: Path,
+    package_id: str,
+    requirement: dict[str, Any],
+    requirement_id: str = "",
+) -> dict[str, Any]:
+    payload = _load_source_settings(data_dir)
+    packages = _package_settings(payload)
+    safe_package_id = supplement_package_id(package_id, "supplement-package")
+    package = packages.get(safe_package_id) if isinstance(packages.get(safe_package_id), dict) else None
+    if package is None:
+        raise KeyError(package_id)
+    requirements = [item for item in package.get("requirements", []) if isinstance(item, dict)]
+    existing = next((item for item in requirements if str(item.get("id") or "") == requirement_id), None)
+    if requirement_id and existing is None:
+        raise KeyError(requirement_id)
+    title = str(requirement.get("title") or (existing or {}).get("title") or "Supplement requirement").strip()
+    if not title:
+        raise ValueError("Requirement title is required.")
+    requirement_type = str(requirement.get("requirement_type") or (existing or {}).get("requirement_type") or "other")
+    if requirement_type not in SUPPLEMENT_REQUIREMENT_TYPES:
+        raise ValueError("Unknown supplement requirement type.")
+    enforcement = str(requirement.get("enforcement") or (existing or {}).get("enforcement") or "information")
+    if enforcement not in SUPPLEMENT_REQUIREMENT_ENFORCEMENT:
+        raise ValueError("Unknown supplement requirement enforcement mode.")
+    party_scope = str(requirement.get("party_scope") or "all")
+    if party_scope not in {"all", "any", "none"}:
+        party_scope = "all"
+    if existing is None:
+        base_id = supplement_package_id(title, f"requirement-{len(requirements) + 1}")
+        next_id = base_id
+        suffix = 2
+        known_ids = {str(item.get("id") or "") for item in requirements}
+        while next_id in known_ids:
+            next_id = f"{base_id}-{suffix}"
+            suffix += 1
+        existing = {
+            "id": next_id,
+            "exact_text": str(requirement.get("exact_text") or ""),
+            "source_id": str(requirement.get("source_id") or ""),
+            "source_pdf": str(requirement.get("source_pdf") or ""),
+            "source_block_id": str(requirement.get("source_block_id") or ""),
+            "source_page": requirement.get("source_page"),
+            "pdf_page": requirement.get("pdf_page"),
+            "page_label": str(requirement.get("page_label") or ""),
+        }
+        requirements.append(existing)
+    existing.update(
+        {
+            "title": title,
+            "requirement_type": requirement_type,
+            "enforcement": enforcement,
+            "party_scope": party_scope,
+            "minimum_party_level": max(0, int(requirement.get("minimum_party_level") or 0)),
+            "trigger": str(requirement.get("trigger") or ""),
+            "environment": str(requirement.get("environment") or ""),
+            "required_supplement_ids": _clean_string_list(requirement.get("required_supplement_ids")),
+            "replacement_tables": _clean_string_list(requirement.get("replacement_tables")),
+            "retained_tables": _clean_string_list(requirement.get("retained_tables")),
+            "interpretation": str(requirement.get("interpretation") or ""),
+            "review_status": str(requirement.get("review_status") or "draft"),
+        }
+    )
+    package["requirements"] = requirements
+    packages[safe_package_id] = package
+    _write_source_settings(data_dir, payload)
+    return {"requirement": existing, "message": "Supplement requirement saved."}
+
+
+def delete_supplement_package_requirement(data_dir: Path, package_id: str, requirement_id: str) -> dict[str, Any]:
+    payload = _load_source_settings(data_dir)
+    packages = _package_settings(payload)
+    safe_package_id = supplement_package_id(package_id, "supplement-package")
+    package = packages.get(safe_package_id) if isinstance(packages.get(safe_package_id), dict) else None
+    if package is None:
+        raise KeyError(package_id)
+    requirements = [item for item in package.get("requirements", []) if isinstance(item, dict)]
+    kept = [item for item in requirements if str(item.get("id") or "") != requirement_id]
+    if len(kept) == len(requirements):
+        raise KeyError(requirement_id)
+    package["requirements"] = kept
+    packages[safe_package_id] = package
+    _write_source_settings(data_dir, payload)
+    return {"requirement_id": requirement_id, "message": "Supplement requirement deleted."}
 
 
 def add_supplement_package_asset(
@@ -884,6 +1033,7 @@ def scan_supplement_source_pdf(
         "page_offset": int(page_offset),
         "note": "Local/private PDF source blocks for human review and supplement assignment. Exact text remains in DATA_DIR. Re-scans update raw_blocks; reviewed_blocks preserve human edits unless overwrite is requested.",
         "assignment_options": sorted(SOURCE_BLOCK_ASSIGNMENTS),
+        "assignment_descriptions": SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS,
         "artwork_categories": sorted(SOURCE_ARTWORK_CATEGORIES),
         "raw_blocks": raw_blocks,
         "reviewed_blocks": reviewed_blocks,
@@ -940,6 +1090,7 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     if "raw_artwork" not in payload:
         payload["raw_artwork"] = [dict(item) for item in reviewed_artwork]
     payload["assignment_options"] = sorted(SOURCE_BLOCK_ASSIGNMENTS)
+    payload["assignment_descriptions"] = SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS
     payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
     return payload
 
@@ -956,6 +1107,7 @@ def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[st
     payload["reviewed_tables"] = reviewed_tables
     payload["tables"] = reviewed_tables
     payload["assignment_options"] = sorted(SOURCE_BLOCK_ASSIGNMENTS)
+    payload["assignment_descriptions"] = SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS
     payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
     path = supplement_source_scan_path(data_dir, source_id)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1724,11 +1876,13 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
         safe_id = supplement_package_id(str(package_payload.get("supplement_id") or package_id), str(package_id))
         known_package_ids.add(safe_id)
         assets = [item for item in package_payload.get("assets", []) if isinstance(item, dict)]
+        requirements = [item for item in package_payload.get("requirements", []) if isinstance(item, dict)]
         grouped[safe_id] = {
             "supplement_id": safe_id,
             "supplement_title": _friendly_source_title(package_payload.get("supplement_title"), None, safe_id),
             "source_count": 0,
             "asset_count": len(assets),
+            "requirement_count": len(requirements),
             "asset_categories": sorted(SUPPLEMENT_PACKAGE_ASSET_CATEGORIES),
             "blocks": 0,
             "artwork": 0,
@@ -1736,6 +1890,7 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
             "reviewed_blocks": 0,
             "sources": [],
             "assets": assets,
+            "requirements": requirements,
         }
     for scan in list_supplement_source_scans(data_dir):
         package_id = _source_package_id(scan, known_package_ids)
@@ -1747,6 +1902,7 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
                 "supplement_title": _friendly_source_title(scan.get("supplement_title"), scan.get("source_pdf"), package_id),
                 "source_count": 0,
                 "asset_count": 0,
+                "requirement_count": 0,
                 "asset_categories": sorted(SUPPLEMENT_PACKAGE_ASSET_CATEGORIES),
                 "blocks": 0,
                 "artwork": 0,
@@ -1754,6 +1910,7 @@ def list_supplement_source_packages(data_dir: Path) -> list[dict[str, Any]]:
                 "reviewed_blocks": 0,
                 "sources": [],
                 "assets": [],
+                "requirements": [],
             },
         )
         if str(package.get("supplement_title") or "").strip().lower() in GENERIC_SUPPLEMENT_PACKAGE_TITLES:

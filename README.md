@@ -77,7 +77,12 @@ current with every rules or content change.
   The review tree groups every block by category and PDF page without a hard
   block limit, applies multi-block assignments in one operation, splits at a
   caret placed directly in the displayed block text, and restores open pages,
-  scroll position, and package asset tools after saves.
+  scroll position, and package asset tools after saves. Compact sticky controls,
+  an overlaid PDF toolbar, and a persistent draggable column divider keep the
+  source page and content tree usable together. Reviewed blocks can also create
+  package-level supplement requirements that preserve exact source wording while
+  separately recording editable party eligibility, dependencies, triggers, and
+  conditional table routing for future activation.
 
 ## Preserved Source Material
 

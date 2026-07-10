@@ -1363,8 +1363,8 @@ button.is-working::after {
 
 .modern-source-review-grid {
   display: grid;
-  grid-template-columns: minmax(19rem, 0.62fr) minmax(40rem, 1.38fr);
-  gap: 8px;
+  grid-template-columns: minmax(19rem, var(--source-left-width, 26rem)) 7px minmax(32rem, 1fr);
+  gap: 4px;
   align-items: start;
   min-width: 0;
 }
@@ -1382,10 +1382,19 @@ button.is-working::after {
   display: grid;
   gap: 4px;
   min-width: 0;
-  padding: 6px;
+  position: sticky;
+  top: 6px;
+  z-index: 4;
+  padding: 5px;
   border: 1px solid rgba(201, 162, 39, 0.38);
   border-radius: 7px;
   background: rgba(201, 162, 39, 0.06);
+}
+
+.modern-source-controls-panel p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .modern-source-controls-grid {
@@ -1415,7 +1424,7 @@ button.is-working::after {
 
 .modern-source-metadata-controls {
   display: grid;
-  grid-template-columns: minmax(8rem, 1fr) auto;
+  grid-template-columns: 5.5rem minmax(6rem, auto);
   gap: 4px;
   align-items: end;
   min-width: 0;
@@ -1432,8 +1441,8 @@ button.is-working::after {
 }
 
 .modern-source-metadata-controls input {
-  width: 100%;
-  max-width: none;
+  width: 5.5rem;
+  max-width: 5.5rem;
   min-height: 28px;
   padding: 4px 7px;
 }
@@ -1445,13 +1454,14 @@ button.is-working::after {
 }
 
 .modern-source-action-groups {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(3.9rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
 .modern-source-action-group {
   display: grid;
+  flex: 1 1 auto;
   gap: 2px;
   min-width: 0;
 }
@@ -1464,11 +1474,12 @@ button.is-working::after {
 
 .modern-source-action-row {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(1.45rem, 1fr));
   gap: 3px;
 }
 
 .modern-source-action-row button {
+  width: 100%;
   min-height: 25px;
   padding: 3px 5px;
   justify-self: stretch;
@@ -1496,11 +1507,21 @@ button.is-working::after {
 }
 
 .modern-source-pdf-toolbar {
-  display: grid;
-  grid-template-columns: minmax(6.5rem, 0.32fr) minmax(0, 1fr);
-  gap: 5px;
-  align-items: end;
-  min-width: 0;
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  max-width: calc(100% - 14px);
+  width: max-content;
+  padding: 4px;
+  border: 1px solid rgba(201, 162, 39, 0.42);
+  border-radius: 6px;
+  background: rgba(16, 17, 14, 0.84);
+  backdrop-filter: blur(8px);
+  transform: translateX(-50%);
 }
 
 .modern-source-pdf-toolbar .modern-field {
@@ -1509,22 +1530,24 @@ button.is-working::after {
 }
 
 .modern-source-pdf-toolbar input {
-  width: 100%;
-  max-width: none;
-  min-height: 28px;
-  padding: 4px 7px;
+  width: 3.4rem;
+  max-width: 3.4rem;
+  min-height: 25px;
+  padding: 2px 4px;
+  text-align: center;
 }
 
 .modern-source-pdf-actions {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
   gap: 4px;
 }
 
 .modern-source-pdf-actions button {
-  min-height: 28px;
-  padding: 4px 6px;
-  justify-self: stretch;
+  width: 27px;
+  min-width: 27px;
+  min-height: 25px;
+  padding: 2px;
   font-size: 11px;
   line-height: 1.1;
 }
@@ -1561,6 +1584,39 @@ button.is-working::after {
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+
+.modern-source-column-divider {
+  position: sticky;
+  top: 6px;
+  width: 7px;
+  height: clamp(34rem, 78vh, 58rem);
+  border-radius: 4px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.modern-source-column-divider::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: rgba(201, 162, 39, 0.28);
+}
+
+.modern-source-column-divider:hover::before,
+.modern-source-column-divider:focus::before,
+.is-resizing-source-columns .modern-source-column-divider::before {
+  width: 3px;
+  left: 2px;
+  background: var(--accent);
+}
+
+.is-resizing-source-columns {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .modern-source-module-workbench {
@@ -1609,8 +1665,8 @@ button.is-working::after {
   display: grid;
   gap: 5px;
   min-width: 0;
-  min-height: clamp(31rem, 63vh, 48rem);
-  max-height: clamp(38rem, 82vh, 64rem);
+  min-height: clamp(38rem, 72vh, 56rem);
+  max-height: clamp(44rem, 84vh, 68rem);
   overflow: auto;
   padding-right: 4px;
 }
@@ -2095,6 +2151,10 @@ button.is-working::after {
     grid-template-columns: 1fr;
   }
 
+  .modern-source-column-divider {
+    display: none;
+  }
+
   .modern-source-left-rail {
     position: static;
     overflow: visible;
@@ -2106,9 +2166,12 @@ button.is-working::after {
   .modern-source-metadata-controls,
   .modern-source-action-groups,
   .modern-source-control-actions,
-  .modern-source-pdf-toolbar,
   .modern-source-pdf-actions {
     grid-template-columns: 1fr;
+  }
+
+  .modern-source-pdf-toolbar {
+    display: flex;
   }
 
   .modern-source-import-actions {

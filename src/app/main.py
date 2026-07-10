@@ -73,6 +73,7 @@ from .engine.roster_sync import (
 from .engine.supplement_sources import (
     add_supplement_package_asset,
     delete_supplement_package_asset,
+    delete_supplement_package_requirement,
     delete_supplement_source_blocks,
     draft_supplement_source_table,
     extract_supplement_source_artwork,
@@ -95,6 +96,7 @@ from .engine.supplement_sources import (
     supplement_source_id,
     supplement_source_scan_path,
     update_supplement_package_asset,
+    upsert_supplement_package_requirement,
     update_supplement_source_artwork,
     update_supplement_source_block,
     update_supplement_source_blocks,
@@ -925,6 +927,34 @@ async def remove_supplement_package_asset(supplement_id: str, asset_id: str) -> 
         return delete_supplement_package_asset(settings.data_dir, supplement_id, asset_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Supplement package source asset not found.") from exc
+
+
+@app.post("/api/supplements/source-packages/{supplement_id}/requirements")
+async def create_supplement_package_requirement(supplement_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return upsert_supplement_package_requirement(settings.data_dir, supplement_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Supplement source package not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.patch("/api/supplements/source-packages/{supplement_id}/requirements/{requirement_id:path}")
+async def save_supplement_package_requirement(supplement_id: str, requirement_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return upsert_supplement_package_requirement(settings.data_dir, supplement_id, payload, requirement_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Supplement requirement not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.delete("/api/supplements/source-packages/{supplement_id}/requirements/{requirement_id:path}")
+async def remove_supplement_package_requirement(supplement_id: str, requirement_id: str) -> dict[str, Any]:
+    try:
+        return delete_supplement_package_requirement(settings.data_dir, supplement_id, requirement_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Supplement requirement not found.") from exc
 
 
 @app.get("/api/supplements/source-scans/{source_id}")

@@ -877,6 +877,22 @@ def test_rule_pdf_page_extraction_uses_layout_and_positioned_text() -> None:
     assert "One Bite At A Time" in pdf_text_index.clean_rule_pdf_text(body)
 
 
+def test_rule_text_extraction_rejects_positioned_variant_that_repeats_clean_text() -> None:
+    from app.engine import pdf_text_index
+
+    clean = " ".join(f"entry-{index}" for index in range(1, 50))
+    variants = [
+        {"method": "plain", "text": clean},
+        {"method": "layout", "text": "Page footer"},
+        {"method": "positioned", "text": f"{clean} {clean}"},
+    ]
+
+    primary = pdf_text_index.primary_rule_page_text_variant(variants)
+
+    assert primary["method"] == "plain"
+    assert primary["text"] == clean
+
+
 def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, monkeypatch) -> None:
     from app.engine import supplement_sources
 
@@ -1597,6 +1613,63 @@ def test_supplement_package_asset_upload_and_serve(tmp_path: Path, monkeypatch) 
     packages = client.get("/api/supplements/source-scans").json()["packages"]
     assert packages[0]["asset_count"] == 0
     assert not (tmp_path / "Supplements" / "_sources" / "_package_assets" / "treacheries-town" / "World Map.png").exists()
+
+
+def test_supplement_package_requirement_preserves_exact_source_wording(tmp_path: Path) -> None:
+    from app.engine import supplement_sources
+
+    pdf = tmp_path / "rules" / "Crucible of Classic Critters.pdf"
+    pdf.parent.mkdir(parents=True)
+    pdf.write_bytes(b"%PDF-local-test")
+    supplement_sources.set_pdf_source_metadata(
+        tmp_path,
+        pdf,
+        page_offset=-3,
+        supplement_id="crucible-of-classic-critters",
+        supplement_title="Crucible of Classic Critters",
+    )
+    created = supplement_sources.upsert_supplement_package_requirement(
+        tmp_path,
+        "crucible-of-classic-critters",
+        {
+            "title": "Level four woodland table routing",
+            "requirement_type": "table_routing",
+            "enforcement": "conditional_routing",
+            "party_scope": "all",
+            "minimum_party_level": 4,
+            "trigger": "Starting a new dungeon",
+            "replacement_tables": "woodland vermin\nwoodland minions",
+            "retained_tables": ["quest", "epic rewards"],
+            "interpretation": "Use woodland tables when every party member is level 4 or higher.",
+            "exact_text": "Upon starting a new dungeon, if all your characters are L4 or more...",
+            "source_id": "crucible-of-classic-critters",
+            "source_block_id": "crucible-p1-b001",
+            "source_page": 1,
+            "pdf_page": 4,
+            "page_label": "p.1 (PDF p.4)",
+        },
+    )["requirement"]
+
+    updated = supplement_sources.upsert_supplement_package_requirement(
+        tmp_path,
+        "crucible-of-classic-critters",
+        {
+            "title": created["title"],
+            "requirement_type": "table_routing",
+            "enforcement": "conditional_routing",
+            "party_scope": "all",
+            "minimum_party_level": 4,
+            "interpretation": "Updated machine interpretation.",
+            "exact_text": "This attempted rewrite must be ignored.",
+        },
+        created["id"],
+    )["requirement"]
+
+    assert updated["exact_text"] == "Upon starting a new dungeon, if all your characters are L4 or more..."
+    assert updated["interpretation"] == "Updated machine interpretation."
+    package = supplement_sources.list_supplement_source_packages(tmp_path)[0]
+    assert package["requirement_count"] == 1
+    assert package["requirements"][0]["source_block_id"] == "crucible-p1-b001"
 
 
 def test_app_version_endpoint_reads_version_file() -> None:

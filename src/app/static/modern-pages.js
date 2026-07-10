@@ -6833,6 +6833,13 @@ async function renderRulePdfManager() {
     const group = el("div", "modern-source-action-group");
     group.appendChild(el("span", "muted", title));
     const row = el("div", "modern-source-action-row");
+    for (const control of buttons) {
+      const fullLabel = String(control.textContent || "").trim();
+      const compactLabel = fullLabel.split(/\s+/, 1)[0] || fullLabel;
+      control.setAttribute("aria-label", `${title}: ${fullLabel}`);
+      control.dataset.fullLabel = fullLabel;
+      control.textContent = compactLabel;
+    }
     row.append(...buttons);
     group.appendChild(row);
     return group;
@@ -6870,6 +6877,7 @@ async function renderRulePdfManager() {
     assetViewportTop: 0,
     openPageKeys: sessionStringSet("ahazi-source-workbench-open-pages"),
     openCategoryKeys: sessionStringSet("ahazi-source-workbench-open-categories"),
+    leftWidth: Number(window.sessionStorage.getItem("ahazi-source-workbench-left-width") || 0) || 420,
   };
   let activeWorkbenchPackage = null;
   function useActiveWorkbenchPackage() {
@@ -6911,11 +6919,13 @@ async function renderRulePdfManager() {
     window.sessionStorage.setItem("ahazi-source-workbench-asset-tool", sourceWorkbenchState.assetTool || "");
     window.sessionStorage.setItem("ahazi-source-workbench-open-pages", JSON.stringify(Array.from(sourceWorkbenchState.openPageKeys)));
     window.sessionStorage.setItem("ahazi-source-workbench-open-categories", JSON.stringify(Array.from(sourceWorkbenchState.openCategoryKeys)));
+    window.sessionStorage.setItem("ahazi-source-workbench-left-width", String(sourceWorkbenchState.leftWidth || 420));
   }
   function renderSourceScanDetail(payload, mount) {
     const blocks = Array.isArray(payload.blocks) ? payload.blocks.map((block) => ({ ...block, source_item_type: "block" })) : [];
     const artworkItems = Array.isArray(payload.artwork) ? payload.artwork : [];
     const reviewedTables = Array.isArray(payload.tables) ? payload.tables : [];
+    let packageRequirements = Array.isArray(activeWorkbenchPackage?.requirements) ? activeWorkbenchPackage.requirements.map((item) => ({ ...item })) : [];
     const sourceItems = blocks;
     const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
     const assignment = select("modern-source-block-assignment", "Filter by current manual assignment.", [["", "All assignments"]]);
@@ -6924,7 +6934,7 @@ async function renderRulePdfManager() {
       ["document", "Whole document"],
     ]);
     const sourceOffset = input("number", `modern-source-offset-${payload.source_id || "source"}`, "Correct the printed-page offset after indexing, block scanning, artwork extraction, or manual assignment. This relabels every raw and reviewed record without re-extracting the PDF.", String(payload.page_offset || 0));
-    const applySourceMetadataButton = button("✓ Metadata", "Apply the printed-page offset and current module identity to this source PDF. Assigned and unassigned blocks, artwork, table drafts, boundary metadata, and exact-text index entries are updated together; reviewed text and block IDs are preserved.", async (btn) => runWithButtonProgress(btn, "Applying metadata...", async () => {
+    const applySourceMetadataButton = button("✓ Apply Offset", "Apply the printed-page offset and current module identity to this source PDF. Assigned and unassigned blocks, artwork, table drafts, boundary metadata, and exact-text index entries are updated together; reviewed text and block IDs are preserved.", async (btn) => runWithButtonProgress(btn, "Applying offset...", async () => {
       const filename = String(payload.source_pdf || "").replace(/\\/g, "/").split("/").pop();
       if (!filename) throw new Error("This source scan has no uploaded PDF filename.");
       const result = await api("/api/supplements/source-metadata", {
@@ -6944,9 +6954,24 @@ async function renderRulePdfManager() {
       await refreshList();
       await refreshSourceScans();
     }));
-    for (const option of payload.assignment_options || []) assignment.appendChild(new Option(option, option));
+    const assignmentDescriptions = payload.assignment_descriptions || {};
+    function appendAssignmentOptions(target) {
+      for (const value of payload.assignment_options || []) {
+        const option = new Option(modernTitleFromKey(value), value);
+        option.title = assignmentDescriptions[value] || "Manual source-content category.";
+        target.appendChild(option);
+      }
+      const updateHint = () => {
+        const value = target.value;
+        target.title = value ? (assignmentDescriptions[value] || "Manual source-content category.") : target.title;
+      };
+      target.addEventListener("change", updateHint);
+      updateHint();
+    }
+    appendAssignmentOptions(assignment);
     search.value = sourceWorkbenchState.search || "";
     assignment.value = sourceWorkbenchState.assignment || "";
+    assignment.dispatchEvent(new Event("change"));
     reviewScope.value = sourceWorkbenchState.scope || "document";
     const results = el("div", "modern-source-tree");
     const selectedBlockIds = new Set([...sourceWorkbenchState.selectedBlockIds].filter((blockId) => sourceItems.some((item) => item.id === blockId)));
@@ -7001,11 +7026,11 @@ async function renderRulePdfManager() {
       applyPdfTransform();
     }
     pdfToolbar.append(
-      button("‹ Prev", "Show the previous PDF page and review items on that page.", () => goPdfPage(Number(pageInput.value || 1) - 1)),
-      button("Next ›", "Show the next PDF page and review items on that page.", () => goPdfPage(Number(pageInput.value || 1) + 1)),
-      button("+ Zoom", "Increase PDF preview zoom.", () => setPdfZoom(pdfZoom + 0.15)),
-      button("- Zoom", "Decrease PDF preview zoom.", () => setPdfZoom(pdfZoom - 0.15)),
-      button("⟲ Reset", "Reset PDF zoom and pan.", () => {
+      button("‹", "Previous PDF page.", () => goPdfPage(Number(pageInput.value || 1) - 1)),
+      button("›", "Next PDF page.", () => goPdfPage(Number(pageInput.value || 1) + 1)),
+      button("+", "Zoom into the PDF preview. The mouse wheel also zooms.", () => setPdfZoom(pdfZoom + 0.15)),
+      button("−", "Zoom out of the PDF preview. The mouse wheel also zooms.", () => setPdfZoom(pdfZoom - 0.15)),
+      button("⟲", "Reset PDF zoom and pan.", () => {
         pdfZoom = 1;
         pdfPanX = 0;
         pdfPanY = 0;
@@ -7039,13 +7064,11 @@ async function renderRulePdfManager() {
         /* pointer may already be released */
       }
     });
-    pdfCanvas.appendChild(pdfImage);
-    pdfControlBar.append(
-      field("PDF page", pageInput),
-      pdfToolbar
-    );
+    pageInput.setAttribute("aria-label", "PDF page");
+    pageInput.title = "PDF viewer page number. This remains the physical PDF page even when a printed-page offset is applied.";
+    pdfControlBar.append(pageInput, pdfToolbar);
+    pdfCanvas.append(pdfImage, pdfControlBar);
     pdfViewer.append(
-      pdfControlBar,
       pdfCanvas,
       pdfStatus
     );
@@ -7084,8 +7107,8 @@ async function renderRulePdfManager() {
       });
       await reloadCurrentScan("Selected source blocks merged.");
     }));
-    const bulkAssignment = select("modern-source-bulk-assignment", "Assignment to apply to selected text blocks.", [["", "Choose assignment"]]);
-    for (const option of payload.assignment_options || []) bulkAssignment.appendChild(new Option(option, option));
+    const bulkAssignment = select("modern-source-bulk-assignment", "Assignment to apply to selected text blocks. Hover a category for its purpose.", [["", "Choose assignment"]]);
+    appendAssignmentOptions(bulkAssignment);
     const applyAssignmentButton = button("✓ Apply", "Apply the chosen assignment to every selected source block. This moves reviewed blocks into that category group.", async (btn) => runWithButtonProgress(btn, "Assigning blocks...", async () => {
       const nextAssignment = bulkAssignment.value;
       if (!nextAssignment) throw new Error("Choose an assignment first.");
@@ -7210,6 +7233,111 @@ async function renderRulePdfManager() {
       if (block.assignment !== "table") throw new Error("Assign the selected block as table before drafting machine rows.");
       await openTableDraftFromBlock(block, search.value);
     }));
+    function requirementEditor(requirement = null, sourceBlock = null) {
+      const record = requirement || {};
+      const panel = el("div", "modern-source-requirement-editor");
+      const requirementTitle = input("text", `modern-source-requirement-title-${record.id || "new"}`, "Short name for this supplement requirement or routing rule.", record.title || "");
+      const requirementType = select(`modern-source-requirement-type-${record.id || "new"}`, "What kind of condition or routing behaviour this source wording describes.", [
+        ["party_eligibility", "Party eligibility"],
+        ["dependency", "Book or supplement dependency"],
+        ["environment", "Environment or terrain condition"],
+        ["table_routing", "Conditional table routing"],
+        ["procedure", "Required procedure"],
+        ["other", "Other requirement"],
+      ]);
+      requirementType.value = record.requirement_type || "table_routing";
+      const enforcement = select(`modern-source-requirement-enforcement-${record.id || "new"}`, "Whether this record informs the player, warns them, blocks setup, or routes play conditionally.", [
+        ["information", "Information only"],
+        ["warning", "Setup warning"],
+        ["hard_gate", "Hard requirement"],
+        ["conditional_routing", "Conditional routing"],
+      ]);
+      enforcement.value = record.enforcement || "conditional_routing";
+      const partyScope = select(`modern-source-requirement-party-scope-${record.id || "new"}`, "How a level condition applies across the selected party.", [["all", "All party members"], ["any", "Any party member"], ["none", "No party-level test"]]);
+      partyScope.value = record.party_scope || "all";
+      const minimumLevel = input("number", `modern-source-requirement-level-${record.id || "new"}`, "Minimum character level required by the printed condition. Use 0 when level is not involved.", String(record.minimum_party_level || 0));
+      minimumLevel.min = "0";
+      const trigger = input("text", `modern-source-requirement-trigger-${record.id || "new"}`, "When this condition is evaluated, such as when starting a new dungeon.", record.trigger || "");
+      const environment = input("text", `modern-source-requirement-environment-${record.id || "new"}`, "Optional terrain or environment in which this requirement applies.", record.environment || "");
+      function textarea(value, title, readOnly = false) {
+        const node = document.createElement("textarea");
+        node.className = "modern-source-block-text compact";
+        node.value = value || "";
+        node.title = title;
+        node.readOnly = readOnly;
+        return node;
+      }
+      const dependencies = textarea((record.required_supplement_ids || []).join("\n"), "One required supplement id per line. Leave empty when this source has no external dependency.");
+      const replacementTables = textarea((record.replacement_tables || []).join("\n"), "One table or table family replaced by this supplement per line.");
+      const retainedTables = textarea((record.retained_tables || []).join("\n"), "One core table explicitly retained by the source wording per line.");
+      const interpretation = textarea(record.interpretation || "", "Editable machine interpretation. This may be refined without changing the exact source wording.");
+      const exactText = textarea(record.exact_text || sourceBlock?.text || "", "Immutable exact source wording linked to this requirement. Correct the reviewed source block before creating a requirement if extraction is incomplete.", true);
+      const exactSource = {
+        source_id: record.source_id || payload.source_id || "",
+        source_pdf: record.source_pdf || payload.source_pdf || "",
+        source_block_id: record.source_block_id || sourceBlock?.id || "",
+        source_page: record.source_page ?? sourceBlock?.source_page ?? null,
+        pdf_page: record.pdf_page ?? sourceBlock?.pdf_page ?? null,
+        page_label: record.page_label || sourceBlock?.page_label || "",
+      };
+      const editorActions = actions("modern-row-actions");
+      editorActions.append(button("Save Requirement", "Save the exact source evidence and editable structured interpretation at supplement-package level. It can later drive setup warnings and conditional table routing.", async (btn) => runWithButtonProgress(btn, "Saving requirement...", async () => {
+        const body = {
+          title: requirementTitle.value,
+          requirement_type: requirementType.value,
+          enforcement: enforcement.value,
+          party_scope: partyScope.value,
+          minimum_party_level: Number(minimumLevel.value || 0),
+          trigger: trigger.value,
+          environment: environment.value,
+          required_supplement_ids: dependencies.value,
+          replacement_tables: replacementTables.value,
+          retained_tables: retainedTables.value,
+          interpretation: interpretation.value,
+          review_status: "reviewed",
+          exact_text: exactText.value,
+          ...exactSource,
+        };
+        const packageId = activeWorkbenchPackage?.supplement_id || payload.supplement_id;
+        const path = record.id
+          ? `/api/supplements/source-packages/${encodeURIComponent(packageId)}/requirements/${encodeURIComponent(record.id)}`
+          : `/api/supplements/source-packages/${encodeURIComponent(packageId)}/requirements`;
+        await api(path, { method: record.id ? "PATCH" : "POST", body: JSON.stringify(body) });
+        saveCurrentWorkbenchState();
+        await refreshSourceScans();
+        setStatus("Supplement requirement saved.");
+      })));
+      if (record.id) editorActions.append(button("Delete", "Delete this structured requirement record. The linked reviewed source block and its exact text remain untouched.", async (btn) => runWithButtonProgress(btn, "Deleting requirement...", async () => {
+        if (!window.confirm(`Delete requirement ${record.title || record.id}? The source text block will be kept.`)) return;
+        const packageId = activeWorkbenchPackage?.supplement_id || payload.supplement_id;
+        await api(`/api/supplements/source-packages/${encodeURIComponent(packageId)}/requirements/${encodeURIComponent(record.id)}`, { method: "DELETE" });
+        saveCurrentWorkbenchState();
+        await refreshSourceScans();
+        setStatus("Supplement requirement deleted.");
+      })));
+      panel.append(
+        modernStatusRow("Source evidence", `${exactSource.page_label || "Page not labelled"} · ${exactSource.source_block_id || "manual record"}`, "The source wording is preserved separately from the editable interpretation so future game logic remains auditable."),
+        field("Requirement name", requirementTitle),
+        field("Type", requirementType),
+        field("Enforcement", enforcement),
+        field("Party scope", partyScope),
+        field("Minimum level", minimumLevel),
+        field("Evaluation trigger", trigger),
+        field("Environment", environment),
+        field("Required supplements", dependencies),
+        field("Tables replaced", replacementTables),
+        field("Core tables retained", retainedTables),
+        field("Machine interpretation", interpretation),
+        field("Exact source wording (read only)", exactText),
+        editorActions
+      );
+      return panel;
+    }
+    const requirementButton = button("◇ Requirement", "Create a supplement-level requirement from exactly one selected source block. Exact wording is preserved while party conditions and conditional table routing remain editable.", () => {
+      const block = requireSelectedReviewedBlock("Create Requirement");
+      if (block.pdf_page) previewPdfPage(block.pdf_page);
+      openSourceTool(`New supplement requirement · ${block.page_label || block.id}`, requirementEditor(null, block));
+    });
     const moveUpButton = button("↑ Up", "Move the selected reviewed block earlier in the underlying document order. Filters may hide neighbouring blocks.", async (btn) => runWithButtonProgress(btn, "Moving block...", async () => {
       const block = requireSelectedReviewedBlock("Move Up");
       await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/move`, {
@@ -7536,6 +7664,40 @@ async function renderRulePdfManager() {
       }
       return panel;
     }
+    function renderRequirementsPanel() {
+      const panel = el("div", "modern-list");
+      if (!packageRequirements.length) {
+        panel.appendChild(el("p", "muted", "No structured requirements yet. Select an exact source block, then use Requirement in the left controls."));
+        return panel;
+      }
+      for (const requirement of packageRequirements) {
+        const row = document.createElement("details");
+        row.className = "modern-source-tree-item";
+        const summary = document.createElement("summary");
+        summary.append(
+          el("strong", "", requirement.title || requirement.id || "Supplement requirement"),
+          el("span", "muted", ` · ${modernTitleFromKey(requirement.requirement_type || "other")} · ${requirement.page_label || "source"}`)
+        );
+        const requirementActions = actions("modern-row-actions");
+        requirementActions.append(button("✎ Edit", "Review the immutable source wording beside the editable party condition and table-routing interpretation.", () => {
+          if (requirement.pdf_page) previewPdfPage(requirement.pdf_page);
+          openSourceTool(`Requirement · ${requirement.title || requirement.id}`, requirementEditor(requirement));
+        }));
+        row.append(
+          summary,
+          modernInfoPanel("Requirement interpretation", requirement.interpretation || "No machine interpretation yet", [
+            { label: "Enforcement", value: modernTitleFromKey(requirement.enforcement || "information") },
+            { label: "Party", value: requirement.minimum_party_level ? `${modernTitleFromKey(requirement.party_scope || "all")} at level ${requirement.minimum_party_level}+` : "No level condition" },
+            { label: "Trigger", value: requirement.trigger || "Not recorded" },
+            { label: "Tables replaced", value: (requirement.replacement_tables || []).join(", ") || "None recorded" },
+            { label: "Core tables retained", value: (requirement.retained_tables || []).join(", ") || "None recorded" },
+          ], "This structured record can later drive setup guidance and table routing. The exact PDF wording remains attached separately."),
+          requirementActions
+        );
+        panel.appendChild(row);
+      }
+      return panel;
+    }
     function renderSourceBlockTreeItem(block, needle) {
       const item = document.createElement("details");
       item.className = "modern-source-tree-item";
@@ -7721,10 +7883,11 @@ async function renderRulePdfManager() {
       const sourceTree = el("div", "modern-source-tree-children");
       sourceTree.append(
         treeBranch("Text blocks", `${matches.length}`, textTree, { open: true }),
+        treeBranch("Supplement requirements", `${packageRequirements.length}`, renderRequirementsPanel(), { open: false, hint: "Package-level eligibility, dependency, environment, and conditional table-routing records linked to exact source wording." }),
         treeBranch("Reviewed tables", `${reviewedTables.length}`, renderReviewedTablesPanel(), { open: false }),
         treeBranch("Artwork", `${artworkMatches.length}`, renderArtworkTreePanel(artworkMatches, needle), { open: false })
       );
-      results.appendChild(treeBranch(payload.source_id || "Source document", `${sourceItems.length + artworkItems.length + reviewedTables.length}`, sourceTree, {
+      results.appendChild(treeBranch(payload.source_id || "Source document", `${sourceItems.length + artworkItems.length + reviewedTables.length + packageRequirements.length}`, sourceTree, {
         open: true,
         className: "modern-source-tree-root",
         hint: "Imported source document tree. Text, tables, artwork, and future data types sit under this document so review follows the PDF/source order.",
@@ -7824,7 +7987,7 @@ async function renderRulePdfManager() {
       actionGroup("Assign", [applyAssignmentButton, ignorePhraseButton]),
       actionGroup("Blocks", [mergeSelectedButton, editSelectedButton, splitSelectedButton]),
       actionGroup("Clean", [duplicateReviewButton, resetSourceButton]),
-      actionGroup("Extract", [draftTableButton]),
+      actionGroup("Extract", [draftTableButton, requirementButton]),
       actionGroup("Order", [moveUpButton, moveDownButton])
     );
     const controlFields = el("div", "modern-source-controls-grid");
@@ -7853,7 +8016,37 @@ async function renderRulePdfManager() {
       results
     );
     const reviewGrid = el("div", "modern-source-review-grid");
-    reviewGrid.append(leftRail, reviewPanel);
+    reviewGrid.style.setProperty("--source-left-width", `${Math.max(300, sourceWorkbenchState.leftWidth || 420)}px`);
+    const columnDivider = el("div", "modern-source-column-divider");
+    columnDivider.tabIndex = 0;
+    columnDivider.setAttribute("role", "separator");
+    columnDivider.setAttribute("aria-orientation", "vertical");
+    columnDivider.title = "Drag to resize the PDF/control column and module-content column. Double-click to reset.";
+    let resizingColumns = false;
+    columnDivider.addEventListener("pointerdown", (event) => {
+      resizingColumns = true;
+      columnDivider.setPointerCapture(event.pointerId);
+      document.body.classList.add("is-resizing-source-columns");
+    });
+    columnDivider.addEventListener("pointermove", (event) => {
+      if (!resizingColumns) return;
+      const bounds = reviewGrid.getBoundingClientRect();
+      const width = Math.max(300, Math.min(event.clientX - bounds.left, Math.max(300, bounds.width - 520)));
+      sourceWorkbenchState.leftWidth = Math.round(width);
+      reviewGrid.style.setProperty("--source-left-width", `${sourceWorkbenchState.leftWidth}px`);
+    });
+    columnDivider.addEventListener("pointerup", (event) => {
+      resizingColumns = false;
+      document.body.classList.remove("is-resizing-source-columns");
+      persistSourceWorkbenchState();
+      try { columnDivider.releasePointerCapture(event.pointerId); } catch { /* pointer already released */ }
+    });
+    columnDivider.addEventListener("dblclick", () => {
+      sourceWorkbenchState.leftWidth = 420;
+      reviewGrid.style.setProperty("--source-left-width", "420px");
+      persistSourceWorkbenchState();
+    });
+    reviewGrid.append(leftRail, columnDivider, reviewPanel);
     mount.replaceChildren(
       compactInfoStrip("Selected source scan", [
         { label: "Source", value: payload.source_id || "source" },
@@ -7923,6 +8116,7 @@ async function renderRulePdfManager() {
         { label: "Blocks", value: `${pkg.blocks || 0}` },
         { label: "Artwork", value: `${pkg.artwork || 0}` },
         { label: "Tables", value: `${pkg.tables || 0}` },
+        { label: "Requirements", value: `${pkg.requirement_count || (pkg.requirements || []).length || 0}` },
       ], "Current supplement package counts. Source documents and package assets remain local review data until promoted into a playable supplement."));
       if (sources.length > 1) {
         const sourceSelect = select("modern-source-document-select", "Choose which source document inside this module to review.", []);

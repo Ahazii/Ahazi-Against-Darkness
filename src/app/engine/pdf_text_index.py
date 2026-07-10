@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,22 @@ def clean_rule_pdf_text(text: str) -> str:
 
 def rule_pdf_text_fingerprint(text: str) -> str:
     return re.sub(r"\s+", " ", str(text or "")).strip().lower()
+
+
+def _rule_pdf_text_tokens(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9]+", rule_pdf_text_fingerprint(text))
+
+
+def _is_repeated_text_variant(candidate: dict[str, str], reference: dict[str, str]) -> bool:
+    candidate_tokens = _rule_pdf_text_tokens(candidate.get("text", ""))
+    reference_tokens = _rule_pdf_text_tokens(reference.get("text", ""))
+    if len(reference_tokens) < 24 or len(candidate_tokens) < int(len(reference_tokens) * 1.55):
+        return False
+    candidate_counts = Counter(candidate_tokens)
+    reference_counts = Counter(reference_tokens)
+    covered = sum(min(count, candidate_counts.get(token, 0)) for token, count in reference_counts.items())
+    vocabulary_overlap = len(set(candidate_tokens) & set(reference_tokens)) / max(1, len(set(candidate_tokens)))
+    return covered >= int(len(reference_tokens) * 0.94) and vocabulary_overlap >= 0.9
 
 
 def extract_rule_page_texts(page: Any) -> list[dict[str, str]]:
@@ -59,6 +76,16 @@ def primary_rule_page_text_variant(variants: list[dict[str, str]]) -> dict[str, 
     clean_variants = [variant for variant in variants if rule_pdf_text_fingerprint(variant.get("text", ""))]
     if not clean_variants:
         return {"method": "", "text": ""}
+    non_repeated = [
+        candidate
+        for candidate in clean_variants
+        if not any(
+            candidate is not reference and _is_repeated_text_variant(candidate, reference)
+            for reference in clean_variants
+        )
+    ]
+    if non_repeated:
+        clean_variants = non_repeated
     lengths = [len(rule_pdf_text_fingerprint(variant.get("text", ""))) for variant in clean_variants]
     longest = max(lengths) if lengths else 0
     by_method = {str(variant.get("method") or ""): variant for variant in clean_variants}
