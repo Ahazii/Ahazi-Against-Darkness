@@ -7261,10 +7261,33 @@ async function renderRulePdfManager() {
       if (!Number.isFinite(cursor) || cursor < 0) throw new Error("Click directly in the block text at the split point first.");
       await splitBlockAtCursor(activeInlineSplit.block, activeInlineSplit.element.innerText, cursor);
     }));
-    const draftTableButton = button("▦ Table", "Parse the selected table-assigned source block into editable machine rows. Select exactly one reviewed block assigned as table.", async (btn) => runWithButtonProgress(btn, "Drafting table...", async () => {
-      const block = requireSelectedReviewedBlock("Draft Table");
-      if (block.assignment !== "table") throw new Error("Assign the selected block as table before drafting machine rows.");
-      await openTableDraftFromBlock(block, search.value);
+    const draftTableButton = button("▦ Table", "Create a reviewed table draft from the selected text. Select one block or adjacent table fragments; multiple selected fragments are merged, categorised as Table, and opened for row review.", async (btn) => runWithButtonProgress(btn, "Preparing Draft Table...", async () => {
+      const selected = blocks.filter((block) => selectedBlockIds.has(block.id));
+      if (!selected.length) throw new Error("Select the printed table text first. One block is enough; select adjacent fragments when the table spans several blocks.");
+      if (selected.some((block) => block.source_item_type === "page-boundary candidate")) {
+        throw new Error("Table extraction cannot use a page-boundary candidate. Select the actual text blocks instead.");
+      }
+      let tableBlock = selected[0];
+      if (selected.length > 1) {
+        const merged = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/merge-selected`, {
+          method: "POST",
+          body: JSON.stringify({ block_ids: selected.map((block) => block.id) }),
+        });
+        tableBlock = merged.block || tableBlock;
+      }
+      if (tableBlock.assignment !== "table") {
+        const saved = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(tableBlock.id)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ assignment: "table", review_status: "edited" }),
+        });
+        tableBlock = saved.block || { ...tableBlock, assignment: "table" };
+      }
+      selectedBlockIds.clear();
+      selectedBlockIds.add(tableBlock.id);
+      sourceWorkbenchState.selectedBlockIds = new Set(selectedBlockIds);
+      persistSourceWorkbenchState();
+      await openTableDraftFromBlock(tableBlock, search.value);
+      setStatus("Table draft opened. Review the source text and machine rows, then save the reviewed table.");
     }));
     function requirementEditor(requirement = null, sourceBlock = null) {
       const record = requirement || {};
@@ -7665,7 +7688,7 @@ async function renderRulePdfManager() {
       if (block.pdf_page) previewPdfPage(block.pdf_page);
       const draft = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/table-draft`, {
         method: "POST",
-        body: JSON.stringify({ title: block.page_label || "" }),
+        body: JSON.stringify({ title: block.title || block.page_label || "" }),
       });
       openSourceTool(`Table Draft - ${draft.table?.title || block.page_label || block.id}`, tableDraftEditor(draft.table || {}, block.text || "", needle));
     }
@@ -7674,7 +7697,7 @@ async function renderRulePdfManager() {
       panel.appendChild(modernInfoPanel("Reviewed table drafts", `${reviewedTables.length} table draft(s)`, [
         { label: "Storage", value: "DATA_DIR/Supplements/_sources/<source>/source_blocks.json" },
         { label: "Status", value: reviewedTables.length ? "Local reviewed tables available" : "No reviewed table drafts yet" },
-        { label: "Next step", value: "Assign a block as table, then use Draft Table." },
+        { label: "Next step", value: "Select the printed table text, then use Table." },
       ], "These are reviewed machine table drafts, not active game rules yet."));
       for (const table of reviewedTables) {
         const row = document.createElement("details");

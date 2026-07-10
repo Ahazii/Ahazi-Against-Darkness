@@ -166,6 +166,10 @@ Home screen rule browsing:
   replaces the exact extracted text. The workbench presents its source controls
   and PDF preview in a sticky, independently scrollable rail so the viewer
   controls remain available during long document review.
+  Table drafting follows the same selection-first workflow: the reviewer selects
+  the printed table text, and the workbench merges adjacent selected fragments
+  when necessary, records the resulting block as `table`, and opens its local
+  machine-row draft. This avoids a separate hidden assignment prerequisite.
   The Developer PDF / Supplement Workbench lists these local scans and opens a
   read-only searchable block browser before any assignment is written.
   Uploaded PDF source settings are stored in

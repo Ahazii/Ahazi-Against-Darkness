@@ -92,6 +92,9 @@ current with every rules or content change.
   A reviewer can give an identified block a short name without changing its
   exact PDF text; that name labels the item in its assigned category. The PDF
   preview and its navigation controls share a dedicated sticky review rail.
+  Selecting one or more adjacent printed table fragments and choosing **Table**
+  now merges them when required, assigns the resulting block as a table, and
+  opens the reviewed machine-row draft directly.
   Reviewed blocks can also create
   package-level supplement requirements that preserve exact source wording while
   separately recording editable party eligibility, dependencies, triggers, and
