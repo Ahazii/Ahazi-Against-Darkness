@@ -24,6 +24,8 @@ SOURCE_ARTWORK_CATEGORIES = {
     "terrain",
     "map",
     "tile",
+    "room_tile_sheet",
+    "room_tile",
     "front_cover",
     "back_cover",
     "filler_decorative",
@@ -2369,6 +2371,7 @@ def add_supplement_source_artwork_crop(
     title: str,
     parent_artwork_id: str = "",
     category: str = "character_class",
+    tile_key: str = "",
     notes: str = "",
 ) -> dict[str, Any]:
     payload = load_supplement_source_scan(data_dir, source_id)
@@ -2405,10 +2408,11 @@ def add_supplement_source_artwork_crop(
         "asset_url": f"/api/supplements/source-scans/{source_id}/artwork/{clean_name}",
         "title": str(title or clean_stem).strip(),
         "category": clean_category,
-        "candidate_type": "masked_crop",
+        "candidate_type": "masked_tile" if clean_category == "room_tile" else "masked_crop",
         "review_status": "checked",
         "notes": str(notes or f"Masked artwork crop from {parent_artwork_id or 'source artwork'}.").strip(),
         "parent_artwork_id": str(parent_artwork_id or ""),
+        "tile_key": str(tile_key or "").strip(),
         "size_bytes": len(data),
     }
     reviewed = [item for item in payload.get("reviewed_artwork", []) if isinstance(item, dict)]

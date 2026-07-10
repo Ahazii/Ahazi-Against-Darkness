@@ -3161,6 +3161,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Mask Portrait" in MODERN_PAGES_JS
     assert "Save Portrait Crop" in MODERN_PAGES_JS
     assert "uploadSourceArtworkCrop" in MODERN_PAGES_JS
+    assert "Mask Room Tile" in MODERN_PAGES_JS
+    assert "Printed tile id / die roll" in MODERN_PAGES_JS
+    assert "Supplement contents - maps, images, and tile sheets" in MODERN_PAGES_JS
+    assert "Extracted tiles and artwork" in MODERN_PAGES_JS
     assert "const profileButton" in MODERN_PAGES_JS
     assert "/profile-draft" in MODERN_PAGES_JS
     assert "Suggest Rows" in MODERN_PAGES_JS

@@ -213,6 +213,11 @@ Home screen rule browsing:
   PNG records under `DATA_DIR/Supplements/_sources/<source>/artwork/crops/`.
   A crop retains its parent artwork id and can be linked directly to a reviewed
   Character Class profile without becoming a tile or active game asset.
+  The same cropper can save a `room_tile` child with its printed tile/die id;
+  these children remain nested under a `room_tile_sheet` source candidate until
+  later map-geometry and runtime-tile review. The workbench groups separately
+  imported PDFs and image sheets under one supplement contents root without
+  merging their independent source pages or offsets.
   PDF viewer navigation changes the physical preview page without rebuilding the
   source-content tree; this preserves the sticky viewer toolbar's active scroll
   position during repeated Previous/Next review. Render failures are reported

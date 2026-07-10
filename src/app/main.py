@@ -1183,6 +1183,7 @@ async def save_supplement_source_artwork_crop(source_id: str, request: Request) 
             title=str(request.query_params.get("title") or "Portrait crop"),
             parent_artwork_id=str(request.query_params.get("parent_artwork_id") or ""),
             category=str(request.query_params.get("category") or "character_class"),
+            tile_key=str(request.query_params.get("tile_key") or ""),
             notes=str(request.query_params.get("notes") or ""),
         )
     except KeyError as exc:

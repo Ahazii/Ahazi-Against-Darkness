@@ -6813,6 +6813,7 @@ async function renderRulePdfManager() {
       title: params.title || filename.replace(/\.[^.]+$/, ""),
       parent_artwork_id: params.parent_artwork_id || "",
       category: params.category || "character_class",
+      tile_key: params.tile_key || "",
       notes: params.notes || "",
     });
     const response = await fetch(`/api/supplements/source-scans/${encodeURIComponent(sourceId)}/artwork-crop?${query.toString()}`, {
@@ -7633,17 +7634,20 @@ async function renderRulePdfManager() {
       panel.append(statusLine, toolbar, list);
       return panel;
     }
-    function artworkMaskCropper(item) {
+    function artworkMaskCropper(item, purpose = "portrait") {
+      const tileMode = purpose === "room_tile";
       const panel = el("div", "modern-source-block-editor");
       const image = el("img", "modern-source-artwork-image");
       image.alt = item.title || item.id || "Artwork crop source";
       image.src = item.asset_url || "";
-      const cropName = input("text", `modern-source-artwork-crop-name-${item.id}`, "Name for the extracted portrait artwork.", "");
-      cropName.placeholder = "e.g. Beastmaster portrait";
+      const cropName = input("text", `modern-source-artwork-crop-name-${item.id}-${purpose}`, tileMode ? "Readable title for this extracted room tile." : "Name for the extracted portrait artwork.", "");
+      cropName.placeholder = tileMode ? "e.g. Crypt entrance tile" : "e.g. Beastmaster portrait";
+      const tileKey = input("text", `modern-source-artwork-crop-tile-key-${item.id}`, "Printed die-roll or tile id for this room tile. Keep the exact printed label, such as 01, 16, or 64.", "");
+      tileKey.placeholder = "e.g. 16";
       const classCandidates = reviewedCharacterClasses
         .slice()
         .sort((left, right) => Number(left.pdf_page !== item.pdf_page) - Number(right.pdf_page !== item.pdf_page) || String(left.name || left.id).localeCompare(String(right.name || right.id)));
-      const classSelect = select(`modern-source-artwork-crop-class-${item.id}`, "Optionally link the saved crop directly to this existing Character Class profile. Same-page classes are listed first.", [
+      const classSelect = select(`modern-source-artwork-crop-class-${item.id}-${purpose}`, "Optionally link the saved crop directly to this existing Character Class profile. Same-page classes are listed first.", [
         ["", "Save artwork only"],
         ...classCandidates.map((profile) => [profile.id, `${profile.name || profile.id} · ${profile.page_label || `PDF p.${profile.pdf_page || "?"}`}`]),
       ]);
@@ -7653,7 +7657,7 @@ async function renderRulePdfManager() {
       const canvas = document.createElement("canvas");
       canvas.className = "modern-mask-canvas";
       viewport.appendChild(canvas);
-      const status = el("p", "muted", "Load the rendered page, then draw one or more shapes around the class portrait.");
+      const status = el("p", "muted", tileMode ? "Load the rendered tile sheet, then draw one or more shapes around a room tile." : "Load the rendered page, then draw one or more shapes around the class portrait.");
       const shapes = [];
       let drawing = false;
       let panning = false;
@@ -7759,30 +7763,34 @@ async function renderRulePdfManager() {
         button("Reset View", "Fit the rendered page back into the crop viewport.", () => { initialized = false; drawCanvas(); }),
         button("Undo Shape", "Remove the most recently drawn mask shape.", () => { shapes.pop(); drawCanvas(); }),
         button("Clear Mask", "Remove every drawn mask shape.", () => { shapes.length = 0; drawCanvas(); }),
-        button("Save Portrait Crop", "Save a transparent PNG crop to the local artwork library and optionally link it to the selected Character Class.", async (btn) => runWithButtonProgress(btn, "Saving portrait crop...", async () => {
+        button(tileMode ? "Save Room Tile" : "Save Portrait Crop", tileMode ? "Save a transparent room-tile PNG under this tile sheet. The printed tile id remains available for later map geometry and exit review." : "Save a transparent PNG crop to the local artwork library and optionally link it to the selected Character Class.", async (btn) => runWithButtonProgress(btn, tileMode ? "Saving room tile..." : "Saving portrait crop...", async () => {
           const name = cropName.value.trim();
-          if (!name) throw new Error("Enter a portrait artwork name first.");
+          if (!name) throw new Error(tileMode ? "Enter a room tile title first." : "Enter a portrait artwork name first.");
+          if (tileMode && !tileKey.value.trim()) throw new Error("Enter the printed room tile id or die roll first.");
           const blob = await maskToCanvasBlob(image, shapes);
-          const result = await uploadSourceArtworkCrop(payload.source_id, blob, `${name.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "") || "portrait"}.png`, {
+          const result = await uploadSourceArtworkCrop(payload.source_id, blob, `${name.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "") || (tileMode ? "room-tile" : "portrait")}.png`, {
             title: name,
             parent_artwork_id: item.id || "",
-            category: "character_class",
-            notes: `Masked character-class portrait from ${item.title || item.id || "rendered page"} using ${shapes.length} additive shape(s).`,
+            category: tileMode ? "room_tile" : "character_class",
+            tile_key: tileMode ? tileKey.value.trim() : "",
+            notes: tileMode
+              ? `Masked room tile ${tileKey.value.trim()} from ${item.title || item.id || "rendered tile sheet"} using ${shapes.length} additive shape(s).`
+              : `Masked character-class portrait from ${item.title || item.id || "rendered page"} using ${shapes.length} additive shape(s).`,
           });
-          const classProfile = reviewedCharacterClasses.find((profile) => profile.id === classSelect.value);
+          const classProfile = tileMode ? null : reviewedCharacterClasses.find((profile) => profile.id === classSelect.value);
           if (classProfile) {
             await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/profiles/character_class/${encodeURIComponent(classProfile.id)}`, {
               method: "PUT",
               body: JSON.stringify({ ...classProfile, portrait_artwork_id: result.artwork.id }),
             });
           }
-          await reloadCurrentScan(classProfile ? `Saved ${name} and linked it to ${classProfile.name || classProfile.id}.` : `Saved portrait crop ${name}.`);
+          await reloadCurrentScan(classProfile ? `Saved ${name} and linked it to ${classProfile.name || classProfile.id}.` : tileMode ? `Saved room tile ${tileKey.value.trim()}.` : `Saved portrait crop ${name}.`);
         }))
       );
       panel.append(
-        modernStatusRow("Mask Portrait Crop", "Draw rectangles, squares, circles, and ovals", "Draw one or more additive shapes over the class artwork. The crop is saved as a transparent local artwork asset, not as a room tile."),
-        field("Portrait name", cropName),
-        field("Assign to Character Class", classSelect),
+        modernStatusRow(tileMode ? "Mask Room Tile" : "Mask Portrait Crop", "Draw rectangles, squares, circles, and ovals", tileMode ? "Draw one or more additive shapes over a room tile. The crop remains a child of this rendered tile sheet for later exits, terrain, and map geometry review." : "Draw one or more additive shapes over the class artwork. The crop is saved as a transparent local artwork asset, not as a room tile."),
+        field(tileMode ? "Room tile title" : "Portrait name", cropName),
+        ...(tileMode ? [field("Printed tile id / die roll", tileKey)] : [field("Assign to Character Class", classSelect)]),
         field("Mask shape", shapeMode),
         field("Canvas mode", viewMode),
         viewport,
@@ -7818,6 +7826,11 @@ async function renderRulePdfManager() {
         artActions.append(button("Mask Portrait", "Open the manual mask cropper for this rendered page or artwork candidate. Save the crop into the local artwork library and optionally link it directly to a Character Class.", () => {
           const cropper = artworkMaskCropper(item);
           openSourceTool(`Mask Portrait - ${item.title || item.id || "Artwork"}`, cropper.panel);
+          window.requestAnimationFrame(cropper.drawCanvas);
+        }));
+        artActions.append(button("Mask Room Tile", "Define this rendered artwork as a Room Tile Sheet in Artwork category, then use this shared manual mask tool to extract a room tile with its printed die-roll id. The tile remains a child of this source sheet.", () => {
+          const cropper = artworkMaskCropper(item, "room_tile");
+          openSourceTool(`Mask Room Tile - ${item.title || item.id || "Artwork"}`, cropper.panel);
           window.requestAnimationFrame(cropper.drawCanvas);
         }));
       }
@@ -8412,7 +8425,9 @@ async function renderRulePdfManager() {
         panel.appendChild(el("p", "muted", "No artwork candidates match the current page/search filter."));
         return panel;
       }
-      for (const item of items.slice(0, 80)) {
+      const itemIds = new Set(items.map((item) => item.id));
+      const rootItems = items.filter((item) => !item.parent_artwork_id || !itemIds.has(item.parent_artwork_id));
+      for (const item of rootItems.slice(0, 80)) {
         const row = document.createElement("details");
         row.className = "modern-source-tree-item";
         row.addEventListener("toggle", () => {
@@ -8436,9 +8451,29 @@ async function renderRulePdfManager() {
           highlightedEl("p", "muted", `${String(item.candidate_type || "embedded_image").replace(/_/g, " ")} · ${item.notes || "No notes"}`, needle),
           artActions
         );
+        const children = items.filter((child) => child.parent_artwork_id === item.id);
+        if (children.length) {
+          const childList = el("div", "modern-source-tree-children");
+          for (const child of children) {
+            const childRow = document.createElement("details");
+            childRow.className = "modern-source-tree-item";
+            const childSummary = document.createElement("summary");
+            childSummary.append(
+              el("strong", "", child.title || child.tile_key || child.id || "Extracted asset"),
+              el("span", "muted", ` · ${child.tile_key ? `tile ${child.tile_key}` : child.category || "artwork"}`)
+            );
+            childRow.append(
+              childSummary,
+              child.asset_url ? Object.assign(el("img", "modern-source-artwork-image compact"), { src: child.asset_url, alt: child.title || child.id || "Extracted asset" }) : el("p", "muted", "No preview available."),
+              highlightedEl("p", "muted", `${String(child.candidate_type || "masked_crop").replace(/_/g, " ")} · ${child.notes || "No notes"}`, needle)
+            );
+            childList.appendChild(childRow);
+          }
+          row.appendChild(treeBranch("Extracted tiles and artwork", `${children.length}`, childList, { open: false, hint: "Derived assets remain nested under their original rendered page or artwork source." }));
+        }
         panel.appendChild(row);
       }
-      if (items.length > 80) panel.appendChild(el("p", "muted", `Showing first 80 matching artwork candidates. ${items.length - 80} more match the current page/search filter.`));
+      if (rootItems.length > 80) panel.appendChild(el("p", "muted", `Showing first 80 matching artwork sources. ${rootItems.length - 80} more match the current page/search filter.`));
       return panel;
     }
     function draw() {
@@ -8614,6 +8649,7 @@ async function renderRulePdfManager() {
               { label: "Page", value: item.page_label || `p.${item.source_page || "?"}` },
               { label: "Category", value: item.category || "unknown" },
               { label: "Type", value: String(item.candidate_type || "embedded_image").replace(/_/g, " ") },
+              { label: "Tile id", value: item.tile_key || "Not a room tile" },
               { label: "Notes", value: item.notes || "None" },
             ], "Use Edit Artwork to change title, category, notes, and review status."),
             artActions
@@ -8776,6 +8812,7 @@ async function renderRulePdfManager() {
       sourceWorkbenchState.packageId = pkg.supplement_id || "";
       persistSourceWorkbenchState();
       const sourceMount = el("div", "modern-source-scan-detail");
+      const supplementContents = el("div", "modern-source-supplement-contents");
       const sources = pkg.sources || [];
       sourcePickerBar.appendChild(compactInfoStrip("Package", [
         { label: "PDFs", value: `${pkg.source_count || sources.length || 0}` },
@@ -8802,7 +8839,10 @@ async function renderRulePdfManager() {
         });
         sourcePickerBar.appendChild(field("Source document", sourceSelect));
       }
-      moduleWorkbenchMount.appendChild(sourceMount);
+      const documentSection = workbenchSection("Supplement contents - PDFs", `${sources.length} document(s)`, sourceMount);
+      documentSection.open = true;
+      supplementContents.appendChild(documentSection);
+      moduleWorkbenchMount.appendChild(supplementContents);
       if (sources.length) {
         const activeSource = sources.find((scan) => scan.source_id === sourceWorkbenchState.sourceId) || sources[0];
         sourceWorkbenchState.sourceId = activeSource.source_id;
@@ -8815,9 +8855,9 @@ async function renderRulePdfManager() {
       if ((pkg.assets || []).length) {
         const assetList = el("div", "modern-list");
         appendAssetRows(pkg, assetList);
-        const assetSection = workbenchSection("Package assets", `${pkg.asset_count || 0} map/image/tile asset(s)`, assetList);
+        const assetSection = workbenchSection("Supplement contents - maps, images, and tile sheets", `${pkg.asset_count || 0} source asset(s)`, assetList);
         assetSection.open = Boolean(sourceWorkbenchState.assetId);
-        moduleWorkbenchMount.appendChild(assetSection);
+        supplementContents.appendChild(assetSection);
       }
     }
     moduleSelect.addEventListener("change", async () => {
@@ -8958,7 +8998,7 @@ async function renderRulePdfManager() {
         }))
       );
       parent.append(
-        modernInfoPanel("Package Assets", `${topLevelAssets.length} source asset(s), ${assets.length - topLevelAssets.length} extracted child asset(s)`, [
+        modernInfoPanel("Supplement Assets", `${topLevelAssets.length} source asset(s), ${assets.length - topLevelAssets.length} extracted child asset(s)`, [
           { label: "Source assets", value: `${topLevelAssets.length}`, hint: "Original package-level maps, handouts, tile sheets, and imported images." },
           { label: "Extracted children", value: `${assets.length - topLevelAssets.length}`, hint: "Tiles or artwork extracted from a parent source asset." },
           { label: "Layout", value: "Source assets first; extracted children nested under their parent.", hint: "This keeps tools and generated assets from overwhelming the package list." },

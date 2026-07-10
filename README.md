@@ -115,6 +115,9 @@ current with every rules or content change.
   portrait asset; same-page artwork is offered first in the review selector.
   Rendered PDF artwork can be manually masked into a transparent portrait crop
   with additive rectangles/ellipses, then linked directly to an existing class.
+  Rendered tile sheets use the same tool to create nested `Room Tile` crops with
+  their printed die-roll identifiers; standalone maps/images and PDF volumes
+  appear together under the selected supplement's contents.
   Assign a reviewed block to one of those
   categories and use **Profile** to record the appropriate riding, combat,
   ownership/training, eligibility, ability, progression, and equipment fields.

@@ -1732,11 +1732,23 @@ def test_masked_source_artwork_crop_is_saved_as_a_local_candidate(tmp_path: Path
         title="Beastmaster portrait alternate",
         parent_artwork_id="portrait-book-page-4",
     )
+    tile = supplement_sources.add_supplement_source_artwork_crop(
+        tmp_path,
+        source_id,
+        "crypt-tile.png",
+        b"local-tile-png-bytes",
+        title="Crypt entrance tile",
+        parent_artwork_id="portrait-book-page-4",
+        category="room_tile",
+        tile_key="16",
+    )
 
     assert saved["artwork"]["candidate_type"] == "masked_crop"
     assert saved["artwork"]["category"] == "character_class"
     assert saved["artwork"]["parent_artwork_id"] == "portrait-book-page-4"
     assert duplicate["artwork"]["filename"] == "beastmaster-portrait-2.png"
+    assert tile["artwork"]["candidate_type"] == "masked_tile"
+    assert tile["artwork"]["tile_key"] == "16"
     assert supplement_sources.supplement_source_artwork_path(tmp_path, source_id, saved["artwork"]["filename"]).read_bytes() == b"local-png-bytes"
 
 
