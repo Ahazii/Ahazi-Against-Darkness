@@ -154,6 +154,13 @@ Home screen rule browsing:
   blocks with source page and extraction method so a human reviewer can later
   classify them as rules, adventure narrative, foes, equipment, locations,
   states, terrain, tables, maps, room tiles, ignored text, or manual-entry work.
+  The local exact-text index remains the verbatim page-search source. Review
+  blocks are separately built from column-aware positioned text, which ignores
+  zero-coordinate full-page visitor artefacts and footer/page-number furniture
+  so one scan does not create both complete prose and a second set of line
+  fragments. Existing local scans retain their review history; a guarded cleanup
+  can hide only short blocks proven to be contained in a longer block on the
+  same PDF page.
   The Developer PDF / Supplement Workbench lists these local scans and opens a
   read-only searchable block browser before any assignment is written.
   Uploaded PDF source settings are stored in

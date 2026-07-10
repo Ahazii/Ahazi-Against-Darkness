@@ -967,7 +967,11 @@ def scan_supplement_source_pdf(
         page_no = int(page.get("page") or 0)
         source_page = display_page_number(page_no, page_offset)
         methods = list(page.get("methods") or [])
-        for index, text in enumerate(_page_text_blocks(str(page.get("text") or "")), start=1):
+        review_blocks = page.get("review_blocks") if isinstance(page.get("review_blocks"), list) else []
+        text_blocks = [str(text).strip() for text in review_blocks if str(text).strip()] or _page_text_blocks(str(page.get("text") or ""))
+        if review_blocks:
+            methods = [*methods, "positioned_sections"]
+        for index, text in enumerate(text_blocks, start=1):
             previous = existing_by_text.get((page_no, text), {})
             assignment = str(previous.get("assignment") or "unassigned")
             if assignment not in SOURCE_BLOCK_ASSIGNMENTS:
@@ -1413,6 +1417,56 @@ def delete_supplement_source_blocks(data_dir: Path, source_id: str, block_ids: l
         "removed_count": len(removed),
         "removed_block_ids": [str(block.get("id") or "") for block in removed],
         "message": f"Removed {len(removed)} reviewed source block(s).",
+    }
+
+
+def hide_supplement_source_duplicate_fragments(data_dir: Path, source_id: str) -> dict[str, Any]:
+    """Hide old line-fragment duplicates while retaining the reviewed source audit trail."""
+    payload = load_supplement_source_scan(data_dir, source_id)
+    blocks = [block for block in payload.get("reviewed_blocks", []) if isinstance(block, dict)]
+    by_page: dict[int, list[dict[str, Any]]] = {}
+    for block in blocks:
+        try:
+            pdf_page = int(block.get("pdf_page") or 0)
+        except (TypeError, ValueError):
+            continue
+        if pdf_page > 0:
+            by_page.setdefault(pdf_page, []).append(block)
+
+    hidden: list[dict[str, Any]] = []
+    affected_pages: set[int] = set()
+    for pdf_page, page_blocks in by_page.items():
+        containers = [
+            _normalise_source_review_text(block.get("text"))
+            for block in page_blocks
+            if str(block.get("assignment") or "unassigned") != "ignore"
+            and len(_normalise_source_review_text(block.get("text"))) >= 180
+        ]
+        if not containers:
+            continue
+        for block in page_blocks:
+            if str(block.get("assignment") or "unassigned") == "ignore":
+                continue
+            normalised = _normalise_source_review_text(block.get("text"))
+            if not (3 <= len(normalised) < 180):
+                continue
+            if not any(normalised != container and normalised in container for container in containers):
+                continue
+            existing_note = str(block.get("notes") or "").strip()
+            block["assignment"] = "ignore"
+            block["review_status"] = "edited"
+            block["notes"] = f"{existing_note}\nAuto-hidden duplicate fragment contained in a longer same-page reviewed block.".strip()
+            hidden.append(block)
+            affected_pages.add(pdf_page)
+    if not hidden:
+        raise ValueError("No short duplicate fragments were found inside longer same-page reviewed blocks.")
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {
+        "source_id": source_id,
+        "hidden_count": len(hidden),
+        "pages": len(affected_pages),
+        "hidden_block_ids": [str(block.get("id") or "") for block in hidden],
+        "message": f"Hidden {len(hidden)} duplicate fragment(s) across {len(affected_pages)} PDF page(s).",
     }
 
 

@@ -877,6 +877,28 @@ def test_rule_pdf_page_extraction_uses_layout_and_positioned_text() -> None:
     assert "One Bite At A Time" in pdf_text_index.clean_rule_pdf_text(body)
 
 
+def test_positioned_review_blocks_skip_duplicate_page_visitor_and_keep_columns_separate() -> None:
+    from app.engine import pdf_text_index
+
+    class PositionedPage:
+        def extract_text(self, *args, **kwargs):
+            visitor = kwargs.get("visitor_text")
+            if not visitor:
+                return "Left heading\nLeft body\nRight heading\nRight body"
+            visitor("Left heading", None, (1, 0, 0, 1, 36, 500), None, 12)
+            visitor("Left body", None, (1, 0, 0, 1, 36, 482), None, 11)
+            visitor("Right heading", None, (1, 0, 0, 1, 223, 500), None, 12)
+            visitor("Right body", None, (1, 0, 0, 1, 223, 482), None, 11)
+            visitor("Left heading Left body Right heading Right body " * 6, None, (1, 0, 0, 1, 0, 0), None, 12)
+            visitor("1", None, (1, 0, 0, 1, 210, 18), None, 14)
+            return "ignored"
+
+    blocks = pdf_text_index.extract_rule_page_review_blocks(PositionedPage())
+
+    assert blocks == ["Left heading\nLeft body", "Right heading\nRight body"]
+    assert all("Left heading Left body Right heading" not in block for block in blocks)
+
+
 def test_rule_text_extraction_rejects_positioned_variant_that_repeats_clean_text() -> None:
     from app.engine import pdf_text_index
 
@@ -906,6 +928,7 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
                 "page": 3,
                 "text": "House of Ill Repute\n\nQuest (Steal): A shady geezer offers a reward.",
                 "methods": ["plain", "layout"],
+                "review_blocks": ["House of Ill Repute", "Quest (Steal): A shady geezer offers a reward."],
             },
             {
                 "page": 4,
@@ -936,7 +959,7 @@ def test_supplement_source_scan_writes_unassigned_review_blocks(tmp_path: Path, 
     assert payload["blocks"][0]["pdf_page"] == 3
     assert payload["blocks"][0]["source_page"] == 2
     assert payload["blocks"][0]["page_label"] == "p.2 (PDF p.3)"
-    assert payload["blocks"][0]["extraction_methods"] == ["plain", "layout"]
+    assert payload["blocks"][0]["extraction_methods"] == ["plain", "layout", "positioned_sections"]
     assert payload["continuation_candidates"][0]["page_label"] == "p.2 (PDF p.3) to p.3 (PDF p.4)"
     assert payload["continuation_candidates"][0]["assignment"] == "page_boundary_candidate"
     assert "continued indenture contract" in payload["continuation_candidates"][0]["text"]

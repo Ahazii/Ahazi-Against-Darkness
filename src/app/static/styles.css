@@ -1451,6 +1451,25 @@ button.is-working::after {
   padding: 4px 7px;
 }
 
+.modern-source-assignment-control {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.modern-source-assignment-control select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.modern-source-assignment-control button {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 4px 7px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .modern-source-metadata-controls {
   display: grid;
   grid-template-columns: 5.5rem minmax(6rem, auto);
@@ -1496,6 +1515,11 @@ button.is-working::after {
 }
 
 .modern-source-action-group:nth-child(3) {
+  flex-basis: 7.5rem;
+  min-width: 7.5rem;
+}
+
+.modern-source-action-group:nth-child(4) {
   flex-basis: 7.5rem;
   min-width: 7.5rem;
 }
@@ -1800,8 +1824,17 @@ button.is-working::after {
 }
 
 .modern-source-tree-item > summary {
-  grid-template-columns: auto minmax(4rem, auto) minmax(0, 1fr);
+  grid-template-columns: auto minmax(4rem, auto) auto minmax(0, 1fr);
   font-size: 13px;
+}
+
+.modern-source-block-snippet {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .modern-source-tree-item input[type="checkbox"] {

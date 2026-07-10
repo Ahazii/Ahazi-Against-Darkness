@@ -38,6 +38,135 @@ def _is_repeated_text_variant(candidate: dict[str, str], reference: dict[str, st
     return covered >= int(len(reference_tokens) * 0.94) and vocabulary_overlap >= 0.9
 
 
+def _join_positioned_text(parts: list[str]) -> str:
+    joined = ""
+    for raw in parts:
+        part = re.sub(r"\s+", " ", str(raw or "")).strip()
+        if not part:
+            continue
+        if joined and not joined.endswith((" ", "-", "'", "\u2019")) and not part.startswith((".", ",", ";", ":", "!", "?", ")", "\u201d")):
+            joined += " "
+        joined += part
+    return joined.strip()
+
+
+def _positioned_review_lines(page: Any) -> list[dict[str, Any]]:
+    fragments: list[dict[str, Any]] = []
+
+    def visit_text(text: str, _cm: Any, tm: Any, _font: Any, font_size: Any) -> None:
+        raw = str(text or "")
+        clean = re.sub(r"\s+", " ", raw).strip()
+        if not clean:
+            return
+        try:
+            x = float(tm[4])
+            y = float(tm[5])
+            size = float(font_size or 0)
+        except (IndexError, TypeError, ValueError):
+            return
+        # Some PDFs append a complete duplicate page as a zero-coordinate visitor item.
+        if abs(x) < 1 and abs(y) < 1 and (len(clean) > 120 or "\n" in raw):
+            return
+        # Page numbers and footer furniture are not source blocks.  In some PDFs
+        # the printed number inherits a heading font, so position is more reliable
+        # than font size here.
+        if y < 30:
+            return
+        fragments.append({"text": clean, "x": x, "y": y, "size": size})
+
+    try:
+        page.extract_text(visitor_text=visit_text)
+    except Exception:  # noqa: BLE001
+        return []
+    if not fragments:
+        return []
+
+    rounded_x_counts = Counter(round(item["x"] / 5) * 5 for item in fragments)
+    column_starts: list[float] = []
+    for candidate, _count in rounded_x_counts.most_common():
+        if all(abs(candidate - existing) > 80 for existing in column_starts):
+            column_starts.append(float(candidate))
+    column_starts.sort()
+    if not column_starts:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for fragment in sorted(fragments, key=lambda item: (-item["y"], item["x"])):
+        row = next((candidate for candidate in rows if abs(candidate["y"] - fragment["y"]) <= 1.5), None)
+        if row is None:
+            row = {"y": fragment["y"], "parts": [], "x": fragment["x"], "size": fragment["size"]}
+            rows.append(row)
+        row["parts"].append(fragment)
+        row["x"] = min(float(row["x"]), fragment["x"])
+        row["size"] = max(float(row["size"]), fragment["size"])
+
+    lines: list[dict[str, Any]] = []
+    for row in rows:
+        fragments_in_row = sorted(row["parts"], key=lambda item: item["x"])
+        anchors = [
+            (index, min(range(len(column_starts)), key=lambda candidate: abs(item["x"] - column_starts[candidate])))
+            for index, item in enumerate(fragments_in_row)
+            if min(abs(item["x"] - start) for start in column_starts) <= 25
+        ]
+        if not anchors:
+            anchors = [(0, min(range(len(column_starts)), key=lambda candidate: abs(fragments_in_row[0]["x"] - column_starts[candidate])))]
+        for anchor_index, (start_index, column_index) in enumerate(anchors):
+            end_index = anchors[anchor_index + 1][0] if anchor_index + 1 < len(anchors) else len(fragments_in_row)
+            parts = [str(item["text"]) for item in fragments_in_row[start_index:end_index]]
+            text = _join_positioned_text(parts)
+            if text:
+                lines.append(
+                    {
+                        "text": text,
+                        "x": column_starts[column_index],
+                        "y": float(row["y"]),
+                        "size": max(float(item["size"]) for item in fragments_in_row[start_index:end_index]),
+                        "column": column_index,
+                    }
+                )
+    return lines
+
+
+def extract_rule_page_review_blocks(page: Any) -> list[str]:
+    """Build review-sized source blocks from positioned PDF text without altering exact page text."""
+    lines = _positioned_review_lines(page)
+    if not lines:
+        return []
+
+    column_count = max(int(line.get("column") or 0) for line in lines) + 1
+    columns: list[list[dict[str, Any]]] = [[] for _ in range(column_count)]
+    for line in lines:
+        columns[int(line.get("column") or 0)].append(line)
+
+    ordered_lines = [
+        line
+        for column in columns
+        for line in sorted(column, key=lambda item: -item["y"])
+    ]
+    body_sizes = sorted(line["size"] for line in ordered_lines if line["size"] > 0)
+    # Use the lower median so a two-column page with equal heading/body counts
+    # still recognises the heading font as a section boundary.
+    median_size = body_sizes[(len(body_sizes) - 1) // 2] if body_sizes else 0
+
+    def is_heading(line: dict[str, Any]) -> bool:
+        text = str(line["text"])
+        if len(text) > 90 or len(text.split()) > 12:
+            return False
+        return line["size"] >= median_size + 0.75
+
+    blocks: list[list[str]] = []
+    current: list[str] = []
+    for line in ordered_lines:
+        if is_heading(line) and current:
+            blocks.append(current)
+            current = []
+        current.append(str(line["text"]))
+    if current:
+        blocks.append(current)
+
+    return ["\n".join(block_lines).strip() for block_lines in blocks if "\n".join(block_lines).strip()]
+
+
 def extract_rule_page_texts(page: Any) -> list[dict[str, str]]:
     variants: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -111,12 +240,14 @@ def extract_rule_pdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
                 continue
             primary = primary_rule_page_text_variant(variants)
             text = clean_rule_pdf_text(primary.get("text", ""))
+            review_blocks = extract_rule_page_review_blocks(page)
             pages.append(
                 {
                     "page": index,
                     "text": text,
                     "methods": [item["method"] for item in variants],
                     "primary_method": primary.get("method", ""),
+                    "review_blocks": review_blocks,
                 }
             )
         return pages

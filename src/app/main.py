@@ -78,6 +78,7 @@ from .engine.supplement_sources import (
     draft_supplement_source_table,
     extract_supplement_source_artwork,
     find_supplement_source_duplicate_blocks,
+    hide_supplement_source_duplicate_fragments,
     list_supplement_source_packages,
     list_supplement_source_scans,
     load_supplement_source_scan,
@@ -1020,6 +1021,16 @@ async def delete_source_blocks(source_id: str, payload: dict[str, Any]) -> dict[
         return delete_supplement_source_blocks(settings.data_dir, source_id, [str(block_id) for block_id in block_ids], reason)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="One or more selected source blocks were not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/hide-duplicate-fragments")
+async def hide_source_duplicate_fragments(source_id: str) -> dict[str, Any]:
+    try:
+        return hide_supplement_source_duplicate_fragments(settings.data_dir, source_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source scan not found.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

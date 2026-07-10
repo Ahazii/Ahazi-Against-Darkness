@@ -7390,6 +7390,13 @@ async function renderRulePdfManager() {
       const duplicatePayload = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/duplicates`);
       openSourceTool("Probable duplicate review", duplicateReviewTool(duplicatePayload));
     }));
+    const hideDuplicateFragmentsButton = button("▧ Hide", "Hide short duplicate fragments that are fully contained in a longer reviewed block on the same physical PDF page. This preserves every block in the local audit trail, keeps the longer text, and excludes the fragments from normal review and future module extraction.", async (btn) => runWithButtonProgress(btn, "Hiding duplicate fragments...", async () => {
+      if (!window.confirm("Hide automatically detected duplicate fragments? They will remain in the Ignore category and can be restored later.")) return;
+      const result = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/hide-duplicate-fragments`, {
+        method: "POST",
+      });
+      await reloadCurrentScan(result.message || "Duplicate fragments hidden.");
+    }));
     const resetSourceButton = button("↺ Reset", "Completely reset this selected source scan. This removes reviewed blocks, reviewed tables, extracted artwork, package assets for this source/package, and rendered page cache from DATA_DIR so the next import starts fresh.", async (btn) => runWithButtonProgress(btn, "Resetting source...", async () => {
       const typed = window.prompt(`Type RESET to completely remove the local reviewed source workspace for ${payload.source_id}. This keeps the uploaded PDF but deletes reviewed blocks, tables, artwork candidates, package assets, and cached pages.`);
       if (typed !== "RESET") {
@@ -7738,6 +7745,10 @@ async function renderRulePdfManager() {
         if (item.open && block.pdf_page) previewPdfPage(block.pdf_page);
       });
       const summary = document.createElement("summary");
+      const firstLine = String(block.text || "").split(/\r?\n/).find((line) => line.trim()) || "";
+      const compactPreview = firstLine.replace(/\s+/g, " ").trim();
+      const previewText = compactPreview.length > 100 ? `${compactPreview.slice(0, 97).trimEnd()}...` : compactPreview;
+      summary.title = String(block.text || "No extracted text.");
       const selectBox = input("checkbox", `modern-source-block-select-${block.id}`, "Select this block for the left-side workbench controls.");
       selectBox.checked = selectedBlockIds.has(block.id);
       selectBox.addEventListener("click", (event) => event.stopPropagation());
@@ -7750,7 +7761,8 @@ async function renderRulePdfManager() {
       summary.append(
         selectBox,
         el("strong", "", block.page_label || `p.${block.source_page || "?"}`),
-        el("span", "muted", ` · ${block.source_item_type === "page-boundary candidate" ? "boundary" : `block ${block.block_index || "?"}`}`)
+        el("span", "muted", ` · ${block.source_item_type === "page-boundary candidate" ? "boundary" : `block ${block.block_index || "?"}`}`),
+        el("span", "modern-source-block-snippet", previewText || "No text")
       );
       item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
       item.appendChild(summary);
@@ -8016,18 +8028,20 @@ async function renderRulePdfManager() {
     const selectionActions = el("div", "modern-source-action-groups");
     selectionActions.append(
       actionGroup("Select", [selectVisibleButton, clearSelectionButton]),
-      actionGroup("Assign", [applyAssignmentButton, ignorePhraseButton]),
+      actionGroup("Assign", [ignorePhraseButton]),
       actionGroup("Blocks", [mergeSelectedButton, mergePageButton, editSelectedButton, splitSelectedButton]),
-      actionGroup("Clean", [duplicateReviewButton, resetSourceButton]),
+      actionGroup("Clean", [duplicateReviewButton, hideDuplicateFragmentsButton, resetSourceButton]),
       actionGroup("Extract", [draftTableButton, requirementButton]),
       actionGroup("Order", [moveUpButton, moveDownButton])
     );
     const controlFields = el("div", "modern-source-controls-grid");
+    const assignmentControl = el("div", "modern-source-assignment-control");
+    assignmentControl.append(bulkAssignment, applyAssignmentButton);
     controlFields.append(
       field("Search", search),
       field("Scope", reviewScope),
       field("Filter", assignment),
-      field("Assign to", bulkAssignment)
+      field("Assign to", assignmentControl)
     );
     const sourceMetadataControls = el("div", "modern-source-metadata-controls");
     sourceMetadataControls.append(field("Printed page offset", sourceOffset), applySourceMetadataButton);

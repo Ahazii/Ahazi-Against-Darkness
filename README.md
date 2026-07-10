@@ -84,6 +84,11 @@ current with every rules or content change.
   stack automatically when the available workbench width becomes too narrow.
   A dedicated Merge Page command combines every non-ignored fragment from one
   physical PDF page without requiring the reviewer to select dozens of blocks.
+  New scans use column-aware positioned PDF text to produce review sections
+  instead of both page text and repeated line fragments. Existing scans can
+  safely hide only fragments contained in a longer same-page block. Tree rows
+  show the first extracted line and expose the full text on hover; assignment
+  applies beside the category selector.
   Reviewed blocks can also create
   package-level supplement requirements that preserve exact source wording while
   separately recording editable party eligibility, dependencies, triggers, and
