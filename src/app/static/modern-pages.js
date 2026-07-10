@@ -7683,6 +7683,7 @@ async function renderRulePdfManager() {
       notesInput.placeholder = "e.g. Check exact effect against PDF p.12 before activation.";
       notesInput.value = profile.notes || "";
       let abilitiesInput = null;
+      let portraitArtworkInput = null;
       let locationInputs = null;
       const profileInput = (title, value, example) => {
         const node = input("text", "", title, value || "");
@@ -7722,13 +7723,23 @@ async function renderRulePdfManager() {
         abilities.title = "One class ability, spell, trick, or rule summary per line. Keep the exact evidence on the left.";
         abilities.placeholder = "e.g. Woodland Lore | Re-roll one forest encounter each day";
         abilities.value = (profile.abilities || []).join("\n");
+        const portraitCandidates = artworkItems
+          .filter((item) => item.asset_url)
+          .sort((left, right) => Number(left.pdf_page !== profile.pdf_page) - Number(right.pdf_page !== profile.pdf_page) || Number(left.pdf_page || 0) - Number(right.pdf_page || 0));
+        const portraitArtwork = select("", "Optional reviewed artwork used as this class's portrait. Same-page art is listed first; use the artwork editor to categorise or crop it first.", [
+          ["", "No portrait linked"],
+          ...portraitCandidates.map((item) => [item.id, `${item.title || item.id} · ${item.page_label || `PDF p.${item.pdf_page || "?"}`}`]),
+        ]);
+        portraitArtwork.value = profile.portrait_artwork_id || "";
         typedFields = [
           field("Eligibility", profileInput("Who can select this class, including any level, ancestry, campaign, or supplement conditions.", profile.eligibility, "e.g. Elf characters of level 4+")),
           field("Abilities", abilities),
           field("Progression", profileInput("Level progression, advancement, spells, or tier wording.", profile.progression, "e.g. Gains one woodland spell at levels 3, 5, and 7")),
           field("Equipment restrictions", profileInput("Starting gear, armour, weapon, or equipment restrictions.", profile.equipment_restrictions, "e.g. May not use heavy armour")),
+          field("Portrait artwork", portraitArtwork),
         ];
         abilitiesInput = abilities;
+        portraitArtworkInput = portraitArtwork;
       }
       if (profileType === "location") {
         const reviewLines = (records, keys) => (records || []).map((record) => keys.map((key) => record[key] || "").join(" | ").replace(/(?: \| )+$/, "")).join("\n");
@@ -7793,6 +7804,7 @@ async function renderRulePdfManager() {
             level: valueFor("Level"), attack: valueFor("Attack"), defense: valueFor("Defence"), category: valueFor("Category"), quantity_expression: valueFor("Quantity"),
             riding_requirements: valueFor("Riding requirements"), movement: valueFor("Movement"), carrying_capacity: valueFor("Carrying capacity"), owner_training: valueFor("Owner / training"),
             eligibility: valueFor("Eligibility"), abilities: abilitiesInput?.value || "", progression: valueFor("Progression"), equipment_restrictions: valueFor("Equipment restrictions"),
+            portrait_artwork_id: portraitArtworkInput?.value || "",
             location_type: locationInputs?.locationType.value || "", foe_ids: locationInputs?.foeIds.value || "", foe_table_id: locationInputs?.foeTableId.value || "",
             treasure_text: locationInputs?.treasureText.value || "", treasure_table_id: locationInputs?.treasureTableId.value || "", trap_text: locationInputs?.trapText.value || "", trap_procedure_id: locationInputs?.trapProcedureId.value || "",
             exits: locationInputs?.exits.value || "", friendly_npcs: locationInputs?.friendlyNpcs.value || "", quests: locationInputs?.quests.value || "",
@@ -8075,7 +8087,21 @@ async function renderRulePdfManager() {
             { label: "Map", value: profile.map_pin_id || profile.map_id || profile.room_tile_id || "None recorded" },
           );
         }
-        row.append(summary, modernInfoPanel("Provisional profile", profile.id || "profile", profileInfo, "This source-backed profile is local review data only. It does not yet add a mount, companion, foe, class, or location to playable sessions."), actionsRow);
+        const portrait = profileType === "character_class"
+          ? artworkItems.find((item) => item.id === profile.portrait_artwork_id && item.asset_url)
+          : null;
+        if (profileType === "character_class") profileInfo.splice(1, 0, { label: "Portrait", value: portrait?.title || profile.portrait_artwork_id || "Not linked" });
+        const profileSummary = modernInfoPanel("Provisional profile", profile.id || "profile", profileInfo, "This source-backed profile is local review data only. It does not yet add a mount, companion, foe, class, or location to playable sessions.");
+        if (portrait) {
+          const portraitImage = document.createElement("img");
+          portraitImage.className = "modern-source-artwork-image compact";
+          portraitImage.src = portrait.asset_url;
+          portraitImage.alt = `${profile.name || "Character class"} portrait`;
+          portraitImage.title = "Linked local artwork for this provisional class. It does not alter gameplay.";
+          row.append(summary, profileSummary, portraitImage, actionsRow);
+        } else {
+          row.append(summary, profileSummary, actionsRow);
+        }
         panel.appendChild(row);
       }
       return panel;

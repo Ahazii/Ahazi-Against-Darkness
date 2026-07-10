@@ -107,7 +107,9 @@ current with every rules or content change.
   Animals**, **Character Classes**, and **Locations**. Location profiles keep
   optional foe or foe-table links, treasure/reward and trap/hazard notes, exits,
   friendly characters, quest hooks, and map/pin/tile references alongside their
-  exact source wording. Assign a reviewed block to one of those
+  exact source wording. Character Class profiles can also link a reviewed local
+  portrait asset; same-page artwork is offered first in the review selector.
+  Assign a reviewed block to one of those
   categories and use **Profile** to record the appropriate riding, combat,
   ownership/training, eligibility, ability, progression, and equipment fields.
   All profiles remain local, provisional review data until validated promotion.

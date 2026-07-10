@@ -191,6 +191,8 @@ Home screen rule browsing:
   Location profiles add a location type plus optional direct/table foe references,
   reward and hazard source notes, structured exits, friendly-character services,
   quest hooks, and map/pin/tile references.
+  Character-class profiles may also link a reviewed local portrait artwork asset;
+  the workbench prioritises candidates extracted from the same PDF page.
   PDF viewer navigation changes the physical preview page without rebuilding the
   source-content tree; this preserves the sticky viewer toolbar's active scroll
   position during repeated Previous/Next review. Render failures are reported

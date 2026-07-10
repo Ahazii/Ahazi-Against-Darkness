@@ -1652,6 +1652,7 @@ def test_source_profiles_support_mount_companion_and_character_class_framework(t
                 "map_id": "woodlands-map",
                 "map_pin_id": "old-well-pin",
                 "room_tile_id": "well-tile",
+                "portrait_artwork_id": "beastmaster-portrait",
             },
         )
         assert saved["profile"]["name"] == name
@@ -1660,6 +1661,7 @@ def test_source_profiles_support_mount_companion_and_character_class_framework(t
     assert detail["mounts"][0]["movement"] == "Fast"
     assert detail["companion_animals"][0]["profile_type"] == "companion_animal"
     assert detail["character_classes"][0]["profile_type"] == "character_class"
+    assert detail["character_classes"][0]["portrait_artwork_id"] == "beastmaster-portrait"
     assert detail["locations"][0]["location_type"] == "wilderness_site"
     assert detail["locations"][0]["exits"] == [{
         "label": "Forest path",

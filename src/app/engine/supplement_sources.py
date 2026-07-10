@@ -904,6 +904,7 @@ def draft_supplement_source_profile(data_dir: Path, source_id: str, block_id: st
         "map_id": "",
         "map_pin_id": "",
         "room_tile_id": "",
+        "portrait_artwork_id": "",
         "review_status": "draft",
         "notes": "",
     }
@@ -960,6 +961,7 @@ def upsert_supplement_source_profile(data_dir: Path, source_id: str, profile_typ
         "map_id": str(profile_payload.get("map_id") or ""),
         "map_pin_id": str(profile_payload.get("map_pin_id") or ""),
         "room_tile_id": str(profile_payload.get("room_tile_id") or ""),
+        "portrait_artwork_id": str(profile_payload.get("portrait_artwork_id") or ""),
         "review_status": str(profile_payload.get("review_status") or "provisional"),
         "notes": str(profile_payload.get("notes") or ""),
     }
