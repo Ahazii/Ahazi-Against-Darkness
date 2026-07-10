@@ -112,6 +112,8 @@ current with every rules or content change.
   friendly characters, quest hooks, and map/pin/tile references alongside their
   exact source wording. Character Class profiles can also link a reviewed local
   portrait asset; same-page artwork is offered first in the review selector.
+  Rendered PDF artwork can be manually masked into a transparent portrait crop
+  with additive rectangles/ellipses, then linked directly to an existing class.
   Assign a reviewed block to one of those
   categories and use **Profile** to record the appropriate riding, combat,
   ownership/training, eligibility, ability, progression, and equipment fields.

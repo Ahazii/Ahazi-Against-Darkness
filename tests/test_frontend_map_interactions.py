@@ -3156,6 +3156,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Woodland Lore | Re-roll one forest encounter each day" in MODERN_PAGES_JS
     assert "Portrait artwork" in MODERN_PAGES_JS
     assert "Same-page art is listed first" in MODERN_PAGES_JS
+    assert "Mask Portrait" in MODERN_PAGES_JS
+    assert "Save Portrait Crop" in MODERN_PAGES_JS
+    assert "uploadSourceArtworkCrop" in MODERN_PAGES_JS
     assert "const profileButton" in MODERN_PAGES_JS
     assert "/profile-draft" in MODERN_PAGES_JS
     assert "Suggest Rows" in MODERN_PAGES_JS

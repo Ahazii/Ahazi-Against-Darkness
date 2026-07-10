@@ -2352,8 +2352,69 @@ def update_supplement_source_artwork(data_dir: Path, source_id: str, artwork_id:
     raise KeyError(artwork_id)
 
 
+def add_supplement_source_artwork_crop(
+    data_dir: Path,
+    source_id: str,
+    filename: str,
+    data: bytes,
+    *,
+    title: str,
+    parent_artwork_id: str = "",
+    category: str = "character_class",
+    notes: str = "",
+) -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    if not supplement_source_scan_path(data_dir, source_id).exists():
+        raise KeyError(source_id)
+    clean_stem = re.sub(r"[^a-z0-9_-]+", "-", Path(str(filename or "portrait-crop.png")).stem.lower()).strip("-") or "portrait-crop"
+    crop_dir = supplement_source_artwork_dir(data_dir, source_id) / "crops"
+    crop_dir.mkdir(parents=True, exist_ok=True)
+    clean_name = f"{clean_stem}.png"
+    suffix = 2
+    while (crop_dir / clean_name).exists():
+        clean_name = f"{clean_stem}-{suffix}.png"
+        suffix += 1
+    path = crop_dir / clean_name
+    path.write_bytes(data)
+    parent = next(
+        (item for item in payload.get("reviewed_artwork", []) if isinstance(item, dict) and item.get("id") == parent_artwork_id),
+        {},
+    )
+    used_ids = {str(item.get("id") or "") for item in payload.get("reviewed_artwork", []) if isinstance(item, dict)}
+    artwork_id = f"{source_id}-crop-{clean_stem}"
+    suffix = 2
+    while artwork_id in used_ids:
+        artwork_id = f"{source_id}-crop-{clean_stem}-{suffix}"
+        suffix += 1
+    clean_category = category if category in SOURCE_ARTWORK_CATEGORIES else "unknown"
+    artwork = {
+        "id": artwork_id,
+        "source_pdf": str(parent.get("source_pdf") or payload.get("source_pdf") or ""),
+        "source_page": parent.get("source_page"),
+        "pdf_page": parent.get("pdf_page"),
+        "page_label": str(parent.get("page_label") or ""),
+        "filename": clean_name,
+        "asset_url": f"/api/supplements/source-scans/{source_id}/artwork/{clean_name}",
+        "title": str(title or clean_stem).strip(),
+        "category": clean_category,
+        "candidate_type": "masked_crop",
+        "review_status": "checked",
+        "notes": str(notes or f"Masked artwork crop from {parent_artwork_id or 'source artwork'}.").strip(),
+        "parent_artwork_id": str(parent_artwork_id or ""),
+        "size_bytes": len(data),
+    }
+    reviewed = [item for item in payload.get("reviewed_artwork", []) if isinstance(item, dict)]
+    reviewed.append(artwork)
+    payload["reviewed_artwork"] = reviewed
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {"artwork": artwork, "message": f"Saved masked artwork crop {artwork['title']}."}
+
+
 def supplement_source_artwork_path(data_dir: Path, source_id: str, filename: str) -> Path:
     safe = Path(str(filename or "")).name
+    crop = supplement_source_artwork_dir(data_dir, source_id) / "crops" / safe
+    if crop.is_file():
+        return crop
     raw = supplement_source_artwork_dir(data_dir, source_id) / "raw" / safe
     if raw.is_file():
         return raw

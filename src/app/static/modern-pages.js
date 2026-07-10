@@ -6807,6 +6807,31 @@ async function renderRulePdfManager() {
     }
     return response.json();
   }
+  async function uploadSourceArtworkCrop(sourceId, blob, filename, params = {}) {
+    const query = new URLSearchParams({
+      filename,
+      title: params.title || filename.replace(/\.[^.]+$/, ""),
+      parent_artwork_id: params.parent_artwork_id || "",
+      category: params.category || "character_class",
+      notes: params.notes || "",
+    });
+    const response = await fetch(`/api/supplements/source-scans/${encodeURIComponent(sourceId)}/artwork-crop?${query.toString()}`, {
+      method: "POST",
+      headers: { "Content-Type": blob.type || "image/png" },
+      body: await blob.arrayBuffer(),
+    });
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const result = await response.json();
+        detail = result.detail || detail;
+      } catch {
+        /* keep status text */
+      }
+      throw new Error(detail);
+    }
+    return response.json();
+  }
   function workbenchSection(title, subtitle, body) {
     const details = document.createElement("details");
     details.className = "modern-row modern-source-review-section";
@@ -7608,6 +7633,164 @@ async function renderRulePdfManager() {
       panel.append(statusLine, toolbar, list);
       return panel;
     }
+    function artworkMaskCropper(item) {
+      const panel = el("div", "modern-source-block-editor");
+      const image = el("img", "modern-source-artwork-image");
+      image.alt = item.title || item.id || "Artwork crop source";
+      image.src = item.asset_url || "";
+      const cropName = input("text", `modern-source-artwork-crop-name-${item.id}`, "Name for the extracted portrait artwork.", "");
+      cropName.placeholder = "e.g. Beastmaster portrait";
+      const classCandidates = reviewedCharacterClasses
+        .slice()
+        .sort((left, right) => Number(left.pdf_page !== item.pdf_page) - Number(right.pdf_page !== item.pdf_page) || String(left.name || left.id).localeCompare(String(right.name || right.id)));
+      const classSelect = select(`modern-source-artwork-crop-class-${item.id}`, "Optionally link the saved crop directly to this existing Character Class profile. Same-page classes are listed first.", [
+        ["", "Save artwork only"],
+        ...classCandidates.map((profile) => [profile.id, `${profile.name || profile.id} · ${profile.page_label || `PDF p.${profile.pdf_page || "?"}`}`]),
+      ]);
+      const shapeMode = select(`modern-source-artwork-crop-shape-${item.id}`, "Choose the additive mask shape to draw over the portrait.", [["rect", "Rectangle / square"], ["ellipse", "Circle / oval"]]);
+      const viewMode = select(`modern-source-artwork-crop-mode-${item.id}`, "Draw adds a mask shape. Pan lets you drag around a zoomed rendered page.", [["draw", "Draw Mode"], ["pan", "Pan Mode"]]);
+      const viewport = el("div", "modern-mask-canvas-viewport");
+      const canvas = document.createElement("canvas");
+      canvas.className = "modern-mask-canvas";
+      viewport.appendChild(canvas);
+      const status = el("p", "muted", "Load the rendered page, then draw one or more shapes around the class portrait.");
+      const shapes = [];
+      let drawing = false;
+      let panning = false;
+      let start = null;
+      let panStart = null;
+      let draft = null;
+      let zoom = 1;
+      let panX = 0;
+      let panY = 0;
+      let initialized = false;
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const updateStatus = () => {
+        const mode = viewMode.value === "pan" ? "Pan mode: drag to move the image." : `Draw mode: drag to add ${shapeMode.value === "ellipse" ? "a circle/oval" : "a square/rectangle"}.`;
+        status.textContent = `${shapes.length} mask shape(s) · zoom ${Math.round(zoom * 100)}% · ${mode}`;
+      };
+      const applyTransform = () => {
+        canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+        canvas.classList.toggle("is-panning", viewMode.value === "pan");
+        updateStatus();
+      };
+      const resetView = () => {
+        if (!image.complete || !image.naturalWidth || !image.naturalHeight) return;
+        zoom = clamp(Math.min((viewport.clientWidth || 900) / image.naturalWidth, Math.min(window.innerHeight * 0.62, 680) / image.naturalHeight, 1), 0.08, 8);
+        panX = 0;
+        panY = 0;
+        initialized = true;
+        applyTransform();
+      };
+      const drawCanvas = () => {
+        if (!image.complete || !image.naturalWidth || !image.naturalHeight) return;
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0);
+        ctx.lineWidth = 3;
+        for (const shape of shapes.concat(draft ? [draft] : [])) {
+          ctx.save();
+          ctx.fillStyle = "rgba(201, 162, 39, 0.24)";
+          ctx.strokeStyle = "#f5d66b";
+          ctx.beginPath();
+          if (shape.type === "ellipse") ctx.ellipse(shape.x + shape.w / 2, shape.y + shape.h / 2, shape.w / 2, shape.h / 2, 0, 0, Math.PI * 2);
+          else ctx.rect(shape.x, shape.y, shape.w, shape.h);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+        if (!initialized) resetView();
+        else applyTransform();
+      };
+      const point = (event) => {
+        const rect = canvas.getBoundingClientRect();
+        return { x: (event.clientX - rect.left) * canvas.width / rect.width, y: (event.clientY - rect.top) * canvas.height / rect.height };
+      };
+      const normalized = (left, right) => ({ type: shapeMode.value, x: Math.min(left.x, right.x), y: Math.min(left.y, right.y), w: Math.abs(right.x - left.x), h: Math.abs(right.y - left.y) });
+      image.addEventListener("load", drawCanvas);
+      canvas.addEventListener("pointerdown", (event) => {
+        if (viewMode.value === "pan") {
+          panning = true;
+          panStart = { x: event.clientX, y: event.clientY, panX, panY };
+        } else {
+          drawing = true;
+          start = point(event);
+          draft = null;
+        }
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener("pointermove", (event) => {
+        if (panning && panStart) {
+          panX = panStart.panX + event.clientX - panStart.x;
+          panY = panStart.panY + event.clientY - panStart.y;
+          applyTransform();
+        } else if (drawing && start) {
+          draft = normalized(start, point(event));
+          drawCanvas();
+        }
+      });
+      canvas.addEventListener("pointerup", (event) => {
+        if (panning) {
+          panning = false;
+          panStart = null;
+        } else if (drawing && start) {
+          const shape = normalized(start, point(event));
+          if (shape.w >= 4 && shape.h >= 4) shapes.push(shape);
+          drawing = false;
+          start = null;
+          draft = null;
+          drawCanvas();
+        }
+        try { canvas.releasePointerCapture(event.pointerId); } catch { /* pointer already released */ }
+      });
+      viewport.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        zoom = clamp(zoom * (event.deltaY < 0 ? 1.12 : 0.88), 0.08, 8);
+        applyTransform();
+      }, { passive: false });
+      shapeMode.addEventListener("change", updateStatus);
+      viewMode.addEventListener("change", applyTransform);
+      const actionsRow = actions("modern-row-actions");
+      actionsRow.append(
+        button("Zoom In", "Zoom into the rendered page without changing the mask.", () => { zoom = clamp(zoom * 1.2, 0.08, 8); applyTransform(); }),
+        button("Zoom Out", "Zoom out of the rendered page without changing the mask.", () => { zoom = clamp(zoom * 0.84, 0.08, 8); applyTransform(); }),
+        button("Reset View", "Fit the rendered page back into the crop viewport.", () => { initialized = false; drawCanvas(); }),
+        button("Undo Shape", "Remove the most recently drawn mask shape.", () => { shapes.pop(); drawCanvas(); }),
+        button("Clear Mask", "Remove every drawn mask shape.", () => { shapes.length = 0; drawCanvas(); }),
+        button("Save Portrait Crop", "Save a transparent PNG crop to the local artwork library and optionally link it to the selected Character Class.", async (btn) => runWithButtonProgress(btn, "Saving portrait crop...", async () => {
+          const name = cropName.value.trim();
+          if (!name) throw new Error("Enter a portrait artwork name first.");
+          const blob = await maskToCanvasBlob(image, shapes);
+          const result = await uploadSourceArtworkCrop(payload.source_id, blob, `${name.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "") || "portrait"}.png`, {
+            title: name,
+            parent_artwork_id: item.id || "",
+            category: "character_class",
+            notes: `Masked character-class portrait from ${item.title || item.id || "rendered page"} using ${shapes.length} additive shape(s).`,
+          });
+          const classProfile = reviewedCharacterClasses.find((profile) => profile.id === classSelect.value);
+          if (classProfile) {
+            await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/profiles/character_class/${encodeURIComponent(classProfile.id)}`, {
+              method: "PUT",
+              body: JSON.stringify({ ...classProfile, portrait_artwork_id: result.artwork.id }),
+            });
+          }
+          await reloadCurrentScan(classProfile ? `Saved ${name} and linked it to ${classProfile.name || classProfile.id}.` : `Saved portrait crop ${name}.`);
+        }))
+      );
+      panel.append(
+        modernStatusRow("Mask Portrait Crop", "Draw rectangles, squares, circles, and ovals", "Draw one or more additive shapes over the class artwork. The crop is saved as a transparent local artwork asset, not as a room tile."),
+        field("Portrait name", cropName),
+        field("Assign to Character Class", classSelect),
+        field("Mask shape", shapeMode),
+        field("Canvas mode", viewMode),
+        viewport,
+        status,
+        actionsRow
+      );
+      return { panel, drawCanvas };
+    }
     function artworkEditor(item, categories) {
       activeBlockEditor = null;
       const editor = el("div", "modern-source-block-editor");
@@ -7631,6 +7814,13 @@ async function renderRulePdfManager() {
           await reloadCurrentScan("Artwork review saved.");
         }))
       );
+      if (item.asset_url) {
+        artActions.append(button("Mask Portrait", "Open the manual mask cropper for this rendered page or artwork candidate. Save the crop into the local artwork library and optionally link it directly to a Character Class.", () => {
+          const cropper = artworkMaskCropper(item);
+          openSourceTool(`Mask Portrait - ${item.title || item.id || "Artwork"}`, cropper.panel);
+          window.requestAnimationFrame(cropper.drawCanvas);
+        }));
+      }
       editor.append(
         img,
         field("Artwork name", titleInput),

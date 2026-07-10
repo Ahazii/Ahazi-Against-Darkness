@@ -1675,6 +1675,56 @@ def test_source_profiles_support_mount_companion_and_character_class_framework(t
     assert set(detail["profile_types"]) >= {"foe", "mount", "companion_animal", "character_class", "location"}
 
 
+def test_masked_source_artwork_crop_is_saved_as_a_local_candidate(tmp_path: Path, monkeypatch) -> None:
+    from app.engine import supplement_sources
+
+    pdf = tmp_path / "Portrait Book.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 4, "text": "Beastmaster", "methods": ["layout"]}],
+    )
+    supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-10T13:00:00Z")
+    source_id = "portrait-book"
+    payload = supplement_sources.load_supplement_source_scan(tmp_path, source_id)
+    payload["reviewed_artwork"] = [{
+        "id": "portrait-book-page-4",
+        "source_pdf": "DATA_DIR/rules/Portrait Book.pdf",
+        "source_page": 4,
+        "pdf_page": 4,
+        "page_label": "p.4",
+        "filename": "page-004-render.png",
+        "asset_url": "/api/supplements/source-scans/portrait-book/artwork/page-004-render.png",
+        "title": "Rendered page 4",
+        "category": "review_later",
+    }]
+    supplement_sources.save_supplement_source_scan(tmp_path, source_id, payload)
+
+    saved = supplement_sources.add_supplement_source_artwork_crop(
+        tmp_path,
+        source_id,
+        "beastmaster-portrait.png",
+        b"local-png-bytes",
+        title="Beastmaster portrait",
+        parent_artwork_id="portrait-book-page-4",
+    )
+    duplicate = supplement_sources.add_supplement_source_artwork_crop(
+        tmp_path,
+        source_id,
+        "beastmaster-portrait.png",
+        b"local-png-bytes-2",
+        title="Beastmaster portrait alternate",
+        parent_artwork_id="portrait-book-page-4",
+    )
+
+    assert saved["artwork"]["candidate_type"] == "masked_crop"
+    assert saved["artwork"]["category"] == "character_class"
+    assert saved["artwork"]["parent_artwork_id"] == "portrait-book-page-4"
+    assert duplicate["artwork"]["filename"] == "beastmaster-portrait-2.png"
+    assert supplement_sources.supplement_source_artwork_path(tmp_path, source_id, saved["artwork"]["filename"]).read_bytes() == b"local-png-bytes"
+
+
 def test_source_scans_can_share_one_supplement_package(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 

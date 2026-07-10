@@ -72,6 +72,7 @@ from .engine.roster_sync import (
     unlock_characters_for_session,
 )
 from .engine.supplement_sources import (
+    add_supplement_source_artwork_crop,
     add_supplement_package_asset,
     delete_supplement_package_asset,
     delete_supplement_package_requirement,
@@ -1165,6 +1166,27 @@ async def save_supplement_source_artwork(source_id: str, artwork_id: str, payloa
         return update_supplement_source_artwork(settings.data_dir, source_id, artwork_id, payload)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Artwork candidate not found.") from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/artwork-crop")
+async def save_supplement_source_artwork_crop(source_id: str, request: Request) -> dict[str, Any]:
+    filename = str(request.query_params.get("filename") or "portrait-crop.png")
+    data = await request.body()
+    if not data:
+        raise HTTPException(status_code=400, detail="Masked artwork crop is empty.")
+    try:
+        return add_supplement_source_artwork_crop(
+            settings.data_dir,
+            source_id,
+            filename,
+            data,
+            title=str(request.query_params.get("title") or "Portrait crop"),
+            parent_artwork_id=str(request.query_params.get("parent_artwork_id") or ""),
+            category=str(request.query_params.get("category") or "character_class"),
+            notes=str(request.query_params.get("notes") or ""),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source scan not found.") from exc
 
 
 @app.get("/api/supplements/source-scans/{source_id}/artwork/{filename:path}")

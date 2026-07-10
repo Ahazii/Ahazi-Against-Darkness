@@ -208,6 +208,10 @@ Home screen rule browsing:
   quest hooks, and map/pin/tile references.
   Character-class profiles may also link a reviewed local portrait artwork asset;
   the workbench prioritises candidates extracted from the same PDF page.
+  Rendered-page and embedded artwork candidates can create local `masked_crop`
+  PNG records under `DATA_DIR/Supplements/_sources/<source>/artwork/crops/`.
+  A crop retains its parent artwork id and can be linked directly to a reviewed
+  Character Class profile without becoming a tile or active game asset.
   PDF viewer navigation changes the physical preview page without rebuilding the
   source-content tree; this preserves the sticky viewer toolbar's active scroll
   position during repeated Previous/Next review. Render failures are reported
