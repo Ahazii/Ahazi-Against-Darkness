@@ -7655,34 +7655,47 @@ async function renderRulePdfManager() {
       );
       const draftPanel = el("div", "modern-source-block-editor");
       const nameInput = input("text", `modern-source-profile-name-${profile.id || "new"}`, "Human-readable profile name. This does not alter the PDF source text.", profile.name || "");
+      nameInput.placeholder = "e.g. Briar Goblin or The Old Well";
       const idInput = input("text", `modern-source-profile-id-${profile.id || "new"}`, "Stable machine id for this provisional profile. Use lowercase words separated by hyphens.", profile.id || "");
+      idInput.placeholder = "e.g. briar-goblin or old-well";
       const descriptionInput = document.createElement("textarea");
       descriptionInput.className = "modern-source-block-text compact";
       descriptionInput.title = "Short local description distilled from the exact PDF wording.";
+      descriptionInput.placeholder = "e.g. A ruined well watched by woodland spirits.";
       descriptionInput.value = profile.description || "";
       const specialRulesInput = document.createElement("textarea");
       specialRulesInput.className = "modern-source-block-text compact";
       specialRulesInput.title = "Special rules, exceptions, or procedures copied/reviewed from the source.";
+      specialRulesInput.placeholder = "e.g. The first search triggers a reaction roll.";
       specialRulesInput.value = profile.special_rules || "";
       const statesInput = input("text", `modern-source-profile-states-${profile.id || "new"}`, "Comma-separated states or conditions this profile can apply. They remain provisional until mapped to the State Registry.", (profile.states_inflicted || []).join(", "));
+      statesInput.placeholder = "e.g. Poisoned, Entangled";
       const weaknessesInput = input("text", `modern-source-profile-weaknesses-${profile.id || "new"}`, "Comma-separated weaknesses, immunities, resistances, or vulnerabilities.", (profile.weaknesses || []).join(", "));
+      weaknessesInput.placeholder = "e.g. Fire, silver weapons";
       const modifiersInput = document.createElement("textarea");
       modifiersInput.className = "modern-source-block-text compact";
       modifiersInput.title = "One modifier per line: Target | Adjustment | Scope or condition | exact source wording. Example: Morale | +1 | this foe | morale +1.";
+      modifiersInput.placeholder = "Morale | +1 | this foe | gains +1 Morale";
       modifiersInput.value = (profile.modifiers || []).map((item) => [item.target, item.adjustment, item.scope, item.exact_text].filter(Boolean).join(" | ")).join("\n");
       const notesInput = document.createElement("textarea");
       notesInput.className = "modern-source-block-text compact";
       notesInput.title = "Reviewer notes, uncertainty, and implementation follow-up.";
+      notesInput.placeholder = "e.g. Check exact effect against PDF p.12 before activation.";
       notesInput.value = profile.notes || "";
       let abilitiesInput = null;
       let locationInputs = null;
+      const profileInput = (title, value, example) => {
+        const node = input("text", "", title, value || "");
+        node.placeholder = example;
+        return node;
+      };
       const fields = [field("Profile name", nameInput), field("Profile id", idInput), field("Description", descriptionInput)];
       const combatFields = () => [
-        field("Level", input("text", "", "Printed combat level.", profile.level || "")),
-        field("Attack", input("text", "", "Printed Attack value.", profile.attack || "")),
-        field("Defence", input("text", "", "Printed Defence value.", profile.defense || "")),
-        field("Category", input("text", "", "Printed combat category, such as minion, boss, vermin, or other classification.", profile.category || "")),
-        field("Quantity", input("text", "", "Fixed quantity or dice expression when this profile is encountered.", profile.quantity_expression || "")),
+        field("Level", profileInput("Printed combat level.", profile.level, "e.g. 3")),
+        field("Attack", profileInput("Printed Attack value.", profile.attack, "e.g. +1")),
+        field("Defence", profileInput("Printed Defence value.", profile.defense, "e.g. 2")),
+        field("Category", profileInput("Printed combat category, such as minion, boss, vermin, or other classification.", profile.category, "e.g. minion")),
+        field("Quantity", profileInput("Fixed quantity or dice expression when this profile is encountered.", profile.quantity_expression, "e.g. d6+1")),
         field("States inflicted", statesInput),
         field("Weaknesses", weaknessesInput),
         field("Modifiers", modifiersInput),
@@ -7692,27 +7705,28 @@ async function renderRulePdfManager() {
       if (profileType === "mount") {
         typedFields = [
           ...combatFields(),
-          field("Riding requirements", input("text", "", "Who can ride this mount and any printed training, class, level, or equipment requirements.", profile.riding_requirements || "")),
-          field("Movement", input("text", "", "Printed movement, travel, or terrain capability.", profile.movement || "")),
-          field("Carrying capacity", input("text", "", "Printed carrying, passenger, or load capacity.", profile.carrying_capacity || "")),
+          field("Riding requirements", profileInput("Who can ride this mount and any printed training, class, level, or equipment requirements.", profile.riding_requirements, "e.g. A trained Ranger may ride")),
+          field("Movement", profileInput("Printed movement, travel, or terrain capability.", profile.movement, "e.g. Forest travel: 2 areas/day")),
+          field("Carrying capacity", profileInput("Printed carrying, passenger, or load capacity.", profile.carrying_capacity, "e.g. 1 rider plus 50 items")),
         ];
       }
       if (profileType === "companion_animal") {
         typedFields = [
           ...combatFields(),
-          field("Owner / training", input("text", "", "Ownership, training, bonding, control, survival, or party-limit wording.", profile.owner_training || "")),
+          field("Owner / training", profileInput("Ownership, training, bonding, control, survival, or party-limit wording.", profile.owner_training, "e.g. One per Beastmaster; obeys on 1-4")),
         ];
       }
       if (profileType === "character_class") {
         const abilities = document.createElement("textarea");
         abilities.className = "modern-source-block-text compact";
         abilities.title = "One class ability, spell, trick, or rule summary per line. Keep the exact evidence on the left.";
+        abilities.placeholder = "e.g. Woodland Lore | Re-roll one forest encounter each day";
         abilities.value = (profile.abilities || []).join("\n");
         typedFields = [
-          field("Eligibility", input("text", "", "Who can select this class, including any level, ancestry, campaign, or supplement conditions.", profile.eligibility || "")),
+          field("Eligibility", profileInput("Who can select this class, including any level, ancestry, campaign, or supplement conditions.", profile.eligibility, "e.g. Elf characters of level 4+")),
           field("Abilities", abilities),
-          field("Progression", input("text", "", "Level progression, advancement, spells, or tier wording.", profile.progression || "")),
-          field("Equipment restrictions", input("text", "", "Starting gear, armour, weapon, or equipment restrictions.", profile.equipment_restrictions || "")),
+          field("Progression", profileInput("Level progression, advancement, spells, or tier wording.", profile.progression, "e.g. Gains one woodland spell at levels 3, 5, and 7")),
+          field("Equipment restrictions", profileInput("Starting gear, armour, weapon, or equipment restrictions.", profile.equipment_restrictions, "e.g. May not use heavy armour")),
         ];
         abilitiesInput = abilities;
       }
@@ -7723,22 +7737,34 @@ async function renderRulePdfManager() {
         ]);
         locationType.value = profile.location_type || "location";
         const foeIds = input("text", "", "Comma-separated provisional foe profile ids or names that may appear here. Leave blank when this location uses only a foe table.", (profile.foe_ids || []).join(", "));
+        foeIds.placeholder = "e.g. briar-goblin, mist-rats";
         const foeTableId = input("text", "", "Optional reviewed Foe Encounter table id to roll for this location.", profile.foe_table_id || "");
+        foeTableId.placeholder = "e.g. woodlands_foe_encounters";
         const treasureText = textarea("", "Exact or reviewed wording for treasure, rewards, or services at this location. Keep it blank when none are present.", 3);
+        treasureText.placeholder = "e.g. Search once: roll on the Well Rewards table.";
         treasureText.value = profile.treasure_text || "";
         const treasureTableId = input("text", "", "Optional reviewed treasure/reward table id used here.", profile.treasure_table_id || "");
+        treasureTableId.placeholder = "e.g. well_rewards";
         const trapText = textarea("", "Exact or reviewed wording for traps, hazards, saves, or consequences at this location.", 3);
+        trapText.placeholder = "e.g. Failed Save: suffer 1 Life loss.";
         trapText.value = profile.trap_text || "";
         const trapProcedureId = input("text", "", "Optional reviewed procedure id for this location's trap or hazard.", profile.trap_procedure_id || "");
+        trapProcedureId.placeholder = "e.g. old_well_trap";
         const exits = textarea("", "One exit per line: Label | destination location id | condition | exact source wording. Example: North door | crypt-2 | unlocked | Proceed to Crypt 2.", 4);
+        exits.placeholder = "North door | crypt-2 | unlocked | Proceed to Crypt 2.";
         exits.value = reviewLines(profile.exits, ["label", "to_location_id", "condition", "exact_text"]);
         const friendlyNpcs = textarea("", "One friendly character per line: Name | role | offers/services | linked ids | exact source wording. Use linked ids for items, states, modifiers, tables, or procedures when they exist.", 4);
+        friendlyNpcs.placeholder = "Mara | trader | sells antidotes | antidote, poisoned | Mara sells antidotes.";
         friendlyNpcs.value = reviewLines(profile.friendly_npcs, ["name", "role", "offers", "linked_ids", "exact_text"]);
         const quests = textarea("", "One quest giver per line: Name | quest or procedure id | exact source wording.", 3);
+        quests.placeholder = "Mara | recover-lost-ring | Mara asks for her ring.";
         quests.value = reviewLines(profile.quests, ["giver", "quest_or_procedure_id", "exact_text"]);
         const mapId = input("text", "", "Optional map asset or reviewed map id containing this location.", profile.map_id || "");
+        mapId.placeholder = "e.g. woodlands-map";
         const mapPinId = input("text", "", "Optional pin id that marks this location on its map.", profile.map_pin_id || "");
+        mapPinId.placeholder = "e.g. old-well-pin";
         const roomTileId = input("text", "", "Optional room-tile asset id when this location is represented by a reusable tile.", profile.room_tile_id || "");
+        roomTileId.placeholder = "e.g. well-tile";
         typedFields = [
           field("Location type", locationType), field("Foes", foeIds), field("Foe table", foeTableId),
           field("Treasure / rewards", treasureText), field("Treasure table", treasureTableId),
