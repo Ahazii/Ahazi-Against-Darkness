@@ -3144,6 +3144,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Foe name" in MODERN_PAGES_JS
     assert "Short human-readable summary of this foe" in MODERN_PAGES_JS
     assert "Target | Adjustment | Scope or condition" in MODERN_PAGES_JS
+    assert "Reaction table" in MODERN_PAGES_JS
+    assert "One reaction row per line" in MODERN_PAGES_JS
     assert "Provisional foes" in MODERN_PAGES_JS
     assert "roll_expression" in MODERN_PAGES_JS
     assert "Provisional mounts" in MODERN_PAGES_JS

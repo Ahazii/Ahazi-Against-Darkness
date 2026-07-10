@@ -1562,6 +1562,8 @@ def test_foe_encounter_table_save_creates_linked_provisional_foe_profiles(tmp_pa
                     "category": "minion",
                     "states_inflicted": "Poisoned, Entangled",
                     "weaknesses": "Fire",
+                    "reaction_table_id": "briar_goblin_reactions",
+                    "reaction_rows": "1-2 | flee | The goblins flee. | The goblins flee.\n3-6 | fight | The goblins attack. | The goblins attack first.",
                     "modifiers": "Morale | +1 | Briar Goblin group | Briar Goblins gain +1 Morale.",
                     "special_rules": "Ambushes from woodland cover.",
                     "exact_text": "11-12: d6+1 Briar Goblins, L2, +1 Attack, Defence 1.",
@@ -1580,9 +1582,22 @@ def test_foe_encounter_table_save_creates_linked_provisional_foe_profiles(tmp_pa
         "scope": "Briar Goblin group",
         "exact_text": "Briar Goblins gain +1 Morale.",
     }]
+    assert saved["table"]["rows"][0]["reaction_rows"] == [{
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The goblins flee.",
+        "exact_text": "The goblins flee.",
+    }, {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The goblins attack.",
+        "exact_text": "The goblins attack first.",
+    }]
     assert saved["provisional_foes"][0]["name"] == "Briar Goblin"
     assert saved["provisional_foes"][0]["description"] == "A woodland minion that attacks from cover."
     assert saved["provisional_foes"][0]["modifiers"][0]["target"] == "Morale"
+    assert saved["provisional_foes"][0]["reaction_table_id"] == "briar_goblin_reactions"
+    assert saved["provisional_foes"][0]["reaction_rows"][1]["key"] == "fight"
     assert saved["provisional_foes"][0]["source_table_id"] == "woodlands_foe_encounters"
     detail = supplement_sources.load_supplement_source_scan(tmp_path, "foe-encounters")
     assert detail["foes"][0]["states_inflicted"] == ["Poisoned", "Entangled"]

@@ -7862,6 +7862,13 @@ async function renderRulePdfManager() {
       statesInput.placeholder = "e.g. Poisoned, Entangled";
       const weaknessesInput = input("text", `modern-source-profile-weaknesses-${profile.id || "new"}`, "Comma-separated weaknesses, immunities, resistances, or vulnerabilities.", (profile.weaknesses || []).join(", "));
       weaknessesInput.placeholder = "e.g. Fire, silver weapons";
+      const reactionTableInput = input("text", `modern-source-profile-reaction-table-${profile.id || "new"}`, "Optional reviewed reaction table id used when this foe is encountered.", profile.reaction_table_id || "");
+      reactionTableInput.placeholder = "e.g. goblin_reactions";
+      const reactionRowsInput = document.createElement("textarea");
+      reactionRowsInput.className = "modern-source-block-text compact";
+      reactionRowsInput.title = "One reaction row per line: Roll/range | key | player-facing result | exact source wording. Example: 1-3 | flee | The rats flee. | The rats flee.";
+      reactionRowsInput.placeholder = "1-3 | flee | The rats flee. | The rats flee.\n4-6 | fight | The rats attack. | The rats attack first.";
+      reactionRowsInput.value = (profile.reaction_rows || []).map((item) => [item.roll, item.key, item.result, item.exact_text].filter(Boolean).join(" | ")).join("\n");
       const modifiersInput = document.createElement("textarea");
       modifiersInput.className = "modern-source-block-text compact";
       modifiersInput.title = "One modifier per line: Target | Adjustment | Scope or condition | exact source wording. Example: Morale | +1 | this foe | morale +1.";
@@ -7889,6 +7896,8 @@ async function renderRulePdfManager() {
         field("Quantity", profileInput("Fixed quantity or dice expression when this profile is encountered.", profile.quantity_expression, "e.g. d6+1")),
         field("States inflicted", statesInput),
         field("Weaknesses", weaknessesInput),
+        field("Reaction table", reactionTableInput),
+        field("Reaction rows", reactionRowsInput),
         field("Modifiers", modifiersInput),
       ];
       let typedFields = [];
@@ -7991,6 +8000,8 @@ async function renderRulePdfManager() {
             modifiers: modifiersInput.value,
             states_inflicted: statesInput.value,
             weaknesses: weaknessesInput.value,
+            reaction_table_id: reactionTableInput.value,
+            reaction_rows: reactionRowsInput.value,
             level: valueFor("Level"), attack: valueFor("Attack"), defense: valueFor("Defence"), category: valueFor("Category"), quantity_expression: valueFor("Quantity"),
             riding_requirements: valueFor("Riding requirements"), movement: valueFor("Movement"), carrying_capacity: valueFor("Carrying capacity"), owner_training: valueFor("Owner / training"),
             eligibility: valueFor("Eligibility"), abilities: abilitiesInput?.value || "", progression: valueFor("Progression"), equipment_restrictions: valueFor("Equipment restrictions"),
@@ -8078,6 +8089,8 @@ async function renderRulePdfManager() {
             rowField("Category", "category", row.category, "Foe category such as vermin, minion, boss, weird monster, undead, or other printed classification."),
             rowField("States inflicted", "states_inflicted", Array.isArray(row.states_inflicted) ? row.states_inflicted.join(", ") : row.states_inflicted, "Comma-separated states or conditions this foe can inflict. These remain provisional until mapped to the State Registry."),
             rowField("Weaknesses", "weaknesses", Array.isArray(row.weaknesses) ? row.weaknesses.join(", ") : row.weaknesses, "Comma-separated weaknesses, resistances, immunities, or special vulnerabilities."),
+            rowField("Reaction table", "reaction_table_id", row.reaction_table_id, "Optional reviewed reaction table id used for this foe. Use this when the PDF gives the foe a named reaction table.", false),
+            rowField("Reaction rows", "reaction_rows", Array.isArray(row.reaction_rows) ? row.reaction_rows.map((item) => [item.roll, item.key, item.result, item.exact_text].filter(Boolean).join(" | ")).join("\n") : row.reaction_rows, "One reaction row per line: Roll/range | key | player-facing result | exact source wording. Example: 1-3 | flee | The rats flee. | The rats flee.", true),
             rowField("Modifiers", "modifiers", Array.isArray(row.modifiers) ? row.modifiers.map((item) => [item.target, item.adjustment, item.scope, item.exact_text].filter(Boolean).join(" | ")).join("\n") : row.modifiers, "One modifier per line: Target | Adjustment | Scope or condition | exact source wording. Example: Morale | +1 | this foe | morale +1.", true),
             rowField("Special rules", "special_rules", row.special_rules, "Mechanical exceptions, reactions, special attacks, saves, or other printed combat rules.", true),
             rowField("Exact source wording", "exact_text", row.exact_text || row.result, "Exact printed wording for this row. Keep this as the verification source.", true),
@@ -8230,6 +8243,7 @@ async function renderRulePdfManager() {
             { label: "Quantity", value: foe.quantity_expression || "Not recorded" },
             { label: "States", value: (foe.states_inflicted || []).join(", ") || "None recorded" },
             { label: "Weaknesses", value: (foe.weaknesses || []).join(", ") || "None recorded" },
+            { label: "Reaction", value: foe.reaction_table_id || `${(foe.reaction_rows || []).length} reviewed row(s)` },
             { label: "Special rules", value: foe.special_rules || "None recorded" },
             { label: "Modifiers", value: (foe.modifiers || []).map((item) => `${item.target || "Other"} ${item.adjustment || ""}`.trim()).join(", ") || "None recorded" },
             { label: "Source table", value: foe.source_table_id || "Not recorded" },
@@ -8265,6 +8279,9 @@ async function renderRulePdfManager() {
           { label: "Modifiers", value: (profile.modifiers || []).map((item) => `${item.target || "Other"} ${item.adjustment || ""}`.trim()).join(", ") || "None recorded" },
           { label: "Source block", value: profile.source_block_id || "Not recorded" },
         ];
+        if (["foe", "mount", "companion_animal"].includes(profileType)) {
+          profileInfo.splice(1, 0, { label: "Reaction", value: profile.reaction_table_id || `${(profile.reaction_rows || []).length} reviewed row(s)` });
+        }
         if (profileType === "location") {
           profileInfo.splice(1, 0,
             { label: "Type", value: modernTitleFromKey(profile.location_type || "location") },

@@ -190,7 +190,8 @@ Home screen rule browsing:
   review notes; its row payload is selected by `table_type`. The initial
   specialised type, `foe_encounter`, stores roll/range, foe name, a concise
   description, quantity, Level, Attack, Defence, category, states, weaknesses,
-  special rules, exact row text, reviewer notes, and review-only modifiers.
+  named or inline reaction data, special rules, exact row text, reviewer notes,
+  and review-only modifiers.
   Each modifier stores a target, adjustment, scope/condition, and exact printed
   wording. Saving a complete Foe Encounter row creates a
   local `reviewed_foes[]` profile linked to the source table/block/page. These

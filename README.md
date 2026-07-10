@@ -102,7 +102,8 @@ current with every rules or content change.
   source wording, and type-specific rows. The first specialised type is **Foe
   Encounter**: rows record foes, a short human-readable description, quantities,
   Level/Attack/Defence, category, states, weaknesses, structured modifiers, and
-  special rules. A modifier records its target, adjustment, scope/condition, and
+  special rules. They can also reference a reviewed reaction table or record
+  their own reaction rows. A modifier records its target, adjustment, scope/condition, and
   exact printed wording. A complete reviewed foe row creates a
   linked local provisional foe profile for later validation; it does not change
   gameplay or activate a supplement.
