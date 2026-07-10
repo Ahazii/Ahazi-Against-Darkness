@@ -1266,11 +1266,25 @@ button.is-working::after {
 }
 
 .modern-source-import-grid {
-  display: grid;
-  grid-template-columns: minmax(15rem, 1.2fr) minmax(15rem, 1.2fr) minmax(13rem, 0.9fr) minmax(10rem, 0.72fr) minmax(12rem, 1fr) minmax(7rem, 0.42fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: end;
   min-width: 0;
+}
+
+.modern-source-import-grid > .modern-field {
+  flex: 1 1 13rem;
+  min-width: min(13rem, 100%);
+}
+
+.modern-source-import-grid > .modern-field:nth-child(-n + 2) {
+  flex-basis: 16rem;
+}
+
+.modern-source-import-grid > .modern-field:nth-child(6) {
+  flex: 0 1 8rem;
+  min-width: min(7rem, 100%);
 }
 
 .modern-source-import-grid .modern-field,
@@ -1282,6 +1296,7 @@ button.is-working::after {
 }
 
 .modern-source-overwrite {
+  flex: 0 1 auto;
   align-self: end;
   min-height: 34px;
   padding-bottom: 4px;
@@ -1304,11 +1319,20 @@ button.is-working::after {
 }
 
 .modern-source-picker-bar {
-  display: grid;
-  grid-template-columns: minmax(18rem, 0.8fr) minmax(22rem, 1.4fr) minmax(16rem, 0.8fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: end;
   min-width: 0;
+}
+
+.modern-source-picker-bar > .modern-field {
+  flex: 1 1 18rem;
+  min-width: min(18rem, 100%);
+}
+
+.modern-source-picker-bar > .modern-source-compact-strip {
+  flex: 2 1 24rem;
 }
 
 .modern-source-picker-bar .modern-field,
@@ -1363,9 +1387,14 @@ button.is-working::after {
 
 .modern-source-review-grid {
   display: grid;
-  grid-template-columns: minmax(19rem, var(--source-left-width, 26rem)) 7px minmax(32rem, 1fr);
+  grid-template-columns: minmax(17rem, min(var(--source-left-width, 26rem), 45%)) 7px minmax(22rem, 1fr);
   gap: 4px;
   align-items: start;
+  min-width: 0;
+}
+
+.modern-source-scan-detail {
+  container-type: inline-size;
   min-width: 0;
 }
 
@@ -1388,7 +1417,7 @@ button.is-working::after {
   padding: 5px;
   border: 1px solid rgba(201, 162, 39, 0.38);
   border-radius: 7px;
-  background: rgba(201, 162, 39, 0.06);
+  background: var(--panel);
 }
 
 .modern-source-controls-panel p {
@@ -1461,9 +1490,9 @@ button.is-working::after {
 
 .modern-source-action-group {
   display: grid;
-  flex: 1 1 auto;
+  flex: 1 1 5.5rem;
   gap: 2px;
-  min-width: 0;
+  min-width: 5.5rem;
 }
 
 .modern-source-action-group > span {
@@ -1479,12 +1508,20 @@ button.is-working::after {
 }
 
 .modern-source-action-row button {
+  box-sizing: border-box;
   width: 100%;
+  min-width: 0;
   min-height: 25px;
   padding: 3px 5px;
   justify-self: stretch;
   font-size: 11px;
   line-height: 1.1;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.modern-source-action-row button.is-working {
+  font-size: 0;
 }
 
 .modern-source-control-actions {
@@ -1512,16 +1549,20 @@ button.is-working::after {
   left: 50%;
   z-index: 3;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 3px;
   align-items: center;
-  max-width: calc(100% - 14px);
-  width: max-content;
+  box-sizing: border-box;
+  width: calc(100% - 14px);
+  max-width: none;
   padding: 4px;
   border: 1px solid rgba(201, 162, 39, 0.42);
   border-radius: 6px;
   background: rgba(16, 17, 14, 0.84);
   backdrop-filter: blur(8px);
   transform: translateX(-50%);
+  margin-top: 0;
 }
 
 .modern-source-pdf-toolbar .modern-field {
@@ -1530,6 +1571,7 @@ button.is-working::after {
 }
 
 .modern-source-pdf-toolbar input {
+  flex: 0 0 3.4rem;
   width: 3.4rem;
   max-width: 3.4rem;
   min-height: 25px;
@@ -1539,8 +1581,11 @@ button.is-working::after {
 
 .modern-source-pdf-actions {
   display: flex;
-  flex-wrap: nowrap;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 4px;
+  margin-top: 0;
 }
 
 .modern-source-pdf-actions button {
@@ -1749,6 +1794,36 @@ button.is-working::after {
   border: 1px solid #343227;
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.12);
+}
+
+@container (max-width: 45rem) {
+  .modern-source-review-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .modern-source-column-divider {
+    display: none;
+  }
+
+  .modern-source-controls-panel {
+    position: static;
+  }
+}
+
+@container (max-width: 28rem) {
+  .modern-source-controls-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .modern-source-metadata-controls {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .modern-source-action-group {
+    flex-basis: 4.5rem;
+    min-width: 4.5rem;
+  }
 }
 
 .modern-source-table-review-grid {

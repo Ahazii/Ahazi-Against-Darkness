@@ -3095,8 +3095,12 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Active review tool" in MODERN_PAGES_JS
     assert "modern-source-tool-panel" in STYLES_CSS
     assert "modern-source-preview-text" in STYLES_CSS
-    assert "grid-template-columns: minmax(19rem, var(--source-left-width, 26rem)) 7px minmax(32rem, 1fr)" in STYLES_CSS
+    assert "grid-template-columns: minmax(17rem, min(var(--source-left-width, 26rem), 45%)) 7px minmax(22rem, 1fr)" in STYLES_CSS
     assert "flex-wrap: wrap" in STYLES_CSS
+    assert "container-type: inline-size" in STYLES_CSS
+    assert "@container (max-width: 45rem)" in STYLES_CSS
+    assert ".modern-source-import-grid > .modern-field" in STYLES_CSS
+    assert "width: calc(100% - 14px)" in STYLES_CSS
     assert "min-height: clamp(38rem, 72vh, 56rem)" in STYLES_CSS
     assert "max-height: clamp(44rem, 84vh, 68rem)" in STYLES_CSS
     assert "modern-source-column-divider" in MODERN_PAGES_JS
