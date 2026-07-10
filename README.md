@@ -109,6 +109,11 @@ current with every rules or content change.
   PDF preview **Previous** and **Next** update the physical PDF image without
   rebuilding the workbench tree, keeping the navigation controls in their
   active scroll position; a visible viewer message reports an unavailable page.
+  Table drafts also offer **Suggest Rows**: they analyse the selected exact PDF
+  block, propose row boundaries for the selected table type, and import those
+  candidates into the normal editable fields only after confirmation. The first
+  specialised row importer handles flattened Foe Encounter tables, preserving
+  every row's exact source wording for review.
   Reviewed blocks can also create
   package-level supplement requirements that preserve exact source wording while
   separately recording editable party eligibility, dependencies, triggers, and

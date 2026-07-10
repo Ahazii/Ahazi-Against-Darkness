@@ -90,6 +90,7 @@ from .engine.supplement_sources import (
     pdf_source_settings,
     reset_supplement_source_workspace,
     scan_supplement_source_pdf,
+    suggest_supplement_source_table_rows,
     set_pdf_source_metadata,
     set_pdf_source_page_offset,
     split_matching_supplement_source_phrase_to_ignore,
@@ -1041,6 +1042,19 @@ async def hide_source_duplicate_fragments(source_id: str) -> dict[str, Any]:
 async def draft_source_block_table(source_id: str, block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     try:
         return draft_supplement_source_table(settings.data_dir, source_id, block_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Source block not found.") from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/{block_id:path}/table-row-candidates")
+async def suggest_source_table_rows(source_id: str, block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return suggest_supplement_source_table_rows(
+            settings.data_dir,
+            source_id,
+            block_id,
+            str(payload.get("table_type") or "reference_lookup"),
+        )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Source block not found.") from exc
 

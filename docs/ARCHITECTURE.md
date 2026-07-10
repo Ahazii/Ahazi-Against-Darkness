@@ -190,6 +190,14 @@ Home screen rule browsing:
   source-content tree; this preserves the sticky viewer toolbar's active scroll
   position during repeated Previous/Next review. Render failures are reported
   in the viewer rather than silently leaving an unchanged image.
+  Table row import is a separate, review-first candidate step. A source block
+  can be analysed for the selected `table_type`, with proposed rows imported
+  into the editable draft only after reviewer confirmation. `foe_encounter`
+  recognises roll markers plus quantity/name/Level patterns in flattened PDF
+  prose, preserves the entire exact row, and proposes only confident structural
+  values. The same candidate-import boundary is reusable for future treasure,
+  class, mount, companion, and other PDF-specific formats without treating an
+  extraction guess as an active game rule.
   The Developer PDF / Supplement Workbench lists these local scans and opens a
   read-only searchable block browser before any assignment is written.
   Uploaded PDF source settings are stored in

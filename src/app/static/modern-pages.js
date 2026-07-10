@@ -7835,6 +7835,19 @@ async function renderRulePdfManager() {
       });
       const tableActions = actions();
       tableActions.append(
+        button("Suggest Rows", "Read the exact selected source block and propose row boundaries for the current table type. For Foe Encounter tables it also proposes roll, quantity, foe name, Level, category, exact row wording, and special rules. Review and edit every imported value before saving.", async (btn) => runWithButtonProgress(btn, "Finding row candidates...", async () => {
+          if (!table.source_block_id) throw new Error("This table draft has no source block to analyse.");
+          if (rowsMount.children.length && !window.confirm("Replace the current editable rows with newly suggested source rows? You can still edit every imported field before saving.")) {
+            setStatus("Row suggestion cancelled.");
+            return;
+          }
+          const suggestion = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(table.source_block_id)}/table-row-candidates`, {
+            method: "POST",
+            body: JSON.stringify({ table_type: tableTypeInput.value }),
+          });
+          redrawRows(suggestion.rows || []);
+          setStatus(suggestion.message || "Suggested table rows imported for review.");
+        })),
         button("Add Row", "Add one editable row to this machine table draft.", () => addDraftRow()),
         button("Save Reviewed Table", "Save this table draft into DATA_DIR/Supplements/_sources beside the source block scan.", async (btn) => runWithButtonProgress(btn, "Saving reviewed table...", async () => {
           const tableId = String(tableIdInput.value || "").trim();

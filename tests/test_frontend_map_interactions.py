@@ -3149,6 +3149,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Provisional character classes" in MODERN_PAGES_JS
     assert "const profileButton" in MODERN_PAGES_JS
     assert "/profile-draft" in MODERN_PAGES_JS
+    assert "Suggest Rows" in MODERN_PAGES_JS
+    assert "/table-row-candidates" in MODERN_PAGES_JS
     assert "Save Reviewed Table" in MODERN_PAGES_JS
     assert "Reviewed tables" in MODERN_PAGES_JS
     assert "Table Draft" in MODERN_PAGES_JS

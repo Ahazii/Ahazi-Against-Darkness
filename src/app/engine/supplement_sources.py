@@ -990,6 +990,86 @@ def _parse_table_rows(text: str) -> tuple[list[dict[str, Any]], str]:
     return rows, status
 
 
+def _source_table_text(text: Any) -> str:
+    """Remove obvious PDF footer residue while retaining wording for row review."""
+    raw = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    lines = [line.strip() for line in raw.splitlines()]
+    kept = [line for line in lines if line and not re.fullmatch(r"\d{1,3}", line)]
+    return re.sub(r"\s+", " ", " ".join(kept)).strip()
+
+
+def _foe_encounter_row_candidates(text: Any) -> list[dict[str, Any]]:
+    source = _source_table_text(text)
+    # Foe encounter tables normally begin every result with a compact roll marker
+    # followed by a quantity expression (for example, "2 d6+1 Imps").  Requiring
+    # that quantity keeps prose such as "2 wolves" from becoming a false row.
+    marker = re.compile(r"(?<![A-Za-z0-9])(?P<roll>[1-6])\s+(?=(?:(?:\d+)?d\d+(?:[+-]\d+)?|\d+d\d+|\d+)\s+[A-Z])")
+    matches = list(marker.finditer(source))
+    rows: list[dict[str, Any]] = []
+    for index, match in enumerate(matches):
+        start = match.start()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(source)
+        exact_text = source[start:end].strip()
+        exact_text = re.sub(r"\s+\*\s*If you get the same result.*$", "", exact_text, flags=re.IGNORECASE).strip()
+        if not exact_text:
+            continue
+        detail = exact_text[len(match.group("roll")) :].strip()
+        intro = re.match(
+            r"(?P<quantity>(?:(?:\d+)?d\d+(?:[+-]\d+)?|\d+))\s+(?P<name>.+?)\.\s*Level\s+(?P<level>\d+)(?P<after>.*)$",
+            detail,
+            flags=re.IGNORECASE,
+        )
+        quantity = intro.group("quantity") if intro else ""
+        name = intro.group("name").strip() if intro else ""
+        level = intro.group("level") if intro else ""
+        after = intro.group("after").strip() if intro else detail
+        first_clause = re.split(r"[.;]", after, maxsplit=1)[0].strip(" ,")
+        category = ""
+        if first_clause:
+            category = re.sub(r"^(?:flying|undead|demonic|rattish|hellspawn|minor|major)\s+", "", first_clause, flags=re.IGNORECASE).strip()
+            category = category.split(",")[0].strip()
+        rows.append(
+            {
+                "roll": match.group("roll"),
+                "foe_name": name,
+                "quantity": quantity,
+                "level": level,
+                "attack": "",
+                "defense": "",
+                "category": category,
+                "states_inflicted": [],
+                "weaknesses": [],
+                "special_rules": after,
+                "exact_text": exact_text,
+                "notes": "Imported candidate. Check every field against the exact source wording.",
+            }
+        )
+    return rows
+
+
+def suggest_supplement_source_table_rows(data_dir: Path, source_id: str, block_id: str, table_type: str = "reference_lookup") -> dict[str, Any]:
+    payload = load_supplement_source_scan(data_dir, source_id)
+    block = next((item for item in payload.get("reviewed_blocks", []) if isinstance(item, dict) and item.get("id") == block_id), None)
+    if block is None:
+        raise KeyError(block_id)
+    resolved_type = _table_type(table_type)
+    text = str(block.get("text") or "")
+    if resolved_type == "foe_encounter":
+        rows = _foe_encounter_row_candidates(text)
+        method = "foe encounter roll/quantity markers"
+    else:
+        parsed, _status = _parse_table_rows(text)
+        rows = [_clean_reference_table_row(row) for row in parsed]
+        method = "line-start roll markers"
+    return {
+        "rows": rows,
+        "table_type": resolved_type,
+        "source_block_id": block_id,
+        "method": method,
+        "message": f"Found {len(rows)} candidate row(s) using {method}. Review every imported field against the exact source text.",
+    }
+
+
 def _table_type(value: Any) -> str:
     candidate = str(value or "reference_lookup").strip()
     return candidate if candidate in SUPPLEMENT_TABLE_TYPES else "reference_lookup"

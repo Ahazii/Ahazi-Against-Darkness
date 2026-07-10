@@ -1577,6 +1577,30 @@ def test_foe_encounter_table_save_creates_linked_provisional_foe_profiles(tmp_pa
     assert detail["foes"][0]["states_inflicted"] == ["Poisoned", "Entangled"]
 
 
+def test_foe_encounter_candidate_import_splits_flattened_pdf_text_into_review_rows(tmp_path: Path, monkeypatch) -> None:
+    from app.engine import supplement_sources
+
+    pdf = tmp_path / "Woodlands.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+    flattened = (
+        "Woodlands Vermin table (d6) 1 2d6 Mist Rats. Level 3 flying vermin, no treasure. Gnaw at supplies. "
+        "2 d6+1 Imps. Level 5 flying hellspawn vermin, morale -1. Steal a random object. "
+        "3 d6 Winged Capricorns. Level 4 flying vermin, no treasure. Charge on the first turn."
+    )
+    monkeypatch.setattr(supplement_sources, "extract_rule_pdf_pages", lambda _path: [{"page": 1, "text": flattened, "methods": ["layout"]}])
+    supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-10T12:00:00Z")
+
+    suggested = supplement_sources.suggest_supplement_source_table_rows(tmp_path, "woodlands", "woodlands-p1-b001", "foe_encounter")
+
+    assert suggested["method"] == "foe encounter roll/quantity markers"
+    assert [row["roll"] for row in suggested["rows"]] == ["1", "2", "3"]
+    assert [row["foe_name"] for row in suggested["rows"]] == ["Mist Rats", "Imps", "Winged Capricorns"]
+    assert [row["quantity"] for row in suggested["rows"]] == ["2d6", "d6+1", "d6"]
+    assert [row["level"] for row in suggested["rows"]] == ["3", "5", "4"]
+    assert suggested["rows"][0]["category"] == "vermin"
+    assert "Gnaw at supplies" in suggested["rows"][0]["special_rules"]
+
+
 def test_source_profiles_support_mount_companion_and_character_class_framework(tmp_path: Path, monkeypatch) -> None:
     from app.engine import supplement_sources
 
