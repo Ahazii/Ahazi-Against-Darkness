@@ -212,12 +212,24 @@ Home screen rule browsing:
   in `reviewed_blocks` and are preserved separately. Reviewed block order is
   user-controlled with move up/down actions because PDF text extraction can
   interleave columns, captions, boxed text, and artwork.
+  The block tree is category-then-PDF-page navigation. Page branches lazily
+  create their block previews when expanded, so the workbench exposes the
+  entire document without a fixed block cap or thousands of always-rendered
+  text nodes. `POST /api/supplements/source-scans/<source_id>/blocks/bulk-update`
+  applies one assignment/status change to a selected set with one load and one
+  save. Select Shown is based on expanded rendered rows, not merely the current
+  data filter. Direct split stores the caret from the displayed block text and
+  does not require checkbox selection or a second editor.
   Workbench artwork extraction stores raw embedded image candidates under the
   same source folder and keeps reviewed artwork names, categories, and notes in
   `reviewed_artwork` so useful illustrations can later be promoted into the
   user asset library. When a PDF exposes no embedded image objects, the
   extractor renders full PDF pages as `rendered_page` candidates for later
   crop/review work.
+  Workbench session state retains the inner source-tree scroll, open page and
+  category branches, selected blocks, and the active package asset/tool. Asset
+  saves and mask/grid extraction reopen the same asset and compensate for DOM
+  layout changes so the reviewer is not returned to the top of the module.
   Workbench scans can store both `pdf_page` and the offset-adjusted printed
   `source_page`; use `page_offset` when a PDF cover/front matter shifts the
   viewer page number away from the printed book page. The offset is editable

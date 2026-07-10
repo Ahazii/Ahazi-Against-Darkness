@@ -74,6 +74,10 @@ current with every rules or content change.
   offsets and package membership can also be corrected after indexing and
   extraction; existing assignments, edited blocks, artwork review, table
   drafts, and exact-text index entries are relabelled without rescanning.
+  The review tree groups every block by category and PDF page without a hard
+  block limit, applies multi-block assignments in one operation, splits at a
+  caret placed directly in the displayed block text, and restores open pages,
+  scroll position, and package asset tools after saves.
 
 ## Preserved Source Material
 

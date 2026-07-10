@@ -1038,6 +1038,39 @@ def test_supplement_source_scan_overwrite_rebuilds_reviewed_blocks(tmp_path: Pat
     assert payload["reviewed_blocks"][0]["assignment"] == "unassigned"
 
 
+def test_source_blocks_can_be_assigned_in_one_bulk_update(tmp_path: Path, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from app import main as main_module
+    from app.engine import supplement_sources
+
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "Bulk Book.pdf").write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(main_module, "settings", replace(main_module.settings, data_dir=tmp_path, rules_dir=rules_dir))
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 1, "text": "Alpha\n\nBeta\n\nGamma", "methods": ["layout"]}],
+    )
+    client = TestClient(main_module.app)
+    client.post("/api/supplements/source-scan", json={"filename": "Bulk Book.pdf"})
+    block_ids = [f"bulk-book-p1-b{index:03d}" for index in range(1, 4)]
+
+    response = client.post(
+        "/api/supplements/source-scans/bulk-book/blocks/bulk-update",
+        json={"block_ids": block_ids, "changes": {"assignment": "rule_text", "review_status": "edited"}},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["updated_count"] == 3
+    saved = client.get("/api/supplements/source-scans/bulk-book").json()
+    assert [block["assignment"] for block in saved["blocks"]] == ["rule_text", "rule_text", "rule_text"]
+    assert [block["review_status"] for block in saved["blocks"]] == ["edited", "edited", "edited"]
+
+
 def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 

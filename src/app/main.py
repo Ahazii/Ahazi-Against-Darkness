@@ -97,6 +97,7 @@ from .engine.supplement_sources import (
     update_supplement_package_asset,
     update_supplement_source_artwork,
     update_supplement_source_block,
+    update_supplement_source_blocks,
     update_supplement_source_metadata,
     upsert_supplement_source_table,
 )
@@ -966,6 +967,18 @@ async def save_supplement_source_block(source_id: str, block_id: str, payload: d
         return update_supplement_source_block(settings.data_dir, source_id, block_id, payload)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Source block not found.") from exc
+
+
+@app.post("/api/supplements/source-scans/{source_id}/blocks/bulk-update")
+async def save_supplement_source_blocks(source_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    block_ids = payload.get("block_ids") if isinstance(payload.get("block_ids"), list) else []
+    changes = payload.get("changes") if isinstance(payload.get("changes"), dict) else {}
+    try:
+        return update_supplement_source_blocks(settings.data_dir, source_id, [str(block_id) for block_id in block_ids], changes)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="One or more selected source blocks were not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/supplements/source-scans/{source_id}/blocks/delete")

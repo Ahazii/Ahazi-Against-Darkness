@@ -3043,7 +3043,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "⊘ Ignore" in MODERN_PAGES_JS
     assert "☑ Shown" in MODERN_PAGES_JS
     assert "☐ Clear" in MODERN_PAGES_JS
-    assert "visibleSelectableBlockIds" in MODERN_PAGES_JS
+    assert 'querySelectorAll(".modern-source-tree-item[data-source-block-id]")' in MODERN_PAGES_JS
     assert "hasSearch && !assignmentNeedle && block.assignment === \"ignore\"" in MODERN_PAGES_JS
     assert "Ignored snippets are hidden from normal search unless you filter to Ignore." in MODERN_PAGES_JS
     assert "/blocks/split-ignore-phrase" in MODERN_PAGES_JS
@@ -3053,7 +3053,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "↺ Reset" in MODERN_PAGES_JS
     assert "method: \"DELETE\"" in MODERN_PAGES_JS
     assert "Type RESET" in MODERN_PAGES_JS
-    assert "Showing first ${renderLimit} in this category" in MODERN_PAGES_JS
+    assert "const pageGroups = new Map()" in MODERN_PAGES_JS
+    assert "const renderLimit = 160" not in MODERN_PAGES_JS
+    assert "data-source-block-id" in MODERN_PAGES_JS
     assert "current Search text as a literal phrase" in MODERN_PAGES_JS
     assert "modern-source-review-scope" in MODERN_PAGES_JS
     assert "Whole document" in MODERN_PAGES_JS
@@ -3114,7 +3116,12 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "const splitSelectedButton = button(\"⟂ Split\"" in MODERN_PAGES_JS
     assert "activeBlockEditor" in MODERN_PAGES_JS
     assert "splitBlockAtCursor" in MODERN_PAGES_JS
-    assert "click Split again or use Split At Cursor" in MODERN_PAGES_JS
+    assert "click directly in that block's text" in MODERN_PAGES_JS
+    assert "caretOffsetWithin" in MODERN_PAGES_JS
+    assert "activeInlineSplit" in MODERN_PAGES_JS
+    assert "/blocks/bulk-update" in MODERN_PAGES_JS
+    assert "refreshSourceScansPreservingAsset" in MODERN_PAGES_JS
+    assert "ahazi-source-workbench-tree-scroll" in MODERN_PAGES_JS
     assert "openSourceTool(`${block.page_label" in MODERN_PAGES_JS
     assert "Draft Table" in MODERN_PAGES_JS
     assert "Save Reviewed Table" in MODERN_PAGES_JS

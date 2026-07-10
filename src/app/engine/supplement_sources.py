@@ -982,6 +982,34 @@ def update_supplement_source_block(data_dir: Path, source_id: str, block_id: str
     raise KeyError(block_id)
 
 
+def update_supplement_source_blocks(data_dir: Path, source_id: str, block_ids: list[str], changes: dict[str, Any]) -> dict[str, Any]:
+    clean_ids = [str(block_id or "").strip() for block_id in block_ids if str(block_id or "").strip()]
+    if not clean_ids:
+        raise ValueError("Select one or more source blocks first.")
+    payload = load_supplement_source_scan(data_dir, source_id)
+    wanted = set(clean_ids)
+    updated: list[dict[str, Any]] = []
+    for block in payload.get("reviewed_blocks", []):
+        if not isinstance(block, dict) or str(block.get("id") or "") not in wanted:
+            continue
+        if "assignment" in changes:
+            assignment = str(changes.get("assignment") or "unassigned")
+            block["assignment"] = assignment if assignment in SOURCE_BLOCK_ASSIGNMENTS else "unassigned"
+        if "review_status" in changes:
+            block["review_status"] = str(changes.get("review_status") or "unreviewed")
+        if "notes" in changes:
+            block["notes"] = str(changes.get("notes") or "")
+        updated.append(block)
+    if len(updated) != len(wanted):
+        raise KeyError("One or more selected source blocks were not found.")
+    save_supplement_source_scan(data_dir, source_id, payload)
+    return {
+        "blocks": updated,
+        "updated_count": len(updated),
+        "message": f"Updated {len(updated)} source block(s).",
+    }
+
+
 def split_supplement_source_block(data_dir: Path, source_id: str, block_id: str, parts: list[str]) -> dict[str, Any]:
     clean_parts = [str(part).strip() for part in parts if str(part).strip()]
     if len(clean_parts) < 2:

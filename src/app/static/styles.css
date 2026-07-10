@@ -1584,6 +1584,23 @@ button.is-working::after {
   overflow: auto;
 }
 
+.modern-source-inline-text {
+  min-height: 3rem;
+  padding: 7px;
+  border: 1px solid rgba(201, 162, 39, 0.2);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.18);
+  cursor: text;
+  caret-color: var(--accent);
+  outline: none;
+}
+
+.modern-source-inline-text:focus,
+.modern-source-inline-text.is-split-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.24);
+}
+
 .modern-source-preview-text.tall {
   max-height: 34rem;
 }

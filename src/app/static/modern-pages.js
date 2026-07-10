@@ -6847,6 +6847,14 @@ async function renderRulePdfManager() {
     details.append(summary, body);
     return details;
   }
+  function sessionStringSet(key) {
+    try {
+      const value = JSON.parse(window.sessionStorage.getItem(key) || "[]");
+      return new Set(Array.isArray(value) ? value.map(String) : []);
+    } catch {
+      return new Set();
+    }
+  }
   const sourceWorkbenchState = {
     packageId: window.sessionStorage.getItem("ahazi-source-workbench-package") || "",
     sourceId: window.sessionStorage.getItem("ahazi-source-workbench-source") || "",
@@ -6856,6 +6864,12 @@ async function renderRulePdfManager() {
     page: Number(window.sessionStorage.getItem("ahazi-source-workbench-page") || 0) || 0,
     selectedBlockIds: new Set(),
     scrollY: 0,
+    treeScrollTop: Number(window.sessionStorage.getItem("ahazi-source-workbench-tree-scroll") || 0) || 0,
+    assetId: window.sessionStorage.getItem("ahazi-source-workbench-asset") || "",
+    assetTool: window.sessionStorage.getItem("ahazi-source-workbench-asset-tool") || "",
+    assetViewportTop: 0,
+    openPageKeys: sessionStringSet("ahazi-source-workbench-open-pages"),
+    openCategoryKeys: sessionStringSet("ahazi-source-workbench-open-categories"),
   };
   let activeWorkbenchPackage = null;
   function useActiveWorkbenchPackage() {
@@ -6864,6 +6878,27 @@ async function renderRulePdfManager() {
     supplementTitle.value = activeWorkbenchPackage.supplement_title || activeWorkbenchPackage.supplement_id;
     return activeWorkbenchPackage;
   }
+  async function refreshSourceScansPreservingAsset(assetId, assetTool = "") {
+    const currentRow = Array.from(document.querySelectorAll("[data-package-asset-id]"))
+      .find((row) => row.dataset.packageAssetId === String(assetId || ""));
+    sourceWorkbenchState.assetId = String(assetId || "");
+    sourceWorkbenchState.assetTool = String(assetTool || "");
+    sourceWorkbenchState.assetViewportTop = currentRow?.getBoundingClientRect().top || 0;
+    sourceWorkbenchState.scrollY = window.scrollY || 0;
+    persistSourceWorkbenchState();
+    await refreshSourceScans();
+    window.requestAnimationFrame(() => {
+      const restoredRow = Array.from(document.querySelectorAll("[data-package-asset-id]"))
+        .find((row) => row.dataset.packageAssetId === sourceWorkbenchState.assetId);
+      if (!restoredRow) {
+        window.scrollTo({ top: sourceWorkbenchState.scrollY || 0, behavior: "auto" });
+        return;
+      }
+      restoredRow.open = true;
+      const nextTop = restoredRow.getBoundingClientRect().top;
+      window.scrollBy({ top: nextTop - sourceWorkbenchState.assetViewportTop, behavior: "auto" });
+    });
+  }
   function persistSourceWorkbenchState() {
     window.sessionStorage.setItem("ahazi-source-workbench-package", sourceWorkbenchState.packageId || "");
     window.sessionStorage.setItem("ahazi-source-workbench-source", sourceWorkbenchState.sourceId || "");
@@ -6871,6 +6906,11 @@ async function renderRulePdfManager() {
     window.sessionStorage.setItem("ahazi-source-workbench-assignment", sourceWorkbenchState.assignment || "");
     window.sessionStorage.setItem("ahazi-source-workbench-scope", sourceWorkbenchState.scope || "document");
     window.sessionStorage.setItem("ahazi-source-workbench-page", String(sourceWorkbenchState.page || ""));
+    window.sessionStorage.setItem("ahazi-source-workbench-tree-scroll", String(sourceWorkbenchState.treeScrollTop || 0));
+    window.sessionStorage.setItem("ahazi-source-workbench-asset", sourceWorkbenchState.assetId || "");
+    window.sessionStorage.setItem("ahazi-source-workbench-asset-tool", sourceWorkbenchState.assetTool || "");
+    window.sessionStorage.setItem("ahazi-source-workbench-open-pages", JSON.stringify(Array.from(sourceWorkbenchState.openPageKeys)));
+    window.sessionStorage.setItem("ahazi-source-workbench-open-categories", JSON.stringify(Array.from(sourceWorkbenchState.openCategoryKeys)));
   }
   function renderSourceScanDetail(payload, mount) {
     const blocks = Array.isArray(payload.blocks) ? payload.blocks.map((block) => ({ ...block, source_item_type: "block" })) : [];
@@ -6910,7 +6950,6 @@ async function renderRulePdfManager() {
     reviewScope.value = sourceWorkbenchState.scope || "document";
     const results = el("div", "modern-source-tree");
     const selectedBlockIds = new Set([...sourceWorkbenchState.selectedBlockIds].filter((blockId) => sourceItems.some((item) => item.id === blockId)));
-    let visibleSelectableBlockIds = [];
     const selectionStatus = el("p", "muted", "No source blocks selected.");
     const firstPdfPage = Number(sourceItems.find((item) => item.pdf_page)?.pdf_page || 1);
     const leftRail = el("div", "modern-source-left-rail");
@@ -7019,6 +7058,7 @@ async function renderRulePdfManager() {
       sourceWorkbenchState.page = Number(pageInput.value || firstPdfPage) || firstPdfPage;
       sourceWorkbenchState.selectedBlockIds = new Set(selectedBlockIds);
       sourceWorkbenchState.scrollY = window.scrollY || 0;
+      sourceWorkbenchState.treeScrollTop = results.scrollTop || 0;
       persistSourceWorkbenchState();
     }
     async function reloadCurrentScan(message = "Source scan refreshed.") {
@@ -7026,7 +7066,9 @@ async function renderRulePdfManager() {
       const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}`);
       renderSourceScanDetail(detail, mount);
       setStatus(message);
-      window.requestAnimationFrame(() => window.scrollTo({ top: sourceWorkbenchState.scrollY || window.scrollY, behavior: "auto" }));
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: sourceWorkbenchState.scrollY || window.scrollY, behavior: "auto" });
+      });
     }
     function updateSelectionStatus() {
       selectionStatus.textContent = selectedBlockIds.size
@@ -7048,12 +7090,18 @@ async function renderRulePdfManager() {
       const nextAssignment = bulkAssignment.value;
       if (!nextAssignment) throw new Error("Choose an assignment first.");
       if (!selectedBlockIds.size) throw new Error("Select one or more source blocks first.");
-      for (const blockId of Array.from(selectedBlockIds)) {
-        await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(blockId)}`, {
-          method: "PATCH",
-          body: JSON.stringify({ assignment: nextAssignment, review_status: "edited" }),
-        });
+      sourceWorkbenchState.openCategoryKeys.add(`${payload.source_id || "source"}|${nextAssignment}`);
+      for (const block of blocks.filter((item) => selectedBlockIds.has(item.id))) {
+        sourceWorkbenchState.openPageKeys.add(`${payload.source_id || "source"}|${nextAssignment}|${Number(block.pdf_page || block.source_page || 0)}`);
       }
+      persistSourceWorkbenchState();
+      await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/bulk-update`, {
+        method: "POST",
+        body: JSON.stringify({
+          block_ids: Array.from(selectedBlockIds),
+          changes: { assignment: nextAssignment, review_status: "edited" },
+        }),
+      });
       await reloadCurrentScan("Selected source blocks assigned.");
     }));
     const ignorePhraseButton = button("⊘ Ignore", "Use the current Search text as a literal phrase. Every occurrence in this source document is split into its own reviewed block and assigned to ignore.", async (btn) => runWithButtonProgress(btn, "Splitting ignored phrase...", async () => {
@@ -7072,15 +7120,28 @@ async function renderRulePdfManager() {
       sourceWorkbenchState.selectedBlockIds = new Set();
       await reloadCurrentScan(result.message || "Matching phrase split into ignored blocks.");
     }));
-    const selectVisibleButton = button("☑ Shown", "Select all visible reviewed text blocks in the current search/filter/page scope. Ignored snippets stay hidden unless the filter is set to Ignore.", () => {
-      for (const blockId of visibleSelectableBlockIds) selectedBlockIds.add(blockId);
+    const selectVisibleButton = button("☑ Shown", "Select only block rows currently shown inside expanded category and page branches. Collapsed pages and categories are not selected.", () => {
+      const shownRows = Array.from(results.querySelectorAll(".modern-source-tree-item[data-source-block-id]"))
+        .filter((row) => row.getClientRects().length > 0);
+      for (const row of shownRows) {
+        const blockId = row.dataset.sourceBlockId;
+        if (blockId) {
+          selectedBlockIds.add(blockId);
+          row.classList.add("modern-row-selected");
+          const box = row.querySelector('input[type="checkbox"]');
+          if (box) box.checked = true;
+        }
+      }
       updateSelectionStatus();
-      draw();
     });
     const clearSelectionButton = button("☐ Clear", "Clear the current source block selection.", () => {
       selectedBlockIds.clear();
+      for (const row of results.querySelectorAll(".modern-source-tree-item[data-source-block-id]")) {
+        row.classList.remove("modern-row-selected");
+        const box = row.querySelector('input[type="checkbox"]');
+        if (box) box.checked = false;
+      }
       updateSelectionStatus();
-      draw();
     });
     function selectedReviewedBlock() {
       if (selectedBlockIds.size !== 1) return null;
@@ -7098,6 +7159,24 @@ async function renderRulePdfManager() {
       return block;
     }
     let activeBlockEditor = null;
+    let activeInlineSplit = null;
+    function caretOffsetWithin(element) {
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount || !element.contains(selection.anchorNode)) return -1;
+      const range = selection.getRangeAt(0).cloneRange();
+      range.selectNodeContents(element);
+      range.setEnd(selection.anchorNode, selection.anchorOffset);
+      return range.toString().length;
+    }
+    function caretOffsetFromPoint(element, event) {
+      if (!event || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return -1;
+      const pointRange = document.caretRangeFromPoint?.(event.clientX, event.clientY);
+      if (!pointRange || !element.contains(pointRange.startContainer)) return -1;
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      range.setEnd(pointRange.startContainer, pointRange.startOffset);
+      return range.toString().length;
+    }
     async function splitBlockAtCursor(block, textValue, cursorPosition) {
       if (!block || block.source_item_type === "page-boundary candidate") throw new Error("Split needs exactly one reviewed source block selected.");
       const sourceText = String(textValue || "");
@@ -7118,16 +7197,13 @@ async function renderRulePdfManager() {
       if (block.pdf_page) previewPdfPage(block.pdf_page);
       openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, search.value));
     });
-    const splitSelectedButton = button("⟂ Split", "Split one selected reviewed text block. First click Split to open the editor, place the cursor in Reviewed text, then click Split again or use Split At Cursor in the editor.", async (btn) => runWithButtonProgress(btn, "Preparing split...", async () => {
-      const block = requireSelectedReviewedBlock("Split");
-      if (activeBlockEditor?.blockId === block.id && activeBlockEditor.textArea && document.body.contains(activeBlockEditor.textArea)) {
-        await splitBlockAtCursor(block, activeBlockEditor.textArea.value, activeBlockEditor.textArea.selectionStart);
-        return;
+    const splitSelectedButton = button("⟂ Split", "Expand a page and block, click directly in that block's text to place the caret, then press Split. The block does not need to be selected first and no second editor is opened.", async (btn) => runWithButtonProgress(btn, "Splitting block...", async () => {
+      if (!activeInlineSplit?.element || !document.body.contains(activeInlineSplit.element) || !activeInlineSplit.element.getClientRects().length) {
+        throw new Error("Expand a block and click directly in its text at the split point first.");
       }
-      if (block.pdf_page) previewPdfPage(block.pdf_page);
-      openSourceTool(`${block.page_label || `p.${block.source_page || "?"}`} · ${block.assignment || "unassigned"}`, blockEditor(block, search.value));
-      activeBlockEditor?.textArea?.focus();
-      setStatus("Place the cursor in Reviewed text, then click Split again or use Split At Cursor in the editor.");
+      const cursor = Number(activeInlineSplit.cursor);
+      if (!Number.isFinite(cursor) || cursor < 0) throw new Error("Click directly in the block text at the split point first.");
+      await splitBlockAtCursor(activeInlineSplit.block, activeInlineSplit.element.innerText, cursor);
     }));
     const draftTableButton = button("▦ Table", "Parse the selected table-assigned source block into editable machine rows. Select exactly one reviewed block assigned as table.", async (btn) => runWithButtonProgress(btn, "Drafting table...", async () => {
       const block = requireSelectedReviewedBlock("Draft Table");
@@ -7463,6 +7539,7 @@ async function renderRulePdfManager() {
     function renderSourceBlockTreeItem(block, needle) {
       const item = document.createElement("details");
       item.className = "modern-source-tree-item";
+      item.dataset.sourceBlockId = block.id || "";
       item.addEventListener("toggle", () => {
         if (item.open && block.pdf_page) previewPdfPage(block.pdf_page);
       });
@@ -7483,9 +7560,31 @@ async function renderRulePdfManager() {
       );
       item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
       item.appendChild(summary);
+      const textPreview = highlightedEl("div", "modern-pre-wrap modern-source-preview-text modern-source-inline-text", block.text || "", needle);
+      textPreview.contentEditable = "true";
+      textPreview.spellcheck = false;
+      textPreview.setAttribute("role", "textbox");
+      textPreview.setAttribute("aria-multiline", "true");
+      textPreview.title = "Click directly in this text to place the split caret. Then use the Split control on the left. Use Edit when you want to save text changes without splitting.";
+      const activateInlineSplit = (event) => {
+        if (activeInlineSplit?.element && activeInlineSplit.element !== textPreview) activeInlineSplit.element.classList.remove("is-split-target");
+        const pointCursor = caretOffsetFromPoint(textPreview, event);
+        const currentCursor = pointCursor >= 0 ? pointCursor : caretOffsetWithin(textPreview);
+        activeInlineSplit = {
+          block,
+          element: textPreview,
+          cursor: currentCursor >= 0 ? currentCursor : (activeInlineSplit?.element === textPreview ? activeInlineSplit.cursor : -1),
+        };
+        textPreview.classList.add("is-split-target");
+        setStatus(`Split target: ${block.page_label || `p.${block.source_page || "?"}`} block ${block.block_index || "?"}.`);
+      };
+      textPreview.addEventListener("focus", activateInlineSplit);
+      textPreview.addEventListener("click", activateInlineSplit);
+      textPreview.addEventListener("keyup", activateInlineSplit);
+      textPreview.addEventListener("mouseup", activateInlineSplit);
       item.append(
         el("p", "muted", `${block.id || ""}${(block.extraction_methods || []).length ? ` · ${(block.extraction_methods || []).join(", ")}` : ""}`),
-        highlightedEl("p", "modern-pre-wrap modern-source-preview-text", block.text || "", needle)
+        textPreview
       );
       return item;
     }
@@ -7526,6 +7625,7 @@ async function renderRulePdfManager() {
       return panel;
     }
     function draw() {
+      const priorTreeScroll = results.childElementCount ? results.scrollTop : sourceWorkbenchState.treeScrollTop;
       const needle = search.value;
       const assignmentNeedle = assignment.value;
       const activePage = Math.max(1, Number(pageInput.value || firstPdfPage) || 1);
@@ -7541,10 +7641,6 @@ async function renderRulePdfManager() {
         }
         return modernTextMatchesNeedle(`${block.id || ""} ${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
       });
-      visibleSelectableBlockIds = matches
-        .filter((block) => block.source_item_type !== "page-boundary candidate" && block.assignment !== "ignore")
-        .map((block) => block.id)
-        .filter(Boolean);
       const artworkMatches = artworkItems.filter((item) => {
         if (!documentScope && Number(item.pdf_page || 0) !== activePage) return false;
         return modernTextMatchesNeedle(`${item.id || ""} ${item.page_label || ""} ${item.category || ""} ${item.title || ""} ${item.notes || ""}`, needle);
@@ -7573,22 +7669,54 @@ async function renderRulePdfManager() {
       }
       const textTree = el("div", "modern-source-tree-children");
       const orderedGroups = Array.from(grouped.entries()).sort(([left], [right]) => groupRank(left).localeCompare(groupRank(right)));
-      const renderLimit = 160;
       for (const [groupKey, groupBlocks] of orderedGroups) {
         const branchBody = el("div", "modern-source-tree-children");
-        let rendered = 0;
-        for (const block of groupBlocks.slice(0, renderLimit)) {
-          rendered += 1;
-          branchBody.appendChild(renderSourceBlockTreeItem(block, needle));
+        const pageGroups = new Map();
+        for (const block of groupBlocks) {
+          const pageKey = Number(block.pdf_page || block.source_page || 0);
+          if (!pageGroups.has(pageKey)) pageGroups.set(pageKey, []);
+          pageGroups.get(pageKey).push(block);
         }
-        if (groupBlocks.length > renderLimit) {
-          branchBody.appendChild(el("p", "muted", `Showing first ${renderLimit} in this category. Narrow the search or filter to inspect the remaining ${groupBlocks.length - renderLimit}.`));
+        for (const [pageKey, pageBlocks] of Array.from(pageGroups.entries()).sort(([left], [right]) => left - right)) {
+          const pageBody = el("div", "modern-source-tree-children");
+          let pageRendered = false;
+          const renderPageBlocks = () => {
+            if (pageRendered) return;
+            pageRendered = true;
+            for (const block of pageBlocks) pageBody.appendChild(renderSourceBlockTreeItem(block, needle));
+          };
+          const pageStateKey = `${payload.source_id || "source"}|${groupKey}|${pageKey}`;
+          const pageOpen = hasSearch || sourceWorkbenchState.openPageKeys.has(pageStateKey) || (!documentScope && pageKey === activePage);
+          const pageTitle = pageBlocks[0]?.page_label || `PDF p.${pageKey || "?"}`;
+          const pageBranch = treeBranch(pageTitle, `${pageBlocks.length}`, pageBody, {
+            open: pageOpen,
+            hint: "Expand this PDF page to inspect and select its blocks. Collapsed page blocks are not included by Select Shown.",
+          });
+          pageBranch.dataset.sourcePdfPage = String(pageKey || "");
+          pageBranch.addEventListener("toggle", () => {
+            if (pageBranch.open) {
+              sourceWorkbenchState.openPageKeys.add(pageStateKey);
+              renderPageBlocks();
+            } else {
+              sourceWorkbenchState.openPageKeys.delete(pageStateKey);
+            }
+            persistSourceWorkbenchState();
+          });
+          if (pageOpen) renderPageBlocks();
+          branchBody.appendChild(pageBranch);
         }
         const groupTitle = modernTitleFromKey(groupKey || "unassigned");
-        textTree.appendChild(treeBranch(groupTitle, `${groupBlocks.length}`, branchBody, {
-          open: groupKey === "unassigned" || hasSearch,
+        const categoryStateKey = `${payload.source_id || "source"}|${groupKey}`;
+        const categoryBranch = treeBranch(groupTitle, `${groupBlocks.length}`, branchBody, {
+          open: groupKey === "unassigned" || hasSearch || sourceWorkbenchState.openCategoryKeys.has(categoryStateKey),
           hint: groupKey === "unassigned" ? "Primary review queue. Select blocks here, then use the left controls to assign, merge, move, edit, split, or draft tables." : "Assigned content remains in document order within this category.",
-        }));
+        });
+        categoryBranch.addEventListener("toggle", () => {
+          if (categoryBranch.open) sourceWorkbenchState.openCategoryKeys.add(categoryStateKey);
+          else sourceWorkbenchState.openCategoryKeys.delete(categoryStateKey);
+          persistSourceWorkbenchState();
+        });
+        textTree.appendChild(categoryBranch);
       }
       const sourceTree = el("div", "modern-source-tree-children");
       sourceTree.append(
@@ -7601,6 +7729,9 @@ async function renderRulePdfManager() {
         className: "modern-source-tree-root",
         hint: "Imported source document tree. Text, tables, artwork, and future data types sit under this document so review follows the PDF/source order.",
       }));
+      window.requestAnimationFrame(() => {
+        results.scrollTop = Math.max(0, priorTreeScroll || 0);
+      });
     }
     function renderArtworkPanel() {
       const panel = el("div", "modern-source-artwork-panel");
@@ -7734,6 +7865,9 @@ async function renderRulePdfManager() {
       reviewGrid
     );
     draw();
+    window.requestAnimationFrame(() => {
+      results.scrollTop = Math.max(0, sourceWorkbenchState.treeScrollTop || 0);
+    });
   }
   async function refreshSourceScans() {
     const payload = await api("/api/supplements/source-scans");
@@ -7820,13 +7954,17 @@ async function renderRulePdfManager() {
       if ((pkg.assets || []).length) {
         const assetList = el("div", "modern-list");
         appendAssetRows(pkg, assetList);
-        moduleWorkbenchMount.appendChild(workbenchSection("Package assets", `${pkg.asset_count || 0} map/image/tile asset(s)`, assetList));
+        const assetSection = workbenchSection("Package assets", `${pkg.asset_count || 0} map/image/tile asset(s)`, assetList);
+        assetSection.open = Boolean(sourceWorkbenchState.assetId);
+        moduleWorkbenchMount.appendChild(assetSection);
       }
     }
     moduleSelect.addEventListener("change", async () => {
       sourceWorkbenchState.packageId = moduleSelect.value;
       sourceWorkbenchState.sourceId = "";
       sourceWorkbenchState.selectedBlockIds = new Set();
+      sourceWorkbenchState.assetId = "";
+      sourceWorkbenchState.assetTool = "";
       persistSourceWorkbenchState();
       await openSelectedModule();
     });
@@ -7970,6 +8108,7 @@ async function renderRulePdfManager() {
       for (const [assetIndex, asset] of topLevelAssets.entries()) {
         const row = document.createElement("details");
         row.className = "modern-row";
+        row.dataset.packageAssetId = String(asset.id || "");
         const summary = document.createElement("summary");
         const assetSelect = input("checkbox", `modern-package-asset-select-${pkg.supplement_id}-${asset.id}`, "Select this package asset for bulk delete.");
         assetSelect.addEventListener("click", (event) => {
@@ -8007,14 +8146,14 @@ async function renderRulePdfManager() {
         notesInput.value = asset.notes || "";
         const rowActions = actions("modern-row-actions");
         const assetToolMount = el("div", "modern-asset-tool-panel hidden");
-        function openAssetTool(title, toolBody, afterOpen = () => {}) {
+        function openAssetTool(title, toolBody, afterOpen = () => {}, scroll = true) {
           assetToolMount.classList.remove("hidden");
           assetToolMount.replaceChildren(
             modernStatusRow("Active asset tool", title, "Asset tools open here only when selected. The source asset and extracted child assets remain below as review data."),
             toolBody
           );
           afterOpen();
-          scrollPanelIntoView(assetToolMount);
+          if (scroll) scrollPanelIntoView(assetToolMount);
         }
         rowActions.append(
           button("Save Asset", "Save title, assignment category, and notes for this package source image.", async (btn) => runWithButtonProgress(btn, "Saving asset...", async () => {
@@ -8022,7 +8161,7 @@ async function renderRulePdfManager() {
               method: "PATCH",
               body: JSON.stringify({ title: titleInput.value, category: categorySelect.value, notes: notesInput.value, review_status: "checked" }),
             });
-            await refreshSourceScans();
+            await refreshSourceScansPreservingAsset(asset.id);
             setStatus("Package source asset saved.");
           }))
         );
@@ -8209,7 +8348,7 @@ async function renderRulePdfManager() {
                 parent_asset_id: asset.id || "",
                 notes: `Masked asset from ${asset.filename || asset.id || "source image"} using ${maskShapes.length} additive shape(s).`,
               });
-              await refreshSourceScans();
+              await refreshSourceScansPreservingAsset(asset.id, "mask");
               setStatus(`Imported masked asset ${name}.`);
             }))
           );
@@ -8263,7 +8402,7 @@ async function renderRulePdfManager() {
                   count += 1;
                 }
               }
-              await refreshSourceScans();
+              await refreshSourceScansPreservingAsset(asset.id, "auto");
               setStatus(`Imported ${count} room tile asset(s) from ${asset.filename || "tile sheet"}.`);
             }))
           );
@@ -8279,6 +8418,14 @@ async function renderRulePdfManager() {
               openAssetTool("Auto Split - create named tiles from an equal grid", splitter);
             })
           );
+          if (sourceWorkbenchState.assetId === String(asset.id || "")) {
+            row.open = true;
+            if (sourceWorkbenchState.assetTool === "mask") {
+              openAssetTool("Manual Mask - draw rectangles/squares/circles/ovals over this source asset", maskCrop, drawMaskCanvas, false);
+            } else if (sourceWorkbenchState.assetTool === "auto") {
+              openAssetTool("Auto Split - create named tiles from an equal grid", splitter, () => {}, false);
+            }
+          }
         }
         const childAssets = childAssetsByParent.get(String(asset.id || "")) || [];
         if (childAssets.length) row.appendChild(workbenchSection("Extracted tiles", `${childAssets.length} child tile/art asset(s) under this source sheet`, renderChildAssetList(childAssets)));
