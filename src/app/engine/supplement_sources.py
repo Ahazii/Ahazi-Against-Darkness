@@ -128,6 +128,20 @@ SUPPLEMENT_REQUIREMENT_TYPES = {
 SUPPLEMENT_REQUIREMENT_ENFORCEMENT = {"information", "warning", "hard_gate", "conditional_routing"}
 
 
+SUPPLEMENT_TABLE_TYPE_DESCRIPTIONS = {
+    "reference_lookup": "A readable lookup table kept as reviewed text until a later specialised importer is needed.",
+    "foe_encounter": "A combat encounter table. Each row selects one or more foes, quantities, and combat details.",
+    "treasure_reward": "A treasure, reward, item, currency, or service outcome table.",
+    "room_content": "A room, corridor, encounter, or exploration-content outcome table.",
+    "reaction": "A foe or NPC reaction result table.",
+    "equipment_shop": "An equipment, service, price, or shop availability table.",
+    "state_condition": "A state, condition, effect, or consequence lookup table.",
+    "terrain_tile": "A terrain, map feature, room tile, or random-dungeon tile table.",
+}
+
+SUPPLEMENT_TABLE_TYPES = set(SUPPLEMENT_TABLE_TYPE_DESCRIPTIONS)
+
+
 def supplement_sources_root(data_dir: Path) -> Path:
     return data_dir / "Supplements" / "_sources"
 
@@ -808,6 +822,13 @@ def _review_tables_from_existing(existing: dict[str, Any]) -> list[dict[str, Any
     return []
 
 
+def _review_foes_from_existing(existing: dict[str, Any]) -> list[dict[str, Any]]:
+    foes = existing.get("reviewed_foes")
+    if isinstance(foes, list):
+        return [item for item in foes if isinstance(item, dict)]
+    return []
+
+
 def _table_id_from_title(source_id: str, title: str, block_id: str = "") -> str:
     base = re.sub(r"[^a-z0-9]+", "_", str(title or "").lower()).strip("_")
     if not base:
@@ -856,6 +877,80 @@ def _parse_table_rows(text: str) -> tuple[list[dict[str, Any]], str]:
     return rows, status
 
 
+def _table_type(value: Any) -> str:
+    candidate = str(value or "reference_lookup").strip()
+    return candidate if candidate in SUPPLEMENT_TABLE_TYPES else "reference_lookup"
+
+
+def _clean_foe_encounter_row(row: dict[str, Any]) -> dict[str, Any]:
+    states = _clean_string_list(row.get("states_inflicted"))
+    weaknesses = _clean_string_list(row.get("weaknesses"))
+    roll = str(row.get("roll") or row.get("key") or "").strip()
+    exact_text = str(row.get("exact_text") or row.get("result") or "").strip()
+    return {
+        "roll": roll,
+        "foe_name": str(row.get("foe_name") or "").strip(),
+        "quantity": str(row.get("quantity") or "").strip(),
+        "level": str(row.get("level") or "").strip(),
+        "attack": str(row.get("attack") or "").strip(),
+        "defense": str(row.get("defense") or "").strip(),
+        "category": str(row.get("category") or "").strip(),
+        "states_inflicted": states,
+        "weaknesses": weaknesses,
+        "special_rules": str(row.get("special_rules") or "").strip(),
+        "exact_text": exact_text,
+        "notes": str(row.get("notes") or "").strip(),
+    }
+
+
+def _clean_reference_table_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "roll": str(row.get("roll") or row.get("key") or "").strip(),
+        "outcome": str(row.get("outcome") or row.get("result") or "").strip(),
+        "exact_text": str(row.get("exact_text") or row.get("result") or "").strip(),
+        "notes": str(row.get("notes") or "").strip(),
+    }
+
+
+def _provisional_foes_from_table(table: dict[str, Any]) -> list[dict[str, Any]]:
+    if _table_type(table.get("table_type")) != "foe_encounter":
+        return []
+    foes: list[dict[str, Any]] = []
+    for row in table.get("rows", []):
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("foe_name") or "").strip()
+        # A profile is only created once the combat essentials are actually reviewed.
+        if not name or not all(str(row.get(field) or "").strip() for field in ("level", "attack", "defense")):
+            continue
+        foe_id = supplement_package_id(f"{table.get('id')}-{name}", "provisional-foe")
+        foes.append(
+            {
+                "id": foe_id,
+                "name": name,
+                "level": str(row.get("level") or "").strip(),
+                "attack": str(row.get("attack") or "").strip(),
+                "defense": str(row.get("defense") or "").strip(),
+                "category": str(row.get("category") or "").strip(),
+                "states_inflicted": list(row.get("states_inflicted") or []),
+                "weaknesses": list(row.get("weaknesses") or []),
+                "special_rules": str(row.get("special_rules") or "").strip(),
+                "quantity_expression": str(row.get("quantity") or "").strip(),
+                "exact_source_text": str(row.get("exact_text") or "").strip(),
+                "source_table_id": str(table.get("id") or ""),
+                "source_row_roll": str(row.get("roll") or "").strip(),
+                "source_block_id": str(table.get("source_block_id") or ""),
+                "source_pdf": str(table.get("source_pdf") or ""),
+                "source_page": table.get("source_page"),
+                "pdf_page": table.get("pdf_page"),
+                "page_label": str(table.get("page_label") or ""),
+                "review_status": "provisional",
+                "notes": "Created automatically from a reviewed Foe Encounter table row; validate against the PDF before activation.",
+            }
+        )
+    return foes
+
+
 def draft_supplement_source_table(data_dir: Path, source_id: str, block_id: str, changes: dict[str, Any] | None = None) -> dict[str, Any]:
     payload = load_supplement_source_scan(data_dir, source_id)
     blocks = payload.get("reviewed_blocks", [])
@@ -875,7 +970,9 @@ def draft_supplement_source_table(data_dir: Path, source_id: str, block_id: str,
         "pdf_page": block.get("pdf_page"),
         "page_label": str(block.get("page_label") or ""),
         "assignment": "table",
-        "columns": ["key", "result", "notes"],
+        "table_type": _table_type(changes.get("table_type")),
+        "roll_expression": str(changes.get("roll_expression") or "").strip(),
+        "columns": ["roll", "outcome", "exact_text", "notes"],
         "rows": rows,
         "parser_status": parser_status,
         "review_status": "draft",
@@ -889,17 +986,16 @@ def upsert_supplement_source_table(data_dir: Path, source_id: str, table_payload
     table_id = str(table_payload.get("id") or "").strip()
     if not table_id:
         table_id = _table_id_from_title(source_id, str(table_payload.get("title") or ""), str(table_payload.get("source_block_id") or ""))
+    table_type = _table_type(table_payload.get("table_type"))
     rows = table_payload.get("rows") if isinstance(table_payload.get("rows"), list) else []
     clean_rows: list[dict[str, Any]] = []
     for row in rows:
         if not isinstance(row, dict):
             continue
-        key = str(row.get("key") or "").strip()
-        result = str(row.get("result") or "").strip()
-        notes = str(row.get("notes") or "").strip()
-        if not key and not result and not notes:
+        clean_row = _clean_foe_encounter_row(row) if table_type == "foe_encounter" else _clean_reference_table_row(row)
+        if not any(str(value or "").strip() for value in clean_row.values() if not isinstance(value, list)) and not any(clean_row.get(key) for key in ("states_inflicted", "weaknesses")):
             continue
-        clean_rows.append({"key": key, "result": result, "notes": notes})
+        clean_rows.append(clean_row)
     table = {
         "id": table_id,
         "title": str(table_payload.get("title") or table_id).strip(),
@@ -909,7 +1005,9 @@ def upsert_supplement_source_table(data_dir: Path, source_id: str, table_payload
         "pdf_page": table_payload.get("pdf_page"),
         "page_label": str(table_payload.get("page_label") or ""),
         "assignment": "table",
-        "columns": ["key", "result", "notes"],
+        "table_type": table_type,
+        "roll_expression": str(table_payload.get("roll_expression") or "").strip(),
+        "columns": ["roll", "foe_name", "quantity", "level", "attack", "defense", "category", "states_inflicted", "weaknesses", "special_rules", "exact_text", "notes"] if table_type == "foe_encounter" else ["roll", "outcome", "exact_text", "notes"],
         "rows": clean_rows,
         "parser_status": str(table_payload.get("parser_status") or "manual_reviewed"),
         "review_status": str(table_payload.get("review_status") or "reviewed"),
@@ -925,8 +1023,19 @@ def upsert_supplement_source_table(data_dir: Path, source_id: str, table_payload
     if not replaced:
         tables.append(table)
     payload["reviewed_tables"] = tables
+    generated_foes = _provisional_foes_from_table(table)
+    existing_foes = [
+        foe
+        for foe in _review_foes_from_existing(payload)
+        if str(foe.get("source_table_id") or "") != table_id
+    ]
+    payload["reviewed_foes"] = existing_foes + generated_foes
     save_supplement_source_scan(data_dir, source_id, payload)
-    return {"table": table, "message": f"Saved reviewed table {table_id} with {len(clean_rows)} row(s)."}
+    return {
+        "table": table,
+        "provisional_foes": generated_foes,
+        "message": f"Saved reviewed table {table_id} with {len(clean_rows)} row(s) and {len(generated_foes)} provisional foe profile(s).",
+    }
 
 
 def scan_supplement_source_pdf(
@@ -1046,6 +1155,7 @@ def scan_supplement_source_pdf(
         "raw_artwork": existing.get("raw_artwork", []),
         "reviewed_artwork": _review_artwork_from_existing(existing),
         "reviewed_tables": _review_tables_from_existing(existing),
+        "reviewed_foes": _review_foes_from_existing(existing),
     }
     supplement_source_scan_path(data_dir, source_id).write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     return {
@@ -1083,12 +1193,15 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     reviewed = _review_blocks_from_existing(payload)
     reviewed_artwork = _review_artwork_from_existing(payload)
     reviewed_tables = _review_tables_from_existing(payload)
+    reviewed_foes = _review_foes_from_existing(payload)
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
     payload["reviewed_artwork"] = reviewed_artwork
     payload["artwork"] = reviewed_artwork
     payload["reviewed_tables"] = reviewed_tables
     payload["tables"] = reviewed_tables
+    payload["reviewed_foes"] = reviewed_foes
+    payload["foes"] = reviewed_foes
     if "raw_blocks" not in payload:
         payload["raw_blocks"] = [dict(block) for block in reviewed]
     if "raw_artwork" not in payload:
@@ -1096,6 +1209,7 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     payload["assignment_options"] = sorted(SOURCE_BLOCK_ASSIGNMENTS)
     payload["assignment_descriptions"] = SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS
     payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
+    payload["table_types"] = SUPPLEMENT_TABLE_TYPE_DESCRIPTIONS
     return payload
 
 
@@ -1104,15 +1218,19 @@ def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[st
     reviewed = _review_blocks_from_existing(payload)
     reviewed_artwork = _review_artwork_from_existing(payload)
     reviewed_tables = _review_tables_from_existing(payload)
+    reviewed_foes = _review_foes_from_existing(payload)
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
     payload["reviewed_artwork"] = reviewed_artwork
     payload["artwork"] = reviewed_artwork
     payload["reviewed_tables"] = reviewed_tables
     payload["tables"] = reviewed_tables
+    payload["reviewed_foes"] = reviewed_foes
+    payload["foes"] = reviewed_foes
     payload["assignment_options"] = sorted(SOURCE_BLOCK_ASSIGNMENTS)
     payload["assignment_descriptions"] = SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS
     payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
+    payload["table_types"] = SUPPLEMENT_TABLE_TYPE_DESCRIPTIONS
     path = supplement_source_scan_path(data_dir, source_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")

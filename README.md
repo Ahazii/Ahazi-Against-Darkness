@@ -95,6 +95,12 @@ current with every rules or content change.
   Selecting one or more adjacent printed table fragments and choosing **Table**
   now merges them when required, assigns the resulting block as a table, and
   opens the reviewed machine-row draft directly.
+  Reviewed tables have a type, human title, machine id, roll expression, exact
+  source wording, and type-specific rows. The first specialised type is **Foe
+  Encounter**: rows record foes, quantities, Level/Attack/Defence, category,
+  states, weaknesses, and special rules. A complete reviewed foe row creates a
+  linked local provisional foe profile for later validation; it does not change
+  gameplay or activate a supplement.
   Reviewed blocks can also create
   package-level supplement requirements that preserve exact source wording while
   separately recording editable party eligibility, dependencies, triggers, and

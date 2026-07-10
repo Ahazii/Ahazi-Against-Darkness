@@ -1901,6 +1901,20 @@ button.is-working::after {
   background: rgba(0, 0, 0, 0.12);
 }
 
+.modern-table-foe-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+.modern-table-foe-row > button {
+  align-self: end;
+}
+
+.modern-table-row-text {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
 .modern-source-artwork-panel {
   display: grid;
   gap: 8px;

@@ -170,6 +170,15 @@ Home screen rule browsing:
   the printed table text, and the workbench merges adjacent selected fragments
   when necessary, records the resulting block as `table`, and opens its local
   machine-row draft. This avoids a separate hidden assignment prerequisite.
+  Source tables are typed local review records. Every table stores a readable
+  title, stable machine id, optional roll expression, exact source wording, and
+  review notes; its row payload is selected by `table_type`. The initial
+  specialised type, `foe_encounter`, stores roll/range, foe name, quantity,
+  Level, Attack, Defence, category, states, weaknesses, special rules, exact
+  row text, and reviewer notes. Saving a complete Foe Encounter row creates a
+  local `reviewed_foes[]` profile linked to the source table/block/page. These
+  profiles are explicitly `provisional`, visible in the source tree, and cannot
+  affect gameplay until a future validated supplement loader promotes them.
   The Developer PDF / Supplement Workbench lists these local scans and opens a
   read-only searchable block browser before any assignment is written.
   Uploaded PDF source settings are stored in

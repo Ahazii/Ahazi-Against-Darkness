@@ -1525,6 +1525,58 @@ def test_source_block_table_draft_can_be_reviewed_and_saved(tmp_path: Path, monk
     assert packages[0]["tables"] == 1
 
 
+def test_foe_encounter_table_save_creates_linked_provisional_foe_profiles(tmp_path: Path, monkeypatch) -> None:
+    from app.engine import supplement_sources
+
+    pdf = tmp_path / "Foe Encounters.pdf"
+    pdf.write_bytes(b"%PDF-local-test")
+    monkeypatch.setattr(
+        supplement_sources,
+        "extract_rule_pdf_pages",
+        lambda _path: [{"page": 4, "text": "Woodlands Foe Encounters", "methods": ["layout"]}],
+    )
+    supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-10T10:00:00Z")
+
+    saved = supplement_sources.upsert_supplement_source_table(
+        tmp_path,
+        "foe-encounters",
+        {
+            "id": "woodlands_foe_encounters",
+            "title": "Woodlands Foe Encounters",
+            "table_type": "foe_encounter",
+            "roll_expression": "d66",
+            "source_block_id": "foe-encounters-p4-b001",
+            "source_pdf": "DATA_DIR/rules/Foe Encounters.pdf",
+            "source_page": 4,
+            "pdf_page": 4,
+            "page_label": "p.4",
+            "rows": [
+                {
+                    "roll": "11-12",
+                    "foe_name": "Briar Goblin",
+                    "quantity": "d6+1",
+                    "level": "2",
+                    "attack": "+1",
+                    "defense": "1",
+                    "category": "minion",
+                    "states_inflicted": "Poisoned, Entangled",
+                    "weaknesses": "Fire",
+                    "special_rules": "Ambushes from woodland cover.",
+                    "exact_text": "11-12: d6+1 Briar Goblins, L2, +1 Attack, Defence 1.",
+                }
+            ],
+        },
+    )
+
+    assert saved["table"]["table_type"] == "foe_encounter"
+    assert saved["table"]["roll_expression"] == "d66"
+    assert saved["table"]["rows"][0]["roll"] == "11-12"
+    assert saved["provisional_foes"][0]["name"] == "Briar Goblin"
+    assert saved["provisional_foes"][0]["source_table_id"] == "woodlands_foe_encounters"
+    detail = supplement_sources.load_supplement_source_scan(tmp_path, "foe-encounters")
+    assert detail["foes"][0]["states_inflicted"] == ["Poisoned", "Entangled"]
+
+
 def test_source_scans_can_share_one_supplement_package(tmp_path: Path, monkeypatch) -> None:
     from dataclasses import replace
 

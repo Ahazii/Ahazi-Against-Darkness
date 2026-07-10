@@ -3138,6 +3138,10 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Create a reviewed table draft from the selected text" in MODERN_PAGES_JS
     assert "multiple selected fragments are merged" in MODERN_PAGES_JS
     assert "assignment: \"table\"" in MODERN_PAGES_JS
+    assert "Table type" in MODERN_PAGES_JS
+    assert "Foe name" in MODERN_PAGES_JS
+    assert "Provisional foes" in MODERN_PAGES_JS
+    assert "roll_expression" in MODERN_PAGES_JS
     assert "Save Reviewed Table" in MODERN_PAGES_JS
     assert "Reviewed tables" in MODERN_PAGES_JS
     assert "Table Draft" in MODERN_PAGES_JS

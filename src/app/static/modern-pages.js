@@ -6929,6 +6929,7 @@ async function renderRulePdfManager() {
     const blocks = Array.isArray(payload.blocks) ? payload.blocks.map((block) => ({ ...block, source_item_type: "block" })) : [];
     const artworkItems = Array.isArray(payload.artwork) ? payload.artwork : [];
     const reviewedTables = Array.isArray(payload.tables) ? payload.tables : [];
+    const reviewedFoes = Array.isArray(payload.foes) ? payload.foes : [];
     let packageRequirements = Array.isArray(activeWorkbenchPackage?.requirements) ? activeWorkbenchPackage.requirements.map((item) => ({ ...item })) : [];
     const sourceItems = blocks;
     const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
@@ -7630,53 +7631,116 @@ async function renderRulePdfManager() {
       const draftPanel = el("div", "modern-source-block-editor");
       const tableIdInput = input("text", `modern-source-table-id-${table.id || "new"}`, "Stable machine id for this reviewed table. Use lowercase words separated by underscores.", table.id || "");
       const titleInput = input("text", `modern-source-table-title-${table.id || "new"}`, "Human-readable table title from the PDF.", table.title || "");
+      const tableTypes = Object.entries(payload.table_types || { reference_lookup: "Readable lookup table." });
+      const tableTypeInput = select(`modern-source-table-type-${table.id || "new"}`, "Choose the printed table's game purpose. This determines the fields shown for each reviewed row.", tableTypes.map(([key, description]) => [key, modernTitleFromKey(key)]));
+      tableTypeInput.value = table.table_type || "reference_lookup";
+      const rollExpressionInput = input("text", `modern-source-table-roll-${table.id || "new"}`, "Dice or roll expression used to consult this table, for example d66, d6, or 2d6. Leave blank only when the printed table has no roll.", table.roll_expression || "");
+      const tableTypeHint = el("p", "muted", "");
+      function updateTableTypeHint() {
+        tableTypeHint.textContent = (payload.table_types || {})[tableTypeInput.value] || "Choose the kind of game data this printed table represents.";
+      }
       const notesInput = document.createElement("textarea");
       notesInput.className = "modern-source-block-text compact";
       notesInput.title = "Reviewer notes about parsing, uncertain rows, or future loader work.";
       notesInput.value = table.notes || "";
       const rowsMount = el("div", "modern-table-draft-rows");
+      function rowField(label, key, value, title, multiline = false) {
+        const node = multiline ? document.createElement("textarea") : input("text", "", title, value || "");
+        if (multiline) {
+          node.className = "modern-table-row-text";
+          node.value = value || "";
+          node.title = title;
+          node.rows = 3;
+        }
+        node.dataset.tableField = key;
+        return field(label, node);
+      }
+      function readRows() {
+        return [...rowsMount.querySelectorAll(".modern-table-draft-row")].map((rowNode) => {
+          const row = {};
+          rowNode.querySelectorAll("[data-table-field]").forEach((node) => {
+            const key = node.dataset.tableField;
+            if (!key) return;
+            row[key] = node.value || "";
+          });
+          for (const key of ["states_inflicted", "weaknesses"]) {
+            if (key in row) row[key] = String(row[key] || "").split(/[,\n;]/).map((value) => value.trim()).filter(Boolean);
+          }
+          return row;
+        });
+      }
       function addDraftRow(row = {}) {
         const rowNode = el("div", "modern-table-draft-row");
-        const keyInput = input("text", "", "Dice result, key, range, or lookup value.", row.key || "");
-        const resultInput = input("text", "", "Machine-readable row text. Keep wording reviewed against the PDF before promoting.", row.result || "");
-        const noteInput = input("text", "", "Optional row note or uncertainty marker.", row.notes || "");
+        const foeTable = tableTypeInput.value === "foe_encounter";
+        rowNode.classList.toggle("modern-table-foe-row", foeTable);
         const deleteButton = button("Delete Row", "Remove this draft row from the reviewed table.", () => rowNode.remove());
-        rowNode.append(field("Key", keyInput), field("Result", resultInput), field("Notes", noteInput), deleteButton);
+        if (foeTable) {
+          rowNode.append(
+            rowField("Roll / range", "roll", row.roll || row.key, "The result or range that selects this encounter, such as 1-2 or 41."),
+            rowField("Foe name", "foe_name", row.foe_name, "Name of the foe created by this row. A complete row creates a provisional foe profile on save."),
+            rowField("Quantity", "quantity", row.quantity, "How many foes appear: a fixed value or dice expression such as d6+1."),
+            rowField("Level", "level", row.level, "Printed foe level or combat level."),
+            rowField("Attack", "attack", row.attack, "Printed Attack value."),
+            rowField("Defence", "defense", row.defense, "Printed Defence value."),
+            rowField("Category", "category", row.category, "Foe category such as vermin, minion, boss, weird monster, undead, or other printed classification."),
+            rowField("States inflicted", "states_inflicted", Array.isArray(row.states_inflicted) ? row.states_inflicted.join(", ") : row.states_inflicted, "Comma-separated states or conditions this foe can inflict. These remain provisional until mapped to the State Registry."),
+            rowField("Weaknesses", "weaknesses", Array.isArray(row.weaknesses) ? row.weaknesses.join(", ") : row.weaknesses, "Comma-separated weaknesses, resistances, immunities, or special vulnerabilities."),
+            rowField("Special rules", "special_rules", row.special_rules, "Mechanical exceptions, reactions, special attacks, saves, or other printed combat rules.", true),
+            rowField("Exact source wording", "exact_text", row.exact_text || row.result, "Exact printed wording for this row. Keep this as the verification source.", true),
+            rowField("Reviewer notes", "notes", row.notes, "Uncertainty, follow-up work, or implementation notes.", true),
+            deleteButton
+          );
+        } else {
+          rowNode.append(
+            rowField("Roll / range", "roll", row.roll || row.key, "Dice result, range, key, or lookup value."),
+            rowField("Outcome", "outcome", row.outcome || row.result, "Readable outcome or result of this roll."),
+            rowField("Exact source wording", "exact_text", row.exact_text || row.result, "Exact printed wording for this row. Keep this as the verification source."),
+            rowField("Reviewer notes", "notes", row.notes, "Optional parsing or implementation notes."),
+            deleteButton
+          );
+        }
         rowsMount.appendChild(rowNode);
       }
-      for (const row of table.rows || []) addDraftRow(row);
-      if (!rowsMount.children.length) addDraftRow();
+      function redrawRows(rows) {
+        rowsMount.replaceChildren();
+        for (const row of rows) addDraftRow(row);
+        if (!rowsMount.children.length) addDraftRow();
+      }
+      redrawRows(table.rows || []);
+      updateTableTypeHint();
+      tableTypeInput.addEventListener("change", () => {
+        const rows = readRows();
+        updateTableTypeHint();
+        redrawRows(rows);
+      });
       const tableActions = actions();
       tableActions.append(
         button("Add Row", "Add one editable row to this machine table draft.", () => addDraftRow()),
         button("Save Reviewed Table", "Save this table draft into DATA_DIR/Supplements/_sources beside the source block scan.", async (btn) => runWithButtonProgress(btn, "Saving reviewed table...", async () => {
           const tableId = String(tableIdInput.value || "").trim();
           if (!tableId) throw new Error("Enter a table id before saving.");
-          const rows = [...rowsMount.querySelectorAll(".modern-table-draft-row")].map((rowNode) => {
-            const inputs = rowNode.querySelectorAll("input");
-            return {
-              key: inputs[0]?.value || "",
-              result: inputs[1]?.value || "",
-              notes: inputs[2]?.value || "",
-            };
-          });
-          await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/tables/${encodeURIComponent(tableId)}`, {
+          const result = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/tables/${encodeURIComponent(tableId)}`, {
             method: "PUT",
             body: JSON.stringify({
               ...table,
               id: tableId,
               title: titleInput.value,
+              table_type: tableTypeInput.value,
+              roll_expression: rollExpressionInput.value,
               notes: notesInput.value,
-              rows,
+              rows: readRows(),
               review_status: "reviewed",
             }),
           });
-          await reloadCurrentScan("Reviewed table saved.");
+          await reloadCurrentScan(result.message || "Reviewed table saved.");
         }))
       );
       draftPanel.append(
+        field("Table type", tableTypeInput),
+        tableTypeHint,
         field("Table id", tableIdInput),
         field("Table title", titleInput),
+        field("Dice / roll", rollExpressionInput),
         field("Table notes", notesInput),
         rowsMount,
         tableActions
@@ -7697,6 +7761,7 @@ async function renderRulePdfManager() {
       panel.appendChild(modernInfoPanel("Reviewed table drafts", `${reviewedTables.length} table draft(s)`, [
         { label: "Storage", value: "DATA_DIR/Supplements/_sources/<source>/source_blocks.json" },
         { label: "Status", value: reviewedTables.length ? "Local reviewed tables available" : "No reviewed table drafts yet" },
+        { label: "Provisional foes", value: `${reviewedFoes.length}` },
         { label: "Next step", value: "Select the printed table text, then use Table." },
       ], "These are reviewed machine table drafts, not active game rules yet."));
       for (const table of reviewedTables) {
@@ -7705,7 +7770,7 @@ async function renderRulePdfManager() {
         const summary = document.createElement("summary");
         summary.append(
           el("strong", "", table.title || table.id || "Reviewed table"),
-          el("span", "muted", ` · ${(table.rows || []).length} row(s) · ${table.page_label || "source block"}`)
+          el("span", "muted", ` · ${modernTitleFromKey(table.table_type || "reference_lookup")} · ${(table.rows || []).length} row(s) · ${table.page_label || "source block"}`)
         );
         const sourceBlock = blocks.find((block) => block.id === table.source_block_id) || {};
         const tableActions = actions();
@@ -7719,12 +7784,48 @@ async function renderRulePdfManager() {
           summary,
           modernInfoPanel("Table summary", table.id || "reviewed table", [
             { label: "Title", value: table.title || "" },
+            { label: "Type", value: modernTitleFromKey(table.table_type || "reference_lookup") },
+            { label: "Roll", value: table.roll_expression || "Not recorded" },
             { label: "Rows", value: `${(table.rows || []).length}` },
+            { label: "Provisional foes", value: `${reviewedFoes.filter((foe) => foe.source_table_id === table.id).length}` },
             { label: "Source", value: table.page_label || table.source_block_id || "" },
             { label: "Review status", value: table.review_status || "draft" },
             { label: "Notes", value: table.notes || "None" },
           ], "Use Edit Table Draft to inspect source text beside machine rows."),
           tableActions
+        );
+        panel.appendChild(row);
+      }
+      return panel;
+    }
+    function renderProvisionalFoesPanel() {
+      const panel = el("div", "modern-list");
+      if (!reviewedFoes.length) {
+        panel.appendChild(el("p", "muted", "No provisional foe profiles yet. Save a Foe Encounter row with a foe name, Level, Attack, and Defence to create one."));
+        return panel;
+      }
+      for (const foe of reviewedFoes) {
+        const row = document.createElement("details");
+        row.className = "modern-row";
+        row.addEventListener("toggle", () => {
+          if (row.open && foe.pdf_page) previewPdfPage(foe.pdf_page);
+        });
+        const summary = document.createElement("summary");
+        summary.append(
+          el("strong", "", foe.name || foe.id || "Provisional foe"),
+          el("span", "muted", ` · L${foe.level || "?"} · A${foe.attack || "?"} · D${foe.defense || "?"} · ${foe.page_label || "source"}`)
+        );
+        row.append(
+          summary,
+          modernInfoPanel("Provisional foe profile", foe.id || "provisional foe", [
+            { label: "Category", value: foe.category || "Not recorded" },
+            { label: "Quantity", value: foe.quantity_expression || "Not recorded" },
+            { label: "States", value: (foe.states_inflicted || []).join(", ") || "None recorded" },
+            { label: "Weaknesses", value: (foe.weaknesses || []).join(", ") || "None recorded" },
+            { label: "Special rules", value: foe.special_rules || "None recorded" },
+            { label: "Source table", value: foe.source_table_id || "Not recorded" },
+          ], "This local provisional profile was created from a reviewed Foe Encounter row. It is not active gameplay content until a later supplement review promotes it."),
+          highlightedEl("p", "modern-pre-wrap modern-source-preview-text", foe.exact_source_text || "No exact row wording recorded.", needle)
         );
         panel.appendChild(row);
       }
@@ -7887,6 +7988,7 @@ async function renderRulePdfManager() {
           { label: "Text", value: `${matches.length}/${sourceItems.length}` },
           { label: "Unassigned", value: `${unassignedCount}` },
           { label: "Tables", value: `${reviewedTables.length}` },
+          { label: "Foes", value: `${reviewedFoes.length}` },
           { label: "Artwork", value: `${artworkMatches.length}/${artworkItems.length}` },
         ], "Counts update as the current page, search, assignment filter, and manual review categories change.")
       );
@@ -7957,9 +8059,10 @@ async function renderRulePdfManager() {
         treeBranch("Text blocks", `${matches.length}`, textTree, { open: true }),
         treeBranch("Supplement requirements", `${packageRequirements.length}`, renderRequirementsPanel(), { open: false, hint: "Package-level eligibility, dependency, environment, and conditional table-routing records linked to exact source wording." }),
         treeBranch("Reviewed tables", `${reviewedTables.length}`, renderReviewedTablesPanel(), { open: false }),
+        treeBranch("Provisional foes", `${reviewedFoes.length}`, renderProvisionalFoesPanel(), { open: false, hint: "Profiles created from reviewed Foe Encounter rows. They remain inactive until later supplement review promotes them." }),
         treeBranch("Artwork", `${artworkMatches.length}`, renderArtworkTreePanel(artworkMatches, needle), { open: false })
       );
-      results.appendChild(treeBranch(payload.source_id || "Source document", `${sourceItems.length + artworkItems.length + reviewedTables.length + packageRequirements.length}`, sourceTree, {
+      results.appendChild(treeBranch(payload.source_id || "Source document", `${sourceItems.length + artworkItems.length + reviewedTables.length + reviewedFoes.length + packageRequirements.length}`, sourceTree, {
         open: true,
         className: "modern-source-tree-root",
         hint: "Imported source document tree. Text, tables, artwork, and future data types sit under this document so review follows the PDF/source order.",
