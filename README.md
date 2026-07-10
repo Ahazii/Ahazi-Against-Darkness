@@ -97,8 +97,10 @@ current with every rules or content change.
   opens the reviewed machine-row draft directly.
   Reviewed tables have a type, human title, machine id, roll expression, exact
   source wording, and type-specific rows. The first specialised type is **Foe
-  Encounter**: rows record foes, quantities, Level/Attack/Defence, category,
-  states, weaknesses, and special rules. A complete reviewed foe row creates a
+  Encounter**: rows record foes, a short human-readable description, quantities,
+  Level/Attack/Defence, category, states, weaknesses, structured modifiers, and
+  special rules. A modifier records its target, adjustment, scope/condition, and
+  exact printed wording. A complete reviewed foe row creates a
   linked local provisional foe profile for later validation; it does not change
   gameplay or activate a supplement.
   The same source-backed profile framework now covers **Mounts**, **Companion

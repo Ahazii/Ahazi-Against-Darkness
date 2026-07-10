@@ -173,9 +173,11 @@ Home screen rule browsing:
   Source tables are typed local review records. Every table stores a readable
   title, stable machine id, optional roll expression, exact source wording, and
   review notes; its row payload is selected by `table_type`. The initial
-  specialised type, `foe_encounter`, stores roll/range, foe name, quantity,
-  Level, Attack, Defence, category, states, weaknesses, special rules, exact
-  row text, and reviewer notes. Saving a complete Foe Encounter row creates a
+  specialised type, `foe_encounter`, stores roll/range, foe name, a concise
+  description, quantity, Level, Attack, Defence, category, states, weaknesses,
+  special rules, exact row text, reviewer notes, and review-only modifiers.
+  Each modifier stores a target, adjustment, scope/condition, and exact printed
+  wording. Saving a complete Foe Encounter row creates a
   local `reviewed_foes[]` profile linked to the source table/block/page. These
   profiles are explicitly `provisional`, visible in the source tree, and cannot
   affect gameplay until a future validated supplement loader promotes them.

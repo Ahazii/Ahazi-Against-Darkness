@@ -7665,6 +7665,10 @@ async function renderRulePdfManager() {
       specialRulesInput.value = profile.special_rules || "";
       const statesInput = input("text", `modern-source-profile-states-${profile.id || "new"}`, "Comma-separated states or conditions this profile can apply. They remain provisional until mapped to the State Registry.", (profile.states_inflicted || []).join(", "));
       const weaknessesInput = input("text", `modern-source-profile-weaknesses-${profile.id || "new"}`, "Comma-separated weaknesses, immunities, resistances, or vulnerabilities.", (profile.weaknesses || []).join(", "));
+      const modifiersInput = document.createElement("textarea");
+      modifiersInput.className = "modern-source-block-text compact";
+      modifiersInput.title = "One modifier per line: Target | Adjustment | Scope or condition | exact source wording. Example: Morale | +1 | this foe | morale +1.";
+      modifiersInput.value = (profile.modifiers || []).map((item) => [item.target, item.adjustment, item.scope, item.exact_text].filter(Boolean).join(" | ")).join("\n");
       const notesInput = document.createElement("textarea");
       notesInput.className = "modern-source-block-text compact";
       notesInput.title = "Reviewer notes, uncertainty, and implementation follow-up.";
@@ -7679,6 +7683,7 @@ async function renderRulePdfManager() {
         field("Quantity", input("text", "", "Fixed quantity or dice expression when this profile is encountered.", profile.quantity_expression || "")),
         field("States inflicted", statesInput),
         field("Weaknesses", weaknessesInput),
+        field("Modifiers", modifiersInput),
       ];
       let typedFields = [];
       if (profileType === "foe") typedFields = combatFields();
@@ -7722,6 +7727,7 @@ async function renderRulePdfManager() {
             name: nameInput.value,
             description: descriptionInput.value,
             special_rules: specialRulesInput.value,
+            modifiers: modifiersInput.value,
             states_inflicted: statesInput.value,
             weaknesses: weaknessesInput.value,
             level: valueFor("Level"), attack: valueFor("Attack"), defense: valueFor("Defence"), category: valueFor("Category"), quantity_expression: valueFor("Quantity"),
@@ -7798,6 +7804,7 @@ async function renderRulePdfManager() {
           rowNode.append(
             rowField("Roll / range", "roll", row.roll || row.key, "The result or range that selects this encounter, such as 1-2 or 41."),
             rowField("Foe name", "foe_name", row.foe_name, "Name of the foe created by this row. A complete row creates a provisional foe profile on save."),
+            rowField("Description", "description", row.description, "Short human-readable summary of this foe. Keep full printed wording in Exact source wording.", true),
             rowField("Quantity", "quantity", row.quantity, "How many foes appear: a fixed value or dice expression such as d6+1."),
             rowField("Level", "level", row.level, "Printed foe level or combat level."),
             rowField("Attack", "attack", row.attack, "Printed Attack value."),
@@ -7805,6 +7812,7 @@ async function renderRulePdfManager() {
             rowField("Category", "category", row.category, "Foe category such as vermin, minion, boss, weird monster, undead, or other printed classification."),
             rowField("States inflicted", "states_inflicted", Array.isArray(row.states_inflicted) ? row.states_inflicted.join(", ") : row.states_inflicted, "Comma-separated states or conditions this foe can inflict. These remain provisional until mapped to the State Registry."),
             rowField("Weaknesses", "weaknesses", Array.isArray(row.weaknesses) ? row.weaknesses.join(", ") : row.weaknesses, "Comma-separated weaknesses, resistances, immunities, or special vulnerabilities."),
+            rowField("Modifiers", "modifiers", Array.isArray(row.modifiers) ? row.modifiers.map((item) => [item.target, item.adjustment, item.scope, item.exact_text].filter(Boolean).join(" | ")).join("\n") : row.modifiers, "One modifier per line: Target | Adjustment | Scope or condition | exact source wording. Example: Morale | +1 | this foe | morale +1.", true),
             rowField("Special rules", "special_rules", row.special_rules, "Mechanical exceptions, reactions, special attacks, saves, or other printed combat rules.", true),
             rowField("Exact source wording", "exact_text", row.exact_text || row.result, "Exact printed wording for this row. Keep this as the verification source.", true),
             rowField("Reviewer notes", "notes", row.notes, "Uncertainty, follow-up work, or implementation notes.", true),
@@ -7952,10 +7960,12 @@ async function renderRulePdfManager() {
           summary,
           modernInfoPanel("Provisional foe profile", foe.id || "provisional foe", [
             { label: "Category", value: foe.category || "Not recorded" },
+            { label: "Description", value: foe.description || "Not recorded" },
             { label: "Quantity", value: foe.quantity_expression || "Not recorded" },
             { label: "States", value: (foe.states_inflicted || []).join(", ") || "None recorded" },
             { label: "Weaknesses", value: (foe.weaknesses || []).join(", ") || "None recorded" },
             { label: "Special rules", value: foe.special_rules || "None recorded" },
+            { label: "Modifiers", value: (foe.modifiers || []).map((item) => `${item.target || "Other"} ${item.adjustment || ""}`.trim()).join(", ") || "None recorded" },
             { label: "Source table", value: foe.source_table_id || "Not recorded" },
           ], "This local provisional profile was created from a reviewed Foe Encounter row. It is not active gameplay content until a later supplement review promotes it."),
           highlightedEl("p", "modern-pre-wrap modern-source-preview-text", foe.exact_source_text || "No exact row wording recorded.", needle)
@@ -7986,6 +7996,7 @@ async function renderRulePdfManager() {
         row.append(summary, modernInfoPanel("Provisional profile", profile.id || "profile", [
           { label: "Description", value: profile.description || "Not recorded" },
           { label: "Special rules", value: profile.special_rules || "None recorded" },
+          { label: "Modifiers", value: (profile.modifiers || []).map((item) => `${item.target || "Other"} ${item.adjustment || ""}`.trim()).join(", ") || "None recorded" },
           { label: "Source block", value: profile.source_block_id || "Not recorded" },
         ], "This source-backed profile is local review data only. It does not yet add a mount, companion, foe, or class to playable sessions."), actionsRow);
         panel.appendChild(row);

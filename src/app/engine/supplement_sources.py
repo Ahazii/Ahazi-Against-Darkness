@@ -886,6 +886,7 @@ def draft_supplement_source_profile(data_dir: Path, source_id: str, block_id: st
         "exact_source_text": str(block.get("text") or ""),
         "description": "",
         "special_rules": "",
+        "modifiers": [],
         "states_inflicted": [],
         "weaknesses": [],
         "review_status": "draft",
@@ -915,6 +916,7 @@ def upsert_supplement_source_profile(data_dir: Path, source_id: str, profile_typ
         "exact_source_text": str(profile_payload.get("exact_source_text") or ""),
         "description": str(profile_payload.get("description") or ""),
         "special_rules": str(profile_payload.get("special_rules") or ""),
+        "modifiers": _clean_profile_modifiers(profile_payload.get("modifiers")),
         "states_inflicted": _clean_string_list(profile_payload.get("states_inflicted")),
         "weaknesses": _clean_string_list(profile_payload.get("weaknesses")),
         "level": str(profile_payload.get("level") or ""),
@@ -1032,6 +1034,7 @@ def _foe_encounter_row_candidates(text: Any) -> list[dict[str, Any]]:
             {
                 "roll": match.group("roll"),
                 "foe_name": name,
+                "description": "",
                 "quantity": quantity,
                 "level": level,
                 "attack": "",
@@ -1040,6 +1043,7 @@ def _foe_encounter_row_candidates(text: Any) -> list[dict[str, Any]]:
                 "states_inflicted": [],
                 "weaknesses": [],
                 "special_rules": after,
+                "modifiers": [],
                 "exact_text": exact_text,
                 "notes": "Imported candidate. Check every field against the exact source wording.",
             }
@@ -1075,6 +1079,26 @@ def _table_type(value: Any) -> str:
     return candidate if candidate in SUPPLEMENT_TABLE_TYPES else "reference_lookup"
 
 
+def _clean_profile_modifiers(value: Any) -> list[dict[str, str]]:
+    raw_items = value if isinstance(value, list) else str(value or "").splitlines()
+    modifiers: list[dict[str, str]] = []
+    for raw in raw_items:
+        if isinstance(raw, dict):
+            target = str(raw.get("target") or "Other").strip() or "Other"
+            adjustment = str(raw.get("adjustment") or "").strip()
+            scope = str(raw.get("scope") or "").strip()
+            exact_text = str(raw.get("exact_text") or "").strip()
+        else:
+            parts = [part.strip() for part in str(raw or "").split("|")]
+            if not any(parts):
+                continue
+            target, adjustment, scope, exact_text = (parts + ["", "", "", ""])[:4]
+            target = target or "Other"
+            exact_text = exact_text or str(raw).strip()
+        modifiers.append({"target": target, "adjustment": adjustment, "scope": scope, "exact_text": exact_text})
+    return modifiers
+
+
 def _clean_foe_encounter_row(row: dict[str, Any]) -> dict[str, Any]:
     states = _clean_string_list(row.get("states_inflicted"))
     weaknesses = _clean_string_list(row.get("weaknesses"))
@@ -1083,6 +1107,7 @@ def _clean_foe_encounter_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "roll": roll,
         "foe_name": str(row.get("foe_name") or "").strip(),
+        "description": str(row.get("description") or "").strip(),
         "quantity": str(row.get("quantity") or "").strip(),
         "level": str(row.get("level") or "").strip(),
         "attack": str(row.get("attack") or "").strip(),
@@ -1091,6 +1116,7 @@ def _clean_foe_encounter_row(row: dict[str, Any]) -> dict[str, Any]:
         "states_inflicted": states,
         "weaknesses": weaknesses,
         "special_rules": str(row.get("special_rules") or "").strip(),
+        "modifiers": _clean_profile_modifiers(row.get("modifiers")),
         "exact_text": exact_text,
         "notes": str(row.get("notes") or "").strip(),
     }
@@ -1121,6 +1147,7 @@ def _provisional_foes_from_table(table: dict[str, Any]) -> list[dict[str, Any]]:
             {
                 "id": foe_id,
                 "name": name,
+                "description": str(row.get("description") or "").strip(),
                 "level": str(row.get("level") or "").strip(),
                 "attack": str(row.get("attack") or "").strip(),
                 "defense": str(row.get("defense") or "").strip(),
@@ -1128,6 +1155,7 @@ def _provisional_foes_from_table(table: dict[str, Any]) -> list[dict[str, Any]]:
                 "states_inflicted": list(row.get("states_inflicted") or []),
                 "weaknesses": list(row.get("weaknesses") or []),
                 "special_rules": str(row.get("special_rules") or "").strip(),
+                "modifiers": list(row.get("modifiers") or []),
                 "quantity_expression": str(row.get("quantity") or "").strip(),
                 "exact_source_text": str(row.get("exact_text") or "").strip(),
                 "source_table_id": str(table.get("id") or ""),
@@ -1200,7 +1228,7 @@ def upsert_supplement_source_table(data_dir: Path, source_id: str, table_payload
         "assignment": "table",
         "table_type": table_type,
         "roll_expression": str(table_payload.get("roll_expression") or "").strip(),
-        "columns": ["roll", "foe_name", "quantity", "level", "attack", "defense", "category", "states_inflicted", "weaknesses", "special_rules", "exact_text", "notes"] if table_type == "foe_encounter" else ["roll", "outcome", "exact_text", "notes"],
+        "columns": ["roll", "foe_name", "description", "quantity", "level", "attack", "defense", "category", "states_inflicted", "weaknesses", "modifiers", "special_rules", "exact_text", "notes"] if table_type == "foe_encounter" else ["roll", "outcome", "exact_text", "notes"],
         "rows": clean_rows,
         "parser_status": str(table_payload.get("parser_status") or "manual_reviewed"),
         "review_status": str(table_payload.get("review_status") or "reviewed"),
