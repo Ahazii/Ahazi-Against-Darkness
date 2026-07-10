@@ -1126,9 +1126,13 @@ def update_supplement_source_block(data_dir: Path, source_id: str, block_id: str
             continue
         if "text" in changes:
             block["text"] = str(changes.get("text") or "").strip()
+        if "title" in changes:
+            block["title"] = str(changes.get("title") or "").strip()[:160]
         if "assignment" in changes:
             assignment = str(changes.get("assignment") or "unassigned")
             block["assignment"] = assignment if assignment in SOURCE_BLOCK_ASSIGNMENTS else "unassigned"
+        if "title" in changes:
+            block["title"] = str(changes.get("title") or "").strip()[:160]
         if "review_status" in changes:
             block["review_status"] = str(changes.get("review_status") or "unreviewed")
         if "notes" in changes:
@@ -1182,6 +1186,7 @@ def split_supplement_source_block(data_dir: Path, source_id: str, block_id: str,
                     **block,
                     "id": f"{block_id}-split{part_index:02d}",
                     "text": text,
+                    "title": str(block.get("title") or "") if part_index == 1 else "",
                     "block_index": f"{block.get('block_index') or index + 1}.{part_index}",
                     "review_status": "edited",
                     "notes": str(block.get("notes") or ""),

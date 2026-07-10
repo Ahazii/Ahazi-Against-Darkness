@@ -161,6 +161,11 @@ Home screen rule browsing:
   fragments. Existing local scans retain their review history; a guarded cleanup
   can hide only short blocks proven to be contained in a longer block on the
   same PDF page.
+  Each reviewed block may also carry a reviewer-created `title`. This is a
+  navigational label for an identified rule or other content record and never
+  replaces the exact extracted text. The workbench presents its source controls
+  and PDF preview in a sticky, independently scrollable rail so the viewer
+  controls remain available during long document review.
   The Developer PDF / Supplement Workbench lists these local scans and opens a
   read-only searchable block browser before any assignment is written.
   Uploaded PDF source settings are stored in

@@ -1037,7 +1037,7 @@ def test_supplement_source_rescan_preserves_reviewed_edits_when_raw_blocks_chang
         tmp_path,
         "mutable-book",
         "mutable-book-p1-b001",
-        {"text": "Reviewed edited block", "assignment": "title_page", "review_status": "checked"},
+        {"title": "Reviewed opening", "text": "Reviewed edited block", "assignment": "title_page", "review_status": "checked"},
     )
     pages[:] = [{"page": 1, "text": "Changed raw extraction", "methods": ["layout"]}]
     supplement_sources.scan_supplement_source_pdf(tmp_path, pdf, now="2026-07-08T11:06:00Z")
@@ -1045,6 +1045,7 @@ def test_supplement_source_rescan_preserves_reviewed_edits_when_raw_blocks_chang
     payload = json.loads((tmp_path / "Supplements" / "_sources" / "mutable-book" / "source_blocks.json").read_text(encoding="utf-8"))
     assert payload["raw_blocks"][0]["text"] == "Changed raw extraction"
     assert payload["reviewed_blocks"][0]["text"] == "Reviewed edited block"
+    assert payload["reviewed_blocks"][0]["title"] == "Reviewed opening"
     assert payload["reviewed_blocks"][0]["assignment"] == "title_page"
 
 
@@ -1136,9 +1137,10 @@ def test_source_block_review_update_split_and_merge(tmp_path: Path, monkeypatch)
 
     save_payload = client.patch(
         "/api/supplements/source-scans/mixed-book/blocks/mixed-book-p1-b001",
-        json={"text": "Alpha edited", "assignment": "rule_text", "review_status": "checked"},
+        json={"title": "Alpha rule", "text": "Alpha edited", "assignment": "rule_text", "review_status": "checked"},
     ).json()
     assert save_payload["block"]["assignment"] == "rule_text"
+    assert save_payload["block"]["title"] == "Alpha rule"
     assert save_payload["block"]["text"] == "Alpha edited"
 
     split_payload = client.post(

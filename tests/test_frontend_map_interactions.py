@@ -3100,7 +3100,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "container-type: inline-size" in STYLES_CSS
     assert "@container (max-width: 45rem)" in STYLES_CSS
     assert ".modern-source-import-grid > .modern-field" in STYLES_CSS
-    assert "width: calc(100% - 14px)" in STYLES_CSS
+    assert "position: sticky;" in STYLES_CSS
     assert "min-height: clamp(38rem, 72vh, 56rem)" in STYLES_CSS
     assert "max-height: clamp(44rem, 84vh, 68rem)" in STYLES_CSS
     assert "modern-source-column-divider" in MODERN_PAGES_JS
@@ -3146,6 +3146,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "actionGroup(\"Blocks\", [mergeSelectedButton, mergePageButton, editSelectedButton, splitSelectedButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Clean\", [duplicateReviewButton, hideDuplicateFragmentsButton, resetSourceButton])" in MODERN_PAGES_JS
     assert "modern-source-block-snippet" in MODERN_PAGES_JS
+    assert "Reviewer name" in MODERN_PAGES_JS
+    assert "block.title ||" in MODERN_PAGES_JS
+    assert "title: titleEdit.value" in MODERN_PAGES_JS
     assert "assignmentControl.append(bulkAssignment, applyAssignmentButton)" in MODERN_PAGES_JS
     assert "/blocks/hide-duplicate-fragments" in MODERN_PAGES_JS
     assert "actionGroup(\"Extract\", [draftTableButton, requirementButton])" in MODERN_PAGES_JS

@@ -7086,8 +7086,9 @@ async function renderRulePdfManager() {
     pageInput.setAttribute("aria-label", "PDF page");
     pageInput.title = "PDF viewer page number. This remains the physical PDF page even when a printed-page offset is applied.";
     pdfControlBar.append(pageInput, pdfToolbar);
-    pdfCanvas.append(pdfImage, pdfControlBar);
+    pdfCanvas.append(pdfImage);
     pdfViewer.append(
+      pdfControlBar,
       pdfCanvas,
       pdfStatus
     );
@@ -7421,6 +7422,8 @@ async function renderRulePdfManager() {
       scrollPanelIntoView(sourceToolMount);
     }
     function blockEditor(block, needle) {
+      const titleEdit = input("text", `modern-source-block-title-${block.id}`, "Optional short reviewer name. Use this for a single rule, table, foe, location, or other identified block. It labels the block in its assigned category without changing the exact PDF wording.", block.title || "");
+      titleEdit.maxLength = 160;
       const textArea = document.createElement("textarea");
       textArea.className = "modern-source-block-text";
       textArea.title = "Edit the reviewed source block text. This changes only the local DATA_DIR source block file, not the PDF.";
@@ -7434,7 +7437,7 @@ async function renderRulePdfManager() {
           button("Save Block", "Save edited text, assignment, and review status for this source block.", async (btn) => runWithButtonProgress(btn, "Saving block...", async () => {
             await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}`, {
               method: "PATCH",
-              body: JSON.stringify({ text: textArea.value, assignment: assignmentEdit.value || "unassigned", review_status: "edited" }),
+              body: JSON.stringify({ title: titleEdit.value, text: textArea.value, assignment: assignmentEdit.value || "unassigned", review_status: "edited" }),
             });
             await reloadCurrentScan("Source block saved.");
           })),
@@ -7464,6 +7467,7 @@ async function renderRulePdfManager() {
       }
       editor.append(
         searchPreview,
+        field("Reviewer name", titleEdit),
         field("Reviewed text", textArea),
         field("Assignment", assignmentEdit),
         actionsRow
@@ -7745,10 +7749,11 @@ async function renderRulePdfManager() {
         if (item.open && block.pdf_page) previewPdfPage(block.pdf_page);
       });
       const summary = document.createElement("summary");
+      const blockTitle = String(block.title || "").trim();
       const firstLine = String(block.text || "").split(/\r?\n/).find((line) => line.trim()) || "";
       const compactPreview = firstLine.replace(/\s+/g, " ").trim();
       const previewText = compactPreview.length > 100 ? `${compactPreview.slice(0, 97).trimEnd()}...` : compactPreview;
-      summary.title = String(block.text || "No extracted text.");
+      summary.title = `${blockTitle ? `${blockTitle}\n\n` : ""}${String(block.text || "No extracted text.")}`;
       const selectBox = input("checkbox", `modern-source-block-select-${block.id}`, "Select this block for the left-side workbench controls.");
       selectBox.checked = selectedBlockIds.has(block.id);
       selectBox.addEventListener("click", (event) => event.stopPropagation());
@@ -7760,8 +7765,8 @@ async function renderRulePdfManager() {
       });
       summary.append(
         selectBox,
-        el("strong", "", block.page_label || `p.${block.source_page || "?"}`),
-        el("span", "muted", ` · ${block.source_item_type === "page-boundary candidate" ? "boundary" : `block ${block.block_index || "?"}`}`),
+        el("strong", "", blockTitle || block.page_label || `p.${block.source_page || "?"}`),
+        el("span", "muted", ` · ${blockTitle ? `${block.page_label || `p.${block.source_page || "?"}`} · ` : ""}${block.source_item_type === "page-boundary candidate" ? "boundary" : `block ${block.block_index || "?"}`}`),
         el("span", "modern-source-block-snippet", previewText || "No text")
       );
       item.classList.toggle("modern-row-selected", selectedBlockIds.has(block.id));
@@ -7845,7 +7850,7 @@ async function renderRulePdfManager() {
           const endPage = Number(block.pdf_page_end || startPage);
           if (activePage < startPage || activePage > endPage) return false;
         }
-        return modernTextMatchesNeedle(`${block.id || ""} ${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
+        return modernTextMatchesNeedle(`${block.id || ""} ${block.title || ""} ${block.page_label || ""} ${block.assignment || ""} ${block.text || ""}`, needle);
       });
       const artworkMatches = artworkItems.filter((item) => {
         if (!documentScope && Number(item.pdf_page || 0) !== activePage) return false;

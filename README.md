@@ -89,6 +89,9 @@ current with every rules or content change.
   safely hide only fragments contained in a longer same-page block. Tree rows
   show the first extracted line and expose the full text on hover; assignment
   applies beside the category selector.
+  A reviewer can give an identified block a short name without changing its
+  exact PDF text; that name labels the item in its assigned category. The PDF
+  preview and its navigation controls share a dedicated sticky review rail.
   Reviewed blocks can also create
   package-level supplement requirements that preserve exact source wording while
   separately recording editable party eligibility, dependencies, triggers, and

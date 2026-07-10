@@ -1399,22 +1399,26 @@ button.is-working::after {
 }
 
 .modern-source-left-rail {
-  position: relative;
+  position: sticky;
+  top: 6px;
   display: grid;
   gap: 7px;
+  align-self: start;
+  max-height: calc(100vh - 12px);
   align-content: start;
   min-width: 0;
-  overflow: visible;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
 }
 
 .modern-source-controls-panel {
   display: grid;
   gap: 4px;
   min-width: 0;
-  position: sticky;
-  top: 6px;
-  z-index: 4;
-  padding: 5px;
+  position: relative;
+  z-index: 1;
+  padding: 4px;
   border: 1px solid rgba(201, 162, 39, 0.38);
   border-radius: 7px;
   background: var(--panel);
@@ -1502,26 +1506,15 @@ button.is-working::after {
 }
 
 .modern-source-action-groups {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
 }
 
 .modern-source-action-group {
   display: grid;
-  flex: 1 1 5.5rem;
   gap: 2px;
-  min-width: 5.5rem;
-}
-
-.modern-source-action-group:nth-child(3) {
-  flex-basis: 7.5rem;
-  min-width: 7.5rem;
-}
-
-.modern-source-action-group:nth-child(4) {
-  flex-basis: 7.5rem;
-  min-width: 7.5rem;
+  min-width: 0;
 }
 
 .modern-source-action-group > span {
@@ -1540,7 +1533,7 @@ button.is-working::after {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 34px;
+  min-height: 31px;
   padding: 2px 3px;
   justify-self: stretch;
   font-size: 11px;
@@ -1588,24 +1581,23 @@ button.is-working::after {
 }
 
 .modern-source-pdf-toolbar {
-  position: absolute;
-  top: 7px;
-  left: 50%;
-  z-index: 3;
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 3px;
   align-items: center;
   box-sizing: border-box;
-  width: calc(100% - 14px);
+  width: 100%;
   max-width: none;
   padding: 4px;
   border: 1px solid rgba(201, 162, 39, 0.42);
   border-radius: 6px;
   background: rgba(16, 17, 14, 0.84);
   backdrop-filter: blur(8px);
-  transform: translateX(-50%);
+  transform: none;
   margin-top: 0;
 }
 
@@ -1644,8 +1636,8 @@ button.is-working::after {
 .modern-source-pdf-canvas {
   position: relative;
   width: 100%;
-  height: clamp(24rem, 52vh, 44rem);
-  min-height: 22rem;
+  height: clamp(20rem, 46vh, 38rem);
+  min-height: 20rem;
   overflow: hidden;
   border: 1px solid #3c3a30;
   border-radius: 6px;
@@ -1860,6 +1852,12 @@ button.is-working::after {
 
   .modern-source-controls-panel {
     position: static;
+  }
+
+  .modern-source-left-rail {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
   }
 }
 
@@ -2285,7 +2283,9 @@ button.is-working::after {
 
   .modern-source-left-rail {
     position: static;
+    max-height: none;
     overflow: visible;
+    padding-right: 0;
   }
 
   .modern-source-import-grid,
