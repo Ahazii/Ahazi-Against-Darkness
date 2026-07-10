@@ -57,6 +57,7 @@ from .engine.adventure_allowlists import build_adventure_allowlists
 from .engine.adventure_foes import spawn_manifest_foes
 from .engine.adventure_manifest import validate_adventure_manifest
 from .engine.adventure_session import create_session_from_manifest
+from .engine.content_registry import resolve_content_registry
 from .engine.random_dungeon import RandomDungeonEngine
 from .engine.rest import rest_eligibility
 from .engine.roster_sync import (
@@ -5787,6 +5788,16 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
             if supplement_id not in active_ids:
                 active_ids.append(supplement_id)
         session.active_supplement_ids = active_ids
+    try:
+        content_registry = resolve_content_registry(
+            settings.root_dir,
+            settings.data_dir,
+            session.active_supplement_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    session.active_supplement_ids = list(content_registry.active_supplement_ids)
+    session.supplement_registry_version = content_registry.supplement_registry_version
     session = apply_abyss_campaign_to_session(store, session)
     from .engine.supplements import supplement_registry, supplement_snapshot_log_line
 

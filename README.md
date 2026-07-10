@@ -89,6 +89,9 @@ current with every rules or content change.
   safely hide only fragments contained in a longer same-page block. Tree rows
   show the first extracted line and expose the full text on hover; assignment
   applies beside the category selector.
+- The modular runtime seam lives in `app.engine.content_registry`. It resolves
+  a session's locked supplement list into active providers, review-only packages,
+  capabilities, and legacy mappings without executing imported PDF data.
   A reviewer can give an identified block a short name without changing its
   exact PDF text; that name labels the item in its assigned category. The PDF
   preview and its navigation controls share a dedicated sticky review rail.

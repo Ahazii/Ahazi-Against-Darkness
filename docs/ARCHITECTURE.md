@@ -117,6 +117,21 @@ New routed home:
 
 Home screen rule browsing:
 
+### Runtime content boundary
+
+- `app.engine.content_registry` resolves the session's locked
+  `active_supplement_ids` through the file-backed supplement registry. Its
+  `ResolvedContentRegistry` separates active runtime providers from selected
+  `review_only` supplements, exposes capability providers and legacy mappings,
+  and never executes source-workbench data.
+- New sessions pass their final supplement snapshot through this resolver before
+  saving. Existing random, combat, terrain, and class modules retain their
+  current behaviour; later migrations can take this context as an explicit
+  dependency instead of branching on scattered legacy profile fields.
+- This is intentionally not the promotion pipeline. Reviewed foes, locations,
+  classes, tables, states, tiles, and rules remain local data until a later
+  validator converts them into trusted runtime records.
+
 - `resolve_play_context()` in `terrain.py` is the single backend entry point for
   outdoor/terrain gates (spells, ranger missile, druid companion, combat weather).
   `session.play_context` is enriched on each API read (`exclude=True`, not persisted).
