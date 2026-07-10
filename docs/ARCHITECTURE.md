@@ -182,12 +182,15 @@ Home screen rule browsing:
   profiles are explicitly `provisional`, visible in the source tree, and cannot
   affect gameplay until a future validated supplement loader promotes them.
   The same common source-backed profile record supports `mount`,
-  `companion_animal`, and `character_class` assignments. Mount profiles capture
+  `companion_animal`, `character_class`, and `location` assignments. Mount profiles capture
   combat details plus riding requirements, movement, and carrying capacity;
   companion-animal profiles add ownership/training; class profiles add
   eligibility, abilities, progression, and equipment restrictions. The shared
   source evidence, exact text, review status, state/weakness fields, and
   inactive-promotion boundary avoid creating disconnected import formats.
+  Location profiles add a location type plus optional direct/table foe references,
+  reward and hazard source notes, structured exits, friendly-character services,
+  quest hooks, and map/pin/tile references.
   PDF viewer navigation changes the physical preview page without rebuilding the
   source-content tree; this preserves the sticky viewer toolbar's active scroll
   position during repeated Previous/Next review. Render failures are reported

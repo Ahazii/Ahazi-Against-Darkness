@@ -6933,6 +6933,7 @@ async function renderRulePdfManager() {
     const reviewedMounts = Array.isArray(payload.mounts) ? payload.mounts : [];
     const reviewedCompanionAnimals = Array.isArray(payload.companion_animals) ? payload.companion_animals : [];
     const reviewedCharacterClasses = Array.isArray(payload.character_classes) ? payload.character_classes : [];
+    const reviewedLocations = Array.isArray(payload.locations) ? payload.locations : [];
     let packageRequirements = Array.isArray(activeWorkbenchPackage?.requirements) ? activeWorkbenchPackage.requirements.map((item) => ({ ...item })) : [];
     const sourceItems = blocks;
     const search = input("search", "modern-source-block-search", "Search extracted source blocks from this PDF.", "");
@@ -7300,11 +7301,11 @@ async function renderRulePdfManager() {
       await openTableDraftFromBlock(tableBlock, search.value);
       setStatus("Table draft opened. Review the source text and machine rows, then save the reviewed table.");
     }));
-    const profileButton = button("◇ Profile", "Create a provisional profile from one selected source block assigned as Foe, Mount, Companion Animal, or Character Class. This captures review data only and never activates gameplay rules.", async (btn) => runWithButtonProgress(btn, "Opening profile draft...", async () => {
+    const profileButton = button("◇ Profile", "Create a provisional profile from one selected source block assigned as Foe, Mount, Companion Animal, Character Class, or Location. This captures review data only and never activates gameplay rules.", async (btn) => runWithButtonProgress(btn, "Opening profile draft...", async () => {
       const block = requireSelectedReviewedBlock("Profile");
       const profileType = String(block.assignment || "");
       if (!(profileType in (payload.profile_types || {}))) {
-        throw new Error("Assign this block as Foe, Mount, Companion Animal, or Character Class before creating its profile.");
+        throw new Error("Assign this block as Foe, Mount, Companion Animal, Character Class, or Location before creating its profile.");
       }
       const draft = await api(`/api/supplements/source-scans/${encodeURIComponent(payload.source_id)}/blocks/${encodeURIComponent(block.id)}/profile-draft`, {
         method: "POST",
@@ -7674,6 +7675,7 @@ async function renderRulePdfManager() {
       notesInput.title = "Reviewer notes, uncertainty, and implementation follow-up.";
       notesInput.value = profile.notes || "";
       let abilitiesInput = null;
+      let locationInputs = null;
       const fields = [field("Profile name", nameInput), field("Profile id", idInput), field("Description", descriptionInput)];
       const combatFields = () => [
         field("Level", input("text", "", "Printed combat level.", profile.level || "")),
@@ -7714,6 +7716,38 @@ async function renderRulePdfManager() {
         ];
         abilitiesInput = abilities;
       }
+      if (profileType === "location") {
+        const reviewLines = (records, keys) => (records || []).map((record) => keys.map((key) => record[key] || "").join(" | ").replace(/(?: \| )+$/, "")).join("\n");
+        const locationType = select("", "Choose the practical kind of place. This is a review label, not a gameplay rule.", [
+          ["location", "Location"], ["room", "Room"], ["settlement", "Settlement"], ["wilderness_site", "Wilderness site"], ["dungeon_feature", "Dungeon feature"], ["encounter", "Encounter"], ["shop", "Shop"], ["quest_site", "Quest site"], ["other", "Other"],
+        ]);
+        locationType.value = profile.location_type || "location";
+        const foeIds = input("text", "", "Comma-separated provisional foe profile ids or names that may appear here. Leave blank when this location uses only a foe table.", (profile.foe_ids || []).join(", "));
+        const foeTableId = input("text", "", "Optional reviewed Foe Encounter table id to roll for this location.", profile.foe_table_id || "");
+        const treasureText = textarea("", "Exact or reviewed wording for treasure, rewards, or services at this location. Keep it blank when none are present.", 3);
+        treasureText.value = profile.treasure_text || "";
+        const treasureTableId = input("text", "", "Optional reviewed treasure/reward table id used here.", profile.treasure_table_id || "");
+        const trapText = textarea("", "Exact or reviewed wording for traps, hazards, saves, or consequences at this location.", 3);
+        trapText.value = profile.trap_text || "";
+        const trapProcedureId = input("text", "", "Optional reviewed procedure id for this location's trap or hazard.", profile.trap_procedure_id || "");
+        const exits = textarea("", "One exit per line: Label | destination location id | condition | exact source wording. Example: North door | crypt-2 | unlocked | Proceed to Crypt 2.", 4);
+        exits.value = reviewLines(profile.exits, ["label", "to_location_id", "condition", "exact_text"]);
+        const friendlyNpcs = textarea("", "One friendly character per line: Name | role | offers/services | linked ids | exact source wording. Use linked ids for items, states, modifiers, tables, or procedures when they exist.", 4);
+        friendlyNpcs.value = reviewLines(profile.friendly_npcs, ["name", "role", "offers", "linked_ids", "exact_text"]);
+        const quests = textarea("", "One quest giver per line: Name | quest or procedure id | exact source wording.", 3);
+        quests.value = reviewLines(profile.quests, ["giver", "quest_or_procedure_id", "exact_text"]);
+        const mapId = input("text", "", "Optional map asset or reviewed map id containing this location.", profile.map_id || "");
+        const mapPinId = input("text", "", "Optional pin id that marks this location on its map.", profile.map_pin_id || "");
+        const roomTileId = input("text", "", "Optional room-tile asset id when this location is represented by a reusable tile.", profile.room_tile_id || "");
+        typedFields = [
+          field("Location type", locationType), field("Foes", foeIds), field("Foe table", foeTableId),
+          field("Treasure / rewards", treasureText), field("Treasure table", treasureTableId),
+          field("Traps / hazards", trapText), field("Trap procedure", trapProcedureId),
+          field("Exits", exits), field("Friendly characters", friendlyNpcs), field("Quest givers", quests),
+          field("Map", mapId), field("Map pin", mapPinId), field("Room tile", roomTileId),
+        ];
+        locationInputs = { locationType, foeIds, foeTableId, treasureText, treasureTableId, trapText, trapProcedureId, exits, friendlyNpcs, quests, mapId, mapPinId, roomTileId };
+      }
       const actionsRow = actions();
       actionsRow.append(button("Save Provisional Profile", "Save this local review profile. It remains inactive until a future supplement-promotion step validates it against the PDF.", async (btn) => runWithButtonProgress(btn, "Saving provisional profile...", async () => {
         const typed = typedFields.map((entry) => entry.querySelector("input, textarea")).filter(Boolean);
@@ -7733,6 +7767,10 @@ async function renderRulePdfManager() {
             level: valueFor("Level"), attack: valueFor("Attack"), defense: valueFor("Defence"), category: valueFor("Category"), quantity_expression: valueFor("Quantity"),
             riding_requirements: valueFor("Riding requirements"), movement: valueFor("Movement"), carrying_capacity: valueFor("Carrying capacity"), owner_training: valueFor("Owner / training"),
             eligibility: valueFor("Eligibility"), abilities: abilitiesInput?.value || "", progression: valueFor("Progression"), equipment_restrictions: valueFor("Equipment restrictions"),
+            location_type: locationInputs?.locationType.value || "", foe_ids: locationInputs?.foeIds.value || "", foe_table_id: locationInputs?.foeTableId.value || "",
+            treasure_text: locationInputs?.treasureText.value || "", treasure_table_id: locationInputs?.treasureTableId.value || "", trap_text: locationInputs?.trapText.value || "", trap_procedure_id: locationInputs?.trapProcedureId.value || "",
+            exits: locationInputs?.exits.value || "", friendly_npcs: locationInputs?.friendlyNpcs.value || "", quests: locationInputs?.quests.value || "",
+            map_id: locationInputs?.mapId.value || "", map_pin_id: locationInputs?.mapPinId.value || "", room_tile_id: locationInputs?.roomTileId.value || "",
             notes: notesInput.value, review_status: "provisional",
           }),
         });
@@ -7993,12 +8031,25 @@ async function renderRulePdfManager() {
           if (profile.pdf_page) previewPdfPage(profile.pdf_page);
           openSourceTool(`Profile - ${profile.name || profile.id}`, profileEditor(profile, profile.exact_source_text || ""));
         }));
-        row.append(summary, modernInfoPanel("Provisional profile", profile.id || "profile", [
+        const profileInfo = [
           { label: "Description", value: profile.description || "Not recorded" },
           { label: "Special rules", value: profile.special_rules || "None recorded" },
           { label: "Modifiers", value: (profile.modifiers || []).map((item) => `${item.target || "Other"} ${item.adjustment || ""}`.trim()).join(", ") || "None recorded" },
           { label: "Source block", value: profile.source_block_id || "Not recorded" },
-        ], "This source-backed profile is local review data only. It does not yet add a mount, companion, foe, or class to playable sessions."), actionsRow);
+        ];
+        if (profileType === "location") {
+          profileInfo.splice(1, 0,
+            { label: "Type", value: modernTitleFromKey(profile.location_type || "location") },
+            { label: "Foes", value: (profile.foe_ids || []).join(", ") || profile.foe_table_id || "None recorded" },
+            { label: "Treasure", value: profile.treasure_table_id || profile.treasure_text || "None recorded" },
+            { label: "Trap / hazard", value: profile.trap_procedure_id || profile.trap_text || "None recorded" },
+            { label: "Exits", value: `${(profile.exits || []).length}` },
+            { label: "Friendly characters", value: `${(profile.friendly_npcs || []).length}` },
+            { label: "Quest givers", value: `${(profile.quests || []).length}` },
+            { label: "Map", value: profile.map_pin_id || profile.map_id || profile.room_tile_id || "None recorded" },
+          );
+        }
+        row.append(summary, modernInfoPanel("Provisional profile", profile.id || "profile", profileInfo, "This source-backed profile is local review data only. It does not yet add a mount, companion, foe, class, or location to playable sessions."), actionsRow);
         panel.appendChild(row);
       }
       return panel;
@@ -8164,6 +8215,7 @@ async function renderRulePdfManager() {
           { label: "Mounts", value: `${reviewedMounts.length}` },
           { label: "Companions", value: `${reviewedCompanionAnimals.length}` },
           { label: "Classes", value: `${reviewedCharacterClasses.length}` },
+          { label: "Locations", value: `${reviewedLocations.length}` },
           { label: "Artwork", value: `${artworkMatches.length}/${artworkItems.length}` },
         ], "Counts update as the current page, search, assignment filter, and manual review categories change.")
       );
@@ -8238,9 +8290,10 @@ async function renderRulePdfManager() {
         treeBranch("Provisional mounts", `${reviewedMounts.length}`, renderProfilesPanel("mount", reviewedMounts), { open: false }),
         treeBranch("Provisional companion animals", `${reviewedCompanionAnimals.length}`, renderProfilesPanel("companion_animal", reviewedCompanionAnimals), { open: false }),
         treeBranch("Provisional character classes", `${reviewedCharacterClasses.length}`, renderProfilesPanel("character_class", reviewedCharacterClasses), { open: false }),
+        treeBranch("Provisional locations", `${reviewedLocations.length}`, renderProfilesPanel("location", reviewedLocations), { open: false, hint: "Source-backed locations with optional exits, foes, tables, rewards, hazards, friendly characters, quests, and map references. They remain inactive until later supplement review promotes them." }),
         treeBranch("Artwork", `${artworkMatches.length}`, renderArtworkTreePanel(artworkMatches, needle), { open: false })
       );
-      results.appendChild(treeBranch(payload.source_id || "Source document", `${sourceItems.length + artworkItems.length + reviewedTables.length + reviewedFoes.length + reviewedMounts.length + reviewedCompanionAnimals.length + reviewedCharacterClasses.length + packageRequirements.length}`, sourceTree, {
+      results.appendChild(treeBranch(payload.source_id || "Source document", `${sourceItems.length + artworkItems.length + reviewedTables.length + reviewedFoes.length + reviewedMounts.length + reviewedCompanionAnimals.length + reviewedCharacterClasses.length + reviewedLocations.length + packageRequirements.length}`, sourceTree, {
         open: true,
         className: "modern-source-tree-root",
         hint: "Imported source document tree. Text, tables, artwork, and future data types sit under this document so review follows the PDF/source order.",

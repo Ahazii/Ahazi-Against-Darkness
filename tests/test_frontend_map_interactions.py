@@ -3149,6 +3149,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Provisional mounts" in MODERN_PAGES_JS
     assert "Provisional companion animals" in MODERN_PAGES_JS
     assert "Provisional character classes" in MODERN_PAGES_JS
+    assert "Provisional locations" in MODERN_PAGES_JS
+    assert "Friendly characters" in MODERN_PAGES_JS
+    assert "One exit per line" in MODERN_PAGES_JS
     assert "const profileButton" in MODERN_PAGES_JS
     assert "/profile-draft" in MODERN_PAGES_JS
     assert "Suggest Rows" in MODERN_PAGES_JS

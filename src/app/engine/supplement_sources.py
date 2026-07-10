@@ -152,6 +152,7 @@ SUPPLEMENT_PROFILE_DESCRIPTIONS = {
     "mount": "A rideable animal or creature with riding, movement, and carrying details.",
     "companion_animal": "A domesticated animal companion with combat and ownership/training details.",
     "character_class": "A playable class or character option with eligibility, abilities, progression, and equipment details.",
+    "location": "A room, settlement, wilderness site, dungeon feature, encounter, shop, or quest location with optional exits, encounters, rewards, hazards, NPCs, and map links.",
 }
 
 SUPPLEMENT_PROFILE_TYPES = set(SUPPLEMENT_PROFILE_DESCRIPTIONS)
@@ -160,6 +161,7 @@ SUPPLEMENT_PROFILE_COLLECTIONS = {
     "mount": "reviewed_mounts",
     "companion_animal": "reviewed_companion_animals",
     "character_class": "reviewed_character_classes",
+    "location": "reviewed_locations",
 }
 
 
@@ -871,7 +873,7 @@ def draft_supplement_source_profile(data_dir: Path, source_id: str, block_id: st
         raise KeyError(block_id)
     resolved_type = str(profile_type or block.get("assignment") or "")
     if resolved_type not in SUPPLEMENT_PROFILE_TYPES:
-        raise ValueError("Assign this source block as Foe, Mount, Companion Animal, or Character Class before creating its profile.")
+        raise ValueError("Assign this source block as Foe, Mount, Companion Animal, Character Class, or Location before creating its profile.")
     first_line = next((line.strip() for line in str(block.get("text") or "").splitlines() if line.strip()), "")
     name = str(block.get("title") or first_line or "").strip()[:160]
     profile = {
@@ -889,6 +891,19 @@ def draft_supplement_source_profile(data_dir: Path, source_id: str, block_id: st
         "modifiers": [],
         "states_inflicted": [],
         "weaknesses": [],
+        "location_type": "location",
+        "foe_ids": [],
+        "foe_table_id": "",
+        "treasure_text": "",
+        "treasure_table_id": "",
+        "trap_text": "",
+        "trap_procedure_id": "",
+        "exits": [],
+        "friendly_npcs": [],
+        "quests": [],
+        "map_id": "",
+        "map_pin_id": "",
+        "room_tile_id": "",
         "review_status": "draft",
         "notes": "",
     }
@@ -932,6 +947,19 @@ def upsert_supplement_source_profile(data_dir: Path, source_id: str, profile_typ
         "abilities": _clean_string_list(profile_payload.get("abilities")),
         "progression": str(profile_payload.get("progression") or ""),
         "equipment_restrictions": str(profile_payload.get("equipment_restrictions") or ""),
+        "location_type": str(profile_payload.get("location_type") or "location"),
+        "foe_ids": _clean_string_list(profile_payload.get("foe_ids")),
+        "foe_table_id": str(profile_payload.get("foe_table_id") or ""),
+        "treasure_text": str(profile_payload.get("treasure_text") or ""),
+        "treasure_table_id": str(profile_payload.get("treasure_table_id") or ""),
+        "trap_text": str(profile_payload.get("trap_text") or ""),
+        "trap_procedure_id": str(profile_payload.get("trap_procedure_id") or ""),
+        "exits": _clean_location_lines(profile_payload.get("exits"), ("label", "to_location_id", "condition", "exact_text")),
+        "friendly_npcs": _clean_location_lines(profile_payload.get("friendly_npcs"), ("name", "role", "offers", "linked_ids", "exact_text")),
+        "quests": _clean_location_lines(profile_payload.get("quests"), ("giver", "quest_or_procedure_id", "exact_text")),
+        "map_id": str(profile_payload.get("map_id") or ""),
+        "map_pin_id": str(profile_payload.get("map_pin_id") or ""),
+        "room_tile_id": str(profile_payload.get("room_tile_id") or ""),
         "review_status": str(profile_payload.get("review_status") or "provisional"),
         "notes": str(profile_payload.get("notes") or ""),
     }
@@ -1097,6 +1125,24 @@ def _clean_profile_modifiers(value: Any) -> list[dict[str, str]]:
             exact_text = exact_text or str(raw).strip()
         modifiers.append({"target": target, "adjustment": adjustment, "scope": scope, "exact_text": exact_text})
     return modifiers
+
+
+def _clean_location_lines(value: Any, fields: tuple[str, ...]) -> list[dict[str, str]]:
+    raw_items = value if isinstance(value, list) else str(value or "").splitlines()
+    records: list[dict[str, str]] = []
+    for raw in raw_items:
+        if isinstance(raw, dict):
+            record = {field: str(raw.get(field) or "").strip() for field in fields}
+        else:
+            parts = [part.strip() for part in str(raw or "").split("|")]
+            if not any(parts):
+                continue
+            record = {field: part for field, part in zip(fields, parts, strict=False)}
+            for field in fields:
+                record.setdefault(field, "")
+        if any(record.values()):
+            records.append(record)
+    return records
 
 
 def _clean_foe_encounter_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -1421,6 +1467,7 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     reviewed_mounts = _review_profiles_from_existing(payload, "mount")
     reviewed_companion_animals = _review_profiles_from_existing(payload, "companion_animal")
     reviewed_character_classes = _review_profiles_from_existing(payload, "character_class")
+    reviewed_locations = _review_profiles_from_existing(payload, "location")
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
     payload["reviewed_artwork"] = reviewed_artwork
@@ -1435,6 +1482,8 @@ def load_supplement_source_scan(data_dir: Path, source_id: str) -> dict[str, Any
     payload["companion_animals"] = reviewed_companion_animals
     payload["reviewed_character_classes"] = reviewed_character_classes
     payload["character_classes"] = reviewed_character_classes
+    payload["reviewed_locations"] = reviewed_locations
+    payload["locations"] = reviewed_locations
     if "raw_blocks" not in payload:
         payload["raw_blocks"] = [dict(block) for block in reviewed]
     if "raw_artwork" not in payload:
@@ -1456,6 +1505,7 @@ def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[st
     reviewed_mounts = _review_profiles_from_existing(payload, "mount")
     reviewed_companion_animals = _review_profiles_from_existing(payload, "companion_animal")
     reviewed_character_classes = _review_profiles_from_existing(payload, "character_class")
+    reviewed_locations = _review_profiles_from_existing(payload, "location")
     payload["reviewed_blocks"] = reviewed
     payload["blocks"] = reviewed
     payload["reviewed_artwork"] = reviewed_artwork
@@ -1470,6 +1520,8 @@ def save_supplement_source_scan(data_dir: Path, source_id: str, payload: dict[st
     payload["companion_animals"] = reviewed_companion_animals
     payload["reviewed_character_classes"] = reviewed_character_classes
     payload["character_classes"] = reviewed_character_classes
+    payload["reviewed_locations"] = reviewed_locations
+    payload["locations"] = reviewed_locations
     payload["assignment_options"] = sorted(SOURCE_BLOCK_ASSIGNMENTS)
     payload["assignment_descriptions"] = SOURCE_BLOCK_ASSIGNMENT_DESCRIPTIONS
     payload["artwork_categories"] = sorted(SOURCE_ARTWORK_CATEGORIES)
