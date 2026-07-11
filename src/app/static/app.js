@@ -18326,10 +18326,11 @@ function showAdventureCloseoutModal(report) {
 
 function applyCampScreenLayout(session) {
   const camped = Boolean(session?.mode === "exploration" && session.camped_outside);
+  const combatFocused = shouldUseCombatFocus(session);
   sessionMain?.classList.toggle("camp-mode", camped);
   campScreen?.classList.toggle("hidden", !camped);
-  mapLogRow?.classList.toggle("hidden", camped);
-  logMapResizer?.classList.toggle("hidden", camped);
+  mapLogRow?.classList.toggle("hidden", camped || combatFocused);
+  logMapResizer?.classList.toggle("hidden", camped || combatFocused);
   if (camped) {
     combatCommandRailEl?.classList.add("hidden");
     combatCommandRailResizerEl?.classList.add("hidden");

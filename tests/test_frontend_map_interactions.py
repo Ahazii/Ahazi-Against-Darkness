@@ -2158,7 +2158,9 @@ def test_camped_outside_uses_dedicated_camp_screen() -> None:
     assert "const campRecoveryChoicesEl" in APP_JS
     assert "function applyCampScreenLayout" in APP_JS
     assert 'sessionMain?.classList.toggle("camp-mode", camped)' in APP_JS
-    assert 'mapLogRow?.classList.toggle("hidden", camped)' in APP_JS
+    assert "const combatFocused = shouldUseCombatFocus(session);" in APP_JS
+    assert 'mapLogRow?.classList.toggle("hidden", camped || combatFocused)' in APP_JS
+    assert 'logMapResizer?.classList.toggle("hidden", camped || combatFocused)' in APP_JS
     assert 'combatCommandRailEl?.classList.add("hidden")' in APP_JS
     assert 'session?.mode === "exploration" && session.camped_outside && campPartySheets' in APP_JS
     assert 'session?.mode === "exploration" && session.camped_outside && campRecoveryChoicesEl' in APP_JS
