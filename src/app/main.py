@@ -422,13 +422,6 @@ def session_to_summary(session: SessionState) -> SessionListSummary:
         else None,
         active_quest_description=(quest.description or "").strip() or None if quest else None,
         active_supplement_ids=list(session.active_supplement_ids),
-        active_state_ids=list(session.active_state_ids),
-        active_terrain_ids=list(session.active_terrain_ids),
-        active_table_ids=list(session.active_table_ids),
-        active_foe_ids=list(session.active_foe_ids),
-        active_tile_ids=list(session.active_tile_ids),
-        active_class_ids=list(session.active_class_ids),
-        active_item_ids=list(session.active_item_ids),
         supplement_registry_version=session.supplement_registry_version,
         state_registry_version=session.state_registry_version,
         terrain_registry_version=session.terrain_registry_version,
@@ -3604,9 +3597,9 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "surface": "Locked session content registry",
-            "shows": "Active State, Terrain, Table, Foe, random-dungeon Tile, Character Class, and Item catalogue identities resolved from the locked supplement snapshot.",
-            "player_use": "Developer/runtime context for checking which packaged content families a new session may use while migration work continues.",
-            "rules_boundary": "Foe, Tile, Class, and Item catalogues are source ownership metadata only. Existing encounter, combat, character, item, and map-generation code remains authoritative until a validated rule-family migration changes it. Authored maps and locations are not random-dungeon tiles.",
+            "shows": "Active State, Terrain, Table, Foe, random-dungeon Tile, Character Class, and Item catalogue identities, plus declared packaged source files, resolved from the locked supplement snapshot.",
+            "player_use": "Developer/runtime context for checking which packaged content families and source files a new session may use while migration work continues.",
+            "rules_boundary": "Declared source files, Foe, Tile, Class, and Item catalogues are ownership metadata only. Existing encounter, combat, character, item, and map-generation code remains authoritative until a validated rule-family migration changes it. Authored maps and locations are not random-dungeon tiles.",
         },
     ]
     data["supplement_manifest_registry_table"] = [
@@ -5901,6 +5894,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
     session.active_class_ids = list(content_registry.active_class_ids)
     session.item_catalog_version = content_registry.item_catalog_version
     session.active_item_ids = list(content_registry.active_item_ids)
+    session.declared_content_sources = [dict(source) for source in content_registry.declared_content_sources]
     session = apply_abyss_campaign_to_session(store, session)
     from .engine.supplements import supplement_registry, supplement_snapshot_log_line
 

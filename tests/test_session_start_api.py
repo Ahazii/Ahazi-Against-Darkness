@@ -92,6 +92,14 @@ def test_create_session_accepts_per_session_supplement_snapshot(client: TestClie
     payload = session_response.json()
     assert payload["active_supplement_ids"] == ["expanded-edition-core", "courtship", "tag"]
     assert payload["supplement_registry_version"] == 1
+    assert {
+        (source["supplement_id"], source["kind"], source["path"])
+        for source in payload["declared_content_sources"]
+    } >= {
+        ("expanded-edition-core", "tables", "data/rules/dungeon_tables.json"),
+        ("courtship", "items", "data/rules/courtship_blossoms_tables.json"),
+        ("tag", "foes", "data/rules/tag_monsters.json"),
+    }
     assert (
         "Supplements locked for this session: "
         "Four Against Darkness Expanded Edition, The Courtship of Flower Demons, Tales from the Adventurers' Guild."

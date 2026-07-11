@@ -60,6 +60,7 @@ def test_resolved_content_registry_separates_runtime_and_review_only_supplements
     assert context.item_provider_ids == ("expanded-edition-core", "forsaken-depths")
     assert "bow" in context.active_item_ids
     assert any(item_id.startswith("forsaken-depths-fd-heroic-magic-item-table") for item_id in context.active_item_ids)
+    assert context.declared_content_sources == ()
     assert "review-only" in context.diagnostics[0]
 
 
@@ -183,3 +184,17 @@ def test_item_catalog_reads_declared_manifest_item_sources() -> None:
 
     assert "bow" in catalog.item_ids
     assert any(item_id.startswith("courtship-courtship-blossoms-magic-item-table") for item_id in catalog.item_ids)
+
+
+def test_content_registry_snapshots_declared_runtime_sources_from_packaged_manifests() -> None:
+    root = Path(__file__).resolve().parents[1]
+    context = resolve_content_registry(root, None, ["forsaken-depths", "imported-adventures"])
+
+    assert {
+        (source["supplement_id"], source["kind"], source["path"])
+        for source in context.declared_content_sources
+    } >= {
+        ("expanded-edition-core", "tables", "data/rules/dungeon_tables.json"),
+        ("forsaken-depths", "room_tiles", "data/rules/forsaken_depths_rivers_tiles.json"),
+    }
+    assert not any(source["supplement_id"] == "imported-adventures" for source in context.declared_content_sources)

@@ -12247,6 +12247,12 @@ function registryDebugSummary(session = state.session) {
     })
     .filter(Boolean);
   lines.push(`Visible party effect chips: ${visibleEffects.length ? visibleEffects.join("; ") : "none"}`);
+  const declaredSources = Array.isArray(session.declared_content_sources) ? session.declared_content_sources : [];
+  lines.push(
+    `Declared runtime sources: ${declaredSources.length
+      ? declaredSources.map((source) => `${source.supplement_id || "unknown"}/${source.kind || "content"}: ${source.path || "unknown path"}`).join("; ")
+      : "none (legacy session or no packaged source declarations)"}`
+  );
   return lines;
 }
 

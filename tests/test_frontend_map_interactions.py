@@ -2651,6 +2651,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Terrain registry:" in APP_JS
     assert "Active state registry matches:" in APP_JS
     assert "Visible party effect chips:" in APP_JS
+    assert "Declared runtime sources:" in APP_JS
     assert "The following information is not player narrative" in APP_JS
     assert "function sessionSupplementDebugLine(session)" in APP_JS
     assert "function sessionSupplementDebugBlock(session)" in APP_JS

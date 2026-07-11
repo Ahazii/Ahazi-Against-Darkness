@@ -26,7 +26,7 @@ from .class_catalog import CLASS_CATALOG_VERSION, resolve_class_catalog
 from .item_catalog import ITEM_CATALOG_VERSION, resolve_item_catalog
 
 
-CONTENT_REGISTRY_VERSION = 8
+CONTENT_REGISTRY_VERSION = 9
 
 
 @dataclass(frozen=True)
@@ -61,6 +61,7 @@ class ResolvedContentRegistry:
     item_catalog_version: int
     item_provider_ids: tuple[str, ...]
     active_item_ids: tuple[str, ...]
+    declared_content_sources: tuple[dict[str, str], ...]
     diagnostics: tuple[str, ...]
 
     def payload(self) -> dict[str, Any]:
@@ -93,6 +94,7 @@ class ResolvedContentRegistry:
             "item_catalog_version": self.item_catalog_version,
             "item_provider_ids": list(self.item_provider_ids),
             "active_item_ids": list(self.active_item_ids),
+            "declared_content_sources": [dict(source) for source in self.declared_content_sources],
             "diagnostics": list(self.diagnostics),
         }
 
@@ -139,6 +141,18 @@ def resolve_content_registry(
     tile_catalog = resolve_tile_catalog(root_dir, selected_ids)
     class_catalog = resolve_class_catalog(root_dir, selected_ids)
     item_catalog = resolve_item_catalog(root_dir, selected_ids)
+    declared_sources = tuple(
+        {
+            "supplement_id": str(manifest["id"]),
+            "kind": str(source.get("kind") or ""),
+            "path": str(source.get("path") or ""),
+            "description": str(source.get("description") or ""),
+        }
+        for manifest in selected
+        if manifest.get("status") == "active"
+        for source in manifest.get("content_sources") or []
+        if isinstance(source, dict) and str(source.get("path") or "").strip()
+    )
 
     return ResolvedContentRegistry(
         registry_version=CONTENT_REGISTRY_VERSION,
@@ -169,5 +183,6 @@ def resolve_content_registry(
         item_catalog_version=ITEM_CATALOG_VERSION,
         item_provider_ids=item_catalog.provider_ids,
         active_item_ids=item_catalog.item_ids,
+        declared_content_sources=declared_sources,
         diagnostics=tuple(diagnostics),
     )
