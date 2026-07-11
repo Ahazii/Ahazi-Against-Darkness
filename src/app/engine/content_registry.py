@@ -18,9 +18,10 @@ from .supplements import (
     supplement_registry,
 )
 from .states import STATE_REGISTRY_VERSION, resolve_state_registry
+from .terrain_registry import TERRAIN_REGISTRY_VERSION, resolve_terrain_registry
 
 
-CONTENT_REGISTRY_VERSION = 2
+CONTENT_REGISTRY_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,9 @@ class ResolvedContentRegistry:
     state_registry_version: int
     state_provider_ids: tuple[str, ...]
     active_state_ids: tuple[str, ...]
+    terrain_registry_version: int
+    terrain_provider_ids: tuple[str, ...]
+    active_terrain_ids: tuple[str, ...]
     diagnostics: tuple[str, ...]
 
     def payload(self) -> dict[str, Any]:
@@ -51,6 +55,9 @@ class ResolvedContentRegistry:
             "state_registry_version": self.state_registry_version,
             "state_provider_ids": list(self.state_provider_ids),
             "active_state_ids": list(self.active_state_ids),
+            "terrain_registry_version": self.terrain_registry_version,
+            "terrain_provider_ids": list(self.terrain_provider_ids),
+            "active_terrain_ids": list(self.active_terrain_ids),
             "diagnostics": list(self.diagnostics),
         }
 
@@ -91,6 +98,7 @@ def resolve_content_registry(
                     legacy_mappings[str(field)].append(str(value))
 
     state_catalog = resolve_state_registry(selected_ids)
+    terrain_catalog = resolve_terrain_registry(selected_ids)
 
     return ResolvedContentRegistry(
         registry_version=CONTENT_REGISTRY_VERSION,
@@ -103,5 +111,8 @@ def resolve_content_registry(
         state_registry_version=STATE_REGISTRY_VERSION,
         state_provider_ids=state_catalog.provider_ids,
         active_state_ids=state_catalog.state_ids,
+        terrain_registry_version=TERRAIN_REGISTRY_VERSION,
+        terrain_provider_ids=terrain_catalog.provider_ids,
+        active_terrain_ids=terrain_catalog.terrain_ids,
         diagnostics=tuple(diagnostics),
     )

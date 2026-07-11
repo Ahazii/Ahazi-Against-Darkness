@@ -989,6 +989,7 @@ class SessionState(BaseModel):
     tile_catalog: Literal["ee", "forsaken_depths", "forsaken_depths_rivers"] = "ee"
     active_supplement_ids: list[str] = Field(default_factory=list)
     active_state_ids: list[str] = Field(default_factory=list)
+    active_terrain_ids: list[str] = Field(default_factory=list)
     supplement_registry_version: int = Field(default=0, ge=0)
     state_registry_version: int = Field(default=0, ge=0)
     terrain_registry_version: int = Field(default=0, ge=0)
@@ -1317,6 +1318,7 @@ class SessionListSummary(BaseModel):
     active_quest_description: str | None = None
     active_supplement_ids: list[str] = Field(default_factory=list)
     active_state_ids: list[str] = Field(default_factory=list)
+    active_terrain_ids: list[str] = Field(default_factory=list)
     supplement_registry_version: int = Field(default=0, ge=0)
     state_registry_version: int = Field(default=0, ge=0)
     terrain_registry_version: int = Field(default=0, ge=0)

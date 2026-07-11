@@ -423,6 +423,7 @@ def session_to_summary(session: SessionState) -> SessionListSummary:
         active_quest_description=(quest.description or "").strip() or None if quest else None,
         active_supplement_ids=list(session.active_supplement_ids),
         active_state_ids=list(session.active_state_ids),
+        active_terrain_ids=list(session.active_terrain_ids),
         supplement_registry_version=session.supplement_registry_version,
         state_registry_version=session.state_registry_version,
         terrain_registry_version=session.terrain_registry_version,
@@ -5824,6 +5825,8 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
     session.supplement_registry_version = content_registry.supplement_registry_version
     session.state_registry_version = content_registry.state_registry_version
     session.active_state_ids = list(content_registry.active_state_ids)
+    session.terrain_registry_version = content_registry.terrain_registry_version
+    session.active_terrain_ids = list(content_registry.active_terrain_ids)
     session = apply_abyss_campaign_to_session(store, session)
     from .engine.supplements import supplement_registry, supplement_snapshot_log_line
 

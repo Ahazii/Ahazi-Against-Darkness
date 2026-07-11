@@ -130,6 +130,10 @@ Home screen rule browsing:
   ids, and keeps source-backed metadata separate from legacy status-string
   mechanics. New sessions save `active_state_ids` with their supplement
   snapshot; it does not yet execute effects or migrate saved statuses.
+- `app.engine.terrain_catalog` uses the same shared supplement-content
+  catalogue boundary for environments, terrain, and derived map terrain. New
+  sessions save `active_terrain_ids`; existing terrain helpers remain the
+  authority for table routing, spell gates, and movement until migrated.
 - New sessions pass their final supplement snapshot through this resolver before
   saving. Existing random, combat, terrain, and class modules retain their
   current behaviour; later migrations can take this context as an explicit

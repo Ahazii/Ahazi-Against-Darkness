@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from .terrain_catalog import ResolvedTerrainCatalog, resolve_terrain_catalog
 from .supplements import LOCKED_CORE_SUPPLEMENT_ID, known_supplement_ids
 from .terrain import (
     ENTANGLE_TERRAINS,
@@ -186,6 +187,19 @@ TERRAIN_DEFINITIONS: list[dict[str, Any]] = [
 
 def terrain_registry() -> list[dict[str, Any]]:
     return deepcopy(TERRAIN_DEFINITIONS)
+
+
+def resolve_terrain_registry(active_supplement_ids: list[str] | tuple[str, ...]) -> ResolvedTerrainCatalog:
+    """Resolve terrain definitions for a locked supplement snapshot.
+
+    Current terrain helpers remain the rules authority until their individual
+    table-routing and spell gates are migrated with parity coverage.
+    """
+    return resolve_terrain_catalog(
+        TERRAIN_DEFINITIONS,
+        active_supplement_ids,
+        default_provider_id=LOCKED_CORE_SUPPLEMENT_ID,
+    )
 
 
 def registry_text_list(value: Any) -> list[str]:
