@@ -614,6 +614,9 @@ def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     assert payload["ruleset"] == "forsaken_depths"
     assert payload["courtship_enabled"] is False
     assert payload["active_supplement_ids"] == ["expanded-edition-core", "forsaken-depths"]
+    assert "protection" in payload["active_state_ids"]
+    assert "fd-psychic-residue-save" in payload["active_state_ids"]
+    assert "dark-plague" not in payload["active_state_ids"]
     assert payload["supplement_registry_version"] == 1
     assert payload["state_registry_version"] == 1
     assert payload["terrain_registry_version"] == 1
@@ -656,6 +659,7 @@ def test_legacy_session_without_snapshot_metadata_still_loads() -> None:
         }
     )
     assert session.active_supplement_ids == []
+    assert session.active_state_ids == []
     assert session.supplement_registry_version == 0
     assert session.state_registry_version == 0
     assert session.terrain_registry_version == 0

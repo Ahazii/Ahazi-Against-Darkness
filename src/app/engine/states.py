@@ -4,6 +4,7 @@ import re
 from copy import deepcopy
 from typing import Any
 
+from .state_catalog import ResolvedStateCatalog, resolve_state_catalog
 from .supplements import LOCKED_CORE_SUPPLEMENT_ID, known_supplement_ids
 
 
@@ -300,6 +301,20 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
 
 def state_registry() -> list[dict[str, Any]]:
     return deepcopy(STATE_DEFINITIONS)
+
+
+def resolve_state_registry(active_supplement_ids: list[str] | tuple[str, ...]) -> ResolvedStateCatalog:
+    """Resolve state definitions for a locked supplement snapshot.
+
+    The returned catalogue is metadata-only for now. Existing mechanics still
+    use their legacy status/counter helpers until each rule family is migrated
+    with source-backed parity tests.
+    """
+    return resolve_state_catalog(
+        STATE_DEFINITIONS,
+        active_supplement_ids,
+        default_provider_id=LOCKED_CORE_SUPPLEMENT_ID,
+    )
 
 
 def registry_text_list(value: Any) -> list[str]:

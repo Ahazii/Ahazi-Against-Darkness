@@ -123,7 +123,13 @@ Home screen rule browsing:
   `active_supplement_ids` through the file-backed supplement registry. Its
   `ResolvedContentRegistry` separates active runtime providers from selected
   `review_only` supplements, exposes capability providers and legacy mappings,
-  and never executes source-workbench data.
+  resolves the source-backed **State Catalogue** for that exact snapshot, and
+  never executes source-workbench data.
+- `app.engine.state_catalog` is the first content-provider resolver. It filters
+  state definitions by their source supplement, exposes active state/provider
+  ids, and keeps source-backed metadata separate from legacy status-string
+  mechanics. New sessions save `active_state_ids` with their supplement
+  snapshot; it does not yet execute effects or migrate saved statuses.
 - New sessions pass their final supplement snapshot through this resolver before
   saving. Existing random, combat, terrain, and class modules retain their
   current behaviour; later migrations can take this context as an explicit

@@ -17,9 +17,10 @@ from .supplements import (
     enabled_supplement_ids_from_selection,
     supplement_registry,
 )
+from .states import STATE_REGISTRY_VERSION, resolve_state_registry
 
 
-CONTENT_REGISTRY_VERSION = 1
+CONTENT_REGISTRY_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,9 @@ class ResolvedContentRegistry:
     review_only_supplement_ids: tuple[str, ...]
     capability_providers: dict[str, tuple[str, ...]]
     legacy_mappings: dict[str, tuple[str, ...]]
+    state_registry_version: int
+    state_provider_ids: tuple[str, ...]
+    active_state_ids: tuple[str, ...]
     diagnostics: tuple[str, ...]
 
     def payload(self) -> dict[str, Any]:
@@ -44,6 +48,9 @@ class ResolvedContentRegistry:
             "review_only_supplement_ids": list(self.review_only_supplement_ids),
             "capability_providers": {key: list(value) for key, value in self.capability_providers.items()},
             "legacy_mappings": {key: list(value) for key, value in self.legacy_mappings.items()},
+            "state_registry_version": self.state_registry_version,
+            "state_provider_ids": list(self.state_provider_ids),
+            "active_state_ids": list(self.active_state_ids),
             "diagnostics": list(self.diagnostics),
         }
 
@@ -83,6 +90,8 @@ def resolve_content_registry(
                 if str(value) not in legacy_mappings.setdefault(str(field), []):
                     legacy_mappings[str(field)].append(str(value))
 
+    state_catalog = resolve_state_registry(selected_ids)
+
     return ResolvedContentRegistry(
         registry_version=CONTENT_REGISTRY_VERSION,
         supplement_registry_version=SUPPLEMENT_REGISTRY_VERSION,
@@ -91,5 +100,8 @@ def resolve_content_registry(
         review_only_supplement_ids=tuple(review_only_ids),
         capability_providers={key: tuple(value) for key, value in sorted(capability_providers.items())},
         legacy_mappings={key: tuple(value) for key, value in sorted(legacy_mappings.items())},
+        state_registry_version=STATE_REGISTRY_VERSION,
+        state_provider_ids=state_catalog.provider_ids,
+        active_state_ids=state_catalog.state_ids,
         diagnostics=tuple(diagnostics),
     )
