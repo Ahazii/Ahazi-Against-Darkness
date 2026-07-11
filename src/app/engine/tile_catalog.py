@@ -16,7 +16,7 @@ from .supplement_content_catalog import (
     packaged_rules_dir,
     resolve_supplement_content_catalog,
 )
-from .supplements import LOCKED_CORE_SUPPLEMENT_ID
+from .supplements import LOCKED_CORE_SUPPLEMENT_ID, declared_content_sources
 from .tile_catalogs import TILE_CATALOG_FILES
 
 
@@ -47,7 +47,16 @@ def packaged_tile_definitions(root_dir: Path | None) -> list[dict[str, Any]]:
     """List packaged tile identities without invoking map placement logic."""
     definitions: list[dict[str, Any]] = []
     rules_dir = packaged_rules_dir(root_dir)
-    for supplement_id, catalog_id in TILE_CATALOG_PROVIDERS:
+    catalog_by_filename = {filename: catalog_id for catalog_id, filename in TILE_CATALOG_FILES.items()}
+    declared = declared_content_sources(root_dir, None, "room_tiles")
+    providers = [
+        (entry["supplement_id"], catalog_by_filename.get(Path(entry["path"]).name, ""))
+        for entry in declared
+        if catalog_by_filename.get(Path(entry["path"]).name)
+    ]
+    if not providers:
+        providers = list(TILE_CATALOG_PROVIDERS)
+    for supplement_id, catalog_id in providers:
         filename = TILE_CATALOG_FILES[catalog_id]
         path = rules_dir / filename
         if not path.exists():

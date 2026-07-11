@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from app.engine.content_registry import CONTENT_REGISTRY_VERSION, resolve_content_registry
@@ -10,6 +12,7 @@ from app.engine.foe_catalog import resolve_foe_catalog
 from app.engine.tile_catalog import resolve_tile_catalog
 from app.engine.class_catalog import resolve_class_catalog
 from app.engine.item_catalog import resolve_item_catalog
+from app.engine.supplements import declared_content_sources
 
 
 def test_resolved_content_registry_separates_runtime_and_review_only_supplements() -> None:
@@ -113,6 +116,20 @@ def test_tile_catalog_keeps_random_tiles_separate_from_authored_maps() -> None:
     assert "forsaken_depths:11" in catalog.tile_ids
     assert "forsaken_depths_rivers:11" in catalog.tile_ids
     assert {definition["id"] for definition in catalog.definitions()} == set(catalog.tile_ids)
+
+
+def test_tile_catalog_reads_declared_manifest_tile_sources() -> None:
+    root = Path(__file__).resolve().parents[1]
+    declared = declared_content_sources(root, None, "room_tiles")
+    catalog = resolve_tile_catalog(root, ["expanded-edition-core", "forsaken-depths"])
+
+    assert {entry["path"] for entry in declared} >= {
+        "data/rules/tiles.json",
+        "data/rules/forsaken_depths_tiles.json",
+        "data/rules/forsaken_depths_rivers_tiles.json",
+    }
+    assert "ee:01" in catalog.tile_ids
+    assert "forsaken_depths_rivers:11" in catalog.tile_ids
 
 
 def test_class_catalog_reads_existing_supplement_ownership_metadata() -> None:

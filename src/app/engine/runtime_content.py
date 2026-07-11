@@ -13,6 +13,7 @@ from .supplements import LOCKED_CORE_SUPPLEMENT_ID, supplement_registry
 from .foe_catalog import ABYSS_FOE_TABLE_IDS
 from .class_catalog import resolve_class_catalog
 from .item_catalog import resolve_item_catalog
+from .tile_catalog import resolve_tile_catalog
 from .table_catalog import resolve_table_catalog
 from .terrain_registry import resolve_terrain_registry
 
@@ -163,9 +164,16 @@ def _item_records(root_dir: Path | None, supplement_id: str, rules: Any) -> list
     return records
 
 
-def _tile_records(supplement_id: str, rules: Any) -> list[dict[str, Any]]:
-    catalogs = {LOCKED_CORE_SUPPLEMENT_ID: ("ee",), "forsaken-depths": ("forsaken_depths", "forsaken_depths_rivers")}.get(supplement_id, ())
-    return [tile.model_dump() for catalog_id in catalogs for tile in rules.tiles(catalog_id).values()]
+def _tile_records(root_dir: Path | None, supplement_id: str, rules: Any) -> list[dict[str, Any]]:
+    catalog = resolve_tile_catalog(root_dir, [supplement_id])
+    records: list[dict[str, Any]] = []
+    for definition in catalog.definitions():
+        catalog_id = str(definition.get("catalog_id") or "")
+        key = str(definition.get("key") or "")
+        tile = rules.tiles(catalog_id).get(key) if catalog_id and key else None
+        if tile is not None:
+            records.append(tile.model_dump())
+    return records
 
 
 def runtime_supplement_content(root_dir: Path | None, data_dir: Path | None, supplement_id: str, rules: Any) -> dict[str, Any]:
@@ -186,7 +194,7 @@ def runtime_supplement_content(root_dir: Path | None, data_dir: Path | None, sup
             "foe_groups": _foe_groups(root_dir, supplement_id, rules),
             "classes": _class_records(root_dir, supplement_id, rules),
             "items": _item_records(root_dir, supplement_id, rules),
-            "tiles": _tile_records(supplement_id, rules),
+            "tiles": _tile_records(root_dir, supplement_id, rules),
         },
         "notes": "Read-only adapter over current packaged data and runtime modules. It does not promote PDF review records or alter gameplay.",
     }

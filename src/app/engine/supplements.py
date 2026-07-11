@@ -519,6 +519,34 @@ def supplement_registry(root_dir: Path | None = None, data_dir: Path | None = No
     return deepcopy(supplements)
 
 
+def declared_content_sources(
+    root_dir: Path | None,
+    data_dir: Path | None,
+    kind: str,
+) -> list[dict[str, str]]:
+    """Return manifest-declared packaged sources for one content family.
+
+    Callers may keep a legacy fallback for source-free builtin manifests. Local
+    review packages remain declarations only and are never loaded as runtime
+    data through this helper.
+    """
+    records: list[dict[str, str]] = []
+    for manifest in supplement_registry(root_dir, data_dir):
+        if manifest.get("registry_origin") == "local_manifest":
+            continue
+        for source in manifest.get("content_sources") or []:
+            if not isinstance(source, dict) or str(source.get("kind") or "") != kind:
+                continue
+            path = str(source.get("path") or "").strip()
+            if path:
+                records.append({
+                    "supplement_id": str(manifest.get("id") or ""),
+                    "path": path,
+                    "description": str(source.get("description") or ""),
+                })
+    return records
+
+
 def _append_unique(items: list[str], item: str) -> None:
     if item not in items:
         items.append(item)
