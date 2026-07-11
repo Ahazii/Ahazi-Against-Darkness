@@ -19,9 +19,10 @@ from .supplements import (
 )
 from .states import STATE_REGISTRY_VERSION, resolve_state_registry
 from .terrain_registry import TERRAIN_REGISTRY_VERSION, resolve_terrain_registry
+from .table_catalog import TABLE_CATALOG_VERSION, resolve_table_catalog
 
 
-CONTENT_REGISTRY_VERSION = 3
+CONTENT_REGISTRY_VERSION = 4
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,9 @@ class ResolvedContentRegistry:
     terrain_registry_version: int
     terrain_provider_ids: tuple[str, ...]
     active_terrain_ids: tuple[str, ...]
+    table_catalog_version: int
+    table_provider_ids: tuple[str, ...]
+    active_table_ids: tuple[str, ...]
     diagnostics: tuple[str, ...]
 
     def payload(self) -> dict[str, Any]:
@@ -58,6 +62,9 @@ class ResolvedContentRegistry:
             "terrain_registry_version": self.terrain_registry_version,
             "terrain_provider_ids": list(self.terrain_provider_ids),
             "active_terrain_ids": list(self.active_terrain_ids),
+            "table_catalog_version": self.table_catalog_version,
+            "table_provider_ids": list(self.table_provider_ids),
+            "active_table_ids": list(self.active_table_ids),
             "diagnostics": list(self.diagnostics),
         }
 
@@ -99,6 +106,7 @@ def resolve_content_registry(
 
     state_catalog = resolve_state_registry(selected_ids)
     terrain_catalog = resolve_terrain_registry(selected_ids)
+    table_catalog = resolve_table_catalog(root_dir, selected_ids)
 
     return ResolvedContentRegistry(
         registry_version=CONTENT_REGISTRY_VERSION,
@@ -114,5 +122,8 @@ def resolve_content_registry(
         terrain_registry_version=TERRAIN_REGISTRY_VERSION,
         terrain_provider_ids=terrain_catalog.provider_ids,
         active_terrain_ids=terrain_catalog.terrain_ids,
+        table_catalog_version=TABLE_CATALOG_VERSION,
+        table_provider_ids=table_catalog.provider_ids,
+        active_table_ids=table_catalog.table_ids,
         diagnostics=tuple(diagnostics),
     )

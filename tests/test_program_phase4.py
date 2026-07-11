@@ -620,6 +620,9 @@ def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     assert "forest" in payload["active_terrain_ids"]
     assert "fd-river-bank" in payload["active_terrain_ids"]
     assert "courtship-demesne-water" not in payload["active_terrain_ids"]
+    assert "trap_table" in payload["active_table_ids"]
+    assert "fd_room_content_table" in payload["active_table_ids"]
+    assert "abyss_room_content_table" not in payload["active_table_ids"]
     assert payload["supplement_registry_version"] == 1
     assert payload["state_registry_version"] == 1
     assert payload["terrain_registry_version"] == 1
@@ -664,6 +667,7 @@ def test_legacy_session_without_snapshot_metadata_still_loads() -> None:
     assert session.active_supplement_ids == []
     assert session.active_state_ids == []
     assert session.active_terrain_ids == []
+    assert session.active_table_ids == []
     assert session.supplement_registry_version == 0
     assert session.state_registry_version == 0
     assert session.terrain_registry_version == 0

@@ -134,6 +134,10 @@ Home screen rule browsing:
   catalogue boundary for environments, terrain, and derived map terrain. New
   sessions save `active_terrain_ids`; existing terrain helpers remain the
   authority for table routing, spell gates, and movement until migrated.
+- `app.engine.table_catalog` records the packaged rule-table identities and
+  their source supplement. New sessions save `active_table_ids`, but
+  `RulesRepository` and the table rollers remain unchanged until table routing
+  is migrated one provider family at a time with parity tests.
 - New sessions pass their final supplement snapshot through this resolver before
   saving. Existing random, combat, terrain, and class modules retain their
   current behaviour; later migrations can take this context as an explicit
