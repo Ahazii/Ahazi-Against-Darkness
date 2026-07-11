@@ -2053,6 +2053,21 @@ button.is-working::after {
   min-width: 0;
 }
 
+.modern-source-pdf-document {
+  margin-left: 0.6rem;
+  border-left: 2px solid rgba(201, 162, 39, 0.42);
+}
+
+.modern-source-pdf-document > summary {
+  text-align: left;
+}
+
+.modern-source-document-entry {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
 .modern-source-block-search-preview {
   display: grid;
   gap: 4px;

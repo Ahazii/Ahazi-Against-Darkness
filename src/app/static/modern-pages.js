@@ -8944,6 +8944,32 @@ async function renderRulePdfManager() {
       const supplementContents = el("div", "modern-source-supplement-contents");
       const sources = pkg.sources || [];
       const sourceDocumentBody = el("div", "modern-source-document-body");
+      const sourceDocumentNodes = new Map();
+      let activeSourceNode = null;
+      let switchingSourceDocument = false;
+      const sourceDocumentLabel = (scan) => {
+        const sourcePath = String(scan.source_pdf || scan.filename || scan.supplement_title || scan.source_id || "");
+        const filename = sourcePath.replace(/\\/g, "/").split("/").pop() || scan.source_id || "PDF document";
+        return filename.replace(/\.pdf$/i, "") || "PDF document";
+      };
+      async function showSourceDocument(scan, entry) {
+        if (!scan?.source_id || !entry || switchingSourceDocument) return;
+        switchingSourceDocument = true;
+        try {
+          for (const candidate of sourceDocumentNodes.values()) {
+            if (candidate.node !== entry.node) candidate.node.open = false;
+          }
+          sourceWorkbenchState.sourceId = scan.source_id;
+          sourceWorkbenchState.selectedBlockIds = new Set();
+          persistSourceWorkbenchState();
+          activeSourceNode = entry.node;
+          entry.body.appendChild(sourceMount);
+          const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(scan.source_id)}`);
+          renderSourceScanDetail(detail, sourceMount);
+        } finally {
+          switchingSourceDocument = false;
+        }
+      }
       sourcePickerBar.appendChild(compactInfoStrip("Package", [
         { label: "PDFs", value: `${pkg.source_count || sources.length || 0}` },
         { label: "Assets", value: `${pkg.asset_count || 0}` },
@@ -8952,23 +8978,6 @@ async function renderRulePdfManager() {
         { label: "Tables", value: `${pkg.tables || 0}` },
         { label: "Requirements", value: `${pkg.requirement_count || (pkg.requirements || []).length || 0}` },
       ], "Current supplement package counts. Source documents and package assets remain local review data until promoted into a playable supplement."));
-      if (sources.length > 1) {
-        const sourceSelect = select("modern-source-document-select", "Choose which source document inside this module to review.", []);
-        for (const scan of sources) {
-          sourceSelect.appendChild(new Option(`${scan.supplement_title || scan.source_id} (${scan.blocks || 0} blocks, ${scan.artwork || 0} artwork)`, scan.source_id));
-        }
-        sourceSelect.value = sources.some((scan) => scan.source_id === sourceWorkbenchState.sourceId)
-          ? sourceWorkbenchState.sourceId
-          : sources[0].source_id;
-        sourceSelect.addEventListener("change", async () => {
-          sourceWorkbenchState.sourceId = sourceSelect.value;
-          sourceWorkbenchState.selectedBlockIds = new Set();
-          persistSourceWorkbenchState();
-          const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(sourceSelect.value)}`);
-          renderSourceScanDetail(detail, sourceMount);
-        });
-        sourceDocumentBody.appendChild(field("Source document", sourceSelect));
-      }
       const supplementRoot = workbenchSection("Supplement contents", `${sources.length} document(s) · ${pkg.asset_count || 0} asset(s)`, supplementContents);
       supplementRoot.classList.add("modern-source-supplement-root");
       supplementRoot.open = true;
@@ -8978,18 +8987,31 @@ async function renderRulePdfManager() {
       const sourceReview = el("div", "modern-source-review-contents");
       const sourceReviewRoot = workbenchSection("Unpromoted Source Review", `${sources.length} PDF document(s) · ${pkg.asset_count || 0} additional source file(s)`, sourceReview);
       sourceReviewRoot.open = Boolean(sources.length || (pkg.assets || []).length);
-      sourceDocumentBody.appendChild(sourceMount);
+      const activeSource = sources.find((scan) => scan.source_id === sourceWorkbenchState.sourceId) || sources[0];
+      for (const scan of sources) {
+        const sourceBody = el("div", "modern-source-document-entry");
+        sourceBody.appendChild(compactInfoStrip("PDF source", [
+          { label: "Blocks", value: `${scan.blocks || 0}` },
+          { label: "Artwork", value: `${scan.artwork || 0}` },
+          { label: "Tables", value: `${scan.tables || 0}` },
+          { label: "Offset", value: `${scan.page_offset || 0}`, hint: "Printed page number minus PDF viewer page number for this source PDF only." },
+        ], "This source document keeps its own printed-page offset, extracted blocks, reviewed tables, provisional profiles, artwork, and exact-PDF provenance."));
+        const sourceNode = workbenchSection(sourceDocumentLabel(scan), `${scan.blocks || 0} blocks · ${scan.artwork || 0} artwork`, sourceBody);
+        sourceNode.classList.add("modern-source-pdf-document");
+        sourceNode.open = scan.source_id === activeSource?.source_id;
+        sourceNode.addEventListener("toggle", () => {
+          if (sourceNode.open && sourceNode !== activeSourceNode) showSourceDocument(scan, sourceDocumentNodes.get(scan.source_id));
+        });
+        sourceDocumentNodes.set(scan.source_id, { node: sourceNode, body: sourceBody, scan });
+        sourceDocumentBody.appendChild(sourceNode);
+      }
       const documentSection = workbenchSection("PDF Documents", `${sources.length} document(s)`, sourceDocumentBody);
       documentSection.open = true;
       sourceReview.appendChild(documentSection);
       supplementContents.appendChild(sourceReviewRoot);
       moduleWorkbenchMount.appendChild(supplementRoot);
       if (sources.length) {
-        const activeSource = sources.find((scan) => scan.source_id === sourceWorkbenchState.sourceId) || sources[0];
-        sourceWorkbenchState.sourceId = activeSource.source_id;
-        persistSourceWorkbenchState();
-        const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(activeSource.source_id)}`);
-        renderSourceScanDetail(detail, sourceMount);
+        await showSourceDocument(activeSource, sourceDocumentNodes.get(activeSource.source_id));
       } else {
         sourceMount.appendChild(modernStatusRow("No source PDF scan", `${pkg.asset_count || 0} package asset(s)`, "This module currently has attached assets but no scanned PDF source blocks."));
       }

@@ -3071,6 +3071,9 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "compactInfoStrip(\"PDF import status\"" in MODERN_PAGES_JS
     assert "compactInfoStrip(\"Supplement Workbench\"" in MODERN_PAGES_JS
     assert "compactInfoStrip(\"Selected source scan\"" in MODERN_PAGES_JS
+    assert "sourceDocumentLabel" in MODERN_PAGES_JS
+    assert "This source document keeps its own printed-page offset" in MODERN_PAGES_JS
+    assert "modern-source-pdf-document" in MODERN_PAGES_JS
     assert "package asset(s)" in MODERN_PAGES_JS
     assert "Open Asset" in MODERN_PAGES_JS
     assert "Page artwork" in MODERN_PAGES_JS
@@ -3085,6 +3088,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "modern-source-controls-grid" in STYLES_CSS
     assert "modern-source-import-grid" in STYLES_CSS
     assert "modern-source-picker-bar" in STYLES_CSS
+    assert "modern-source-pdf-document" in STYLES_CSS
     assert "modern-source-compact-strip" in STYLES_CSS
     assert "modern-source-action-groups" in STYLES_CSS
     assert "modern-source-tree" in STYLES_CSS
