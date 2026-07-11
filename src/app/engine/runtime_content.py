@@ -10,6 +10,7 @@ from typing import Any
 
 from .states import resolve_state_registry
 from .supplements import LOCKED_CORE_SUPPLEMENT_ID, supplement_registry
+from .foe_catalog import ABYSS_FOE_TABLE_IDS
 from .table_catalog import resolve_table_catalog
 from .terrain_registry import resolve_terrain_registry
 
@@ -88,12 +89,25 @@ def _load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
-def _foe_groups(root_dir: Path | None, supplement_id: str) -> list[dict[str, Any]]:
+def _foe_groups(root_dir: Path | None, supplement_id: str, rules: Any) -> list[dict[str, Any]]:
     filename = FOE_PROVIDER_FILES.get(supplement_id)
     payload = _load_json(_rules_dir(root_dir) / filename) if filename else None
-    if not isinstance(payload, dict):
+    if isinstance(payload, dict):
+        return [{"id": key, "title": key.replace("_", " ").title(), "count": len(rows), "rows": rows} for key, rows in payload.items() if isinstance(rows, list)]
+    if supplement_id != "four-against-the-abyss":
         return []
-    return [{"id": key, "title": key.replace("_", " ").title(), "count": len(rows), "rows": rows} for key, rows in payload.items() if isinstance(rows, list)]
+    tables = rules.dungeon_tables()
+    return [
+        {
+            "id": table_id,
+            "title": table_id.replace("_", " ").replace(" table", "").title(),
+            "kind": "encounter_table",
+            "count": len(rows),
+            "rows": rows,
+        }
+        for table_id in ABYSS_FOE_TABLE_IDS
+        if isinstance((rows := tables.get(table_id)), list)
+    ]
 
 
 def _table_records(root_dir: Path | None, supplement_id: str, rules: Any) -> list[dict[str, Any]]:
@@ -140,7 +154,7 @@ def runtime_supplement_content(root_dir: Path | None, data_dir: Path | None, sup
             "states": states,
             "terrain": terrain,
             "tables": _table_records(root_dir, supplement_id, rules),
-            "foe_groups": _foe_groups(root_dir, supplement_id),
+            "foe_groups": _foe_groups(root_dir, supplement_id, rules),
             "classes": _class_records(supplement_id, rules),
             "items": _item_records(supplement_id, rules),
             "tiles": _tile_records(supplement_id, rules),

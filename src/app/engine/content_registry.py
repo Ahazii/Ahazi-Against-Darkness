@@ -20,9 +20,10 @@ from .supplements import (
 from .states import STATE_REGISTRY_VERSION, resolve_state_registry
 from .terrain_registry import TERRAIN_REGISTRY_VERSION, resolve_terrain_registry
 from .table_catalog import TABLE_CATALOG_VERSION, resolve_table_catalog
+from .foe_catalog import FOE_CATALOG_VERSION, resolve_foe_catalog
 
 
-CONTENT_REGISTRY_VERSION = 4
+CONTENT_REGISTRY_VERSION = 5
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,9 @@ class ResolvedContentRegistry:
     table_catalog_version: int
     table_provider_ids: tuple[str, ...]
     active_table_ids: tuple[str, ...]
+    foe_catalog_version: int
+    foe_provider_ids: tuple[str, ...]
+    active_foe_ids: tuple[str, ...]
     diagnostics: tuple[str, ...]
 
     def payload(self) -> dict[str, Any]:
@@ -65,6 +69,9 @@ class ResolvedContentRegistry:
             "table_catalog_version": self.table_catalog_version,
             "table_provider_ids": list(self.table_provider_ids),
             "active_table_ids": list(self.active_table_ids),
+            "foe_catalog_version": self.foe_catalog_version,
+            "foe_provider_ids": list(self.foe_provider_ids),
+            "active_foe_ids": list(self.active_foe_ids),
             "diagnostics": list(self.diagnostics),
         }
 
@@ -107,6 +114,7 @@ def resolve_content_registry(
     state_catalog = resolve_state_registry(selected_ids)
     terrain_catalog = resolve_terrain_registry(selected_ids)
     table_catalog = resolve_table_catalog(root_dir, selected_ids)
+    foe_catalog = resolve_foe_catalog(root_dir, selected_ids)
 
     return ResolvedContentRegistry(
         registry_version=CONTENT_REGISTRY_VERSION,
@@ -125,5 +133,8 @@ def resolve_content_registry(
         table_catalog_version=TABLE_CATALOG_VERSION,
         table_provider_ids=table_catalog.provider_ids,
         active_table_ids=table_catalog.table_ids,
+        foe_catalog_version=FOE_CATALOG_VERSION,
+        foe_provider_ids=foe_catalog.provider_ids,
+        active_foe_ids=foe_catalog.foe_ids,
         diagnostics=tuple(diagnostics),
     )

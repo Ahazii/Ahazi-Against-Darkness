@@ -6,6 +6,7 @@ from app.engine.content_registry import CONTENT_REGISTRY_VERSION, resolve_conten
 from app.engine.states import resolve_state_registry
 from app.engine.terrain_registry import resolve_terrain_registry
 from app.engine.table_catalog import resolve_table_catalog
+from app.engine.foe_catalog import resolve_foe_catalog
 
 
 def test_resolved_content_registry_separates_runtime_and_review_only_supplements() -> None:
@@ -39,6 +40,10 @@ def test_resolved_content_registry_separates_runtime_and_review_only_supplements
     assert "trap_table" in context.active_table_ids
     assert "fd_room_content_table" in context.active_table_ids
     assert "abyss_room_content_table" not in context.active_table_ids
+    assert context.foe_provider_ids == ("expanded-edition-core", "forsaken-depths")
+    assert any(foe_id.startswith("expanded-edition-core-vermin-rats") for foe_id in context.active_foe_ids)
+    assert any(foe_id.startswith("forsaken-depths-fd-vermin-shadowbats") for foe_id in context.active_foe_ids)
+    assert not any(foe_id.startswith("four-against-the-abyss") for foe_id in context.active_foe_ids)
     assert "review-only" in context.diagnostics[0]
 
 
@@ -75,3 +80,13 @@ def test_table_catalog_scopes_packaged_table_providers_to_the_locked_snapshot() 
     assert "courtship_seaside_encounter_table" in catalog.table_ids
     assert "abyss_room_content_table" in catalog.excluded_table_ids
     assert {definition["id"] for definition in catalog.definitions()} == set(catalog.table_ids)
+
+
+def test_foe_catalog_scopes_file_and_table_backed_foes_to_the_locked_snapshot() -> None:
+    catalog = resolve_foe_catalog(None, ["expanded-edition-core", "four-against-the-abyss"])
+
+    assert catalog.provider_ids == ("expanded-edition-core", "four-against-the-abyss")
+    assert any(foe_id.startswith("expanded-edition-core-vermin-rats") for foe_id in catalog.foe_ids)
+    assert any(foe_id.startswith("four-against-the-abyss-abyss-vermin-table-black-orc-bandits") for foe_id in catalog.foe_ids)
+    assert any(foe_id.startswith("forsaken-depths") for foe_id in catalog.excluded_foe_ids)
+    assert {definition["id"] for definition in catalog.definitions()} == set(catalog.foe_ids)
