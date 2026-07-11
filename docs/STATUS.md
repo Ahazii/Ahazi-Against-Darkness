@@ -4,6 +4,10 @@ Last updated: 2026-07-10
 
 ## Summary
 
+## Next Manual Playtest
+
+- **Supplement Workbench item ownership (v0.37.8):** After the next Unraid update, open Developer > Supplement Workbench and inspect **Four Against the Abyss** and **The Courtship of Flower Demons**. Under **Implemented Runtime Content > Items**, confirm that named table-backed rewards appear in the owning supplement and that the EE ordinary equipment list remains under Expanded Edition. This is a read-only inspection; no combat, purchasing, or item-use behavior should change.
+
 - **Supplement-scoped item catalogue (2026-07-11):** New session snapshots now record active item identities while preserving source shape: ordinary EE equipment comes from the direct shop catalogue, while named Abyss, Forsaken Depths, and Courtship rewards retain their source table and row. The read-only Workbench now surfaces these table-backed records in the owning supplement's Items branch. This does not classify arbitrary treasure prose as equipment or change buying, item use, rewards, or combat behavior.
 - **Supplement-scoped character-class catalogue (2026-07-11):** New sessions now snapshot active packaged class identities. Ownership is read from the existing `ruleset_profiles.json` `class_source_books` mapping, which keeps the six Courtship classes distinct even though their records share `classes.json` with core classes. The Workbench now shows those records under Courtship. Existing character creation, progression, combat, and spell helpers remain authoritative while class providers await their own source-locked migration.
 - **Supplement-scoped random-tile catalogue (2026-07-11):** New session snapshots now record the reusable room-tile identities owned by their locked supplements: EE random-dungeon tiles plus Forsaken Depths dungeon and river tiles when applicable. This is deliberately distinct from authored maps, pinned locations, and imported map images. Existing map placement and generation remain authoritative while tile providers await an individual source-locked migration.

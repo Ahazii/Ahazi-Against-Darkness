@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Iterable
 
 
@@ -28,6 +29,13 @@ class ResolvedSupplementContentCatalog:
             "record_ids": list(self.record_ids),
             "excluded_record_ids": list(self.excluded_record_ids),
         }
+
+
+def packaged_rules_dir(root_dir: Path | None) -> Path:
+    """Resolve committed rule data without ever reading a local PDF source folder."""
+    if root_dir is not None:
+        return root_dir / "data" / "rules"
+    return Path(__file__).resolve().parents[3] / "data" / "rules"
 
 
 def source_provider_id(record: dict[str, Any], default_provider_id: str = "") -> str:

@@ -9,6 +9,7 @@ from typing import Any
 
 from .supplement_content_catalog import (
     ResolvedSupplementContentCatalog,
+    packaged_rules_dir,
     resolve_supplement_content_catalog,
 )
 from .supplements import LOCKED_CORE_SUPPLEMENT_ID
@@ -47,12 +48,6 @@ class ResolvedItemCatalog(ResolvedSupplementContentCatalog):
 
     def definitions(self) -> list[dict[str, Any]]:
         return self.records()
-
-
-def packaged_rules_dir(root_dir: Path | None) -> Path:
-    if root_dir is not None:
-        return root_dir / "data" / "rules"
-    return Path(__file__).resolve().parents[3] / "data" / "rules"
 
 
 def _record_id(provider_id: str, table_id: str, item_id: str) -> str:
