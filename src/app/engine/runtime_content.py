@@ -9,7 +9,7 @@ import re
 from typing import Any
 
 from .states import resolve_state_registry
-from .supplements import LOCKED_CORE_SUPPLEMENT_ID, supplement_registry
+from .supplements import LOCKED_CORE_SUPPLEMENT_ID, declared_content_sources, supplement_registry
 from .foe_catalog import ABYSS_FOE_TABLE_IDS
 from .class_catalog import resolve_class_catalog
 from .item_catalog import resolve_item_catalog
@@ -93,7 +93,8 @@ def _load_json(path: Path) -> Any:
 
 
 def _foe_groups(root_dir: Path | None, supplement_id: str, rules: Any) -> list[dict[str, Any]]:
-    filename = FOE_PROVIDER_FILES.get(supplement_id)
+    declared = declared_content_sources(root_dir, None, "foes")
+    filename = next((Path(entry["path"]).name for entry in declared if entry["supplement_id"] == supplement_id), FOE_PROVIDER_FILES.get(supplement_id))
     payload = _load_json(_rules_dir(root_dir) / filename) if filename else None
     if isinstance(payload, dict):
         return [{"id": key, "title": key.replace("_", " ").title(), "count": len(rows), "rows": rows} for key, rows in payload.items() if isinstance(rows, list)]

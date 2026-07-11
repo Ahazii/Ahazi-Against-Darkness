@@ -17,7 +17,7 @@ from .supplement_content_catalog import (
     packaged_rules_dir,
     resolve_supplement_content_catalog,
 )
-from .supplements import LOCKED_CORE_SUPPLEMENT_ID
+from .supplements import LOCKED_CORE_SUPPLEMENT_ID, declared_content_sources
 
 
 FOE_CATALOG_VERSION = 1
@@ -27,6 +27,7 @@ FOE_PROVIDER_FILES: tuple[tuple[str, str], ...] = (
     ("courtship", "courtship_monsters.json"),
     ("tag", "tag_monsters.json"),
 )
+FALLBACK_FOE_SOURCES = FOE_PROVIDER_FILES + (("four-against-the-abyss", "abyss_tables.json"),)
 ABYSS_FOE_TABLE_IDS = (
     "abyss_vermin_table",
     "abyss_minions_table",
@@ -92,25 +93,26 @@ def packaged_foe_definitions(root_dir: Path | None) -> list[dict[str, Any]]:
     """List packaged foe identities without loading combat effects."""
     definitions: list[dict[str, Any]] = []
     rules_dir = packaged_rules_dir(root_dir)
-    for provider_id, filename in FOE_PROVIDER_FILES:
+    declared = declared_content_sources(root_dir, None, "foes")
+    providers = [(entry["supplement_id"], Path(entry["path"]).name) for entry in declared]
+    if not providers:
+        providers = list(FALLBACK_FOE_SOURCES)
+    for provider_id, filename in providers:
         path = rules_dir / filename
         if not path.exists():
             continue
         payload = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             continue
-        for group, rows in payload.items():
-            if isinstance(rows, list):
-                definitions.extend(_definitions_from_rows(provider_id, filename, str(group), rows))
-
-    abyss_path = rules_dir / "abyss_tables.json"
-    if abyss_path.exists():
-        payload = json.loads(abyss_path.read_text(encoding="utf-8"))
-        if isinstance(payload, dict):
+        if provider_id == "four-against-the-abyss" and filename == "abyss_tables.json":
             for table_id in ABYSS_FOE_TABLE_IDS:
                 rows = payload.get(table_id)
                 if isinstance(rows, list):
-                    definitions.extend(_definitions_from_rows("four-against-the-abyss", "abyss_tables.json", table_id, rows))
+                    definitions.extend(_definitions_from_rows(provider_id, filename, table_id, rows))
+            continue
+        for group, rows in payload.items():
+            if isinstance(rows, list):
+                definitions.extend(_definitions_from_rows(provider_id, filename, str(group), rows))
     return definitions
 
 

@@ -117,6 +117,15 @@ def test_foe_catalog_scopes_file_and_table_backed_foes_to_the_locked_snapshot() 
     assert {definition["id"] for definition in catalog.definitions()} == set(catalog.foe_ids)
 
 
+def test_foe_catalog_reads_declared_manifest_foe_sources() -> None:
+    root = Path(__file__).resolve().parents[1]
+    catalog = resolve_foe_catalog(root, ["expanded-edition-core", "four-against-the-abyss"])
+
+    assert any(foe_id.startswith("expanded-edition-core-vermin-rats") for foe_id in catalog.foe_ids)
+    assert any(foe_id.startswith("four-against-the-abyss-abyss-vermin-table") for foe_id in catalog.foe_ids)
+    assert not any("abyss-room-content" in foe_id for foe_id in catalog.foe_ids)
+
+
 def test_tile_catalog_keeps_random_tiles_separate_from_authored_maps() -> None:
     catalog = resolve_tile_catalog(None, ["expanded-edition-core", "forsaken-depths"])
 
