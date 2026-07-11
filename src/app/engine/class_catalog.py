@@ -11,7 +11,7 @@ from .supplement_content_catalog import (
     packaged_rules_dir,
     resolve_supplement_content_catalog,
 )
-from .supplements import LOCKED_CORE_SUPPLEMENT_ID
+from .supplements import LOCKED_CORE_SUPPLEMENT_ID, declared_content_sources
 
 
 CLASS_CATALOG_VERSION = 1
@@ -44,6 +44,11 @@ def packaged_class_definitions(root_dir: Path | None) -> list[dict[str, Any]]:
     class_source_books = profile_data.get("class_source_books", {}) if isinstance(profile_data, dict) else {}
     if not isinstance(class_source_books, dict):
         class_source_books = {}
+    declared_paths = {
+        entry["supplement_id"]: Path(entry["path"]).name
+        for entry in declared_content_sources(root_dir, None, "classes")
+        if Path(entry["path"]).name == "classes.json"
+    }
     definitions: list[dict[str, Any]] = []
     for item in classes if isinstance(classes, list) else []:
         if not isinstance(item, dict):
@@ -53,13 +58,15 @@ def packaged_class_definitions(root_dir: Path | None) -> list[dict[str, Any]]:
             continue
         source_books = class_source_books.get(class_id, [])
         provider_id = str(source_books[0]) if isinstance(source_books, list) and source_books else LOCKED_CORE_SUPPLEMENT_ID
+        if declared_paths and provider_id not in declared_paths:
+            continue
         definitions.append({
             "id": class_id,
             "kind": "character_class",
             "name": str(item.get("name") or class_id),
             "source": {
                 "supplement_id": provider_id,
-                "rule_file": "classes.json",
+                "rule_file": declared_paths.get(provider_id, "classes.json"),
                 "ownership_file": "ruleset_profiles.json" if provider_id != LOCKED_CORE_SUPPLEMENT_ID else "",
             },
         })

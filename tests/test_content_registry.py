@@ -159,6 +159,15 @@ def test_class_catalog_reads_existing_supplement_ownership_metadata() -> None:
     assert "satyr" not in catalog.excluded_class_ids
 
 
+def test_class_catalog_requires_declared_manifest_class_source() -> None:
+    root = Path(__file__).resolve().parents[1]
+    catalog = resolve_class_catalog(root, ["expanded-edition-core", "courtship"])
+
+    assert catalog.provider_ids == ("expanded-edition-core", "courtship")
+    assert "warrior" in catalog.class_ids
+    assert "satyr" in catalog.class_ids
+
+
 def test_item_catalog_keeps_direct_equipment_and_table_backed_rewards_distinct() -> None:
     catalog = resolve_item_catalog(None, ["expanded-edition-core", "four-against-the-abyss"])
 
@@ -166,3 +175,11 @@ def test_item_catalog_keeps_direct_equipment_and_table_backed_rewards_distinct()
     assert "bow" in catalog.item_ids
     assert any(item_id.startswith("four-against-the-abyss-abyss-useful-stuff-table") for item_id in catalog.item_ids)
     assert {definition["id"] for definition in catalog.definitions()} == set(catalog.item_ids)
+
+
+def test_item_catalog_reads_declared_manifest_item_sources() -> None:
+    root = Path(__file__).resolve().parents[1]
+    catalog = resolve_item_catalog(root, ["expanded-edition-core", "courtship"])
+
+    assert "bow" in catalog.item_ids
+    assert any(item_id.startswith("courtship-courtship-blossoms-magic-item-table") for item_id in catalog.item_ids)

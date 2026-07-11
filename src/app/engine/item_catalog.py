@@ -12,7 +12,7 @@ from .supplement_content_catalog import (
     packaged_rules_dir,
     resolve_supplement_content_catalog,
 )
-from .supplements import LOCKED_CORE_SUPPLEMENT_ID
+from .supplements import LOCKED_CORE_SUPPLEMENT_ID, declared_content_sources
 
 
 ITEM_CATALOG_VERSION = 1
@@ -33,6 +33,7 @@ TABLE_ITEM_SOURCES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         ("courtship_blossoms_magic_item_table", "courtship_blossoms_spell_scrolls_table"),
     ),
 )
+TABLE_ITEM_KEYS_BY_FILE = {filename: table_ids for _provider_id, filename, table_ids in TABLE_ITEM_SOURCES}
 
 
 class ResolvedItemCatalog(ResolvedSupplementContentCatalog):
@@ -81,8 +82,18 @@ def packaged_item_definitions(root_dir: Path | None) -> list[dict[str, Any]]:
     """List direct shop equipment and structured table-backed item identities."""
     rules_dir = packaged_rules_dir(root_dir)
     definitions: list[dict[str, Any]] = []
-    shop_path = rules_dir / "equipment_shop.json"
-    if shop_path.exists():
+    declared = declared_content_sources(root_dir, None, "items")
+    providers = [(entry["supplement_id"], Path(entry["path"]).name) for entry in declared]
+    if not providers:
+        providers = [(LOCKED_CORE_SUPPLEMENT_ID, "equipment_shop.json")] + [
+            (provider_id, filename) for provider_id, filename, _table_ids in TABLE_ITEM_SOURCES
+        ]
+    for provider_id, filename in providers:
+        if filename != "equipment_shop.json":
+            continue
+        shop_path = rules_dir / filename
+        if not shop_path.exists():
+            continue
         shop = json.loads(shop_path.read_text(encoding="utf-8"))
         for item in shop.get("items", []) if isinstance(shop, dict) else []:
             if not isinstance(item, dict) or not item.get("key"):
@@ -91,9 +102,12 @@ def packaged_item_definitions(root_dir: Path | None) -> list[dict[str, Any]]:
                 "id": str(item["key"]),
                 "kind": "shop_equipment",
                 "name": str(item.get("name") or item["key"]),
-                "source": {"supplement_id": LOCKED_CORE_SUPPLEMENT_ID, "rule_file": "equipment_shop.json"},
+                "source": {"supplement_id": provider_id, "rule_file": filename},
             })
-    for provider_id, filename, table_ids in TABLE_ITEM_SOURCES:
+    for provider_id, filename in providers:
+        table_ids = TABLE_ITEM_KEYS_BY_FILE.get(filename, ())
+        if not table_ids:
+            continue
         path = rules_dir / filename
         if not path.exists():
             continue
