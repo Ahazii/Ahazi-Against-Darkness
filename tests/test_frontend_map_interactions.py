@@ -2175,7 +2175,7 @@ def test_camped_outside_uses_dedicated_camp_screen() -> None:
     assert ".camp-party-sheets .party-sheet-list" in STYLES_CSS
     assert ".camp-party-sheets .party-sheet-summary" in STYLES_CSS
     assert "object-position: center 38%;" in STYLES_CSS
-    assert 'href="/static/styles.css?v=0.69.13"' in INDEX_HTML
+    assert 'href="/static/styles.css?v=0.37.1"' in INDEX_HTML
     assert ".party-sheet-details[open]" in STYLES_CSS
     assert "overflow: visible;" in STYLES_CSS
 
@@ -2785,7 +2785,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
     main_py = Path("src/app/main.py").read_text(encoding="utf-8")
     assert '@app.get("/modern"' in main_py
     assert '@app.get("/modern/{page_name}"' in main_py
-    assert 'src="/static/modern-pages.js?v=0.2.1"' in MODERN_HTML
+    assert 'src="/static/modern-pages.js?v=0.37.1"' in MODERN_HTML
     for page in [
         "characters",
         "troupes",

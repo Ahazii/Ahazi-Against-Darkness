@@ -495,6 +495,16 @@ def app_version() -> str:
 APP_VERSION = app_version()
 
 
+def _versioned_static_html(filename: str) -> str:
+    """Serve HTML that points at this build's CSS and JavaScript assets."""
+    html = (settings.static_dir / filename).read_text(encoding="utf-8")
+    return re.sub(
+        r'(/static/(?:styles\.css|app\.js|modern-pages\.js)\?v=)[^"\'\s]+',
+        lambda match: f"{match.group(1)}{quote(APP_VERSION)}",
+        html,
+    )
+
+
 def app_build_hash() -> str:
     try:
         result = subprocess.run(
@@ -1223,7 +1233,7 @@ async def index(request: Request) -> Response:
     if not request.query_params.get("session") and request.query_params.get("view") != "game":
         return RedirectResponse(url="/modern", status_code=307)
     return HTMLResponse(
-        (settings.static_dir / "index.html").read_text(encoding="utf-8"),
+        _versioned_static_html("index.html"),
         headers={
             "Cache-Control": "no-store, max-age=0",
             "Pragma": "no-cache",
@@ -1234,7 +1244,7 @@ async def index(request: Request) -> Response:
 @app.get("/legacy", response_class=HTMLResponse)
 async def legacy_index() -> HTMLResponse:
     return HTMLResponse(
-        (settings.static_dir / "index.html").read_text(encoding="utf-8"),
+        _versioned_static_html("index.html"),
         headers={
             "Cache-Control": "no-store, max-age=0",
             "Pragma": "no-cache",
@@ -1246,7 +1256,7 @@ async def legacy_index() -> HTMLResponse:
 @app.get("/modern/{page_name}", response_class=HTMLResponse)
 async def modern_home(page_name: str = "home") -> HTMLResponse:
     return HTMLResponse(
-        (settings.static_dir / "modern.html").read_text(encoding="utf-8"),
+        _versioned_static_html("modern.html"),
         headers={
             "Cache-Control": "no-store, max-age=0",
             "Pragma": "no-cache",

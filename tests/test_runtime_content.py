@@ -30,3 +30,13 @@ def test_runtime_module_source_is_allowlisted_per_supplement(client: TestClient)
     assert source.status_code == 200
     assert "def " in source.json()["source"]
     assert client.get("/api/supplements/runtime/four-against-the-abyss/modules/engine-combat-py").status_code == 404
+
+
+def test_modern_and_legacy_html_cache_bust_static_assets_with_the_current_build(client: TestClient) -> None:
+    version = client.get("/api/app/version").json()["version"]
+    modern = client.get("/modern").text
+    legacy = client.get("/legacy").text
+
+    assert f"/static/modern-pages.js?v={version}" in modern
+    assert f"/static/styles.css?v={version}" in modern
+    assert f"/static/styles.css?v={version}" in legacy
