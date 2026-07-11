@@ -426,10 +426,12 @@ def session_to_summary(session: SessionState) -> SessionListSummary:
         active_terrain_ids=list(session.active_terrain_ids),
         active_table_ids=list(session.active_table_ids),
         active_foe_ids=list(session.active_foe_ids),
+        active_tile_ids=list(session.active_tile_ids),
         supplement_registry_version=session.supplement_registry_version,
         state_registry_version=session.state_registry_version,
         terrain_registry_version=session.terrain_registry_version,
         foe_catalog_version=session.foe_catalog_version,
+        tile_catalog_version=session.tile_catalog_version,
     )
 
 
@@ -3598,9 +3600,9 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "surface": "Locked session content registry",
-            "shows": "Active State, Terrain, Table, and Foe catalogue identities resolved from the locked supplement snapshot.",
+            "shows": "Active State, Terrain, Table, Foe, and random-dungeon Tile catalogue identities resolved from the locked supplement snapshot.",
             "player_use": "Developer/runtime context for checking which packaged content families a new session may use while migration work continues.",
-            "rules_boundary": "The Foe catalogue is source ownership metadata only. Existing encounter and combat code remains authoritative until a validated rule-family migration changes it.",
+            "rules_boundary": "Foe and Tile catalogues are source ownership metadata only. Existing encounter, combat, and map-generation code remains authoritative until a validated rule-family migration changes it. Authored maps and locations are not random-dungeon tiles.",
         },
     ]
     data["supplement_manifest_registry_table"] = [
@@ -5889,6 +5891,8 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
     session.active_table_ids = list(content_registry.active_table_ids)
     session.foe_catalog_version = content_registry.foe_catalog_version
     session.active_foe_ids = list(content_registry.active_foe_ids)
+    session.tile_catalog_version = content_registry.tile_catalog_version
+    session.active_tile_ids = list(content_registry.active_tile_ids)
     session = apply_abyss_campaign_to_session(store, session)
     from .engine.supplements import supplement_registry, supplement_snapshot_log_line
 

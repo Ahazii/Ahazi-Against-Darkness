@@ -7,6 +7,7 @@ from app.engine.states import resolve_state_registry
 from app.engine.terrain_registry import resolve_terrain_registry
 from app.engine.table_catalog import resolve_table_catalog
 from app.engine.foe_catalog import resolve_foe_catalog
+from app.engine.tile_catalog import resolve_tile_catalog
 
 
 def test_resolved_content_registry_separates_runtime_and_review_only_supplements() -> None:
@@ -44,6 +45,10 @@ def test_resolved_content_registry_separates_runtime_and_review_only_supplements
     assert any(foe_id.startswith("expanded-edition-core-vermin-rats") for foe_id in context.active_foe_ids)
     assert any(foe_id.startswith("forsaken-depths-fd-vermin-shadowbats") for foe_id in context.active_foe_ids)
     assert not any(foe_id.startswith("four-against-the-abyss") for foe_id in context.active_foe_ids)
+    assert context.tile_provider_ids == ("expanded-edition-core", "forsaken-depths")
+    assert "ee:01" in context.active_tile_ids
+    assert "forsaken_depths:11" in context.active_tile_ids
+    assert "forsaken_depths_rivers:11" in context.active_tile_ids
     assert "review-only" in context.diagnostics[0]
 
 
@@ -90,3 +95,13 @@ def test_foe_catalog_scopes_file_and_table_backed_foes_to_the_locked_snapshot() 
     assert any(foe_id.startswith("four-against-the-abyss-abyss-vermin-table-black-orc-bandits") for foe_id in catalog.foe_ids)
     assert any(foe_id.startswith("forsaken-depths") for foe_id in catalog.excluded_foe_ids)
     assert {definition["id"] for definition in catalog.definitions()} == set(catalog.foe_ids)
+
+
+def test_tile_catalog_keeps_random_tiles_separate_from_authored_maps() -> None:
+    catalog = resolve_tile_catalog(None, ["expanded-edition-core", "forsaken-depths"])
+
+    assert catalog.provider_ids == ("expanded-edition-core", "forsaken-depths")
+    assert "ee:01" in catalog.tile_ids
+    assert "forsaken_depths:11" in catalog.tile_ids
+    assert "forsaken_depths_rivers:11" in catalog.tile_ids
+    assert {definition["id"] for definition in catalog.definitions()} == set(catalog.tile_ids)

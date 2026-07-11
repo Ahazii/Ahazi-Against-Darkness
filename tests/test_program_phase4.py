@@ -625,6 +625,8 @@ def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     assert "abyss_room_content_table" not in payload["active_table_ids"]
     assert any(foe_id.startswith("expanded-edition-core-vermin-rats") for foe_id in payload["active_foe_ids"])
     assert any(foe_id.startswith("forsaken-depths-fd-vermin-shadowbats") for foe_id in payload["active_foe_ids"])
+    assert "ee:01" in payload["active_tile_ids"]
+    assert "forsaken_depths:11" in payload["active_tile_ids"]
     assert payload["supplement_registry_version"] == 1
     assert payload["state_registry_version"] == 1
     assert payload["terrain_registry_version"] == 1
@@ -671,10 +673,12 @@ def test_legacy_session_without_snapshot_metadata_still_loads() -> None:
     assert session.active_terrain_ids == []
     assert session.active_table_ids == []
     assert session.active_foe_ids == []
+    assert session.active_tile_ids == []
     assert session.supplement_registry_version == 0
     assert session.state_registry_version == 0
     assert session.terrain_registry_version == 0
     assert session.foe_catalog_version == 0
+    assert session.tile_catalog_version == 0
 
 
 def test_campaign_world_assignment_propagates_to_parties_and_characters(client: TestClient) -> None:
