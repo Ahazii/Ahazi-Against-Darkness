@@ -6,6 +6,7 @@ from typing import Any
 
 from ..schemas import CharacterClass, IconDefinition, TileDefinition
 from ..engine.tile_catalogs import TILE_CATALOG_FILES, TILE_CATALOG_KEYS, TileCatalogId, normalize_catalog_id
+from .table_providers import merge_packaged_dungeon_tables
 
 
 VALID_TILE_KEYS = sorted(TILE_CATALOG_KEYS["ee"])
@@ -73,93 +74,7 @@ class RulesRepository:
         return merged
 
     def dungeon_tables(self) -> dict[str, Any]:
-        packaged = self._load_packaged("dungeon_tables.json")
-        fd_path = self.packaged_dir / "forsaken_depths_tables.json"
-        if fd_path.exists():
-            fd_tables = json.loads(fd_path.read_text(encoding="utf-8"))
-            for key, value in fd_tables.items():
-                if key == "open_items" and isinstance(value, list):
-                    existing = list(packaged.get("open_items") or [])
-                    for item in value:
-                        if item not in existing:
-                            existing.append(item)
-                    packaged["open_items"] = existing
-                    continue
-                if key == "ruleset_status" and isinstance(value, str):
-                    base = str(packaged.get("ruleset_status") or "").strip()
-                    packaged["ruleset_status"] = f"{base} {value}".strip() if base else value
-                    continue
-                if key in {"ruleset_status", "open_items", "validation"}:
-                    continue
-                packaged[key] = value
-        courtship_path = self.packaged_dir / "courtship_tables.json"
-        if courtship_path.exists():
-            courtship_tables = json.loads(courtship_path.read_text(encoding="utf-8"))
-            for key, value in courtship_tables.items():
-                if key == "ruleset_status" and isinstance(value, str):
-                    base = str(packaged.get("ruleset_status") or "").strip()
-                    packaged["ruleset_status"] = f"{base} {value}".strip() if base else value
-                    continue
-                if key in {"ruleset_status", "validation"}:
-                    continue
-                packaged[key] = value
-        abyss_path = self.packaged_dir / "abyss_tables.json"
-        if abyss_path.exists():
-            abyss_tables = json.loads(abyss_path.read_text(encoding="utf-8"))
-            for key, value in abyss_tables.items():
-                if key == "ruleset_status" and isinstance(value, str):
-                    base = str(packaged.get("ruleset_status") or "").strip()
-                    packaged["ruleset_status"] = f"{base} {value}".strip() if base else value
-                    continue
-                if key in {"ruleset_status", "validation"}:
-                    continue
-                packaged[key] = value
-        bos_path = self.packaged_dir / "courtship_book_of_secrets.json"
-        if bos_path.exists():
-            bos_data = json.loads(bos_path.read_text(encoding="utf-8"))
-            entries = bos_data.get("entries", {})
-            if isinstance(entries, dict):
-                rows: list[dict[str, Any]] = []
-                for entry_id in sorted(entries.keys(), key=lambda item: int(item)):
-                    row = entries[entry_id]
-                    if not isinstance(row, dict):
-                        continue
-                    rows.append(
-                        {
-                            "roll": entry_id,
-                            "name": row.get("name", ""),
-                            "effect": row.get("effect", ""),
-                            "summary": row.get("summary", ""),
-                        }
-                    )
-                packaged["courtship_book_of_secrets_table"] = rows
-        blossoms_path = self.packaged_dir / "courtship_blossoms_tables.json"
-        if blossoms_path.exists():
-            blossoms = json.loads(blossoms_path.read_text(encoding="utf-8"))
-            for key, value in blossoms.items():
-                if key in {"ruleset_status", "validation"}:
-                    continue
-                packaged[key] = value
-        apothecary_path = self.packaged_dir / "courtship_apothecary_recipes.json"
-        if apothecary_path.exists():
-            apothecary = json.loads(apothecary_path.read_text(encoding="utf-8"))
-            rows: list[dict[str, Any]] = []
-            for recipe in apothecary.get("recipes", []):
-                if not isinstance(recipe, dict):
-                    continue
-                rows.append(
-                    {
-                        "key": recipe.get("key", ""),
-                        "name": recipe.get("name", ""),
-                        "item": recipe.get("item", ""),
-                        "cost_gp": recipe.get("cost_gp", 0),
-                        "difficulty": recipe.get("difficulty", 0),
-                        "duration": recipe.get("duration", ""),
-                        "summary": recipe.get("summary", ""),
-                        "ingredients": recipe.get("ingredients", []),
-                    }
-                )
-            packaged["courtship_apothecary_recipes_table"] = rows
+        packaged = merge_packaged_dungeon_tables(self.packaged_dir)
         override_path = self.override_dir / "dungeon_tables.json"
         if not override_path.exists():
             return packaged

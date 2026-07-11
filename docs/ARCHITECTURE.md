@@ -138,6 +138,10 @@ Home screen rule browsing:
   their source supplement. New sessions save `active_table_ids`, but
   `RulesRepository` and the table rollers remain unchanged until table routing
   is migrated one provider family at a time with parity tests.
+- `app.rules.table_providers` now owns the legacy-compatible packaged table
+  merge order. `RulesRepository` calls it without a supplement filter, so game
+  behaviour remains identical. The provider function also accepts a locked
+  supplement set for the next, table-family-by-table-family runtime migration.
 - New sessions pass their final supplement snapshot through this resolver before
   saving. Existing random, combat, terrain, and class modules retain their
   current behaviour; later migrations can take this context as an explicit
