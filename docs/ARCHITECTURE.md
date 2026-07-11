@@ -142,6 +142,11 @@ Home screen rule browsing:
   merge order. `RulesRepository` calls it without a supplement filter, so game
   behaviour remains identical. The provider function also accepts a locked
   supplement set for the next, table-family-by-table-family runtime migration.
+- `app.engine.runtime_content` is a Developer Workbench adapter. It exposes
+  read-only structured runtime states, terrain, tables, foe groups, classes,
+  items, tiles, and allowlisted source modules for one registered supplement.
+  It is intentionally separate from editable PDF Source Review records and
+  does not promote or execute local import data.
 - New sessions pass their final supplement snapshot through this resolver before
   saving. Existing random, combat, terrain, and class modules retain their
   current behaviour; later migrations can take this context as an explicit

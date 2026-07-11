@@ -1303,6 +1303,46 @@ async def list_supplements() -> dict[str, Any]:
     return supplement_payload(settings.root_dir, settings.data_dir)
 
 
+@app.get("/api/supplements/runtime/{supplement_id}")
+async def supplement_runtime_content(supplement_id: str) -> dict[str, Any]:
+    from .engine.runtime_content import runtime_supplement_content
+
+    try:
+        return runtime_supplement_content(settings.root_dir, settings.data_dir, supplement_id, rules)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="No registered runtime supplement found.") from exc
+
+
+@app.get("/api/supplements/runtime/{supplement_id}/modules/{module_id}")
+async def supplement_runtime_module_source(supplement_id: str, module_id: str) -> dict[str, Any]:
+    from .engine.runtime_content import runtime_module_source
+
+    try:
+        return runtime_module_source(settings.root_dir, supplement_id, module_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="No runtime module found for this supplement.") from exc
+
+
+@app.get("/api/supplements/runtime/{supplement_id}")
+async def supplement_runtime_content(supplement_id: str) -> dict[str, Any]:
+    from .engine.runtime_content import runtime_supplement_content
+
+    try:
+        return runtime_supplement_content(settings.root_dir, settings.data_dir, supplement_id, rules)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="No registered runtime supplement found.") from exc
+
+
+@app.get("/api/supplements/runtime/{supplement_id}/modules/{module_id}")
+async def supplement_runtime_module_source(supplement_id: str, module_id: str) -> dict[str, Any]:
+    from .engine.runtime_content import runtime_module_source
+
+    try:
+        return runtime_module_source(settings.root_dir, supplement_id, module_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="No runtime module found for this supplement.") from exc
+
+
 @app.get("/api/states")
 async def list_states() -> dict[str, Any]:
     from .engine.states import state_payload

@@ -1719,6 +1719,37 @@ button.is-working::after {
   min-width: 0;
 }
 
+.modern-runtime-content-body,
+.modern-runtime-record-list,
+.modern-runtime-module-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.modern-runtime-record-json,
+.modern-runtime-module-code {
+  max-height: 28rem;
+  margin: 6px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid #3c3a30;
+  border-radius: 4px;
+  padding: 8px;
+  background: #10110e;
+  color: var(--text);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.modern-runtime-module-code {
+  max-height: 42rem;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
 .modern-source-tool-panel {
   display: grid;
   gap: 8px;

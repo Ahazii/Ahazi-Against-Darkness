@@ -8783,18 +8783,22 @@ async function renderRulePdfManager() {
     });
   }
   async function refreshSourceScans() {
-    const payload = await api("/api/supplements/source-scans");
+    const [payload, supplementPayload] = await Promise.all([
+      api("/api/supplements/source-scans"),
+      api("/api/supplements"),
+    ]);
     const scans = payload.scans || [];
     const packages = payload.packages || [];
+    const registeredSupplements = supplementPayload.supplements || [];
     sourceScanStatus.replaceChildren();
-    if (!scans.length && !packages.length) {
-      sourceScanStatus.appendChild(modernStatusRow("Source block scans", "No scans yet", "Use Scan Source Blocks after uploading or selecting a PDF."));
+    if (!scans.length && !packages.length && !registeredSupplements.length) {
+      sourceScanStatus.appendChild(modernStatusRow("Supplement Workbench", "No supplements or source scans yet", "Use Scan Source Blocks after uploading or selecting a PDF."));
       return;
     }
     const moduleWorkbenchMount = el("div", "modern-source-module-workbench");
     const sourcePickerBar = el("div", "modern-source-picker-bar");
-    const moduleSelect = select("modern-source-module-select", "Choose the imported supplement module to review. A module may contain source PDFs plus attached map/image assets.", [["", "Choose module"]]);
-    const packageRows = packages.length
+    const moduleSelect = select("modern-source-module-select", "Choose a registered game supplement or local source package. Runtime Content is read-only; Source Review contains local PDF scans and assets.", [["", "Choose supplement or package"]]);
+    const sourcePackageRows = packages.length
       ? packages
       : scans.map((scan) => ({
         supplement_id: scan.supplement_id || scan.source_id,
@@ -8807,8 +8811,30 @@ async function renderRulePdfManager() {
         sources: [scan],
         assets: [],
       }));
+    const sourcePackagesById = new Map(sourcePackageRows.map((item) => [item.supplement_id, item]));
+    const registeredIds = new Set(registeredSupplements.map((item) => item.id));
+    const packageRows = [
+      ...registeredSupplements.map((manifest) => {
+        const sourcePackage = sourcePackagesById.get(manifest.id) || {};
+        return {
+          ...sourcePackage,
+          supplement_id: manifest.id,
+          supplement_title: manifest.title,
+          source_count: sourcePackage.source_count || (sourcePackage.sources || []).length || 0,
+          asset_count: sourcePackage.asset_count || (sourcePackage.assets || []).length || 0,
+          blocks: sourcePackage.blocks || 0,
+          artwork: sourcePackage.artwork || 0,
+          tables: sourcePackage.tables || 0,
+          sources: sourcePackage.sources || [],
+          assets: sourcePackage.assets || [],
+          runtime_manifest: manifest,
+        };
+      }),
+      ...sourcePackageRows.filter((item) => !registeredIds.has(item.supplement_id)).map((item) => ({ ...item, runtime_manifest: null })),
+    ];
     for (const pkg of packageRows) {
-      const label = `${pkg.supplement_title || pkg.supplement_id || "Supplement Package"} (${pkg.source_count || 0} PDF${Number(pkg.source_count || 0) === 1 ? "" : "s"}, ${pkg.asset_count || 0} asset${Number(pkg.asset_count || 0) === 1 ? "" : "s"})`;
+      const runtimeLabel = pkg.runtime_manifest ? "runtime" : "source review only";
+      const label = `${pkg.supplement_title || pkg.supplement_id || "Supplement Package"} (${runtimeLabel} · ${pkg.source_count || 0} PDF${Number(pkg.source_count || 0) === 1 ? "" : "s"}, ${pkg.asset_count || 0} asset${Number(pkg.asset_count || 0) === 1 ? "" : "s"})`;
       moduleSelect.appendChild(new Option(label, pkg.supplement_id || ""));
     }
     if (sourceWorkbenchState.packageId && packageRows.some((pkg) => pkg.supplement_id === sourceWorkbenchState.packageId)) {
@@ -8818,10 +8844,96 @@ async function renderRulePdfManager() {
       sourceWorkbenchState.packageId = moduleSelect.value;
       persistSourceWorkbenchState();
     }
+    function runtimeRecordTitle(record) {
+      return record.name || record.title || record.label || record.id || record.key || "Runtime record";
+    }
+    function runtimeRecordSection(title, records, hint) {
+      const body = el("div", "modern-list modern-runtime-record-list");
+      if (!records.length) {
+        body.appendChild(modernStatusRow(title, "No structured runtime records", hint));
+      } else {
+        for (const record of records) {
+          const item = document.createElement("details");
+          item.className = "modern-row modern-runtime-record";
+          item.title = hint;
+          const summary = document.createElement("summary");
+          const rowCount = record.row_count ? ` · ${record.row_count} row(s)` : "";
+          summary.append(el("strong", "", runtimeRecordTitle(record)), el("span", "muted", `${record.kind ? ` · ${record.kind}` : ""}${rowCount}`));
+          const detail = document.createElement("pre");
+          detail.className = "modern-runtime-record-json";
+          detail.textContent = JSON.stringify(record, null, 2);
+          item.append(summary, detail);
+          body.appendChild(item);
+        }
+      }
+      return workbenchSection(title, `${records.length} record(s)`, body);
+    }
+    async function runtimeContentSection(pkg) {
+      const body = el("div", "modern-runtime-content-body");
+      if (!pkg.runtime_manifest) {
+        body.appendChild(modernStatusRow("Not promoted", "Source Review only", "This local PDF package has no registered executable runtime module yet. Review and validate its source material here before it can affect gameplay."));
+        const section = workbenchSection("Implemented Runtime Content", "not promoted", body);
+        section.open = false;
+        return section;
+      }
+      const runtime = await api(`/api/supplements/runtime/${encodeURIComponent(pkg.supplement_id)}`);
+      const manifest = runtime.manifest || pkg.runtime_manifest;
+      body.appendChild(compactInfoStrip("Runtime status", [
+        { label: "Status", value: manifest.status || "unknown" },
+        { label: "Kind", value: manifest.kind || "supplement" },
+        { label: "Capabilities", value: `${(manifest.capabilities || []).length}` },
+        { label: "Modules", value: `${(runtime.runtime_modules || []).length}` },
+      ], "This is a read-only adapter over current packaged data and runtime code. It does not promote PDF-review records or change live gameplay."));
+      const content = runtime.content || {};
+      const sections = [
+        runtimeRecordSection("States", content.states || [], "Source-backed state metadata currently owned by this supplement."),
+        runtimeRecordSection("Terrain", content.terrain || [], "Terrain and derived terrain metadata currently owned by this supplement."),
+        runtimeRecordSection("Tables", content.tables || [], "Current packaged table data owned by this supplement. Expand a table to inspect its live read-only value."),
+        runtimeRecordSection("Foes", content.foe_groups || [], "Current packaged bestiary groups owned by this supplement. Some supplements use encounter tables rather than separate foe files."),
+        runtimeRecordSection("Character classes", content.classes || [], "Current structured class records owned by this supplement."),
+        runtimeRecordSection("Items", content.items || [], "Current structured equipment/shop records owned by this supplement."),
+        runtimeRecordSection("Tiles and map elements", content.tiles || [], "Current structured tile records owned by this supplement."),
+      ];
+      for (const section of sections) section.open = false;
+      body.append(...sections);
+      const section = workbenchSection("Implemented Runtime Content", "read-only", body);
+      section.open = true;
+      return section;
+    }
+    async function runtimeModulesSection(pkg) {
+      const body = el("div", "modern-list modern-runtime-module-list");
+      if (!pkg.runtime_manifest) {
+        body.appendChild(modernStatusRow("Runtime Modules", "None", "This source package has not been promoted into executable runtime code."));
+        return workbenchSection("Runtime Modules", "none", body);
+      }
+      const runtime = await api(`/api/supplements/runtime/${encodeURIComponent(pkg.supplement_id)}`);
+      for (const module of runtime.runtime_modules || []) {
+        const item = document.createElement("details");
+        item.className = "modern-row modern-runtime-module";
+        const summary = document.createElement("summary");
+        summary.append(el("strong", "", module.title || module.id), el("span", "muted", ` · ${module.path} · ${module.line_count || 0} lines`));
+        const symbols = el("p", "muted", (module.symbols || []).join(", ") || "No public top-level symbols detected.");
+        const sourceMount = el("div", "modern-runtime-module-source hidden");
+        const showSource = button("View Source", "Open this allowlisted runtime module as read-only source code. This does not edit or reload the module.", async (btn) => runWithButtonProgress(btn, "Loading source...", async () => {
+          const source = await api(`/api/supplements/runtime/${encodeURIComponent(pkg.supplement_id)}/modules/${encodeURIComponent(module.id)}`);
+          const code = document.createElement("pre");
+          code.className = "modern-runtime-module-code";
+          code.textContent = source.source || "";
+          sourceMount.replaceChildren(code);
+          sourceMount.classList.remove("hidden");
+        }));
+        item.append(summary, symbols, showSource, sourceMount);
+        body.appendChild(item);
+      }
+      if (!body.childElementCount) body.appendChild(modernStatusRow("Runtime Modules", "None listed", "This registered supplement has no allowlisted runtime modules yet."));
+      const section = workbenchSection("Runtime Modules", `${(runtime.runtime_modules || []).length} module(s)`, body);
+      section.open = false;
+      return section;
+    }
     async function openSelectedModule() {
       const pkg = packageRows.find((item) => item.supplement_id === moduleSelect.value) || packageRows[0];
       moduleWorkbenchMount.replaceChildren();
-      sourcePickerBar.replaceChildren(field("Imported module", moduleSelect));
+      sourcePickerBar.replaceChildren(field("Supplement / package", moduleSelect));
       if (!pkg) return;
       activeWorkbenchPackage = pkg;
       supplementId.value = pkg.supplement_id || "";
@@ -8859,9 +8971,16 @@ async function renderRulePdfManager() {
       const supplementRoot = workbenchSection("Supplement contents", `${sources.length} document(s) · ${pkg.asset_count || 0} asset(s)`, supplementContents);
       supplementRoot.classList.add("modern-source-supplement-root");
       supplementRoot.open = true;
+      const runtimeSection = await runtimeContentSection(pkg);
+      const moduleSection = await runtimeModulesSection(pkg);
+      supplementContents.append(runtimeSection, moduleSection);
+      const sourceReview = el("div", "modern-source-review-contents");
+      const sourceReviewRoot = workbenchSection("Source Review", `${sources.length} PDF document(s) · ${pkg.asset_count || 0} asset(s)`, sourceReview);
+      sourceReviewRoot.open = Boolean(sources.length || (pkg.assets || []).length);
       const documentSection = workbenchSection("PDF documents", `${sources.length} document(s)`, sourceMount);
       documentSection.open = true;
-      supplementContents.appendChild(documentSection);
+      sourceReview.appendChild(documentSection);
+      supplementContents.appendChild(sourceReviewRoot);
       moduleWorkbenchMount.appendChild(supplementRoot);
       if (sources.length) {
         const activeSource = sources.find((scan) => scan.source_id === sourceWorkbenchState.sourceId) || sources[0];
@@ -8877,7 +8996,7 @@ async function renderRulePdfManager() {
         appendAssetRows(pkg, assetList);
         const assetSection = workbenchSection("Maps, images, and tile sheets", `${pkg.asset_count || 0} source asset(s)`, assetList);
         assetSection.open = Boolean(sourceWorkbenchState.assetId);
-        supplementContents.appendChild(assetSection);
+        sourceReview.appendChild(assetSection);
       }
     }
     moduleSelect.addEventListener("change", async () => {
@@ -8890,8 +9009,9 @@ async function renderRulePdfManager() {
       await openSelectedModule();
     });
     sourceScanStatus.append(
-      compactInfoStrip("Supplement source packages", [
-        { label: "Packages", value: `${packages.length || scans.length}` },
+      compactInfoStrip("Supplement Workbench", [
+        { label: "Registered", value: `${registeredSupplements.length}` },
+        { label: "Source packages", value: `${sourcePackageRows.length || scans.length}` },
         { label: "Source scans", value: `${scans.length}` },
         { label: "Rule", value: "same package id groups related files", hint: "Examples: main rules, adventure text, maps, extra sheets, errata, or bonus documents." },
       ], "A supplement package can contain multiple PDFs, maps, extra sheets, or bonus documents."),

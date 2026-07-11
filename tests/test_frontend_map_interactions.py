@@ -3021,7 +3021,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Text blocks" in MODERN_PAGES_JS
     assert "Page boundary candidates" not in MODERN_PAGES_JS
     assert "modern-source-module-select" in MODERN_PAGES_JS
-    assert "Imported module" in MODERN_PAGES_JS
+    assert "Supplement / package" in MODERN_PAGES_JS
     assert "Source controls" in MODERN_PAGES_JS
     assert "modern-source-left-rail" in MODERN_PAGES_JS
     assert "modern-source-controls-panel" in MODERN_PAGES_JS
@@ -3064,12 +3064,12 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "persistSourceWorkbenchState" in MODERN_PAGES_JS
     source_module_open = MODERN_PAGES_JS.index("async function openSelectedModule()")
     assert MODERN_PAGES_JS.index("renderSourceScanDetail(detail, sourceMount)", source_module_open) < MODERN_PAGES_JS.index("appendAssetRows(pkg, assetList);", source_module_open)
-    assert "Supplement source packages" in MODERN_PAGES_JS
+    assert "Supplement Workbench" in MODERN_PAGES_JS
     assert "Selected source scan" in MODERN_PAGES_JS
     assert "modern-source-import-grid" in MODERN_PAGES_JS
     assert "modern-source-picker-bar" in MODERN_PAGES_JS
     assert "compactInfoStrip(\"PDF import status\"" in MODERN_PAGES_JS
-    assert "compactInfoStrip(\"Supplement source packages\"" in MODERN_PAGES_JS
+    assert "compactInfoStrip(\"Supplement Workbench\"" in MODERN_PAGES_JS
     assert "compactInfoStrip(\"Selected source scan\"" in MODERN_PAGES_JS
     assert "package asset(s)" in MODERN_PAGES_JS
     assert "Open Asset" in MODERN_PAGES_JS
@@ -3162,6 +3162,11 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Save Portrait Crop" in MODERN_PAGES_JS
     assert "uploadSourceArtworkCrop" in MODERN_PAGES_JS
     assert "Mask Room Tile" in MODERN_PAGES_JS
+    assert "Implemented Runtime Content" in MODERN_PAGES_JS
+    assert "Runtime Modules" in MODERN_PAGES_JS
+    assert "Source Review" in MODERN_PAGES_JS
+    assert "/api/supplements/runtime/" in MODERN_PAGES_JS
+    assert "modern-runtime-module-code" in MODERN_PAGES_JS
     assert "Printed tile id / die roll" in MODERN_PAGES_JS
     assert "Maps, images, and tile sheets" in MODERN_PAGES_JS
     assert "Extracted tiles and artwork" in MODERN_PAGES_JS
