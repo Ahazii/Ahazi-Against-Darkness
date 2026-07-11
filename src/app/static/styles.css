@@ -2032,9 +2032,25 @@ button.is-working::after {
 .modern-source-review-section > summary {
   align-items: center;
   cursor: pointer;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 0.35rem;
+  justify-content: start;
+  justify-items: start;
+  text-align: left;
+}
+
+.modern-source-review-section > summary .muted {
+  grid-column: 3;
+  justify-self: end;
+  text-align: right;
+}
+
+.modern-source-document-body,
+.modern-source-review-contents {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
 }
 
 .modern-source-block-search-preview {

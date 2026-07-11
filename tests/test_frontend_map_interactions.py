@@ -3165,10 +3165,12 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Implemented Runtime Content" in MODERN_PAGES_JS
     assert "Runtime Modules" in MODERN_PAGES_JS
     assert "Source Review" in MODERN_PAGES_JS
+    assert "Unpromoted Source Review" in MODERN_PAGES_JS
+    assert "Additional Source Files" in MODERN_PAGES_JS
     assert "/api/supplements/runtime/" in MODERN_PAGES_JS
     assert "modern-runtime-module-code" in MODERN_PAGES_JS
     assert "Printed tile id / die roll" in MODERN_PAGES_JS
-    assert "Maps, images, and tile sheets" in MODERN_PAGES_JS
+    assert "Additional Source Files" in MODERN_PAGES_JS
     assert "Extracted tiles and artwork" in MODERN_PAGES_JS
     assert "const profileButton" in MODERN_PAGES_JS
     assert "/profile-draft" in MODERN_PAGES_JS

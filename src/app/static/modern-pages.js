@@ -8943,6 +8943,7 @@ async function renderRulePdfManager() {
       const sourceMount = el("div", "modern-source-scan-detail");
       const supplementContents = el("div", "modern-source-supplement-contents");
       const sources = pkg.sources || [];
+      const sourceDocumentBody = el("div", "modern-source-document-body");
       sourcePickerBar.appendChild(compactInfoStrip("Package", [
         { label: "PDFs", value: `${pkg.source_count || sources.length || 0}` },
         { label: "Assets", value: `${pkg.asset_count || 0}` },
@@ -8966,7 +8967,7 @@ async function renderRulePdfManager() {
           const detail = await api(`/api/supplements/source-scans/${encodeURIComponent(sourceSelect.value)}`);
           renderSourceScanDetail(detail, sourceMount);
         });
-        sourcePickerBar.appendChild(field("Source document", sourceSelect));
+        sourceDocumentBody.appendChild(field("Source document", sourceSelect));
       }
       const supplementRoot = workbenchSection("Supplement contents", `${sources.length} document(s) · ${pkg.asset_count || 0} asset(s)`, supplementContents);
       supplementRoot.classList.add("modern-source-supplement-root");
@@ -8975,9 +8976,10 @@ async function renderRulePdfManager() {
       const moduleSection = await runtimeModulesSection(pkg);
       supplementContents.append(runtimeSection, moduleSection);
       const sourceReview = el("div", "modern-source-review-contents");
-      const sourceReviewRoot = workbenchSection("Source Review", `${sources.length} PDF document(s) · ${pkg.asset_count || 0} asset(s)`, sourceReview);
+      const sourceReviewRoot = workbenchSection("Unpromoted Source Review", `${sources.length} PDF document(s) · ${pkg.asset_count || 0} additional source file(s)`, sourceReview);
       sourceReviewRoot.open = Boolean(sources.length || (pkg.assets || []).length);
-      const documentSection = workbenchSection("PDF documents", `${sources.length} document(s)`, sourceMount);
+      sourceDocumentBody.appendChild(sourceMount);
+      const documentSection = workbenchSection("PDF Documents", `${sources.length} document(s)`, sourceDocumentBody);
       documentSection.open = true;
       sourceReview.appendChild(documentSection);
       supplementContents.appendChild(sourceReviewRoot);
@@ -8994,7 +8996,7 @@ async function renderRulePdfManager() {
       if ((pkg.assets || []).length) {
         const assetList = el("div", "modern-list");
         appendAssetRows(pkg, assetList);
-        const assetSection = workbenchSection("Maps, images, and tile sheets", `${pkg.asset_count || 0} source asset(s)`, assetList);
+        const assetSection = workbenchSection("Additional Source Files", `${pkg.asset_count || 0} map/image/tile-sheet asset(s)`, assetList);
         assetSection.open = Boolean(sourceWorkbenchState.assetId);
         sourceReview.appendChild(assetSection);
       }
