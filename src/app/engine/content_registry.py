@@ -22,9 +22,10 @@ from .terrain_registry import TERRAIN_REGISTRY_VERSION, resolve_terrain_registry
 from .table_catalog import TABLE_CATALOG_VERSION, resolve_table_catalog
 from .foe_catalog import FOE_CATALOG_VERSION, resolve_foe_catalog
 from .tile_catalog import TILE_CATALOG_VERSION, resolve_tile_catalog
+from .class_catalog import CLASS_CATALOG_VERSION, resolve_class_catalog
 
 
-CONTENT_REGISTRY_VERSION = 6
+CONTENT_REGISTRY_VERSION = 7
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,9 @@ class ResolvedContentRegistry:
     tile_catalog_version: int
     tile_provider_ids: tuple[str, ...]
     active_tile_ids: tuple[str, ...]
+    class_catalog_version: int
+    class_provider_ids: tuple[str, ...]
+    active_class_ids: tuple[str, ...]
     diagnostics: tuple[str, ...]
 
     def payload(self) -> dict[str, Any]:
@@ -79,6 +83,9 @@ class ResolvedContentRegistry:
             "tile_catalog_version": self.tile_catalog_version,
             "tile_provider_ids": list(self.tile_provider_ids),
             "active_tile_ids": list(self.active_tile_ids),
+            "class_catalog_version": self.class_catalog_version,
+            "class_provider_ids": list(self.class_provider_ids),
+            "active_class_ids": list(self.active_class_ids),
             "diagnostics": list(self.diagnostics),
         }
 
@@ -123,6 +130,7 @@ def resolve_content_registry(
     table_catalog = resolve_table_catalog(root_dir, selected_ids)
     foe_catalog = resolve_foe_catalog(root_dir, selected_ids)
     tile_catalog = resolve_tile_catalog(root_dir, selected_ids)
+    class_catalog = resolve_class_catalog(root_dir, selected_ids)
 
     return ResolvedContentRegistry(
         registry_version=CONTENT_REGISTRY_VERSION,
@@ -147,5 +155,8 @@ def resolve_content_registry(
         tile_catalog_version=TILE_CATALOG_VERSION,
         tile_provider_ids=tile_catalog.provider_ids,
         active_tile_ids=tile_catalog.tile_ids,
+        class_catalog_version=CLASS_CATALOG_VERSION,
+        class_provider_ids=class_catalog.provider_ids,
+        active_class_ids=class_catalog.class_ids,
         diagnostics=tuple(diagnostics),
     )

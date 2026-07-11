@@ -8,6 +8,7 @@ from app.engine.terrain_registry import resolve_terrain_registry
 from app.engine.table_catalog import resolve_table_catalog
 from app.engine.foe_catalog import resolve_foe_catalog
 from app.engine.tile_catalog import resolve_tile_catalog
+from app.engine.class_catalog import resolve_class_catalog
 
 
 def test_resolved_content_registry_separates_runtime_and_review_only_supplements() -> None:
@@ -49,6 +50,9 @@ def test_resolved_content_registry_separates_runtime_and_review_only_supplements
     assert "ee:01" in context.active_tile_ids
     assert "forsaken_depths:11" in context.active_tile_ids
     assert "forsaken_depths_rivers:11" in context.active_tile_ids
+    assert context.class_provider_ids == ("expanded-edition-core",)
+    assert "warrior" in context.active_class_ids
+    assert "satyr" not in context.active_class_ids
     assert "review-only" in context.diagnostics[0]
 
 
@@ -105,3 +109,12 @@ def test_tile_catalog_keeps_random_tiles_separate_from_authored_maps() -> None:
     assert "forsaken_depths:11" in catalog.tile_ids
     assert "forsaken_depths_rivers:11" in catalog.tile_ids
     assert {definition["id"] for definition in catalog.definitions()} == set(catalog.tile_ids)
+
+
+def test_class_catalog_reads_existing_supplement_ownership_metadata() -> None:
+    catalog = resolve_class_catalog(None, ["expanded-edition-core", "courtship"])
+
+    assert catalog.provider_ids == ("expanded-edition-core", "courtship")
+    assert "warrior" in catalog.class_ids
+    assert "satyr" in catalog.class_ids
+    assert "satyr" not in catalog.excluded_class_ids
