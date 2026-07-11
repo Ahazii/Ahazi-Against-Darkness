@@ -1654,6 +1654,7 @@ def test_source_profiles_support_mount_companion_and_character_class_framework(t
                 "level": "2",
                 "attack": "+1",
                 "defense": "1",
+                "purchase_cost": "120 gp",
                 "movement": "Fast",
                 "location_type": "wilderness_site",
                 "foe_ids": "briar-goblin",
@@ -1673,6 +1674,7 @@ def test_source_profiles_support_mount_companion_and_character_class_framework(t
         assert saved["profile"]["name"] == name
 
     detail = supplement_sources.load_supplement_source_scan(tmp_path, source_id)
+    assert detail["mounts"][0]["purchase_cost"] == "120 gp"
     assert detail["mounts"][0]["movement"] == "Fast"
     assert detail["companion_animals"][0]["profile_type"] == "companion_animal"
     assert detail["character_classes"][0]["profile_type"] == "character_class"

@@ -1475,8 +1475,9 @@ button.is-working::after {
 }
 
 .modern-source-metadata-controls {
-  display: grid;
-  grid-template-columns: 5.5rem minmax(6rem, auto);
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
   gap: 4px;
   align-items: end;
   min-width: 0;
@@ -1505,10 +1506,22 @@ button.is-working::after {
   font-size: 11px;
 }
 
+.modern-source-selected-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.modern-source-selected-header .modern-source-compact-strip {
+  flex: 1 1 28rem;
+}
+
 .modern-source-action-groups {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(auto-fit, minmax(4.4rem, 1fr));
+  gap: 6px;
 }
 
 .modern-source-action-group {
@@ -1519,24 +1532,24 @@ button.is-working::after {
 
 .modern-source-action-group > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.1;
 }
 
 .modern-source-action-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(1.45rem, 1fr));
-  gap: 3px;
+  grid-template-columns: repeat(auto-fit, minmax(3.45rem, 1fr));
+  gap: 4px;
 }
 
 .modern-source-action-row button {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 31px;
-  padding: 2px 3px;
+  min-height: 42px;
+  padding: 4px 5px;
   justify-self: stretch;
-  font-size: 11px;
+  font-size: 16px;
   line-height: 1.1;
   overflow: hidden;
   white-space: nowrap;
@@ -1546,12 +1559,12 @@ button.is-working::after {
 .modern-source-pdf-actions button[data-short-label]:not(.is-working)::after {
   content: attr(data-short-label);
   display: block;
-  margin: 1px 0 0;
+  margin: 2px 0 0;
   border: 0;
   width: auto;
   height: auto;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -1626,10 +1639,10 @@ button.is-working::after {
 
 .modern-source-pdf-actions button {
   width: auto;
-  min-width: 35px;
-  min-height: 36px;
-  padding: 2px;
-  font-size: 11px;
+  min-width: 46px;
+  min-height: 42px;
+  padding: 4px 6px;
+  font-size: 16px;
   line-height: 1.1;
 }
 

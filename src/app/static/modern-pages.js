@@ -7496,7 +7496,7 @@ async function renderRulePdfManager() {
       scrollPanelIntoView(sourceToolMount);
     }
     function blockEditor(block, needle) {
-      const titleEdit = input("text", `modern-source-block-title-${block.id}`, "Optional short reviewer name. Use this for a single rule, table, foe, location, or other identified block. It labels the block in its assigned category without changing the exact PDF wording.", block.title || "");
+      const titleEdit = input("text", `modern-source-block-title-${block.id}`, "Optional short local title. For a Rule Text block, enter the rule's short name, such as Song of Charm. It labels the block in its assigned category without changing the exact PDF wording.", block.title || "");
       titleEdit.maxLength = 160;
       const textArea = document.createElement("textarea");
       textArea.className = "modern-source-block-text";
@@ -7505,6 +7505,18 @@ async function renderRulePdfManager() {
       const assignmentEdit = select(`modern-source-block-assignment-${block.id}`, "Assign this reviewed block to the kind of supplement data it represents.", [["", "Choose assignment"]]);
       for (const option of payload.assignment_options || []) assignmentEdit.appendChild(new Option(option, option));
       assignmentEdit.value = block.assignment || "unassigned";
+      const titleField = field(block.assignment === "rule_text" ? "Rule title" : "Content title", titleEdit);
+      function refreshTitleField() {
+        const isRule = assignmentEdit.value === "rule_text";
+        const label = titleField.querySelector("span");
+        if (label) label.textContent = isRule ? "Rule title" : "Content title";
+        titleEdit.placeholder = isRule ? "e.g. Song of Charm" : "e.g. Woodlands Vermin";
+        titleEdit.title = isRule
+          ? "Short human-readable name for this rule, such as Song of Charm. The exact PDF wording below remains unchanged."
+          : "Optional short local title for this identified content. It labels the block in its assigned category without changing the exact PDF wording.";
+      }
+      assignmentEdit.addEventListener("change", refreshTitleField);
+      refreshTitleField();
       const actionsRow = actions();
       if (block.source_item_type !== "page-boundary candidate") {
         actionsRow.append(
@@ -7541,7 +7553,7 @@ async function renderRulePdfManager() {
       }
       editor.append(
         searchPreview,
-        field("Reviewer name", titleEdit),
+        titleField,
         field("Reviewed text", textArea),
         field("Assignment", assignmentEdit),
         actionsRow
@@ -7918,6 +7930,7 @@ async function renderRulePdfManager() {
       if (profileType === "mount") {
         typedFields = [
           ...combatFields(),
+          field("Cost", profileInput("Printed purchase, hire, training, or other acquisition cost. Preserve the exact currency wording.", profile.purchase_cost, "e.g. 500 gp")),
           field("Riding requirements", profileInput("Who can ride this mount and any printed training, class, level, or equipment requirements.", profile.riding_requirements, "e.g. A trained Ranger may ride")),
           field("Movement", profileInput("Printed movement, travel, or terrain capability.", profile.movement, "e.g. Forest travel: 2 areas/day")),
           field("Carrying capacity", profileInput("Printed carrying, passenger, or load capacity.", profile.carrying_capacity, "e.g. 1 rider plus 50 items")),
@@ -8016,7 +8029,7 @@ async function renderRulePdfManager() {
             reaction_table_id: reactionTableInput.value,
             reaction_rows: reactionRowsInput.value,
             level: valueFor("Level"), attack: valueFor("Attack"), defense: valueFor("Defence"), category: valueFor("Category"), quantity_expression: valueFor("Quantity"),
-            riding_requirements: valueFor("Riding requirements"), movement: valueFor("Movement"), carrying_capacity: valueFor("Carrying capacity"), owner_training: valueFor("Owner / training"),
+            purchase_cost: valueFor("Cost"), riding_requirements: valueFor("Riding requirements"), movement: valueFor("Movement"), carrying_capacity: valueFor("Carrying capacity"), owner_training: valueFor("Owner / training"),
             eligibility: valueFor("Eligibility"), abilities: abilitiesInput?.value || "", progression: valueFor("Progression"), equipment_restrictions: valueFor("Equipment restrictions"),
             portrait_artwork_id: portraitArtworkInput?.value || "",
             location_type: locationInputs?.locationType.value || "", foe_ids: locationInputs?.foeIds.value || "", foe_table_id: locationInputs?.foeTableId.value || "",
@@ -8709,7 +8722,6 @@ async function renderRulePdfManager() {
         { label: "Target", value: "content tree" },
       ], "These controls affect selected text blocks in the module contents tree."),
       controlFields,
-      sourceMetadataControls,
       selectionStatus,
       selectionActions
     );
@@ -8750,7 +8762,8 @@ async function renderRulePdfManager() {
       persistSourceWorkbenchState();
     });
     reviewGrid.append(leftRail, columnDivider, reviewPanel);
-    mount.replaceChildren(
+    const selectedSourceHeader = el("div", "modern-source-selected-header");
+    selectedSourceHeader.append(
       compactInfoStrip("Selected source scan", [
         { label: "Source", value: payload.source_id || "source" },
         { label: "Text", value: `${blocks.length}` },
@@ -8758,6 +8771,10 @@ async function renderRulePdfManager() {
         { label: "Tables", value: `${reviewedTables.length}` },
         { label: "Offset", value: `${payload.page_offset || 0}`, hint: "Used when PDF viewer pages differ from printed book pages." },
       ], `${payload.source_pdf || "Source PDF"} · local DATA_DIR/Supplements/_sources review data.`),
+      sourceMetadataControls
+    );
+    mount.replaceChildren(
+      selectedSourceHeader,
       reviewGrid
     );
     draw();
@@ -8839,10 +8856,13 @@ async function renderRulePdfManager() {
         });
         sourcePickerBar.appendChild(field("Source document", sourceSelect));
       }
-      const documentSection = workbenchSection("Supplement contents - PDFs", `${sources.length} document(s)`, sourceMount);
+      const supplementRoot = workbenchSection("Supplement contents", `${sources.length} document(s) · ${pkg.asset_count || 0} asset(s)`, supplementContents);
+      supplementRoot.classList.add("modern-source-supplement-root");
+      supplementRoot.open = true;
+      const documentSection = workbenchSection("PDF documents", `${sources.length} document(s)`, sourceMount);
       documentSection.open = true;
       supplementContents.appendChild(documentSection);
-      moduleWorkbenchMount.appendChild(supplementContents);
+      moduleWorkbenchMount.appendChild(supplementRoot);
       if (sources.length) {
         const activeSource = sources.find((scan) => scan.source_id === sourceWorkbenchState.sourceId) || sources[0];
         sourceWorkbenchState.sourceId = activeSource.source_id;
@@ -8855,7 +8875,7 @@ async function renderRulePdfManager() {
       if ((pkg.assets || []).length) {
         const assetList = el("div", "modern-list");
         appendAssetRows(pkg, assetList);
-        const assetSection = workbenchSection("Supplement contents - maps, images, and tile sheets", `${pkg.asset_count || 0} source asset(s)`, assetList);
+        const assetSection = workbenchSection("Maps, images, and tile sheets", `${pkg.asset_count || 0} source asset(s)`, assetList);
         assetSection.open = Boolean(sourceWorkbenchState.assetId);
         supplementContents.appendChild(assetSection);
       }

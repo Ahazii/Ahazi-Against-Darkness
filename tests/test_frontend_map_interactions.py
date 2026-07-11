@@ -3163,7 +3163,7 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "uploadSourceArtworkCrop" in MODERN_PAGES_JS
     assert "Mask Room Tile" in MODERN_PAGES_JS
     assert "Printed tile id / die roll" in MODERN_PAGES_JS
-    assert "Supplement contents - maps, images, and tile sheets" in MODERN_PAGES_JS
+    assert "Maps, images, and tile sheets" in MODERN_PAGES_JS
     assert "Extracted tiles and artwork" in MODERN_PAGES_JS
     assert "const profileButton" in MODERN_PAGES_JS
     assert "/profile-draft" in MODERN_PAGES_JS
@@ -3180,7 +3180,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "actionGroup(\"Blocks\", [mergeSelectedButton, mergePageButton, editSelectedButton, splitSelectedButton])" in MODERN_PAGES_JS
     assert "actionGroup(\"Clean\", [duplicateReviewButton, hideDuplicateFragmentsButton, resetSourceButton])" in MODERN_PAGES_JS
     assert "modern-source-block-snippet" in MODERN_PAGES_JS
-    assert "Reviewer name" in MODERN_PAGES_JS
+    assert "Rule title" in MODERN_PAGES_JS
+    assert "Content title" in MODERN_PAGES_JS
     assert "block.title ||" in MODERN_PAGES_JS
     assert "title: titleEdit.value" in MODERN_PAGES_JS
     assert "assignmentControl.append(bulkAssignment, applyAssignmentButton)" in MODERN_PAGES_JS
