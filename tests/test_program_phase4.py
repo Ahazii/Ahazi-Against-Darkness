@@ -81,10 +81,18 @@ def test_supplement_registry_marks_core_locked_and_legacy_fields() -> None:
     assert core["registry_origin"] == "packaged_manifest"
     assert core["manifest_path"] == "ROOT/data/supplements/expanded-edition-core/supplement.json"
     assert {"rules", "states", "room_tiles", "terrain_types"}.issubset(set(core["capabilities"]))
+    assert {entry["path"] for entry in core["content_sources"]} >= {
+        "data/rules/dungeon_tables.json",
+        "data/rules/monsters.json",
+        "data/rules/classes.json",
+        "data/rules/equipment_shop.json",
+        "data/rules/tiles.json",
+    }
 
     forsaken_depths = supplements["forsaken-depths"]
     assert {"room_tiles", "terrain_types", "generators"}.issubset(set(forsaken_depths["capabilities"]))
     assert "forsaken_depths_rivers" in forsaken_depths["legacy_mappings"]["tile_catalog"]
+    assert any(entry["path"] == "data/rules/forsaken_depths_rivers_tiles.json" for entry in forsaken_depths["content_sources"])
 
     imported = supplements["imported-adventures"]
     assert imported["status"] == "review_only"

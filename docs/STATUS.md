@@ -4,9 +4,12 @@ Last updated: 2026-07-10
 
 ## Summary
 
+- **Manifest-declared packaged content sources (2026-07-11):** Built-in supplement manifests now list their structured data sources by content family. The runtime Workbench displays this read-only inventory beneath each supplement, so ownership no longer lives only in catalogue code: it distinguishes direct bestiaries/shop files from table-backed Abyss rewards and identifies the separate FD dungeon/river tile files. These declarations are audit metadata only and do not change loaders or gameplay.
+
 ## Next Manual Playtest
 
 - **Supplement Workbench item ownership (v0.37.8):** After the next Unraid update, open Developer > Supplement Workbench and inspect **Four Against the Abyss** and **The Courtship of Flower Demons**. Under **Implemented Runtime Content > Items**, confirm that named table-backed rewards appear in the owning supplement and that the EE ordinary equipment list remains under Expanded Edition. This is a read-only inspection; no combat, purchasing, or item-use behavior should change.
+- **Supplement Workbench source inventory (v0.37.9):** In the same Workbench view, expand **Declared data sources** for Expanded Edition, Abyss, and Forsaken Depths. Confirm that the list names the expected packaged files and that Forsaken Depths has separate dungeon and river tile files. This is read-only ownership metadata; no game behavior should change.
 
 - **Supplement-scoped item catalogue (2026-07-11):** New session snapshots now record active item identities while preserving source shape: ordinary EE equipment comes from the direct shop catalogue, while named Abyss, Forsaken Depths, and Courtship rewards retain their source table and row. The read-only Workbench now surfaces these table-backed records in the owning supplement's Items branch. This does not classify arbitrary treasure prose as equipment or change buying, item use, rewards, or combat behavior.
 - **Supplement-scoped character-class catalogue (2026-07-11):** New sessions now snapshot active packaged class identities. Ownership is read from the existing `ruleset_profiles.json` `class_source_books` mapping, which keeps the six Courtship classes distinct even though their records share `classes.json` with core classes. The Workbench now shows those records under Courtship. Existing character creation, progression, combat, and spell helpers remain authoritative while class providers await their own source-locked migration.

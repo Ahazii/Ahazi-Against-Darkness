@@ -21,6 +21,13 @@
     "locations",
     "procedures"
   ],
+  "content_sources": [
+    {"kind": "tables", "path": "data/rules/courtship_tables.json", "description": "Courtship encounter and procedure tables."},
+    {"kind": "tables", "path": "data/rules/courtship_blossoms_tables.json", "description": "Blossoms magic, scroll, and Lex tables."},
+    {"kind": "foes", "path": "data/rules/courtship_monsters.json", "description": "Courtship structured bestiary groups."},
+    {"kind": "classes", "path": "data/rules/classes.json", "description": "Courtship class records; ownership is declared in ruleset_profiles.json."},
+    {"kind": "items", "path": "data/rules/courtship_blossoms_tables.json", "description": "Courtship named table-backed item rewards."}
+  ],
   "dependencies": ["expanded-edition-core"],
   "conflicts": [],
   "legacy_mappings": {

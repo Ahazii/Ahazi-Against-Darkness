@@ -19,6 +19,11 @@
     "campaign_state",
     "procedures"
   ],
+  "content_sources": [
+    {"kind": "tables", "path": "data/rules/abyss_tables.json", "description": "Abyss room, foe, trap, treasure, and reward tables."},
+    {"kind": "foes", "path": "data/rules/abyss_tables.json", "description": "Abyss foes are encounter-table rows rather than a standalone bestiary file."},
+    {"kind": "items", "path": "data/rules/abyss_tables.json", "description": "Named Abyss item rewards remain table-backed."}
+  ],
   "dependencies": ["expanded-edition-core"],
   "conflicts": [],
   "legacy_mappings": {

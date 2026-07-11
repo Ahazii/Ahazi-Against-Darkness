@@ -9,6 +9,7 @@ def test_runtime_content_endpoint_exposes_read_only_abyss_content_and_modules(cl
     payload = response.json()
     assert payload["read_only"] is True
     assert payload["manifest"]["title"] == "Four Against the Abyss"
+    assert any(entry["kind"] == "foes" for entry in payload["manifest"]["content_sources"])
     assert any(item["id"] == "abyss_room_content_table" for item in payload["content"]["tables"])
     assert any(item["id"] == "abyss_vermin_table" for item in payload["content"]["foe_groups"])
     assert any(item["id"] == "dark-plague" for item in payload["content"]["states"])

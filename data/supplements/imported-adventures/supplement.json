@@ -24,6 +24,7 @@
     "artwork",
     "narrative"
   ],
+  "content_sources": [],
   "dependencies": ["expanded-edition-core"],
   "conflicts": [],
   "legacy_mappings": {

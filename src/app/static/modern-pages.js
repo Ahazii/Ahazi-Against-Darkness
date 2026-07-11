@@ -8845,7 +8845,7 @@ async function renderRulePdfManager() {
       persistSourceWorkbenchState();
     }
     function runtimeRecordTitle(record) {
-      return record.name || record.title || record.label || record.id || record.key || "Runtime record";
+      return record.name || record.title || record.label || record.path || record.id || record.key || "Runtime record";
     }
     function runtimeRecordSection(title, records, hint) {
       const body = el("div", "modern-list modern-runtime-record-list");
@@ -8882,11 +8882,13 @@ async function renderRulePdfManager() {
         { label: "Status", value: manifest.status || "unknown" },
         { label: "Kind", value: manifest.kind || "supplement" },
         { label: "Capabilities", value: `${(manifest.capabilities || []).length}` },
+        { label: "Data sources", value: `${(manifest.content_sources || []).length}`, hint: "Declared packaged data files owned by this supplement. Runtime modules remain separately listed below." },
         { label: "Modules", value: `${(runtime.runtime_modules || []).length}` },
       ], "This is a read-only adapter over current packaged data and runtime code. It does not promote PDF-review records or change live gameplay."));
       const content = runtime.content || {};
       const sections = [
         runtimeRecordSection("States", content.states || [], "Source-backed state metadata currently owned by this supplement."),
+        runtimeRecordSection("Declared data sources", manifest.content_sources || [], "Read-only manifest inventory of packaged files that provide this supplement's structured content."),
         runtimeRecordSection("Terrain", content.terrain || [], "Terrain and derived terrain metadata currently owned by this supplement."),
         runtimeRecordSection("Tables", content.tables || [], "Current packaged table data owned by this supplement. Expand a table to inspect its live read-only value."),
         runtimeRecordSection("Foes", content.foe_groups || [], "Current packaged bestiary groups owned by this supplement. Some supplements use encounter tables rather than separate foe files."),

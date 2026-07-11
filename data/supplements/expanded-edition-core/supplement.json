@@ -22,6 +22,13 @@
     "generators",
     "rules_reference"
   ],
+  "content_sources": [
+    {"kind": "tables", "path": "data/rules/dungeon_tables.json", "description": "Core dungeon, spell, treasure, and rules tables."},
+    {"kind": "foes", "path": "data/rules/monsters.json", "description": "Core bestiary groups and reactions."},
+    {"kind": "classes", "path": "data/rules/classes.json", "description": "Structured core character classes."},
+    {"kind": "items", "path": "data/rules/equipment_shop.json", "description": "Ordinary purchasable equipment."},
+    {"kind": "room_tiles", "path": "data/rules/tiles.json", "description": "EE random-dungeon map elements."}
+  ],
   "dependencies": [],
   "conflicts": [],
   "legacy_mappings": {

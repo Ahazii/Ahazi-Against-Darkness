@@ -22,6 +22,14 @@
     "generators",
     "procedures"
   ],
+  "content_sources": [
+    {"kind": "tables", "path": "data/rules/forsaken_depths_tables.json", "description": "FD rooms, encounters, traps, treasure, and magic tables."},
+    {"kind": "foes", "path": "data/rules/fd_monsters.json", "description": "FD structured bestiary groups."},
+    {"kind": "items", "path": "data/rules/forsaken_depths_tables.json", "description": "Heroic and Legendary item rewards."},
+    {"kind": "room_tiles", "path": "data/rules/forsaken_depths_tiles.json", "description": "FD dungeon room tiles."},
+    {"kind": "room_tiles", "path": "data/rules/forsaken_depths_rivers_tiles.json", "description": "FD river room tiles."},
+    {"kind": "spells", "path": "data/rules/heroic_spells.json", "description": "FD Heroic spell catalogue."}
+  ],
   "dependencies": ["expanded-edition-core"],
   "conflicts": [],
   "legacy_mappings": {

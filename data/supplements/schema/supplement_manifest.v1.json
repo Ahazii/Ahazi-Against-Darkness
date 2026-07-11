@@ -99,6 +99,22 @@
         ]
       }
     },
+    "content_sources": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "path"],
+        "properties": {
+          "kind": {
+            "enum": ["tables", "foes", "classes", "items", "room_tiles", "states", "terrain_types", "rules", "spells"]
+          },
+          "path": {"type": "string", "minLength": 1},
+          "description": {"type": "string"}
+        }
+      }
+    },
     "dependencies": {
       "$ref": "#/$defs/stringList"
     },

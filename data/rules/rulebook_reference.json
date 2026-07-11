@@ -3559,7 +3559,7 @@
         "registry"
       ],
       "summary": "Tables documents packaged and local supplement manifest loading.",
-      "body": "The modern Tables page includes supplement_manifest_registry_table. It documents packaged supplement manifests at data/supplements/<supplement_id>/supplement.json, the manifest schema at data/supplements/schema/supplement_manifest.v1.json, future local manifests at DATA_DIR/Supplements/<supplement_id>/supplement.json, manifest diagnostics from /api/supplements, dependency/conflict selection rules, and the legacy_mappings bridge that explains which current fields still drive behavior. Manifests are declarative metadata and do not move rule data or implement mechanics by themselves.",
+      "body": "The modern Tables page includes supplement_manifest_registry_table. It documents packaged supplement manifests at data/supplements/<supplement_id>/supplement.json, the manifest schema at data/supplements/schema/supplement_manifest.v1.json, future local manifests at DATA_DIR/Supplements/<supplement_id>/supplement.json, manifest diagnostics from /api/supplements, dependency/conflict selection rules, declared content_sources, and the legacy_mappings bridge that explains which current fields still drive behavior. A content source identifies the packaged file supplying a content family, such as a bestiary, table file, class file, shop catalogue, or room-tile file; it is an auditable ownership declaration, not executable rule code. Manifests are declarative metadata and do not move rule data or implement mechanics by themselves.",
       "implementation_status": "implemented"
     },
     {

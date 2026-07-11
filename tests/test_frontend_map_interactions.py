@@ -3170,6 +3170,8 @@ def test_modern_reference_and_table_groups_default_collapsed_and_trim_search() -
     assert "Mask Room Tile" in MODERN_PAGES_JS
     assert "Implemented Runtime Content" in MODERN_PAGES_JS
     assert "Runtime Modules" in MODERN_PAGES_JS
+    assert "Declared data sources" in MODERN_PAGES_JS
+    assert "Data sources" in MODERN_PAGES_JS
     assert "Source Review" in MODERN_PAGES_JS
     assert "Unpromoted Source Review" in MODERN_PAGES_JS
     assert "Additional Source Files" in MODERN_PAGES_JS

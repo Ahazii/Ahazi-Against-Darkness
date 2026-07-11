@@ -20,6 +20,9 @@
     "generators",
     "narrative"
   ],
+  "content_sources": [
+    {"kind": "foes", "path": "data/rules/tag_monsters.json", "description": "TAG generated-adventure foe groups."}
+  ],
   "dependencies": ["expanded-edition-core"],
   "conflicts": [],
   "legacy_mappings": {

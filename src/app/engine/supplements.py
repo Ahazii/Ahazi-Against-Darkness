@@ -338,6 +338,22 @@ def validate_supplement_manifest(raw: dict[str, Any]) -> list[str]:
     for capability in capabilities:
         if capability not in SUPPLEMENT_CAPABILITIES:
             errors.append(f"Unknown capability {capability!r}.")
+    content_sources = raw.get("content_sources", [])
+    if not isinstance(content_sources, list):
+        errors.append("content_sources must be an array.")
+    else:
+        for index, entry in enumerate(content_sources):
+            if not isinstance(entry, dict):
+                errors.append(f"content_sources[{index}] must be an object.")
+                continue
+            kind = str(entry.get("kind") or "").strip()
+            path = str(entry.get("path") or "").strip()
+            if kind not in SUPPLEMENT_CAPABILITIES and kind != "spells":
+                errors.append(f"content_sources[{index}].kind is unknown.")
+            if not path:
+                errors.append(f"content_sources[{index}].path is required.")
+            if "description" in entry and not isinstance(entry.get("description"), str):
+                errors.append(f"content_sources[{index}].description must be a string.")
     _string_list(raw.get("dependencies"), "dependencies", errors)
     _string_list(raw.get("conflicts"), "conflicts", errors)
 
@@ -369,6 +385,15 @@ def _normalize_manifest(raw: dict[str, Any], *, origin: str, path: Path, root_di
     manifest["kind"] = kind
     manifest["status"] = status
     manifest["capabilities"] = _string_list(raw.get("capabilities"), "capabilities", [])
+    manifest["content_sources"] = [
+        {
+            "kind": str(entry.get("kind") or "").strip(),
+            "path": str(entry.get("path") or "").strip(),
+            "description": str(entry.get("description") or "").strip(),
+        }
+        for entry in raw.get("content_sources", [])
+        if isinstance(entry, dict)
+    ]
     manifest["dependencies"] = _string_list(manifest.get("dependencies"), "dependencies", [])
     manifest["conflicts"] = _string_list(manifest.get("conflicts"), "conflicts", [])
     manifest["legacy_mappings"] = {
