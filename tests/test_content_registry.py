@@ -98,6 +98,15 @@ def test_table_catalog_scopes_packaged_table_providers_to_the_locked_snapshot() 
     assert {definition["id"] for definition in catalog.definitions()} == set(catalog.table_ids)
 
 
+def test_table_catalog_reads_declared_manifest_table_sources() -> None:
+    root = Path(__file__).resolve().parents[1]
+    catalog = resolve_table_catalog(root, ["expanded-edition-core", "four-against-the-abyss"])
+
+    assert "trap_table" in catalog.table_ids
+    assert "abyss_room_content_table" in catalog.table_ids
+    assert "fd_room_content_table" in catalog.excluded_table_ids
+
+
 def test_foe_catalog_scopes_file_and_table_backed_foes_to_the_locked_snapshot() -> None:
     catalog = resolve_foe_catalog(None, ["expanded-edition-core", "four-against-the-abyss"])
 

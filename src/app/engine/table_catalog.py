@@ -11,7 +11,7 @@ from .supplement_content_catalog import (
     packaged_rules_dir,
     resolve_supplement_content_catalog,
 )
-from .supplements import LOCKED_CORE_SUPPLEMENT_ID
+from .supplements import LOCKED_CORE_SUPPLEMENT_ID, declared_content_sources
 
 
 TABLE_CATALOG_VERSION = 1
@@ -49,7 +49,15 @@ def packaged_table_definitions(root_dir: Path | None) -> list[dict[str, Any]]:
     definitions: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     rules_dir = packaged_rules_dir(root_dir)
-    for supplement_id, filename in TABLE_PROVIDER_FILES:
+    declared = declared_content_sources(root_dir, None, "tables")
+    providers = [
+        (entry["supplement_id"], Path(entry["path"]).name)
+        for entry in declared
+        if Path(entry["path"]).parent.name == "rules"
+    ]
+    if not providers:
+        providers = list(TABLE_PROVIDER_FILES)
+    for supplement_id, filename in providers:
         path = rules_dir / filename
         if not path.exists():
             continue
