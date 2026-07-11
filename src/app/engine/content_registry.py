@@ -23,9 +23,10 @@ from .table_catalog import TABLE_CATALOG_VERSION, resolve_table_catalog
 from .foe_catalog import FOE_CATALOG_VERSION, resolve_foe_catalog
 from .tile_catalog import TILE_CATALOG_VERSION, resolve_tile_catalog
 from .class_catalog import CLASS_CATALOG_VERSION, resolve_class_catalog
+from .item_catalog import ITEM_CATALOG_VERSION, resolve_item_catalog
 
 
-CONTENT_REGISTRY_VERSION = 7
+CONTENT_REGISTRY_VERSION = 8
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,9 @@ class ResolvedContentRegistry:
     class_catalog_version: int
     class_provider_ids: tuple[str, ...]
     active_class_ids: tuple[str, ...]
+    item_catalog_version: int
+    item_provider_ids: tuple[str, ...]
+    active_item_ids: tuple[str, ...]
     diagnostics: tuple[str, ...]
 
     def payload(self) -> dict[str, Any]:
@@ -86,6 +90,9 @@ class ResolvedContentRegistry:
             "class_catalog_version": self.class_catalog_version,
             "class_provider_ids": list(self.class_provider_ids),
             "active_class_ids": list(self.active_class_ids),
+            "item_catalog_version": self.item_catalog_version,
+            "item_provider_ids": list(self.item_provider_ids),
+            "active_item_ids": list(self.active_item_ids),
             "diagnostics": list(self.diagnostics),
         }
 
@@ -131,6 +138,7 @@ def resolve_content_registry(
     foe_catalog = resolve_foe_catalog(root_dir, selected_ids)
     tile_catalog = resolve_tile_catalog(root_dir, selected_ids)
     class_catalog = resolve_class_catalog(root_dir, selected_ids)
+    item_catalog = resolve_item_catalog(root_dir, selected_ids)
 
     return ResolvedContentRegistry(
         registry_version=CONTENT_REGISTRY_VERSION,
@@ -158,5 +166,8 @@ def resolve_content_registry(
         class_catalog_version=CLASS_CATALOG_VERSION,
         class_provider_ids=class_catalog.provider_ids,
         active_class_ids=class_catalog.class_ids,
+        item_catalog_version=ITEM_CATALOG_VERSION,
+        item_provider_ids=item_catalog.provider_ids,
+        active_item_ids=item_catalog.item_ids,
         diagnostics=tuple(diagnostics),
     )

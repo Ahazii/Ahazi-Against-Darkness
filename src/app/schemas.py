@@ -994,12 +994,14 @@ class SessionState(BaseModel):
     active_foe_ids: list[str] = Field(default_factory=list)
     active_tile_ids: list[str] = Field(default_factory=list)
     active_class_ids: list[str] = Field(default_factory=list)
+    active_item_ids: list[str] = Field(default_factory=list)
     supplement_registry_version: int = Field(default=0, ge=0)
     state_registry_version: int = Field(default=0, ge=0)
     terrain_registry_version: int = Field(default=0, ge=0)
     foe_catalog_version: int = Field(default=0, ge=0)
     tile_catalog_version: int = Field(default=0, ge=0)
     class_catalog_version: int = Field(default=0, ge=0)
+    item_catalog_version: int = Field(default=0, ge=0)
     fd_river_type: Literal["oblivion", "tears", "death", "flame", "conjuration", "serpent"] | None = None
     fd_boat_status: Literal["ok", "damaged", "destroyed"] = "ok"
     fd_travel_mode: Literal["boat", "foot"] = "boat"
@@ -1330,12 +1332,14 @@ class SessionListSummary(BaseModel):
     active_foe_ids: list[str] = Field(default_factory=list)
     active_tile_ids: list[str] = Field(default_factory=list)
     active_class_ids: list[str] = Field(default_factory=list)
+    active_item_ids: list[str] = Field(default_factory=list)
     supplement_registry_version: int = Field(default=0, ge=0)
     state_registry_version: int = Field(default=0, ge=0)
     terrain_registry_version: int = Field(default=0, ge=0)
     foe_catalog_version: int = Field(default=0, ge=0)
     tile_catalog_version: int = Field(default=0, ge=0)
     class_catalog_version: int = Field(default=0, ge=0)
+    item_catalog_version: int = Field(default=0, ge=0)
 
 
 class SessionAction(BaseModel):

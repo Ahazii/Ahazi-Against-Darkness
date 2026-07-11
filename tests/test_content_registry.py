@@ -9,6 +9,7 @@ from app.engine.table_catalog import resolve_table_catalog
 from app.engine.foe_catalog import resolve_foe_catalog
 from app.engine.tile_catalog import resolve_tile_catalog
 from app.engine.class_catalog import resolve_class_catalog
+from app.engine.item_catalog import resolve_item_catalog
 
 
 def test_resolved_content_registry_separates_runtime_and_review_only_supplements() -> None:
@@ -53,6 +54,9 @@ def test_resolved_content_registry_separates_runtime_and_review_only_supplements
     assert context.class_provider_ids == ("expanded-edition-core",)
     assert "warrior" in context.active_class_ids
     assert "satyr" not in context.active_class_ids
+    assert context.item_provider_ids == ("expanded-edition-core", "forsaken-depths")
+    assert "bow" in context.active_item_ids
+    assert any(item_id.startswith("forsaken-depths-fd-heroic-magic-item-table") for item_id in context.active_item_ids)
     assert "review-only" in context.diagnostics[0]
 
 
@@ -118,3 +122,12 @@ def test_class_catalog_reads_existing_supplement_ownership_metadata() -> None:
     assert "warrior" in catalog.class_ids
     assert "satyr" in catalog.class_ids
     assert "satyr" not in catalog.excluded_class_ids
+
+
+def test_item_catalog_keeps_direct_equipment_and_table_backed_rewards_distinct() -> None:
+    catalog = resolve_item_catalog(None, ["expanded-edition-core", "four-against-the-abyss"])
+
+    assert catalog.provider_ids == ("expanded-edition-core", "four-against-the-abyss")
+    assert "bow" in catalog.item_ids
+    assert any(item_id.startswith("four-against-the-abyss-abyss-useful-stuff-table") for item_id in catalog.item_ids)
+    assert {definition["id"] for definition in catalog.definitions()} == set(catalog.item_ids)

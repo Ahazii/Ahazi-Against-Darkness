@@ -12,6 +12,7 @@ from .states import resolve_state_registry
 from .supplements import LOCKED_CORE_SUPPLEMENT_ID, supplement_registry
 from .foe_catalog import ABYSS_FOE_TABLE_IDS
 from .class_catalog import resolve_class_catalog
+from .item_catalog import resolve_item_catalog
 from .table_catalog import resolve_table_catalog
 from .terrain_registry import resolve_terrain_registry
 
@@ -131,10 +132,35 @@ def _class_records(root_dir: Path | None, supplement_id: str, rules: Any) -> lis
     return [item.model_dump() for item in rules.classes() if item.id in active_ids]
 
 
-def _item_records(supplement_id: str, rules: Any) -> list[dict[str, Any]]:
-    if supplement_id != LOCKED_CORE_SUPPLEMENT_ID:
-        return []
-    return [item for item in rules.equipment_shop().get("items", []) if isinstance(item, dict)]
+def _item_records(root_dir: Path | None, supplement_id: str, rules: Any) -> list[dict[str, Any]]:
+    definitions = resolve_item_catalog(root_dir, [supplement_id]).definitions()
+    shop_by_key = {
+        str(item.get("key") or ""): item
+        for item in rules.equipment_shop().get("items", [])
+        if isinstance(item, dict)
+    }
+    tables = rules.dungeon_tables()
+    records: list[dict[str, Any]] = []
+    for definition in definitions:
+        source = definition.get("source") if isinstance(definition.get("source"), dict) else {}
+        if definition.get("kind") == "shop_equipment":
+            item = shop_by_key.get(str(definition.get("id") or ""))
+            if item:
+                records.append(item)
+            continue
+        table_id = str(source.get("table_id") or "")
+        row_key = str(source.get("row_key") or "")
+        row = next(
+            (
+                item
+                for item in tables.get(table_id, [])
+                if isinstance(item, dict) and str(item.get("key") or item.get("roll") or "") == row_key
+            ),
+            None,
+        )
+        if isinstance(row, dict):
+            records.append({**row, "id": definition["id"], "kind": definition["kind"], "source": source})
+    return records
 
 
 def _tile_records(supplement_id: str, rules: Any) -> list[dict[str, Any]]:
@@ -159,7 +185,7 @@ def runtime_supplement_content(root_dir: Path | None, data_dir: Path | None, sup
             "tables": _table_records(root_dir, supplement_id, rules),
             "foe_groups": _foe_groups(root_dir, supplement_id, rules),
             "classes": _class_records(root_dir, supplement_id, rules),
-            "items": _item_records(supplement_id, rules),
+            "items": _item_records(root_dir, supplement_id, rules),
             "tiles": _tile_records(supplement_id, rules),
         },
         "notes": "Read-only adapter over current packaged data and runtime modules. It does not promote PDF review records or alter gameplay.",

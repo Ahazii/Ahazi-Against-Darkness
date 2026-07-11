@@ -30,6 +30,12 @@ def test_runtime_content_endpoint_exposes_courtship_classes_from_profile_ownersh
     assert any(item["id"] == "satyr" for item in response.json()["content"]["classes"])
 
 
+def test_runtime_content_endpoint_exposes_table_backed_abyss_items(client: TestClient) -> None:
+    response = client.get("/api/supplements/runtime/four-against-the-abyss")
+    assert response.status_code == 200
+    assert response.json()["content"]["items"]
+
+
 def test_runtime_module_source_is_allowlisted_per_supplement(client: TestClient) -> None:
     payload = client.get("/api/supplements/runtime/four-against-the-abyss").json()
     module_id = next(item["id"] for item in payload["runtime_modules"] if item["path"].endswith("abyss_items.py"))

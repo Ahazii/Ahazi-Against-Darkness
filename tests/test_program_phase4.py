@@ -629,6 +629,7 @@ def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     assert "forsaken_depths:11" in payload["active_tile_ids"]
     assert "warrior" in payload["active_class_ids"]
     assert "satyr" not in payload["active_class_ids"]
+    assert "bow" in payload["active_item_ids"]
     assert payload["supplement_registry_version"] == 1
     assert payload["state_registry_version"] == 1
     assert payload["terrain_registry_version"] == 1
@@ -677,12 +678,14 @@ def test_legacy_session_without_snapshot_metadata_still_loads() -> None:
     assert session.active_foe_ids == []
     assert session.active_tile_ids == []
     assert session.active_class_ids == []
+    assert session.active_item_ids == []
     assert session.supplement_registry_version == 0
     assert session.state_registry_version == 0
     assert session.terrain_registry_version == 0
     assert session.foe_catalog_version == 0
     assert session.tile_catalog_version == 0
     assert session.class_catalog_version == 0
+    assert session.item_catalog_version == 0
 
 
 def test_campaign_world_assignment_propagates_to_parties_and_characters(client: TestClient) -> None:
