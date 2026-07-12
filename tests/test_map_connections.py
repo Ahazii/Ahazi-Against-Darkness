@@ -3,6 +3,7 @@ from app.engine.map_connections import (
     initialize_outside_entrance,
     reciprocal_exit_on_tile,
     sync_connection_state,
+    set_reciprocal_exit,
 )
 from app.schemas import ExitState, MapState, PartyMemberState, SessionState, TileState
 
@@ -72,3 +73,29 @@ def test_initialize_outside_entrance_opens_the_dungeon_door_once() -> None:
     assert entrance.exits[0].door_type == "unlocked"
     assert "remains open behind them" in log[0]
     assert initialize_outside_entrance(entrance, log=log) is False
+
+
+def test_set_reciprocal_exit_creates_and_syncs_a_return_exit() -> None:
+    origin_exit = ExitState(id="out", direction="east", kind="door", door_open=True, destination_tile_id="dest")
+    origin = _tile([origin_exit])
+    origin.id = "origin"
+    destination = _tile([])
+    destination.id = "dest"
+
+    reciprocal = set_reciprocal_exit(
+        destination,
+        origin,
+        origin_exit,
+        opposite={"east": "west", "west": "east"},
+        exit_edge=lambda tile, exit_state: ((tile.x, tile.y), (tile.x, tile.y)),
+        rotated_size=lambda width, height, rotation: (width, height),
+        new_exit=lambda **kwargs: ExitState(id="return", **kwargs),
+    )
+
+    assert reciprocal in destination.exits
+    assert (reciprocal.direction, reciprocal.kind, reciprocal.destination_tile_id, reciprocal.door_open) == (
+        "west",
+        "door",
+        "origin",
+        True,
+    )

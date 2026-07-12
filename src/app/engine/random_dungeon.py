@@ -108,6 +108,7 @@ from .map_connections import (
     persist_open_connection,
     reciprocal_exit_on_tile,
     refresh_tile_connections,
+    set_reciprocal_exit,
     sync_connection_state,
 )
 from .tag_compat import is_generated_tag_manifest
@@ -13403,32 +13404,15 @@ class RandomDungeonEngine:
         return None
 
     def _set_reciprocal_exit(self, destination: TileState, origin: TileState, origin_exit: ExitState) -> ExitState:
-        reciprocal_direction = OPPOSITE[origin_exit.direction]
-        origin_inside, _ = self._exit_edge(origin, origin_exit)
-        reciprocal = next(
-            (
-                exit_state
-                for exit_state in destination.exits
-                if exit_state.direction == reciprocal_direction and exit_state.destination_tile_id in (None, origin.id)
-                and self._exit_edge(destination, exit_state)[1] == origin_inside
-            ),
-            None,
-        ) or next((exit_state for exit_state in destination.exits if exit_state.direction == reciprocal_direction), None)
-        if reciprocal is None:
-            width, height = self._rotated_size(destination.footprint_width, destination.footprint_height, destination.rotation)
-            reciprocal = self._new_exit(
-                direction=reciprocal_direction,
-                kind=origin_exit.kind,
-                width=width,
-                height=height,
-                status="open",
-                span=origin_exit.span,
-            )
-            destination.exits.append(reciprocal)
-        reciprocal.status = "open"
-        reciprocal.destination_tile_id = origin.id
-        self._sync_connection_state(origin_exit, reciprocal, passed_through=True)
-        return reciprocal
+        return set_reciprocal_exit(
+            destination,
+            origin,
+            origin_exit,
+            opposite=OPPOSITE,
+            exit_edge=self._exit_edge,
+            rotated_size=self._rotated_size,
+            new_exit=self._new_exit,
+        )
 
     def _clear_door_state(self, exit_state: ExitState) -> None:
         clear_door_state(exit_state)

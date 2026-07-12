@@ -142,3 +142,50 @@ def initialize_outside_entrance(entrance: TileState, *, log: list[str] | None = 
                 f"The party entered through the {exit_state.direction} {exit_label}; it remains open behind them."
             )
     return changed
+
+
+def set_reciprocal_exit(
+    destination: TileState,
+    origin: TileState,
+    origin_exit: ExitState,
+    *,
+    opposite: Mapping[str, str],
+    exit_edge: Callable[[TileState, ExitState], tuple[tuple[int, int], tuple[int, int]]],
+    rotated_size: Callable[[int, int, int], tuple[int, int]],
+    new_exit: Callable[..., ExitState],
+) -> ExitState:
+    """Select or create the exit on a destination tile which returns to the origin."""
+    reciprocal_direction = opposite[origin_exit.direction]
+    origin_inside, _ = exit_edge(origin, origin_exit)
+    reciprocal = next(
+        (
+            exit_state
+            for exit_state in destination.exits
+            if exit_state.direction == reciprocal_direction
+            and exit_state.destination_tile_id in (None, origin.id)
+            and exit_edge(destination, exit_state)[1] == origin_inside
+        ),
+        None,
+    ) or next(
+        (exit_state for exit_state in destination.exits if exit_state.direction == reciprocal_direction),
+        None,
+    )
+    if reciprocal is None:
+        width, height = rotated_size(
+            destination.footprint_width,
+            destination.footprint_height,
+            destination.rotation,
+        )
+        reciprocal = new_exit(
+            direction=reciprocal_direction,
+            kind=origin_exit.kind,
+            width=width,
+            height=height,
+            status="open",
+            span=origin_exit.span,
+        )
+        destination.exits.append(reciprocal)
+    reciprocal.status = "open"
+    reciprocal.destination_tile_id = origin.id
+    sync_connection_state(origin_exit, reciprocal, passed_through=True)
+    return reciprocal
