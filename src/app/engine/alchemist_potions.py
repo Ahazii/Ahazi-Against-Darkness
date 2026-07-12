@@ -5,7 +5,8 @@ from typing import Any
 from ..schemas import AlchemistOrderState, EnemyState, PartyMemberState, SessionState
 from .dice import roll_d6
 from .equipment_effects import is_vampire, is_werecreature
-from .hirelings import load_hirelings_catalog, outside_party_gold, spend_outside_party_gold
+from .banking import outside_party_gold, spend_outside_party_gold
+from .hirelings import load_hirelings_catalog
 
 ALCHEMIST_FEE_GP = 50
 

@@ -8,6 +8,7 @@ from ..schemas import AbyssCampaignPlotState, EnemyState, PartyMemberState, Sess
 from .dice import roll_d3, roll_d6, roll_die, roll_exploding_for_level
 from .equipment_effects import is_vampire
 from .expert_skill_effects import has_skill
+from .banking import take_outside_party_funds
 
 
 PLOTS: dict[str, tuple[str, int]] = {
@@ -84,25 +85,15 @@ def _plot_progress_line(state: AbyssCampaignPlotState) -> str:
 
 
 def spend_living_party_gold(session: SessionState, amount: int) -> tuple[bool, list[str]]:
+    paid, available, contributions = take_outside_party_funds(session, amount)
+    if not paid:
+        return False, [f"The party needs {amount}gp but has {available}gp among living heroes and bank funds."]
     log: list[str] = []
-    living = [member for member in session.party if member.current_life > 0]
-    total = sum(member.gold + member.bank_gold for member in living)
-    if total < amount:
-        return False, [f"The party needs {amount}gp but has {total}gp among living heroes and bank funds."]
-    remaining = amount
-    for member in sorted(living, key=lambda item: item.marching_order):
-        bank_take = min(member.bank_gold, remaining)
-        if bank_take:
-            member.bank_gold -= bank_take
-            remaining -= bank_take
-            log.append(f"{member.name} contributes {bank_take}gp from bank funds.")
-        carry_take = min(member.gold, remaining)
-        if carry_take:
-            member.gold -= carry_take
-            remaining -= carry_take
-            log.append(f"{member.name} contributes {carry_take}gp carried gold.")
-        if remaining <= 0:
-            break
+    for contribution in contributions:
+        if contribution.bank_gold:
+            log.append(f"{contribution.name} contributes {contribution.bank_gold}gp from bank funds.")
+        if contribution.carried_gold:
+            log.append(f"{contribution.name} contributes {contribution.carried_gold}gp carried gold.")
     return True, log
 
 

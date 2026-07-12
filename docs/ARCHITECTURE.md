@@ -43,7 +43,7 @@ Key files:
 - `src/app/engine/rest.py` - rest eligibility/actions and reusable between-foray resource reset
 - `src/app/engine/camp.py` - shared camp-at-entrance preparation, recovery, fallen-hero lookup, refresh logging, and explored-map summaries
 - `src/app/engine/death_recovery.py` - body carrying, unattended-body theft, resurrection, burial, and fallen-hero Clue/Secret inheritance
-- `src/app/engine/banking.py` - camp-only home-bank access, deposits, withdrawals, and party banking
+- `src/app/engine/banking.py` - camp-only home-bank access, deposits, withdrawals, party banking, and shared outside-funds payments
 - `src/app/engine/tile_geometry.py` - rotation, exit spans, authored portal tracing, grid fallback, occupancy, visibility, bounds, scoring, and placement geometry shared by random and authored tiles
 - `src/app/engine/map_connections.py` - entrance opening plus reciprocal exit creation, lookup, refresh, persistence, repair, and synchronized door/passage state for reusable map connections
 - `src/app/engine/clues.py` - held-Clue ownership, grants, legacy migration, and session-total synchronization

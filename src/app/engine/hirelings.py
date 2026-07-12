@@ -15,6 +15,7 @@ from ..schemas import (
 )
 from .dice import roll_d6, roll_exploding_d6
 from .expert_skill_effects import front_rank_has_commanding_presence, has_skill
+from .banking import outside_party_gold, spend_outside_party_gold
 
 _ROOT = Path(__file__).resolve().parents[3]
 _CATALOG_PATH = _ROOT / "data" / "rules" / "hirelings.json"
@@ -249,40 +250,6 @@ def resolve_acolyte_blessing(
             session.expended_spells[cleric.character_id] = expended
             log.append("Blessing remains available this adventure.")
     return log
-
-
-def outside_party_gold(session: SessionState) -> int:
-    return sum(member.gold + member.bank_gold for member in session.party if member.current_life > 0)
-
-
-def spend_outside_party_gold(
-    session: SessionState,
-    amount: int,
-    *,
-    label: str,
-) -> tuple[bool, list[str]]:
-    if amount <= 0:
-        return True, []
-    if outside_party_gold(session) < amount:
-        return False, []
-    remaining = amount
-    log: list[str] = []
-    for member in sorted((item for item in session.party if item.current_life > 0), key=lambda item: item.marching_order):
-        if remaining <= 0:
-            break
-        bank_take = min(member.bank_gold, remaining)
-        if bank_take:
-            member.bank_gold -= bank_take
-            remaining -= bank_take
-            log.append(f"{member.name} pays {bank_take}gp from home bank funds for {label}.")
-        if remaining <= 0:
-            break
-        carry_take = min(member.gold, remaining)
-        if carry_take:
-            member.gold -= carry_take
-            remaining -= carry_take
-            log.append(f"{member.name} pays {carry_take}gp carried outside for {label}.")
-    return True, log
 
 
 def load_hirelings_catalog() -> dict[str, Any]:

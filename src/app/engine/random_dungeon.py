@@ -95,6 +95,8 @@ from .banking import (
     bank_access_member,
     deposit_bank_gold,
     deposit_party_bank_gold,
+    outside_party_gold,
+    spend_outside_party_gold,
     withdraw_bank_gold,
 )
 from .rest import reset_between_foray_resources
@@ -19412,7 +19414,7 @@ class RandomDungeonEngine:
             member.epic_trained = True
 
     def _outside_party_gold(self, session: SessionState) -> int:
-        return sum(member.gold + member.bank_gold for member in session.party if member.current_life > 0)
+        return outside_party_gold(session)
 
     def _spend_outside_party_gold(
         self,
@@ -19421,28 +19423,7 @@ class RandomDungeonEngine:
         *,
         label: str,
     ) -> tuple[bool, list[str]]:
-        if amount <= 0:
-            return True, []
-        if self._outside_party_gold(session) < amount:
-            return False, []
-        remaining = amount
-        log: list[str] = []
-        for member in sorted((item for item in session.party if item.current_life > 0), key=lambda item: item.marching_order):
-            if remaining <= 0:
-                break
-            bank_take = min(member.bank_gold, remaining)
-            if bank_take:
-                member.bank_gold -= bank_take
-                remaining -= bank_take
-                log.append(f"{member.name} pays {bank_take}gp from home bank funds for {label}.")
-            if remaining <= 0:
-                break
-            carry_take = min(member.gold, remaining)
-            if carry_take:
-                member.gold -= carry_take
-                remaining -= carry_take
-                log.append(f"{member.name} pays {carry_take}gp carried outside for {label}.")
-        return True, log
+        return spend_outside_party_gold(session, amount, label=label)
 
     def _touch(self, session: SessionState) -> SessionState:
         session.updated_at = now_utc()
