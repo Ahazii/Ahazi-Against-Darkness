@@ -76,6 +76,7 @@ from .druid_companion import (
     maybe_summon_on_wilderness_entry,
 )
 from .roster_sync import initial_xp_tally
+from .clues import default_clue_holder, ensure_individual_clues, sync_clue_total
 from .tag_compat import is_generated_tag_manifest
 from .split_party import (
     active_tile_id,
@@ -4601,43 +4602,15 @@ class RandomDungeonEngine:
         return session, changed
 
     def _sync_clue_total(self, session: SessionState) -> bool:
-        total = sum(max(0, member.clues) for member in session.party)
-        changed = session.clues_found != total
-        session.clues_found = total
-        return changed
+        return sync_clue_total(session)
 
     def _default_clue_holder(
         self, session: SessionState, character_id: str | None = None
     ) -> PartyMemberState | None:
-        if character_id:
-            selected = next(
-                (
-                    member
-                    for member in session.party
-                    if member.character_id == character_id and member.current_life > 0
-                ),
-                None,
-            )
-            if selected is not None:
-                return selected
-        living = [
-            member
-            for member in sorted(session.party, key=lambda item: item.marching_order)
-            if member.current_life > 0
-        ]
-        if living:
-            return living[0]
-        return session.party[0] if session.party else None
+        return default_clue_holder(session, character_id)
 
     def _ensure_individual_clues(self, session: SessionState) -> bool:
-        """Migrate legacy pooled Clues into an individual holder, then sync the display total."""
-        member_total = sum(max(0, member.clues) for member in session.party)
-        if session.clues_found > member_total:
-            holder = self._default_clue_holder(session)
-            if holder is not None:
-                holder.clues += session.clues_found - member_total
-                return self._sync_clue_total(session) or True
-        return self._sync_clue_total(session)
+        return ensure_individual_clues(session)
 
     def _queue_fallen_transfer(self, session: SessionState) -> None:
         pending = session.pending_fallen_transfer

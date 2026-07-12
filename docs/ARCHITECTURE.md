@@ -40,6 +40,7 @@ Key files:
 - `src/app/engine/inventory.py` - item and gold transfer between heroes (session and roster)
 - `src/app/engine/class_profiles.py` - class Life offsets, spell slots, level-up benefit notes
 - `src/app/engine/experience.py` - XP awards, level-up application, spell-slot assignment
+- `src/app/engine/clues.py` - held-Clue ownership, legacy migration, and session-total synchronization
 - `src/app/engine/dice.py` - dice helpers
 
 ## Persistence
