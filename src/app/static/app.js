@@ -1845,6 +1845,7 @@ function eligibleExpertSkillOptions(member) {
     } else if (alreadyLearned) {
       disabledReason = `${member.name} already knows ${skill.name}.`;
     }
+    if (disabledReason) continue;
     options.push({
       id,
       label: skill.name,
@@ -1872,6 +1873,7 @@ function eligibleExpertSkillOptions(member) {
     } else if (alreadyLearned) {
       disabledReason = `${member.name} already knows ${spell.name}.`;
     }
+    if (disabledReason) continue;
     options.push({
       id,
       label: `${spell.name} (expert spell)`,

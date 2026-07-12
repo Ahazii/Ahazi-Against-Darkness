@@ -100,7 +100,7 @@ def test_frontend_expert_skill_buttons_have_hover_text() -> None:
     assert "Minimum level:" in app_js
 
 
-def test_frontend_expert_skill_picker_dims_ineligible_options() -> None:
+def test_frontend_expert_skill_picker_hides_ineligible_options() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
 
     picker = _function_body("eligibleExpertSkillOptions", app_js)
@@ -109,7 +109,7 @@ def test_frontend_expert_skill_picker_dims_ineligible_options() -> None:
 
     assert 'disabledReason = `${member.name} is not an eligible class for ${skill.name}.`' in picker
     assert 'disabledReason = `${member.name} is not an eligible class for ${spell.name}.`' in picker
-    assert "disabled: Boolean(disabledReason)" in picker
+    assert "if (disabledReason) continue;" in picker
     assert "skillBtn.disabled = Boolean(option.disabled);" in append
     assert "if (option.disabled) return;" in append
     assert "if (option.disabledReason) {" in tooltip

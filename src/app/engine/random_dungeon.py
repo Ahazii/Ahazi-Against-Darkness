@@ -17979,14 +17979,21 @@ class RandomDungeonEngine:
         defeated = list(tile.defeated_enemies)
         if not defeated or self.rules is None:
             return 1
-        abyss_rolls = 0
+        abyss_rolls_by_group: dict[str, int] = {}
         for enemy in defeated:
+            group_rolls = 0
             for tag in enemy.tags:
                 if tag.startswith("abyss_treasure_rolls:"):
                     try:
-                        abyss_rolls += max(0, int(tag.split(":", 1)[1]))
+                        group_rolls = max(group_rolls, int(tag.split(":", 1)[1]))
                     except ValueError:
                         pass
+            if group_rolls:
+                # Abyss encounter rows describe one generated group (for
+                # example, 2d6 Chaotic Ratmen with two treasure rolls), not
+                # one treasure award for every member of that group.
+                abyss_rolls_by_group.setdefault(enemy.name, max(0, group_rolls))
+        abyss_rolls = sum(abyss_rolls_by_group.values())
         if abyss_rolls:
             return abyss_rolls
         return treasure_roll_count_from_defeated(

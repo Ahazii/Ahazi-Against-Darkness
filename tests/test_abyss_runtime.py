@@ -10,7 +10,7 @@ from app.engine.abyss_tactics import (
 )
 from app.engine.combat import CombatContext, assign_enemy_attacks
 from app.rules.repository import RulesRepository
-from app.schemas import EnemyState, PartyMemberState
+from app.schemas import EnemyState, PartyMemberState, TileState
 
 
 def _engine() -> RandomDungeonEngine:
@@ -62,6 +62,44 @@ def test_abyss_profile_routes_room_content_to_abyss_minions(monkeypatch) -> None
     assert len(content["enemies"]) == 5
     assert content["enemies"][0].name == "Hairy Goblins"
     assert any(enemy.name == "Goblin Leader" for enemy in content["enemies"])
+
+
+def test_abyss_group_treasure_rolls_apply_once_per_generated_group() -> None:
+    eng = _engine()
+    session = eng.create_session("abyss-group-treasure", "party-1", [_member()], ruleset_profile_id="abyss")
+    ratmen = [
+        EnemyState(
+            id=f"ratman-{index}",
+            name="Chaotic Ratmen",
+            category="minions",
+            level=7,
+            life=0,
+            max_life=1,
+            tags=["abyss", "ratman", "abyss_treasure_rolls:2"],
+        )
+        for index in range(12)
+    ]
+    leader = EnemyState(
+        id="ratman-leader",
+        name="Ratman Leader",
+        category="boss",
+        level=8,
+        life=0,
+        max_life=8,
+        tags=["abyss", "abyss_leader", "no_treasure"],
+    )
+    tile = TileState(
+        id="abyss-group-tile",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Abyss group room",
+        description="",
+        defeated_enemies=[*ratmen, leader],
+    )
+
+    assert eng._treasure_roll_count_for_tile(session, tile) == 2
 
 
 def test_abyss_treasure_content_uses_claimable_payload(monkeypatch) -> None:
