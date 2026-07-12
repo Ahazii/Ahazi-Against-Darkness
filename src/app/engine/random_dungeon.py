@@ -109,6 +109,7 @@ from .map_connections import (
     reciprocal_exit_on_tile,
     refresh_tile_connections,
     set_reciprocal_exit,
+    sync_linked_door,
     sync_connection_state,
 )
 from .tag_compat import is_generated_tag_manifest
@@ -13495,20 +13496,13 @@ class RandomDungeonEngine:
             )
 
     def _sync_linked_door(self, session: SessionState, current: TileState, exit_state: ExitState) -> None:
-        if exit_state.kind != "door" or not exit_state.destination_tile_id:
-            return
-        other_tile = self._tile_by_id(session, exit_state.destination_tile_id)
-        if other_tile is None:
-            return
-        reciprocal = self._reciprocal_exit_on_tile(
-            other_tile,
-            current.id,
-            direction=OPPOSITE[exit_state.direction],
+        sync_linked_door(
+            session,
+            current,
+            exit_state,
+            tile_by_id=self._tile_by_id,
+            opposite=OPPOSITE,
         )
-        if reciprocal:
-            self._sync_connection_state(exit_state, reciprocal, passed_through=exit_state.door_open)
-            if not exit_state.nailed_shut:
-                reciprocal.status = "open"
 
     def _overlaps_existing(self, session: SessionState, candidate: TileState) -> bool:
         candidate_cells = self._occupied_cells(candidate)

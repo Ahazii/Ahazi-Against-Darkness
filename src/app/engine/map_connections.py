@@ -189,3 +189,29 @@ def set_reciprocal_exit(
     reciprocal.destination_tile_id = origin.id
     sync_connection_state(origin_exit, reciprocal, passed_through=True)
     return reciprocal
+
+
+def sync_linked_door(
+    session: SessionState,
+    current: TileState,
+    exit_state: ExitState,
+    *,
+    tile_by_id: Callable[[SessionState, str | None], TileState | None],
+    opposite: Mapping[str, str],
+) -> None:
+    """Synchronize a manually changed door with its connected reciprocal door."""
+    if exit_state.kind != "door" or not exit_state.destination_tile_id:
+        return
+    other_tile = tile_by_id(session, exit_state.destination_tile_id)
+    if other_tile is None:
+        return
+    reciprocal = reciprocal_exit_on_tile(
+        other_tile,
+        current.id,
+        direction=opposite[exit_state.direction],
+    )
+    if reciprocal is None:
+        return
+    sync_connection_state(exit_state, reciprocal, passed_through=exit_state.door_open)
+    if not exit_state.nailed_shut:
+        reciprocal.status = "open"

@@ -4,6 +4,7 @@ from app.engine.map_connections import (
     reciprocal_exit_on_tile,
     sync_connection_state,
     set_reciprocal_exit,
+    sync_linked_door,
 )
 from app.schemas import ExitState, MapState, PartyMemberState, SessionState, TileState
 
@@ -99,3 +100,25 @@ def test_set_reciprocal_exit_creates_and_syncs_a_return_exit() -> None:
         "origin",
         True,
     )
+
+
+def test_sync_linked_door_updates_the_existing_return_door() -> None:
+    origin_exit = ExitState(id="out", direction="east", kind="door", door_open=True, door_type="unlocked", destination_tile_id="dest")
+    reciprocal = ExitState(id="return", direction="west", kind="door", door_open=False, destination_tile_id="origin")
+    origin = _tile([origin_exit])
+    origin.id = "origin"
+    destination = _tile([reciprocal])
+    destination.id = "dest"
+    hero = PartyMemberState(character_id="hero", name="Hero", class_id="warrior", class_name="Warrior", level=1, xp=0, gold=0, current_life=3, max_life=3, attack_bonus=0, defense_bonus=0, save_bonus=0)
+    session = SessionState(id="session", party_id="party", adventure_id="random", adventure_type="random", party=[hero], map_state=MapState(tiles=[origin, destination], current_tile_id="origin"), created_at="2026-01-01T00:00:00Z", updated_at="2026-01-01T00:00:00Z")
+
+    sync_linked_door(
+        session,
+        origin,
+        origin_exit,
+        tile_by_id=lambda active_session, tile_id: next((tile for tile in active_session.map_state.tiles if tile.id == tile_id), None),
+        opposite={"east": "west", "west": "east"},
+    )
+
+    assert reciprocal.door_open is True
+    assert reciprocal.door_type == "unlocked"
