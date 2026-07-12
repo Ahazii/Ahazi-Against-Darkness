@@ -97,22 +97,20 @@ from .experience import (
     CLUES_FOR_SECRET_XP,
     MINOR_ENCOUNTERS_FOR_XP,
     advancement_succeeds,
+    award_encounter_xp,
     apply_final_boss_treasure_bonus,
     apply_level_up,
     assign_level_up_spell,
     advancement_roll_explain,
     campaign_mode_label,
-    defeated_mixed_major_minor,
     dungeon_has_final_boss,
     force_final_boss_designation,
-    is_minor_encounter,
+    grant_xp_credit,
     level_up_gate_reason,
-    major_foes_defeated,
     map_elements_at_cap,
     mark_final_boss_candidate,
     normalize_unlimited_map_element_cap,
     old_school_level_cost,
-    old_school_xp_for_defeated,
     perform_advancement_roll,
     potion_in_inventory,
     potion_kind,
@@ -10616,20 +10614,7 @@ class RandomDungeonEngine:
         return holder
 
     def _grant_xp_credit(self, session: SessionState, amount: int, reason: str) -> None:
-        if amount <= 0 or session.xp_system == "slow_and_sure":
-            return
-        if session.xp_system == "old_school":
-            tier = tier_for_level(self._highest_character_level(session.party))
-            points = tier * 100 * amount
-            session.old_school_xp_tally += points
-            session.log.append(f"{reason} Old School XP +{points} (tally {session.old_school_xp_tally}).")
-            return
-        if session.xp_system == "slower_advancement":
-            session.slower_xp_bank += amount
-            session.log.append(f"{reason} Banked {amount} XP ({session.slower_xp_bank} total).")
-            return
-        session.xp_rolls_pending += amount
-        session.log.append(f"{reason} Earned {amount} XP roll(s). Assign from party sheets.")
+        grant_xp_credit(session, amount, reason)
 
     def _can_assign_level_up(self, session: SessionState, character_id: str) -> bool:
         survivors = [member for member in session.party if member.current_life > 0]
@@ -10644,45 +10629,7 @@ class RandomDungeonEngine:
         *,
         show_rolls: bool,
     ) -> None:
-        if not defeated or session.xp_system == "slow_and_sure":
-            return
-        if session.xp_system == "old_school":
-            points = old_school_xp_for_defeated(defeated)
-            if points:
-                session.old_school_xp_tally += points
-                session.log.append(f"Old School XP +{points} (tally {session.old_school_xp_tally}).")
-            return
-
-        majors = major_foes_defeated(defeated)
-        if majors and defeated_mixed_major_minor(defeated):
-            names = ", ".join(enemy.name for enemy in majors)
-            self._grant_xp_credit(
-                session,
-                2,
-                f"Mixed major+minions encounter ({names}; EE p.180):",
-            )
-            if any("final_boss" in enemy.tags for enemy in majors):
-                session.final_boss_defeated = True
-                self._grant_xp_credit(session, 1, "Final Boss slain:")
-        else:
-            for enemy in majors:
-                self._grant_xp_credit(session, 1, f"Defeated {enemy.name} (Major Foe):")
-                if "final_boss" in enemy.tags:
-                    session.final_boss_defeated = True
-                    self._grant_xp_credit(session, 1, "Final Boss slain:")
-        if majors:
-            return
-        if not is_minor_encounter(defeated):
-            return
-        session.minor_encounters_defeated += 1
-        if show_rolls:
-            session.log.append(
-                f"Minor encounter cleared ({session.minor_encounters_defeated}/"
-                f"{MINOR_ENCOUNTERS_FOR_XP} toward next XP credit)."
-            )
-        if session.minor_encounters_defeated >= MINOR_ENCOUNTERS_FOR_XP:
-            session.minor_encounters_defeated -= MINOR_ENCOUNTERS_FOR_XP
-            self._grant_xp_credit(session, 1, f"{MINOR_ENCOUNTERS_FOR_XP} minor encounters:")
+        award_encounter_xp(session, defeated, show_rolls=show_rolls)
 
     def _complete_level_up(
         self,

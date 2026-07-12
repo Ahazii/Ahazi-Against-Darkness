@@ -238,6 +238,67 @@ def old_school_xp_for_defeated(defeated: list[EnemyState]) -> int:
     return total
 
 
+def highest_character_level(party: list[PartyMemberState]) -> int:
+    return max((member.level for member in party), default=1)
+
+
+def grant_xp_credit(session: SessionState, amount: int, reason: str) -> None:
+    """Apply a rules-earned XP credit to the active campaign-mode ledger."""
+    if amount <= 0 or session.xp_system == "slow_and_sure":
+        return
+    if session.xp_system == "old_school":
+        tier = tier_for_level(highest_character_level(session.party))
+        points = tier * 100 * amount
+        session.old_school_xp_tally += points
+        session.log.append(f"{reason} Old School XP +{points} (tally {session.old_school_xp_tally}).")
+        return
+    if session.xp_system == "slower_advancement":
+        session.slower_xp_bank += amount
+        session.log.append(f"{reason} Banked {amount} XP ({session.slower_xp_bank} total).")
+        return
+    session.xp_rolls_pending += amount
+    session.log.append(f"{reason} Earned {amount} XP roll(s). Assign from party sheets.")
+
+
+def award_encounter_xp(session: SessionState, defeated: list[EnemyState], *, show_rolls: bool) -> None:
+    """Award encounter XP according to the active campaign mode and foe mix."""
+    if not defeated or session.xp_system == "slow_and_sure":
+        return
+    if session.xp_system == "old_school":
+        points = old_school_xp_for_defeated(defeated)
+        if points:
+            session.old_school_xp_tally += points
+            session.log.append(f"Old School XP +{points} (tally {session.old_school_xp_tally}).")
+        return
+
+    majors = major_foes_defeated(defeated)
+    if majors and defeated_mixed_major_minor(defeated):
+        names = ", ".join(enemy.name for enemy in majors)
+        grant_xp_credit(session, 2, f"Mixed major+minions encounter ({names}; EE p.180):")
+        if any("final_boss" in enemy.tags for enemy in majors):
+            session.final_boss_defeated = True
+            grant_xp_credit(session, 1, "Final Boss slain:")
+    else:
+        for enemy in majors:
+            grant_xp_credit(session, 1, f"Defeated {enemy.name} (Major Foe):")
+            if "final_boss" in enemy.tags:
+                session.final_boss_defeated = True
+                grant_xp_credit(session, 1, "Final Boss slain:")
+    if majors:
+        return
+    if not is_minor_encounter(defeated):
+        return
+    session.minor_encounters_defeated += 1
+    if show_rolls:
+        session.log.append(
+            f"Minor encounter cleared ({session.minor_encounters_defeated}/"
+            f"{MINOR_ENCOUNTERS_FOR_XP} toward next XP credit)."
+        )
+    if session.minor_encounters_defeated >= MINOR_ENCOUNTERS_FOR_XP:
+        session.minor_encounters_defeated -= MINOR_ENCOUNTERS_FOR_XP
+        grant_xp_credit(session, 1, f"{MINOR_ENCOUNTERS_FOR_XP} minor encounters:")
+
+
 def old_school_level_cost(level: int) -> int:
     return (tier_for_level(level) + 2) * 100
 
