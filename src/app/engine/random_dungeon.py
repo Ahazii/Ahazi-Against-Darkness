@@ -25,7 +25,7 @@ from ..schemas import (
     TileDefinition,
     TileState,
 )
-from .combat import CombatContext, CombatRound, apply_enemy_damage, attack_damage, attack_hits, foe_display_labels, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
+from .combat import CombatContext, CombatRound, apply_enemy_damage, attack_damage, attack_hits, clear_combat_state, end_bear_form, foe_display_labels, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
 from .combat_summary import summarize_combat_log
 from .subdual import apply_major_foe_level_drop
 from .fiendish_foes import (
@@ -4890,88 +4890,7 @@ class RandomDungeonEngine:
         self._record_peaceful_quest_progress(session)
 
     def _clear_combat_statuses(self, session: SessionState) -> None:
-        session.reaction_pending = False
-        session.reaction_checked = False
-        session.reaction_nudge_pending = False
-        session.reaction_pre_adjust_roll = None
-        session.reaction_key = None
-        session.reaction_bribe_gold = 0
-        session.reaction_bribe_weapons = 0
-        session.reaction_bribe_gold_per_foe = 0
-        session.reaction_bribe_weapons_per_foe = 0
-        session.reaction_bribe_foe_count = 0
-        session.reaction_trade_stock = []
-        session.reaction_trade_active = False
-        session.reaction_no_fools_gold = False
-        session.reaction_sleep_attack_bonus = 0
-        session.foes_strike_first = False
-        session.party_surprised = False
-        session.party_attacked_immediately = False
-        session.foe_flee_strike_pending = False
-        session.combat_lanterns_extinguished = False
-        session.spear_shield_readied = []
-        session.monster_encounter_start_applied = False
-        session.missile_used_character_ids = []
-        session.spell_used_character_ids = []
-        session.summoned_beast_life = 0
-        session.summoned_beast_owner_id = None
-        self._end_bear_form(session)
-        session.bear_form_owner_id = None
-        session.bear_form_start_life = 0
-        session.bear_form_pre_life = 0
-        session.subdual_penalty_ignored = False
-        session.illusionary_fog_active = False
-        session.illusionary_servant_active = False
-        session.illusionary_servant_owner_id = None
-        session.wielded_melee_weapons = {}
-        session.gladiator_counter_pending = {}
-        session.gladiator_counter_used = []
-        from .swashbuckler_traits import reset_swashbuckler_combat_flags
-
-        reset_swashbuckler_combat_flags(session)
-        session.evasion_character_ids = []
-        session.secret_weakness_foe_id = None
-        session.secret_weakness_character_id = None
-        session.secret_chaos_fanatics_active = False
-        session.terrifying_secret_pending_character_id = None
-        for character_id, item in dict(session.expert_knife_thrown or {}).items():
-            member = next((entry for entry in session.party if entry.character_id == character_id), None)
-            if member is not None and item and item not in member.inventory:
-                member.inventory.append(item)
-        session.expert_knife_thrown = {}
-        from .heroic_skill_effects import restore_forfeited_shields
-
-        session.log.extend(restore_forfeited_shields(session))
-        combat_statuses = {
-            "protection",
-            "barkskin",
-            "illusionary armor",
-            "bear form",
-            "illusionary sword",
-            "specter swarm",
-            "mirror image",
-            "strength +1",
-        }
-        for member in session.party:
-            disease_statuses = [status for status in member.statuses if status.lower().startswith("disease pending:")]
-            for status in disease_statuses:
-                try:
-                    damage = int(status.split(":", 1)[1].strip().split()[0])
-                except (IndexError, ValueError):
-                    damage = 1
-                member.current_life = max(0, member.current_life - damage)
-                session.log.append(f"{member.name} loses {damage} Life from lingering disease at encounter end.")
-                if member.current_life <= 0:
-                    session.log.append(f"{member.name} falls.")
-            member.statuses = [
-                status
-                for status in member.statuses
-                if status.split("(")[0].strip().lower() not in combat_statuses
-                and not status.lower().startswith("mirror image")
-                and not status.lower().startswith("poisoned")
-                and not status.lower().startswith("disease pending:")
-                and status.lower() not in {"attack penalty (poison) -1", "attack penalty (magic) -1", "no exploding attacks (fear)", "tar covered", "tar in eyes -1", "pinned by mantlebeast", "engulfed by acid cube", "confused (doppelganger)", "mantlebeast free strike"}
-            ]
+        clear_combat_state(session)
 
     def _check_reaction(
         self,
@@ -18510,27 +18429,7 @@ class RandomDungeonEngine:
                 )
 
     def _end_bear_form(self, session: SessionState) -> None:
-        owner_id = session.bear_form_owner_id
-        if not owner_id:
-            return
-        member = next((item for item in session.party if item.character_id == owner_id), None)
-        if member is None:
-            session.bear_form_owner_id = None
-            session.bear_form_start_life = 0
-            session.bear_form_pre_life = 0
-            return
-        damage_as_bear = max(0, session.bear_form_start_life - member.current_life)
-        carry_over = damage_as_bear // 2
-        member.current_life = max(0, session.bear_form_pre_life - carry_over)
-        if damage_as_bear:
-            session.log.append(
-                f"{member.name} reverts from bear form; half the wounds carry over ({carry_over} damage)."
-            )
-        elif any(status.strip().lower() == "bear form" for status in member.statuses):
-            session.log.append(f"{member.name} reverts from bear form unscathed.")
-        session.bear_form_owner_id = None
-        session.bear_form_start_life = 0
-        session.bear_form_pre_life = 0
+        end_bear_form(session)
 
     def _foes_strike_summoned_beast(
         self,
