@@ -1,8 +1,11 @@
 from app.engine.tile_geometry import (
+    cells_outside_bounds,
     default_entry_cell,
     exit_cells,
     max_exit_span,
     occupied_cells,
+    occupied_cells_from_rows,
+    placement_score,
     trace_exit_portal,
     rotate_cell,
     rotate_direction,
@@ -10,7 +13,7 @@ from app.engine.tile_geometry import (
     state_rows,
     visible_cells,
 )
-from app.schemas import TileState
+from app.schemas import ExitState, TileState
 
 
 def test_rotation_and_size_keep_rectangular_tile_coordinates_aligned() -> None:
@@ -64,3 +67,10 @@ def test_trace_exit_portal_stops_at_a_clipped_authored_cell() -> None:
     assert inside == (1, 0)
     assert outside == (2, 0)
     assert throat == set()
+
+
+def test_candidate_occupancy_bounds_and_score_use_shared_geometry() -> None:
+    assert occupied_cells_from_rows(5, 6, 2, 2, ["10", "01"]) == {(5, 6), (6, 7)}
+    assert occupied_cells_from_rows(5, 6, 2, 2, ["00", "00"]) == {(5, 6), (5, 7), (6, 6), (6, 7)}
+    assert cells_outside_bounds({(0, 0), (2, 1)}, 2, 2) is True
+    assert placement_score(["10"], ["11"], [ExitState(id="exit", direction="east", kind="passage")]) == (1, 2, 1)

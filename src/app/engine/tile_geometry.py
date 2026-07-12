@@ -234,3 +234,38 @@ def authored_exit_edge(
         (tile.x + inside_local[0], tile.y + inside_local[1]),
         (tile.x + outside_local[0], tile.y + outside_local[1]),
     )
+
+
+def cells_outside_bounds(cells: set[tuple[int, int]], width: int, height: int) -> bool:
+    return any(cell_x < 0 or cell_y < 0 or cell_x >= width or cell_y >= height for cell_x, cell_y in cells)
+
+
+def occupied_cells_from_rows(
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    rows: list[str] | None,
+) -> set[tuple[int, int]]:
+    """Resolve a candidate tile's occupied cells from its walkable grid or footprint."""
+    if rows is None:
+        return footprint_cells(x, y, width, height)
+    cells = {
+        (x + local_x, y + local_y)
+        for local_y, row in enumerate(rows)
+        for local_x, value in enumerate(row)
+        if value != "0"
+    }
+    return cells or footprint_cells(x, y, width, height)
+
+
+def placement_score(
+    walkable: list[str],
+    visible: list[str],
+    exits: list[ExitState],
+) -> tuple[int, int, int]:
+    return (
+        sum(1 for row in walkable for char in row if char != "0"),
+        sum(1 for row in visible for char in row if char != "0"),
+        sum(1 for exit_state in exits if exit_state.status != "blocked"),
+    )

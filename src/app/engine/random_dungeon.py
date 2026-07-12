@@ -90,14 +90,17 @@ from .treasure_awards import (
 )
 from .tile_geometry import (
     EXIT_SPAN_STEPS,
+    cells_outside_bounds,
     default_entry_cell,
     footprint_cells,
     exit_cells,
     exit_offset,
     max_exit_span,
     occupied_cells,
+    occupied_cells_from_rows,
     authored_exit_edge,
     position_from_offset,
+    placement_score,
     rotate_cell,
     rotate_direction,
     rotated_size,
@@ -12680,10 +12683,7 @@ class RandomDungeonEngine:
         return -len(conflict_ids), displayed_exits, walkable_count, visible_count, usable_exits
 
     def _placement_score(self, placement: Placement) -> tuple[int, int, int]:
-        walkable_count = sum(1 for row in placement.walkable for char in row if char != "0")
-        visible_count = sum(1 for row in placement.visible for char in row if char != "0")
-        usable_exits = sum(1 for exit_state in placement.exits if exit_state.status != "blocked")
-        return walkable_count, visible_count, usable_exits
+        return placement_score(placement.walkable, placement.visible, placement.exits)
 
     def _roll_generated_tile_key(self, session: SessionState) -> str:
         tiles = self._tiles_for_session(session)
@@ -13812,9 +13812,7 @@ class RandomDungeonEngine:
     def _outside_paper_bounds(self, session: SessionState, cells: set[tuple[int, int]]) -> bool:
         if session.map_bounds_mode != "paper":
             return False
-        width = session.map_state.width
-        height = session.map_state.height
-        return any(cell_x < 0 or cell_y < 0 or cell_x >= width or cell_y >= height for cell_x, cell_y in cells)
+        return cells_outside_bounds(cells, session.map_state.width, session.map_state.height)
 
     def _truncated_placement(
         self,
@@ -14445,16 +14443,8 @@ class RandomDungeonEngine:
         tile_def: TileDefinition | None,
         rotation: int,
     ) -> set[tuple[int, int]]:
-        if tile_def is None:
-            return self._footprint_cells(x, y, width, height)
-        rows = self._rotated_walkable(tile_def, rotation)
-        cells = {
-            (x + local_x, y + local_y)
-            for local_y, row in enumerate(rows)
-            for local_x, value in enumerate(row)
-            if value != "0"
-        }
-        return cells or self._footprint_cells(x, y, width, height)
+        rows = self._rotated_walkable(tile_def, rotation) if tile_def is not None else None
+        return occupied_cells_from_rows(x, y, width, height, rows)
 
     def _reserved_exit_cells(
         self,
