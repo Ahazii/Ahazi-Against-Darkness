@@ -165,7 +165,7 @@ def test_xp_roll_levels_up_on_six(monkeypatch) -> None:
         created_at="2026-01-01T00:00:00Z",
         updated_at="2026-01-01T00:00:00Z",
     )
-    monkeypatch.setattr("app.engine.random_dungeon.perform_advancement_roll", lambda member_or_level, bonus=0, purpose="level_up": __import__("app.engine.dice", fromlist=["AdvancementRollResult"]).AdvancementRollResult(natural=6, total=6, sides=6, modifier=bonus))
+    monkeypatch.setattr("app.engine.experience.perform_advancement_roll", lambda member_or_level, bonus=0, purpose="level_up": __import__("app.engine.dice", fromlist=["AdvancementRollResult"]).AdvancementRollResult(natural=6, total=6, sides=6, modifier=bonus))
     eng.advance(session, "xp_roll", character_id="h", advancement_fork="level_up")
     assert hero.level == 2
     assert hero.max_life == 8
@@ -207,7 +207,7 @@ def test_expert_tier_xp_roll_levels_up(monkeypatch) -> None:
     from app.engine.dice import AdvancementRollResult
 
     monkeypatch.setattr(
-        "app.engine.random_dungeon.perform_advancement_roll",
+        "app.engine.experience.perform_advancement_roll",
         lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(natural=8, total=10, sides=8, modifier=2),
     )
     eng.advance(session, "xp_roll", character_id="h", advancement_fork="level_up")

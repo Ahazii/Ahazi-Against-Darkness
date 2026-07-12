@@ -75,7 +75,7 @@ def test_learn_heroic_skill_on_success(monkeypatch) -> None:
     )
     session = _session(party=[warrior], xp_rolls_pending=1, xp_system="classical")
     monkeypatch.setattr(
-        "app.engine.random_dungeon.perform_advancement_roll",
+        "app.engine.experience.perform_advancement_roll",
         lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(
             natural=10, total=14, sides=10, modifier=4, purpose=purpose
         ),

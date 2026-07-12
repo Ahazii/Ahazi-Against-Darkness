@@ -22,7 +22,7 @@ from .tier_advancement import (
     tier_band_name,
     training_from_member,
 )
-from .tier_skills import advancement_fork_label, validate_advancement_choice
+from .tier_skills import available_advancement_forks, advancement_fork_label, validate_advancement_choice
 from .heroic_skill_effects import consume_training_focus_bonus
 
 MINOR_CATEGORIES = {"vermin", "minions"}
@@ -428,6 +428,97 @@ def apply_slower_advancement(
         session.log.append(
             f"{member.name} fails to learn the {advancement_fork_label(fork).lower()} "
             f"(needs > {member.level} with bonus)."
+        )
+
+
+def apply_classical_xp_roll(
+    session: SessionState,
+    character_id: str | None,
+    *,
+    show_rolls: bool,
+    explain_math: bool,
+    advancement_fork: str | None,
+    expert_skill_id: str | None,
+    expert_skill_target: str | None,
+    heroic_skill_id: str | None,
+    legendary_skill_id: str | None,
+    heroic_skill_target: str | None,
+    expert_catalog: list[dict],
+    heroic_catalog: list[dict],
+    legendary_catalog: list[dict],
+    can_assign_level_up: Callable[[SessionState, str], bool],
+    apply_success: Callable[[PartyMemberState, str], None],
+) -> None:
+    """Spend one pending Classical XP roll on a validated advancement fork."""
+    if session.level_up_spell_pending_character_id:
+        pending = next(
+            (item for item in session.party if item.character_id == session.level_up_spell_pending_character_id),
+            None,
+        )
+        name = pending.name if pending else "the hero"
+        session.log.append(f"Choose a spell for {name} before spending another XP roll.")
+        return
+    if session.mode == "combat":
+        session.log.append("XP rolls wait until combat ends.")
+        return
+    if session.xp_system != "classical":
+        session.log.append(f"Use the {campaign_mode_label(session.xp_system)} advancement action instead.")
+        return
+    if session.xp_rolls_pending <= 0:
+        session.log.append("No XP rolls are available.")
+        return
+    member = next((item for item in session.party if item.character_id == character_id), None)
+    if member is None or member.current_life <= 0:
+        session.log.append("Choose a living hero for the XP roll.")
+        return
+    if not can_assign_level_up(session, character_id or ""):
+        session.log.append("Another hero must take the next level (same PC cannot level twice in a row).")
+        return
+
+    allowed = available_advancement_forks(member)
+    fork = advancement_fork or (allowed[0] if len(allowed) == 1 else None)
+    blocked = validate_advancement_choice(
+        member,
+        fork or "",
+        expert_catalog=expert_catalog,
+        heroic_catalog=heroic_catalog,
+        legendary_catalog=legendary_catalog,
+        expert_skill_id=expert_skill_id,
+        expert_skill_target=expert_skill_target,
+        heroic_skill_id=heroic_skill_id,
+        legendary_skill_id=legendary_skill_id,
+        heroic_skill_target=heroic_skill_target,
+    )
+    if fork is None or blocked:
+        session.log.append(blocked or f"Choose {', '.join(advancement_fork_label(item) for item in allowed)}.")
+        return
+
+    purpose = {
+        "level_up": "level_up",
+        "learn_expert_skill": "learn_expert_skill",
+        "learn_heroic_skill": "learn_heroic_skill",
+        "learn_legendary_skill": "learn_legendary_skill",
+    }[fork]
+    session.xp_rolls_pending -= 1
+    focus_bonus = consume_training_focus_bonus(session, member.character_id)
+    result = perform_advancement_roll(member, purpose=purpose, bonus=focus_bonus)
+    if focus_bonus:
+        session.log.append(f"{member.name} applies Training Focus (+{focus_bonus}).")
+    if show_rolls:
+        session.log.append(
+            f"{advancement_fork_label(fork)} roll for {member.name}: {result.die_label} = {result.natural}"
+            + (f" + {result.modifier} = {result.total}" if result.modifier else "")
+            + f" vs Level {member.level}."
+        )
+    if explain_math:
+        session.log.append(advancement_roll_explain(member))
+    if advancement_succeeds(result, member.level):
+        apply_success(member, fork)
+    elif fork == "level_up":
+        session.log.append(f"{member.name} fails to advance (needs > {member.level}).")
+    else:
+        session.log.append(
+            f"{member.name} fails to learn the {advancement_fork_label(fork).lower()} (needs > {member.level})."
         )
 
 
