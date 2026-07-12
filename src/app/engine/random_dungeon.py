@@ -77,6 +77,7 @@ from .druid_companion import (
 )
 from .roster_sync import initial_xp_tally
 from .clues import default_clue_holder, ensure_individual_clues, sync_clue_total
+from .rest import reset_between_foray_resources
 from .tag_compat import is_generated_tag_manifest
 from .split_party import (
     active_tile_id,
@@ -12834,94 +12835,7 @@ class RandomDungeonEngine:
 
     def _reset_between_foray_resources(self, session: SessionState) -> None:
         self._clear_combat_statuses(session)
-        session.missile_used_character_ids = []
-        session.spell_used_character_ids = []
-        session.alchemist_potion_bought = []
-        session.alchemist_poison_bought = []
-        session.potion_used_character_ids = []
-        session.bandage_used_character_ids = []
-        session.herbal_tonic_used_character_ids = []
-        session.expended_spells = {}
-        session.healing_prayer_uses = {}
-        session.rest_used = False
-        session.rest_available = False
-        session.rest_block_reason = ""
-        session.rage_uses_spent = {}
-        session.luck_points_spent = {}
-        session.panache_points = {}
-        session.paladin_prayer_spent = {}
-        session.nourishing_meal_used = False
-        session.pending_save_reroll = None
-        session.acrobat_tricks_spent = {}
-        session.gnome_gadgets_spent = {}
-        session.mushroom_spore_uses = {}
-        session.foe_level_penalties = {}
-        session.assassin_hidden_id = None
-        session.assassin_mark_enemy_id = None
-        session.gnome_smokescreen_ready = False
-        session.skip_parting_flee = False
-        session.puffball_flee = False
-        session.acrobat_skip_attack = {}
-        session.prisoner_chain_skip_attack = {}
-        session.gladiator_counter_pending = {}
-        session.gladiator_counter_used = []
-        from .swashbuckler_traits import reset_swashbuckler_combat_flags
-
-        reset_swashbuckler_combat_flags(session)
-        session.swashbuckler_lucky_hat_used = []
-        session.swashbuckler_daring_escape_used = []
-        session.swashbuckler_blade_dance_used = []
-        session.swashbuckler_blade_dance_bonus = {}
-        session.swashbuckler_blade_dance_attack_spent = []
-        session.swashbuckler_daring_escape_bonus = {}
-        session.evasion_character_ids = []
-        session.expert_encounter_spent = {}
-        session.expert_protective_incense_target = None
-        session.expert_knife_thrown = {}
-        session.pending_treasure_reroll_tile_id = None
-        session.pending_hidden_complication_reroll_tile_id = None
-        session.pending_search_reroll_tile_id = None
-        session.pending_pole_search_reroll_tile_id = None
-        session.pending_search_reward_tile_id = None
-        session.pending_tile_content_choice_tile_id = None
-        session.firearm_broken = {}
-        session.firearm_reload_turns = {}
-        session.crossbow_needs_reload = []
-        session.pole_carrier_id = None
-        session.divine_smite_used = []
-        session.army_of_dolls_deployed = []
-        session.sacrifice_shield_used = []
-        session.hyphae_used = []
-        session.kukla_doll_active = []
-        session.graceful_save_reroll_id = None
-        session.hyphae_search_bonus_id = None
-        session.paladin_steed_active_id = None
-        session.continual_light_owner_id = None
-        session.heroes_rest_used = False
-        session.heroic_courage_used = []
-        session.legendary_courage_used = []
-        session.training_focus_bonus = {}
-        session.aggressive_stance_penalty = []
-        session.heroic_carnage_bonus = {}
-        session.heros_banquet_used = False
-        session.alter_weather_active = False
-        session.forest_pathway_active = False
-        session.glamour_mask_character_id = None
-        session.glamour_mask_reroll_available = False
-        session.song_of_elidra_used = False
-        session.mass_blessing_used = False
-        session.mass_blessing_active_round = -1
-        session.protected_by_fate_used = []
-        session.yogic_preservation_used = []
-        session.restore_mental_capacity_used = False
-        session.copy_grimoire_used = []
-        session.ward_of_protection_targets = {}
-        for member in session.party:
-            member.statuses = [
-                status for status in member.statuses if status.strip().lower() != "continual light"
-            ]
-        if session.druid_companion_life > 0 and session.druid_companion_max_life > 0:
-            session.druid_companion_life = session.druid_companion_max_life
+        reset_between_foray_resources(session)
 
     def _camp_outside_to_return(self, session: SessionState) -> None:
         entrance = self._entrance_tile(session)
