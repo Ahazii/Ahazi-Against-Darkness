@@ -77,6 +77,12 @@ from .druid_companion import (
 )
 from .roster_sync import initial_xp_tally
 from .clues import default_clue_holder, ensure_individual_clues, sync_clue_total
+from .camp import (
+    append_between_foray_refresh_log,
+    explored_map_element_count,
+    fallen_in_dungeon,
+    heal_living_party,
+)
 from .rest import reset_between_foray_resources
 from .treasure_awards import (
     apply_secret_door_treasure_doubling,
@@ -12751,12 +12757,7 @@ class RandomDungeonEngine:
         return random.choice(valid_generated)
 
     def _fallen_in_dungeon(self, session: SessionState) -> list[str]:
-        fallen: list[str] = []
-        for tile in session.map_state.tiles:
-            for character_id in tile.fallen_character_ids:
-                if character_id not in fallen:
-                    fallen.append(character_id)
-        return fallen
+        return fallen_in_dungeon(session)
 
     def _entrance_tile(self, session: SessionState) -> TileState:
         for tile in session.map_state.tiles:
@@ -12765,21 +12766,10 @@ class RandomDungeonEngine:
         return min(session.map_state.tiles, key=lambda item: (item.y, item.x))
 
     def _heal_living_party(self, session: SessionState) -> list[str]:
-        healed_names: list[str] = []
-        for member in session.party:
-            if member.current_life <= 0:
-                continue
-            if member.current_life < member.max_life:
-                healed_names.append(member.name)
-            member.current_life = member.max_life
-        return healed_names
+        return heal_living_party(session)
 
     def _log_between_foray_refresh(self, session: SessionState, healed_names: list[str]) -> None:
-        if healed_names:
-            session.log.append(f"Living heroes recover to full Life: {', '.join(healed_names)}.")
-        else:
-            session.log.append("Living heroes are ready to return when preparations are done.")
-        session.log.append("Spells, prayers, rest, and per-foray class resources refresh at camp.")
+        append_between_foray_refresh_log(session, healed_names)
 
     def _retreat_from_dungeon(
         self,
@@ -12852,10 +12842,7 @@ class RandomDungeonEngine:
         session.summary = []
         self._reset_between_foray_resources(session)
         healed_names = self._heal_living_party(session)
-        visited = set(session.visited_tile_ids or [])
-        if session.map_state.current_tile_id:
-            visited.add(session.map_state.current_tile_id)
-        explored = max(1, len(visited), len(session.map_state.tiles or []))
+        explored = explored_map_element_count(session)
         if session.imported_entrance_pending or explored <= 1:
             session.log.append("The party makes camp outside the dungeon entrance.")
         else:
