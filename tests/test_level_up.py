@@ -4,7 +4,12 @@ from pathlib import Path
 
 from app.engine.class_profiles import max_life_for_level, spell_slot_count
 from app.engine.dice import AdvancementRollResult
-from app.engine.experience import apply_level_up, apply_old_school_level_up, assign_level_up_spell
+from app.engine.experience import (
+    apply_level_up,
+    apply_old_school_level_up,
+    apply_slower_advancement,
+    assign_level_up_spell,
+)
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import MapState, PartyMemberState, SessionState, TileState
@@ -68,6 +73,52 @@ def test_apply_old_school_level_up_spends_tally_and_uses_completion_callback() -
     assert completed == [hero.character_id]
     assert session.old_school_xp_tally == 0
     assert "Old School XP spent: 300 (tally 0)." in session.log
+
+
+def test_apply_slower_advancement_spends_minimum_bank_and_calls_success(monkeypatch) -> None:
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    session = _session(party=[hero], xp_system="slower_advancement", slower_xp_bank=2)
+    monkeypatch.setattr(
+        "app.engine.experience.perform_advancement_roll",
+        lambda *_args, **_kwargs: AdvancementRollResult(natural=6, total=6, sides=6, modifier=0),
+    )
+    completed: list[tuple[str, str]] = []
+
+    apply_slower_advancement(
+        session,
+        hero.character_id,
+        xp_spent=None,
+        show_rolls=True,
+        explain_math=False,
+        advancement_fork="level_up",
+        expert_skill_id=None,
+        expert_skill_target=None,
+        heroic_skill_id=None,
+        legendary_skill_id=None,
+        heroic_skill_target=None,
+        expert_catalog=[],
+        heroic_catalog=[],
+        legendary_catalog=[],
+        can_assign_level_up=lambda _session, _character_id: True,
+        apply_success=lambda member, fork: completed.append((member.character_id, fork)),
+    )
+
+    assert session.slower_xp_bank == 0
+    assert completed == [(hero.character_id, "level_up")]
+    assert any("Hero" in line and "2 XP banked" in line for line in session.log)
 
 
 def test_wizard_level_up_pending_spell_pick() -> None:

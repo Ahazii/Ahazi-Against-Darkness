@@ -39,7 +39,7 @@ Key files:
 - `src/app/engine/magic_items.py` - charged wand/staff parsing, `use_magic_item` cast, charge consumption
 - `src/app/engine/inventory.py` - item and gold transfer between heroes (session and roster)
 - `src/app/engine/class_profiles.py` - class Life offsets, spell slots, level-up benefit notes
-- `src/app/engine/experience.py` - XP awards, Classical and Old School XP spending, level-up application, spell-slot assignment
+- `src/app/engine/experience.py` - XP awards, Classical, Old School, and Slower Advancement spending, level-up application, spell-slot assignment
 - `src/app/engine/rest.py` - rest eligibility, recovery, wandering-check resolution, and reusable between-foray resource reset
 - `src/app/engine/camp.py` - shared camp-at-entrance preparation, recovery, fallen-hero lookup, refresh logging, and explored-map summaries
 - `src/app/engine/death_recovery.py` - body carrying, unattended-body theft, resurrection, burial, and fallen-hero Clue/Secret inheritance

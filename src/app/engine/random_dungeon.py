@@ -174,6 +174,7 @@ from .experience import (
     mark_final_boss_candidate,
     normalize_unlimited_map_element_cap,
     apply_old_school_level_up,
+    apply_slower_advancement,
     perform_advancement_roll,
     potion_in_inventory,
     potion_kind,
@@ -19138,72 +19139,23 @@ class RandomDungeonEngine:
         legendary_skill_id: str | None = None,
         heroic_skill_target: str | None = None,
     ) -> None:
-        if session.level_up_spell_pending_character_id:
-            session.log.append("Finish the pending spell choice before spending more banked XP.")
-            return
-        if session.xp_system != "slower_advancement":
-            session.log.append("Slower Advancement is not active for this adventure.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to advance.")
-            return
-        if not self._can_assign_level_up(session, character_id or ""):
-            session.log.append("Another hero must level next (same PC cannot level twice in a row).")
-            return
-        target_level = member.level + 1
-        minimum = target_level
-        spent = xp_spent if xp_spent is not None else minimum
-        if spent < minimum:
-            session.log.append(f"Spend at least {minimum} banked XP to try for Level {target_level}.")
-            return
-        if session.slower_xp_bank < spent:
-            session.log.append(f"Need {spent} banked XP (have {session.slower_xp_bank}).")
-            return
-
-        fork = advancement_fork or "level_up"
-        blocked = validate_advancement_choice(
-            member,
-            fork,
-            expert_catalog=self.rules.expert_skills(),
-            heroic_catalog=self.rules.heroic_skills(),
-            legendary_catalog=self.rules.legendary_skills(),
+        apply_slower_advancement(
+            session,
+            character_id,
+            xp_spent=xp_spent,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            advancement_fork=advancement_fork,
             expert_skill_id=expert_skill_id,
             expert_skill_target=expert_skill_target,
             heroic_skill_id=heroic_skill_id,
             legendary_skill_id=legendary_skill_id,
             heroic_skill_target=heroic_skill_target,
-        )
-        if blocked:
-            session.log.append(blocked)
-            return
-
-        purpose = {
-            "level_up": "level_up",
-            "learn_expert_skill": "learn_expert_skill",
-            "learn_heroic_skill": "learn_heroic_skill",
-            "learn_legendary_skill": "learn_legendary_skill",
-        }[fork]
-        session.slower_xp_bank -= spent
-        bonus = spent - minimum
-        from .heroic_skill_effects import consume_training_focus_bonus
-
-        focus_bonus = consume_training_focus_bonus(session, member.character_id)
-        bonus += focus_bonus
-        result = perform_advancement_roll(member, bonus=bonus, purpose=purpose)
-        if focus_bonus:
-            session.log.append(f"{member.name} applies Training Focus (+{focus_bonus}).")
-        if show_rolls:
-            session.log.append(
-                f"Slower {advancement_fork_label(fork).lower()} for {member.name}: {spent} XP banked, "
-                f"{result.die_label} = {result.natural}"
-                + (f" + {result.modifier} = {result.total}" if result.modifier else "")
-                + f" vs Level {member.level}."
-            )
-        if explain_math:
-            session.log.append(advancement_roll_explain(member))
-        if advancement_succeeds(result, member.level):
-            self._apply_advancement_success(
+            expert_catalog=self.rules.expert_skills(),
+            heroic_catalog=self.rules.heroic_skills(),
+            legendary_catalog=self.rules.legendary_skills(),
+            can_assign_level_up=self._can_assign_level_up,
+            apply_success=lambda member, fork: self._apply_advancement_success(
                 session,
                 member,
                 fork,
@@ -19213,14 +19165,8 @@ class RandomDungeonEngine:
                 heroic_skill_id=heroic_skill_id,
                 legendary_skill_id=legendary_skill_id,
                 heroic_skill_target=heroic_skill_target,
-            )
-        elif fork == "level_up":
-            session.log.append(f"{member.name} fails to advance (needs > {member.level} with bonus).")
-        else:
-            session.log.append(
-                f"{member.name} fails to learn the {advancement_fork_label(fork).lower()} "
-                f"(needs > {member.level} with bonus)."
-            )
+            ),
+        )
 
     def _spend_training_xp_rolls(
         self,
