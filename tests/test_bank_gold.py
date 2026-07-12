@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.banking import deposit_bank_gold
 from app.rules.repository import RulesRepository
 from app.schemas import MapState, PartyMemberState, SessionState, TileState
 
@@ -97,3 +98,14 @@ def test_bank_is_unavailable_inside_dungeon() -> None:
     assert hero.gold == 50
     assert hero.bank_gold == 100
     assert sum("available only while camped outside" in entry for entry in session.log) == 2
+
+
+def test_direct_bank_deposit_keeps_camp_and_fallen_checks() -> None:
+    hero = member(gold=50)
+    hero.current_life = 0
+    session = session_with_party(party=[hero])
+
+    deposit_bank_gold(session, "h", 10)
+
+    assert (hero.gold, hero.bank_gold) == (50, 0)
+    assert "cannot use the bank while fallen" in session.log[-1]
