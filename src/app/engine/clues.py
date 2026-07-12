@@ -107,3 +107,36 @@ def spend_living_party_clues(session: SessionState, amount: int) -> tuple[bool, 
             break
     session.clues_found = max(0, session.clues_found - amount)
     return True, log
+
+
+def spend_preferred_clues(
+    session: SessionState,
+    amount: int,
+    *,
+    preferred_character_id: str | None = None,
+) -> bool:
+    """Spend held Clues from a preferred holder first, then party marching order."""
+    if amount <= 0:
+        return True
+    ensure_individual_clues(session)
+    if session.clues_found < amount:
+        return False
+    ordered: list[PartyMemberState] = []
+    preferred = default_clue_holder(session, preferred_character_id)
+    if preferred is not None:
+        ordered.append(preferred)
+    for member in sorted(session.party, key=lambda item: item.marching_order):
+        if all(existing.character_id != member.character_id for existing in ordered):
+            ordered.append(member)
+    remaining = amount
+    for member in ordered:
+        if remaining <= 0:
+            break
+        held = max(0, member.clues)
+        if held <= 0:
+            continue
+        spent = min(held, remaining)
+        member.clues -= spent
+        remaining -= spent
+    sync_clue_total(session)
+    return remaining == 0

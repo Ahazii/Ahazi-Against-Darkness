@@ -83,6 +83,7 @@ from .clues import (
     ensure_individual_clues,
     grant_clue,
     grant_clue_to_member,
+    spend_preferred_clues,
     sync_clue_total,
 )
 from .camp import (
@@ -4670,28 +4671,11 @@ class RandomDungeonEngine:
         from .hirelings import sage_clue_discount
 
         amount = sage_clue_discount(session, amount)
-        self._ensure_individual_clues(session)
-        if session.clues_found < amount:
-            return False
-        ordered: list[PartyMemberState] = []
-        preferred = self._default_clue_holder(session, preferred_character_id)
-        if preferred is not None:
-            ordered.append(preferred)
-        for member in sorted(session.party, key=lambda item: item.marching_order):
-            if all(existing.character_id != member.character_id for existing in ordered):
-                ordered.append(member)
-        remaining = amount
-        for member in ordered:
-            if remaining <= 0:
-                break
-            held = max(0, member.clues)
-            if held <= 0:
-                continue
-            spent = min(held, remaining)
-            member.clues -= spent
-            remaining -= spent
-        self._sync_clue_total(session)
-        return remaining == 0
+        return spend_preferred_clues(
+            session,
+            amount,
+            preferred_character_id=preferred_character_id,
+        )
 
     def _kerrak_dar_holder(self, session: SessionState) -> PartyMemberState | None:
         return next(

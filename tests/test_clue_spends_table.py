@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.clues import spend_preferred_clues
 from app.rules.repository import RulesRepository
 from app.schemas import MapState, PartyMemberState, SessionState, TileState
 
@@ -60,6 +61,41 @@ def test_clue_spend_engine_actions_are_registered() -> None:
         if action is None:
             continue
         assert action in registered, f"{key} -> {action}"
+
+
+def test_spend_preferred_clues_uses_selected_holder_before_party_order() -> None:
+    first = PartyMemberState(
+        character_id="first",
+        name="First",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        clues=1,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=1,
+    )
+    preferred = first.model_copy(update={"character_id": "preferred", "name": "Preferred", "clues": 2, "marching_order": 2})
+    tile = TileState(id="t1", x=0, y=0, tile_key="11", tile_type="room", title="Hall", description="Hall")
+    session = SessionState(
+        id="s1",
+        party_id="p1",
+        adventure_id="a1",
+        adventure_type="random",
+        party=[first, preferred],
+        map_state=MapState(tiles=[tile], current_tile_id="t1"),
+        clues_found=3,
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+
+    assert spend_preferred_clues(session, 3, preferred_character_id="preferred") is True
+    assert (preferred.clues, first.clues, session.clues_found) == (0, 0, 0)
 
 
 def test_special_discovery_kerrak_dar_hoard_spends_one_clue(monkeypatch) -> None:
