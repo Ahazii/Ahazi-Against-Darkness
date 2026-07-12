@@ -173,7 +173,7 @@ from .experience import (
     map_elements_at_cap,
     mark_final_boss_candidate,
     normalize_unlimited_map_element_cap,
-    old_school_level_cost,
+    apply_old_school_level_up,
     perform_advancement_roll,
     potion_in_inventory,
     potion_kind,
@@ -19110,27 +19110,17 @@ class RandomDungeonEngine:
         show_rolls: bool,
         new_spell: str | None = None,
     ) -> None:
-        if session.level_up_spell_pending_character_id:
-            session.log.append("Finish the pending spell choice before leveling again.")
-            return
-        if session.xp_system != "old_school":
-            session.log.append("Old School leveling is not active for this adventure.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to advance.")
-            return
-        if not self._can_assign_level_up(session, character_id or ""):
-            session.log.append("Another hero must level next (same PC cannot level twice in a row).")
-            return
-        cost = old_school_level_cost(member.level)
-        if session.old_school_xp_tally < cost:
-            session.log.append(f"Need {cost} XP (tally {session.old_school_xp_tally}).")
-            return
-        session.old_school_xp_tally -= cost
-        self._complete_level_up(session, member, new_spell=new_spell)
-        if show_rolls:
-            session.log.append(f"Old School XP spent: {cost} (tally {session.old_school_xp_tally}).")
+        apply_old_school_level_up(
+            session,
+            character_id,
+            can_assign_level_up=self._can_assign_level_up,
+            complete_level_up=lambda active_session, member: self._complete_level_up(
+                active_session,
+                member,
+                new_spell=new_spell,
+            ),
+            show_rolls=show_rolls,
+        )
 
     def _slower_xp_spend(
         self,

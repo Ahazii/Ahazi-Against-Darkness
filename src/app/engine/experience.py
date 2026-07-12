@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..schemas import EnemyState, PartyMemberState, SessionState
@@ -301,6 +302,38 @@ def award_encounter_xp(session: SessionState, defeated: list[EnemyState], *, sho
 
 def old_school_level_cost(level: int) -> int:
     return (tier_for_level(level) + 2) * 100
+
+
+def apply_old_school_level_up(
+    session: SessionState,
+    character_id: str | None,
+    *,
+    can_assign_level_up: Callable[[SessionState, str], bool],
+    complete_level_up: Callable[[SessionState, PartyMemberState], None],
+    show_rolls: bool,
+) -> None:
+    """Spend Old School XP on the next eligible living hero's level-up transaction."""
+    if session.level_up_spell_pending_character_id:
+        session.log.append("Finish the pending spell choice before leveling again.")
+        return
+    if session.xp_system != "old_school":
+        session.log.append("Old School leveling is not active for this adventure.")
+        return
+    member = next((item for item in session.party if item.character_id == character_id), None)
+    if member is None or member.current_life <= 0:
+        session.log.append("Choose a living hero to advance.")
+        return
+    if not can_assign_level_up(session, character_id or ""):
+        session.log.append("Another hero must level next (same PC cannot level twice in a row).")
+        return
+    cost = old_school_level_cost(member.level)
+    if session.old_school_xp_tally < cost:
+        session.log.append(f"Need {cost} XP (tally {session.old_school_xp_tally}).")
+        return
+    session.old_school_xp_tally -= cost
+    complete_level_up(session, member)
+    if show_rolls:
+        session.log.append(f"Old School XP spent: {cost} (tally {session.old_school_xp_tally}).")
 
 
 def spend_classical_training_xp(
