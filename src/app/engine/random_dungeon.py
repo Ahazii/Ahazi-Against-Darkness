@@ -46,6 +46,7 @@ from .death_recovery import (
     steal_from_unattended_bodies,
 )
 from .adventure_completion import AdventureCompletionCallbacks, complete_adventure
+from .combat_lifecycle import consume_sleeping_foe_attack_bonus, merge_party_outcome
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
 from .firearm import gnome_repair_firearm
 from .gem_items import remove_inventory_item
@@ -3116,7 +3117,7 @@ class RandomDungeonEngine:
         active_enemy_ids: set[str],
         standing_before: set[str],
     ) -> None:
-        session.party = self._merge_party_outcome(session.party, result.party)
+        session.party = merge_party_outcome(session.party, result.party)
         tile.enemies = result.enemies
         session.log.extend(result.log)
         known_defeated_ids = {enemy.id for enemy in tile.defeated_enemies}
@@ -6664,7 +6665,7 @@ class RandomDungeonEngine:
                 standing_before=standing_before,
             )
         else:
-            session.party = self._merge_party_outcome(session.party, outcome.party)
+            session.party = merge_party_outcome(session.party, outcome.party)
             tile.enemies = outcome.enemies
             if session.mode == "combat":
                 remaining = sum(1 for enemy in tile.enemies if enemy.life > 0)
@@ -9253,7 +9254,7 @@ class RandomDungeonEngine:
         from .terrain import resolve_play_context
 
         play_ctx = resolve_play_context(tile, session)
-        round_party_attack_bonus = self._consume_sleeping_foe_attack_bonus(session, tile)
+        round_party_attack_bonus = consume_sleeping_foe_attack_bonus(session, tile)
         foe_penalties = dict(session.foe_level_penalties)
         for foe_id, tier in (session.foe_taunt_active or {}).items():
             foe_penalties[foe_id] = foe_penalties.get(foe_id, 0) + int(tier)
@@ -9353,25 +9354,6 @@ class RandomDungeonEngine:
             show_rolls=show_rolls,
         )
 
-    def _consume_sleeping_foe_attack_bonus(self, session: SessionState, tile: TileState) -> int:
-        fighters = combat_party(session, tile.id)
-        bonus = session.reaction_sleep_attack_bonus or 2
-        prefix = "Sleeping foe +"
-        affected = [
-            member
-            for member in fighters
-            if member.current_life > 0 and any(entry.startswith(prefix) for entry in member.statuses)
-        ]
-        if not affected:
-            return 0
-        for member in affected:
-            member.statuses = [entry for entry in member.statuses if not entry.startswith(prefix)]
-        session.reaction_sleep_attack_bonus = 0
-        session.log.append(
-            f"Effect: Sleeping foe reaction grants +{bonus} Attack for this first combat round."
-        )
-        return bonus
-
     def _apply_combat_result(
         self,
         session: SessionState,
@@ -9387,7 +9369,7 @@ class RandomDungeonEngine:
             standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
         if active_enemy_ids is None:
             active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        session.party = self._merge_party_outcome(session.party, result.party)
+        session.party = merge_party_outcome(session.party, result.party)
         tile.enemies = result.enemies
         session.log.extend(result.log)
         if getattr(result, "combat_paused", False):
@@ -9584,18 +9566,6 @@ class RandomDungeonEngine:
         self._announce_hidden_treasure_claimable(session, tile)
         if not fled:
             self._log_room_recap_after_combat(session, tile)
-
-    def _merge_party_outcome(
-        self,
-        current_party: list[PartyMemberState],
-        outcome_party: list[PartyMemberState],
-    ) -> list[PartyMemberState]:
-        outcome_by_id = {member.character_id: member for member in outcome_party}
-        merged: list[PartyMemberState] = []
-        for member in current_party:
-            merged.append(outcome_by_id.pop(member.character_id, member))
-        merged.extend(outcome_by_id.values())
-        return sorted(merged, key=lambda member: member.marching_order)
 
     def _resolve_foe_flee_strike(
         self,
@@ -18566,7 +18536,7 @@ class RandomDungeonEngine:
             standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
             outcome = cast_sleep_effect(member, session.party, tile.enemies, show_rolls=show_rolls)
             session.log.extend(outcome.log)
-            session.party = self._merge_party_outcome(session.party, outcome.party)
+            session.party = merge_party_outcome(session.party, outcome.party)
             tile.enemies = outcome.enemies
             if outcome.combat_over and session.mode == "combat":
                 self._record_peaceful_quest_progress(session)

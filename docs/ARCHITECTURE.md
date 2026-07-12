@@ -29,6 +29,7 @@ Key files:
 - `src/app/engine/adventure_prompt.py` - external LLM prompt builder
 - `src/app/engine/adventure_allowlists.py` - allowlisted names for prompts and validation
 - `src/app/engine/combat.py` - combat resolution, encounter-end state cleanup, and temporary-effect expiry
+- `src/app/engine/combat_lifecycle.py` - session-level combat result merging and reaction-derived first-round state consumption
 - `src/app/engine/combat_modifiers.py` - poison foes, blade poison, magic resistance
 - `src/app/engine/monster_template_effects.py` - bestiary encounter_start/on_hit/per-turn template effects
 - `src/app/engine/weapons.py` - missile eligibility and weapon-type attack modifiers from inventory
