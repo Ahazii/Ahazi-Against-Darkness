@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from ..schemas import SessionState
+from collections.abc import Callable
+
+from ..schemas import SessionState, TileState
 
 
 def fallen_in_dungeon(session: SessionState) -> list[str]:
@@ -36,3 +38,22 @@ def explored_map_element_count(session: SessionState) -> int:
     if session.map_state.current_tile_id:
         visited.add(session.map_state.current_tile_id)
     return max(1, len(visited), len(session.map_state.tiles or []))
+
+
+def prepare_camp_outside(
+    session: SessionState,
+    entrance: TileState,
+    *,
+    refresh_connections: Callable[[SessionState, TileState], None],
+    initialize_entrance: Callable[[TileState], bool],
+    reset_resources: Callable[[SessionState], None],
+) -> list[str]:
+    """Move the party to the entrance and perform the shared camp refresh."""
+    session.map_state.current_tile_id = entrance.id
+    session.current_tile_entry_exit_id = None
+    refresh_connections(session, entrance)
+    initialize_entrance(entrance)
+    session.camped_outside = True
+    session.summary = []
+    reset_resources(session)
+    return heal_living_party(session)

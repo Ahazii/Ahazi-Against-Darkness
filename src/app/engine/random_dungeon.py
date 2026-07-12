@@ -89,7 +89,7 @@ from .camp import (
     append_between_foray_refresh_log,
     explored_map_element_count,
     fallen_in_dungeon,
-    heal_living_party,
+    prepare_camp_outside,
 )
 from .banking import (
     bank_access_member,
@@ -12582,9 +12582,6 @@ class RandomDungeonEngine:
                 return tile
         return min(session.map_state.tiles, key=lambda item: (item.y, item.x))
 
-    def _heal_living_party(self, session: SessionState) -> list[str]:
-        return heal_living_party(session)
-
     def _log_between_foray_refresh(self, session: SessionState, healed_names: list[str]) -> None:
         append_between_foray_refresh_log(session, healed_names)
 
@@ -12596,14 +12593,13 @@ class RandomDungeonEngine:
         show_rolls: bool,
     ) -> None:
         entrance = self._entrance_tile(session)
-        session.map_state.current_tile_id = entrance.id
-        session.current_tile_entry_exit_id = None
-        self._refresh_tile_connections(session, entrance)
-        self._initialize_outside_entrance(entrance)
-        session.camped_outside = True
-        session.summary = []
-        self._reset_between_foray_resources(session)
-        healed_names = self._heal_living_party(session)
+        healed_names = prepare_camp_outside(
+            session,
+            entrance,
+            refresh_connections=self._refresh_tile_connections,
+            initialize_entrance=self._initialize_outside_entrance,
+            reset_resources=self._reset_between_foray_resources,
+        )
         names = [
             member.name
             for member in session.party
@@ -12622,15 +12618,14 @@ class RandomDungeonEngine:
 
     def _camp_outside_with_recovery(self, session: SessionState) -> None:
         entrance = self._entrance_tile(session)
-        session.map_state.current_tile_id = entrance.id
-        session.current_tile_entry_exit_id = None
-        self._refresh_tile_connections(session, entrance)
-        self._initialize_outside_entrance(entrance)
+        healed_names = prepare_camp_outside(
+            session,
+            entrance,
+            refresh_connections=self._refresh_tile_connections,
+            initialize_entrance=self._initialize_outside_entrance,
+            reset_resources=self._reset_between_foray_resources,
+        )
         session.mode = "exploration"
-        session.camped_outside = True
-        session.summary = []
-        self._reset_between_foray_resources(session)
-        healed_names = self._heal_living_party(session)
         names = [
             member.name
             for member in session.party
@@ -12650,15 +12645,14 @@ class RandomDungeonEngine:
 
     def _camp_outside_to_return(self, session: SessionState) -> None:
         entrance = self._entrance_tile(session)
-        session.map_state.current_tile_id = entrance.id
-        session.current_tile_entry_exit_id = None
-        self._refresh_tile_connections(session, entrance)
-        self._initialize_outside_entrance(entrance)
+        healed_names = prepare_camp_outside(
+            session,
+            entrance,
+            refresh_connections=self._refresh_tile_connections,
+            initialize_entrance=self._initialize_outside_entrance,
+            reset_resources=self._reset_between_foray_resources,
+        )
         session.mode = "exploration"
-        session.camped_outside = True
-        session.summary = []
-        self._reset_between_foray_resources(session)
-        healed_names = self._heal_living_party(session)
         explored = explored_map_element_count(session)
         if session.imported_entrance_pending or explored <= 1:
             session.log.append("The party makes camp outside the dungeon entrance.")

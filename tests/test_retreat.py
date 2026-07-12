@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.combat import CombatRound
+from app.engine.camp import prepare_camp_outside
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import ExitState, MapState, PartyMemberState, SessionState, TileState
@@ -11,6 +12,63 @@ from app.schemas import ExitState, MapState, PartyMemberState, SessionState, Til
 def engine() -> RandomDungeonEngine:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     return RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
+
+
+def test_prepare_camp_outside_applies_shared_entrance_and_recovery_state() -> None:
+    entrance = TileState(
+        id="ent",
+        x=0,
+        y=0,
+        tile_key="01",
+        tile_type="room",
+        title="Entrance",
+        description="Entrance",
+        content_key="entrance",
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[
+            PartyMemberState(
+                character_id="h1",
+                name="Alive",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=1,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+            )
+        ],
+        map_state=MapState(tiles=[entrance], current_tile_id="elsewhere"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+        current_tile_entry_exit_id="old-exit",
+        summary=["old summary"],
+    )
+    calls: list[str] = []
+
+    healed = prepare_camp_outside(
+        session,
+        entrance,
+        refresh_connections=lambda _session, _entrance: calls.append("refresh"),
+        initialize_entrance=lambda _entrance: calls.append("initialize") or True,
+        reset_resources=lambda _session: calls.append("reset"),
+    )
+
+    assert calls == ["refresh", "initialize", "reset"]
+    assert session.map_state.current_tile_id == entrance.id
+    assert session.current_tile_entry_exit_id is None
+    assert session.camped_outside is True
+    assert session.summary == []
+    assert healed == ["Alive"]
+    assert session.party[0].current_life == 3
 
 
 def test_dungeon_exit_with_fallen_retreats() -> None:
