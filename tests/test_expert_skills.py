@@ -5,7 +5,7 @@ from pathlib import Path
 from app.engine.dice import AdvancementRollResult
 from app.engine.expert_skills import eligible_expert_skills, validate_expert_skill_choice
 from app.engine.random_dungeon import RandomDungeonEngine
-from app.engine.tier_skills import available_advancement_forks
+from app.engine.tier_skills import available_advancement_forks, validate_advancement_choice
 from app.rules.repository import RulesRepository
 from app.schemas import MapState, PartyMemberState, SessionState, TileState
 
@@ -94,6 +94,35 @@ def test_untrained_expert_fork_not_offered() -> None:
     assert available_advancement_forks(warrior) == ["level_up"]
     warrior.expert_trained = True
     assert "learn_expert_skill" in available_advancement_forks(warrior)
+
+
+def test_advancement_choice_rejects_an_ineligible_expert_skill() -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    rules = RulesRepository(packaged, packaged / "_override")
+    warrior = PartyMemberState(
+        character_id="w",
+        name="Tank",
+        class_id="warrior",
+        class_name="Warrior",
+        level=6,
+        xp=0,
+        gold=0,
+        current_life=10,
+        max_life=10,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        expert_trained=True,
+    )
+
+    assert validate_advancement_choice(
+        warrior,
+        "learn_expert_skill",
+        expert_catalog=rules.expert_skills(),
+        heroic_catalog=rules.heroic_skills(),
+        legendary_catalog=rules.legendary_skills(),
+        expert_skill_id="strong_will",
+    ) == "strong_will is not available for Tank."
 
 
 def test_learn_expert_skill_on_success(monkeypatch) -> None:

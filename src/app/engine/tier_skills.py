@@ -148,6 +148,58 @@ def advancement_fork_label(fork: str) -> str:
     }.get(fork, fork.replace("_", " ").title())
 
 
+def validate_advancement_choice(
+    member: PartyMemberState,
+    fork: str,
+    *,
+    expert_catalog: dict[str, Any],
+    heroic_catalog: dict[str, Any],
+    legendary_catalog: dict[str, Any],
+    expert_skill_id: str | None = None,
+    expert_skill_target: str | None = None,
+    heroic_skill_id: str | None = None,
+    legendary_skill_id: str | None = None,
+    heroic_skill_target: str | None = None,
+) -> str | None:
+    """Validate an XP-spend fork before a game mode spends its XP currency."""
+    from .courtship_classes import is_wandering_alchemist
+    from .expert_skills import validate_expert_skill_choice
+    from .heroic_skill_effects import HEROIC_TARGET_SKILLS
+    from .tier_advancement import level_up_gate_reason
+
+    allowed = available_advancement_forks(member)
+    if fork not in allowed:
+        if fork == "learn_expert_skill" and member.level >= 5 and not member.expert_trained:
+            if not is_wandering_alchemist(member):
+                return f"{member.name} needs Expert training before learning expert skills or spells."
+        if fork == "learn_heroic_skill" and member.level >= 10 and not member.heroic_trained:
+            return f"{member.name} needs Heroic training before learning heroic skills."
+        if fork == "learn_legendary_skill" and member.level >= 15 and not member.legendary_trained:
+            return f"{member.name} needs Legendary training before learning legendary skills."
+        labels = ", ".join(advancement_fork_label(item) for item in allowed)
+        return f"Choose {labels}."
+    if fork == "level_up":
+        return level_up_gate_reason(member, member.level + 1)
+    if fork == "learn_expert_skill":
+        if not expert_skill_id:
+            return "Choose an expert skill or spell to learn."
+        return validate_expert_skill_choice(member, expert_skill_id, expert_catalog)
+    if fork == "learn_heroic_skill":
+        if not heroic_skill_id:
+            return "Choose a heroic skill to learn."
+        blocked = validate_tier_skill_choice(member, heroic_skill_id, heroic_catalog, "heroic")
+        if blocked:
+            return blocked
+        if heroic_skill_id.strip().lower() in HEROIC_TARGET_SKILLS and not (heroic_skill_target or "").strip():
+            return "Choose a weapon type for Heroic Accuracy (e.g. bow, sword, dagger)."
+        return None
+    if fork == "learn_legendary_skill":
+        if not legendary_skill_id:
+            return "Choose a legendary skill to learn."
+        return validate_tier_skill_choice(member, legendary_skill_id, legendary_catalog, "legendary")
+    return None
+
+
 def tier_skills_catalog_with_summaries(catalog: dict[str, Any], tier: SkillTier) -> dict[str, Any]:
     from .expert_skills import attach_skill_summaries
     from .heroic_skill_effects import HEROIC_SKILL_MECHANICS, LEGENDARY_SKILL_MECHANICS
