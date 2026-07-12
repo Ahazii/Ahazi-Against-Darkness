@@ -346,3 +346,28 @@ def resolve_fallen_transfer(
         session.log.append(f"{target.name} inherits {len(moved)} Secret(s) from fallen {source.name}.")
     session.pending_fallen_transfer = None
     queue_fallen_transfer(session)
+
+
+def steal_from_unattended_bodies(
+    session: SessionState,
+    fallen_ids: list[str],
+    *,
+    show_rolls: bool,
+) -> None:
+    """Apply the standard unattended-body theft check to fallen heroes' gear."""
+    for character_id in fallen_ids:
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or not member.inventory:
+            continue
+        roll = roll_d6()
+        if roll >= 6:
+            if show_rolls:
+                session.log.append(f"No theft from {member.name}'s body (d6 = {roll}).")
+            continue
+        stolen = member.inventory.pop(0)
+        if show_rolls:
+            session.log.append(
+                f"Loot stolen from {member.name}'s unattended body: {stolen} (d6 = {roll}, need 6 to avoid)."
+            )
+        else:
+            session.log.append(f"Loot stolen from {member.name}'s unattended body: {stolen}.")

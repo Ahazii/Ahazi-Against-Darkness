@@ -43,6 +43,7 @@ from .death_recovery import (
     queue_fallen_transfer,
     resolve_fallen_transfer,
     start_carrying_body,
+    steal_from_unattended_bodies,
 )
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
 from .firearm import gnome_repair_firearm
@@ -12702,22 +12703,11 @@ class RandomDungeonEngine:
         session.log.append("The party enters the dungeon at the entrance.")
 
     def _steal_from_unattended_bodies(self, session: SessionState, *, show_rolls: bool) -> None:
-        for character_id in self._fallen_in_dungeon(session):
-            member = next((item for item in session.party if item.character_id == character_id), None)
-            if member is None or not member.inventory:
-                continue
-            roll = roll_d6()
-            if roll >= 6:
-                if show_rolls:
-                    session.log.append(f"No theft from {member.name}'s body (d6 = {roll}).")
-                continue
-            stolen = member.inventory.pop(0)
-            if show_rolls:
-                session.log.append(
-                    f"Loot stolen from {member.name}'s unattended body: {stolen} (d6 = {roll}, need 6 to avoid)."
-                )
-            else:
-                session.log.append(f"Loot stolen from {member.name}'s unattended body: {stolen}.")
+        steal_from_unattended_bodies(
+            session,
+            self._fallen_in_dungeon(session),
+            show_rolls=show_rolls,
+        )
 
     def _complete_dungeon(self, session: SessionState) -> None:
         if session.level_up_spell_pending_character_id:

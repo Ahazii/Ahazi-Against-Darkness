@@ -9,6 +9,7 @@ from app.engine.death_recovery import (
     queue_fallen_transfer,
     resolve_fallen_transfer,
     start_carrying_body,
+    steal_from_unattended_bodies,
 )
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.schemas import MapState, PartyMemberState, SessionState, TileState
@@ -208,3 +209,15 @@ def test_fallen_clue_inheritance_moves_clues_and_updates_total() -> None:
     assert session.clues_found == 3
     assert session.pending_fallen_transfer is None
     assert any("inherits 2 Clue(s)" in entry for entry in session.log)
+
+
+def test_unattended_body_theft_removes_one_item_on_a_failed_check(monkeypatch) -> None:
+    session = session_with_fallen()
+    fallen = session.party[1]
+    fallen.inventory = ["Sword", "Shield"]
+    monkeypatch.setattr("app.engine.death_recovery.roll_d6", lambda: 3)
+
+    steal_from_unattended_bodies(session, [fallen.character_id], show_rolls=True)
+
+    assert fallen.inventory == ["Shield"]
+    assert any("Loot stolen from Fallen's unattended body: Sword (d6 = 3" in entry for entry in session.log)
