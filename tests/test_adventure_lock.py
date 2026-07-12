@@ -310,12 +310,10 @@ def test_roster_character_can_spend_banked_xp(monkeypatch) -> None:
         main = importlib.reload(main)
         client = TestClient(main.app)
 
-        from app.engine import random_dungeon
         from app.engine.dice import AdvancementRollResult
 
         monkeypatch.setattr(
-            random_dungeon,
-            "perform_advancement_roll",
+            "app.engine.experience.perform_advancement_roll",
             lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(
                 natural=6, total=6, sides=6, modifier=bonus, purpose=purpose
             ),

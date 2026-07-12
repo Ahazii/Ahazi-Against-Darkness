@@ -45,6 +45,7 @@ from .death_recovery import (
     start_carrying_body,
     steal_from_unattended_bodies,
 )
+from .adventure_completion import AdventureCompletionCallbacks, complete_adventure
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
 from .firearm import gnome_repair_firearm
 from .gem_items import remove_inventory_item
@@ -68,7 +69,6 @@ from .consumables import (
 from .madness import (
     apply_envenom_weapon,
     apply_madness_gain,
-    heal_madness_on_dungeon_exit,
     is_paranoid,
     resolve_madness_choice,
 )
@@ -302,7 +302,6 @@ from .adventure_allowlists import major_foe_table_keys
 from .adventure_runtime import (
     IMPORTED_ROOM_PREFIX,
     fire_imported_triggers,
-    log_imported_departure_narrative,
     update_imported_quest_on_combat_end,
 )
 from .class_combat import save_modifier
@@ -12471,76 +12470,21 @@ class RandomDungeonEngine:
         )
 
     def _complete_dungeon(self, session: SessionState) -> None:
-        if session.level_up_spell_pending_character_id:
-            pending = next(
-                (item for item in session.party if item.character_id == session.level_up_spell_pending_character_id),
-                None,
-            )
-            name = pending.name if pending else "the hero"
-            session.log.append(f"Choose a spell for {name} before completing or abandoning the adventure.")
-            return
-        if session.xp_rolls_pending > 0 and session.xp_system == "classical":
-            session.log.append(
-                f"{session.xp_rolls_pending} unassigned XP roll(s) remain. Bank them to a hero "
-                "or spend them before completing or abandoning the adventure."
-            )
-            return
-        if session.rescued_prisoner_active and session.prisoner_reward_choice is None:
-            session.log.append(
-                "The rescued prisoner must reach the surface. Choose their reward "
-                "(magic item + treasure roll, or double held gp) before leaving the dungeon."
-            )
-            return
-        if session.rescued_prisoner_active:
-            self._apply_prisoner_exit_reward(session)
-        from .forsaken_depths_quest import resolve_fd_lady_in_black_oracle_on_exit
-
-        resolve_fd_lady_in_black_oracle_on_exit(session, show_rolls=True)
         from .abyss_campaign import maybe_trigger_exit_ambush
 
-        if maybe_trigger_exit_ambush(self, session, self._current_tile(session)):
-            return
-        session.mode = "complete"
-        session.camped_outside = False
-        explored = len(session.map_state.tiles)
-        survivors = [member for member in session.party if member.current_life > 0]
-        if session.xp_system == "slow_and_sure" and survivors:
-            target = survivors[0]
-            self._complete_level_up(session, target)
-            session.log.append(f"Slow and Sure: {target.name} gains 1 Level for completing the adventure.")
-        self._reset_between_foray_resources(session)
-        from .hirelings import clear_hirelings_on_dungeon_exit
-
-        clear_hirelings_on_dungeon_exit(session)
-        for member in session.party:
-            if member.current_life > 0:
-                member.current_life = member.max_life
-        boss_note = " Final Boss slain." if session.final_boss_defeated else ""
-        session.summary = [
-            f"Explored {explored} map element{'s' if explored != 1 else ''}.{boss_note}",
-            f"{len(survivors)} of {len(session.party)} party members left the dungeon.",
-            "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
-        ]
-        if session.adventure_type == "imported":
-            quest = session.active_quest
-            if quest and not quest.completed:
-                session.summary.insert(0, "Quest left incomplete.")
-            elif quest and quest.completed:
-                session.summary.insert(0, "Quest objective complete.")
-            log_imported_departure_narrative(session)
-        from .weapon_finishes import tick_leafsteel_after_adventure
-
-        for member in session.party:
-            for line in tick_leafsteel_after_adventure(member):
-                session.log.append(line)
-        from .fungal_rare_items import expire_unused_healers_chanterelle, expire_white_angel_mushrooms
-
-        session.log.extend(expire_white_angel_mushrooms(session.party))
-        session.log.extend(expire_unused_healers_chanterelle(session.party))
-        session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
-        session.secret_yummy_meal_active = False
-        session.log.extend(heal_madness_on_dungeon_exit(session))
-        session.log.append("Spells, prayers, rest, and per-adventure class resources refresh between adventures.")
+        complete_adventure(
+            session,
+            callbacks=AdventureCompletionCallbacks(
+                apply_prisoner_exit_reward=self._apply_prisoner_exit_reward,
+                trigger_exit_ambush=lambda current: maybe_trigger_exit_ambush(
+                    self,
+                    current,
+                    self._current_tile(current),
+                ),
+                complete_level_up=self._complete_level_up,
+                reset_between_foray_resources=self._reset_between_foray_resources,
+            ),
+        )
 
     def _resolve_monster_table_key(
         self,

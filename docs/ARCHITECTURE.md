@@ -24,6 +24,7 @@ Key files:
 - `src/app/engine/adventure_manifest.py` - import validation (`validate_adventure_manifest`)
 - `src/app/engine/adventure_import.py` - install manifests under `data/adventures/`
 - `src/app/engine/adventure_session.py` - `create_session_from_manifest()`
+- `src/app/engine/adventure_completion.py` - guarded dungeon-exit completion sequence, survivor recovery, completion summary, and between-adventure cleanup orchestration
 - `src/app/engine/adventure_runtime.py` - imported triggers and quest hooks
 - `src/app/engine/adventure_prompt.py` - external LLM prompt builder
 - `src/app/engine/adventure_allowlists.py` - allowlisted names for prompts and validation
