@@ -191,7 +191,6 @@ from .tier_skills import (
 )
 from .expert_skill_effects import (
     adjust_reaction_roll,
-    adjust_search_roll,
     expert_puzzle_bonus,
     grant_spore_doses_after_combat,
     has_skill,
@@ -267,6 +266,7 @@ from .rest import (
     rest_eligibility,
     resolve_rest,
 )
+from .search import resolve_search_roll
 from .secrets import (
     SPELLCASTER_CLASSES,
     consume_secret,
@@ -2838,32 +2838,16 @@ class RandomDungeonEngine:
             fire_imported_triggers(self, session, tile, "on_search", show_rolls=show_rolls)
             session.log.append("Search complete.")
             return
-        roll = roll_d6()
-        effective_roll = roll - 1 if tile.tile_type == "corridor" else roll
-        if show_rolls:
-            if tile.tile_type == "corridor":
-                session.log.append(f"Search roll: d6 = {roll} (corridor -1 = {effective_roll}).")
-            else:
-                session.log.append(f"Search roll: d6 = {roll}.")
-        search_choice_key = None
-        if search_choice == "clue":
-            search_choice_key = "clue"
-        elif search_choice in {"secret_door", "secret_passage"}:
-            search_choice_key = "secret_door"
-        effective_roll, search_notes = adjust_search_roll(
-            session.party,
-            effective_roll,
-            choice=search_choice_key,
-            session=session,
-            environment=tile.environment,
-            tile_id=tile.id,
+        resolution = resolve_search_roll(
+            session,
+            tile,
+            self.table_roller,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
         )
-        session.log.extend(search_notes)
-        if show_rolls and search_notes:
-            session.log.append(f"Adjusted search roll: {effective_roll}.")
-        if explain_math:
-            session.log.append(f"Search table: {self.table_roller.search_table_summary()}.")
-        outcome = self.table_roller.lookup_search(effective_roll)
+        session.log.extend(resolution.log)
+        effective_roll = resolution.effective_roll
+        outcome = resolution.outcome
         if outcome.effect == "wandering_monsters":
             self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
         elif outcome.effect == "nothing":

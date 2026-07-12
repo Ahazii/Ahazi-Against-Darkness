@@ -6,6 +6,7 @@ import pytest
 
 from app.engine.dungeon_table_roller import DungeonTableRoller, SubtableOutcome
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.search import resolve_search_roll
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
 
@@ -182,7 +183,7 @@ def test_caverns_treasure_four_rolls_illusionist_prism(roller: DungeonTableRolle
 
 
 def test_search_choice_clue(engine: RandomDungeonEngine, monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+    monkeypatch.setattr("app.engine.search.roll_d6", lambda: 6)
     session = _session_with_tile(engine)
     engine.advance(session, "search")
     tile = session.map_state.tiles[0]
@@ -206,6 +207,29 @@ def test_search_reward_choice_cannot_precede_roll(engine: RandomDungeonEngine) -
     assert not tile.searched
     assert session.clues_found == 0
     assert any("Roll Search first" in line for line in session.log)
+
+
+def test_resolve_search_roll_handles_corridor_modifier_before_table_lookup(
+    engine: RandomDungeonEngine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.engine.search.roll_d6", lambda: 1)
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.tile_type = "corridor"
+
+    resolution = resolve_search_roll(
+        session,
+        tile,
+        engine.table_roller,
+        show_rolls=True,
+        explain_math=True,
+    )
+
+    assert resolution.effective_roll == 0
+    assert resolution.outcome.effect == "wandering_monsters"
+    assert "Search roll: d6 = 1 (corridor -1 = 0)." in resolution.log
+    assert any(line.startswith("Search table:") for line in resolution.log)
 
 
 def test_backtrack_wandering_on_one(engine: RandomDungeonEngine, monkeypatch) -> None:
@@ -320,7 +344,7 @@ def test_corridor_search_effective_zero_triggers_wandering(engine: RandomDungeon
     def fake_spawn(session, tile, *, show_rolls, special_event=False):
         triggered.append(True)
 
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    monkeypatch.setattr("app.engine.search.roll_d6", lambda: 1)
     monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
     session = _session_with_tile(engine)
     session.map_state.tiles[0].tile_type = "corridor"
@@ -330,14 +354,14 @@ def test_corridor_search_effective_zero_triggers_wandering(engine: RandomDungeon
 
 
 def test_search_nothing_uses_table_result(engine: RandomDungeonEngine, monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 3)
+    monkeypatch.setattr("app.engine.search.roll_d6", lambda: 3)
     session = _session_with_tile(engine)
     engine.advance(session, "search")
     assert any("really empty" in line for line in session.log)
 
 
 def test_halfling_luck_search_reroll_clears_pending_reward(engine: RandomDungeonEngine, monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+    monkeypatch.setattr("app.engine.search.roll_d6", lambda: 6)
     session = _session_with_tile(engine)
     halfling = PartyMemberState(
         character_id="h",
@@ -360,7 +384,7 @@ def test_halfling_luck_search_reroll_clears_pending_reward(engine: RandomDungeon
     assert session.pending_search_reward_tile_id == tile.id
 
     rolls = iter([2])
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.search.roll_d6", lambda: next(rolls))
     engine._use_class_ability(session, "h", "halfling_luck_search", show_rolls=False)
 
     assert session.pending_search_reward_tile_id is None
