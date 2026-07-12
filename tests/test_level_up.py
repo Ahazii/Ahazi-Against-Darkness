@@ -417,7 +417,7 @@ def test_character_banked_xp_roll_can_be_spent_later(monkeypatch) -> None:
     )
     session = _session(party=[warrior], xp_rolls_pending=0)
     monkeypatch.setattr(
-        "app.engine.random_dungeon.perform_advancement_roll",
+        "app.engine.experience.perform_advancement_roll",
         lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(
             natural=6, total=6, sides=6, modifier=bonus, purpose=purpose
         ),
