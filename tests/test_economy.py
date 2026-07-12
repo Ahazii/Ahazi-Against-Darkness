@@ -5,6 +5,7 @@ from pathlib import Path
 from app.engine.combat import CombatRound
 from app.engine.clues import grant_clue
 from app.engine.experience import MINOR_ENCOUNTERS_FOR_XP
+from app.engine.inventory import spend_living_carried_gold
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.secrets import secret_attack_bonus, secret_defense_bonus, secret_weakness_attack_bonus
 from app.engine.spells import can_cast_spell
@@ -29,6 +30,31 @@ def _secret_session(member: PartyMemberState, *, tile: TileState, mode: str = "e
         created_at="2026-01-01T00:00:00Z",
         updated_at="2026-01-01T00:00:00Z",
     )
+
+
+def test_spend_living_carried_gold_uses_party_order_and_skips_fallen_members() -> None:
+    first = PartyMemberState(
+        character_id="first",
+        name="First",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=3,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    fallen = first.model_copy(update={"character_id": "fallen", "name": "Fallen", "gold": 50, "current_life": 0})
+    last = first.model_copy(update={"character_id": "last", "name": "Last", "gold": 7})
+
+    paid, log = spend_living_carried_gold([first, fallen, last], 8)
+
+    assert paid is True
+    assert (first.gold, fallen.gold, last.gold) == (0, 50, 2)
+    assert log == ["Payment: First -3gp, Last -5gp."]
 
 
 def test_minor_encounter_tracks_toward_xp() -> None:

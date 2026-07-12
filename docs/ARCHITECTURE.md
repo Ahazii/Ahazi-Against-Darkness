@@ -577,8 +577,8 @@ peek, immediate attack action). `weapons.py` supplies missile eligibility,
 weapon-type modifiers, and `force_unarmed` melee selection.
 
 `inventory.py` also implements bandage use (p.89, once per hero per adventure in
-exploration), even gold distribution on treasure claim (200gp carry cap), and
-illusionary servant carry bonuses on the caster.
+exploration), party-order carried-gold spending, even gold distribution on treasure
+claim (200gp carry cap), and illusionary servant carry bonuses on the caster.
 
 Special events and features are resolved in `random_dungeon.py` from
 `dungeon_tables.json`. Event/Feature/Effect log prefixes are preserved in Summary

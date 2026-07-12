@@ -197,6 +197,28 @@ def distribute_gold_among(
     return pool, payouts
 
 
+def spend_living_carried_gold(
+    members: list[PartyMemberState],
+    amount: int,
+) -> tuple[bool, list[str]]:
+    """Spend a shared amount from living heroes' carried gold in party order."""
+    living = [member for member in members if member.current_life > 0]
+    if sum(member.gold for member in living) < amount:
+        return False, []
+    remaining = amount
+    paid: list[str] = []
+    for member in living:
+        take = min(member.gold, remaining)
+        if take <= 0:
+            continue
+        member.gold -= take
+        remaining -= take
+        paid.append(f"{member.name} -{take}gp")
+        if remaining <= 0:
+            break
+    return True, [f"Payment: {', '.join(paid)}."]
+
+
 def bandages_in_inventory(member: InventoryHolder) -> list[str]:
     return [item for item in member.inventory if "bandage" in item.lower()]
 

@@ -213,6 +213,7 @@ from .inventory import (
     encumbrance_penalty,
     has_illusionary_servant,
     snapshot_carry_baseline,
+    spend_living_carried_gold,
     transfer_gold,
     transfer_inventory_item,
 )
@@ -5737,21 +5738,7 @@ class RandomDungeonEngine:
         return base
 
     def _spend_members_gold(self, members: list[PartyMemberState], amount: int) -> tuple[bool, list[str]]:
-        living = [member for member in members if member.current_life > 0]
-        if sum(member.gold for member in living) < amount:
-            return False, []
-        remaining = amount
-        paid: list[str] = []
-        for member in living:
-            take = min(member.gold, remaining)
-            if take <= 0:
-                continue
-            member.gold -= take
-            remaining -= take
-            paid.append(f"{member.name} -{take}gp")
-            if remaining <= 0:
-                break
-        return True, [f"Payment: {', '.join(paid)}."]
+        return spend_living_carried_gold(members, amount)
 
     def _buy_mushroom_picker_stock(
         self,
@@ -15753,21 +15740,7 @@ class RandomDungeonEngine:
         )
 
     def _spend_party_gold(self, session: SessionState, amount: int) -> tuple[bool, list[str]]:
-        living = [member for member in session.party if member.current_life > 0]
-        if sum(member.gold for member in living) < amount:
-            return False, []
-        remaining = amount
-        paid: list[str] = []
-        for member in living:
-            take = min(member.gold, remaining)
-            if take <= 0:
-                continue
-            member.gold -= take
-            remaining -= take
-            paid.append(f"{member.name} -{take}gp")
-            if remaining <= 0:
-                break
-        return True, [f"Payment: {', '.join(paid)}."]
+        return spend_living_carried_gold(session.party, amount)
 
     def _sell_matching_inventory(self, session: SessionState, needle: str, value: int) -> int:
         sold = 0
