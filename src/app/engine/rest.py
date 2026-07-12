@@ -1,17 +1,35 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import random
 from typing import Literal
 
 from ..schemas import ExitState, PartyMemberState, SessionState, TileState
 from .dice import roll_d6
-from .class_abilities import member_has_recoverable_class_ability, recover_acrobat_tricks_on_rest, recover_class_ability
+from .class_abilities import (
+    apply_nourishing_meal,
+    member_has_recoverable_class_ability,
+    recover_acrobat_tricks_on_rest,
+    recover_class_ability,
+)
 from .heroic_skill_effects import apply_copy_grimoire_on_rest, apply_heroes_rest_bonus, apply_heros_banquet_bonus
+from .hunger import feed_all_living_heroes
 from .spells import HEALING_PRAYER_USES_PER_ADVENTURE, REPEATABLE_PRAYERS, normalize_spell_name
 
 RestChoice = Literal["life", "ability"]
 NAIL_BAG_NAMES = ("bag of nails", "bags of nails")
 NAIL_BAG_ITEM = "Bag of nails"
+
+
+@dataclass
+class RestResolution:
+    """Resolved rest state before the engine synchronizes doors or spawns an ambush."""
+
+    completed: bool
+    log: list[str]
+    nailed_doors: list[ExitState]
+    wandering_triggered: bool = False
+    wandering_door: ExitState | None = None
 
 
 def reset_between_foray_resources(session: SessionState) -> None:
@@ -312,6 +330,91 @@ def validate_rest_request(
         if choices[member.character_id] not in {"life", "ability"}:
             return False, f"Invalid rest choice for {member.name}."
     return True, ""
+
+
+def resolve_rest(
+    session: SessionState,
+    tile: TileState,
+    *,
+    nail_doors: bool = False,
+    rest_choices: dict[str, str] | None = None,
+    show_rolls: bool = True,
+    nourishing_meal: bool = False,
+    nourishing_meal_eaters: list[str] | None = None,
+    everyone_eats: bool = False,
+) -> RestResolution:
+    """Apply a legal rest through its wandering-monster check, without engine-specific combat work."""
+    living = [member for member in session.party if member.current_life > 0]
+    choices = dict(rest_choices or {})
+    for member in living:
+        if member.character_id in choices:
+            continue
+        if member.current_life < member.max_life:
+            choices[member.character_id] = "life"
+        elif member_has_recoverable_ability(session, member):
+            choices[member.character_id] = "ability"
+        else:
+            choices[member.character_id] = "life"
+
+    ok, reason = validate_rest_request(session, tile, nail_doors=nail_doors, choices=choices)
+    if not ok:
+        return RestResolution(False, [reason], [])
+
+    doors = nailable_doors(tile)
+    log = ["The party rests (once per adventure, rulebook p.114)."]
+    nailed_doors: list[ExitState] = []
+    if nail_doors:
+        if not consume_nail_bags(session.party, len(doors)):
+            return RestResolution(False, log + ["Not enough bags of nails to seal the doors."], [])
+        for exit_state in doors:
+            exit_state.nailed_shut = True
+            exit_state.door_open = False
+            exit_state.status = "blocked"
+        nailed_doors = doors
+        log.append(f"The party nails {len(doors)} door(s) shut ({len(doors)} bag(s) of nails used).")
+    else:
+        log.append("The party does not nail the doors shut.")
+
+    session.rest_used = True
+    session.alter_weather_active = False
+    session.forest_pathway_active = False
+    session.glamour_mask_character_id = None
+    session.glamour_mask_reroll_available = False
+    log.extend(apply_rest_recovery(session, session.party, choices, tile=tile))
+    for member in living:
+        trick_note = recover_acrobat_tricks_on_rest(session, member)
+        if trick_note:
+            log.append(trick_note)
+    if everyone_eats:
+        log.extend(feed_all_living_heroes(session, session.party))
+    if nourishing_meal:
+        eaters = nourishing_meal_eaters or [member.character_id for member in living]
+        log.extend(apply_nourishing_meal(session, session.party, eaters))
+
+    triggered, roll = wandering_roll_triggers(
+        tile.cavern_feature_key,
+        roll_bonus=session.next_wandering_roll_bonus,
+    )
+    if session.next_wandering_roll_bonus:
+        if show_rolls:
+            log.append(
+                f"Firearm noise increases wandering risk (+{session.next_wandering_roll_bonus} on d6)."
+            )
+        session.next_wandering_roll_bonus = 0
+    if show_rolls:
+        log.append(f"Rest wandering-monster roll: d6 = {roll}.")
+    if not triggered:
+        log.append("The rest is undisturbed.")
+        return RestResolution(True, log, nailed_doors)
+
+    tile.wandering_ambush = False
+    return RestResolution(
+        True,
+        log,
+        nailed_doors,
+        wandering_triggered=True,
+        wandering_door=pick_wandering_door(doors),
+    )
 
 
 def pick_wandering_door(doors: list[ExitState]) -> ExitState | None:

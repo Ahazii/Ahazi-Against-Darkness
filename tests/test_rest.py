@@ -10,6 +10,7 @@ from app.engine.rest import (
     member_has_recoverable_ability,
     nailable_doors,
     recover_ability,
+    resolve_rest,
     rest_eligibility,
     tile_is_cleared,
     validate_rest_request,
@@ -157,11 +158,26 @@ def test_rest_recovers_life_and_rolls_wanderers(monkeypatch: pytest.MonkeyPatch)
     tile = room_tile()
     member = hero(life=2, max_life=5)
     session = session_with(tile=tile, party=[member])
-    monkeypatch.setattr("app.engine.random_dungeon.wandering_roll_triggers", lambda *_args, **_kwargs: (False, 4))
+    monkeypatch.setattr("app.engine.rest.wandering_roll_triggers", lambda *_args, **_kwargs: (False, 4))
     eng.advance(session, "rest", rest_choices={"h1": "life"})
     assert member.current_life == 3
     assert session.rest_used
     assert any("undisturbed" in line.lower() for line in session.log)
+
+
+def test_resolve_rest_returns_prepared_state_before_engine_combat_handling(monkeypatch: pytest.MonkeyPatch) -> None:
+    tile = room_tile()
+    member = hero(life=2, max_life=5)
+    session = session_with(tile=tile, party=[member])
+    monkeypatch.setattr("app.engine.rest.wandering_roll_triggers", lambda *_args, **_kwargs: (False, 4))
+
+    outcome = resolve_rest(session, tile, rest_choices={"h1": "life"})
+
+    assert outcome.completed is True
+    assert outcome.wandering_triggered is False
+    assert member.current_life == 3
+    assert session.rest_used is True
+    assert any("undisturbed" in line.lower() for line in outcome.log)
 
 
 def test_rest_with_nails_sets_party_first_on_wanderers(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -170,7 +186,7 @@ def test_rest_with_nails_sets_party_first_on_wanderers(monkeypatch: pytest.Monke
     member = hero(life=2, max_life=5)
     member.inventory = ["Bag of nails"]
     session = session_with(tile=tile, party=[member])
-    monkeypatch.setattr("app.engine.random_dungeon.wandering_roll_triggers", lambda *_args, **_kwargs: (True, 1))
+    monkeypatch.setattr("app.engine.rest.wandering_roll_triggers", lambda *_args, **_kwargs: (True, 1))
     monkeypatch.setattr(
         "app.engine.random_dungeon.RandomDungeonEngine._roll_wandering_enemies",
         lambda self, session, category, hcl: [
@@ -189,7 +205,7 @@ def test_rest_without_nails_foes_strike_first(monkeypatch: pytest.MonkeyPatch) -
     tile = room_tile()
     member = hero(life=2, max_life=5)
     session = session_with(tile=tile, party=[member])
-    monkeypatch.setattr("app.engine.random_dungeon.wandering_roll_triggers", lambda *_args, **_kwargs: (True, 1))
+    monkeypatch.setattr("app.engine.rest.wandering_roll_triggers", lambda *_args, **_kwargs: (True, 1))
     monkeypatch.setattr(
         "app.engine.random_dungeon.RandomDungeonEngine._roll_wandering_enemies",
         lambda self, session, category, hcl: [

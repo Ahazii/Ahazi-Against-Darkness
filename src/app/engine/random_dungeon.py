@@ -48,7 +48,7 @@ from .death_recovery import (
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
 from .firearm import gnome_repair_firearm
 from .gem_items import remove_inventory_item
-from .hunger import eat_food_ration, feed_all_living_heroes, feed_hungry_heroes
+from .hunger import eat_food_ration, feed_hungry_heroes
 from .combat_modifiers import consume_clarity_bonus
 from .consumables import (
     is_acid_vial,
@@ -264,14 +264,8 @@ from .cavern_features import (
     template_surprise_tags,
 )
 from .rest import (
-    apply_rest_recovery,
-    consume_nail_bags,
-    member_has_recoverable_ability,
-    nailable_doors,
-    pick_wandering_door,
     rest_eligibility,
-    validate_rest_request,
-    wandering_roll_triggers,
+    resolve_rest,
 )
 from .secrets import (
     SPELLCASTER_CLASSES,
@@ -320,7 +314,6 @@ from .class_abilities import (
     acrobat_leap_out_of_harm,
     acrobat_shift_position,
     acrobat_serpent_twist,
-    apply_nourishing_meal,
     count_food_rations,
     consume_food_rations,
     party_has_halfling,
@@ -11482,75 +11475,25 @@ class RandomDungeonEngine:
         everyone_eats: bool = False,
     ) -> None:
         tile = self._current_tile(session)
-        living = [member for member in session.party if member.current_life > 0]
-        choices = dict(rest_choices or {})
-        for member in living:
-            if member.character_id in choices:
-                continue
-            if member.current_life < member.max_life:
-                choices[member.character_id] = "life"
-            elif member_has_recoverable_ability(session, member):
-                choices[member.character_id] = "ability"
-            else:
-                choices[member.character_id] = "life"
-
-        ok, reason = validate_rest_request(session, tile, nail_doors=nail_doors, choices=choices)
-        if not ok:
-            session.log.append(reason)
-            return
-
-        doors = nailable_doors(tile)
-        session.log.append("The party rests (once per adventure, rulebook p.114).")
-        if nail_doors:
-            if not consume_nail_bags(session.party, len(doors)):
-                session.log.append("Not enough bags of nails to seal the doors.")
-                return
-            for exit_state in doors:
-                exit_state.nailed_shut = True
-                exit_state.door_open = False
-                exit_state.status = "blocked"
-                self._sync_linked_door(session, tile, exit_state)
-            session.log.append(
-                f"The party nails {len(doors)} door(s) shut ({len(doors)} bag(s) of nails used)."
-            )
-        else:
-            session.log.append("The party does not nail the doors shut.")
-
-        session.rest_used = True
-        session.alter_weather_active = False
-        session.forest_pathway_active = False
-        session.glamour_mask_character_id = None
-        session.glamour_mask_reroll_available = False
-        session.log.extend(apply_rest_recovery(session, session.party, choices, tile=tile))
-        for member in living:
-            trick_note = recover_acrobat_tricks_on_rest(session, member)
-            if trick_note:
-                session.log.append(trick_note)
-        if everyone_eats:
-            session.log.extend(feed_all_living_heroes(session, session.party))
-        if nourishing_meal:
-            eaters = nourishing_meal_eaters or [
-                member.character_id for member in living if member.current_life > 0
-            ]
-            session.log.extend(apply_nourishing_meal(session, session.party, eaters))
-
-        triggered, roll = wandering_roll_triggers(
-            tile.cavern_feature_key,
-            roll_bonus=session.next_wandering_roll_bonus,
+        outcome = resolve_rest(
+            session,
+            tile,
+            nail_doors=nail_doors,
+            rest_choices=rest_choices,
+            show_rolls=show_rolls,
+            nourishing_meal=nourishing_meal,
+            nourishing_meal_eaters=nourishing_meal_eaters,
+            everyone_eats=everyone_eats,
         )
-        if session.next_wandering_roll_bonus:
-            if show_rolls:
-                session.log.append(
-                    f"Firearm noise increases wandering risk (+{session.next_wandering_roll_bonus} on d6)."
-                )
-            session.next_wandering_roll_bonus = 0
-        if show_rolls:
-            session.log.append(f"Rest wandering-monster roll: d6 = {roll}.")
-        if not triggered:
-            session.log.append("The rest is undisturbed.")
+        session.log.extend(outcome.log)
+        if not outcome.completed:
+            return
+        for exit_state in outcome.nailed_doors:
+            self._sync_linked_door(session, tile, exit_state)
+        if not outcome.wandering_triggered:
             return
 
-        door = pick_wandering_door(doors)
+        door = outcome.wandering_door
         if door is not None:
             if nail_doors:
                 session.log.append(
