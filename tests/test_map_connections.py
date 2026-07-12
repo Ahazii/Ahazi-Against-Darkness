@@ -1,5 +1,6 @@
 from app.engine.map_connections import (
     inherit_connection_from_reciprocal,
+    initialize_outside_entrance,
     reciprocal_exit_on_tile,
     sync_connection_state,
 )
@@ -60,3 +61,14 @@ def test_inherit_connection_reopens_the_saved_reciprocal_door() -> None:
     )
 
     assert reciprocal.door_open is True
+
+
+def test_initialize_outside_entrance_opens_the_dungeon_door_once() -> None:
+    entrance = _tile([ExitState(id="outside", direction="south", kind="door", dungeon_exit=True, status="unexplored")])
+    log: list[str] = []
+
+    assert initialize_outside_entrance(entrance, log=log) is True
+    assert entrance.exits[0].door_open is True
+    assert entrance.exits[0].door_type == "unlocked"
+    assert "remains open behind them" in log[0]
+    assert initialize_outside_entrance(entrance, log=log) is False

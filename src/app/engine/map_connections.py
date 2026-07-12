@@ -105,3 +105,40 @@ def inherit_connection_from_reciprocal(
         sync_connection_state(reciprocal, exit_state, passed_through=True)
     elif reciprocal.kind == "door" and reciprocal.door_open:
         sync_connection_state(reciprocal, exit_state, passed_through=True)
+
+
+def refresh_tile_connections(
+    session: SessionState,
+    tile: TileState,
+    *,
+    inherit_connection: Callable[[SessionState, TileState, ExitState], None],
+    sync_linked_door: Callable[[SessionState, TileState, ExitState], None],
+) -> None:
+    """Repair every saved reciprocal connection on a map element before it is used."""
+    for exit_state in tile.exits:
+        if not exit_state.destination_tile_id:
+            continue
+        inherit_connection(session, tile, exit_state)
+        if exit_state.kind == "door" and exit_state.door_open:
+            sync_linked_door(session, tile, exit_state)
+
+
+def initialize_outside_entrance(entrance: TileState, *, log: list[str] | None = None) -> bool:
+    """Open the dungeon-entry exit behind the party (Expanded Edition p.25)."""
+    changed = False
+    for exit_state in entrance.exits:
+        if not exit_state.dungeon_exit or exit_state.nailed_shut or exit_state.door_destroyed:
+            continue
+        if exit_state.status == "open" and (exit_state.kind != "door" or exit_state.door_open):
+            continue
+        exit_state.status = "open"
+        if exit_state.kind == "door":
+            exit_state.door_open = True
+            exit_state.door_type = exit_state.door_type or "unlocked"
+        changed = True
+        if log is not None:
+            exit_label = "door" if exit_state.kind == "door" else "opening"
+            log.append(
+                f"The party entered through the {exit_state.direction} {exit_label}; it remains open behind them."
+            )
+    return changed

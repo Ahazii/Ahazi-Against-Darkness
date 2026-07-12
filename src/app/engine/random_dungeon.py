@@ -104,8 +104,10 @@ from .tile_geometry import (
 from .map_connections import (
     clear_door_state,
     inherit_connection_from_reciprocal,
+    initialize_outside_entrance,
     persist_open_connection,
     reciprocal_exit_on_tile,
+    refresh_tile_connections,
     sync_connection_state,
 )
 from .tag_compat import is_generated_tag_manifest
@@ -13478,12 +13480,12 @@ class RandomDungeonEngine:
         )
 
     def _refresh_tile_connections(self, session: SessionState, tile: TileState) -> None:
-        for exit_state in tile.exits:
-            if not exit_state.destination_tile_id:
-                continue
-            self._inherit_connection_from_reciprocal(session, tile, exit_state)
-            if exit_state.kind == "door" and exit_state.door_open:
-                self._sync_linked_door(session, tile, exit_state)
+        refresh_tile_connections(
+            session,
+            tile,
+            inherit_connection=self._inherit_connection_from_reciprocal,
+            sync_linked_door=self._sync_linked_door,
+        )
 
     def _initialize_outside_entrance(
         self,
@@ -13491,26 +13493,7 @@ class RandomDungeonEngine:
         *,
         log: list[str] | None = None,
     ) -> bool:
-        """Rulebook p.25: the party enters through the outside door; it stands open behind them."""
-        changed = False
-        for exit_state in entrance.exits:
-            if not exit_state.dungeon_exit or exit_state.nailed_shut or exit_state.door_destroyed:
-                continue
-            if exit_state.status == "open" and (
-                exit_state.kind != "door" or exit_state.door_open
-            ):
-                continue
-            exit_state.status = "open"
-            if exit_state.kind == "door":
-                exit_state.door_open = True
-                exit_state.door_type = exit_state.door_type or "unlocked"
-            changed = True
-            if log is not None:
-                exit_label = "door" if exit_state.kind == "door" else "opening"
-                log.append(
-                    f"The party entered through the {exit_state.direction} {exit_label}; it remains open behind them."
-                )
-        return changed
+        return initialize_outside_entrance(entrance, log=log)
 
     def _open_entrance_threshold(
         self,
