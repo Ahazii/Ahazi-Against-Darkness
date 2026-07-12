@@ -27,6 +27,7 @@ Key files:
 - `src/app/engine/adventure_session.py` - `create_session_from_manifest()`
 - `src/app/engine/adventure_completion.py` - guarded dungeon-exit completion sequence, survivor recovery, completion summary, and between-adventure cleanup orchestration
 - `src/app/engine/adventure_runtime.py` - imported triggers and quest hooks
+- `src/app/engine/quest_rewards.py` - core Quest turn-in validation, Epic Reward table claim, payment, inventory gates, and reward state effects
 - `src/app/engine/adventure_prompt.py` - external LLM prompt builder
 - `src/app/engine/adventure_allowlists.py` - allowlisted names for prompts and validation
 - `src/app/engine/combat.py` - combat resolution, encounter-end state cleanup, and temporary-effect expiry
