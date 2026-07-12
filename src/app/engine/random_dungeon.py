@@ -300,7 +300,7 @@ from .reactions import (
     resolve_reaction_source,
 )
 from .quests import quest_from_row
-from .quest_rewards import QuestRewardCallbacks, claim_quest_reward
+from .quest_rewards import QuestAcceptanceCallbacks, QuestRewardCallbacks, accept_quest, claim_quest_reward
 from .adventure_allowlists import major_foe_table_keys
 from .adventure_runtime import (
     IMPORTED_ROOM_PREFIX,
@@ -18502,83 +18502,7 @@ class RandomDungeonEngine:
             )
 
     def _accept_quest(self, session: SessionState, *, show_rolls: bool) -> None:
-        if session.mode == "combat":
-            session.log.append("Deal with the fight before speaking to the Lady in White.")
-            return
-        tile = self._current_tile(session)
-        if not tile.lady_in_white_available:
-            session.log.append("The Lady in White is not here.")
-            return
-        if session.active_quest is not None:
-            session.log.append("A Quest is already in progress.")
-            return
-        speaker = self._member_by_marching_order(session, 1)
-        if speaker is None:
-            session.log.append("No hero is available to speak with the Lady in White.")
-            return
-        hcl = self._highest_character_level(session.party)
-        ok, social_log = resolve_social_save(
-            session,
-            speaker,
-            hcl,
-            show_rolls=show_rolls,
-            label="impress the Lady in White",
-        )
-        session.log.extend(social_log)
-        if not ok:
-            session.log.append("The Lady in White withdraws without offering a Quest.")
-            return
-        roll = roll_d6()
-        if show_rolls:
-            session.log.append(f"Quest roll: d6 = {roll}.")
-        row = self.table_roller.lookup("quest_table", roll)
-        if row is None:
-            session.log.append("Quest table lookup failed.")
-            return
-        gold_required = None
-        item_name = None
-        if row["key"] == "bring_gold":
-            gold_required = roll * 50
-            party_gold = sum(member.gold for member in session.party if member.current_life > 0)
-            if party_gold >= gold_required:
-                gold_required *= 2
-                session.log.append(f"Party already has {party_gold}gp; quest gold doubled to {gold_required}gp.")
-        if row["key"] == "bring_item":
-            magic_row = self.table_roller.lookup("dungeon_magic_treasure_table", roll_d6())
-            if magic_row and magic_row.get("items"):
-                item_name = magic_row["items"][0]
-            elif magic_row:
-                item_name = magic_row.get("result", "Magic item")
-            else:
-                item_name = "Magic item"
-        boss_target_name = self._roll_quest_boss_target_name(session) if row["key"] == "bring_head" else None
-        quest = quest_from_row(
-            row,
-            tile_id=tile.id,
-            gold_required=gold_required,
-            item_name=item_name,
-            boss_target_name=boss_target_name,
-        )
-        session.active_quest = quest
-        tile.lady_in_white_available = False
-        session.log.append(f"Quest accepted: {quest.description}")
-        if quest.gold_required:
-            session.log.append(f"Quest progress: deliver {quest.gold_required}gp to this tile to complete the Quest.")
-        elif quest.key == "bring_head":
-            target = f" Quest target: {quest.boss_target_name}." if quest.boss_target_name else ""
-            session.log.append(
-                f"Quest progress: slay the Quest Boss, take its head, then return to this tile to claim the Epic reward.{target}"
-            )
-        elif quest.key == "bring_alive":
-            session.log.append("Quest progress: subdue a Boss alive with Subdual damage, then return to this tile.")
-        elif quest.key == "bring_item":
-            session.log.append(f"Quest progress: find {quest.item_name} from a defeated Major Foe, then return to this tile.")
-        elif quest.key == "peaceful_way":
-            session.log.append(
-                f"Quest progress: complete {quest.peaceful_required} peaceful encounters by bribe, peaceful reaction, or Sleep."
-            )
-        elif quest.key == "slay_all":
-            session.log.append("Quest progress: defeat the Final Boss and clear all remaining foes.")
+        accept_quest(session, self._current_tile(session), show_rolls=show_rolls, callbacks=QuestAcceptanceCallbacks(speaker=lambda current: self._member_by_marching_order(current, 1), highest_character_level=self._highest_character_level, social_save=lambda current, speaker, hcl, visible: resolve_social_save(current, speaker, hcl, show_rolls=visible, label='impress the Lady in White'), lookup_table=self.table_roller.lookup, roll_d6=roll_d6, roll_boss_target=self._roll_quest_boss_target_name))
 
     def _refuse_quest(self, session: SessionState) -> None:
         tile = self._current_tile(session)
