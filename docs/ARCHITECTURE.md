@@ -45,7 +45,7 @@ Key files:
 - `src/app/engine/banking.py` - camp-only home-bank access, deposits, withdrawals, and party banking
 - `src/app/engine/tile_geometry.py` - rotation, exit spans, authored portal tracing, grid fallback, occupancy, visibility, bounds, scoring, and placement geometry shared by random and authored tiles
 - `src/app/engine/map_connections.py` - entrance opening plus reciprocal exit creation, lookup, refresh, persistence, repair, and synchronized door/passage state for reusable map connections
-- `src/app/engine/clues.py` - held-Clue ownership, legacy migration, and session-total synchronization
+- `src/app/engine/clues.py` - held-Clue ownership, grants, legacy migration, and session-total synchronization
 - `src/app/engine/dice.py` - dice helpers
 
 ## Persistence

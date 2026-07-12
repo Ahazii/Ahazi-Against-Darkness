@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ..schemas import PartyMemberState, SessionState
+from ..schemas import PartyMemberState, SessionState, TileState
+from .experience import CLUES_FOR_SECRET_XP
 
 
 def sync_clue_total(session: SessionState) -> bool:
@@ -45,3 +46,44 @@ def ensure_individual_clues(session: SessionState) -> bool:
             holder.clues += session.clues_found - member_total
             return sync_clue_total(session) or True
     return sync_clue_total(session)
+
+
+def grant_clue(
+    session: SessionState,
+    tile: TileState,
+    *,
+    character_id: str | None = None,
+    add_object: bool = True,
+    source: str = "finds",
+) -> PartyMemberState | None:
+    """Give one held Clue to an eligible hero and keep the party total synchronized."""
+    if add_object and "Clue" not in tile.objects:
+        tile.objects.append("Clue")
+    holder = default_clue_holder(session, character_id)
+    if holder is None:
+        session.log.append("No hero is available to hold the Clue.")
+        return None
+    holder.clues += 1
+    sync_clue_total(session)
+    if source == "buys":
+        session.log.append(
+            f"{holder.name} buys 1 Clue ({holder.clues} carried; {session.clues_found} party total)."
+        )
+    else:
+        session.log.append(
+            f"{holder.name} finds 1 Clue ({holder.clues} carried; {session.clues_found} party total)."
+        )
+    if session.clues_found >= CLUES_FOR_SECRET_XP:
+        session.log.append(
+            f"{CLUES_FOR_SECRET_XP} Clues are available. Spend them deliberately on a Secret, "
+            "an eligible spell, or a special clue use."
+        )
+    return holder
+
+
+def grant_clue_to_member(session: SessionState, member: PartyMemberState, tile: TileState) -> None:
+    """Give an explicitly chosen hero one Clue for a rule-owned effect."""
+    member.clues += 1
+    if "Clue" not in tile.objects:
+        tile.objects.append("Clue")
+    session.log.append(f"Effect: {member.name} gains 1 Clue (now {member.clues}).")

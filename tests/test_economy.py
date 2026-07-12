@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.combat import CombatRound
+from app.engine.clues import grant_clue
 from app.engine.experience import MINOR_ENCOUNTERS_FOR_XP
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.secrets import secret_attack_bonus, secret_defense_bonus, secret_weakness_attack_bonus
@@ -1407,3 +1408,26 @@ def test_clues_can_teach_eligible_druid_spell() -> None:
     assert druid.clues == 0
     assert druid.learned_expert_skills == ["barkskin"]
     assert "Barkskin" in druid.spells
+
+
+def test_direct_clue_grant_assigns_the_requested_living_holder() -> None:
+    first = PartyMemberState(
+        character_id="a", name="Alpha", class_id="warrior", class_name="Warrior", level=1,
+        xp=0, gold=0, current_life=4, max_life=4, attack_bonus=0, defense_bonus=0, save_bonus=0,
+    )
+    second = PartyMemberState(
+        character_id="b", name="Bravo", class_id="wizard", class_name="Wizard", level=1,
+        xp=0, gold=0, current_life=3, max_life=3, attack_bonus=0, defense_bonus=0, save_bonus=0,
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")
+    session = SessionState(
+        id="s", party_id="p", adventure_id="a", adventure_type="random", party=[first, second],
+        map_state=MapState(tiles=[tile], current_tile_id="t"),
+        created_at="2026-01-01T00:00:00Z", updated_at="2026-01-01T00:00:00Z",
+    )
+
+    holder = grant_clue(session, tile, character_id="b", source="buys")
+
+    assert holder is second
+    assert (first.clues, second.clues, session.clues_found, tile.objects) == (0, 1, 1, ["Clue"])
+    assert "Bravo buys 1 Clue" in session.log[-1]

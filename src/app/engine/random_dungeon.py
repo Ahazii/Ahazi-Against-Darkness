@@ -76,7 +76,13 @@ from .druid_companion import (
     maybe_summon_on_wilderness_entry,
 )
 from .roster_sync import initial_xp_tally
-from .clues import default_clue_holder, ensure_individual_clues, sync_clue_total
+from .clues import (
+    default_clue_holder,
+    ensure_individual_clues,
+    grant_clue,
+    grant_clue_to_member,
+    sync_clue_total,
+)
 from .camp import (
     append_between_foray_refresh_log,
     explored_map_element_count,
@@ -10453,28 +10459,13 @@ class RandomDungeonEngine:
         add_object: bool = True,
         source: str = "finds",
     ) -> PartyMemberState | None:
-        if add_object and "Clue" not in tile.objects:
-            tile.objects.append("Clue")
-        holder = self._default_clue_holder(session, character_id)
-        if holder is None:
-            session.log.append("No hero is available to hold the Clue.")
-            return None
-        holder.clues += 1
-        self._sync_clue_total(session)
-        if source == "buys":
-            session.log.append(
-                f"{holder.name} buys 1 Clue ({holder.clues} carried; {session.clues_found} party total)."
-            )
-        else:
-            session.log.append(
-                f"{holder.name} finds 1 Clue ({holder.clues} carried; {session.clues_found} party total)."
-            )
-        if session.clues_found >= CLUES_FOR_SECRET_XP:
-            session.log.append(
-                f"{CLUES_FOR_SECRET_XP} Clues are available. Spend them deliberately on a Secret, "
-                "an eligible spell, or a special clue use."
-            )
-        return holder
+        return grant_clue(
+            session,
+            tile,
+            character_id=character_id,
+            add_object=add_object,
+            source=source,
+        )
 
     def _grant_xp_credit(self, session: SessionState, amount: int, reason: str) -> None:
         grant_xp_credit(session, amount, reason)
@@ -16370,10 +16361,7 @@ class RandomDungeonEngine:
         return self._member_by_marching_order(session, 1)
 
     def _grant_clue_to_member(self, session: SessionState, member: PartyMemberState, tile: TileState) -> None:
-        member.clues += 1
-        if "Clue" not in tile.objects:
-            tile.objects.append("Clue")
-        session.log.append(f"Effect: {member.name} gains 1 Clue (now {member.clues}).")
+        grant_clue_to_member(session, member, tile)
 
     def _spend_prepared_spell(self, member: PartyMemberState, spell_name: str) -> bool:
         target = spell_name.lower()
