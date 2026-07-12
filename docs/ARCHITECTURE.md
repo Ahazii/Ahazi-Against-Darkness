@@ -42,6 +42,7 @@ Key files:
 - `src/app/engine/experience.py` - XP awards, level-up application, spell-slot assignment
 - `src/app/engine/rest.py` - rest eligibility/actions and reusable between-foray resource reset
 - `src/app/engine/camp.py` - camp recovery, fallen-hero lookup, refresh logging, and explored-map summaries
+- `src/app/engine/tile_geometry.py` - rotation, exit spans, grid fallback, and placement geometry shared by random and authored tiles
 - `src/app/engine/clues.py` - held-Clue ownership, legacy migration, and session-total synchronization
 - `src/app/engine/dice.py` - dice helpers
 
