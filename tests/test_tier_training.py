@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.engine.experience import spend_classical_training_xp
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import MapState, PartyMemberState, SessionState, TileState
@@ -10,6 +11,48 @@ from app.schemas import MapState, PartyMemberState, SessionState, TileState
 def engine() -> RandomDungeonEngine:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     return RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
+
+
+def test_spend_classical_training_xp_uses_assigned_rolls_before_party_rolls() -> None:
+    hero = PartyMemberState(
+        character_id="h",
+        name="Adept",
+        class_id="warrior",
+        class_name="Warrior",
+        level=5,
+        xp=1,
+        gold=0,
+        current_life=10,
+        max_life=10,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        xp_rolls_pending=2,
+        party=[hero],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")],
+            current_tile_id="t",
+        ),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+
+    ok, log, assigned_spent, party_spent = spend_classical_training_xp(session, hero, 2)
+
+    assert ok is True
+    assert (assigned_spent, party_spent) == (1, 1)
+    assert hero.xp == 0
+    assert session.xp_rolls_pending == 1
+    assert log == [
+        "Adept spends 1 assigned XP roll(s).",
+        "Adept spends 1 pending party XP roll(s).",
+    ]
 
 
 def test_enter_expert_tier_with_gold() -> None:

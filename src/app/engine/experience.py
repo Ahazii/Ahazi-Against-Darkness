@@ -303,6 +303,30 @@ def old_school_level_cost(level: int) -> int:
     return (tier_for_level(level) + 2) * 100
 
 
+def spend_classical_training_xp(
+    session: SessionState,
+    member: PartyMemberState,
+    amount: int,
+) -> tuple[bool, list[str], int, int]:
+    """Spend a hero's assigned XP rolls before drawing from the party's pending rolls."""
+    if amount <= 0:
+        return True, [], 0, 0
+    available = member.xp + session.xp_rolls_pending
+    if available < amount:
+        return False, [], 0, 0
+    remaining = amount
+    log: list[str] = []
+    banked_take = min(member.xp, remaining)
+    if banked_take:
+        member.xp -= banked_take
+        remaining -= banked_take
+        log.append(f"{member.name} spends {banked_take} assigned XP roll(s).")
+    if remaining:
+        session.xp_rolls_pending -= remaining
+        log.append(f"{member.name} spends {remaining} pending party XP roll(s).")
+    return True, log, banked_take, remaining
+
+
 def dungeon_has_final_boss(session: SessionState) -> bool:
     if session.final_boss_defeated or session.final_boss_designated:
         return True

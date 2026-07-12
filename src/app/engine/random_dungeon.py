@@ -179,6 +179,7 @@ from .experience import (
     tier_for_level,
     unlimited_map_element_cap,
     usable_potions_in_inventory,
+    spend_classical_training_xp,
 )
 from .tier_skills import (
     advancement_fork_label,
@@ -19351,22 +19352,7 @@ class RandomDungeonEngine:
         member: PartyMemberState,
         amount: int,
     ) -> tuple[bool, list[str], int, int]:
-        if amount <= 0:
-            return True, [], 0, 0
-        available = member.xp + session.xp_rolls_pending
-        if available < amount:
-            return False, [], 0, 0
-        remaining = amount
-        log: list[str] = []
-        banked_take = min(member.xp, remaining)
-        if banked_take:
-            member.xp -= banked_take
-            remaining -= banked_take
-            log.append(f"{member.name} spends {banked_take} assigned XP roll(s).")
-        if remaining:
-            session.xp_rolls_pending -= remaining
-            log.append(f"{member.name} spends {remaining} pending party XP roll(s).")
-        return True, log, banked_take, remaining
+        return spend_classical_training_xp(session, member, amount)
 
     def _enter_tier_training(
         self,
