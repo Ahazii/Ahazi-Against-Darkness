@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from ..schemas import PartyMemberState
+from ..schemas import PartyMemberState, SessionState
 from .expert_skills import class_skill_codes
 from .tier_advancement import AdvancementPurpose, TIER_ENTRY, effective_action_tier_band, training_from_member
 
@@ -49,6 +49,95 @@ def tier_entry_blocked_reason(member: PartyMemberState, tier: str) -> str | None
         if member.epic_trained:
             return f"{member.name} already has Epic training."
     return None
+
+
+def enter_tier_training(
+    session: SessionState,
+    character_id: str | None,
+    *,
+    tier: str | None,
+    use_xp: bool,
+    show_rolls: bool,
+) -> None:
+    """Pay the printed tier-entry cost and record the selected training flag."""
+    if session.mode == "combat":
+        session.log.append("Tier training waits until combat ends.")
+        return
+    if tier not in {"expert", "heroic", "legendary", "epic"}:
+        session.log.append("Choose Expert, Heroic, Legendary, or Epic tier training.")
+        return
+    member = next((item for item in session.party if item.character_id == character_id), None)
+    if member is None:
+        session.log.append("Choose a hero for tier training.")
+        return
+    blocked = tier_entry_blocked_reason(member, tier)
+    if blocked:
+        session.log.append(blocked)
+        return
+    spec = tier_entry_requirements(tier)
+    xp_cost = int(spec.get("xp", 0))
+    gold_cost = int(spec.get("gold", 0))
+    from .banking import outside_party_gold, spend_outside_party_gold
+    from .experience import spend_classical_training_xp
+
+    if tier == "expert" and use_xp:
+        xp_alt = int(spec.get("xp_alt", 0))
+        if xp_alt <= 0:
+            session.log.append("Expert training requires gold payment.")
+            return
+        paid_xp, xp_log, _, _ = spend_classical_training_xp(session, member, xp_alt)
+        if not paid_xp:
+            session.log.append(
+                f"Need {xp_alt} assigned or pending XP roll (have {member.xp + session.xp_rolls_pending})."
+            )
+            return
+        if show_rolls:
+            session.log.extend(xp_log)
+            session.log.append(f"{member.name} enters Expert tier (1 XP roll spent; no gold).")
+    else:
+        if xp_cost > 0:
+            paid_xp, xp_log, assigned_spent, pending_spent = spend_classical_training_xp(
+                session,
+                member,
+                xp_cost,
+            )
+            if not paid_xp:
+                session.log.append(
+                    f"Need {xp_cost} assigned or pending XP roll(s) for {tier.title()} training "
+                    f"(have {member.xp + session.xp_rolls_pending})."
+                )
+                return
+        else:
+            xp_log = []
+            assigned_spent = 0
+            pending_spent = 0
+        paid, payment_log = spend_outside_party_gold(session, gold_cost, label=f"{tier.title()} training")
+        if not paid:
+            if xp_cost > 0:
+                member.xp += assigned_spent
+                session.xp_rolls_pending += pending_spent
+            available = outside_party_gold(session)
+            session.log.append(
+                f"Need {gold_cost} gp in carried or home bank funds for {tier.title()} training "
+                f"(have {available})."
+            )
+            return
+        if show_rolls:
+            session.log.extend(xp_log)
+            session.log.extend(payment_log)
+            parts = [f"{gold_cost} gp"]
+            if xp_cost:
+                parts.append(f"{xp_cost} banked XP roll(s)")
+            session.log.append(f"{member.name} enters {tier.title()} tier ({', '.join(parts)}).")
+
+    if tier == "expert":
+        member.expert_trained = True
+    elif tier == "heroic":
+        member.heroic_trained = True
+    elif tier == "legendary":
+        member.legendary_trained = True
+    elif tier == "epic":
+        member.epic_trained = True
 
 
 def learned_tier_skill_ids(member, tier: SkillTier) -> set[str]:

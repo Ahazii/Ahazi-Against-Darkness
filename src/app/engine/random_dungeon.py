@@ -183,12 +183,10 @@ from .experience import (
     tier_for_level,
     unlimited_map_element_cap,
     usable_potions_in_inventory,
-    spend_classical_training_xp,
 )
 from .tier_skills import (
     apply_tier_skill_learn,
-    tier_entry_blocked_reason,
-    tier_entry_requirements,
+    enter_tier_training,
 )
 from .expert_skill_effects import (
     adjust_reaction_roll,
@@ -19034,14 +19032,6 @@ class RandomDungeonEngine:
             ),
         )
 
-    def _spend_training_xp_rolls(
-        self,
-        session: SessionState,
-        member: PartyMemberState,
-        amount: int,
-    ) -> tuple[bool, list[str], int, int]:
-        return spend_classical_training_xp(session, member, amount)
-
     def _enter_tier_training(
         self,
         session: SessionState,
@@ -19051,80 +19041,13 @@ class RandomDungeonEngine:
         use_xp: bool,
         show_rolls: bool,
     ) -> None:
-        if session.mode == "combat":
-            session.log.append("Tier training waits until combat ends.")
-            return
-        if tier not in {"expert", "heroic", "legendary", "epic"}:
-            session.log.append("Choose Expert, Heroic, Legendary, or Epic tier training.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None:
-            session.log.append("Choose a hero for tier training.")
-            return
-        blocked = tier_entry_blocked_reason(member, tier)
-        if blocked:
-            session.log.append(blocked)
-            return
-        spec = tier_entry_requirements(tier)
-        xp_cost = int(spec.get("xp", 0))
-        gold_cost = int(spec.get("gold", 0))
-
-        if tier == "expert" and use_xp:
-            xp_alt = int(spec.get("xp_alt", 0))
-            if xp_alt <= 0:
-                session.log.append("Expert training requires gold payment.")
-                return
-            paid_xp, xp_log, _, _ = self._spend_training_xp_rolls(session, member, xp_alt)
-            if not paid_xp:
-                session.log.append(
-                    f"Need {xp_alt} assigned or pending XP roll (have {member.xp + session.xp_rolls_pending})."
-                )
-                return
-            if show_rolls:
-                session.log.extend(xp_log)
-                session.log.append(f"{member.name} enters Expert tier (1 XP roll spent; no gold).")
-        else:
-            if xp_cost > 0:
-                paid_xp, xp_log, assigned_spent, pending_spent = self._spend_training_xp_rolls(session, member, xp_cost)
-                if not paid_xp:
-                    session.log.append(
-                        f"Need {xp_cost} assigned or pending XP roll(s) for {tier.title()} training "
-                        f"(have {member.xp + session.xp_rolls_pending})."
-                    )
-                    return
-            else:
-                xp_log = []
-                assigned_spent = 0
-                pending_spent = 0
-            paid, payment_log = self._spend_outside_party_gold(session, gold_cost, label=f"{tier.title()} training")
-            if not paid:
-                if xp_cost > 0:
-                    member.xp += assigned_spent
-                    session.xp_rolls_pending += pending_spent
-                available = self._outside_party_gold(session)
-                session.log.append(
-                    f"Need {gold_cost} gp in carried or home bank funds for {tier.title()} training "
-                    f"(have {available})."
-                )
-                return
-            if show_rolls:
-                session.log.extend(xp_log)
-                session.log.extend(payment_log)
-                parts = [f"{gold_cost} gp"]
-                if xp_cost:
-                    parts.append(f"{xp_cost} banked XP roll(s)")
-                session.log.append(
-                    f"{member.name} enters {tier.title()} tier ({', '.join(parts)})."
-                )
-
-        if tier == "expert":
-            member.expert_trained = True
-        elif tier == "heroic":
-            member.heroic_trained = True
-        elif tier == "legendary":
-            member.legendary_trained = True
-        elif tier == "epic":
-            member.epic_trained = True
+        enter_tier_training(
+            session,
+            character_id,
+            tier=tier,
+            use_xp=use_xp,
+            show_rolls=show_rolls,
+        )
 
     def _outside_party_gold(self, session: SessionState) -> int:
         return outside_party_gold(session)
