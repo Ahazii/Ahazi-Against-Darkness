@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from ..schemas import TileState
+from collections.abc import Mapping
+
+from ..schemas import ExitState, TileState
 
 
 DIRECTION_ORDER = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]
@@ -128,3 +130,107 @@ def visible_cells(tile: TileState) -> set[tuple[int, int]]:
             if value != "0"
         }
     return footprint_cells(tile.x, tile.y, width, height)
+
+
+def trace_exit_portal(
+    local_x: int,
+    local_y: int,
+    direction: str,
+    width: int,
+    height: int,
+    walkable: list[str],
+    visible: list[str],
+    *,
+    directions: Mapping[str, tuple[int, int]],
+) -> tuple[tuple[int, int], tuple[int, int], set[tuple[int, int]]]:
+    """Trace a portal from its anchor through an authored tile's clipped cells."""
+    dx, dy = directions[direction]
+    inside = (max(0, min(local_x, width - 1)), max(0, min(local_y, height - 1)))
+    if walkable[inside[1]][inside[0]] == "0":
+        prior_x = inside[0] - dx
+        prior_y = inside[1] - dy
+        if 0 <= prior_x < width and 0 <= prior_y < height and walkable[prior_y][prior_x] != "0":
+            inside = (prior_x, prior_y)
+    probe_x = inside[0] + dx
+    probe_y = inside[1] + dy
+    throat_cells: set[tuple[int, int]] = set()
+    while 0 <= probe_x < width and 0 <= probe_y < height:
+        if visible[probe_y][probe_x] == "0":
+            return inside, (probe_x, probe_y), throat_cells
+        if walkable[probe_y][probe_x] != "0":
+            inside = (probe_x, probe_y)
+        else:
+            throat_cells.add((probe_x, probe_y))
+        probe_x += dx
+        probe_y += dy
+    return inside, (probe_x, probe_y), throat_cells
+
+
+def uses_authored_exit_portal(
+    tile: TileState,
+    exit_state: ExitState,
+    *,
+    directions: Mapping[str, tuple[int, int]],
+    is_entrance_tile: bool,
+) -> bool:
+    if exit_state.dungeon_exit:
+        return False
+    width, height = rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+    walkable = state_rows(tile.walkable, width, height, "1")
+    dx, dy = directions[exit_state.direction]
+    for local_x, local_y in exit_cells(
+        exit_state.x,
+        exit_state.y,
+        exit_state.direction,
+        exit_state.span,
+        width,
+        height,
+    ):
+        if walkable[local_y][local_x] == "0":
+            inside_x = local_x - dx
+            inside_y = local_y - dy
+            if (
+                0 <= inside_x < width
+                and 0 <= inside_y < height
+                and walkable[inside_y][inside_x] != "0"
+            ):
+                return True
+        target_x = local_x + dx
+        target_y = local_y + dy
+        if 0 <= target_x < width and 0 <= target_y < height and walkable[target_y][target_x] == "0":
+            if is_entrance_tile:
+                return True
+            next_x = target_x + dx
+            next_y = target_y + dy
+            if not (0 <= next_x < width and 0 <= next_y < height):
+                return True
+    return False
+
+
+def authored_exit_edge(
+    tile: TileState,
+    exit_state: ExitState,
+    *,
+    directions: Mapping[str, tuple[int, int]],
+) -> tuple[tuple[int, int], tuple[int, int]]:
+    width, height = rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+    local_x, local_y = exit_cells(
+        exit_state.x,
+        exit_state.y,
+        exit_state.direction,
+        exit_state.span,
+        width,
+        height,
+    )[0]
+    dx, dy = directions[exit_state.direction]
+    walkable = state_rows(tile.walkable, width, height, "1")
+    if walkable[local_y][local_x] == "0":
+        inside_local = (local_x - dx, local_y - dy)
+        outside_local = (local_x, local_y)
+    else:
+        inside_local = (local_x, local_y)
+        outside_local = (local_x + dx, local_y + dy)
+    return (
+        (tile.x + inside_local[0], tile.y + inside_local[1]),
+        (tile.x + outside_local[0], tile.y + outside_local[1]),
+    )

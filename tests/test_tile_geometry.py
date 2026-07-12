@@ -3,6 +3,7 @@ from app.engine.tile_geometry import (
     exit_cells,
     max_exit_span,
     occupied_cells,
+    trace_exit_portal,
     rotate_cell,
     rotate_direction,
     rotated_size,
@@ -46,3 +47,20 @@ def test_tile_cells_respect_authored_walkable_and_visible_clipping() -> None:
 
     assert occupied_cells(tile) == {(10, 20), (11, 21)}
     assert visible_cells(tile) == {(10, 20), (11, 20)}
+
+
+def test_trace_exit_portal_stops_at_a_clipped_authored_cell() -> None:
+    inside, outside, throat = trace_exit_portal(
+        0,
+        0,
+        "east",
+        3,
+        1,
+        ["110"],
+        ["110"],
+        directions={"east": (1, 0)},
+    )
+
+    assert inside == (1, 0)
+    assert outside == (2, 0)
+    assert throat == set()

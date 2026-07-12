@@ -96,12 +96,15 @@ from .tile_geometry import (
     exit_offset,
     max_exit_span,
     occupied_cells,
+    authored_exit_edge,
     position_from_offset,
     rotate_cell,
     rotate_direction,
     rotated_size,
     side_length,
     state_rows,
+    trace_exit_portal,
+    uses_authored_exit_portal,
     visible_cells,
 )
 from .map_connections import (
@@ -13287,60 +13290,15 @@ class RandomDungeonEngine:
         return (tile.x + inside[0], tile.y + inside[1]), (tile.x + outside[0], tile.y + outside[1])
 
     def _uses_authored_exit_portal(self, tile: TileState, exit_state: ExitState) -> bool:
-        if exit_state.dungeon_exit:
-            return False
-        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
-        walkable = self._state_rows(tile.walkable, width, height, "1")
-        dx, dy = DIRECTIONS[exit_state.direction]
-        for local_x, local_y in self._exit_cells(
-            exit_state.x,
-            exit_state.y,
-            exit_state.direction,
-            exit_state.span,
-            width,
-            height,
-        ):
-            if walkable[local_y][local_x] == "0":
-                inside_x = local_x - dx
-                inside_y = local_y - dy
-                if (
-                    0 <= inside_x < width
-                    and 0 <= inside_y < height
-                    and walkable[inside_y][inside_x] != "0"
-                ):
-                    return True
-            target_x = local_x + dx
-            target_y = local_y + dy
-            if 0 <= target_x < width and 0 <= target_y < height and walkable[target_y][target_x] == "0":
-                if self._is_entrance_tile(tile):
-                    return True
-                next_x = target_x + dx
-                next_y = target_y + dy
-                if not (0 <= next_x < width and 0 <= next_y < height):
-                    return True
-        return False
+        return uses_authored_exit_portal(
+            tile,
+            exit_state,
+            directions=DIRECTIONS,
+            is_entrance_tile=self._is_entrance_tile(tile),
+        )
 
     def _authored_exit_edge(self, tile: TileState, exit_state: ExitState) -> tuple[tuple[int, int], tuple[int, int]]:
-        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
-        local_x, local_y = self._exit_cells(
-            exit_state.x,
-            exit_state.y,
-            exit_state.direction,
-            exit_state.span,
-            width,
-            height,
-        )[0]
-        dx, dy = DIRECTIONS[exit_state.direction]
-        walkable = self._state_rows(tile.walkable, width, height, "1")
-        if walkable[local_y][local_x] == "0":
-            inside_local = (local_x - dx, local_y - dy)
-            outside_local = (local_x, local_y)
-        else:
-            inside_local = (local_x, local_y)
-            outside_local = (local_x + dx, local_y + dy)
-        inside = (tile.x + inside_local[0], tile.y + inside_local[1])
-        outside = (tile.x + outside_local[0], tile.y + outside_local[1])
-        return inside, outside
+        return authored_exit_edge(tile, exit_state, directions=DIRECTIONS)
 
     def _trace_exit_portal(
         self,
@@ -13352,26 +13310,16 @@ class RandomDungeonEngine:
         walkable: list[str],
         visible: list[str],
     ) -> tuple[tuple[int, int], tuple[int, int], set[tuple[int, int]]]:
-        dx, dy = DIRECTIONS[direction]
-        inside = (max(0, min(local_x, width - 1)), max(0, min(local_y, height - 1)))
-        if walkable[inside[1]][inside[0]] == "0":
-            prior_x = inside[0] - dx
-            prior_y = inside[1] - dy
-            if 0 <= prior_x < width and 0 <= prior_y < height and walkable[prior_y][prior_x] != "0":
-                inside = (prior_x, prior_y)
-        probe_x = inside[0] + dx
-        probe_y = inside[1] + dy
-        throat_cells: set[tuple[int, int]] = set()
-        while 0 <= probe_x < width and 0 <= probe_y < height:
-            if visible[probe_y][probe_x] == "0":
-                return inside, (probe_x, probe_y), throat_cells
-            if walkable[probe_y][probe_x] != "0":
-                inside = (probe_x, probe_y)
-            else:
-                throat_cells.add((probe_x, probe_y))
-            probe_x += dx
-            probe_y += dy
-        return inside, (probe_x, probe_y), throat_cells
+        return trace_exit_portal(
+            local_x,
+            local_y,
+            direction,
+            width,
+            height,
+            walkable,
+            visible,
+            directions=DIRECTIONS,
+        )
 
     def _position_from_offset(self, offset: int, direction: str, width: int, height: int) -> float:
         return position_from_offset(offset, direction, width, height)
