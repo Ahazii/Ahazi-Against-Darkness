@@ -19,6 +19,7 @@ Key files:
 - `src/app/db.py` - SQLite record store
 - `src/app/rules/repository.py` - packaged and user-overridden rule loading
 - `src/app/engine/random_dungeon.py` - procedural session engine
+- `src/app/engine/treasure_awards.py` - reusable defeated-group treasure-roll planning and Final Boss integrity helpers
 - `src/app/engine/adventure_manifest.py` - import validation (`validate_adventure_manifest`)
 - `src/app/engine/adventure_import.py` - install manifests under `data/adventures/`
 - `src/app/engine/adventure_session.py` - `create_session_from_manifest()`

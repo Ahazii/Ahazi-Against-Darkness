@@ -15732,10 +15732,12 @@ class RandomDungeonEngine:
             tile.treasure_summary = f"{tile.treasure_summary} (doubled behind secret door: {tile.treasure_gold}gp)."
 
     def _final_boss_summary_gold_cap(self, tile: TileState) -> int | None:
-        if not tile.final_boss_treasure or not tile.treasure_summary:
-            return None
-        amounts = [int(match) for match in re.findall(r"(\d+)\s*gp", tile.treasure_summary, flags=re.IGNORECASE)]
-        return max(amounts) if amounts else None
+        from .treasure_awards import final_boss_summary_gold_cap
+
+        return final_boss_summary_gold_cap(
+            is_final_boss=tile.final_boss_treasure,
+            summary=tile.treasure_summary,
+        )
 
     def _prepare_tile_features(
         self,
@@ -17974,29 +17976,12 @@ class RandomDungeonEngine:
 
     def _treasure_roll_count_for_tile(self, session: SessionState, tile: TileState) -> int:
         from .forsaken_depths_map import is_fd_ruleset
-        from .monster_combat_hooks import treasure_roll_count_from_defeated
+        from .treasure_awards import treasure_roll_count_for_defeated
 
         defeated = list(tile.defeated_enemies)
         if not defeated or self.rules is None:
             return 1
-        abyss_rolls_by_group: dict[str, int] = {}
-        for enemy in defeated:
-            group_rolls = 0
-            for tag in enemy.tags:
-                if tag.startswith("abyss_treasure_rolls:"):
-                    try:
-                        group_rolls = max(group_rolls, int(tag.split(":", 1)[1]))
-                    except ValueError:
-                        pass
-            if group_rolls:
-                # Abyss encounter rows describe one generated group (for
-                # example, 2d6 Chaotic Ratmen with two treasure rolls), not
-                # one treasure award for every member of that group.
-                abyss_rolls_by_group.setdefault(enemy.name, max(0, group_rolls))
-        abyss_rolls = sum(abyss_rolls_by_group.values())
-        if abyss_rolls:
-            return abyss_rolls
-        return treasure_roll_count_from_defeated(
+        return treasure_roll_count_for_defeated(
             defeated,
             lookup_template=self._monster_template_for_enemy,
             log=session.log,
