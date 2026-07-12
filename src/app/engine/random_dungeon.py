@@ -275,6 +275,7 @@ from .reactions import (
     consume_bribe_food_value,
     count_bribe_food_value,
     count_party_weapons,
+    end_peaceful_encounter,
     dwarf_miser_blocks_bribe,
     flee_if_outnumbered,
     apply_reaction_overlays,
@@ -4885,31 +4886,11 @@ class RandomDungeonEngine:
         return True
 
     def _end_peaceful_encounter(self, session: SessionState, tile: TileState) -> None:
-        tile.enemies = []
-        session.reaction_pending = False
-        session.reaction_checked = False
-        session.reaction_key = None
-        session.reaction_bribe_gold = 0
-        session.reaction_bribe_weapons = 0
-        session.reaction_bribe_gold_per_foe = 0
-        session.reaction_bribe_weapons_per_foe = 0
-        session.reaction_bribe_foe_count = 0
-        session.reaction_trade_stock = []
-        session.reaction_trade_active = False
-        session.reaction_no_fools_gold = False
-        session.reaction_sleep_attack_bonus = 0
-        session.foes_strike_first = False
-        session.foe_flee_strike_pending = False
-        session.secret_weakness_foe_id = None
-        session.secret_weakness_character_id = None
-        session.secret_enemy_foe_id = None
-        session.secret_enemy_character_id = None
-        session.secret_chaos_fanatics_active = False
-        session.terrifying_secret_pending_character_id = None
-        session.combat_round = 0
-        session.mode = "exploration"
-        session.log.append("The encounter ends peacefully.")
-        self._record_peaceful_quest_progress(session)
+        end_peaceful_encounter(
+            session,
+            tile,
+            record_progress=self._record_peaceful_quest_progress,
+        )
 
     def _clear_combat_statuses(self, session: SessionState) -> None:
         clear_combat_state(session)

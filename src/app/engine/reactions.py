@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
-from ..schemas import EnemyState, PartyMemberState
+from ..schemas import EnemyState, PartyMemberState, SessionState, TileState
 from .class_abilities import FOOD_RATION_NAMES, count_food_rations, consume_food_rations
 from .consumables import mushroom_kind
 from .equipment_effects import consume_fools_gold, party_has_fools_gold
@@ -72,6 +73,40 @@ class ReactionSource:
     table_name: str | None
     inline_rows: list[dict] | None
     label: str
+
+
+def end_peaceful_encounter(
+    session: SessionState,
+    tile: TileState,
+    *,
+    record_progress: Callable[[SessionState], None],
+) -> None:
+    """Close a non-hostile reaction and clear its encounter-only state."""
+    tile.enemies = []
+    session.reaction_pending = False
+    session.reaction_checked = False
+    session.reaction_key = None
+    session.reaction_bribe_gold = 0
+    session.reaction_bribe_weapons = 0
+    session.reaction_bribe_gold_per_foe = 0
+    session.reaction_bribe_weapons_per_foe = 0
+    session.reaction_bribe_foe_count = 0
+    session.reaction_trade_stock = []
+    session.reaction_trade_active = False
+    session.reaction_no_fools_gold = False
+    session.reaction_sleep_attack_bonus = 0
+    session.foes_strike_first = False
+    session.foe_flee_strike_pending = False
+    session.secret_weakness_foe_id = None
+    session.secret_weakness_character_id = None
+    session.secret_enemy_foe_id = None
+    session.secret_enemy_character_id = None
+    session.secret_chaos_fanatics_active = False
+    session.terrifying_secret_pending_character_id = None
+    session.combat_round = 0
+    session.mode = "exploration"
+    session.log.append("The encounter ends peacefully.")
+    record_progress(session)
 
 
 def is_bribe_weapon(item: str) -> bool:

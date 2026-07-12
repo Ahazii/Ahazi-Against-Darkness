@@ -8,6 +8,7 @@ from app.engine.reactions import (
     apply_reaction_overlays,
     bribe_requirements_met,
     build_reaction_outcome,
+    end_peaceful_encounter,
     is_bribe_weapon,
     pay_bribe_cost,
     reaction_table_for_category,
@@ -39,6 +40,7 @@ def combat_session(*, enemies: list[EnemyState], party_gold: int = 100) -> Sessi
         save_bonus=0,
         inventory=["Hand weapon", "Dagger"],
     )
+
     return SessionState(
         id="session",
         party_id="party",
@@ -66,6 +68,24 @@ def combat_session(*, enemies: list[EnemyState], party_gold: int = 100) -> Sessi
         created_at="2026-05-19T00:00:00+00:00",
         updated_at="2026-05-19T00:00:00+00:00",
     )
+
+
+def test_end_peaceful_encounter_clears_reaction_state_and_records_progress() -> None:
+    session = combat_session(
+        enemies=[EnemyState(id="foe", name="Goblin", category="minions", level=1, life=1, max_life=1)]
+    )
+    tile = session.map_state.tiles[0]
+    session.reaction_key = "bribe"
+    session.reaction_bribe_gold = 20
+    recorded: list[str] = []
+
+    end_peaceful_encounter(session, tile, record_progress=lambda active_session: recorded.append(active_session.id))
+
+    assert session.mode == "exploration"
+    assert tile.enemies == []
+    assert session.reaction_key is None
+    assert session.reaction_bribe_gold == 0
+    assert recorded == ["session"]
 
 
 def _split_party_combat_session(
