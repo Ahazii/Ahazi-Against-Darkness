@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ..schemas import TileState
+
 
 DIRECTION_ORDER = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]
 EXIT_SPAN_STEPS = {
@@ -96,3 +98,33 @@ def state_rows(rows: list[str], width: int, height: int, default: str) -> list[s
     if len(rows) == height and all(len(row) == width for row in rows):
         return rows
     return [default * width for _ in range(height)]
+
+
+def footprint_cells(x: int, y: int, width: int, height: int) -> set[tuple[int, int]]:
+    return {(x + dx, y + dy) for dx in range(width) for dy in range(height)}
+
+
+def occupied_cells(tile: TileState) -> set[tuple[int, int]]:
+    """Return the walkable world cells occupied by a rendered tile footprint."""
+    width, height = rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+    if len(tile.walkable) == height and all(len(row) == width for row in tile.walkable):
+        return {
+            (tile.x + local_x, tile.y + local_y)
+            for local_y, row in enumerate(tile.walkable)
+            for local_x, value in enumerate(row)
+            if value != "0"
+        }
+    return footprint_cells(tile.x, tile.y, width, height)
+
+
+def visible_cells(tile: TileState) -> set[tuple[int, int]]:
+    """Return all non-clipped world cells visible on the tactical map."""
+    width, height = rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+    if len(tile.visible) == height and all(len(row) == width for row in tile.visible):
+        return {
+            (tile.x + local_x, tile.y + local_y)
+            for local_y, row in enumerate(tile.visible)
+            for local_x, value in enumerate(row)
+            if value != "0"
+        }
+    return footprint_cells(tile.x, tile.y, width, height)

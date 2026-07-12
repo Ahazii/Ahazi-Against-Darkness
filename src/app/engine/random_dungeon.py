@@ -91,15 +91,18 @@ from .treasure_awards import (
 from .tile_geometry import (
     EXIT_SPAN_STEPS,
     default_entry_cell,
+    footprint_cells,
     exit_cells,
     exit_offset,
     max_exit_span,
+    occupied_cells,
     position_from_offset,
     rotate_cell,
     rotate_direction,
     rotated_size,
     side_length,
     state_rows,
+    visible_cells,
 )
 from .map_connections import (
     clear_door_state,
@@ -13512,26 +13515,10 @@ class RandomDungeonEngine:
         return False
 
     def _occupied_cells(self, tile: TileState) -> set[tuple[int, int]]:
-        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
-        if len(tile.walkable) == height and all(len(row) == width for row in tile.walkable):
-            return {
-                (tile.x + local_x, tile.y + local_y)
-                for local_y, row in enumerate(tile.walkable)
-                for local_x, value in enumerate(row)
-                if value != "0"
-            }
-        return self._footprint_cells(tile.x, tile.y, width, height)
+        return occupied_cells(tile)
 
     def _visible_cells(self, tile: TileState) -> set[tuple[int, int]]:
-        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
-        if len(tile.visible) == height and all(len(row) == width for row in tile.visible):
-            return {
-                (tile.x + local_x, tile.y + local_y)
-                for local_y, row in enumerate(tile.visible)
-                for local_x, value in enumerate(row)
-                if value != "0"
-            }
-        return self._footprint_cells(tile.x, tile.y, width, height)
+        return visible_cells(tile)
 
     def _normalized_walkable(
         self,
@@ -14875,7 +14862,7 @@ class RandomDungeonEngine:
         }
 
     def _footprint_cells(self, x: int, y: int, width: int, height: int) -> set[tuple[int, int]]:
-        return {(x + dx, y + dy) for dx in range(width) for dy in range(height)}
+        return footprint_cells(x, y, width, height)
 
     def _rotated_size(self, width: int, height: int, rotation: int) -> tuple[int, int]:
         return rotated_size(width, height, rotation)
