@@ -14,7 +14,6 @@ from .class_profiles import (
 from .dice import AdvancementRollResult, advancement_roll_succeeds, roll_advancement, roll_d6
 from .tier_advancement import (
     AdvancementPurpose,
-    TIER_ENTRY,
     advancement_auto_success_naturals,
     advancement_roll_spec,
     effective_action_tier_band,
@@ -135,39 +134,6 @@ def advancement_roll_explain(member: PartyMemberState) -> str:
         f"{tier_band_name(band)} tier: need {die_label} > Level {member.level}, "
         f"or {nat_text}, to advance."
     )
-
-
-def tier_entry_requirements(tier: str) -> dict:
-    if tier not in TIER_ENTRY:
-        raise ValueError(f"Unknown tier: {tier}")
-    return TIER_ENTRY[tier]
-
-
-def tier_entry_blocked_reason(member: PartyMemberState, tier: str) -> str | None:
-    spec = tier_entry_requirements(tier)
-    training = training_from_member(member)
-    if member.current_life <= 0:
-        return f"{member.name} must be alive to train."
-    if member.level < spec["min_level"]:
-        return f"{member.name} must reach Level {spec['min_level']} before {tier.title()} training."
-    if tier == "expert" and member.expert_trained:
-        return f"{member.name} already has Expert training."
-    if tier == "heroic":
-        if not training.expert_trained:
-            return f"{member.name} needs Expert training before Heroic training."
-        if member.heroic_trained:
-            return f"{member.name} already has Heroic training."
-    if tier == "legendary":
-        if not training.heroic_trained:
-            return f"{member.name} needs Heroic training before Legendary training."
-        if member.legendary_trained:
-            return f"{member.name} already has Legendary training."
-    if tier == "epic":
-        if not training.legendary_trained:
-            return f"{member.name} needs Legendary training before Epic training."
-        if member.epic_trained:
-            return f"{member.name} already has Epic training."
-    return None
 
 
 def advancement_succeeds(result: AdvancementRollResult, level: int) -> bool:

@@ -180,8 +180,6 @@ from .experience import (
     spend_banked_classical_xp,
     potion_in_inventory,
     potion_kind,
-    tier_entry_blocked_reason,
-    tier_entry_requirements,
     tier_for_level,
     unlimited_map_element_cap,
     usable_potions_in_inventory,
@@ -189,6 +187,8 @@ from .experience import (
 )
 from .tier_skills import (
     apply_tier_skill_learn,
+    tier_entry_blocked_reason,
+    tier_entry_requirements,
 )
 from .expert_skill_effects import (
     adjust_reaction_roll,

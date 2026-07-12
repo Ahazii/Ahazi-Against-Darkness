@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from ..schemas import PartyMemberState
 from .expert_skills import class_skill_codes
-from .tier_advancement import AdvancementPurpose, effective_action_tier_band, training_from_member
+from .tier_advancement import AdvancementPurpose, TIER_ENTRY, effective_action_tier_band, training_from_member
 
 SkillTier = Literal["expert", "heroic", "legendary"]
 
@@ -14,6 +14,41 @@ ADVANCEMENT_FORKS: dict[str, AdvancementPurpose] = {
     "learn_heroic_skill": "learn_heroic_skill",
     "learn_legendary_skill": "learn_legendary_skill",
 }
+
+
+def tier_entry_requirements(tier: str) -> dict:
+    """Return the printed entry cost and prerequisite record for a training tier."""
+    if tier not in TIER_ENTRY:
+        raise ValueError(f"Unknown tier: {tier}")
+    return TIER_ENTRY[tier]
+
+
+def tier_entry_blocked_reason(member: PartyMemberState, tier: str) -> str | None:
+    """Explain why a hero cannot yet enter the requested training tier."""
+    spec = tier_entry_requirements(tier)
+    training = training_from_member(member)
+    if member.current_life <= 0:
+        return f"{member.name} must be alive to train."
+    if member.level < spec["min_level"]:
+        return f"{member.name} must reach Level {spec['min_level']} before {tier.title()} training."
+    if tier == "expert" and member.expert_trained:
+        return f"{member.name} already has Expert training."
+    if tier == "heroic":
+        if not training.expert_trained:
+            return f"{member.name} needs Expert training before Heroic training."
+        if member.heroic_trained:
+            return f"{member.name} already has Heroic training."
+    if tier == "legendary":
+        if not training.heroic_trained:
+            return f"{member.name} needs Heroic training before Legendary training."
+        if member.legendary_trained:
+            return f"{member.name} already has Legendary training."
+    if tier == "epic":
+        if not training.legendary_trained:
+            return f"{member.name} needs Legendary training before Epic training."
+        if member.epic_trained:
+            return f"{member.name} already has Epic training."
+    return None
 
 
 def learned_tier_skill_ids(member, tier: SkillTier) -> set[str]:

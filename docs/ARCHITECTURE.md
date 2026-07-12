@@ -20,7 +20,7 @@ Key files:
 - `src/app/rules/repository.py` - packaged and user-overridden rule loading
 - `src/app/engine/random_dungeon.py` - procedural session engine
 - `src/app/engine/treasure_awards.py` - reusable defeated-group roll planning, claim distribution, outcome merging, and Final Boss/secret-door treasure integrity helpers
-- `src/app/engine/tier_skills.py` - tier-skill eligibility, XP-spend fork validation, and tier-skill learning
+- `src/app/engine/tier_skills.py` - tier-entry prerequisites/costs, tier-skill eligibility, XP-spend fork validation, and tier-skill learning
 - `src/app/engine/adventure_manifest.py` - import validation (`validate_adventure_manifest`)
 - `src/app/engine/adventure_import.py` - install manifests under `data/adventures/`
 - `src/app/engine/adventure_session.py` - `create_session_from_manifest()`
