@@ -107,6 +107,7 @@ from .treasure_awards import (
     distribute_claimed_treasure,
     merge_treasure_outcomes,
 )
+from .treasure_claims import TreasureClaimCallbacks, claim_treasure
 from .tile_geometry import (
     EXIT_SPAN_STEPS,
     cells_outside_bounds,
@@ -17189,111 +17190,23 @@ class RandomDungeonEngine:
         session.log.append("Beast hides are available to claim with the treasure.")
 
     def _claim_treasure(self, session: SessionState) -> None:
+        from .milestones import record_inventory_item_acquired
+
         tile = self._current_tile(session)
-        if tile.pending_treasure_choice:
-            session.log.append("Choose the treasure outcome before claiming.")
-            return
-        if tile.fd_jackpot_wandering_on_claim:
-            tile.fd_jackpot_wandering_on_claim = False
-            wander_roll = roll_d6()
-            session.log.append(
-                f"Jackpot looting: d6 = {wander_roll} — 4-in-6 wandering monsters while looting (FD p.62)."
-            )
-            if wander_roll >= 4:
-                self._spawn_wandering_monsters(session, tile, show_rolls=True)
-                if session.mode != "exploration":
-                    return
-        if tile.hidden_treasure_complication_effect_pending:
-            effect = tile.hidden_treasure_complication_effect_pending
-            hcl = self._highest_character_level(session.party)
-            self._apply_hidden_treasure_complication(
-                session,
-                tile,
-                effect,
-                hcl=hcl,
-                show_rolls=True,
-                explain_math=False,
-            )
-            if tile.hidden_treasure_alarm_pending or any(enemy.life > 0 for enemy in tile.enemies):
-                return
-        if tile.trap_key and not tile.trap_resolved:
-            session.log.append("Resolve the trap before claiming treasure.")
-            return
-        if tile.treasure_claimed:
-            session.log.append("Treasure has already been claimed here.")
-            return
-        if tile.deal_treasure_forbidden:
-            session.log.append("Treasure here is forbidden by Deal with a Foe.")
-            return
-        if not tile.treasure_gold and not tile.treasure_items:
-            if tile.treasure_summary:
-                session.log.append(tile.treasure_summary)
-            else:
-                session.log.append("There is no treasure here.")
-            return
-        survivors = sorted(
-            [member for member in session.party if member.current_life > 0],
-            key=lambda member: member.marching_order,
+        claim_treasure(
+            session,
+            tile,
+            callbacks=TreasureClaimCallbacks(
+                spawn_wandering_monsters=lambda current, current_tile: self._spawn_wandering_monsters(current, current_tile, show_rolls=True),
+                apply_hidden_complication=lambda current, current_tile, effect, hcl: self._apply_hidden_treasure_complication(current, current_tile, effect, hcl=hcl, show_rolls=True, explain_math=False),
+                highest_character_level=self._highest_character_level,
+                final_boss_gold_cap=self._final_boss_summary_gold_cap,
+                servant_owner_ids=self._servant_owner_ids,
+                record_item_acquired=record_inventory_item_acquired,
+                fire_imported_treasure_trigger=lambda current, current_tile: fire_imported_triggers(self, current, current_tile, "on_treasure", show_rolls=True),
+                roll_d6=roll_d6,
+            ),
         )
-        if not survivors:
-            session.log.append("There is no one left to carry treasure.")
-            return
-        gold_total = tile.treasure_gold
-        gold_cap = self._final_boss_summary_gold_cap(tile)
-        if gold_cap is not None and gold_total > gold_cap:
-            session.log.append(
-                f"Final Boss treasure corrected from {gold_total}gp to {gold_cap}gp to match the recorded treasure."
-            )
-            gold_total = gold_cap
-            tile.treasure_gold = gold_cap
-        distribution = distribute_claimed_treasure(
-            survivors,
-            gold_total=gold_total,
-            items=list(tile.treasure_items),
-            servant_owner_ids=self._servant_owner_ids(session),
-        )
-        item_recipients: list[str] = []
-        for member in survivors:
-            for item in distribution.assigned_items.get(member.character_id, []):
-                item_recipients.append(f"{member.name} receives {item}")
-                from .milestones import record_inventory_item_acquired
-
-                session.log.extend(record_inventory_item_acquired(member, item))
-        if session.xp_system == "old_school" and gold_total:
-            session.old_school_xp_tally += gold_total
-            session.log.append(f"Old School XP +{gold_total} from treasure (tally {session.old_school_xp_tally}).")
-        tile.treasure_gold = distribution.remaining_gold
-        tile.treasure_items = distribution.uncarried_items
-        tile.treasure_claimed = distribution.remaining_gold <= 0 and not distribution.uncarried_items
-        summary = tile.treasure_summary or "Treasure"
-        if tile.treasure_claimed:
-            session.log.append(f"Treasure claimed: {summary}")
-        else:
-            session.log.append(f"Treasure partially claimed: {summary}")
-        if distribution.payouts:
-            session.log.append(f"Gold split: {', '.join(distribution.payouts)}.")
-        if distribution.remaining_gold:
-            session.log.append(
-                f"{distribution.remaining_gold}gp left behind (each hero carries at most 200gp)."
-            )
-        if distribution.placed_items:
-            item_list = "; ".join(item_recipients) if item_recipients else ", ".join(distribution.placed_items)
-            session.log.append(f"Items assigned: {item_list}.")
-        for member in survivors:
-            if any(is_glittering_crystal(item) for item in member.inventory):
-                if "Glittering Crystal" not in member.statuses:
-                    session.log.extend(equip_glittering_crystal(member))
-        if distribution.uncarried_items:
-            item_list = ", ".join(distribution.uncarried_items)
-            session.log.append(
-                f"Could not carry: {item_list} (weapon/shield limits or no free carrier)."
-            )
-        session.log.extend(enforce_single_pole_carrier(session.party, session=session))
-        if tile.treasure_claimed:
-            tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
-        if session.adventure_type == "imported":
-            fire_imported_triggers(self, session, tile, "on_treasure", show_rolls=True)
-
     def _carry_body(
         self,
         session: SessionState,
