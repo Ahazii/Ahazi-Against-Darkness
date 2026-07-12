@@ -100,6 +100,7 @@ from .banking import (
 from .rest import reset_between_foray_resources
 from .treasure_awards import (
     apply_secret_door_treasure_doubling,
+    distribute_claimed_treasure,
     merge_treasure_outcomes,
 )
 from .tile_geometry import (
@@ -17579,18 +17580,15 @@ class RandomDungeonEngine:
             )
             gold_total = gold_cap
             tile.treasure_gold = gold_cap
-        remaining_gold, payouts = distribute_gold_among(
+        distribution = distribute_claimed_treasure(
             survivors,
-            gold_total,
+            gold_total=gold_total,
+            items=list(tile.treasure_items),
             servant_owner_ids=self._servant_owner_ids(session),
         )
-        items = list(tile.treasure_items)
-        inventory_lengths = {member.character_id: len(member.inventory) for member in survivors}
-        uncarried_items, placed_items = distribute_items_among(survivors, items)
         item_recipients: list[str] = []
         for member in survivors:
-            before_count = inventory_lengths.get(member.character_id, len(member.inventory))
-            for item in member.inventory[before_count:]:
+            for item in distribution.assigned_items.get(member.character_id, []):
                 item_recipients.append(f"{member.name} receives {item}")
                 from .milestones import record_inventory_item_acquired
 
@@ -17598,29 +17596,29 @@ class RandomDungeonEngine:
         if session.xp_system == "old_school" and gold_total:
             session.old_school_xp_tally += gold_total
             session.log.append(f"Old School XP +{gold_total} from treasure (tally {session.old_school_xp_tally}).")
-        tile.treasure_gold = remaining_gold
-        tile.treasure_items = uncarried_items
-        tile.treasure_claimed = remaining_gold <= 0 and not uncarried_items
+        tile.treasure_gold = distribution.remaining_gold
+        tile.treasure_items = distribution.uncarried_items
+        tile.treasure_claimed = distribution.remaining_gold <= 0 and not distribution.uncarried_items
         summary = tile.treasure_summary or "Treasure"
         if tile.treasure_claimed:
             session.log.append(f"Treasure claimed: {summary}")
         else:
             session.log.append(f"Treasure partially claimed: {summary}")
-        if payouts:
-            session.log.append(f"Gold split: {', '.join(payouts)}.")
-        if remaining_gold:
+        if distribution.payouts:
+            session.log.append(f"Gold split: {', '.join(distribution.payouts)}.")
+        if distribution.remaining_gold:
             session.log.append(
-                f"{remaining_gold}gp left behind (each hero carries at most 200gp)."
+                f"{distribution.remaining_gold}gp left behind (each hero carries at most 200gp)."
             )
-        if placed_items:
-            item_list = "; ".join(item_recipients) if item_recipients else ", ".join(placed_items)
+        if distribution.placed_items:
+            item_list = "; ".join(item_recipients) if item_recipients else ", ".join(distribution.placed_items)
             session.log.append(f"Items assigned: {item_list}.")
         for member in survivors:
             if any(is_glittering_crystal(item) for item in member.inventory):
                 if "Glittering Crystal" not in member.statuses:
                     session.log.extend(equip_glittering_crystal(member))
-        if uncarried_items:
-            item_list = ", ".join(uncarried_items)
+        if distribution.uncarried_items:
+            item_list = ", ".join(distribution.uncarried_items)
             session.log.append(
                 f"Could not carry: {item_list} (weapon/shield limits or no free carrier)."
             )

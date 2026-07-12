@@ -2,12 +2,53 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import re
 from typing import Callable
 
-from ..schemas import EnemyState, TileState
+from ..schemas import EnemyState, PartyMemberState, TileState
 from .dungeon_table_roller import TreasureOutcome
+from .inventory import distribute_gold_among, distribute_items_among
 from .monster_combat_hooks import treasure_roll_count_from_defeated
+
+
+@dataclass(frozen=True)
+class TreasureDistribution:
+    """Carry-capacity outcome for a claimable cache of gold and items."""
+
+    remaining_gold: int
+    payouts: list[str]
+    uncarried_items: list[str]
+    placed_items: list[str]
+    assigned_items: dict[str, list[str]]
+
+
+def distribute_claimed_treasure(
+    survivors: list[PartyMemberState],
+    *,
+    gold_total: int,
+    items: list[str],
+    servant_owner_ids: set[str] | None = None,
+) -> TreasureDistribution:
+    """Distribute treasure to living heroes and report any capacity-limited remainder."""
+    remaining_gold, payouts = distribute_gold_among(
+        survivors,
+        gold_total,
+        servant_owner_ids=servant_owner_ids,
+    )
+    inventory_lengths = {member.character_id: len(member.inventory) for member in survivors}
+    uncarried_items, placed_items = distribute_items_among(survivors, list(items))
+    assigned_items = {
+        member.character_id: list(member.inventory[inventory_lengths[member.character_id] :])
+        for member in survivors
+    }
+    return TreasureDistribution(
+        remaining_gold=remaining_gold,
+        payouts=payouts,
+        uncarried_items=uncarried_items,
+        placed_items=placed_items,
+        assigned_items=assigned_items,
+    )
 
 
 def abyss_group_treasure_roll_count(defeated: list[EnemyState]) -> int:

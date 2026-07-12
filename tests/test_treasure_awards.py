@@ -3,11 +3,12 @@ from __future__ import annotations
 from app.engine.treasure_awards import (
     abyss_group_treasure_roll_count,
     apply_secret_door_treasure_doubling,
+    distribute_claimed_treasure,
     final_boss_summary_gold_cap,
     merge_treasure_outcomes,
 )
 from app.engine.dungeon_table_roller import TreasureOutcome
-from app.schemas import EnemyState, TileState
+from app.schemas import EnemyState, PartyMemberState, TileState
 
 
 def _enemy(name: str, tags: list[str]) -> EnemyState:
@@ -20,6 +21,40 @@ def _enemy(name: str, tags: list[str]) -> EnemyState:
         max_life=1,
         tags=tags,
     )
+
+
+def _hero(character_id: str, name: str, *, gold: int = 0) -> PartyMemberState:
+    return PartyMemberState(
+        character_id=character_id,
+        name=name,
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=gold,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+
+
+def test_distribute_claimed_treasure_records_gold_and_item_recipients() -> None:
+    capped = _hero("capped", "Capped", gold=200)
+    carrier = _hero("carrier", "Carrier")
+
+    distribution = distribute_claimed_treasure(
+        [capped, carrier],
+        gold_total=50,
+        items=["Jewel"],
+    )
+
+    assert distribution.remaining_gold == 0
+    assert distribution.payouts == ["Capped +0gp (at 200gp cap)", "Carrier +50gp"]
+    assert distribution.placed_items == ["Jewel"]
+    assert distribution.uncarried_items == []
+    assert distribution.assigned_items == {"capped": ["Jewel"], "carrier": []}
 
 
 def test_abyss_group_treasure_rolls_do_not_scale_with_group_size() -> None:
