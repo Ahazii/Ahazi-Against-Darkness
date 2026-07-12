@@ -1,5 +1,9 @@
-from app.engine.map_connections import reciprocal_exit_on_tile, sync_connection_state
-from app.schemas import ExitState, TileState
+from app.engine.map_connections import (
+    inherit_connection_from_reciprocal,
+    reciprocal_exit_on_tile,
+    sync_connection_state,
+)
+from app.schemas import ExitState, MapState, PartyMemberState, SessionState, TileState
 
 
 def _tile(exits: list[ExitState]) -> TileState:
@@ -35,3 +39,24 @@ def test_reciprocal_exit_prefers_the_expected_direction() -> None:
     west = ExitState(id="west", direction="west", kind="passage", destination_tile_id="origin")
 
     assert reciprocal_exit_on_tile(_tile([north, west]), "origin", direction="west") is west
+
+
+def test_inherit_connection_reopens_the_saved_reciprocal_door() -> None:
+    origin_exit = ExitState(id="origin", direction="east", kind="door", door_open=True, status="open", destination_tile_id="dest")
+    reciprocal = ExitState(id="dest", direction="west", kind="door", door_open=False, destination_tile_id="origin")
+    origin = _tile([origin_exit])
+    origin.id = "origin"
+    destination = _tile([reciprocal])
+    destination.id = "dest"
+    hero = PartyMemberState(character_id="hero", name="Hero", class_id="warrior", class_name="Warrior", level=1, xp=0, gold=0, current_life=3, max_life=3, attack_bonus=0, defense_bonus=0, save_bonus=0)
+    session = SessionState(id="session", party_id="party", adventure_id="random", adventure_type="random", party=[hero], map_state=MapState(tiles=[origin, destination], current_tile_id="dest"), created_at="2026-01-01T00:00:00Z", updated_at="2026-01-01T00:00:00Z")
+
+    inherit_connection_from_reciprocal(
+        session,
+        destination,
+        reciprocal,
+        tile_by_id=lambda active_session, tile_id: next((tile for tile in active_session.map_state.tiles if tile.id == tile_id), None),
+        opposite={"east": "west", "west": "east"},
+    )
+
+    assert reciprocal.door_open is True

@@ -101,7 +101,13 @@ from .tile_geometry import (
     side_length,
     state_rows,
 )
-from .map_connections import clear_door_state, reciprocal_exit_on_tile, sync_connection_state
+from .map_connections import (
+    clear_door_state,
+    inherit_connection_from_reciprocal,
+    persist_open_connection,
+    reciprocal_exit_on_tile,
+    sync_connection_state,
+)
 from .tag_compat import is_generated_tag_manifest
 from .split_party import (
     active_tile_id,
@@ -13449,22 +13455,13 @@ class RandomDungeonEngine:
         return reciprocal_exit_on_tile(tile, other_tile_id, direction=direction)
 
     def _persist_open_connection(self, session: SessionState, origin: TileState, origin_exit: ExitState) -> None:
-        origin_exit.status = "open"
-        if origin_exit.kind == "door":
-            origin_exit.door_open = True
-        if not origin_exit.destination_tile_id:
-            return
-        destination = self._tile_by_id(session, origin_exit.destination_tile_id)
-        if destination is None:
-            return
-        reciprocal = self._reciprocal_exit_on_tile(
-            destination,
-            origin.id,
-            direction=OPPOSITE[origin_exit.direction],
+        persist_open_connection(
+            session,
+            origin,
+            origin_exit,
+            tile_by_id=self._tile_by_id,
+            opposite=OPPOSITE,
         )
-        if reciprocal is None:
-            return
-        self._sync_connection_state(origin_exit, reciprocal, passed_through=True)
 
     def _inherit_connection_from_reciprocal(
         self,
@@ -13472,24 +13469,13 @@ class RandomDungeonEngine:
         current: TileState,
         exit_state: ExitState,
     ) -> None:
-        if exit_state.door_open or not exit_state.destination_tile_id:
-            return
-        other_tile = self._tile_by_id(session, exit_state.destination_tile_id)
-        if other_tile is None:
-            return
-        reciprocal = self._reciprocal_exit_on_tile(
-            other_tile,
-            current.id,
-            direction=OPPOSITE[exit_state.direction],
+        inherit_connection_from_reciprocal(
+            session,
+            current,
+            exit_state,
+            tile_by_id=self._tile_by_id,
+            opposite=OPPOSITE,
         )
-        if reciprocal is None:
-            return
-        if reciprocal.kind == "passage" and reciprocal.status == "open":
-            self._sync_connection_state(reciprocal, exit_state, passed_through=True)
-            return
-        if reciprocal.kind == "door" and reciprocal.door_open:
-            self._sync_connection_state(reciprocal, exit_state, passed_through=True)
-            return
 
     def _refresh_tile_connections(self, session: SessionState, tile: TileState) -> None:
         for exit_state in tile.exits:
