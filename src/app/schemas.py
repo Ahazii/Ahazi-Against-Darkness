@@ -468,6 +468,7 @@ class TileState(BaseModel):
     fd_jackpot_wandering_on_claim: bool = False
     initial_enemy_count: int = 0
     treasure_doubled: bool = False
+    treasure_doubling_applied: bool = False
     wandering_ambush: bool = False
     surprise_party: bool = False
     hidden_treasure_alarm_pending: bool = False

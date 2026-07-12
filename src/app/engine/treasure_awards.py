@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 from typing import Callable
 
-from ..schemas import EnemyState
+from ..schemas import EnemyState, TileState
+from .dungeon_table_roller import TreasureOutcome
 from .monster_combat_hooks import treasure_roll_count_from_defeated
 
 
@@ -53,3 +54,29 @@ def final_boss_summary_gold_cap(*, is_final_boss: bool, summary: str | None) -> 
         return None
     amounts = [int(match) for match in re.findall(r"(\d+)\s*gp", summary, flags=re.IGNORECASE)]
     return max(amounts) if amounts else None
+
+
+def merge_treasure_outcomes(outcomes: list[TreasureOutcome]) -> TreasureOutcome:
+    """Combine independent treasure rolls into one claimable outcome."""
+    if not outcomes:
+        return TreasureOutcome("", 0, [], [])
+    gold = sum(outcome.gold for outcome in outcomes)
+    items = [item for outcome in outcomes for item in outcome.items]
+    log = [entry for outcome in outcomes for entry in outcome.log]
+    summaries = [outcome.summary for outcome in outcomes if outcome.summary]
+    return TreasureOutcome("; ".join(summaries) if summaries else "Treasure", gold, items, log)
+
+
+def apply_secret_door_treasure_doubling(tile: TileState) -> bool:
+    """Apply a secret-door treasure double once, including legacy-save detection."""
+    if not tile.treasure_doubled or not tile.treasure_gold:
+        return False
+    summary = tile.treasure_summary or ""
+    if tile.treasure_doubling_applied or "doubled behind secret door:" in summary.lower():
+        tile.treasure_doubling_applied = True
+        return False
+    tile.treasure_gold *= 2
+    tile.treasure_doubling_applied = True
+    if summary:
+        tile.treasure_summary = f"{summary} (doubled behind secret door: {tile.treasure_gold}gp)."
+    return True

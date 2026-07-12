@@ -78,6 +78,10 @@ from .druid_companion import (
 from .roster_sync import initial_xp_tally
 from .clues import default_clue_holder, ensure_individual_clues, sync_clue_total
 from .rest import reset_between_foray_resources
+from .treasure_awards import (
+    apply_secret_door_treasure_doubling,
+    merge_treasure_outcomes,
+)
 from .tag_compat import is_generated_tag_manifest
 from .split_party import (
     active_tile_id,
@@ -15518,11 +15522,7 @@ class RandomDungeonEngine:
             tile.description = tile.description.replace("There is treasure here.", empty_msg)
 
     def _apply_treasure_doubling(self, tile: TileState) -> None:
-        if not tile.treasure_doubled or not tile.treasure_gold:
-            return
-        tile.treasure_gold *= 2
-        if tile.treasure_summary:
-            tile.treasure_summary = f"{tile.treasure_summary} (doubled behind secret door: {tile.treasure_gold}gp)."
+        apply_secret_door_treasure_doubling(tile)
 
     def _final_boss_summary_gold_cap(self, tile: TileState) -> int | None:
         from .treasure_awards import final_boss_summary_gold_cap
@@ -17839,18 +17839,7 @@ class RandomDungeonEngine:
             session.pending_treasure_reroll_tile_id = tile.id
 
     def _merge_treasure_outcomes(self, outcomes: list[TreasureOutcome]) -> TreasureOutcome:
-        if not outcomes:
-            return TreasureOutcome("", 0, [], [])
-        gold = sum(outcome.gold for outcome in outcomes)
-        items: list[str] = []
-        for outcome in outcomes:
-            items.extend(outcome.items)
-        log: list[str] = []
-        for outcome in outcomes:
-            log.extend(outcome.log)
-        summaries = [outcome.summary for outcome in outcomes if outcome.summary]
-        summary = "; ".join(summaries) if summaries else "Treasure"
-        return TreasureOutcome(summary, gold, items, log)
+        return merge_treasure_outcomes(outcomes)
 
     def _maybe_award_living_statue_treasure(
         self,
