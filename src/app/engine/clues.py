@@ -87,3 +87,23 @@ def grant_clue_to_member(session: SessionState, member: PartyMemberState, tile: 
     if "Clue" not in tile.objects:
         tile.objects.append("Clue")
     session.log.append(f"Effect: {member.name} gains 1 Clue (now {member.clues}).")
+
+
+def spend_living_party_clues(session: SessionState, amount: int) -> tuple[bool, list[str]]:
+    """Spend held Clues from living heroes in marching order and retain the party summary."""
+    living = [member for member in session.party if member.current_life > 0]
+    total = sum(member.clues for member in living)
+    if total < amount:
+        return False, [f"The party needs {amount} Clues but has {total}."]
+    remaining = amount
+    log: list[str] = []
+    for member in sorted(living, key=lambda item: item.marching_order):
+        take = min(member.clues, remaining)
+        if take:
+            member.clues -= take
+            remaining -= take
+            log.append(f"{member.name} spends {take} Clue(s).")
+        if remaining <= 0:
+            break
+    session.clues_found = max(0, session.clues_found - amount)
+    return True, log

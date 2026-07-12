@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.db import Store, init_db
+from app.engine.clues import spend_living_party_clues
 from app.engine.tag_campaign import apply_abyss_campaign_to_session, load_campaign, sync_abyss_campaign_from_session
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
@@ -35,6 +36,21 @@ def _hero(**overrides) -> PartyMemberState:
     }
     data.update(overrides)
     return PartyMemberState(**data)
+
+
+def test_spend_living_party_clues_uses_marching_order_and_excludes_fallen_heroes() -> None:
+    eng = _engine()
+    first = _hero(character_id="first", name="First", clues=1, marching_order=1)
+    second = _hero(character_id="second", name="Second", clues=3, marching_order=2)
+    fallen = _hero(character_id="fallen", name="Fallen", clues=9, current_life=0, marching_order=3)
+    session = eng.create_session("s", "p", [first, second, fallen], ruleset_profile_id="abyss")
+    session.clues_found = 4
+
+    paid, log = spend_living_party_clues(session, 3)
+
+    assert paid is True
+    assert (first.clues, second.clues, fallen.clues, session.clues_found) == (0, 1, 9, 1)
+    assert log == ["First spends 1 Clue(s).", "Second spends 2 Clue(s)."]
 
 
 def test_rebellion_plot_contributes_gold_and_resolves_war(monkeypatch) -> None:

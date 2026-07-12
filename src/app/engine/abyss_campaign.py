@@ -9,6 +9,7 @@ from .dice import roll_d3, roll_d6, roll_die, roll_exploding_for_level
 from .equipment_effects import is_vampire
 from .expert_skill_effects import has_skill
 from .banking import take_outside_party_funds
+from .clues import spend_living_party_clues
 
 
 PLOTS: dict[str, tuple[str, int]] = {
@@ -117,22 +118,7 @@ def contribute_rebellion_gold(session: SessionState, amount: int | None) -> list
 
 
 def spend_party_clues(session: SessionState, amount: int) -> tuple[bool, list[str]]:
-    log: list[str] = []
-    living = [member for member in session.party if member.current_life > 0]
-    total = sum(member.clues for member in living)
-    if total < amount:
-        return False, [f"The party needs {amount} Clues but has {total}."]
-    remaining = amount
-    for member in sorted(living, key=lambda item: item.marching_order):
-        take = min(member.clues, remaining)
-        if take:
-            member.clues -= take
-            remaining -= take
-            log.append(f"{member.name} spends {take} Clue(s).")
-        if remaining <= 0:
-            break
-    session.clues_found = max(0, session.clues_found - amount)
-    return True, log
+    return spend_living_party_clues(session, amount)
 
 
 def spend_invasion_clues(session: SessionState) -> list[str]:
