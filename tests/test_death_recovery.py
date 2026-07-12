@@ -6,6 +6,8 @@ from app.engine.death_recovery import (
     RESURRECTION_COST_GP,
     accept_fallen_loss,
     deliver_carried_body_outside,
+    queue_fallen_transfer,
+    resolve_fallen_transfer,
     start_carrying_body,
 )
 from app.engine.random_dungeon import RandomDungeonEngine
@@ -180,3 +182,29 @@ def test_accept_fallen_loss_marks_permanently_lost() -> None:
     assert "fallen" not in session.fallen_outside_character_ids
     assert "fallen" in session.permanently_lost_character_ids
     assert any("lost forever" in entry for entry in log)
+
+
+def test_fallen_clue_inheritance_moves_clues_and_updates_total() -> None:
+    session = session_with_fallen()
+    carrier, fallen = session.party
+    carrier.clues = 1
+    fallen.clues = 2
+    session.clues_found = 3
+
+    queue_fallen_transfer(session)
+
+    assert session.pending_fallen_transfer is not None
+    assert session.pending_fallen_transfer.from_character_id == fallen.character_id
+    assert session.pending_fallen_transfer.kind == "clues"
+
+    resolve_fallen_transfer(
+        session,
+        to_character_id=carrier.character_id,
+        kind="clues",
+    )
+
+    assert fallen.clues == 0
+    assert carrier.clues == 3
+    assert session.clues_found == 3
+    assert session.pending_fallen_transfer is None
+    assert any("inherits 2 Clue(s)" in entry for entry in session.log)

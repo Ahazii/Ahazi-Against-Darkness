@@ -19,7 +19,6 @@ from ..schemas import (
     MapState,
     PartyMemberState,
     PendingEchoSpellState,
-    PendingFallenTransferState,
     PendingMadnessChoiceState,
     SessionState,
     TileDefinition,
@@ -41,6 +40,8 @@ from .death_recovery import (
     attempt_resurrection,
     deliver_carried_body_outside,
     drop_carried_body,
+    queue_fallen_transfer,
+    resolve_fallen_transfer,
     start_carrying_body,
 )
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
@@ -4659,32 +4660,7 @@ class RandomDungeonEngine:
         return ensure_individual_clues(session)
 
     def _queue_fallen_transfer(self, session: SessionState) -> None:
-        pending = session.pending_fallen_transfer
-        if pending is not None:
-            source = next((member for member in session.party if member.character_id == pending.from_character_id), None)
-            if source is None or source.current_life > 0:
-                session.pending_fallen_transfer = None
-            elif pending.kind == "clues" and source.clues <= 0:
-                session.pending_fallen_transfer = None
-            elif pending.kind == "secrets" and not source.secrets:
-                session.pending_fallen_transfer = None
-        if session.pending_fallen_transfer is not None:
-            return
-        if not any(member.current_life > 0 for member in session.party):
-            return
-        clue_source = next((member for member in session.party if member.current_life <= 0 and member.clues > 0), None)
-        if clue_source is not None:
-            session.pending_fallen_transfer = PendingFallenTransferState(
-                from_character_id=clue_source.character_id,
-                kind="clues",
-            )
-            return
-        secret_source = next((member for member in session.party if member.current_life <= 0 and member.secrets), None)
-        if secret_source is not None:
-            session.pending_fallen_transfer = PendingFallenTransferState(
-                from_character_id=secret_source.character_id,
-                kind="secrets",
-            )
+        queue_fallen_transfer(session)
 
     def _resolve_fallen_transfer(
         self,
@@ -4693,38 +4669,11 @@ class RandomDungeonEngine:
         to_character_id: str | None,
         kind: str | None,
     ) -> None:
-        pending = session.pending_fallen_transfer
-        if pending is None:
-            session.log.append("No fallen hero transfer is pending.")
-            return
-        source = next((member for member in session.party if member.character_id == pending.from_character_id), None)
-        if source is None or source.current_life > 0:
-            session.pending_fallen_transfer = None
-            session.log.append("That fallen transfer is no longer needed.")
-            return
-        if kind and kind != pending.kind:
-            session.log.append("Transfer kind does not match the pending inheritance.")
-            return
-        target = next(
-            (member for member in session.party if member.character_id == to_character_id and member.current_life > 0),
-            None,
+        resolve_fallen_transfer(
+            session,
+            to_character_id=to_character_id,
+            kind=kind,
         )
-        if target is None:
-            session.log.append("Choose a living hero to inherit from the fallen hero.")
-            return
-        if pending.kind == "clues":
-            moved = max(0, source.clues)
-            source.clues = 0
-            target.clues += moved
-            self._sync_clue_total(session)
-            session.log.append(f"{target.name} inherits {moved} Clue(s) from fallen {source.name}.")
-        else:
-            moved = list(source.secrets)
-            source.secrets = []
-            target.secrets.extend(moved)
-            session.log.append(f"{target.name} inherits {len(moved)} Secret(s) from fallen {source.name}.")
-        session.pending_fallen_transfer = None
-        self._queue_fallen_transfer(session)
 
     def _spend_clues(
         self,

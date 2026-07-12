@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ..schemas import PartyMemberState, SessionState, TileState
+from ..schemas import PartyMemberState, PendingFallenTransferState, SessionState, TileState
+from .clues import sync_clue_total
 from .dice import roll_d6
 from .inventory import distribute_gold_among, distribute_items_among, has_illusionary_servant
 
@@ -276,3 +277,72 @@ def accept_fallen_loss(session: SessionState, fallen_id: str | None) -> list[str
         f"{fallen.name} is given a proper burial and is lost forever — choose a new 1st-level hero between adventures."
     )
     return log
+
+
+def queue_fallen_transfer(session: SessionState) -> None:
+    """Queue held Clues or Secrets for inheritance when a party member falls."""
+    pending = session.pending_fallen_transfer
+    if pending is not None:
+        source = next((member for member in session.party if member.character_id == pending.from_character_id), None)
+        if source is None or source.current_life > 0:
+            session.pending_fallen_transfer = None
+        elif pending.kind == "clues" and source.clues <= 0:
+            session.pending_fallen_transfer = None
+        elif pending.kind == "secrets" and not source.secrets:
+            session.pending_fallen_transfer = None
+    if session.pending_fallen_transfer is not None or not any(member.current_life > 0 for member in session.party):
+        return
+    clue_source = next((member for member in session.party if member.current_life <= 0 and member.clues > 0), None)
+    if clue_source is not None:
+        session.pending_fallen_transfer = PendingFallenTransferState(
+            from_character_id=clue_source.character_id,
+            kind="clues",
+        )
+        return
+    secret_source = next((member for member in session.party if member.current_life <= 0 and member.secrets), None)
+    if secret_source is not None:
+        session.pending_fallen_transfer = PendingFallenTransferState(
+            from_character_id=secret_source.character_id,
+            kind="secrets",
+        )
+
+
+def resolve_fallen_transfer(
+    session: SessionState,
+    *,
+    to_character_id: str | None,
+    kind: str | None,
+) -> None:
+    """Transfer a fallen member's held Clues or Secrets to a selected living hero."""
+    pending = session.pending_fallen_transfer
+    if pending is None:
+        session.log.append("No fallen hero transfer is pending.")
+        return
+    source = next((member for member in session.party if member.character_id == pending.from_character_id), None)
+    if source is None or source.current_life > 0:
+        session.pending_fallen_transfer = None
+        session.log.append("That fallen transfer is no longer needed.")
+        return
+    if kind and kind != pending.kind:
+        session.log.append("Transfer kind does not match the pending inheritance.")
+        return
+    target = next(
+        (member for member in session.party if member.character_id == to_character_id and member.current_life > 0),
+        None,
+    )
+    if target is None:
+        session.log.append("Choose a living hero to inherit from the fallen hero.")
+        return
+    if pending.kind == "clues":
+        moved = max(0, source.clues)
+        source.clues = 0
+        target.clues += moved
+        sync_clue_total(session)
+        session.log.append(f"{target.name} inherits {moved} Clue(s) from fallen {source.name}.")
+    else:
+        moved = list(source.secrets)
+        source.secrets = []
+        target.secrets.extend(moved)
+        session.log.append(f"{target.name} inherits {len(moved)} Secret(s) from fallen {source.name}.")
+    session.pending_fallen_transfer = None
+    queue_fallen_transfer(session)
