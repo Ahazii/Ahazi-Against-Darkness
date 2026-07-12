@@ -80,24 +80,29 @@ def deposit_party_bank_gold(session: SessionState) -> None:
     session.log.append(f"Party deposits carried gold in the home bank: {', '.join(deposits)}.")
 
 
+def living_party_funds(party: list[PartyMemberState]) -> int:
+    """Return carried and home-bank funds held by living party members."""
+    return sum(member.gold + member.bank_gold for member in party if member.current_life > 0)
+
+
 def outside_party_gold(session: SessionState) -> int:
     """Return funds available to living heroes while camped or between adventures."""
-    return sum(member.gold + member.bank_gold for member in session.party if member.current_life > 0)
+    return living_party_funds(session.party)
 
 
-def take_outside_party_funds(
-    session: SessionState,
+def take_living_party_funds(
+    party: list[PartyMemberState],
     amount: int,
 ) -> tuple[bool, int, list[OutsideFundsContribution]]:
-    """Take outside funds in marching order, using home-bank gold before carried gold."""
-    available = outside_party_gold(session)
+    """Take living party funds in marching order, using home-bank gold before carried gold."""
+    available = living_party_funds(party)
     if amount <= 0:
         return True, available, []
     if available < amount:
         return False, available, []
     remaining = amount
     contributions: list[OutsideFundsContribution] = []
-    for member in sorted((item for item in session.party if item.current_life > 0), key=lambda item: item.marching_order):
+    for member in sorted((item for item in party if item.current_life > 0), key=lambda item: item.marching_order):
         if remaining <= 0:
             break
         bank_take = min(member.bank_gold, remaining)
@@ -113,6 +118,14 @@ def take_outside_party_funds(
                 OutsideFundsContribution(member.name, bank_gold=bank_take, carried_gold=carry_take)
             )
     return True, available, contributions
+
+
+def take_outside_party_funds(
+    session: SessionState,
+    amount: int,
+) -> tuple[bool, int, list[OutsideFundsContribution]]:
+    """Take outside funds in marching order, using home-bank gold before carried gold."""
+    return take_living_party_funds(session.party, amount)
 
 
 def spend_outside_party_gold(

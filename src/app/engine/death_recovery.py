@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..schemas import PartyMemberState, PendingFallenTransferState, SessionState, TileState
+from .banking import take_living_party_funds
 from .clues import sync_clue_total
 from .dice import roll_d6
 from .inventory import distribute_gold_among, distribute_items_among, has_illusionary_servant
@@ -145,29 +146,19 @@ def deliver_carried_body_outside(
 
 
 def collect_party_gold(party: list[PartyMemberState], amount: int) -> tuple[bool, list[str]]:
+    paid, available, contributions = take_living_party_funds(party, amount)
+    if not paid:
+        return False, [f"The party needs {amount}gp but only has {available}gp among survivors and home bank funds."]
     log: list[str] = []
-    if amount <= 0:
-        return True, log
-    total = sum(member.gold + member.bank_gold for member in party if member.current_life > 0)
-    if total < amount:
-        log.append(f"The party needs {amount}gp but only has {total}gp among survivors and home bank funds.")
-        return False, log
-    remaining = amount
-    for member in sorted(living_party(party), key=lambda item: item.marching_order):
-        if remaining <= 0:
-            break
-        bank_take = min(member.bank_gold, remaining)
-        if bank_take:
-            member.bank_gold -= bank_take
-            remaining -= bank_take
-            log.append(f"{member.name} contributes {bank_take}gp from home bank funds toward the ritual.")
-        if remaining <= 0:
-            break
-        carry_take = min(member.gold, remaining)
-        if carry_take:
-            member.gold -= carry_take
-            remaining -= carry_take
-            log.append(f"{member.name} contributes {carry_take}gp carried outside toward the ritual.")
+    for contribution in contributions:
+        if contribution.bank_gold:
+            log.append(
+                f"{contribution.name} contributes {contribution.bank_gold}gp from home bank funds toward the ritual."
+            )
+        if contribution.carried_gold:
+            log.append(
+                f"{contribution.name} contributes {contribution.carried_gold}gp carried outside toward the ritual."
+            )
     return True, log
 
 

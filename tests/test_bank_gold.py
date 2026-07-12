@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.random_dungeon import RandomDungeonEngine
-from app.engine.banking import deposit_bank_gold, take_outside_party_funds
+from app.engine.banking import deposit_bank_gold, take_living_party_funds, take_outside_party_funds
 from app.rules.repository import RulesRepository
 from app.schemas import MapState, PartyMemberState, SessionState, TileState
 
@@ -129,3 +129,14 @@ def test_take_outside_party_funds_uses_bank_then_carried_gold_for_living_party()
         ("Bravo", 0, 10),
     ]
     assert (first.bank_gold, first.gold, second.gold, fallen.bank_gold, fallen.gold) == (0, 0, 40, 100, 100)
+
+
+def test_take_living_party_funds_supports_resurrection_without_a_session() -> None:
+    hero = member(character_id="h", name="Hero", gold=250, bank_gold=750)
+
+    paid, available, contributions = take_living_party_funds([hero], 1000)
+
+    assert paid is True
+    assert available == 1000
+    assert [(item.name, item.bank_gold, item.carried_gold) for item in contributions] == [("Hero", 750, 250)]
+    assert (hero.bank_gold, hero.gold) == (0, 0)
