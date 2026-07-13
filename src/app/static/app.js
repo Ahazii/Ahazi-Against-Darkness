@@ -18045,6 +18045,10 @@ async function restoreActiveSession() {
 async function loadSession(sessionId, options = {}) {
   state.session = await api(`/api/sessions/${sessionId}`);
   resetSessionRenderCache();
+  if (state.session.mode === "complete") {
+    await finishCompletedAdventureClient(state.session);
+    return;
+  }
   writeActiveSessionId(state.session.id);
   syncSessionListFromSession(state.session, { render: setupViewVisible() });
   state.characters = await api("/api/characters");
@@ -19316,7 +19320,6 @@ function currentObjectiveForSession(session) {
       title: "Current objective: review closeout",
       body: "The adventure is complete. Review rewards, storage, Guild obligations, XP markers, and guidance tasks from the Dashboard before starting the next lead.",
       tone: "success",
-      action: { label: "Complete Adventure", kind: "closeout" },
     };
   }
   const tile = currentTile(session);
@@ -19555,15 +19558,6 @@ function appendCurrentObjectiveButton(parent, action) {
     case "advance":
       setButtonTooltip(btn, `Run the session action: ${action.label}.`);
       btn.addEventListener("click", () => advance(action.advanceAction));
-      break;
-    case "closeout":
-      setButtonTooltip(
-        btn,
-        "Open the completed-adventure summary, clear this finished session from Resume, and return to the Dashboard after review."
-      );
-      btn.addEventListener("click", () => {
-        if (state.session?.mode === "complete") finishCompletedAdventureClient(state.session).catch(handleError);
-      });
       break;
     case "tag-run":
       setButtonTooltip(btn, `${action.procedure?.guidance || "Run the next Adventures Guild procedure."} Records the result and updates the active quest tracker.`);
@@ -24490,7 +24484,6 @@ function appendAbyssCampaignActions(parent, session, tile) {
 
 function applyExplorationPanelVisibility() {
   const panels = state.explorationPanels || {};
-  const complete = state.session?.mode === "complete";
   currentObjectiveBanner?.classList.toggle("panel-user-hidden", panels.objective === false);
   ongoingQuestsEl?.classList.toggle("panel-user-hidden", panels.quests === false);
   explorationCommandBar?.classList.toggle("panel-user-hidden", panels.commands === false);
@@ -24507,21 +24500,6 @@ function applyExplorationPanelVisibility() {
   toggleTextCommandsBtn?.classList.toggle("selected", panels.commands !== false);
   toggleExitsPanelBtn?.classList.toggle("selected", panels.exits !== false);
   togglePartySheetsPanelBtn?.classList.toggle("selected", panels.sheets !== false);
-
-  // Completed adventures are review-only: do not leave panel switches visible
-  // when their content has deliberately been removed from play.
-  if (toggleCurrentObjectiveBtn) {
-    toggleCurrentObjectiveBtn.textContent = complete ? "Closeout" : "Objective Details";
-    setButtonTooltip(
-      toggleCurrentObjectiveBtn,
-      complete
-        ? "Show or hide the completed-adventure closeout guidance. Start the next adventure from the Dashboard."
-        : "Show or hide detailed objective guidance. The Narrative title also shows compact objective and quest status."
-    );
-  }
-  for (const button of [toggleOngoingQuestsBtn, toggleTextCommandsBtn, toggleExitsPanelBtn]) {
-    button?.classList.toggle("hidden", complete);
-  }
 }
 
 function setExplorationPanelVisibility(key, open) {

@@ -1945,30 +1945,26 @@ def test_exploration_panels_can_be_toggled_from_header() -> None:
     assert ".ongoing-quests.panel-user-hidden" in STYLES_CSS
 
 
-def test_completed_session_hides_dead_exploration_controls_and_treasure_actions() -> None:
+def test_completed_session_does_not_offer_treasure_actions() -> None:
     panel_visibility = _function_body("applyExplorationPanelVisibility", APP_JS)
     objective = _function_body("currentObjectiveForSession", APP_JS)
     render_session = _function_body("renderSession", APP_JS)
 
-    assert 'const complete = state.session?.mode === "complete"' in panel_visibility
-    assert 'toggleCurrentObjectiveBtn.textContent = complete ? "Closeout" : "Objective Details"' in panel_visibility
-    assert "toggleOngoingQuestsBtn, toggleTextCommandsBtn, toggleExitsPanelBtn" in panel_visibility
+    assert 'toggleCurrentObjectiveBtn?.setAttribute("aria-pressed"' in panel_visibility
     assert 'if (session.mode === "complete")' in objective
-    assert 'title: "Current objective: review closeout"' in objective
-    assert 'action: { label: "Complete Adventure", kind: "closeout" }' in objective
     assert 'session.mode === "exploration" &&' in render_session
 
 
 def test_resumed_completed_session_reuses_normal_closeout_handoff() -> None:
-    objective_button = _function_body("appendCurrentObjectiveButton", APP_JS)
     closeout = _function_body("finishCompletedAdventureClient", APP_JS)
     advance = _function_body("advance", APP_JS)
+    load = _function_body("loadSession", APP_JS)
 
-    assert 'case "closeout":' in objective_button
-    assert "finishCompletedAdventureClient(state.session)" in objective_button
     assert "showAdventureCloseoutModal(report)" in closeout
     assert "clearActiveSessionId()" in closeout
     assert "await finishCompletedAdventureClient(state.session);" in advance
+    assert 'if (state.session.mode === "complete")' in load
+    assert "await finishCompletedAdventureClient(state.session);" in load
 
 
 def test_user_artwork_placeholders_are_documented_slots() -> None:
