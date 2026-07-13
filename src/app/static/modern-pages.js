@@ -944,9 +944,10 @@ function renderGuidanceLog() {
   return panel;
 }
 
-function collapseCard(panel, summaryHint = "") {
+function collapseCard(panel, summaryHint = "", { open = false } = {}) {
   const collapsed = document.createElement("details");
   collapsed.className = "modern-card modern-collapsible";
+  collapsed.open = open;
   const title = panel.querySelector("h3")?.textContent || "Details";
   const body = panel.querySelector(":scope > p.muted")?.textContent || summaryHint;
   const summary = document.createElement("summary");
@@ -6282,22 +6283,22 @@ async function renderGoAdventure() {
     panels[key] = panelEl;
   }
   addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [
-    collapseCard(panel),
-    collapseCard(supplementPreferenceCard),
-    collapseCard(workflowGuide),
+    collapseCard(panel, "", { open: true }),
+    collapseCard(supplementPreferenceCard, "", { open: true }),
+    collapseCard(workflowGuide, "", { open: true }),
   ]);
   addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [
-    collapseCard(sessions),
-    collapseCard(saved),
-    collapseCard(management),
+    collapseCard(sessions, "", { open: true }),
+    collapseCard(saved, "", { open: true }),
+    collapseCard(management, "", { open: true }),
   ]);
   addGoAdventureTab("reference", "Reference / Playtest", "Capture playtest issues and review closeout/reference context.", [
-    collapseCard(renderPlaytestTriagePanel("go-adventure")),
-    collapseCard(renderAdventureCloseoutCockpit("Go Adventure")),
-    collapseCard(renderTagLeadSelectorPanel()),
-    collapseCard(renderGuildJobLeadAuditPanel(adventure)),
-    collapseCard(renderGuildJobSignoffChecklist()),
-    collapseCard(renderTagActionLogExplorer()),
+    collapseCard(renderPlaytestTriagePanel("go-adventure"), "", { open: true }),
+    collapseCard(renderAdventureCloseoutCockpit("Go Adventure"), "", { open: true }),
+    collapseCard(renderTagLeadSelectorPanel(), "", { open: true }),
+    collapseCard(renderGuildJobLeadAuditPanel(adventure), "", { open: true }),
+    collapseCard(renderGuildJobSignoffChecklist(), "", { open: true }),
+    collapseCard(renderTagActionLogExplorer(), "", { open: true }),
   ]);
   rootEl.append(tabs, ...Object.values(panels));
   activateGoAdventureTab("start");

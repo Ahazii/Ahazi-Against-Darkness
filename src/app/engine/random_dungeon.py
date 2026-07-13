@@ -2274,15 +2274,15 @@ class RandomDungeonEngine:
                 session.log.append("There are no open ways forward from this location.")
                 return
 
+        if any(enemy.life > 0 for enemy in current.enemies):
+            session.log.append(
+                "Living foes block every exit. Resolve the encounter through its Reaction, Fight, or Flee action before leaving this location."
+            )
+            return
+
         if session.mode != "exploration":
-            if not exit_state.dungeon_exit:
-                session.log.append("Exploration is blocked until the current encounter is resolved.")
-                return
-            if any(enemy.life > 0 for enemy in current.enemies):
-                self._flee(session, show_rolls=show_rolls, explain_math=explain_math)
-                if session.mode == "combat":
-                    session.log.append("You must break contact before leaving the dungeon.")
-                    return
+            session.log.append("Exploration is blocked until the current encounter is resolved.")
+            return
 
         if exit_state.status == "blocked":
             session.log.append(f"The {exit_state.direction} exit is blocked.")

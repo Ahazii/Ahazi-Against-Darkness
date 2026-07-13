@@ -541,6 +541,7 @@ const inventoryPickerDialog = document.getElementById("inventory-picker-dialog")
 const inventoryPickerDialogForm = document.getElementById("inventory-picker-dialog-form");
 const inventoryPickerTitle = document.getElementById("inventory-picker-title");
 const inventoryPickerNote = document.getElementById("inventory-picker-note");
+const inventoryPickerLabel = document.getElementById("inventory-picker-label");
 const inventoryPickerSelect = document.getElementById("inventory-picker-select");
 const inventoryPickerConfirmBtn = document.getElementById("inventory-picker-confirm");
 const sessionLog = document.getElementById("session-log");
@@ -1582,17 +1583,21 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
     skillBtn.type = "button";
     skillBtn.disabled = Boolean(option.disabled);
     setButtonTooltip(skillBtn, skillOptionTooltip(option, fork));
-    skillBtn.addEventListener("click", (event) => {
+    skillBtn.addEventListener("click", async (event) => {
       event.stopPropagation();
       if (option.disabled) return;
+      skillBtn.disabled = true;
       const payload = { character_id: member.character_id, advancement_fork: fork };
       if (xpSpent != null) payload.xp_spent = xpSpent;
       if (fork === "learn_expert_skill") {
         payload.expert_skill_id = option.id;
         if (EXPERT_TARGET_SKILLS.has(option.id)) {
-          const target = window.prompt(`Monster type for ${option.label} (e.g. goblin, undead):`, "");
-          if (!target || !target.trim()) return;
-          payload.expert_skill_target = target.trim();
+          const target = await chooseExpertFoeTarget(option.label);
+          if (!target) {
+            skillBtn.disabled = false;
+            return;
+          }
+          payload.expert_skill_target = target;
         }
       } else if (fork === "learn_heroic_skill") {
         payload.heroic_skill_id = option.id;
@@ -1609,6 +1614,7 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
       } else {
         advance(advanceAction, payload);
       }
+      skillBtn.disabled = false;
     });
     skillRow.appendChild(skillBtn);
   }
@@ -21753,20 +21759,36 @@ function isBulkyCarriableItem(item) {
 
 const inventoryPickerDialogState = {
   onConfirm: null,
+  onCancel: null,
 };
 
-function openInventoryPickerDialog({ title, note, items, onConfirm }) {
-  if (!inventoryPickerDialog || !inventoryPickerSelect) return;
+function openInventoryPickerDialog({ title, note, items, onConfirm, onCancel = null, selectLabel = "Inventory item", confirmLabel = "Confirm" }) {
+  if (!inventoryPickerDialog || !inventoryPickerSelect) {
+    onCancel?.();
+    return;
+  }
   if (!items?.length) {
-    window.alert("No eligible bulky items in inventory.");
+    window.alert("No eligible options are available.");
+    onCancel?.();
     return;
   }
   inventoryPickerDialogState.onConfirm = onConfirm;
+  inventoryPickerDialogState.onCancel = onCancel;
   if (inventoryPickerTitle) inventoryPickerTitle.textContent = title || "Choose item";
   if (inventoryPickerNote) inventoryPickerNote.textContent = note || "";
+  if (inventoryPickerLabel) inventoryPickerLabel.textContent = selectLabel;
+  if (inventoryPickerConfirmBtn) inventoryPickerConfirmBtn.textContent = confirmLabel;
   inventoryPickerSelect.replaceChildren();
   for (const item of items) {
-    inventoryPickerSelect.appendChild(optionWithItemTooltip(item));
+    if (typeof item === "string") {
+      inventoryPickerSelect.appendChild(optionWithItemTooltip(item));
+      continue;
+    }
+    const option = document.createElement("option");
+    option.value = item.value;
+    option.textContent = item.label || item.value;
+    option.title = item.title || item.label || item.value;
+    inventoryPickerSelect.appendChild(option);
   }
   inventoryPickerDialog.showModal();
 }
@@ -21775,6 +21797,7 @@ function confirmInventoryPickerDialog() {
   const itemName = inventoryPickerSelect?.value;
   const onConfirm = inventoryPickerDialogState.onConfirm;
   inventoryPickerDialogState.onConfirm = null;
+  inventoryPickerDialogState.onCancel = null;
   inventoryPickerDialog?.close();
   if (itemName && typeof onConfirm === "function") {
     onConfirm(itemName);
@@ -23169,6 +23192,48 @@ function updateEquipmentShopTargetWeaponPanel() {
     option.title = `${itemTooltip(weapon)} Apply ${item.name} to this weapon.`;
     equipmentShopTargetWeapon.appendChild(option);
   }
+}
+
+function expertFoeTargetOptions() {
+  const types = new Set();
+  const names = new Set();
+  for (const entries of Object.values(state.monsterBestiary || {})) {
+    for (const foe of entries || []) {
+      const name = String(foe?.name || "").trim();
+      if (name) names.add(name);
+      for (const tag of foe?.tags || []) {
+        const type = String(tag || "").trim().toLowerCase();
+        if (type) types.add(type);
+      }
+    }
+  }
+  const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+  return [
+    ...[...types].sort(collator.compare).map((type) => ({
+      value: type,
+      label: `Type: ${titleCase(type.replace(/_/g, " "))}`,
+      title: `Apply the skill to every foe whose bestiary tags include ${type}.`,
+    })),
+    ...[...names].sort(collator.compare).map((name) => ({
+      value: name,
+      label: `Foe: ${name}`,
+      title: `Apply the skill to foes whose name includes ${name}.`,
+    })),
+  ];
+}
+
+function chooseExpertFoeTarget(skillLabel) {
+  return new Promise((resolve) => {
+    openInventoryPickerDialog({
+      title: `${skillLabel}: choose foe type`,
+      note: "Choose a known foe type or named foe from the complete installed bestiary. This target is not limited to foes in the current encounter.",
+      items: expertFoeTargetOptions(),
+      selectLabel: "Foe type",
+      confirmLabel: "Choose foe type",
+      onConfirm: resolve,
+      onCancel: () => resolve(""),
+    });
+  });
 }
 
 function selectedShopCharacter() {
@@ -33186,7 +33251,9 @@ inventoryPickerConfirmBtn?.addEventListener("click", (event) => {
   confirmInventoryPickerDialog();
 });
 inventoryPickerDialogForm?.addEventListener("close", () => {
+  inventoryPickerDialogState.onCancel?.();
   inventoryPickerDialogState.onConfirm = null;
+  inventoryPickerDialogState.onCancel = null;
 });
 weaponPickerDialogForm?.addEventListener("close", () => {
   weaponPickerDialogState.mode = null;

@@ -757,7 +757,7 @@ def test_combat_result_preserves_carried_body_member() -> None:
     assert session.body_carrier_id == "h1"
 
 
-def test_dungeon_exit_during_combat_at_entrance() -> None:
+def test_dungeon_exit_is_blocked_by_living_foes_at_entrance() -> None:
     from app.schemas import EnemyState
 
     eng = engine()
@@ -796,8 +796,7 @@ def test_dungeon_exit_during_combat_at_entrance() -> None:
         party_id="p",
         adventure_id="a",
         adventure_type="random",
-        mode="combat",
-        reaction_checked=True,
+        mode="exploration",
         party=[
             PartyMemberState(
                 character_id="h1",
@@ -819,5 +818,6 @@ def test_dungeon_exit_during_combat_at_entrance() -> None:
         updated_at="2026-01-01T00:00:00Z",
     )
     eng.advance(session, "explore", exit_id="out")
-    assert session.mode == "complete"
-    assert any("retreat" in entry.lower() or "leaves the dungeon" in entry.lower() for entry in session.log)
+    assert session.mode == "exploration"
+    assert session.map_state.current_tile_id == "ent"
+    assert any("living foes block every exit" in entry.lower() for entry in session.log)

@@ -3361,8 +3361,8 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
     data["go_adventure_tabbed_workflow_table"] = [
         {
             "tab": "Start",
-            "contains": "Collapsed Start New Adventure, Session Supplements, and Adventure Workflow panels. Start New Adventure contains the setup and closeout status icons.",
-            "player_use": "Expand Start New Adventure when choosing party/module/rules and starting; click status icons only when the app reports setup, closeout, or guidance issues.",
+            "contains": "Open Start New Adventure, Session Supplements, and Adventure Workflow panels. Start New Adventure contains the setup and closeout status icons.",
+            "player_use": "Review Start New Adventure when choosing party/module/rules and starting; click status icons only when the app reports setup, closeout, or guidance issues.",
             "rules_boundary": "Start checks remain enforced by the backend; printed rules still control adventure resolution.",
         },
         {
@@ -3373,8 +3373,8 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "tab": "Reference / Playtest",
-            "contains": "Collapsed Playtest Triage, Go Adventure closeout, Generated Adventures Guild Leads, TAG Guild Job Leads, Guild Job Signoff Checklist, and Adventures Guild Action Log panels.",
-            "player_use": "Review after play or before creating another lead. Generated lead rows and Guild Job rows are also collapsed so one installed lead does not fill the page.",
+            "contains": "Open Playtest Triage, Go Adventure closeout, Generated Adventures Guild Leads, TAG Guild Job Leads, Guild Job Signoff Checklist, and Adventures Guild Action Log panels.",
+            "player_use": "Review after play or before creating another lead. Generated lead rows and Guild Job rows remain individually collapsible so one installed lead does not fill the page.",
             "rules_boundary": "Reference links point to implementation notes and source pages; they do not copy full PDF text.",
         },
     ]

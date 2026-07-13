@@ -44,8 +44,8 @@ body.combat-focus-active {
 }
 
 .topbar {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
   padding: 18px 22px;
@@ -53,11 +53,20 @@ body.combat-focus-active {
   background: #1f211a;
 }
 
+.topbar-feedback {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
 .topbar-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .topbar-link {
@@ -3797,6 +3806,30 @@ button.modern-dashboard-status-icon {
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
+}
+
+.topbar .status {
+  justify-self: stretch;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-feedback {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .topbar-actions {
+    justify-content: flex-start;
+  }
 }
 
 .session-supplements {

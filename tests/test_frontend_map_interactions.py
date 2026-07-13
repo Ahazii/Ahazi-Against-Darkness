@@ -116,6 +116,33 @@ def _compact(src: str) -> str:
     return re.sub(r"\s+", "", src)
 
 
+def test_header_feedback_does_not_share_the_action_group() -> None:
+    """A long session status must wrap on the left without moving Save/Dashboard."""
+    assert 'class="topbar-feedback"' in INDEX_HTML
+    assert '<div id="api-status" class="status">Connecting</div>' in INDEX_HTML
+    topbar = re.search(r"\.topbar\s*\{([^}]*)\}", STYLES_CSS)
+    assert topbar and "grid-template-columns: minmax(0, 1fr) auto;" in topbar.group(1)
+    assert ".topbar .status" in STYLES_CSS
+
+
+def test_expert_target_picker_uses_complete_bestiary_not_free_text() -> None:
+    """Sworn Enemy/Impervious must use bestiary targets rather than window.prompt."""
+    choices = _function_body("expertFoeTargetOptions", APP_JS)
+    assert "state.monsterBestiary" in choices
+    assert "foe?.tags" in choices
+    assert "foe?.name" in choices
+    skill_choices = _function_body("appendSkillLearnDetails", APP_JS)
+    assert "await chooseExpertFoeTarget(option.label)" in skill_choices
+    assert "Monster type for" not in skill_choices
+
+
+def test_go_adventure_cards_open_without_changing_global_collapse_default() -> None:
+    """Only Go Adventure is open by default; other modern sections remain compact."""
+    assert 'function collapseCard(panel, summaryHint = "", { open = false } = {})' in MODERN_PAGES_JS
+    go_adventure = MODERN_PAGES_JS[MODERN_PAGES_JS.index('addGoAdventureTab("start"') :]
+    assert go_adventure.count('{ open: true }') >= 12
+
+
 # ── CSS layout: map viewport must have a definite height ──────────────────────
 
 def test_map_panel_layout_has_explicit_height_not_just_min_height() -> None:
@@ -2397,13 +2424,13 @@ def test_go_adventure_start_uses_status_icons_not_setup_panels() -> None:
     assert "Camp outside dungeon" in MODERN_PAGES_JS[go_start:]
     assert "party locked" in MODERN_PAGES_JS[go_start:]
     assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [' in MODERN_PAGES_JS
-    assert "collapseCard(supplementPreferenceCard)" in MODERN_PAGES_JS[go_start:]
-    assert "collapseCard(workflowGuide)" in MODERN_PAGES_JS[go_start:]
+    assert 'collapseCard(supplementPreferenceCard, "", { open: true })' in MODERN_PAGES_JS[go_start:]
+    assert 'collapseCard(workflowGuide, "", { open: true })' in MODERN_PAGES_JS[go_start:]
     assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [panel, readiness, gate])' not in MODERN_PAGES_JS
     assert "button.modern-dashboard-status-icon" in STYLES_CSS
     assert ".modern-start-status-icons" in STYLES_CSS
-    assert "Collapsed Start New Adventure, Session Supplements, and Adventure Workflow panels" in MAIN_PY
-    assert "Collapsed Playtest Triage, Go Adventure closeout, Generated Adventures Guild Leads" in MAIN_PY
+    assert "Open Start New Adventure, Session Supplements, and Adventure Workflow panels" in MAIN_PY
+    assert "Open Playtest Triage, Go Adventure closeout, Generated Adventures Guild Leads" in MAIN_PY
 
 
 def test_mass_blessing_ui_sends_targets_and_conditions() -> None:
@@ -2775,9 +2802,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Guild Job Signoff Checklist" in MODERN_PAGES_JS
     assert "tag_guild_job_playthrough_audit" in MODERN_PAGES_JS
     assert "Select Job" in MODERN_PAGES_JS
-    assert "collapseCard(panel)" in MODERN_PAGES_JS
-    assert "collapseCard(renderTagLeadSelectorPanel())" in MODERN_PAGES_JS
-    assert "collapseCard(renderGuildJobLeadAuditPanel(adventure))" in MODERN_PAGES_JS
+    assert 'collapseCard(panel, "", { open: true })' in MODERN_PAGES_JS
+    assert 'collapseCard(renderTagLeadSelectorPanel(), "", { open: true })' in MODERN_PAGES_JS
+    assert 'collapseCard(renderGuildJobLeadAuditPanel(adventure), "", { open: true })' in MODERN_PAGES_JS
     assert "Show or hide this generated Adventures Guild lead audit row." in MODERN_PAGES_JS
     assert "Show or hide this Guild Job audit row." in MODERN_PAGES_JS
     assert "Adventures Guild Action Log" in MODERN_PAGES_JS
