@@ -147,3 +147,23 @@ def accept_quest(session: SessionState, tile: TileState, *, show_rolls: bool, ca
         session.log.append(f"Quest progress: slay the Quest Boss, take its head, then return to this tile to claim the Epic reward.{target}")
     elif quest.key in progress:
         session.log.append(progress[quest.key])
+
+
+def refuse_quest(session: SessionState, tile: TileState) -> None:
+    if not tile.lady_in_white_available:
+        session.log.append("The Lady in White is not here.")
+        return
+    session.lady_in_white_refused = True
+    tile.lady_in_white_available = False
+    session.log.append("You refuse the Quest. The Lady in White vanishes and will not return this adventure.")
+
+
+def record_peaceful_quest_progress(session: SessionState) -> None:
+    quest = session.active_quest
+    if quest is None or quest.key != "peaceful_way" or quest.completed:
+        return
+    quest.peaceful_count += 1
+    session.log.append(f"Peaceful quest progress: {quest.peaceful_count}/{quest.peaceful_required}.")
+    if quest.peaceful_count >= quest.peaceful_required:
+        quest.completed = True
+        session.log.append("Quest objective complete: peaceful encounters finished. Claim your Epic reward.")

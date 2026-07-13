@@ -300,7 +300,7 @@ from .reactions import (
     resolve_reaction_source,
 )
 from .quests import quest_from_row
-from .quest_rewards import QuestAcceptanceCallbacks, QuestRewardCallbacks, accept_quest, claim_quest_reward
+from .quest_rewards import QuestAcceptanceCallbacks, QuestRewardCallbacks, accept_quest, claim_quest_reward, record_peaceful_quest_progress, refuse_quest
 from .healing_potions import use_healing_potion
 from .adventure_allowlists import major_foe_table_keys
 from .adventure_runtime import (
@@ -18484,13 +18484,7 @@ class RandomDungeonEngine:
         accept_quest(session, self._current_tile(session), show_rolls=show_rolls, callbacks=QuestAcceptanceCallbacks(speaker=lambda current: self._member_by_marching_order(current, 1), highest_character_level=self._highest_character_level, social_save=lambda current, speaker, hcl, visible: resolve_social_save(current, speaker, hcl, show_rolls=visible, label='impress the Lady in White'), lookup_table=self.table_roller.lookup, roll_d6=roll_d6, roll_boss_target=self._roll_quest_boss_target_name))
 
     def _refuse_quest(self, session: SessionState) -> None:
-        tile = self._current_tile(session)
-        if not tile.lady_in_white_available:
-            session.log.append("The Lady in White is not here.")
-            return
-        session.lady_in_white_refused = True
-        tile.lady_in_white_available = False
-        session.log.append("You refuse the Quest. The Lady in White vanishes and will not return this adventure.")
+        refuse_quest(session, self._current_tile(session))
 
     def _claim_quest_reward(self, session: SessionState, *, show_rolls: bool) -> None:
         claim_quest_reward(
@@ -18505,16 +18499,7 @@ class RandomDungeonEngine:
             ),
         )
     def _record_peaceful_quest_progress(self, session: SessionState) -> None:
-        quest = session.active_quest
-        if quest is None or quest.key != "peaceful_way" or quest.completed:
-            return
-        quest.peaceful_count += 1
-        session.log.append(
-            f"Peaceful quest progress: {quest.peaceful_count}/{quest.peaceful_required}."
-        )
-        if quest.peaceful_count >= quest.peaceful_required:
-            quest.completed = True
-            session.log.append("Quest objective complete: peaceful encounters finished. Claim your Epic reward.")
+        record_peaceful_quest_progress(session)
 
     def _update_quest_on_combat_end(
         self,
