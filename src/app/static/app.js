@@ -18418,7 +18418,7 @@ function renderDeveloperPlaytestControls(session) {
     return;
   }
 
-  const previousKind = developerPlaytestControls.dataset.kind || (isAbyss ? "abyss_foe" : isForsakenDepths ? "fd_citadel" : "ee_foe");
+  const previousKind = developerPlaytestControls.dataset.kind || (isAbyss ? "abyss_foe" : isForsakenDepths ? "fd_foe" : "ee_foe");
   const previousTable = developerPlaytestControls.dataset.table || "abyss_vermin_table";
   const previousKey = developerPlaytestControls.dataset.key || "";
   const previousRoll = developerPlaytestControls.dataset.roll || "1";
@@ -18428,7 +18428,7 @@ function renderDeveloperPlaytestControls(session) {
   if (isAbyss) {
     kind.append(new Option("Abyss foe encounter", "abyss_foe"), new Option("Abyss unique event", "abyss_unique_event"));
   }
-  if (isForsakenDepths) kind.append(new Option("Forsaken Depths Citadel", "fd_citadel"));
+  if (isForsakenDepths) kind.append(new Option("FD foe encounter", "fd_foe"), new Option("Forsaken Depths Citadel", "fd_citadel"));
   if (isExpandedEdition) {
     kind.append(
       new Option("EE foe encounter", "ee_foe"),
@@ -18473,6 +18473,23 @@ function renderDeveloperPlaytestControls(session) {
   }
   eeFoe.value = [...eeFoe.options].some((option) => option.value === previousKey) ? previousKey : eeFoe.options[0]?.value || "";
 
+  const fdFoe = document.createElement("select");
+  fdFoe.setAttribute("aria-label", "Forsaken Depths foe");
+  fdFoe.title = "Choose an exact named foe from the shipped Forsaken Depths bestiary. The normal Forsaken Depths encounter and combat rules still apply.";
+  const fdTableOrder = ["fd_vermin", "fd_minions", "fd_horde", "fd_boss", "fd_weird", "fd_citadel_weird"];
+  for (const tableKey of fdTableOrder) {
+    const rows = state.monsterBestiary?.[tableKey] || [];
+    if (!rows.length) continue;
+    const group = document.createElement("optgroup");
+    group.label = tableKey.replace(/^fd_/, "").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+    for (const entry of rows) {
+      if (!entry?.name) continue;
+      group.appendChild(new Option(entry.name, `${tableKey}::${entry.name}`));
+    }
+    fdFoe.appendChild(group);
+  }
+  fdFoe.value = [...fdFoe.options].some((option) => option.value === previousKey) ? previousKey : fdFoe.options[0]?.value || "";
+
   const roll = document.createElement("select");
   roll.setAttribute("aria-label", "Printed die result");
   roll.title = "Choose the exact printed d6 result to test. The selected result still uses ordinary spawning, events, reactions, states, and combat.";
@@ -18501,10 +18518,13 @@ function renderDeveloperPlaytestControls(session) {
   const updateVisibility = () => {
     const foe = kind.value === "abyss_foe";
     const eeFoeSelected = kind.value === "ee_foe" || kind.value === "ee_final_boss";
+    const fdFoeSelected = kind.value === "fd_foe";
     table.classList.toggle("hidden", !foe);
     table.disabled = !foe;
     eeFoe.classList.toggle("hidden", !eeFoeSelected);
     eeFoe.disabled = !eeFoeSelected;
+    fdFoe.classList.toggle("hidden", !fdFoeSelected);
+    fdFoe.disabled = !fdFoeSelected;
     if (kind.value === "ee_final_boss") {
       for (const option of eeFoe.options) {
         option.hidden = !/(?:^|_)(weird|boss)::/.test(option.value);
@@ -18518,18 +18538,20 @@ function renderDeveloperPlaytestControls(session) {
       }
     }
     refillRolls();
+    roll.classList.toggle("hidden", eeFoeSelected || fdFoeSelected);
+    roll.disabled = eeFoeSelected || fdFoeSelected;
   };
   kind.addEventListener("change", updateVisibility);
   table.addEventListener("change", refillRolls);
   run.addEventListener("click", async () => {
     developerPlaytestControls.dataset.kind = kind.value;
     developerPlaytestControls.dataset.table = table.value;
-    developerPlaytestControls.dataset.key = eeFoe.value;
+    developerPlaytestControls.dataset.key = kind.value === "fd_foe" ? fdFoe.value : eeFoe.value;
     developerPlaytestControls.dataset.roll = roll.value;
     await advance("developer_playtest", {
       playtest_kind: kind.value,
       playtest_table: kind.value === "abyss_foe" ? table.value : null,
-      playtest_key: (kind.value === "ee_foe" || kind.value === "ee_final_boss") ? eeFoe.value : null,
+      playtest_key: (kind.value === "ee_foe" || kind.value === "ee_final_boss") ? eeFoe.value : (kind.value === "fd_foe" ? fdFoe.value : null),
       playtest_roll: Number.parseInt(roll.value, 10),
     });
   });
@@ -18540,7 +18562,7 @@ function renderDeveloperPlaytestControls(session) {
     "Developer override: selected result only; normal encounters still roll."
   );
   note.title = "This control is shown because the Developer Playtest Preference is enabled. It leaves a clear override entry in the narrative for every test.";
-  developerPlaytestControls.replaceChildren(note, kind, table, eeFoe, roll, run);
+  developerPlaytestControls.replaceChildren(note, kind, table, eeFoe, fdFoe, roll, run);
 }
 
 function renderSession() {

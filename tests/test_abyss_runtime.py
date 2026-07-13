@@ -12,7 +12,7 @@ from app.engine.combat import CombatContext, assign_enemy_attacks
 from app.engine.monster_template_effects import apply_encounter_start_effects
 from app.engine.reactions import lookup_reaction_row, resolve_bribe_gold, resolve_reaction_source
 from app.rules.repository import RulesRepository
-from app.schemas import EnemyState, PartyMemberState, TileState
+from app.schemas import EnemyState, PartyMemberState, SessionAction, TileState
 
 
 def _engine() -> RandomDungeonEngine:
@@ -152,6 +152,37 @@ def test_developer_playtest_allows_expanded_edition_foes_with_abyss_profile(monk
 
     assert session.mode == "combat"
     assert tile.enemies[0].name == "Mummy"
+
+
+def test_developer_playtest_spawns_named_forsaken_depths_foe(monkeypatch) -> None:
+    eng = _engine()
+    session = eng.create_session("fd-foe-playtest", "party-1", [_member()], ruleset="forsaken_depths")
+    tile = TileState(id="fd-foe-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_formula", lambda formula: 1)
+
+    eng.advance(
+        session,
+        "developer_playtest",
+        playtest_kind="fd_foe",
+        playtest_key="fd_horde::Horde of Dark Elves",
+    )
+
+    assert session.mode == "combat"
+    assert tile.enemies[0].name == "Horde of Dark Elves"
+    assert "fd_horde_dark_elf_volley" in tile.enemies[0].tags
+
+
+def test_session_action_accepts_forsaken_depths_named_foe_playtest() -> None:
+    action = SessionAction(
+        action="developer_playtest",
+        playtest_kind="fd_foe",
+        playtest_key="fd_horde::Horde of Dark Elves",
+    )
+
+    assert action.playtest_kind == "fd_foe"
 
 
 def test_developer_playtest_creates_selected_expanded_edition_quest() -> None:

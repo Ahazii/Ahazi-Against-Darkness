@@ -12066,6 +12066,52 @@ class RandomDungeonEngine:
             )
             self._prepare_tile_features(session, tile, show_rolls=show_rolls, explain_math=explain_math)
             return
+        if kind == "fd_foe":
+            from .forsaken_depths_map import is_fd_ruleset
+
+            table_key, separator, template_name = str(key or "").partition("::")
+            categories = {
+                "fd_vermin": "vermin",
+                "fd_minions": "minions",
+                "fd_horde": "boss",
+                "fd_boss": "boss",
+                "fd_weird": "weird",
+                "fd_citadel_weird": "weird",
+            }
+            category = categories.get(table_key)
+            if not is_fd_ruleset(session) or not separator or category is None:
+                session.log.append("Choose a named Forsaken Depths foe from the developer playtest list.")
+                return
+            templates = self.rules.monsters().get(table_key) or []
+            template = next((item for item in templates if item.get("name") == template_name), None)
+            if not isinstance(template, dict):
+                session.log.append("That Forsaken Depths foe is not available in the current bestiary.")
+                return
+            count = max(1, roll_formula(str(template.get("count", "1"))))
+            enemies = self._spawn_from_template_name(
+                session,
+                table_key=table_key,
+                template_name=template_name,
+                count=count,
+                hcl=self._highest_character_level(session.party),
+                category=category,
+            )
+            if not enemies:
+                session.log.append("That Forsaken Depths foe could not be created.")
+                return
+            tile.content_key = f"developer_{table_key}"
+            tile.enemies = enemies
+            tile.initial_enemy_count = len(enemies)
+            tile.resolved = False
+            session.log.append(f"Developer playtest override: Forsaken Depths foe - {template_name}.")
+            self._begin_combat(
+                session,
+                "Developer playtest encounter begins.",
+                tile=tile,
+                show_rolls=show_rolls,
+                allow_final_boss_check=False,
+            )
+            return
         if kind == "fd_citadel":
             from .forsaken_depths_content import roll_fd_citadel
             from .forsaken_depths_map import is_fd_ruleset
