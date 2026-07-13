@@ -18428,6 +18428,7 @@ function renderSession() {
   const tile = currentTile(session);
   const hasTrap = Boolean(tile?.trap_key && !tile.trap_resolved);
   const hasTreasure =
+    session.mode === "exploration" &&
     Boolean(tile) &&
     !tile.treasure_claimed &&
     (Boolean(tile.treasure_gold) || (tile.treasure_items || []).length > 0);
@@ -19295,6 +19296,13 @@ function appendTagCaveProgressPanel(parent, session) {
 }
 
 function currentObjectiveForSession(session) {
+  if (session.mode === "complete") {
+    return {
+      title: "Current objective: review closeout",
+      body: "The adventure is complete. Review rewards, storage, Guild obligations, XP markers, and guidance tasks from the Dashboard before starting the next lead.",
+      tone: "success",
+    };
+  }
   const tile = currentTile(session);
   if (!tile) return null;
   const livingFoes = livingFoesOnTile(session);
@@ -19514,13 +19522,6 @@ function currentObjectiveForSession(session) {
       action: claimStatus.ok
         ? { label: "Claim Quest Reward", kind: "advance", advanceAction: "claim_quest_reward" }
         : null,
-    };
-  }
-  if (session.mode === "complete") {
-    return {
-      title: "Current objective: review closeout",
-      body: "The adventure is complete. Review rewards, storage, Guild obligations, XP markers, and guidance tasks from the Dashboard before starting the next lead.",
-      tone: "success",
     };
   }
   return {
@@ -24464,6 +24465,7 @@ function appendAbyssCampaignActions(parent, session, tile) {
 
 function applyExplorationPanelVisibility() {
   const panels = state.explorationPanels || {};
+  const complete = state.session?.mode === "complete";
   currentObjectiveBanner?.classList.toggle("panel-user-hidden", panels.objective === false);
   ongoingQuestsEl?.classList.toggle("panel-user-hidden", panels.quests === false);
   explorationCommandBar?.classList.toggle("panel-user-hidden", panels.commands === false);
@@ -24480,6 +24482,21 @@ function applyExplorationPanelVisibility() {
   toggleTextCommandsBtn?.classList.toggle("selected", panels.commands !== false);
   toggleExitsPanelBtn?.classList.toggle("selected", panels.exits !== false);
   togglePartySheetsPanelBtn?.classList.toggle("selected", panels.sheets !== false);
+
+  // Completed adventures are review-only: do not leave panel switches visible
+  // when their content has deliberately been removed from play.
+  if (toggleCurrentObjectiveBtn) {
+    toggleCurrentObjectiveBtn.textContent = complete ? "Closeout" : "Objective Details";
+    setButtonTooltip(
+      toggleCurrentObjectiveBtn,
+      complete
+        ? "Show or hide the completed-adventure closeout guidance. Start the next adventure from the Dashboard."
+        : "Show or hide detailed objective guidance. The Narrative title also shows compact objective and quest status."
+    );
+  }
+  for (const button of [toggleOngoingQuestsBtn, toggleTextCommandsBtn, toggleExitsPanelBtn]) {
+    button?.classList.toggle("hidden", complete);
+  }
 }
 
 function setExplorationPanelVisibility(key, open) {

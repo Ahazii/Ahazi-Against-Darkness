@@ -1943,6 +1943,19 @@ def test_exploration_panels_can_be_toggled_from_header() -> None:
     assert ".ongoing-quests.panel-user-hidden" in STYLES_CSS
 
 
+def test_completed_session_hides_dead_exploration_controls_and_treasure_actions() -> None:
+    panel_visibility = _function_body("applyExplorationPanelVisibility", APP_JS)
+    objective = _function_body("currentObjectiveForSession", APP_JS)
+    render_session = _function_body("renderSession", APP_JS)
+
+    assert 'const complete = state.session?.mode === "complete"' in panel_visibility
+    assert 'toggleCurrentObjectiveBtn.textContent = complete ? "Closeout" : "Objective Details"' in panel_visibility
+    assert "toggleOngoingQuestsBtn, toggleTextCommandsBtn, toggleExitsPanelBtn" in panel_visibility
+    assert 'if (session.mode === "complete")' in objective
+    assert 'title: "Current objective: review closeout"' in objective
+    assert 'session.mode === "exploration" &&' in render_session
+
+
 def test_user_artwork_placeholders_are_documented_slots() -> None:
     for path in [
         "assets/artwork/user/README.md",
