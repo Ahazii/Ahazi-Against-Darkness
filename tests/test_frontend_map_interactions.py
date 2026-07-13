@@ -2393,6 +2393,9 @@ def test_go_adventure_start_uses_status_icons_not_setup_panels() -> None:
     assert "function selectedStartSupplementIds()" in MODERN_PAGES_JS[go_start:]
     assert "active_supplement_ids: selectedStartSupplementIds()" in MODERN_PAGES_JS[go_start:]
     assert "syncStartSupplementProfile({ userChanged: true })" in MODERN_PAGES_JS[go_start:]
+    assert 'const resumableSessions = (modernState.sessions || []).filter((session) => session.mode !== "complete");' in MODERN_PAGES_JS[go_start:]
+    assert "Camp outside dungeon" in MODERN_PAGES_JS[go_start:]
+    assert "party locked" in MODERN_PAGES_JS[go_start:]
     assert 'addGoAdventureTab("start", "Start", "Start a fresh adventure after setup and closeout checks.", [' in MODERN_PAGES_JS
     assert "collapseCard(supplementPreferenceCard)" in MODERN_PAGES_JS[go_start:]
     assert "collapseCard(workflowGuide)" in MODERN_PAGES_JS[go_start:]
@@ -2877,7 +2880,7 @@ def test_modern_home_routes_and_pages_are_standalone() -> None:
         "It is selected in Go Adventure > Start.",
         "latestSessionPerParty",
         "older session(s) hidden",
-        "Shows the latest resumable or saved session for each party",
+        "Shows only sessions that can still be resumed",
         "sessionStorage.setItem(\"ahazi-modern-dev-unlocked\"",
         "availability reroll ${campaign.tag_guild_availability_reroll_used",
         "modernTablePreview",

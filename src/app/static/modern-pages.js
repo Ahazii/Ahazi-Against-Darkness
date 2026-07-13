@@ -6197,9 +6197,10 @@ async function renderGoAdventure() {
     window.location.href = `/?session=${encodeURIComponent(session.id || "")}`;
   }, "modern-start-button"));
   panel.appendChild(startRow);
-  const sessions = card("Resume Adventure", "Shows the latest resumable or saved session for each party. Resume the latest active in-progress session for each party; saved games are listed separately below.");
-  const visibleSessions = latestSessionPerParty(modernState.sessions);
-  const hiddenSessionCount = Math.max(0, (modernState.sessions || []).length - visibleSessions.length);
+  const sessions = card("Resume Adventure", "Shows only sessions that can still be resumed. Completed adventures are retained as history and never block a party or appear here.");
+  const resumableSessions = (modernState.sessions || []).filter((session) => session.mode !== "complete");
+  const visibleSessions = latestSessionPerParty(resumableSessions);
+  const hiddenSessionCount = Math.max(0, resumableSessions.length - visibleSessions.length);
   if (hiddenSessionCount) {
     sessions.appendChild(el("p", "muted", `${hiddenSessionCount} older session(s) hidden. Delete or load older sessions from the legacy home list if needed.`));
   }
@@ -6208,8 +6209,9 @@ async function renderGoAdventure() {
   for (const session of activeSessions) {
     const partyName = modernState.parties.find((item) => item.id === session.party_id)?.name || session.party_id;
     const row = el("div", "modern-row");
-    row.append(el("strong", "", session.save_label || `${partyName} - ${session.mode}`));
-    row.append(el("span", "muted", `${partyName} · ${session.adventure_type || session.adventure_id} · ${session.saved_at ? `saved ${session.saved_at}` : "active/unsaved"} · ${session.tile_count || 0} map element(s)`));
+    const location = session.camped_outside ? "Camp outside dungeon" : "In dungeon";
+    row.append(el("strong", "", session.save_label || `${partyName} - ${location}`));
+    row.append(el("span", "muted", `${partyName} · ${session.adventure_type || session.adventure_id} · ${location} · active/unsaved · party locked · ${session.tile_count || 0} map element(s) · session ${String(session.id || "").slice(0, 8)}`));
     row.appendChild(modernStatusRow("Locked supplements", sessionSupplementSummary(session), "Supplements snapshot locked when this session was created. Legacy sessions may not have this metadata yet."));
     const rowActions = actions();
     rowActions.append(
