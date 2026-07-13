@@ -388,13 +388,13 @@ def _resolve_encounter_start_effect(
         else:
             log.append("The party's lanterns stay lit.")
         return log
-    if effect_type in {"death_gaze", "poison_burst"}:
+    if effect_type in {"death_gaze", "poison_burst", "save_damage"}:
         return _resolve_save_damage_encounter_effect(
             enemy,
             effect,
             party,
             hcl=hcl,
-            label=effect_type.replace("_", " ").title(),
+            label=str(effect.get("label") or effect_type.replace("_", " ").title()),
             show_rolls=show_rolls,
             session=session,
         )

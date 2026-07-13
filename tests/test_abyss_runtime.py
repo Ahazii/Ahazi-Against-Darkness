@@ -9,6 +9,7 @@ from app.engine.abyss_tactics import (
     coerce_abyss_attack_targets,
 )
 from app.engine.combat import CombatContext, assign_enemy_attacks
+from app.engine.monster_template_effects import apply_encounter_start_effects
 from app.engine.reactions import lookup_reaction_row, resolve_reaction_source
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, PartyMemberState, TileState
@@ -63,6 +64,36 @@ def test_abyss_profile_routes_room_content_to_abyss_minions(monkeypatch) -> None
     assert len(content["enemies"]) == 5
     assert content["enemies"][0].name == "Hairy Goblins"
     assert any(enemy.name == "Goblin Leader" for enemy in content["enemies"])
+
+
+def test_dragon_man_first_turn_fire_uses_the_printed_level_8_save(monkeypatch) -> None:
+    eng = _engine()
+    member = _member()
+    session = eng.create_session("abyss-dragon-man", "party-1", [member], ruleset_profile_id="abyss")
+    dragon_man = EnemyState(
+        id="dragon-man",
+        name="Dragon Man",
+        category="boss",
+        level=9,
+        life=8,
+        max_life=8,
+        attacks=2,
+        tags=["abyss", "dragon"],
+        encounter_start_effects=[{
+            "type": "save_damage",
+            "label": "Dragon fire save",
+            "target": "all_pcs",
+            "save_level": 8,
+            "save_type": "magic",
+            "damage": 1,
+        }],
+    )
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda hero: (1, [1]))
+
+    log = apply_encounter_start_effects([dragon_man], [member], session, show_rolls=True)
+
+    assert member.current_life == 11
+    assert any("Dragon fire save" in line and "L8" in line for line in log)
 
 
 def test_abyss_group_treasure_rolls_apply_once_per_generated_group() -> None:
