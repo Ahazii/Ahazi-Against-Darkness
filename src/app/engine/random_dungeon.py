@@ -301,6 +301,7 @@ from .reactions import (
 )
 from .quests import quest_from_row
 from .quest_rewards import QuestAcceptanceCallbacks, QuestRewardCallbacks, accept_quest, claim_quest_reward
+from .healing_potions import use_healing_potion
 from .adventure_allowlists import major_foe_table_keys
 from .adventure_runtime import (
     IMPORTED_ROOM_PREFIX,
@@ -18473,33 +18474,11 @@ class RandomDungeonEngine:
         if kind != "healing":
             session.log.append(f"{member.name} does not know how to use {potion_name}.")
             return
-        tile = self._current_tile(session) if session.mode in {"exploration", "combat"} else None
-        from .forsaken_depths_citadel import fd_citadel_of_dead_blocks_healing
-
-        dead_block = fd_citadel_of_dead_blocks_healing(session, tile, source="potion")
-        if dead_block:
-            session.log.append(dead_block)
-            return
-        blocked = bulwark_magical_healing_blocked(session, member)
-        if blocked:
-            session.log.append(blocked)
-            return
-        if member.character_id in session.potion_used_character_ids:
-            session.log.append(f"{member.name} already drank a Potion of Healing this adventure.")
-            return
         from .courtship_lex import apply_lex_soul_tax_if_needed
 
-        if not apply_lex_soul_tax_if_needed(session, member, potion_name, show_rolls=show_rolls):
-            return
-        remove_inventory_item(member, potion_name)
-        lost_life = member.max_life - member.current_life
-        member.current_life = member.max_life
-        session.potion_used_character_ids.append(member.character_id)
-        if show_rolls:
-            session.log.append(
-                f"{member.name} drinks {potion_name} and restores {lost_life} Life "
-                f"({member.current_life}/{member.max_life})."
-            )
+        from .forsaken_depths_citadel import fd_citadel_of_dead_blocks_healing
+
+        use_healing_potion(session, member, potion_name, tile=self._current_tile(session) if session.mode in {"exploration", "combat"} else None, show_rolls=show_rolls, citadel_blocks_healing=lambda current, current_tile: fd_citadel_of_dead_blocks_healing(current, current_tile, source="potion"), apply_soul_tax=lambda current, user, item, visible: apply_lex_soul_tax_if_needed(current, user, item, show_rolls=visible))
 
     def _accept_quest(self, session: SessionState, *, show_rolls: bool) -> None:
         accept_quest(session, self._current_tile(session), show_rolls=show_rolls, callbacks=QuestAcceptanceCallbacks(speaker=lambda current: self._member_by_marching_order(current, 1), highest_character_level=self._highest_character_level, social_save=lambda current, speaker, hcl, visible: resolve_social_save(current, speaker, hcl, show_rolls=visible, label='impress the Lady in White'), lookup_table=self.table_roller.lookup, roll_d6=roll_d6, roll_boss_target=self._roll_quest_boss_target_name))

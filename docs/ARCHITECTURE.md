@@ -45,6 +45,7 @@ Key files:
 - `src/app/engine/class_profiles.py` - class Life offsets, spell slots, level-up benefit notes
 - `src/app/engine/experience.py` - XP awards, Classical XP rolls and spending, Old School and Slower Advancement transactions, level-up application, spell-slot assignment
 - `src/app/engine/rest.py` - rest eligibility, recovery, wandering-check resolution, and reusable between-foray resource reset
+- `src/app/engine/healing_potions.py` - healing-potion gate checks, once-per-adventure use, inventory consumption, and Life recovery
 - `src/app/engine/camp.py` - shared camp-at-entrance preparation, recovery, fallen-hero lookup, refresh logging, and explored-map summaries
 - `src/app/engine/death_recovery.py` - body carrying, unattended-body theft, resurrection, burial, and fallen-hero Clue/Secret inheritance
 - `src/app/engine/banking.py` - camp-only home-bank access, deposits, withdrawals, party banking, and shared outside-funds payments
