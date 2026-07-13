@@ -3560,7 +3560,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "default": "false",
             "stored_in": "game.db records/preferences/ui",
             "developer_ui": "Developer Playtest Preferences",
-            "effect": "Shows developer-only controls during eligible Abyss and Forsaken Depths exploration sessions. A selected foe row, unique event, or Citadel result enters the existing live engine path and is marked in the Narrative as an override.",
+            "effect": "Shows developer-only controls during eligible Expanded Edition, Abyss, and Forsaken Depths exploration sessions. A selected named EE foe, EE Quest result, Final Boss, Abyss foe/event row, or Citadel result enters the existing live engine path and is marked in the Narrative as an override.",
             "rules_boundary": "Testing-only. Normal play leaves it off and rolls from the printed tables; the override does not invent outcomes or bypass encounter, event, reaction, state, or Citadel logic.",
         },
         {
@@ -6620,6 +6620,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         alchemist_potion_id=payload.alchemist_potion_id,
         playtest_kind=payload.playtest_kind,
         playtest_table=payload.playtest_table,
+        playtest_key=payload.playtest_key,
         playtest_roll=payload.playtest_roll,
     )
     _restore_missing_recovery_members(session)

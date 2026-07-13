@@ -1504,8 +1504,9 @@ class SessionAction(BaseModel):
         "developer_playtest",
     ]
     exit_id: str | None = None
-    playtest_kind: Literal["abyss_foe", "abyss_unique_event", "fd_citadel"] | None = None
+    playtest_kind: Literal["abyss_foe", "abyss_unique_event", "fd_citadel", "ee_foe", "ee_final_boss", "ee_quest"] | None = None
     playtest_table: str | None = None
+    playtest_key: str | None = None
     playtest_roll: int | None = Field(default=None, ge=1, le=8)
     dungeon_exit_intent: Literal["complete", "return"] | None = None
     direction: ExitDirection | None = None

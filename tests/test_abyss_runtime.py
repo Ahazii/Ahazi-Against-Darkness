@@ -106,6 +106,43 @@ def test_developer_playtest_runs_the_selected_abyss_event(monkeypatch) -> None:
     assert any("Developer playtest override" in entry for entry in session.log)
 
 
+def test_developer_playtest_spawns_named_expanded_edition_final_boss(monkeypatch) -> None:
+    eng = _engine()
+    session = eng.create_session("ee-final-playtest", "party-1", [_member()], ruleset="ee")
+    tile = TileState(id="ee-final-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_formula", lambda formula: 1)
+
+    eng.advance(
+        session,
+        "developer_playtest",
+        playtest_kind="ee_final_boss",
+        playtest_key="boss::Mummy",
+    )
+
+    assert session.mode == "combat"
+    assert session.final_boss_designated
+    assert tile.final_boss_treasure
+    assert all("final_boss" in enemy.tags for enemy in tile.enemies)
+
+
+def test_developer_playtest_creates_selected_expanded_edition_quest() -> None:
+    eng = _engine()
+    session = eng.create_session("ee-quest-playtest", "party-1", [_member()], ruleset="ee")
+    tile = TileState(id="ee-quest-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+
+    eng.advance(session, "developer_playtest", playtest_kind="ee_quest", playtest_roll=5)
+
+    assert session.active_quest is not None
+    assert session.active_quest.key == "peaceful_way"
+    assert any("Developer playtest override: Quest d6=5" in entry for entry in session.log)
+
+
 def test_dragon_man_first_turn_fire_uses_the_printed_level_8_save(monkeypatch) -> None:
     eng = _engine()
     member = _member()

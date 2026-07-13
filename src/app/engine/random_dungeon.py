@@ -993,6 +993,7 @@ class RandomDungeonEngine:
         alchemist_potion_id: str | None = None,
         playtest_kind: str | None = None,
         playtest_table: str | None = None,
+        playtest_key: str | None = None,
         playtest_roll: int | None = None,
     ) -> SessionState:
         if session.mode == "complete":
@@ -1150,6 +1151,7 @@ class RandomDungeonEngine:
                 session,
                 kind=playtest_kind,
                 table_name=playtest_table,
+                key=playtest_key,
                 roll=playtest_roll,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
@@ -11901,6 +11903,7 @@ class RandomDungeonEngine:
         *,
         kind: str | None,
         table_name: str | None,
+        key: str | None,
         roll: int | None,
         show_rolls: bool,
         explain_math: bool,
@@ -11917,6 +11920,96 @@ class RandomDungeonEngine:
         tile = self._current_tile(session)
         if any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("Resolve the current encounter before running a developer playtest override.")
+            return
+        if kind in {"ee_foe", "ee_final_boss"}:
+            if str(session.ruleset_profile_id or "") == "abyss" or str(session.ruleset or "") != "ee":
+                session.log.append("Choose an Expanded Edition session for this foe playtest.")
+                return
+            table_key, separator, template_name = str(key or "").partition("::")
+            category = table_key.rsplit("_", 1)[-1]
+            allowed_categories = {"vermin", "minions", "weird", "boss"}
+            if not separator or category not in allowed_categories:
+                session.log.append("Choose a named Expanded Edition foe from the developer playtest list.")
+                return
+            templates = self.rules.monsters().get(table_key) or []
+            template = next((item for item in templates if item.get("name") == template_name), None)
+            if not isinstance(template, dict):
+                session.log.append("That named Expanded Edition foe is not available in the current bestiary.")
+                return
+            if kind == "ee_final_boss" and category not in {"weird", "boss"}:
+                session.log.append("The Final Boss playtest requires a named Weird Monster or Boss Monster.")
+                return
+            count = max(1, roll_formula(str(template.get("count", "1"))))
+            enemies = self._spawn_from_template_name(
+                session,
+                table_key=table_key,
+                template_name=template_name,
+                count=count,
+                hcl=self._highest_character_level(session.party),
+                category=category,
+            )
+            if not enemies:
+                session.log.append("That Expanded Edition foe could not be created.")
+                return
+            if kind == "ee_final_boss":
+                for enemy in enemies:
+                    if "final_boss" not in enemy.tags:
+                        enemy.tags.append("final_boss")
+                tile.final_boss_treasure = True
+                session.final_boss_designated = True
+            tile.content_key = "developer_ee_final_boss" if kind == "ee_final_boss" else f"developer_ee_{category}"
+            tile.enemies = enemies
+            tile.initial_enemy_count = len(enemies)
+            tile.resolved = False
+            label = "Expanded Edition Final Boss" if kind == "ee_final_boss" else "Expanded Edition foe"
+            session.log.append(f"Developer playtest override: {label} - {template_name}.")
+            self._begin_combat(session, "Developer playtest encounter begins.", tile=tile, show_rolls=show_rolls, allow_final_boss_check=False)
+            return
+        if kind == "ee_quest":
+            from .quests import quest_from_row
+
+            if str(session.ruleset_profile_id or "") == "abyss" or str(session.ruleset or "") != "ee" or roll is None or not 1 <= roll <= 6:
+                session.log.append("Choose an Expanded Edition Quest d6 result.")
+                return
+            if session.active_quest is not None:
+                session.log.append("Complete or clear the current Quest before forcing another test Quest.")
+                return
+            row = self.table_roller.lookup("quest_table", roll)
+            if row is None:
+                session.log.append("That Quest table result has no row.")
+                return
+            gold_required = None
+            item_name = None
+            if row.get("key") == "bring_gold":
+                gold_required = roll * 50
+                party_gold = sum(member.gold for member in session.party if member.current_life > 0)
+                if party_gold >= gold_required:
+                    gold_required *= 2
+            if row.get("key") == "bring_item":
+                magic_row = self.table_roller.lookup("dungeon_magic_treasure_table", roll_d6())
+                item_name = (magic_row.get("items") or [magic_row.get("result", "Magic item")])[0] if magic_row else "Magic item"
+            quest = quest_from_row(
+                row,
+                tile_id=tile.id,
+                gold_required=gold_required,
+                item_name=item_name,
+                boss_target_name=self._roll_quest_boss_target_name(session) if row.get("key") == "bring_head" else None,
+            )
+            session.active_quest = quest
+            tile.lady_in_white_available = False
+            session.log.append(f"Developer playtest override: Quest d6={roll} - {quest.description}")
+            if quest.gold_required:
+                session.log.append(f"Quest progress: deliver {quest.gold_required}gp to this tile to complete the Quest.")
+            elif quest.key == "bring_head":
+                session.log.append(f"Quest progress: slay {quest.boss_target_name or 'the selected Boss'}, take its head, then return here.")
+            elif quest.key == "bring_alive":
+                session.log.append("Quest progress: subdue a Boss alive with Subdual damage, then return here.")
+            elif quest.key == "bring_item":
+                session.log.append(f"Quest progress: find {quest.item_name} from a defeated Major Foe, then return here.")
+            elif quest.key == "peaceful_way":
+                session.log.append("Quest progress: complete 3 non-violent encounters by bribe, peaceful reaction, or Sleep.")
+            else:
+                session.log.append("Quest progress: defeat the Final Boss and clear all remaining foes.")
             return
         if kind == "abyss_foe":
             from .abyss_tables import is_abyss_profile
