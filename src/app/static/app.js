@@ -18332,6 +18332,21 @@ function showAdventureCloseoutModal(report) {
   }
 }
 
+async function finishCompletedAdventureClient(session) {
+  const report = buildAdventureCloseoutReport(session);
+  saveLastAdventureReport(report);
+  clearActiveSessionId();
+  state.session = null;
+  writeActiveView("setup");
+  await reloadCharacters({ render: false });
+  showSetupView();
+  if (report.party_id) state.selectedPartyId = report.party_id;
+  renderParties();
+  setStatus("Adventure complete — character roster updated");
+  showAdventureCloseoutModal(report);
+  return report;
+}
+
 function applyCampScreenLayout(session) {
   const camped = Boolean(session?.mode === "exploration" && session.camped_outside);
   const combatFocused = shouldUseCombatFocus(session);
@@ -19301,6 +19316,7 @@ function currentObjectiveForSession(session) {
       title: "Current objective: review closeout",
       body: "The adventure is complete. Review rewards, storage, Guild obligations, XP markers, and guidance tasks from the Dashboard before starting the next lead.",
       tone: "success",
+      action: { label: "Complete Adventure", kind: "closeout" },
     };
   }
   const tile = currentTile(session);
@@ -19539,6 +19555,15 @@ function appendCurrentObjectiveButton(parent, action) {
     case "advance":
       setButtonTooltip(btn, `Run the session action: ${action.label}.`);
       btn.addEventListener("click", () => advance(action.advanceAction));
+      break;
+    case "closeout":
+      setButtonTooltip(
+        btn,
+        "Open the completed-adventure summary, clear this finished session from Resume, and return to the Dashboard after review."
+      );
+      btn.addEventListener("click", () => {
+        if (state.session?.mode === "complete") finishCompletedAdventureClient(state.session).catch(handleError);
+      });
       break;
     case "tag-run":
       setButtonTooltip(btn, `${action.procedure?.guidance || "Run the next Adventures Guild procedure."} Records the result and updates the active quest tracker.`);
@@ -32951,17 +32976,7 @@ async function advance(action, extra = {}) {
     writeActiveSessionId(state.session.id);
     syncSessionListFromSession(state.session, { render: setupViewVisible() });
     if (state.session.mode === "complete") {
-      const report = buildAdventureCloseoutReport(state.session);
-      saveLastAdventureReport(report);
-      clearActiveSessionId();
-      state.session = null;
-      writeActiveView("setup");
-      await reloadCharacters({ render: false });
-      showSetupView();
-      if (report.party_id) state.selectedPartyId = report.party_id;
-      renderParties();
-      setStatus("Adventure complete — character roster updated");
-      showAdventureCloseoutModal(report);
+      await finishCompletedAdventureClient(state.session);
       succeeded = true;
       return true;
     } else {

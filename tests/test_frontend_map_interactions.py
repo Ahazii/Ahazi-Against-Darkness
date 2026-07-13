@@ -1835,9 +1835,11 @@ def test_final_boss_completion_banner_and_completed_sessions_return_home() -> No
 
     advance_body = _function_body("advance", APP_JS)
     assert 'if (state.session.mode === "complete")' in advance_body
-    assert "state.session = null;" in advance_body
-    assert 'writeActiveView("setup");' in advance_body
-    assert "showSetupView();" in advance_body
+    assert "await finishCompletedAdventureClient(state.session);" in advance_body
+    closeout_body = _function_body("finishCompletedAdventureClient", APP_JS)
+    assert "state.session = null;" in closeout_body
+    assert 'writeActiveView("setup");' in closeout_body
+    assert "showSetupView();" in closeout_body
 
 
 def test_status_effect_chips_have_hover_text() -> None:
@@ -1953,7 +1955,20 @@ def test_completed_session_hides_dead_exploration_controls_and_treasure_actions(
     assert "toggleOngoingQuestsBtn, toggleTextCommandsBtn, toggleExitsPanelBtn" in panel_visibility
     assert 'if (session.mode === "complete")' in objective
     assert 'title: "Current objective: review closeout"' in objective
+    assert 'action: { label: "Complete Adventure", kind: "closeout" }' in objective
     assert 'session.mode === "exploration" &&' in render_session
+
+
+def test_resumed_completed_session_reuses_normal_closeout_handoff() -> None:
+    objective_button = _function_body("appendCurrentObjectiveButton", APP_JS)
+    closeout = _function_body("finishCompletedAdventureClient", APP_JS)
+    advance = _function_body("advance", APP_JS)
+
+    assert 'case "closeout":' in objective_button
+    assert "finishCompletedAdventureClient(state.session)" in objective_button
+    assert "showAdventureCloseoutModal(report)" in closeout
+    assert "clearActiveSessionId()" in closeout
+    assert "await finishCompletedAdventureClient(state.session);" in advance
 
 
 def test_user_artwork_placeholders_are_documented_slots() -> None:
