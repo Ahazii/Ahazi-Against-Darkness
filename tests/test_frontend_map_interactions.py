@@ -739,6 +739,8 @@ def test_epic_reward_statuses_have_ui_actions_and_hints() -> None:
     assert "holy symbol of healing" in status
     assert "arrow of slaying" in status
     assert "heroSkalitosBook(member)" in status
+    assert "const definition = stateDefinitionForStatus(status)" in status
+    assert "Dark Plague" in APP_JS
 
 
 def test_summary_log_preserves_state_effect_lines() -> None:

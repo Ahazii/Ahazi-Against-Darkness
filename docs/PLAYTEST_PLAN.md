@@ -1,12 +1,12 @@
 # Consolidated Playtest Plan
 
-Last updated: 2026-07-13. Target build: v0.39.9.
+Last updated: 2026-07-13. Target build: v0.39.10.
 
 This plan covers the current manual regression backlog in the fewest practical games. It deliberately does not claim to sign off the 172-row foe audit: every pending foe still needs its PDF row compared, structured mechanics checked, and a focused regression test before it can be marked reviewed in `docs/audits/FOE_RULE_AUDIT.md`.
 
 ## Before Games
 
-1. In Developer Playtest Preferences, enable dungeon playtest controls and TAG fixed-result controls.
+1. In Developer Playtest Preferences, enable **dungeon playtest controls**. Leave **TAG fixed-result controls** off for now; enable that separate switch only before Game 3, where it exposes a fixed Rumor, Treasure Map, Thematic Dungeon, or Guild Job result instead of a random TAG lead.
 2. In Developer > Supplement Workbench, confirm the installed EE, Abyss, and FD runtime branches are read-only and their tables/foes show under the correct book.
 3. Keep Copy Narrative Report available. Copy it after each forced special encounter and after each game closeout.
 

@@ -5957,7 +5957,7 @@ async function renderGoAdventure() {
   const prefs = readModernPrefs();
   const workflowGuide = renderGuide("Adventure Workflow", [
     "Start New creates a fresh session from the selected party and module.",
-    "Resume Adventure reopens active in-progress sessions; Saved Games are listed separately.",
+    "Resume Adventure reopens the latest active session for each party, including a saved checkpoint when one exists.",
     "Generate, import, export, or delete modules from Adventure Management.",
     "The Closeout Gate uses campaign guidance and Adventures Guild closeout prompts to warn before starting again."
   ], "tag_guild_closeout_guidance", "go adventure tag lead resume saved");
@@ -5989,7 +5989,7 @@ async function renderGoAdventure() {
   const mapLimit = input("number", "modern-start-map-limit", "Unlimited-map element cap before end-boss pressure.", String(prefs.defaultMapLimit || 60));
   const startSupplements = Array.isArray(modernState.supplements?.supplements) ? modernState.supplements.supplements : [];
   const startSupplementChecks = new Map();
-  const supplementPreferenceCard = card("Session Supplements", "Settings provides the starting checklist. Adjust it here before Start Adventure; the final list is locked onto the new session and shown on Resume/Saved Games.");
+  const supplementPreferenceCard = card("Session Supplements", "Settings provides the starting checklist. Adjust it here before Start Adventure; the final list is locked onto the new session and shown on Resume Adventure.");
   supplementPreferenceCard.classList.add("modern-card-compact");
   const supplementStatusRows = el("div", "modern-list");
   function selectedStartSupplementIds() {
@@ -6205,18 +6205,17 @@ async function renderGoAdventure() {
   if (hiddenSessionCount) {
     sessions.appendChild(el("p", "muted", `${hiddenSessionCount} older session(s) hidden. Delete or load older sessions from the legacy home list if needed.`));
   }
-  const activeSessions = visibleSessions.filter((session) => !session.saved_at);
-  const savedSessions = visibleSessions.filter((session) => session.saved_at);
-  for (const session of activeSessions) {
+  for (const session of visibleSessions) {
     const partyName = modernState.parties.find((item) => item.id === session.party_id)?.name || session.party_id;
     const row = el("div", "modern-row");
     const location = session.camped_outside ? "Camp outside dungeon" : "In dungeon";
+    const checkpoint = session.saved_at ? `saved checkpoint ${session.saved_at}` : "active/unsaved";
     row.append(el("strong", "", session.save_label || `${partyName} - ${location}`));
-    row.append(el("span", "muted", `${partyName} · ${session.adventure_type || session.adventure_id} · ${location} · active/unsaved · party locked · ${session.tile_count || 0} map element(s) · session ${String(session.id || "").slice(0, 8)}`));
+    row.append(el("span", "muted", `${partyName} · ${session.adventure_type || session.adventure_id} · ${location} · ${checkpoint} · party locked · ${session.tile_count || 0} map element(s) · session ${String(session.id || "").slice(0, 8)}`));
     row.appendChild(modernStatusRow("Locked supplements", sessionSupplementSummary(session), "Supplements snapshot locked when this session was created. Legacy sessions may not have this metadata yet."));
     const rowActions = actions();
     rowActions.append(
-      button("Resume Adventure", "Open this active session in the main play interface.", async () => {
+      button(session.saved_at ? "Load Saved Game" : "Resume Adventure", "Open this active session in the main play interface.", async () => {
         window.location.href = `/?session=${encodeURIComponent(session.id)}`;
       }, ""),
       button("Delete", "Delete this saved/active session and unlock its characters.", async () => {
@@ -6229,30 +6228,7 @@ async function renderGoAdventure() {
     row.appendChild(rowActions);
     sessions.appendChild(row);
   }
-  if (!activeSessions.length) sessions.appendChild(el("p", "muted", "No active sessions."));
-  const saved = card("Saved Games", "Load or delete saved sessions. These are separated from active resumes so continuing an old game is not confused with starting a new one.");
-  for (const session of savedSessions) {
-    const partyName = modernState.parties.find((item) => item.id === session.party_id)?.name || session.party_id;
-    const row = el("div", "modern-row");
-    row.append(el("strong", "", session.save_label || `${partyName} - ${session.mode}`));
-    row.append(el("span", "muted", `${partyName} · ${session.adventure_type || session.adventure_id} · saved ${session.saved_at} · ${session.tile_count || 0} map element(s)`));
-    row.appendChild(modernStatusRow("Locked supplements", sessionSupplementSummary(session), "Supplements snapshot locked when this session was created. Legacy sessions may not have this metadata yet."));
-    const rowActions = actions();
-    rowActions.append(
-      button("Load Saved Game", "Open this saved session in the main play interface.", async () => {
-        window.location.href = `/?session=${encodeURIComponent(session.id)}`;
-      }, ""),
-      button("Delete", "Delete this saved session and unlock its characters.", async () => {
-        if (!window.confirm("Delete this saved game?")) return;
-        await api(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
-        setStatus("Saved game deleted.");
-        await refreshCoreAndRender();
-      })
-    );
-    row.appendChild(rowActions);
-    saved.appendChild(row);
-  }
-  if (!savedSessions.length) saved.appendChild(el("p", "muted", "No saved games."));
+  if (!visibleSessions.length) sessions.appendChild(el("p", "muted", "No active sessions."));
   const management = card("Need a module?", "Create Adventures Guild modules, generate AI prompts, import JSON, export backups, and delete unused modules from Adventure Management.");
   const managementActions = actions();
   managementActions.appendChild(button("Open Adventure Management", "Open module management, Adventures Guild generation, AI generation, and reference tools.", async () => {
@@ -6289,7 +6265,6 @@ async function renderGoAdventure() {
   ]);
   addGoAdventureTab("resume", "Resume", "Resume active adventures or load saved games.", [
     collapseCard(sessions, "", { open: true }),
-    collapseCard(saved, "", { open: true }),
     collapseCard(management, "", { open: true }),
   ]);
   addGoAdventureTab("reference", "Reference / Playtest", "Capture playtest issues and review closeout/reference context.", [

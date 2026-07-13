@@ -7585,6 +7585,16 @@ function heroStatusChips(session, member, tile) {
       chips.push({ label: status, kind: "buff", title: statusChipTooltip(status) });
     } else if (lower === "enchanted weapon" || lower === "kerrak dar hoard") {
       chips.push({ label: status, kind: "buff", title: statusChipTooltip(status) });
+    } else {
+      const definition = stateDefinitionForStatus(status);
+      if (definition) {
+        const protective = /immunity|protection|resistance/i.test(definition.name || status);
+        chips.push({
+          label: status,
+          kind: protective ? "buff" : "danger",
+          title: statusTooltipWithRegistry(status, statusChipTooltip(status)),
+        });
+      }
     }
   }
   if (member.character_id === session.cursed_character_id) {
@@ -27386,6 +27396,8 @@ function chooseDungeonExitIntent(session, exit) {
       : "End the adventure and update the home roster."
   );
 
+  // A previously interrupted dialog must not prevent the next exit choice.
+  if (dungeonExitDialog.open) dungeonExitDialog.close();
   return new Promise((resolve) => {
     let resolved = false;
     const finish = (intent) => {
