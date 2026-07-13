@@ -66,6 +66,46 @@ def test_abyss_profile_routes_room_content_to_abyss_minions(monkeypatch) -> None
     assert any(enemy.name == "Goblin Leader" for enemy in content["enemies"])
 
 
+def test_developer_playtest_uses_the_live_abyss_encounter_path(monkeypatch) -> None:
+    eng = _engine()
+    session = eng.create_session("abyss-playtest", "party-1", [_member()], ruleset_profile_id="abyss")
+    tile = TileState(id="playtest-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_formula", lambda formula: 2)
+
+    eng.advance(
+        session,
+        "developer_playtest",
+        playtest_kind="abyss_foe",
+        playtest_table="abyss_minions_table",
+        playtest_roll=1,
+    )
+
+    assert session.mode == "combat"
+    assert tile.enemies
+    assert any("Developer playtest override" in entry for entry in session.log)
+    assert any("Developer playtest encounter begins" in entry for entry in session.log)
+
+
+def test_developer_playtest_runs_the_selected_abyss_event(monkeypatch) -> None:
+    eng = _engine()
+    member = _member()
+    session = eng.create_session("abyss-event-playtest", "party-1", [member], ruleset_profile_id="abyss")
+    tile = TileState(id="event-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.random_dungeon.random.choice", lambda items: member)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda hero: (8, [8]))
+
+    eng.advance(session, "developer_playtest", playtest_kind="abyss_unique_event", playtest_roll=1)
+
+    assert tile.special_event_key
+    assert any("Developer playtest override" in entry for entry in session.log)
+
+
 def test_dragon_man_first_turn_fire_uses_the_printed_level_8_save(monkeypatch) -> None:
     eng = _engine()
     member = _member()

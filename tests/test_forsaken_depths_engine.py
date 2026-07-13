@@ -2396,6 +2396,20 @@ def test_fd_secret_passage_citadel_sets_entry(monkeypatch) -> None:
     assert session.fd_secret_passage_tile_id is None
 
 
+def test_fd_citadel_fixed_roll_sets_the_selected_citadel(monkeypatch) -> None:
+    from app.engine.forsaken_depths_content import roll_fd_citadel
+
+    eng = engine()
+    session = eng.create_session("fd-fixed-citadel", "party-1", [_party_member()], ruleset="forsaken_depths")
+    monkeypatch.setattr("app.engine.forsaken_depths_content.roll_formula", lambda formula: 5)
+
+    row = roll_fd_citadel(eng, session, fixed_roll=2)
+
+    assert row is not None
+    assert session.fd_citadel_type == row["key"]
+    assert any("d6 = 2" in entry for entry in session.log)
+
+
 def test_fd_portal_demesne_enters_courtship(monkeypatch) -> None:
     eng = engine()
     session = eng.create_session(

@@ -105,6 +105,7 @@ class IconDefinition(BaseModel):
 class AppPreferences(BaseModel):
     id: str = "ui"
     show_tag_fixed_result_selector: bool = False
+    show_dungeon_playtest_controls: bool = False
     enabled_supplement_ids: list[str] = Field(default_factory=lambda: ["expanded-edition-core"])
 
 
@@ -1500,8 +1501,12 @@ class SessionAction(BaseModel):
         "courtship_brew_apothecary",
         "tag_settlement_brew_apothecary",
         "use_apothecary_brew",
+        "developer_playtest",
     ]
     exit_id: str | None = None
+    playtest_kind: Literal["abyss_foe", "abyss_unique_event", "fd_citadel"] | None = None
+    playtest_table: str | None = None
+    playtest_roll: int | None = Field(default=None, ge=1, le=8)
     dungeon_exit_intent: Literal["complete", "return"] | None = None
     direction: ExitDirection | None = None
     character_id: str | None = None

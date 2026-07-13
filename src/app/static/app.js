@@ -602,6 +602,7 @@ const ongoingQuestsEl = document.getElementById("ongoing-quests");
 const potionChoicesEl = document.getElementById("potion-choices");
 const recoveryChoicesEl = document.getElementById("recovery-choices");
 const combatPanelEl = document.getElementById("combat-panel");
+const developerPlaytestControls = document.getElementById("developer-playtest-controls");
 const combatPanelTitleEl = document.getElementById("combat-panel-title");
 const combatPanelStatusEl = document.getElementById("combat-panel-status");
 const combatPreviewEl = document.getElementById("combat-preview");
@@ -18404,6 +18405,94 @@ function applyCampScreenLayout(session) {
   }
 }
 
+function renderDeveloperPlaytestControls(session) {
+  if (!developerPlaytestControls) return;
+  const enabled = Boolean(state.preferences?.show_dungeon_playtest_controls);
+  const isAbyss = session.ruleset_profile_id === "abyss";
+  const isForsakenDepths = session.ruleset === "forsaken_depths";
+  const available = enabled && session.mode === "exploration" && !session.camped_outside && (isAbyss || isForsakenDepths);
+  developerPlaytestControls.classList.toggle("hidden", !available);
+  if (!available) {
+    developerPlaytestControls.replaceChildren();
+    return;
+  }
+
+  const previousKind = developerPlaytestControls.dataset.kind || (isAbyss ? "abyss_foe" : "fd_citadel");
+  const previousTable = developerPlaytestControls.dataset.table || "abyss_vermin_table";
+  const previousRoll = developerPlaytestControls.dataset.roll || "1";
+  const kind = document.createElement("select");
+  kind.setAttribute("aria-label", "Playtest scenario");
+  kind.title = "Developer-only: select a printed table result to run through the ordinary dungeon engine. This does not change normal rolls.";
+  if (isAbyss) {
+    kind.append(new Option("Abyss foe encounter", "abyss_foe"), new Option("Abyss unique event", "abyss_unique_event"));
+  }
+  if (isForsakenDepths) kind.append(new Option("Forsaken Depths Citadel", "fd_citadel"));
+  kind.value = [...kind.options].some((option) => option.value === previousKind) ? previousKind : kind.options[0].value;
+
+  const table = document.createElement("select");
+  table.setAttribute("aria-label", "Abyss foe table");
+  table.title = "Choose the printed Abyss encounter table. It is used only for Abyss foe playtests.";
+  const foeTables = [
+    ["abyss_vermin_table", "Vermin", ["Black Orc Bandits", "Shrieking Fungi", "Champions of Ssikliss", "Ant People Warriors", "Kobold Ghouls", "Brownies"]],
+    ["abyss_minions_table", "Minions", ["Hairy Goblins", "Abyss Ghouls", "Dark Dwarves", "Flying Skulls", "Chaotic Ratmen", "Chaos Fanatics"]],
+    ["abyss_boss_table", "Boss", ["Dragon Man", "Mind Screamer", "Tentacled Brain", "Ghoul King", "Dark Lord of Xichtul", "Major Vampire"]],
+    ["abyss_weird_table", "Weird monster", ["Zombie Minotaur", "Giant Constrictor Snake", "Minor Vampire", "Werewolf", "Phasing Panther", "Lich"]],
+    ["abyss_dragon_table", "Dragon", ["Purple Dragon", "Mirage Drake", "Luck Dragon", "Ghoul Dragon", "Darkness Dragon", "Young Chaos Dragon"]],
+  ];
+  for (const [value, label] of foeTables) table.appendChild(new Option(label, value));
+  table.value = foeTables.some(([value]) => value === previousTable) ? previousTable : foeTables[0][0];
+
+  const roll = document.createElement("select");
+  roll.setAttribute("aria-label", "Printed die result");
+  roll.title = "Choose the exact printed d6 result to test. The selected result still uses ordinary spawning, events, reactions, states, and combat.";
+  const refillRolls = () => {
+    const selected = previousRoll || roll.value || "1";
+    roll.replaceChildren();
+    let labels = [];
+    if (kind.value === "abyss_foe") {
+      labels = foeTables.find(([value]) => value === table.value)?.[2] || [];
+    } else if (kind.value === "abyss_unique_event") {
+      labels = ["Book of Secrets", "Dark Plague", "Swarm of Critters", "Secret Stairs", "Gold Ghost", "Mana Sink"];
+    } else {
+      labels = ["Ghost Citadel", "Crowded Citadel", "Citadel of Traps", "Prisoners of the Citadel", "Citadel of Dead Things", "Magic Citadel"];
+    }
+    labels.forEach((label, index) => roll.appendChild(new Option(`d6 = ${index + 1} - ${label}`, String(index + 1))));
+    roll.value = [...roll.options].some((option) => option.value === selected) ? selected : "1";
+  };
+
+  const run = document.createElement("button");
+  run.type = "button";
+  run.className = "secondary";
+  run.textContent = "Run test";
+  run.title = "Run the selected printed result through the live dungeon engine. Only available during quiet exploration; it never overwrites an active encounter.";
+  const updateVisibility = () => {
+    const foe = kind.value === "abyss_foe";
+    table.classList.toggle("hidden", !foe);
+    table.disabled = !foe;
+    refillRolls();
+  };
+  kind.addEventListener("change", updateVisibility);
+  table.addEventListener("change", refillRolls);
+  run.addEventListener("click", async () => {
+    developerPlaytestControls.dataset.kind = kind.value;
+    developerPlaytestControls.dataset.table = table.value;
+    developerPlaytestControls.dataset.roll = roll.value;
+    await advance("developer_playtest", {
+      playtest_kind: kind.value,
+      playtest_table: kind.value === "abyss_foe" ? table.value : null,
+      playtest_roll: Number.parseInt(roll.value, 10),
+    });
+  });
+  updateVisibility();
+  const note = node(
+    "span",
+    "search-label muted",
+    "Developer override: selected result only; normal encounters still roll."
+  );
+  note.title = "This control is shown because the Developer Playtest Preference is enabled. It leaves a clear override entry in the narrative for every test.";
+  developerPlaytestControls.replaceChildren(note, kind, table, roll, run);
+}
+
 function renderSession() {
   const session = state.session;
   if (!session) return;
@@ -18600,6 +18689,7 @@ function renderSession() {
   safeSessionRender("fallenTransferChoices", () => renderFallenTransferChoices(session));
   safeSessionRender("freeSlavesChoices", () => renderFreeSlavesChoices(session));
   safeSessionRender("mantlebeastChoices", () => renderMantlebeastChoices(session));
+  safeSessionRender("developerPlaytest", () => renderDeveloperPlaytestControls(session));
   renderPendingXpBanner(session);
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   searchBtn.classList.toggle("hidden", inCombat || !canSearch);

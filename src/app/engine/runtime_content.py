@@ -93,25 +93,25 @@ def _load_json(path: Path) -> Any:
 
 
 def _foe_groups(root_dir: Path | None, supplement_id: str, rules: Any) -> list[dict[str, Any]]:
+    if supplement_id == "four-against-the-abyss":
+        tables = rules.dungeon_tables()
+        return [
+            {
+                "id": table_id,
+                "title": table_id.replace("_", " ").replace(" table", "").title(),
+                "kind": "encounter_table",
+                "count": len(rows),
+                "rows": rows,
+            }
+            for table_id in ABYSS_FOE_TABLE_IDS
+            if isinstance((rows := tables.get(table_id)), list)
+        ]
     declared = declared_content_sources(root_dir, None, "foes")
     filename = next((Path(entry["path"]).name for entry in declared if entry["supplement_id"] == supplement_id), FOE_PROVIDER_FILES.get(supplement_id))
     payload = _load_json(_rules_dir(root_dir) / filename) if filename else None
     if isinstance(payload, dict):
         return [{"id": key, "title": key.replace("_", " ").title(), "count": len(rows), "rows": rows} for key, rows in payload.items() if isinstance(rows, list)]
-    if supplement_id != "four-against-the-abyss":
-        return []
-    tables = rules.dungeon_tables()
-    return [
-        {
-            "id": table_id,
-            "title": table_id.replace("_", " ").replace(" table", "").title(),
-            "kind": "encounter_table",
-            "count": len(rows),
-            "rows": rows,
-        }
-        for table_id in ABYSS_FOE_TABLE_IDS
-        if isinstance((rows := tables.get(table_id)), list)
-    ]
+    return []
 
 
 def _table_records(root_dir: Path | None, supplement_id: str, rules: Any) -> list[dict[str, Any]]:

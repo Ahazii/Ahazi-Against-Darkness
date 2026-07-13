@@ -1444,6 +1444,8 @@ async def update_preferences(payload: dict[str, Any]) -> AppPreferences:
     supplements = supplement_registry(settings.root_dir, settings.data_dir)
     if "show_tag_fixed_result_selector" in payload:
         prefs.show_tag_fixed_result_selector = _parse_bool(payload.get("show_tag_fixed_result_selector"))
+    if "show_dungeon_playtest_controls" in payload:
+        prefs.show_dungeon_playtest_controls = _parse_bool(payload.get("show_dungeon_playtest_controls"))
     if "enabled_supplement_ids" in payload:
         raw_ids = payload.get("enabled_supplement_ids")
         if not isinstance(raw_ids, list):
@@ -3552,6 +3554,14 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "developer_ui": "Developer Playtest Preferences",
             "effect": "Shows the fixed Adventures Guild result selector in module generators for repeatable playtests.",
             "rules_boundary": "Normal play should leave this off so generated Adventures Guild modules roll from the printed tables.",
+        },
+        {
+            "preference": "show_dungeon_playtest_controls",
+            "default": "false",
+            "stored_in": "game.db records/preferences/ui",
+            "developer_ui": "Developer Playtest Preferences",
+            "effect": "Shows developer-only controls during eligible Abyss and Forsaken Depths exploration sessions. A selected foe row, unique event, or Citadel result enters the existing live engine path and is marked in the Narrative as an override.",
+            "rules_boundary": "Testing-only. Normal play leaves it off and rolls from the printed tables; the override does not invent outcomes or bypass encounter, event, reaction, state, or Citadel logic.",
         },
         {
             "preference": "enabled_supplement_ids",
@@ -6490,6 +6500,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
+    if payload.action == "developer_playtest" and not _load_app_preferences().show_dungeon_playtest_controls:
+        raise HTTPException(status_code=403, detail="Enable dungeon playtest controls in Developer Playtest Preferences first.")
     camped_before = session.camped_outside
     _restore_missing_recovery_members(session)
     session = random_engine.advance(
@@ -6606,6 +6618,9 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         hireling_ability=payload.hireling_ability,
         fortune_roll_value=payload.fortune_roll_value,
         alchemist_potion_id=payload.alchemist_potion_id,
+        playtest_kind=payload.playtest_kind,
+        playtest_table=payload.playtest_table,
+        playtest_roll=payload.playtest_roll,
     )
     _restore_missing_recovery_members(session)
     from .engine.tag_campaign import sync_abyss_campaign_from_session

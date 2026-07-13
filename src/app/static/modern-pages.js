@@ -9737,6 +9737,25 @@ function renderDeveloperPreferences() {
     setStatus("Developer preference saved.");
   });
   panel.append(row, status);
+  const dungeon = input("checkbox", "modern-dev-dungeon-playtest-controls", "Show developer-only dungeon playtest controls during exploration. They run a selected printed result through the real encounter, event, or Citadel code path and clearly label the override in the narrative.");
+  dungeon.checked = Boolean(modernState.preferences?.show_dungeon_playtest_controls);
+  const dungeonRow = el("label", "modern-check-row");
+  dungeonRow.title = dungeon.title;
+  dungeonRow.append(dungeon, el("span", "", "Show dungeon playtest controls during exploration"));
+  const dungeonStatus = el("p", "muted", dungeon.checked
+    ? "Dungeon playtest controls are visible for supported Abyss and Forsaken Depths sessions."
+    : "Dungeon playtest controls are hidden; dungeon content rolls normally.");
+  dungeon.addEventListener("change", async () => {
+    modernState.preferences = await api("/api/preferences", {
+      method: "PUT",
+      body: JSON.stringify({ show_dungeon_playtest_controls: dungeon.checked }),
+    });
+    dungeonStatus.textContent = dungeon.checked
+      ? "Dungeon playtest controls are visible for supported Abyss and Forsaken Depths sessions."
+      : "Dungeon playtest controls are hidden; dungeon content rolls normally.";
+    setStatus("Developer preference saved.");
+  });
+  panel.append(dungeonRow, dungeonStatus);
   return panel;
 }
 

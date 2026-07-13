@@ -991,6 +991,9 @@ class RandomDungeonEngine:
         hireling_ability: str | None = None,
         fortune_roll_value: int | None = None,
         alchemist_potion_id: str | None = None,
+        playtest_kind: str | None = None,
+        playtest_table: str | None = None,
+        playtest_roll: int | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -1141,6 +1144,15 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 dungeon_exit_intent=dungeon_exit_intent,
+            )
+        elif action == "developer_playtest":
+            self._run_developer_playtest(
+                session,
+                kind=playtest_kind,
+                table_name=playtest_table,
+                roll=playtest_roll,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
             )
         elif action == "return_to_dungeon":
             self._return_to_dungeon_from_camp(session)
@@ -11882,6 +11894,101 @@ class RandomDungeonEngine:
             6: f"Ring of Three Wishes ({roll_d3()} wishes)",
         }
         return names.get(roll, "Abyss magic treasure")
+
+    def _run_developer_playtest(
+        self,
+        session: SessionState,
+        *,
+        kind: str | None,
+        table_name: str | None,
+        roll: int | None,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        """Run one selected printed result through the ordinary live engine.
+
+        This is deliberately narrow: the UI is a developer preference and the
+        session must be in a quiet exploration state, so it cannot silently
+        overwrite an unfinished encounter.
+        """
+        if session.mode != "exploration" or session.camped_outside:
+            session.log.append("Developer playtest overrides are available only during dungeon exploration.")
+            return
+        tile = self._current_tile(session)
+        if any(enemy.life > 0 for enemy in tile.enemies):
+            session.log.append("Resolve the current encounter before running a developer playtest override.")
+            return
+        if kind == "abyss_foe":
+            from .abyss_tables import is_abyss_profile
+
+            allowed_tables = {
+                "abyss_vermin_table": "vermin",
+                "abyss_minions_table": "minions",
+                "abyss_boss_table": "boss",
+                "abyss_weird_table": "weird",
+                "abyss_dragon_table": "boss",
+            }
+            category = allowed_tables.get(str(table_name or ""))
+            if not is_abyss_profile(session) or category is None or roll is None or not 1 <= roll <= 6:
+                session.log.append("Choose an available Abyss foe table and a d6 result.")
+                return
+            enemies, summary = self._roll_abyss_monster_row(
+                session,
+                str(table_name),
+                category,
+                fixed_roll=roll,
+            )
+            if not enemies:
+                session.log.append("That Abyss foe-table result has no encounter row.")
+                return
+            tile.content_key = f"developer_{category}_playtest"
+            tile.enemies = enemies
+            tile.initial_enemy_count = len(enemies)
+            tile.resolved = False
+            session.log.append(f"Developer playtest override: {summary}")
+            self._begin_combat(
+                session,
+                "Developer playtest encounter begins.",
+                tile=tile,
+                show_rolls=show_rolls,
+                allow_final_boss_check=False,
+            )
+            return
+        if kind == "abyss_unique_event":
+            from .abyss_tables import is_abyss_profile, lookup_abyss_table_row
+
+            if not is_abyss_profile(session) or roll is None or not 1 <= roll <= 6:
+                session.log.append("Choose an available Abyss unique-event d6 result.")
+                return
+            event = lookup_abyss_table_row("abyss_unique_event_table", roll)
+            if event is None:
+                session.log.append("That Abyss unique-event result has no event row.")
+                return
+            tile.content_key = "abyss_unique_event"
+            tile.special_event_key = str(event.get("key") or "") or None
+            tile.special_event_summary = str(event.get("summary") or "")
+            tile.resolved = False
+            session.log.append(
+                f"Developer playtest override: Abyss Unique Event d6={roll} - {event.get('name') or 'Unknown event'}."
+            )
+            self._prepare_tile_features(session, tile, show_rolls=show_rolls, explain_math=explain_math)
+            return
+        if kind == "fd_citadel":
+            from .forsaken_depths_content import roll_fd_citadel
+            from .forsaken_depths_map import is_fd_ruleset
+            from .forsaken_depths_side_sheet import enter_fd_side_sheet
+
+            if not is_fd_ruleset(session) or roll is None or not 1 <= roll <= 6:
+                session.log.append("Choose an available Forsaken Depths Citadel d6 result.")
+                return
+            if session.fd_side_sheet_active:
+                session.log.append("Return from the current side sheet before starting a Citadel playtest.")
+                return
+            session.log.append(f"Developer playtest override: Forsaken Depths Citadel d6={roll}.")
+            roll_fd_citadel(self, session, tile, show_rolls=show_rolls, fixed_roll=roll)
+            enter_fd_side_sheet(self, session, tile, kind="citadel", force=True, show_rolls=show_rolls)
+            return
+        session.log.append("Choose a supported developer playtest scenario.")
 
     def _roll_abyss_monster_row(
         self,

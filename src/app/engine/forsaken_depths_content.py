@@ -217,8 +217,9 @@ def roll_fd_citadel(
     tile: TileState | None = None,
     *,
     show_rolls: bool = True,
+    fixed_roll: int | None = None,
 ) -> dict | None:
-    roll = roll_d6()
+    roll = fixed_roll if fixed_roll is not None else roll_d6()
     row = engine.table_roller.lookup("fd_citadel_table", roll)
     if row is None:
         return None
