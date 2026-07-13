@@ -11,6 +11,8 @@ from .inventory import encumbrance_penalty
 
 
 DARK_PLAGUE_STATUS = "Dark Plague"
+# Kept only to clean up saves created by builds that incorrectly added immunity
+# after a Dark Plague save or cure. Abyss pp.37 and 61 do not grant immunity.
 DARK_PLAGUE_IMMUNITY_STATUS = "Dark Plague immunity"
 LYCANTHROPY_EXPOSURE_STATUS = "Lycanthropy exposure"
 LYCANTHROPY_STATUS = "Lycanthropy"
@@ -32,12 +34,15 @@ def has_dark_plague(member: PartyMemberState) -> bool:
     return _has_status(member, DARK_PLAGUE_STATUS)
 
 
-def is_dark_plague_immune(member: PartyMemberState) -> bool:
-    return _has_status(member, DARK_PLAGUE_IMMUNITY_STATUS)
-
-
-def mark_dark_plague_immune(member: PartyMemberState) -> None:
-    _add_status(member, DARK_PLAGUE_IMMUNITY_STATUS)
+def clear_legacy_dark_plague_immunity(member: PartyMemberState) -> bool:
+    """Remove the immunity status accidentally introduced by older app builds."""
+    before = len(member.statuses)
+    member.statuses = [
+        status
+        for status in member.statuses
+        if status.strip().lower() != DARK_PLAGUE_IMMUNITY_STATUS.lower()
+    ]
+    return len(member.statuses) != before
 
 
 def cure_dark_plague(member: PartyMemberState) -> bool:
@@ -45,9 +50,7 @@ def cure_dark_plague(member: PartyMemberState) -> bool:
     member.statuses = [
         status for status in member.statuses if status.strip().lower() != DARK_PLAGUE_STATUS.lower()
     ]
-    cured = len(member.statuses) != before
-    mark_dark_plague_immune(member)
-    return cured
+    return len(member.statuses) != before
 
 
 def _member_save(
@@ -94,9 +97,6 @@ def apply_dark_plague_exposure(
     if has_dark_plague(member):
         log.append(f"{member.name} is already infected with the Dark Plague.")
         return False
-    if is_dark_plague_immune(member):
-        log.append(f"{member.name} is immune to the Dark Plague for this adventure.")
-        return False
     passed, _, _ = _member_save(
         member,
         10,
@@ -107,8 +107,7 @@ def apply_dark_plague_exposure(
         bonus=dark_plague_save_bonus(member),
     )
     if passed:
-        mark_dark_plague_immune(member)
-        log.append(f"{member.name} is immune to the Dark Plague for the rest of this adventure.")
+        log.append(f"{member.name} resists the Dark Plague.")
         return False
     _add_status(member, DARK_PLAGUE_STATUS)
     log.append(f"Effect: {member.name} contracts the Dark Plague (Abyss p.37).")
@@ -139,7 +138,7 @@ def tick_dark_plague_on_room_entry(
     if not carriers:
         return log
     for member in session.party:
-        if member.current_life <= 0 or has_dark_plague(member) or is_dark_plague_immune(member):
+        if member.current_life <= 0 or has_dark_plague(member):
             continue
         apply_dark_plague_exposure(
             member,
@@ -170,7 +169,7 @@ def apply_blessing_to_dark_plague(
         )
     if rolls[0] != 1 and final_total >= 10:
         cure_dark_plague(target)
-        log.append(f"Blessing cures the Dark Plague from {target.name}; they are immune for this adventure.")
+        log.append(f"Blessing cures the Dark Plague from {target.name}.")
         return True
     else:
         log.append(f"Blessing fails to cure the Dark Plague from {target.name}; the prayer is spent.")

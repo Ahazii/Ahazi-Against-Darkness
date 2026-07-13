@@ -7543,6 +7543,31 @@ button.door-destroy-spell {
   color: var(--muted, #9aa0a6);
 }
 
+.combat-printed-rule {
+  margin: 6px 0;
+  padding: 6px 8px;
+  border-left: 3px solid rgba(124, 184, 124, 0.72);
+  background: rgba(124, 184, 124, 0.08);
+}
+
+.combat-printed-rule summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.combat-printed-rule .combat-context-note,
+.special-feature-rule {
+  margin-top: 5px;
+  color: var(--text, #f1f1e8);
+}
+
+.special-feature-rule {
+  max-width: 72ch;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .combat-attack-preview {
   display: grid;
   gap: 4px;

@@ -5858,6 +5858,8 @@ function renderCombatDeckSlim(session) {
   if (inCombat && livingFoes.length) {
     const preview = node("div", "combat-deck-preview");
     const foeLabels = buildFoeDisplayLabels(tile?.enemies || []);
+    appendFoeSpecialsReference(preview, livingFoes);
+    appendExactPrintedFoeRules(preview, livingFoes);
     const roundPlan = renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPending);
     if (roundPlan) preview.appendChild(roundPlan);
     if (preview.childElementCount) scroll.appendChild(preview);
@@ -7811,6 +7813,56 @@ function appendFoeSpecialsReference(container, foes) {
   container.appendChild(block);
 }
 
+function exactLocalPdfExcerpt({ sourceFilename, sourcePage, phrase, maxLength = 900 }) {
+  const normalizedFilename = String(sourceFilename || "").toLowerCase();
+  const normalizedPhrase = String(phrase || "").toLowerCase();
+  const entry = (state.rulesReference || []).find((item) => {
+    if (item.implementation_status !== "local_exact") return false;
+    if (normalizedFilename && !String(item.source || "").toLowerCase().endsWith(normalizedFilename)) return false;
+    return normalizedPhrase && String(item.body || "").toLowerCase().includes(normalizedPhrase);
+  }) || (state.rulesReference || []).find((item) =>
+    item.implementation_status === "local_exact" &&
+    normalizedFilename &&
+    String(item.source || "").toLowerCase().endsWith(normalizedFilename) &&
+    Number(item.source_page) === Number(sourcePage)
+  );
+  if (!entry?.body) return null;
+  const body = String(entry.body).replace(/\s+/g, " ").trim();
+  const position = normalizedPhrase ? body.toLowerCase().indexOf(normalizedPhrase) : 0;
+  const start = Math.max(0, position - 80);
+  const end = Math.min(body.length, start + maxLength);
+  const excerpt = `${start > 0 ? "..." : ""}${body.slice(start, end)}${end < body.length ? "..." : ""}`;
+  return { excerpt, page: entry.source_page || sourcePage, title: entry.title || "Exact local PDF text" };
+}
+
+function appendExactPrintedFoeRules(container, foes) {
+  const seen = new Set();
+  for (const foe of foes || []) {
+    if ((foe.life || 0) <= 0) continue;
+    const entry = findBestiaryEntry(foe);
+    if (!entry || seen.has(normalizeMonsterName(foe.name))) continue;
+    seen.add(normalizeMonsterName(foe.name));
+    const exact = exactLocalPdfExcerpt({
+      sourceFilename: "Four-Against-the-Abyss.pdf",
+      sourcePage: entry.source_page,
+      phrase: foe.name,
+    });
+    const details = document.createElement("details");
+    details.className = "combat-printed-rule";
+    details.open = true;
+    const summary = document.createElement("summary");
+    summary.textContent = exact
+      ? `Printed rule: ${foe.name} (Abyss p.${exact.page || entry.source_page || "?"})`
+      : `Encounter rule: ${foe.name}${entry.source_page ? ` (Abyss p.${entry.source_page})` : ""}`;
+    setTooltip(summary, exact
+      ? "Exact wording read from your locally indexed PDF. This local text is not stored in the app repository."
+      : "The exact local PDF page is not indexed yet; this shows the structured runtime summary.");
+    details.appendChild(summary);
+    details.appendChild(node("div", "combat-context-note", exact?.excerpt || entry.summary || "No printed rule excerpt is available."));
+    container.appendChild(details);
+  }
+}
+
 function foeChipTitle(displayName, typeLabel, foe) {
   return [
     `${displayName} - ${typeLabel}, ${foeLevelLabel(foe)}, Life ${foe.life}/${foe.max_life}`,
@@ -7839,8 +7891,8 @@ function statusChipTooltip(label) {
   if (lower.includes("slumber amanita")) return "Slumber Amanita: next Sleep cast gains +Tier, including scrolls and Wand of Sleep.";
   if (lower.includes("phoenix mushroom")) return "Phoenix Mushroom: +1 Defense and Saves until the tile countdown expires, then lose 1 Life.";
   if (lower.includes("toxic spores")) return "Toxic Spores: -1 on all Saves until the room countdown expires.";
-  if (lower === "dark plague") return "Abyss Dark Plague: roll d8 each room; on 1 lose 1 Life. Other non-immune party members save vs L10 when entering rooms with an infected hero.";
-  if (lower === "dark plague immunity") return "Abyss Dark Plague: immune for the rest of this adventure after saving, Blessing cure, or Elven Bread.";
+  if (lower === "dark plague") return "Abyss Dark Plague: roll d8 each room; on 1 lose 1 Life. Other party members save vs L10 when entering rooms with an infected hero.";
+  if (lower === "dark plague immunity") return "Legacy status from an older build. Abyss pp.37 and 61 do not grant immunity; it is removed when the session or roster state is next saved.";
   if (lower === "lycanthropy") return "Abyss Lycanthropy: Blessing and Healing do not cure it; leave the dungeon for 400gp monastery treatment. If Madness exceeds Level, the hero transforms.";
   if (lower === "lycanthropy immunity") return "Immune to further lycanthropy infection.";
   if (lower === "vampire-rise pending") return "Slain by vampire level drain; ordinary resurrection is blocked until the sire vampire is destroyed.";
@@ -8607,6 +8659,7 @@ function renderCombatPanel(session) {
     if (livingFoes.length) {
       const foeLabels = buildFoeDisplayLabels(foes);
       appendFoeSpecialsReference(combatPreviewEl, livingFoes);
+      appendExactPrintedFoeRules(combatPreviewEl, livingFoes);
       const roundPlan = renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPending);
       if (roundPlan) combatPreviewEl.appendChild(roundPlan);
       if (!reactionsPending) {
@@ -21552,16 +21605,16 @@ function renderSpecialFeatureChoices(session) {
     return;
   }
   if (feature === "swarm_of_critters") {
-    specialFeatureChoicesEl.appendChild(node("span", "search-label", "Abyss Swarm of Critters — choose:"));
+    specialFeatureChoicesEl.appendChild(node("div", "special-feature-rule", "Swarm of Critters (Abyss p.59): the party is engulfed by stinging insects. A Fireball destroys the swarm. Otherwise every living hero takes 1 wound from poisonous stings, then the swarm disperses. This is an event, not a foe; it has no treasure roll."));
     const select = appendLivingSelect();
-    abyssChoiceButton("Cast Fireball", "cast_fireball_abyss_swarm", "Abyss p.59: Fireball disperses the swarm.", {
+    abyssChoiceButton("Use Fireball (destroy swarm)", "cast_fireball_abyss_swarm", "Abyss p.59: choose a living hero with a prepared Fireball. The spell destroys the swarm; no foe or treasure roll is created.", {
       target_character_id: select.value,
       __manual: true,
     }).addEventListener("click", (event) => {
       event.preventDefault();
       advance("resolve_special_feature", { special_feature_choice: "cast_fireball_abyss_swarm", target_character_id: select.value });
     });
-    abyssChoiceButton("Endure swarm", "endure_abyss_swarm", "All living heroes lose 1 Life.");
+    abyssChoiceButton("Take 1 wound each", "endure_abyss_swarm", "Abyss p.59: without Fireball, every living hero automatically takes 1 wound from poisonous stings. The swarm then disperses; no foe or treasure roll is created.");
     return;
   }
   if (feature === "secret_stairs") {

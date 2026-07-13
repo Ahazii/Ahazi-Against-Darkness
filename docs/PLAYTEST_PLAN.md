@@ -1,6 +1,6 @@
 # Consolidated Playtest Plan
 
-Last updated: 2026-07-13. Target build: v0.39.10.
+Last updated: 2026-07-13. Target build: v0.39.11.
 
 This plan covers the current manual regression backlog in the fewest practical games. It deliberately does not claim to sign off the 172-row foe audit: every pending foe still needs its PDF row compared, structured mechanics checked, and a focused regression test before it can be marked reviewed in `docs/audits/FOE_RULE_AUDIT.md`.
 
@@ -16,8 +16,8 @@ Start one Classical random dungeon with EE + Abyss. Use a four-hero party includ
 
 1. Explore one ordinary room, open an exit, save, reload, return through the exit, then Search. Leave treasure behind once, trigger a wandering encounter by Searching, and later Claim Treasure. Confirm every item/gp appears only once and the 200gp cap leaves only the excess behind.
 2. Return to camp, bank carried gold, and re-enter. The map must show the entrance and its usable exits immediately before and after a normal browser refresh.
-3. In the developer selector, confirm both Abyss and EE options appear. Run Abyss Unique Event: Dark Plague. Confirm the save/immunity or infection state appears in Narrative and survives a save/reload.
-4. Run these Abyss foe encounters, resolving each before the next: Shrieking Fungi, Flying Skulls, Phasing Panther, Tentacled Brain, and Dragon Man. Check only the printed special behaviour named in `STATUS.md`; do not try to force every die result in this one pass. Record any discrepancy with a Narrative Report.
+3. In the developer selector, confirm both Abyss and EE options appear. Run Abyss Unique Event: Dark Plague. Confirm the L10 save/infection procedure appears in Narrative and survives a save/reload. A successful save, Blessing, or Elven Bread cure must not create a Dark Plague immunity state.
+4. Run these Abyss foe encounters, resolving each before the next: Shrieking Fungi, Flying Skulls, Phasing Panther, Tentacled Brain, and Dragon Man. Confirm the active encounter shows its printed-rule panel from the locally indexed PDF, then check only the printed special behaviour named in `STATUS.md`; do not try to force every die result in this one pass. Record any discrepancy with a Narrative Report.
 5. Run one EE foe from each group with a visible mechanic: core, Caverns, Fungal Grottoes, and Fiendish Foes. Confirm the selected name, normal Reaction flow, and its visible combat effect. Use one Weird or Boss as an EE Final Boss, claim its treasure, exit, and complete the adventure.
 6. Before closeout, use EE Quest result to inspect one Quest route. Confirm the Quest Details panel identifies the printed result. Do not attempt all six Quest life cycles in this game; they remain separate rule-audit work.
 7. In the eligible hero sheet, spend or bank one pending XP roll. Confirm the skill/spell choices are eligible, the resulting choice remains on that hero's sheet, and no duplicate chooser appears in the sidebar.

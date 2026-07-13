@@ -829,8 +829,14 @@ def test_active_foe_specials_surface_in_combat_status() -> None:
     reference = _function_body("appendFoeSpecialsReference", APP_JS)
     assert 'node("div", "combat-section-label", "Foe specials")' in reference
     assert "activeFoeSpecialExplanations(foes)" in reference
+    printed = _function_body("appendExactPrintedFoeRules", APP_JS)
+    assert "exactLocalPdfExcerpt" in printed
+    assert '"Four-Against-the-Abyss.pdf"' in printed
     combat_render = _function_body("renderCombatPanel", APP_JS)
     assert "appendFoeSpecialsReference(combatPreviewEl, livingFoes)" in combat_render
+    assert "appendExactPrintedFoeRules(combatPreviewEl, livingFoes)" in combat_render
+    combat_deck = _function_body("renderCombatDeckSlim", APP_JS)
+    assert "appendExactPrintedFoeRules(preview, livingFoes)" in combat_deck
 
 
 def test_undead_holy_ui_hints_cover_actions_and_chips() -> None:

@@ -391,6 +391,6 @@
     {"roll": "3", "name": "Wolvesbane", "summary": "Thrown at wolf/were-creature to force morale; resale 10gp.", "source_page": 61},
     {"roll": "4", "name": "Silver Weapon", "summary": "Silver slashing hand weapon or dagger; +1 vs werewolves; resale 20gp.", "source_page": 61},
     {"roll": "5", "name": "Blessed Horseshoe", "summary": "Reroll one die roll, then spent; resale 10gp unused.", "source_page": 61},
-    {"roll": "6", "name": "Elven Bread", "summary": "d3 loaves; heal 1 Life or remove Dark Plague and grant plague immunity, elves heal 3 Life; resale 10gp each.", "source_page": 61}
+    {"roll": "6", "name": "Elven Bread", "summary": "d3 loaves; heal 1 Life or remove Dark Plague, elves heal 3 Life; resale 10gp each.", "source_page": 61}
   ]
 }

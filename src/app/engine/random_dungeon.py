@@ -16153,16 +16153,25 @@ class RandomDungeonEngine:
             if choice == "cast_fireball_abyss_swarm":
                 caster = self._chosen_or_lead(session, target_character_id)
                 if caster and self._spend_prepared_spell(caster, "Fireball"):
-                    session.log.append(f"Abyss Swarm: {caster.name} casts Fireball and disperses the critters.")
+                    session.log.append(
+                        f"Swarm of Critters (Abyss p.59): {caster.name} casts Fireball; the swarm is destroyed. "
+                        "This event is resolved and has no treasure roll."
+                    )
                     self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
                     return
-                session.log.append("Choose a living caster with a prepared Fireball, or endure the swarm.")
+                session.log.append(
+                    "Swarm of Critters (Abyss p.59): choose a living caster with a prepared Fireball, "
+                    "or each living hero takes 1 wound from the poisonous stings."
+                )
                 return
             if choice != "endure_abyss_swarm":
-                session.log.append("Choose Fireball or endure the Swarm of Critters.")
+                session.log.append(
+                    "Swarm of Critters (Abyss p.59): use Fireball to destroy the swarm, or each living hero takes 1 wound."
+                )
                 return
             for member in [item for item in session.party if item.current_life > 0]:
                 self._damage_member(member, 1, session.log, "Swarm of Critters")
+            session.log.append("Swarm of Critters (Abyss p.59): the swarm disperses after the poisonous stings. No treasure roll.")
             self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
             return
         if key == "secret_stairs":

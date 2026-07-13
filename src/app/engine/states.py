@@ -57,18 +57,6 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         "ui": {"label": "Dark Plague", "hover": "Abyss disease state. Current rules are implemented through the existing affliction helpers."},
     },
     {
-        "id": "dark-plague-immunity",
-        "name": "Dark Plague Immunity",
-        "family": "disease",
-        "scope": "character",
-        "value_type": "flag",
-        "source": {"supplement_id": "four-against-the-abyss", "source_pdf": "Four-Against-the-Abyss.pdf", "page": 61, "topic": "Elven Bread / Dark Plague cure"},
-        "legacy_mappings": {"statuses": ["Dark Plague immunity"]},
-        "implemented": True,
-        "review_status": "source_backed",
-        "ui": {"label": "Dark Plague immunity", "hover": "Adventure-long immunity applied by existing Abyss cure logic."},
-    },
-    {
         "id": "lycanthropy-exposure",
         "name": "Lycanthropy Exposure",
         "family": "disease",
