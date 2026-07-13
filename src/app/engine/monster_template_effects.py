@@ -109,6 +109,8 @@ def _effect_save_modifier(member: PartyMemberState, effect: dict[str, Any]) -> i
                 text = str(value).replace(" ", "").lower()
                 if text in {"+1/2l", "1/2l", "half_l"}:
                     bonus += member.level // 2
+                elif text.lstrip("+").isdigit():
+                    bonus += int(text)
                 continue
             if key_lower in class_id or class_id in key_lower:
                 text = str(value).replace(" ", "").lower()
@@ -116,6 +118,8 @@ def _effect_save_modifier(member: PartyMemberState, effect: dict[str, Any]) -> i
                     bonus += member.level
                 elif text in {"+1/2l", "1/2l", "half_l"}:
                     bonus += member.level // 2
+                elif text.lstrip("+").isdigit():
+                    bonus += int(text)
     if effect.get("halfling_reroll") and class_id == "halfling":
         bonus += 0
     text_modifier = effect.get("save_modifier_text")

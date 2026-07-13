@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+import re
 
 from ..schemas import EnemyState, PartyMemberState, SessionState, TileState
 from .class_abilities import FOOD_RATION_NAMES, count_food_rations, consume_food_rations
@@ -292,6 +293,11 @@ def resolve_bribe_gold(row: dict, *, hcl: int, foe_count: int) -> int:
             return hcl * 5
         if formula.isdigit():
             return int(formula)
+        dice_match = re.fullmatch(r"(\d+)d6([+-]\d+)?", formula.replace(" ", "").lower())
+        if dice_match:
+            dice_count = int(dice_match.group(1))
+            modifier = int(dice_match.group(2) or 0)
+            return sum(roll_d6() for _ in range(dice_count)) + modifier
     if row.get("gold_dice"):
         dice = str(row["gold_dice"]).lower()
         if dice == "d6":

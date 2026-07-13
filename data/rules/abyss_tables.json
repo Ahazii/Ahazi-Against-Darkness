@@ -272,7 +272,7 @@
     }
   ],
   "abyss_boss_table": [
-    {"roll": "1", "name": "Dragon Man", "level": 9, "life": 8, "attacks": 2, "treasure_rolls": 1, "tags": ["abyss", "dragon"], "encounter_start_effects": [{"type": "save_damage", "label": "Dragon fire save", "target": "all_pcs", "save_level": 8, "save_type": "magic", "damage": 1}], "summary": "First turn dragon fire: all heroes save vs L8 or lose 1 Life; then claw attacks.", "source_page": 55},
+    {"roll": "1", "name": "Dragon Man", "level": 9, "life": 8, "attacks": 2, "treasure_rolls": 1, "reaction_table": "Abyss Dragon Man", "tags": ["abyss", "dragon"], "encounter_start_effects": [{"type": "save_damage", "label": "Dragon fire save", "target": "all_pcs", "save_level": 8, "save_type": "fire", "save_modifier": {"elf": "+1", "rogue": "+1", "swashbuckler": "+1"}, "damage": 1}], "summary": "First turn dragon fire: all heroes save vs L8 or lose 1 Life; elves, rogues, and swashbucklers save at +1; then claw attacks.", "source_page": 55},
     {"roll": "2", "name": "Mind Screamer", "level": 10, "life": 9, "attacks": 3, "treasure_rolls": 1, "tags": ["abyss", "mind"], "summary": "3-in-6 surprise; mental bolts ignore armor/shields and inflict Madness.", "source_page": 55},
     {"roll": "3", "name": "Tentacled Brain", "level": 9, "life": 8, "attacks": 0, "treasure_rolls": 2, "reaction_table": "Tentacled Brain", "tags": ["abyss", "flying", "mind", "allow_final_boss_reaction", "ranged_spell_target_level:6"], "per_turn_effects": [{"type": "save_damage_madness", "timing": "before_party_actions", "label": "Tentacled Brain save", "target": "all_pcs", "save_level": 5, "save_type": "mind", "save_modifier": {"wizard": "+L"}, "damage": 1, "madness": 1}], "summary": "Floats above melee; it is L6 to ranged weapons or spells. Before every party action, all heroes save vs L5 or lose 1 Life and gain 1 Madness; wizards add +L. It makes no normal attacks. Reactions: 1-2 flee, 3-4 bribe 300gp, 5-6 fight.", "source_page": 55},
     {"roll": "4", "name": "Ghoul King", "level": 10, "life": 10, "attacks": 4, "treasure_rolls": 2, "tags": ["abyss", "undead"], "on_hit_effects": [{"type": "status", "status": "Paralyzed", "save_type": "poison", "save_level": 5, "class_bonus": {"elf": "L"}}], "summary": "Undead; wounded heroes save vs poison or paralysis; fights to death.", "source_page": 55},
@@ -312,6 +312,10 @@
         "result": "The shrieking fungi stand and shriek.",
         "source_page": 49
       }
+    ],
+    "Abyss Dragon Man": [
+      {"roll": "1-2", "key": "bribe", "result": "The dragon man asks for a bribe of 3d6+100gp.", "gold": "3d6+100", "source_page": 55},
+      {"roll": "3-6", "key": "fight", "result": "The dragon man fights.", "foes_first": true, "source_page": 55}
     ]
   },
   "abyss_trap_table": [

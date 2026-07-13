@@ -10,7 +10,7 @@ from app.engine.abyss_tactics import (
 )
 from app.engine.combat import CombatContext, assign_enemy_attacks
 from app.engine.monster_template_effects import apply_encounter_start_effects
-from app.engine.reactions import lookup_reaction_row, resolve_reaction_source
+from app.engine.reactions import lookup_reaction_row, resolve_bribe_gold, resolve_reaction_source
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, PartyMemberState, TileState
 
@@ -69,7 +69,11 @@ def test_abyss_profile_routes_room_content_to_abyss_minions(monkeypatch) -> None
 def test_dragon_man_first_turn_fire_uses_the_printed_level_8_save(monkeypatch) -> None:
     eng = _engine()
     member = _member()
-    session = eng.create_session("abyss-dragon-man", "party-1", [member], ruleset_profile_id="abyss")
+    member.class_id = "rogue"
+    wizard = _second_member()
+    wizard.class_id = "wizard"
+    wizard.class_name = "Wizard"
+    session = eng.create_session("abyss-dragon-man", "party-1", [member, wizard], ruleset_profile_id="abyss")
     dragon_man = EnemyState(
         id="dragon-man",
         name="Dragon Man",
@@ -78,22 +82,30 @@ def test_dragon_man_first_turn_fire_uses_the_printed_level_8_save(monkeypatch) -
         life=8,
         max_life=8,
         attacks=2,
-        tags=["abyss", "dragon"],
+        tags=["abyss", "dragon", "reaction_table:Abyss Dragon Man"],
         encounter_start_effects=[{
             "type": "save_damage",
             "label": "Dragon fire save",
             "target": "all_pcs",
             "save_level": 8,
-            "save_type": "magic",
+            "save_type": "fire",
+            "save_modifier": {"elf": "+1", "rogue": "+1", "swashbuckler": "+1"},
             "damage": 1,
         }],
     )
-    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda hero: (1, [1]))
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda hero: (7, [7]))
 
-    log = apply_encounter_start_effects([dragon_man], [member], session, show_rolls=True)
+    log = apply_encounter_start_effects([dragon_man], [member, wizard], session, show_rolls=True)
 
-    assert member.current_life == 11
+    assert member.current_life == 12
+    assert wizard.current_life == 11
     assert any("Dragon fire save" in line and "L8" in line for line in log)
+    source = resolve_reaction_source([dragon_man], _engine().rules.monsters()["reaction_tables"])
+    assert source.inline_rows is not None
+    bribe = lookup_reaction_row(source.inline_rows, 1)
+    assert bribe["key"] == "bribe"
+    monkeypatch.setattr("app.engine.reactions.roll_d6", lambda: 4)
+    assert resolve_bribe_gold(bribe, hcl=5, foe_count=1) == 112
 
 
 def test_abyss_group_treasure_rolls_apply_once_per_generated_group() -> None:
