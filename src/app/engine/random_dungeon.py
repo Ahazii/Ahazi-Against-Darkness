@@ -11922,7 +11922,7 @@ class RandomDungeonEngine:
             session.log.append("Resolve the current encounter before running a developer playtest override.")
             return
         if kind in {"ee_foe", "ee_final_boss"}:
-            if str(session.ruleset_profile_id or "") == "abyss" or str(session.ruleset or "") != "ee":
+            if str(session.ruleset or "") != "ee":
                 session.log.append("Choose an Expanded Edition session for this foe playtest.")
                 return
             table_key, separator, template_name = str(key or "").partition("::")
@@ -11968,7 +11968,7 @@ class RandomDungeonEngine:
         if kind == "ee_quest":
             from .quests import quest_from_row
 
-            if str(session.ruleset_profile_id or "") == "abyss" or str(session.ruleset or "") != "ee" or roll is None or not 1 <= roll <= 6:
+            if str(session.ruleset or "") != "ee" or roll is None or not 1 <= roll <= 6:
                 session.log.append("Choose an Expanded Edition Quest d6 result.")
                 return
             if session.active_quest is not None:
@@ -12652,15 +12652,16 @@ class RandomDungeonEngine:
         if session.mode != "exploration":
             session.log.append("Resolve the current encounter before returning to the dungeon.")
             return
-        entrance = self._entrance_tile(session)
-        session.map_state.current_tile_id = entrance.id
-        session.current_tile_entry_exit_id = None
-        self._refresh_tile_connections(session, entrance)
-        self._initialize_outside_entrance(entrance)
         if not session.camped_outside:
             session.log.append("The party is already inside the dungeon.")
             return
+        entrance = self._entrance_tile(session)
+        session.map_state.current_tile_id = entrance.id
+        session.current_tile_entry_exit_id = None
         session.camped_outside = False
+        # Rebuild the entrance after clearing camp state so its dungeon exits
+        # are restored instead of its outside-only presentation.
+        self._refresh_tile_connections(session, entrance)
         from .courtship_apothecary_brew import unlock_apothecary_brew_after_encounter
 
         unlock_apothecary_brew_after_encounter(session)

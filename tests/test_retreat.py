@@ -525,6 +525,7 @@ def test_return_from_camp_reenters_from_entrance_tile() -> None:
     eng.advance(session, "return_to_dungeon")
     assert session.camped_outside is False
     assert session.map_state.current_tile_id == "ent"
+    assert any(exit_state.destination_tile_id == "deep" for exit_state in entrance.exits)
     assert any("enters the dungeon at the entrance" in entry for entry in session.log)
 
 

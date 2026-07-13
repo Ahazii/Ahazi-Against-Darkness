@@ -18410,7 +18410,7 @@ function renderDeveloperPlaytestControls(session) {
   const enabled = Boolean(state.preferences?.show_dungeon_playtest_controls);
   const isAbyss = session.ruleset_profile_id === "abyss";
   const isForsakenDepths = session.ruleset === "forsaken_depths";
-  const isExpandedEdition = session.ruleset === "ee" && !isAbyss;
+  const isExpandedEdition = session.ruleset === "ee";
   const available = enabled && session.mode === "exploration" && !session.camped_outside && (isAbyss || isForsakenDepths || isExpandedEdition);
   developerPlaytestControls.classList.toggle("hidden", !available);
   if (!available) {

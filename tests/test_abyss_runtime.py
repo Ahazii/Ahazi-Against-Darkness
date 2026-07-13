@@ -128,6 +128,32 @@ def test_developer_playtest_spawns_named_expanded_edition_final_boss(monkeypatch
     assert all("final_boss" in enemy.tags for enemy in tile.enemies)
 
 
+def test_developer_playtest_allows_expanded_edition_foes_with_abyss_profile(monkeypatch) -> None:
+    eng = _engine()
+    session = eng.create_session(
+        "ee-abyss-playtest",
+        "party-1",
+        [_member()],
+        ruleset="ee",
+        ruleset_profile_id="abyss",
+    )
+    tile = TileState(id="ee-abyss-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_formula", lambda formula: 1)
+
+    eng.advance(
+        session,
+        "developer_playtest",
+        playtest_kind="ee_foe",
+        playtest_key="boss::Mummy",
+    )
+
+    assert session.mode == "combat"
+    assert tile.enemies[0].name == "Mummy"
+
+
 def test_developer_playtest_creates_selected_expanded_edition_quest() -> None:
     eng = _engine()
     session = eng.create_session("ee-quest-playtest", "party-1", [_member()], ruleset="ee")
