@@ -227,6 +227,15 @@ def apply_per_turn_monster_effects(
     for enemy in living_enemies:
         for effect in enemy.per_turn_effects:
             effect_type = str(effect.get("type", "")).lower()
+            if effect_type == "attract_wandering_after_turns":
+                turns = max(1, int(effect.get("turns", 2)))
+                if context.combat_round >= turns and not context.shrieking_fungi_wandering_due:
+                    context.shrieking_fungi_wandering_due = True
+                    log.append(
+                        f"{enemy.name} have shrieked for {turns} turns; Wandering Monsters are drawn here "
+                        "and surprise the party (Abyss p.49)."
+                    )
+                continue
             if effect_type == "confusion_save":
                 mimicked_id = _doppelganger_mimic_id(enemy)
                 for member in _living_party(party):

@@ -9,6 +9,7 @@ from app.engine.abyss_tactics import (
     coerce_abyss_attack_targets,
 )
 from app.engine.combat import CombatContext, assign_enemy_attacks
+from app.engine.reactions import lookup_reaction_row, resolve_reaction_source
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, PartyMemberState, TileState
 
@@ -299,6 +300,56 @@ def test_abyss_flying_skulls_fight_to_death_when_not_outnumbered(monkeypatch) ->
 
     assert session.reaction_key == "fight_to_death"
     assert any("fight to the death" in entry.lower() for entry in session.log)
+
+
+def test_abyss_phasing_panther_blinks_away_from_a_wound(monkeypatch) -> None:
+    from app.engine.combat import apply_enemy_damage
+
+    panther = EnemyState(
+        id="panther",
+        name="Phasing Panther",
+        category="weird",
+        level=7,
+        life=5,
+        max_life=5,
+        tags=["avoid_wound_d6:4"],
+    )
+    monkeypatch.setattr("app.engine.combat.roll_d6", lambda: 4)
+
+    log: list[str] = []
+    applied = apply_enemy_damage(panther, 1, combat_log=log)
+
+    assert applied is False
+    assert panther.life == 5
+    assert any("blinks away" in line for line in log)
+
+
+def test_abyss_supplement_reactions_merge_into_the_live_bestiary() -> None:
+    reactions = _engine().rules.monsters()["reaction_tables"]
+    panther = EnemyState(
+        id="panther",
+        name="Phasing Panther",
+        category="weird",
+        level=7,
+        life=5,
+        max_life=5,
+        tags=["reaction_table:Abyss Phasing Panther"],
+    )
+    fungi = EnemyState(
+        id="fungi",
+        name="Shrieking Fungi",
+        category="minions",
+        level=6,
+        life=1,
+        max_life=1,
+        tags=["reaction_table:Abyss Shrieking Fungi"],
+    )
+
+    panther_source = resolve_reaction_source([panther], reactions)
+    fungi_source = resolve_reaction_source([fungi], reactions)
+
+    assert lookup_reaction_row(panther_source.inline_rows or [], 4)["key"] == "fight"
+    assert lookup_reaction_row(fungi_source.inline_rows or [], 4)["key"] == "stand_and_shriek"
 
 
 def test_abyss_corridor_leader_lock_redirects_targets_to_minions() -> None:

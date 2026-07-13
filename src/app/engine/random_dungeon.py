@@ -3125,7 +3125,12 @@ class RandomDungeonEngine:
         session.log.extend(result.log)
         known_defeated_ids = {enemy.id for enemy in tile.defeated_enemies}
         for enemy in result.enemies:
-            if enemy.id in active_enemy_ids and enemy.life <= 0 and enemy.id not in known_defeated_ids:
+            if (
+                enemy.id in active_enemy_ids
+                and enemy.life <= 0
+                and "fled_no_treasure" not in {str(tag).lower() for tag in enemy.tags}
+                and enemy.id not in known_defeated_ids
+            ):
                 tile.defeated_enemies.append(enemy.model_copy(deep=True))
                 known_defeated_ids.add(enemy.id)
                 if is_fd_ruleset(session):
@@ -4400,6 +4405,22 @@ class RandomDungeonEngine:
             show_rolls=show_rolls,
             allow_final_boss_check=allow_final_boss_check,
         )
+        if any("final_boss" in {str(tag).lower() for tag in enemy.tags} for enemy in tile.enemies):
+            recovered = list(session.final_boss_recovery_items)
+            session.final_boss_recovery_items = []
+            for entry in recovered:
+                member = next(
+                    (item for item in session.party if item.character_id == entry.get("character_id")),
+                    None,
+                )
+                item_name = str(entry.get("item") or "weapon")
+                if member is None:
+                    continue
+                member.inventory.append(item_name)
+                session.log.append(
+                    f"{member.name} finds the {item_name} taken by {entry.get('source') or 'a flying skull'} "
+                    "in the Final Boss lair (Abyss p.52)."
+                )
         if self._auto_check_surprise_reaction(session, show_rolls=show_rolls):
             return
         session.log.append(
@@ -9514,14 +9535,21 @@ class RandomDungeonEngine:
             session.log.append("A transformed ally is now an active foe.")
             self._announce_encounter(session, tile, show_rolls=show_rolls)
             return
+        fled_foes_this_fight = any(
+            enemy.id in active_enemy_ids
+            and "fled_no_treasure" in {str(tag).lower() for tag in enemy.tags}
+            for enemy in result.enemies
+        )
         if result.morale_failed:
             self._award_treasure(session, tile, show_rolls=show_rolls)
-        elif not tile.enemies:
+        elif not tile.enemies and not fled_foes_this_fight:
             self._award_treasure(session, tile, show_rolls=show_rolls)
         defeated_this_fight = [
             enemy.model_copy(deep=True)
             for enemy in result.enemies
-            if enemy.id in active_enemy_ids and enemy.life <= 0
+            if enemy.id in active_enemy_ids
+            and enemy.life <= 0
+            and "fled_no_treasure" not in {str(tag).lower() for tag in enemy.tags}
         ]
         if not fled and defeated_this_fight:
             from .abyss_campaign import (
@@ -9780,7 +9808,14 @@ class RandomDungeonEngine:
             )
             return
 
-        foes_strike_first = session.foes_strike_first and session.combat_round == 0
+        always_first = any(
+            "always_first" in {str(tag).lower() for tag in enemy.tags}
+            for enemy in tile.enemies
+            if enemy.life > 0
+        )
+        foes_strike_first = (session.foes_strike_first or always_first) and session.combat_round == 0
+        if always_first and session.combat_round == 0 and show_rolls:
+            session.log.append("Phasing Panther always attacks first (Abyss p.56).")
         if foes_strike_first:
             session.foes_strike_first = False
         if session.foe_taunt_pending:
@@ -9906,6 +9941,14 @@ class RandomDungeonEngine:
             active_enemy_ids=active_enemy_ids,
             standing_before=standing_before,
         )
+        if combat_context.shrieking_fungi_wandering_due and session.mode == "combat":
+            self._spawn_wandering_monsters(
+                session,
+                tile,
+                show_rolls=show_rolls,
+                combat_message="Shrieking fungi attract Wandering Monsters; the party is surprised!",
+                foes_strike_first=True,
+            )
         self._tick_teleport_enemy_returns(session, reason="combat turn")
         from .heroic_skill_effects import rotate_aggressive_stance_penalty
 

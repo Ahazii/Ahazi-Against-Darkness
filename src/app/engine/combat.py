@@ -281,6 +281,7 @@ class CombatContext:
     sacrifice_shield_used: set[str] = field(default_factory=set)
     double_attack_attackers: set[str] = field(default_factory=set)
     double_shot_attackers: set[str] = field(default_factory=set)
+    shrieking_fungi_wandering_due: bool = False
     restore_users: set[str] = field(default_factory=set)
     restore_targets: dict[str, str] = field(default_factory=dict)
     ward_targets: dict[str, str] = field(default_factory=dict)
@@ -428,10 +429,29 @@ def apply_enemy_damage(
     courtship_spell_session: SessionState | None = None,
     courtship_spell_party: list[PartyMemberState] | None = None,
     courtship_spell_log: list[str] | None = None,
-) -> None:
+    combat_log: list[str] | None = None,
+) -> bool:
     """Apply damage; fire, acid, lightning, or oil suppress troll regeneration (EE p.99)."""
     if amount <= 0:
-        return
+        return False
+    for tag in enemy.tags:
+        text = str(tag).lower()
+        if not text.startswith("avoid_wound_d6:"):
+            continue
+        try:
+            threshold = int(text.split(":", 1)[1])
+        except ValueError:
+            threshold = 7
+        rolled = roll_d6()
+        if rolled >= threshold:
+            if combat_log is not None:
+                combat_log.append(
+                    f"{enemy.name} blinks away (d6 = {rolled}) and ignores the wound."
+                )
+            return False
+        if combat_log is not None:
+            combat_log.append(f"{enemy.name} fails to blink away (d6 = {rolled}); the wound lands.")
+        break
     amount += fire_damage_bonus_vs_flammable(enemy, damage_kind=damage_kind)
     enemy.life -= amount
     if damage_kind in REGEN_SUPPRESSING_DAMAGE_KINDS:
@@ -445,6 +465,7 @@ def apply_enemy_damage(
             courtship_spell_party,
             log=courtship_spell_log,
         )
+    return True
 
 
 def tick_enemy_regeneration(enemy: EnemyState, log: list[str], *, show_rolls: bool) -> None:
@@ -1192,7 +1213,9 @@ def _apply_pc_hit(
             log.append(f"{pc.name} hits {target.name} for {damage} subdual damage with {attack_label}.")
         return [enemy for enemy in living_enemies if enemy.life > 0]
     target_life_before = target.life
-    apply_enemy_damage(target, damage, damage_kind="normal")
+    wound_applied = apply_enemy_damage(target, damage, damage_kind="normal", combat_log=log)
+    if not wound_applied:
+        return living_enemies
     if context.session is not None:
         from .forsaken_depths_content import clear_fd_foe_hallucination_on_damage
 
@@ -1795,6 +1818,30 @@ def _resolve_pc_attack(
             f"{'Missile' if missile else 'Attack'} roll: {pc.name} vs {target.name}: "
             f"{roll_text} + {modifier - party_attack_bonus - (1 if use_panache else 0)}{bonus_note}{panache_note}{weapon_note} = {final_total}."
         )
+
+    if (
+        context.session is not None
+        and not missile
+        and weapon is not None
+        and rolls[0] == 1
+        and "natural_one_melee_disarm" in {str(tag).lower() for tag in target.tags}
+    ):
+        if weapon.item in pc.inventory:
+            pc.inventory.remove(weapon.item)
+        from .weapons import prune_weapon_defaults
+
+        prune_weapon_defaults(pc)
+        context.session.final_boss_recovery_items.append(
+            {"character_id": pc.character_id, "item": weapon.item, "source": target.name}
+        )
+        if "fled_no_treasure" not in target.tags:
+            target.tags.append("fled_no_treasure")
+        target.life = 0
+        log.append(
+            f"{target.name} catches {pc.name}'s {weapon.item} on a natural 1, disarms {pc.name}, "
+            "and flies away. The weapon will be found in the Final Boss lair (Abyss p.52)."
+        )
+        return living_enemies
     if explain_math:
         log.append(f"Attack math: need total >= enemy level {target_level} to hit.")
     if auto_hit_fd_hallucination:
@@ -3420,32 +3467,33 @@ def resolve_combat_round(
     for member in party:
         if tick_cordyceps_infection(member):
             log.append(f"Cordyceps mind control fades from {member.name}.")
-        from .monster_combat_hooks import apply_per_turn_monster_effects, check_doppelganger_flee
+
+    from .monster_combat_hooks import apply_per_turn_monster_effects, check_doppelganger_flee
+
+    log.extend(
+        apply_per_turn_monster_effects(
+            [enemy for enemy in enemies if enemy.life > 0],
+            party,
+            context=context,
+            show_rolls=show_rolls,
+        )
+    )
+    if context.session is not None and context.session.courtship_demesne_active:
+        from .courtship_combat import apply_courtship_per_turn
 
         log.extend(
-            apply_per_turn_monster_effects(
-                [enemy for enemy in enemies if enemy.life > 0],
+            apply_courtship_per_turn(
+                context.session,
                 party,
-                context=context,
+                enemies,
                 show_rolls=show_rolls,
             )
         )
-        if context.session is not None and context.session.courtship_demesne_active:
-            from .courtship_combat import apply_courtship_per_turn
-
-            log.extend(
-                apply_courtship_per_turn(
-                    context.session,
-                    party,
-                    enemies,
-                    show_rolls=show_rolls,
-                )
-            )
-        check_doppelganger_flee(enemies, party, log)
-        if context.reinforcement_enemies:
-            enemies.extend(context.reinforcement_enemies)
-            living_enemies = [enemy for enemy in enemies if enemy.life > 0]
-            context.reinforcement_enemies.clear()
+    check_doppelganger_flee(enemies, party, log)
+    if context.reinforcement_enemies:
+        enemies.extend(context.reinforcement_enemies)
+        living_enemies = [enemy for enemy in enemies if enemy.life > 0]
+        context.reinforcement_enemies.clear()
 
     if context.session is not None:
         for member in living_party(party):

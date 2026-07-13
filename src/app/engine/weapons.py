@@ -268,6 +268,16 @@ def weapon_attack_modifier(
         modifier -= 1
     if weapon.crushing and enemy is not None and _is_skeleton(enemy):
         modifier += 1
+    if enemy is not None:
+        foe_tags = {str(tag).lower() for tag in enemy.tags}
+        if weapon.crushing and "crushing_weapon_bonus:+1" in foe_tags:
+            modifier += 1
+        if (
+            weapon.kind == "missile"
+            and ("bow" in lower or "crossbow" in lower)
+            and "arrow_attack_penalty:-2" in foe_tags
+        ):
+            modifier -= 2
     modifier += magic_weapon_attack_bonus(weapon.item)
     if member is not None and "bow" in lower and "crossbow" not in lower:
         if any("arrow" in item.lower() for item in member.inventory):

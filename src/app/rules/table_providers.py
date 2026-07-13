@@ -9,6 +9,10 @@ from typing import Any, Iterable
 from ..engine.supplements import LOCKED_CORE_SUPPLEMENT_ID
 
 
+# Reaction rows are consumed by the combat resolver, not rolled from the player Tables List.
+INTERNAL_TABLE_CONTAINER_KEYS = {"reaction_tables"}
+
+
 def _load_object(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
@@ -30,6 +34,8 @@ def _merge_table_file(
     include_open_items: bool = False,
 ) -> None:
     for key, value in _load_object(path).items():
+        if key in INTERNAL_TABLE_CONTAINER_KEYS:
+            continue
         if key == "ruleset_status":
             _append_ruleset_status(tables, value)
             continue

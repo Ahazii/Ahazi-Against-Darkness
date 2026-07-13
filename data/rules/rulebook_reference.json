@@ -182,8 +182,10 @@
       "body": "Four Against the Abyss (pp.14–23): after a hero has entered Expert tier, a successful advancement roll may be spent to learn one expert skill instead of gaining +1 Level.\n\nExpert tier entry is separate: pay 500gp or 1 banked XP roll through Tier training first. The later skill-learning attempt spends one advancement XP roll and does not require an extra tier-entry payment.\n\nRoll the tier advancement die with the Forsaken Depths modifier (Expert d8+2, Heroic d10+4, …). Success if the total exceeds current Level, or the natural die shows the high auto-success faces.\n\nEach skill is normally taken once per hero. Impervious may be learned again for a new named foe; Sworn Enemy and Impervious require choosing a named foe from a Minion, Boss, or Weird monster table when learned.\n\nAll expert skills in expert_skills_table are Abyss expert skills and are implemented in play, including combat skills (Whirlwind of Steel, Shield Bash, Combat Acrobatics, Dying Action, Knife Throwing), exploration (Acute Hearing listen-at-door, Super Logic puzzle bonus, **Detective** and **Stone Mastery** treat search roll 4 as 5 on the initial Search roll for clues and secret doors), between-adventure crafting (Scroll Maker, Create Holy Water, Arcane Tanner), and utility (Continual Light, Lesser Necromancy, Spore Alchemy). EE class-trick/ability flags that share the ability UI are listed separately in ee_class_trick_flags_table.\n\nSee expert_skill_implementation_table on the home Rules tables panel for per-skill mechanics.\n\nTier training between adventures (Expert / Heroic / Legendary gates) is summarized under Tier Training; costs are in tier_training_costs_table."
     },
     {
-      "id": "expert_skill_target_picker",
+      "id": "abyss_expert_target_picker",
       "title": "Expert Skill Foe Targets",
+      "category": "classes",
+      "source_page": 14,
       "tags": [
         "expert skills",
         "sworn enemy",
@@ -197,7 +199,7 @@
     {
       "id": "tentacled_brain",
       "title": "Tentacled Brain",
-      "category": "foes",
+      "category": "combat",
       "source_page": 55,
       "keywords": ["tentacled brain", "madness", "ranged", "abyss boss"],
       "summary": "L9, 8 Life, treasure +1; ranged weapons and spells treat it as L6.",

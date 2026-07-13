@@ -931,6 +931,7 @@ class SessionState(BaseModel):
     major_foes_encountered: int = 0
     final_boss_designated: bool = False
     final_boss_defeated: bool = False
+    final_boss_recovery_items: list[dict[str, str]] = Field(default_factory=list)
     abyss_campaign_plot: AbyssCampaignPlotState | None = None
     abyss_vampire_sire: EnemyState | None = None
     lady_in_white_refused: bool = False

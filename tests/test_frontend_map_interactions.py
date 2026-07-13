@@ -869,10 +869,15 @@ def test_level_up_spell_picker_shows_existing_spell_slots() -> None:
     player needs to see current prepared slots before deciding.
     """
     assert "function spellInventoryLine(member)" in APP_JS
+    assert "function appendPendingLevelUpSpellChoice(container, member)" in APP_JS
     assert "Current spell slots:" in APP_JS
     assert "details.appendChild(subline(spellInventoryLine(member)))" in APP_JS
     assert 'details.className = "level-up-spell-pending-details"' in APP_JS
     assert "${spell} (+1 slot; already ${prepared})" in APP_JS
+    party_render = _function_body("appendPartyMemberSheet", APP_JS)
+    assert "appendPendingLevelUpSpellChoice(body, member);" in party_render
+    top_picker = _function_body("renderLevelUpSpellChoices", APP_JS)
+    assert "levelUpSpellChoicesEl.classList.add(\"hidden\")" in top_picker
 
 
 def test_room_state_icons_and_editor_class_category_are_wired() -> None:

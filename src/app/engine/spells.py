@@ -24,7 +24,7 @@ from .subdual import apply_major_foe_level_drop
 from .madness import heal_madness
 
 
-SLEEP_IMMUNE_TAGS = {"undead", "dragon", "artificial", "clockwork", "elemental", "spirit", "construct"}
+SLEEP_IMMUNE_TAGS = {"undead", "dragon", "artificial", "clockwork", "elemental", "spirit", "construct", "sleep_immune"}
 ILLUSION_IMMUNE_TAGS = {"vermin", "undead", "artificial", "clockwork", "elemental", "construct"}
 WOOD_FOE_TAGS = {"plant", "tree", "wood", "dryad"}
 HEALING_PRAYER_USES_PER_ADVENTURE = 3
@@ -188,6 +188,8 @@ def is_mass_kill_minor(enemy: EnemyState) -> bool:
 def fireball_modifier_bonus(enemy: EnemyState) -> int:
     if "mummy" in enemy.name.lower():
         return 2
+    if "fireball_penalty:-1" in {str(tag).lower() for tag in enemy.tags}:
+        return -1
     return 0
 
 
@@ -585,6 +587,26 @@ def _offensive_spell_damage_bonus(
     return damage, log
 
 
+def combat_spellcasting_penalty(enemies: list[EnemyState], log: list[str]) -> int:
+    """Return the strongest printed casting penalty imposed by living foes."""
+    penalties: list[int] = []
+    for enemy in enemies:
+        if enemy.life <= 0:
+            continue
+        for tag in enemy.tags:
+            text = str(tag).lower()
+            if not text.startswith("spellcasting_penalty:"):
+                continue
+            try:
+                penalties.append(int(text.split(":", 1)[1]))
+            except ValueError:
+                continue
+    penalty = min(penalties, default=0)
+    if penalty:
+        log.append(f"Effect: distracting foes impose {penalty} on this spellcasting roll.")
+    return penalty
+
+
 def _cast_fireball(
     caster: PartyMemberState,
     party: list[PartyMemberState],
@@ -613,7 +635,13 @@ def _cast_fireball(
         log.append(f"{label} has no effect on this dragon.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
     bonus = fireball_modifier_bonus(target)
-    modifier = spellcasting_modifier(caster) + bonus + modifier_bonus + eldritch_aim_bonus(caster)
+    modifier = (
+        spellcasting_modifier(caster)
+        + bonus
+        + modifier_bonus
+        + eldritch_aim_bonus(caster)
+        + combat_spellcasting_penalty(enemies, log)
+    )
     if bonus:
         log.append(f"{label} gains +{bonus} vs {target.name}.")
     hit, hit_log, final_total, _ = resolve_spell_effect(
@@ -649,16 +677,18 @@ def _cast_fireball(
         bonus_damage, bonus_log = _offensive_spell_damage_bonus(session, caster, "fireball")
         log.extend(bonus_log)
         total_damage = 1 + bonus_damage
-        apply_enemy_damage(
+        wound_applied = apply_enemy_damage(
             target,
             total_damage,
             damage_kind="fire",
             courtship_spell_session=session,
             courtship_spell_party=party,
             courtship_spell_log=log,
+            combat_log=log,
         )
-        log.append(f"{label} hits {target.name} for {total_damage} damage.")
-        if apply_major_foe_level_drop(target):
+        if wound_applied:
+            log.append(f"{label} hits {target.name} for {total_damage} damage.")
+        if wound_applied and apply_major_foe_level_drop(target):
             log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
         if target.life <= 0:
             log.append(f"{target.name} is defeated.")
@@ -688,7 +718,7 @@ def _cast_lightning(
     if label == "Lightning Strike" and session is not None and session.alter_weather_active:
         weather_bonus = 1
         log.append("Alter Weather adds +1 to Lightning Strike.")
-    modifier = spellcasting_modifier(caster, spell_key="lightning") + weather_bonus
+    modifier = spellcasting_modifier(caster, spell_key="lightning") + weather_bonus + combat_spellcasting_penalty(enemies, log)
     hit, hit_log, exploded = spell_hits(
         caster,
         target,
@@ -703,30 +733,38 @@ def _cast_lightning(
     damage_dealt = 0
     if target.life <= 1 and target.category in {"vermin", "minions"}:
         damage_dealt = target.life
-        apply_enemy_damage(
+        wound_applied = apply_enemy_damage(
             target,
             target.life,
             damage_kind="lightning",
             courtship_spell_session=session,
             courtship_spell_party=party,
             courtship_spell_log=log,
+            combat_log=log,
         )
-        log.append(f"Lightning slays {target.name}.")
+        if wound_applied:
+            log.append(f"Lightning slays {target.name}.")
+        else:
+            damage_dealt = 0
     else:
         bonus_damage, bonus_log = _offensive_spell_damage_bonus(session, caster, "lightning")
         log.extend(bonus_log)
         total_damage = 2 + bonus_damage
         damage_dealt = total_damage
-        apply_enemy_damage(
+        wound_applied = apply_enemy_damage(
             target,
             total_damage,
             damage_kind="lightning",
             courtship_spell_session=session,
             courtship_spell_party=party,
             courtship_spell_log=log,
+            combat_log=log,
         )
-        log.append(f"Lightning hits {target.name} for {total_damage} damage.")
-        if apply_major_foe_level_drop(target):
+        if wound_applied:
+            log.append(f"Lightning hits {target.name} for {total_damage} damage.")
+        else:
+            damage_dealt = 0
+        if wound_applied and apply_major_foe_level_drop(target):
             log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
     from .milestones import record_lightning_damage
 
@@ -761,7 +799,7 @@ def _cast_sleep(
             "(immune by Level 11+ or undead/dragon/artificial/construct/elemental/spirit trait)."
         )
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    modifier = spellcasting_modifier(caster, spell_key="sleep") + slumber_bonus
+    modifier = spellcasting_modifier(caster, spell_key="sleep") + slumber_bonus + combat_spellcasting_penalty(enemies, log)
     hit, hit_log, _ = spell_hits(caster, target, show_rolls=show_rolls, label="Sleep", modifier_override=modifier)
     log.extend(hit_log)
     if not hit:
@@ -892,7 +930,11 @@ def _cast_healing_prayer(
             log.append(blocked)
             return SpellOutcome(log, enemies, party, spell_consumed=False)
     total, rolls = roll_exploding_for_level(caster)
-    modifier = spellcasting_modifier(caster) + support_casting_bonus(caster, target if target.character_id != caster.character_id else None)
+    modifier = (
+        spellcasting_modifier(caster)
+        + support_casting_bonus(caster, target if target.character_id != caster.character_id else None)
+        + combat_spellcasting_penalty(enemies, log)
+    )
     healed = total + modifier
     holy_symbol_bonus = 2 if any("holy symbol of healing" in item.lower() for item in caster.inventory) else 0
     if holy_symbol_bonus:
@@ -950,7 +992,7 @@ def _cast_disperse_vermin(
     if any(tag in {"undead", "artificial", "clockwork", "elemental"} for tag in target.tags):
         log.append("Disperse Vermin has no effect on these vermin.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    modifier = spellcasting_modifier(caster) * 2
+    modifier = spellcasting_modifier(caster) * 2 + combat_spellcasting_penalty(enemies, log)
     hit, hit_log, _ = spell_hits(caster, target, show_rolls=show_rolls, label="Disperse Vermin", modifier_override=modifier)
     log.extend(hit_log)
     if not hit:
@@ -1003,7 +1045,7 @@ def _cast_water_jet(
     if mode == "distract" and target.category not in {"boss", "weird"}:
         log.append("Water Jet distract effect requires a Major Foe target.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
-    modifier = spellcasting_modifier(caster)
+    modifier = spellcasting_modifier(caster) + combat_spellcasting_penalty(enemies, log)
     from .terrain import WATER_TERRAINS, resolve_play_context
 
     play_ctx = resolve_play_context(None, session=None, terrain=terrain)

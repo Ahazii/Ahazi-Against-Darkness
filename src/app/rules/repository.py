@@ -31,6 +31,15 @@ class RulesRepository:
     def _merged_monsters(self) -> dict[str, Any]:
         """Merge packaged bestiary with DATA_DIR overrides by table key and monster name."""
         packaged = self._load_packaged("monsters.json")
+        abyss_path = self.packaged_dir / "abyss_tables.json"
+        if abyss_path.exists():
+            abyss_tables = json.loads(abyss_path.read_text(encoding="utf-8"))
+            abyss_reactions = abyss_tables.get("reaction_tables") if isinstance(abyss_tables, dict) else None
+            if isinstance(abyss_reactions, dict):
+                packaged_reactions = packaged.setdefault("reaction_tables", {})
+                if isinstance(packaged_reactions, dict):
+                    # Supplement rows take precedence when they name their own PDF reaction table.
+                    packaged_reactions.update(abyss_reactions)
         fd_path = self.packaged_dir / "fd_monsters.json"
         if fd_path.exists():
             fd_monsters = json.loads(fd_path.read_text(encoding="utf-8"))

@@ -26,7 +26,7 @@ DERIVED_TABLE_KEYS: dict[str, tuple[str, ...]] = {
     LOCKED_CORE_SUPPLEMENT_ID: ("equipment_shop_table",),
     "courtship": ("courtship_book_of_secrets_table", "courtship_apothecary_recipes_table"),
 }
-TABLE_META_KEYS = {"ruleset_status", "open_items", "validation"}
+TABLE_META_KEYS = {"ruleset_status", "open_items", "validation", "reaction_tables"}
 
 
 class ResolvedTableCatalog(ResolvedSupplementContentCatalog):

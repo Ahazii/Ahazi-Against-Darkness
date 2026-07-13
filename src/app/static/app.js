@@ -3477,6 +3477,27 @@ function appendLevelUpSpellPickButtons(container, member) {
   return options.length;
 }
 
+function appendPendingLevelUpSpellChoice(container, member) {
+  const details = document.createElement("details");
+  details.className = "level-up-spell-pending-details";
+  details.open = true;
+  const summary = document.createElement("summary");
+  summary.textContent = `Choose spell for new Level ${member.level} slot`;
+  setTooltip(summary, "This hero has gained a spell slot from a level-up. Choose the spell here before assigning or spending another pending XP roll.");
+  details.appendChild(summary);
+  details.appendChild(
+    subline("Choose one spell to finish this level-up before spending another pending XP roll or completing the adventure.")
+  );
+  details.appendChild(subline(spellInventoryLine(member)));
+  details.appendChild(
+    subline("Duplicate prepared spells are allowed; choosing one you already have adds another castable slot.")
+  );
+  const actions = node("div", "level-up-spell-pick-actions");
+  appendLevelUpSpellPickButtons(actions, member);
+  details.appendChild(actions);
+  container.appendChild(details);
+}
+
 function spellInventoryLine(member) {
   const spells = member?.spells || [];
   if (!spells.length) return "Current spell slots: none.";
@@ -18751,36 +18772,8 @@ function renderSpellChoices(session) {
 function renderLevelUpSpellChoices(session) {
   if (!levelUpSpellChoicesEl) return;
   levelUpSpellChoicesEl.replaceChildren();
-  const member = pendingLevelUpMember(session);
-  if (!member) {
-    levelUpSpellChoicesEl.classList.add("hidden");
-    levelUpSpellChoicesEl.classList.remove("level-up-spell-banner");
-    return;
-  }
-  const options = levelUpSpellPickOptions(member);
-  if (!options.length) {
-    levelUpSpellChoicesEl.classList.add("hidden");
-    levelUpSpellChoicesEl.classList.remove("level-up-spell-banner");
-    return;
-  }
-  levelUpSpellChoicesEl.classList.remove("hidden");
-  levelUpSpellChoicesEl.classList.add("level-up-spell-banner");
-  const details = document.createElement("details");
-  details.className = "level-up-spell-pending-details";
-  const summary = document.createElement("summary");
-  summary.textContent = `${member.name}: choose spell for new Level ${member.level} slot`;
-  details.appendChild(summary);
-  details.appendChild(
-    subline("Choose one spell to finish this level-up before spending another pending XP roll or completing the adventure.")
-  );
-  details.appendChild(subline(spellInventoryLine(member)));
-  details.appendChild(
-    subline("Duplicate prepared spells are allowed; choosing one you already have adds another castable slot.")
-  );
-  const actions = node("div", "level-up-spell-pick-actions");
-  appendLevelUpSpellPickButtons(actions, member);
-  details.appendChild(actions);
-  levelUpSpellChoicesEl.appendChild(details);
+  levelUpSpellChoicesEl.classList.add("hidden");
+  levelUpSpellChoicesEl.classList.remove("level-up-spell-banner");
 }
 
 function canDrinkPotion(member) {
@@ -31715,6 +31708,9 @@ function appendPartyMemberSheet(target, session, member, renderCtx) {
         `HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level} | Clues ${member.clues || 0}`
       )
     );
+    if (spellPickPending) {
+      appendPendingLevelUpSpellChoice(body, member);
+    }
     const hungerLine = hungerLabelForMember(session, member);
     if (hungerLine) {
       body.appendChild(subline(`Hunger: ${hungerLine} (24h without food → Hungry, then −1 Life per 24h)`));

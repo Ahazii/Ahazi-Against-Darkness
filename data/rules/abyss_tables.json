@@ -124,8 +124,10 @@
       "life": 1,
       "attacks": 0,
       "treasure_rolls": 0,
-      "tags": ["abyss", "fungus", "no_wandering"],
-      "summary": "Do not attack; spells at -1; wandering monsters arrive if not killed within 2 turns.",
+      "reaction_table": "Abyss Shrieking Fungi",
+      "per_turn_effects": [{"type": "attract_wandering_after_turns", "turns": 2}],
+      "tags": ["abyss", "fungus", "sleep_immune", "fireball_penalty:-1", "spellcasting_penalty:-1", "no_wandering"],
+      "summary": "Do not attack; spells at -1; immune to Sleep; Fireball at -1 (net -2); wandering monsters arrive if not killed within 2 turns and surprise the party. Reroll when generated as wandering monsters.",
       "source_page": 49
     },
     {
@@ -233,7 +235,7 @@
       "attacks": 1,
       "treasure_rolls": 1,
       "reaction_table": "Abyss Flying Skulls",
-      "tags": ["abyss", "undead", "flying"],
+      "tags": ["abyss", "undead", "flying", "crushing_weapon_bonus:+1", "arrow_attack_penalty:-2", "natural_one_melee_disarm"],
       "summary": "Crushing +1; arrows -2; natural 1 melee can disarm the attacker.",
       "source_page": 52
     },
@@ -282,7 +284,7 @@
     {"roll": "2", "name": "Giant Constrictor Snake", "level": 7, "life": 6, "attacks": 1, "treasure_rolls": 0, "tags": ["abyss", "snake"], "summary": "Failed Defense constricts for 1 Life per turn until killed or escaped.", "source_page": 56},
     {"roll": "3", "name": "Minor Vampire", "level": 8, "life": 6, "attacks": 1, "treasure_rolls": 0, "tags": ["abyss", "undead", "vampire", "magic_weapon_required"], "on_hit_effects": [{"type": "level_drain", "save_type": "magic", "save_level": 4}], "summary": "Vampire restrictions; damage can cause level loss.", "source_page": 56},
     {"roll": "4", "name": "Werewolf", "level": 8, "life": 8, "attacks": 2, "treasure_rolls": 2, "tags": ["abyss", "werecreature"], "on_hit_effects": [{"type": "status", "status": "Lycanthropy exposure", "save_type": "infection", "save_level": 5, "timing": "end_of_encounter"}], "summary": "Silver +1; wounded heroes save vs L5 infection for lycanthropy at encounter end.", "source_page": 56},
-    {"roll": "5", "name": "Phasing Panther", "level": 7, "life": 5, "attacks": 3, "treasure_rolls": 2, "tags": ["abyss", "beast", "always_first"], "summary": "Always attacks first; 4+ blink ignores a wound.", "source_page": 56},
+    {"roll": "5", "name": "Phasing Panther", "level": 7, "life": 5, "attacks": 3, "treasure_rolls": 2, "reaction_table": "Abyss Phasing Panther", "tags": ["abyss", "beast", "always_first", "avoid_wound_d6:4"], "summary": "Always attacks first; each hit: d6 4+ blink away and ignore that wound. Reactions: always fight.", "source_page": 56},
     {"roll": "6", "name": "Lich", "level": 10, "life": 8, "attacks": 4, "treasure_rolls": 3, "tags": ["abyss", "undead"], "encounter_start_effects": [{"type": "madness", "amount": 1}], "summary": "Meeting it causes Madness; fear save can impose -1 Attack; possible skeletal warriors.", "source_page": 56}
   ],
   "abyss_dragon_table": [
@@ -293,6 +295,25 @@
     {"roll": "5", "name": "Darkness Dragon", "level": 10, "life": 12, "attacks": 4, "treasure_rolls": 2, "tags": ["abyss", "dragon"], "summary": "Lightning spell deals extra damage.", "source_page": 58},
     {"roll": "6", "name": "Young Chaos Dragon", "level": 11, "life": 10, "attacks": 5, "treasure_rolls": 2, "tags": ["abyss", "dragon", "chaos"], "summary": "Blessing can adjust its reaction roll; varied reaction outcomes.", "source_page": 58}
   ],
+  "reaction_tables": {
+    "Abyss Phasing Panther": [
+      {
+        "roll": "1-6",
+        "key": "fight",
+        "result": "The phasing panther fights.",
+        "foes_first": true,
+        "source_page": 56
+      }
+    ],
+    "Abyss Shrieking Fungi": [
+      {
+        "roll": "1-6",
+        "key": "stand_and_shriek",
+        "result": "The shrieking fungi stand and shriek.",
+        "source_page": 49
+      }
+    ]
+  },
   "abyss_trap_table": [
     {"roll": "1", "key": "dart_shooting_mechanism", "name": "Dart Shooting Mechanism", "summary": "Level d8+3 trap attacks one random hero; failed poison save can inflict 2 wounds.", "source_page": 47},
     {"roll": "2", "key": "giant_metal_ball", "name": "Giant Metal Ball", "summary": "Spiked ball attacks all heroes; room level 7, corridor level 9.", "source_page": 47},
