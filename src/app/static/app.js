@@ -18765,15 +18765,22 @@ function renderLevelUpSpellChoices(session) {
   }
   levelUpSpellChoicesEl.classList.remove("hidden");
   levelUpSpellChoicesEl.classList.add("level-up-spell-banner");
-  levelUpSpellChoicesEl.appendChild(
-    node("span", "search-label", `${member.name} — pick spell for new slot (required before more XP):`)
+  const details = document.createElement("details");
+  details.className = "level-up-spell-pending-details";
+  const summary = document.createElement("summary");
+  summary.textContent = `${member.name}: choose spell for new Level ${member.level} slot`;
+  details.appendChild(summary);
+  details.appendChild(
+    subline("Choose one spell to finish this level-up before spending another pending XP roll or completing the adventure.")
   );
-  levelUpSpellChoicesEl.appendChild(subline(spellInventoryLine(member)));
-  levelUpSpellChoicesEl.appendChild(
+  details.appendChild(subline(spellInventoryLine(member)));
+  details.appendChild(
     subline("Duplicate prepared spells are allowed; choosing one you already have adds another castable slot.")
   );
-  appendLevelUpSpellPickButtons(levelUpSpellChoicesEl, member);
-  levelUpSpellChoicesEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const actions = node("div", "level-up-spell-pick-actions");
+  appendLevelUpSpellPickButtons(actions, member);
+  details.appendChild(actions);
+  levelUpSpellChoicesEl.appendChild(details);
 }
 
 function canDrinkPotion(member) {
@@ -23195,29 +23202,22 @@ function updateEquipmentShopTargetWeaponPanel() {
 }
 
 function expertFoeTargetOptions() {
-  const types = new Set();
   const names = new Set();
-  for (const entries of Object.values(state.monsterBestiary || {})) {
+  for (const [tableKey, entries] of Object.entries(state.monsterBestiary || {})) {
+    const normalizedTableKey = String(tableKey || "").toLowerCase();
+    const eligibleTable = /(^|_)(minions|boss|weird)(_|table)?$/.test(normalizedTableKey);
+    if (!eligibleTable) continue;
     for (const foe of entries || []) {
       const name = String(foe?.name || "").trim();
       if (name) names.add(name);
-      for (const tag of foe?.tags || []) {
-        const type = String(tag || "").trim().toLowerCase();
-        if (type) types.add(type);
-      }
     }
   }
   const collator = new Intl.Collator(undefined, { sensitivity: "base" });
   return [
-    ...[...types].sort(collator.compare).map((type) => ({
-      value: type,
-      label: `Type: ${titleCase(type.replace(/_/g, " "))}`,
-      title: `Apply the skill to every foe whose bestiary tags include ${type}.`,
-    })),
     ...[...names].sort(collator.compare).map((name) => ({
       value: name,
       label: `Foe: ${name}`,
-      title: `Apply the skill to foes whose name includes ${name}.`,
+      title: `Apply the skill to foes matching the named Minion, Boss, or Weird table entry ${name}.`,
     })),
   ];
 }
@@ -23225,11 +23225,11 @@ function expertFoeTargetOptions() {
 function chooseExpertFoeTarget(skillLabel) {
   return new Promise((resolve) => {
     openInventoryPickerDialog({
-      title: `${skillLabel}: choose foe type`,
-      note: "Choose a known foe type or named foe from the complete installed bestiary. This target is not limited to foes in the current encounter.",
+      title: `${skillLabel}: choose foe`,
+      note: "Choose a named foe from an installed Minion, Boss, or Weird monster table. This target is not limited to the current encounter.",
       items: expertFoeTargetOptions(),
-      selectLabel: "Foe type",
-      confirmLabel: "Choose foe type",
+      selectLabel: "Foe",
+      confirmLabel: "Choose foe",
       onConfirm: resolve,
       onCancel: () => resolve(""),
     });
@@ -25695,18 +25695,6 @@ function renderTileDetail(session) {
 
   const info = node("div", "map-room-info");
   info.appendChild(node("h3", "map-room-title", tile.title));
-  const pendingCaster = pendingLevelUpMember(session);
-  if (pendingCaster) {
-    const banner = node("div", "level-up-spell-pick");
-    banner.appendChild(
-      node("strong", "", `${pendingCaster.name} must choose a spell for the new Level ${pendingCaster.level} slot.`)
-    );
-    const pickRow = node("div", "level-up-spell-pick-actions");
-    if (appendLevelUpSpellPickButtons(pickRow, pendingCaster)) {
-      banner.appendChild(pickRow);
-      info.appendChild(banner);
-    }
-  }
   info.appendChild(
     subline(
       `${tile.tile_type} | ${tile.content_key} | ${tile.footprint_width || 1}x${tile.footprint_height || 1} squares | rotation ${tile.rotation || 0}deg`
@@ -32007,15 +31995,6 @@ function appendPartyMemberSheet(target, session, member, renderCtx) {
     } else if (session.mode === "combat") {
       const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
       appendMemberCombatActions(body, session, member, tile, livingFoes, reactionsOpen(session));
-    }
-    if (spellPickPending) {
-      const pick = node("div", "level-up-spell-pick");
-      pick.appendChild(node("strong", "", "Choose spell for new slot:"));
-      pick.appendChild(subline(spellInventoryLine(member)));
-      const pickRow = node("div", "level-up-spell-pick-actions");
-      appendLevelUpSpellPickButtons(pickRow, member);
-      pick.appendChild(pickRow);
-      body.appendChild(pick);
     }
     details.appendChild(body);
     details.addEventListener("toggle", () => {

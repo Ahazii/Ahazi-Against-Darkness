@@ -836,8 +836,10 @@ def _enemy_is_horde(enemy: EnemyState) -> bool:
 
 
 def _enemy_attack_repetitions(enemy: EnemyState, *, target_count: int) -> int:
+    if enemy.attacks <= 0:
+        return 0
     if not _enemy_is_horde(enemy):
-        return max(1, enemy.attacks)
+        return enemy.attacks
     from .abyss_tactics import horde_attacks_per_character
 
     return max(1, target_count) * horde_attacks_per_character(enemy)
@@ -1414,6 +1416,15 @@ def _resolve_pc_attack(
     use_illusion_knife = pc.character_id in context.illusionist_knife_throw_attackers and missile
     use_enchanted_weapon = has_enchanted_weapon_reward(pc) and weapon is not None and not force_unarmed
     target_level = _effective_foe_level_for_round(target, context)
+    if missile:
+        from .combat_modifiers import ranged_or_spell_target_level
+
+        ranged_target_level = ranged_or_spell_target_level(target)
+        if ranged_target_level != target.level:
+            target_level = ranged_target_level
+            log.append(
+                f"Effect: {target.name} is targeted as L{target_level} by ranged weapons and spells."
+            )
 
     if context.session is not None and "courtship_necrogaunt" in target.tags:
         from .courtship_combat import necrogaunt_rescue_blocks_melee
@@ -2792,6 +2803,18 @@ def resolve_combat_round(
                 show_rolls=show_rolls,
             )
         )
+    if session is not None and resume_after_bodyguard is None:
+        from .monster_template_effects import apply_pre_party_turn_effects
+
+        log.extend(
+            apply_pre_party_turn_effects(
+                living_enemies,
+                party,
+                session,
+                show_rolls=show_rolls,
+            )
+        )
+        living_enemies = [enemy for enemy in enemies if enemy.life > 0]
     if session is not None:
         for cid in context.mass_blessing_users:
             member = next((item for item in party if item.character_id == cid), None)

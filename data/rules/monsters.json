@@ -4295,6 +4295,28 @@
     }
   ],
   "reaction_tables": {
+    "Tentacled Brain": [
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The tentacled brain flees.",
+        "source_page": 55
+      },
+      {
+        "roll": "3-4",
+        "key": "bribe",
+        "result": "The tentacled brain demands a 300gp bribe.",
+        "gold": 300,
+        "source_page": 55
+      },
+      {
+        "roll": "5-6",
+        "key": "fight",
+        "result": "The tentacled brain fights.",
+        "foes_first": true,
+        "source_page": 55
+      }
+    ],
     "Abyss Hairy Goblins": [
       {
         "roll": "1-3",

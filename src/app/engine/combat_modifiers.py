@@ -30,6 +30,20 @@ def enemy_magic_resist_bonus(enemy: EnemyState, session: SessionState | None = N
 
 def spell_target_level(enemy: EnemyState) -> int:
     """Base foe level for the spell connect roll (p.97 step 1)."""
+    return ranged_or_spell_target_level(enemy)
+
+
+def ranged_or_spell_target_level(enemy: EnemyState) -> int:
+    """Return a foe's printed target level when attacked at range or by magic."""
+    for tag in enemy.tags:
+        prefix = "ranged_spell_target_level:"
+        text = str(tag).strip().lower()
+        if not text.startswith(prefix):
+            continue
+        try:
+            return max(1, int(text.removeprefix(prefix)))
+        except ValueError:
+            continue
     return enemy.level
 
 

@@ -125,12 +125,13 @@ def test_header_feedback_does_not_share_the_action_group() -> None:
     assert ".topbar .status" in STYLES_CSS
 
 
-def test_expert_target_picker_uses_complete_bestiary_not_free_text() -> None:
-    """Sworn Enemy/Impervious must use bestiary targets rather than window.prompt."""
+def test_expert_target_picker_uses_named_major_or_minion_bestiary_entries_not_free_text() -> None:
+    """Sworn Enemy/Impervious choose names from the printed eligible table families."""
     choices = _function_body("expertFoeTargetOptions", APP_JS)
     assert "state.monsterBestiary" in choices
-    assert "foe?.tags" in choices
+    assert "minions|boss|weird" in choices
     assert "foe?.name" in choices
+    assert "foe?.tags" not in choices
     skill_choices = _function_body("appendSkillLearnDetails", APP_JS)
     assert "await chooseExpertFoeTarget(option.label)" in skill_choices
     assert "Monster type for" not in skill_choices
@@ -869,8 +870,8 @@ def test_level_up_spell_picker_shows_existing_spell_slots() -> None:
     """
     assert "function spellInventoryLine(member)" in APP_JS
     assert "Current spell slots:" in APP_JS
-    assert "levelUpSpellChoicesEl.appendChild(subline(spellInventoryLine(member)))" in APP_JS
-    assert "pick.appendChild(subline(spellInventoryLine(member)))" in APP_JS
+    assert "details.appendChild(subline(spellInventoryLine(member)))" in APP_JS
+    assert 'details.className = "level-up-spell-pending-details"' in APP_JS
     assert "${spell} (+1 slot; already ${prepared})" in APP_JS
 
 

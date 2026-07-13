@@ -3266,7 +3266,8 @@ class RandomDungeonEngine:
             return
         session.scout_reaction_checked_tile_ids.append(detached_tile_id)
         scout_names = ", ".join(member.name for member in fighters)
-        if any("final_boss" in enemy.tags for enemy in living_enemies):
+        final_boss_reacts = any("allow_final_boss_reaction" in enemy.tags for enemy in living_enemies)
+        if any("final_boss" in enemy.tags for enemy in living_enemies) and not final_boss_reacts:
             session.log.append(f"{scout_names} checks reactions: the Final Boss fights to the death.")
             return
 
@@ -4844,7 +4845,8 @@ class RandomDungeonEngine:
         if session.reaction_checked:
             session.log.append("Reactions were already checked this encounter.")
             return
-        if any("final_boss" in enemy.tags for enemy in living_enemies):
+        final_boss_reacts = any("allow_final_boss_reaction" in enemy.tags for enemy in living_enemies)
+        if any("final_boss" in enemy.tags for enemy in living_enemies) and not final_boss_reacts:
             session.reaction_checked = True
             session.reaction_key = "fight_to_death"
             session.reaction_pending = False

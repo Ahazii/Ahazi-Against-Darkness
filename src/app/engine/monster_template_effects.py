@@ -310,6 +310,62 @@ def _resolve_save_damage_encounter_effect(
     return log
 
 
+def apply_pre_party_turn_effects(
+    enemies: list[EnemyState],
+    party: list[PartyMemberState],
+    session: SessionState,
+    *,
+    show_rolls: bool,
+) -> list[str]:
+    """Resolve template effects explicitly timed before any party action each round."""
+    log: list[str] = []
+    for enemy in enemies:
+        if enemy.life <= 0:
+            continue
+        for effect in enemy.per_turn_effects:
+            if str(effect.get("timing", "")).lower() != "before_party_actions":
+                continue
+            if str(effect.get("type", "")).lower() != "save_damage_madness":
+                continue
+            label = str(effect.get("label") or f"{enemy.name} effect")
+            save_level = resolve_effect_level(effect.get("save_level"), hcl=party_hcl(party), default=enemy.level)
+            save_type = str(effect.get("save_type") or "magic")
+            damage = max(0, int(effect.get("damage", 0)))
+            madness = max(0, int(effect.get("madness", 0)))
+            log.append(f"Event: {enemy.name} acts before the party can attack.")
+            for member in _living_targets(party, str(effect.get("target", "all_pcs"))):
+                passed, save_log = monster_effect_save(
+                    member,
+                    save_level,
+                    save_type,
+                    effect,
+                    label=label,
+                    show_rolls=show_rolls,
+                    session=session,
+                )
+                log.extend(save_log)
+                if passed:
+                    continue
+                if damage:
+                    member.current_life = max(0, member.current_life - damage)
+                    log.append(f"Effect: {member.name} loses {damage} Life ({member.current_life}/{member.max_life}).")
+                    if member.current_life <= 0:
+                        log.append(f"{member.name} falls.")
+                for _ in range(madness):
+                    from .madness import apply_madness_gain
+
+                    log.extend(
+                        apply_madness_gain(
+                            session,
+                            member,
+                            source=enemy.name,
+                            show_rolls=show_rolls,
+                            allow_damage_choice=False,
+                        )
+                    )
+    return log
+
+
 def _resolve_encounter_start_effect(
     enemy: EnemyState,
     effect: dict[str, Any],
