@@ -10,6 +10,7 @@ from app.engine.monster_template_effects import (
     template_encounter_start_effects,
     template_on_hit_effects,
 )
+from app.engine.spells import _cast_blessing
 from app.schemas import EnemyState, PartyMemberState, SessionState
 
 
@@ -142,3 +143,71 @@ def test_magic_attack_penalty_and_slime_disease_apply_statuses(monkeypatch) -> N
     lowered = {status.lower() for status in hero.statuses}
     assert "attack penalty (magic) -1" in lowered
     assert "slime disease" in lowered
+
+
+def test_chance_status_marks_each_unmarked_hero_separately(monkeypatch) -> None:
+    first = _hero(character_id="hero-1", name="First")
+    second = _hero(character_id="hero-2", name="Second")
+    session = _session([first, second])
+    ant_people = EnemyState(
+        id="ants-1",
+        name="Ant People Warriors",
+        category="vermin",
+        level=7,
+        life=1,
+        max_life=1,
+        encounter_start_effects=[{
+            "type": "chance_status",
+            "label": "chemical marker spray",
+            "target": "all_pcs",
+            "chance": "2-in-6",
+            "status": "Ant People chemical marker",
+        }],
+    )
+    rolls = iter([1, 4])
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_d6", lambda: next(rolls))
+
+    log = apply_encounter_start_effects([ant_people], [first, second], session, show_rolls=True)
+
+    assert "Ant People chemical marker" in first.statuses
+    assert "Ant People chemical marker" not in second.statuses
+    assert any("First rolls d6 = 1" in line for line in log)
+    assert any("Second rolls d6 = 4" in line for line in log)
+
+
+def test_status_on_hit_requires_its_declared_save(monkeypatch) -> None:
+    hero = _hero()
+    session = _session([hero])
+    ghoul_king = EnemyState(
+        id="ghoul-king",
+        name="Ghoul King",
+        category="boss",
+        level=10,
+        life=10,
+        max_life=10,
+        on_hit_effects=[{
+            "type": "status",
+            "status": "Paralyzed",
+            "save_type": "poison",
+            "save_level": 5,
+            "class_bonus": {"elf": "L"},
+        }],
+    )
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
+    apply_on_hit_effects(ghoul_king, hero, context=CombatContext(session=session), show_rolls=False)
+    assert "Paralyzed" not in hero.statuses
+
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+    apply_on_hit_effects(ghoul_king, hero, context=CombatContext(session=session), show_rolls=False)
+    assert "Paralyzed" in hero.statuses
+
+
+def test_blessing_clears_paralysis_and_ant_people_marker() -> None:
+    hero = _hero(class_id="cleric", class_name="Cleric")
+    hero.statuses = ["Paralyzed", "Ant People chemical marker"]
+    log: list[str] = []
+
+    _cast_blessing(hero, [hero], [], hero.character_id, log)
+
+    assert hero.statuses == []
+    assert any("Paralyzed" in line and "chemical marker" in line for line in log)

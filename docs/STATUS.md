@@ -1,9 +1,10 @@
 # Current Status
 
-Last updated: 2026-07-13
+Last updated: 2026-07-14
 
 ## Summary
 
+- **Abyss encounter-effect fidelity pass (v0.39.14):** The reusable monster-effect pipeline now supports per-hero chance status effects and saving throws before a status is applied on a successful foe hit. Ant People now make the printed separate 2-in-6 chemical-marker roll for each unmarked hero; the marker applies -1 Defense only against Ant People and Blessing removes it. Ghoul King-style paralysis now uses the printed save before applying, and a paralyzed hero is automatically hit when attacked while retaining their normal ability to act or cast. Dark Lord of Xichtul now carries structured two-damage and natural-one shield-break tags rather than a prose-only summary. The next manual check is limited to these effects plus the still-open camp/re-entry UI issue.
 - **Printed encounter text and Dark Plague correction (current build):** Active Abyss encounters now show their locally indexed exact PDF excerpt alongside the structured combat controls, and Swarm of Critters explains its printed Fireball-or-one-wound outcome before a player acts. Abyss p.37 grants Dark Plague immunity for the current adventure after a successful initial save, a successful Blessing cure, or an Elven Bread cure; the marker clears at adventure closeout.
 - **Dark Plague entry-save decision:** Abyss p.37 is the authoritative full procedure for Dark Plague contact. The event uses the p.37 **Level 10** disease save and all subsequent p.37 infection, cure, and adventure-immunity rules; the shorter p.59 event entry is treated as its trigger.
 
@@ -33,6 +34,8 @@ Last updated: 2026-07-13
 - **Manifest-declared packaged content sources (2026-07-11):** Built-in supplement manifests now list their structured data sources by content family. The runtime Workbench displays this read-only inventory beneath each supplement, so ownership no longer lives only in catalogue code: it distinguishes direct bestiaries/shop files from table-backed Abyss rewards and identifies the separate FD dungeon/river tile files. These declarations are audit metadata only and do not change loaders or gameplay.
 
 ## Next Manual Playtest
+
+- **v0.39.14 short fidelity check:** In one disposable EE + Abyss session with dungeon playtest controls enabled, force Ant People and confirm a separate d6 marker roll for each unmarked hero, -1 Defense only against Ant People, and Blessing removal. Force Ghoul King and confirm each wound prompts the printed L5 poison save (elves add Level); on a failed save, the next enemy attack automatically hits but the paralyzed hero can still cast Blessing. Force a Dark Lord leader and confirm every failed Defense loses 2 Life; a natural 1 Defense while carrying a shield destroys that shield. Force Dragon Man and confirm each living hero's L8 fire save is narrated before claws. Finally leave to camp, refresh, re-enter, and immediately leave again: both exit-intent choices must accurately reflect any pending XP. This camp/modal path remains open until the UI result is confirmed.
 
 - **v0.39.9 Forsaken Depths named-foe controls:** In an FD session with dungeon playtest controls enabled, select **FD foe encounter** and confirm the named selector groups Vermin, Minions, Hordes, Boss, Weird, and Citadel Weird. Run a Horde of Dark Elves and confirm it enters ordinary combat with its normal opening-volley tag/effect. Resolve it before selecting another test.
 - **v0.39.8 re-entry and combined playtest controls:** In an EE + Abyss session with **Show dungeon playtest controls during exploration** enabled, confirm the scenario selector contains both **Abyss foe encounter / Abyss unique event** and **EE foe encounter / EE Final Boss / EE Quest result**. Run one of each family only while no foes are present. Leave the dungeon after an explored room, bank carried gold, then choose **(Re)enter Dungeon**: the map must remain on the entrance after a normal refresh and its existing dungeon exits must work immediately without a forced browser refresh.

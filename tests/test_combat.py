@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.engine import combat
 from app.engine.class_combat import armor_defense_bonus
-from app.engine.combat import CombatContext, CombatRound, assign_enemy_attacks, can_melee_attack, resolve_combat_round, resolve_flee
+from app.engine.combat import CombatContext, CombatRound, assign_enemy_attacks, can_melee_attack, resolve_combat_round, resolve_foe_melee_on_member, resolve_flee
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
@@ -50,6 +50,92 @@ def test_combat_round_can_trace_rolls_and_math(monkeypatch) -> None:
     assert any("Defense roll: Hero vs Rat: 1 + 0 = 1." in entry for entry in result.log)
     assert any("Defense math: need total > enemy level 3 to avoid damage." in entry for entry in result.log)
     assert result.party[0].current_life == 2
+
+
+def test_paralyzed_hero_is_automatically_hit_but_dark_lord_damage_is_two() -> None:
+    hero = member(class_id="warrior")
+    hero.current_life = hero.max_life = 5
+    hero.statuses = ["Paralyzed"]
+    hero.inventory = ["Shield"]
+    dark_lord = EnemyState(
+        id="dark-lord",
+        name="Dark Lord of Xichtul",
+        category="boss",
+        level=11,
+        life=12,
+        max_life=12,
+        attacks=4,
+        tags=["damage_per_hit:2", "destroy_shield_on_defense_natural:1"],
+    )
+    tile = TileState(
+        id="tile",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Room",
+        description="Test room",
+    )
+    session = SessionState(
+        id="dark-lord-test",
+        party_id="party-1",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(tiles=[tile], current_tile_id=tile.id),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+
+    log = resolve_foe_melee_on_member(session, dark_lord, hero, show_rolls=True)
+
+    assert hero.current_life == 3
+    assert any("automatically hit" in line for line in log)
+    assert not any("Defense roll:" in line for line in log)
+
+
+def test_dark_lord_natural_one_defense_destroys_shield(monkeypatch) -> None:
+    hero = member(class_id="warrior")
+    hero.current_life = hero.max_life = 5
+    hero.inventory = ["Shield"]
+    dark_lord = EnemyState(
+        id="dark-lord",
+        name="Dark Lord of Xichtul",
+        category="boss",
+        level=11,
+        life=12,
+        max_life=12,
+        attacks=4,
+        tags=["damage_per_hit:2", "destroy_shield_on_defense_natural:1"],
+    )
+    tile = TileState(
+        id="tile",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Room",
+        description="Test room",
+    )
+    session = SessionState(
+        id="dark-lord-shield-test",
+        party_id="party-1",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(tiles=[tile], current_tile_id=tile.id),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+
+    log = resolve_foe_melee_on_member(session, dark_lord, hero, show_rolls=True)
+
+    assert hero.current_life == 3
+    assert "Shield" not in hero.inventory
+    assert any("destroys Hero's Shield" in line for line in log)
 
 
 def test_enchanted_weapon_rolls_two_attack_dice_keep_best(monkeypatch) -> None:

@@ -24,6 +24,7 @@ DOPPELGANGER_MIMIC_PREFIX = "Doppelganger mimics:"
 DISEASE_PENDING_PREFIX = "Disease pending:"
 EVIL_EYE_DEFENSE_STATUS = "Defense penalty (evil eye) -1"
 STIRGE_BLOOD_DRAIN_STATUS = "Stirge blood drain"
+ANT_PEOPLE_MARKER_STATUS = "Ant People chemical marker"
 FIRE_BREATH_USED_TAG = "fire_breath_used"
 RANDOM_POWER_TAG_PREFIX = "random_power:"
 
@@ -380,6 +381,32 @@ def _resolve_encounter_start_effect(
     show_rolls: bool,
 ) -> list[str]:
     effect_type = str(effect.get("type", "")).lower()
+    if effect_type == "chance_status":
+        chance = str(effect.get("chance", "1-in-6"))
+        status = str(effect.get("status", "")).strip()
+        if not status:
+            return []
+        label = str(effect.get("label") or status)
+        log = [f"Event: {enemy.name} uses {label} before combat."]
+        for member in _living_targets(party, str(effect.get("target", "all_pcs"))):
+            if status in member.statuses:
+                log.append(f"{member.name} is already marked; {enemy.name} does not spray them again.")
+                continue
+            succeeded, rolled, need, sides = chance_roll_succeeds(chance)
+            if show_rolls:
+                log.append(
+                    f"{label}: {member.name} rolls d{sides} = {rolled} "
+                    f"(marked on {need} or less)."
+                )
+            if succeeded:
+                _add_status(member, status)
+                log.append(
+                    f"Effect: {member.name} is marked: -1 Defense in this and later combats against ant people. "
+                    "Blessing or immersion in water removes the marker."
+                )
+            else:
+                log.append(f"{member.name} avoids the {label}.")
+        return log
     if effect_type == "extinguish_lanterns":
         chance = str(effect.get("chance", "2-in-6"))
         succeeded, rolled, need, sides = chance_roll_succeeds(chance)
@@ -1130,6 +1157,21 @@ def apply_on_hit_effects(
                     f"Effect: {target.name} is exposed to lycanthropy; save at encounter end."
                 )
             elif status:
+                save_level = effect.get("save_level") or effect.get("level")
+                if save_level is not None:
+                    passed, save_log = monster_effect_save(
+                        target,
+                        resolve_effect_level(save_level, hcl=enemy.level, default=enemy.level),
+                        str(effect.get("save_type", "magic")),
+                        effect,
+                        label=str(effect.get("label") or f"{enemy.name} {status} save"),
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                        session=session,
+                    )
+                    log.extend(save_log)
+                    if passed:
+                        continue
                 _add_status(target, status)
                 log.append(f"Effect: {target.name} gains status: {status}.")
         elif effect_type in {"magic", "disease", "petrification", "slime_disease"}:

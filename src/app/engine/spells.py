@@ -890,7 +890,13 @@ def _cast_blessing(
     target.statuses = [
         item
         for item in target.statuses
-        if item.lower() not in {"cursed", "petrified", "slime disease"}
+        if item.lower() not in {
+            "ant people chemical marker",
+            "cursed",
+            "paralyzed",
+            "petrified",
+            "slime disease",
+        }
         and item != PETRIFIED_STATUS
         and not item.lower().startswith("cordyceps infected")
     ]

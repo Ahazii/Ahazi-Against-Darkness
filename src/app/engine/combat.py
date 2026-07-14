@@ -401,6 +401,38 @@ def _charge_level_bonus(enemy: EnemyState, context: CombatContext) -> int:
     return 0
 
 
+def _enemy_tag_int(enemy: EnemyState, prefix: str, default: int = 0) -> int:
+    for tag in enemy.tags:
+        text = str(tag).lower()
+        if not text.startswith(prefix):
+            continue
+        try:
+            return int(text.split(":", 1)[1])
+        except (IndexError, ValueError):
+            return default
+    return default
+
+
+def _foe_hit_damage(enemy: EnemyState) -> int:
+    return max(1, _enemy_tag_int(enemy, "damage_per_hit:", default=1))
+
+
+def _destroy_shield_after_natural_one_defense(
+    enemy: EnemyState,
+    target: PartyMemberState,
+    defense_natural: int,
+    log: list[str],
+) -> None:
+    if defense_natural != _enemy_tag_int(enemy, "destroy_shield_on_defense_natural:"):
+        return
+    for item in list(target.inventory):
+        if "shield" not in item.lower():
+            continue
+        target.inventory.remove(item)
+        log.append(f"{enemy.name}'s attack destroys {target.name}'s {item} after the natural 1 Defense roll.")
+        return
+
+
 def _effective_foe_level_for_round(enemy: EnemyState, context: CombatContext) -> int:
     return effective_foe_level(enemy, context.foe_level_penalties) + _charge_level_bonus(enemy, context)
 
@@ -891,6 +923,11 @@ def _defense_bonus(
     if member.character_id == context.cursed_character_id:
         modifier -= 1
     if any("defense penalty (evil eye)" in status.lower() for status in member.statuses):
+        modifier -= 1
+    if (
+        any(status.lower() == "ant people chemical marker" for status in member.statuses)
+        and "ant_people" in enemy.tags
+    ):
         modifier -= 1
     include_shield = not (context.wandering_ambush and context.combat_round == 1)
     armor_bonus = armor_defense_bonus(
@@ -2086,6 +2123,33 @@ def _resolve_attacks(
     for attack_index, (enemy, target) in enumerate(attack_pairs):
         if target.current_life <= 0:
             continue
+        if any(status.lower() == "paralyzed" for status in target.statuses):
+            log.append(f"{target.name} is paralyzed and is automatically hit by {enemy.name}.")
+            damage = _foe_hit_damage(enemy)
+            if context.session is not None:
+                damage, pain_log = adjust_incoming_damage(context.session, target, damage)
+                log.extend(pain_log)
+            if damage:
+                from .party_life import apply_party_life_loss
+
+                life_before = target.current_life
+                applied = apply_party_life_loss(context.session, target, damage, log=log)
+                log.append(
+                    f"{target.name} takes {applied} damage from {enemy.name} "
+                    f"{party_life_change_text(target, life_before)}."
+                )
+            if target.current_life <= 0:
+                log.append(f"{target.name} falls.")
+            elif enemy_has_poison(enemy) or enemy.on_hit_effects:
+                _apply_foe_on_hit_effects(
+                    enemy,
+                    target,
+                    log,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    context=context,
+                )
+            continue
         if context.body_carrier_id and target.character_id == context.body_carrier_id:
             if consume_mirror_image(target):
                 log.append(f"A mirror image absorbs {enemy.name}'s attack on {target.name}.")
@@ -2098,7 +2162,7 @@ def _resolve_attacks(
             from .party_life import apply_party_life_loss
 
             target_life_before = target.current_life
-            applied = apply_party_life_loss(context.session, target, 1)
+            applied = apply_party_life_loss(context.session, target, _foe_hit_damage(enemy))
             if applied:
                 log.append(
                     f"{target.name} takes {applied} damage from {enemy.name} "
@@ -2150,7 +2214,7 @@ def _resolve_attacks(
 
             if fd_no_danger_here_active(target):
                 damage_target = target
-                damage = 1
+                damage = _foe_hit_damage(enemy)
                 if context.session.courtship_demesne_active:
                     from .courtship_combat import apply_courtship_on_foe_hit, courtship_skip_foe_damage
 
@@ -2503,7 +2567,8 @@ def _resolve_attacks(
                     if damage_target.current_life == 0:
                         log.append(f"{damage_target.name} falls.")
                     continue
-            damage = 1
+            _destroy_shield_after_natural_one_defense(enemy, damage_target, rolls[0], log)
+            damage = _foe_hit_damage(enemy)
             if context.session is not None:
                 damage, pain_log = adjust_incoming_damage(context.session, damage_target, damage)
                 log.extend(pain_log)
