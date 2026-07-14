@@ -19,11 +19,10 @@ This is the active player checklist only. Completed and superseded checks are re
 
 Start one disposable Classical EE + Abyss dungeon with an Elf, a Rogue, and ordinary combat equipment. Use the developer selector only while no encounter is active.
 
-1. Force **Ghoul King**. Let the Elf take a hit if practical. The Narrative must show the printed Level 5 paralysis save with the Elf's `+Level` modifier. On a failed save, the next enemy attack automatically hits; Blessing must still be available and clear Paralysis.
-2. Force **Dragon Man**. Before claw attacks, every living hero must make the displayed Level 8 dragon-fire save. Only Elves, Rogues, and Swashbucklers receive `+1`; Wizards receive no extra printed bonus. A failed save loses exactly 1 Life.
-3. Optional only if a hero naturally falls while carrying Clues or a Secret: confirm Party Sheets stay visible, a single compact **Recovery** opener appears, and its draggable window offers only valid actions. The fallen-transfer modal must then show every living recipient and resolve once. Do not manufacture a death in a non-disposable party just for this check.
+1. Force **Dragon Man**. Before claw attacks, every living hero must make the displayed Level 8 dragon-fire save. Only Elves, Rogues, and Swashbucklers receive `+1`; Wizards receive no extra printed bonus. A failed save loses exactly 1 Life.
+2. Optional only if a hero naturally falls while carrying Clues or a Secret: confirm Party Sheets stay visible, a single compact **Recovery** opener appears, and its draggable window offers only valid actions. The fallen-transfer modal must then show every living recipient and resolve once. Do not manufacture a death in a non-disposable party just for this check.
 
-Already passed and deliberately removed from this game: Ant People marker spray, Dark Plague Level 10 workflow, save/reload entrance restoration, 200gp carrying cap, left-behind treasure claim, Shrieking Fungi, Flying Skulls, Phasing Panther, Tentacled Brain, and ordinary EE table/sample checks.
+Already passed and deliberately removed from this game: Ant People marker spray, Dark Plague Level 10 workflow, Ghoul King Elf `+Level` save and Blessing cure, save/reload entrance restoration, 200gp carrying cap, left-behind treasure claim, Shrieking Fungi, Flying Skulls, Phasing Panther, Tentacled Brain, and ordinary EE table/sample checks. The Ghoul King automatic-hit-after-failed-save outcome was not rolled before the foe died; leave it as passive future evidence rather than repeating the encounter.
 
 ## Game 2: Forsaken Depths
 

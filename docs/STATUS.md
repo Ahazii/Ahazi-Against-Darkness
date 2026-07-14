@@ -38,7 +38,7 @@ Last updated: 2026-07-14
 ## Next Manual Playtest
 
 
-The active player checklist is [PLAYTEST_PLAN.md](PLAYTEST_PLAN.md). It intentionally contains only the current unproven recovery, Ghoul King, Dragon Man, Forsaken Depths, and TAG checks. Do not repeat prior passing Ant People, Dark Plague, treasure, re-entry, or generic table checks unless a later change reopens them.
+The active player checklist is [PLAYTEST_PLAN.md](PLAYTEST_PLAN.md). It intentionally contains only the current unproven recovery, Dragon Man, Forsaken Depths, and TAG checks. The Ghoul King Elf `+Level` save, failed-save status, and Blessing cure were confirmed on 2026-07-14; the automatic-hit-after-failed-save result remains passive future evidence only. Do not repeat prior passing Ant People, Dark Plague, treasure, re-entry, or generic table checks unless a later change reopens them.
 
 ### Historical Manual Test Records
 
