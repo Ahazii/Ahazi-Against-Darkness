@@ -1,6 +1,6 @@
 # Consolidated Playtest Plan
 
-Last updated: 2026-07-14. Target build: v0.39.12.
+Last updated: 2026-07-14. Target build: v0.39.13.
 
 This plan covers the current manual regression backlog in three practical games. It deliberately does not claim to sign off the 172-row foe audit: every pending foe still needs its PDF row compared, structured mechanics checked, and a focused regression test before it can be marked reviewed in `docs/audits/FOE_RULE_AUDIT.md`.
 

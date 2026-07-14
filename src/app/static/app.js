@@ -3317,6 +3317,12 @@ function spellCastPayload(casterId, spellName, extra = {}) {
       const chosen = state.spellFoeTargets?.[casterId];
       payload.foe_id =
         chosen && livingFoes.some((foe) => foe.id === chosen) ? chosen : livingFoes[0].id;
+      if (key === "infallible_missile" && member && member.level >= 8) {
+        const secondary = state.spellSecondaryFoeTargets?.[casterId];
+        if (secondary && livingFoes.some((foe) => foe.id === secondary)) {
+          payload.secondary_foe_id = secondary;
+        }
+      }
       if (key === "water_jet") {
         const waterJetMode = state.spellAimModes?.[waterJetEffectKey(casterId)];
         if (waterJetMode) payload.spell_target_mode = waterJetMode;
@@ -9507,7 +9513,7 @@ function spellTooltip(spellName, session = null, member = null) {
     parts.push("All allies except caster heal 2 Life; vampires in play lose 2 Life.");
   }
   if (key === "infallible_missile") {
-    parts.push("Automatically inflicts 1 wound; each exploding roll chains another wound to the same or another foe.");
+    parts.push("Automatically inflicts 1 wound; each exploding roll chains another wound to the same or another foe. Level 8+ creates two missiles, each aimed independently.");
   }
   if (key === "lifeforce_control") {
     parts.push("Transfer Life from caster to a living ally, or equal damage to a vampire foe.");
@@ -9662,6 +9668,28 @@ function appendSpellTargetingRows(container, session, member, livingFoes, extraS
       })
     );
     container.appendChild(foeRow);
+  }
+
+  if (
+    spells.some((spell) => normalizeSpellKey(spell) === "infallible_missile") &&
+    member.level >= 8 &&
+    livingFoes.length > 1
+  ) {
+    const secondRow = node("div", "combat-target-row");
+    secondRow.appendChild(document.createTextNode("Second missile:"));
+    secondRow.appendChild(
+      createFoeTargetSelect(livingFoes, {
+        value: state.spellSecondaryFoeTargets?.[member.character_id],
+        onChange: (foeId) => {
+          state.spellSecondaryFoeTargets[member.character_id] = foeId;
+        },
+      })
+    );
+    setTooltip(
+      secondRow,
+      "Infallible Missile (Abyss p.24): a Level 8+ wizard creates two missiles. Choose the second missile's target; it may match the first target."
+    );
+    container.appendChild(secondRow);
   }
 
   if (spells.some((spell) => normalizeSpellKey(spell) === "lifeforce_control")) {
@@ -21821,6 +21849,12 @@ function echoSpellCastPayload(session, pending) {
     ) {
       payload.foe_id =
         foePick && livingFoes.some((foe) => foe.id === foePick) ? foePick : livingFoes[0].id;
+      if (key === "infallible_missile" && member && member.level >= 8) {
+        const secondary = state.echoSpellSecondaryFoeTargets?.[casterId] || pending.secondary_foe_id;
+        if (secondary && livingFoes.some((foe) => foe.id === secondary)) {
+          payload.secondary_foe_id = secondary;
+        }
+      }
     }
   }
   return payload;
@@ -21896,6 +21930,24 @@ function renderEchoSpellChoices(session) {
         })
       );
       echoSpellChoicesEl.appendChild(foeRow);
+      if (key === "infallible_missile" && member?.level >= 8 && livingFoes.length > 1) {
+        const secondRow = document.createElement("div");
+        secondRow.className = "echo-spell-target-row";
+        secondRow.appendChild(node("span", "echo-spell-target-label", "Second missile:"));
+        secondRow.appendChild(
+          createFoeTargetSelect(livingFoes, {
+            value: state.echoSpellSecondaryFoeTargets[pending.caster_id],
+            onChange: (foeId) => {
+              state.echoSpellSecondaryFoeTargets[pending.caster_id] = foeId;
+            },
+          })
+        );
+        setTooltip(
+          secondRow,
+          "Infallible Missile (Abyss p.24): a Level 8+ wizard creates two missiles. Choose the second missile's target; it may match the first target."
+        );
+        echoSpellChoicesEl.appendChild(secondRow);
+      }
     }
   }
 

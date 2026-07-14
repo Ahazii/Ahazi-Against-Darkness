@@ -556,7 +556,8 @@ Defer to later releases:
   implemented gameplay.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
   Protective Incense ally, Phantasmal Binding / Water Jet foe rows. Infallible Missile
-  follows Abyss p.24: one automatic wound, then another only for each exploding chain roll.
+  follows Abyss p.24: one automatic wound per missile, exploding chains, and two independently
+  targeted missiles for Level 8+ casters.
 - **Class tricks (Tiers 1–4, full):** acrobat tricks (incl. Knife Throw), assassin hide, illusionist distract/light/knife,
   gnome smokescreen/gadget/door/trap/free prisoner, mushroom spores/hyphae (four choices),
   paladin steed (+1 mounted outdoors), light gladiator/swashbuckler combat styles, bulwark limited healing,

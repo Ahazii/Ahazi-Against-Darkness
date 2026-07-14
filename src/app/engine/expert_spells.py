@@ -164,6 +164,16 @@ def cast_infallible_missile(
         target_foe_id=target_foe_id,
         label="Infallible Missile",
     )
+    if caster.level >= 8 and any(enemy.life > 0 for enemy in enemies):
+        log.append(f"{caster.name} creates a second Infallible Missile (Level 8+).")
+        _run_infallible_missile(
+            caster,
+            enemies,
+            log,
+            show_rolls=show_rolls,
+            target_foe_id=secondary_foe_id or target_foe_id,
+            label="Second Infallible Missile",
+        )
     combat_over = not any(enemy.life > 0 for enemy in enemies)
     return SpellOutcome(log, enemies, party, combat_over=combat_over, spell_consumed=True)
 

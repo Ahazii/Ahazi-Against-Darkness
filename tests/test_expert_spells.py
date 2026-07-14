@@ -107,8 +107,8 @@ def test_infallible_missile_slays_minion(monkeypatch) -> None:
     assert outcome.combat_over is True
 
 
-def test_infallible_missile_has_one_automatic_wound_at_level_eight(monkeypatch) -> None:
-    rolls = iter([(2, [2])])
+def test_infallible_missile_has_two_automatic_wounds_at_level_eight(monkeypatch) -> None:
+    rolls = iter([(2, [2]), (2, [2])])
     monkeypatch.setattr(expert_spells, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
     caster = wizard(level=8)
     foes = [goblin(foe_id="g1"), goblin(foe_id="g2")]
@@ -120,9 +120,11 @@ def test_infallible_missile_has_one_automatic_wound_at_level_eight(monkeypatch) 
         log,
         show_rolls=False,
         target_foe_id="g1",
+        secondary_foe_id="g2",
     )
     assert foes[0].life == 0
-    assert foes[1].life == 1
+    assert foes[1].life == 0
+    assert any("second Infallible Missile" in line for line in log)
     assert any("does not explode" in line.lower() for line in log)
 
 
