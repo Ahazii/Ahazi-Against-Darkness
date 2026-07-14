@@ -1,58 +1,47 @@
-# Consolidated Playtest Plan
+# Current Playtest Plan
 
 Last updated: 2026-07-14. Target build: v0.39.16.
 
-## Immediate Fidelity Check
+This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
-Before resuming the three-game regression plan, run one short disposable EE + Abyss game with dungeon playtest controls enabled. The prior Workbench ownership sample, ordinary save/reload, 200gp carrying cap, exit blocking, Phasing Panther, Shrieking Fungi, Tentacled Brain, and Fools' Gold bribe checks have already produced useful passing evidence and do not need repeating in this run.
+## Before Testing
 
-First, if a hero falls, confirm Party Sheets remain visible and only one compact **Recovery** opener is shown. Its draggable window must list only valid carry, set-down, resurrection, or lay-to-rest choices, and must disappear when recovery is no longer applicable.
+1. Deploy the latest image and force-refresh until the header shows `v0.39.16`.
+2. In Developer Playtest Preferences, enable **dungeon playtest controls**. Leave TAG fixed-result controls off until Game 3.
+3. Keep **Copy Narrative Report** available. Copy one after any failure and after each closeout.
 
-1. Force **Ant People Warriors**, then choose **Fight Round** so combat begins. Confirm every unmarked living hero receives a separate displayed 2-in-6 chemical-marker roll. A marked hero has -1 Defense only against Ant People; cast Blessing and confirm the marker clears. If a Reaction makes the Ant People flee first, the absence of the marker roll is correct because combat never began.
-2. Force **Ghoul King**. Each hero wounded by it must make the printed L5 poison save, with an elf adding Level. On a failed save, confirm the next foe attack automatically hits that hero; the hero must still be able to cast Blessing, which removes paralysis. The Narrative must visibly include the elf’s `+Level` modifier.
-3. Force **Chaos Fanatics** with a Dark Lord leader. Confirm a failed Defense against the Dark Lord loses exactly 2 Life. If a shield-equipped hero rolls a natural 1 on Defense, confirm the shield is destroyed. If a hero carrying Clues or a Secret falls, the mandatory transfer dialog must list living recipients and resolve before other play can continue. Do not repeat solely to manufacture a natural 1 or a fallen hero; record either if it occurs.
-4. Force **Dragon Man**. Confirm the Narrative shows every L8 dragon-fire save before ordinary claw attacks, including the printed +1 only for elves, rogues, and swashbucklers.
-5. Leave to camp, refresh, re-enter, and immediately use the dungeon exit again. The two choices must reflect the real pending-XP state without a hard refresh. This remains an open regression item.
+## No New Game Needed
 
-This plan covers the current manual regression backlog in three practical games. It deliberately does not claim to sign off the 172-row foe audit: every pending foe still needs its PDF row compared, structured mechanics checked, and a focused regression test before it can be marked reviewed in `docs/audits/FOE_RULE_AUDIT.md`.
+1. Resume the repaired current session. Party Sheets must remain fully visible and there must be no Recovery control, body carrier, fallen-body marker, or pending transfer.
+2. This verifies the live stale-marker repair only. Do not deliberately create another recovery situation in this valuable session.
 
-## Before Games
+## Game 1: EE + Abyss Targeted Check
 
-1. In Developer Playtest Preferences, enable **dungeon playtest controls**. Leave **TAG fixed-result controls** off for now; enable that separate switch only before Game 3, where it exposes a fixed Rumor, Treasure Map, Thematic Dungeon, or Guild Job result instead of a random TAG lead. Enabling either preference does nothing until a selected developer override is run.
-2. In Developer > Supplement Workbench, confirm the installed EE, Abyss, and FD runtime branches are read-only and their tables/foes show under the correct book.
-3. Start from a clean browser refresh. Confirm that existing active roster states are expected; a live in-dungeon state is now mirrored to the locked roster, while combat-only buffs are not.
-4. Keep Copy Narrative Report available. Copy it after each forced special encounter and after each game closeout.
+Start one disposable Classical EE + Abyss dungeon with an Elf, a Rogue, and ordinary combat equipment. Use the developer selector only while no encounter is active.
 
-## Game 1: EE + Abyss Regression
+1. Force **Ghoul King**. Let the Elf take a hit if practical. The Narrative must show the printed Level 5 paralysis save with the Elf's `+Level` modifier. On a failed save, the next enemy attack automatically hits; Blessing must still be available and clear Paralysis.
+2. Force **Dragon Man**. Before claw attacks, every living hero must make the displayed Level 8 dragon-fire save. Only Elves, Rogues, and Swashbucklers receive `+1`; Wizards receive no extra printed bonus. A failed save loses exactly 1 Life.
+3. Optional only if a hero naturally falls while carrying Clues or a Secret: confirm Party Sheets stay visible, a single compact **Recovery** opener appears, and its draggable window offers only valid actions. The fallen-transfer modal must then show every living recipient and resolve once. Do not manufacture a death in a non-disposable party just for this check.
 
-Start one Classical random dungeon with EE + Abyss. Use a four-hero party including an elf or wizard, a rogue, and a crushing weapon plus a bow. This single game covers shared exploration, camp, EE, and Abyss behaviour.
+Already passed and deliberately removed from this game: Ant People marker spray, Dark Plague Level 10 workflow, save/reload entrance restoration, 200gp carrying cap, left-behind treasure claim, Shrieking Fungi, Flying Skulls, Phasing Panther, Tentacled Brain, and ordinary EE table/sample checks.
 
-1. Explore one ordinary room, open an exit, save, reload, return through the exit, then Search. Leave treasure behind once, trigger a wandering encounter by Searching, and later Claim Treasure. Confirm every item/gp appears only once and the 200gp cap leaves only the excess behind.
-2. Return to camp, bank carried gold, and re-enter. The map must show the entrance and its usable exits immediately before and after a normal browser refresh.
-3. In the developer selector, confirm both Abyss and EE options appear. Force **Chaos Fanatics** (Abyss Minions, d6=6) once normally and once with **Force leader**. The Narrative must state the ordinary 2-in-6 leader check or the explicit developer override, and the forced encounter must include Dark Lord Xichtul. Resolve the normal Reaction flow; record a Trial of Champions only if its reaction result occurs naturally.
-4. Resolve five forced Abyss Minion encounters. The room detail/narrative must count **1/5 through 5/5 Abyss minions** separately from ordinary 10-minor progress, then award exactly one XP roll. A standard Vermin encounter before or after this must not alter that Abyss tally.
-5. Run **Dark Plague** once. Confirm that the Narrative names the exposed hero, the printed **Level 10** p.37 save, result, resulting state, and later room-entry effect. A successful save, Blessing cure, or Elven Bread cure grants **Dark Plague immunity** for the current adventure only; it clears during closeout.
-6. Run these Abyss foe encounters, resolving each before the next: Shrieking Fungi, Flying Skulls, Phasing Panther, Tentacled Brain, and Dragon Man. Confirm the active encounter shows its indexed printed-rule excerpt, then check only the visible named special rule. Do not try to force every die result in this game. For **Infallible Missile**, confirm one automatic wound; only an explicitly logged exploding chain may cause another wound.
-7. Run one EE foe from each group with a visible mechanic: core, Caverns, Fungal Grottoes, and Fiendish Foes. Confirm the selected name, normal Reaction flow, and its visible combat effect. Use one Weird or Boss as an EE Final Boss, claim treasure, exit, and complete the adventure. The final-boss log must show the major-foe tally and must not create a resumable session after closeout.
-8. Before closeout, use EE Quest result to inspect one Quest route. Confirm the Quest Details panel identifies the printed result. In the eligible hero sheet, spend or bank one pending XP roll. Confirm the skill/spell choices are eligible, the resulting choice remains on that hero's sheet, and no duplicate chooser appears in the sidebar.
+## Game 2: Forsaken Depths
 
-## Game 2: Forsaken Depths Regression
+Start one disposable Forsaken Depths dungeon with a tier-appropriate four-hero party.
 
-Start one FD dungeon with a tier-appropriate four-hero party. Enable the same dungeon playtest controls.
+1. Force one FD Vermin, Minion, Horde of Dark Elves, Boss, Weird, and Citadel-Weird. Confirm the named foe enters ordinary combat and the Horde's opening volley is visible.
+2. Force one Citadel, preferably **Citadel of Traps** or **Magic Citadel**. Confirm the side sheet opens, one normal room is generated, and the return/exit route works.
+3. During exploration, resolve one FD hazard or trap and one treasure or current-event choice. Save and reload while the FD side sheet, state, or quest is active; confirm it restores intact.
+4. If offered, accept Lady in Gray or Cyclopean Idol. Confirm Ongoing Quests shows the progress condition and one reward or choice path.
 
-1. Confirm the selector has FD foe encounter and Forsaken Depths Citadel. Run Horde of Dark Elves; confirm the normal opening volley and combat handling. Then run one Vermin, Minion, Boss, Weird, and Citadel-Weird row, resolving each normally. Copy one Narrative Report after the first forced FD foe and the Citadel.
-2. Force one Citadel result, preferably Citadel of Traps or Magic Citadel. Confirm the FD side sheet opens and normal room generation works. Complete enough of it to verify the return/exit path.
-3. During ordinary exploration, exercise one FD room hazard or trap, one treasure choice, and one current-event choice if offered. Save/reload while an FD state, quest, or side sheet is active; confirm it returns intact.
-4. If practical, trigger Lady in Gray or the Cyclopean Idol and accept one Quest. Verify the Ongoing Quests panel, the stated progress condition, and one reward/choice path.
+## Game 3: Adventures Guild
 
-## Game 3: TAG Regression
+Enable **TAG fixed-result controls** immediately before this game. Start one generated lead from the family least recently checked.
 
-Start or generate one Adventures Guild lead using the fixed-result selector. Choose the lead family least recently tested; repeat this game only for other lead families when a specific route needs review.
+1. Confirm the selected Rumor, Treasure Map, Thematic Dungeon, or Guild Job is visibly marked as a developer override and the prompt/branch wording matches the extracted local narrative.
+2. Follow one branch through an encounter or handoff. Confirm its reward policy: no loot, scene reward, purchase/service, no automatic room loot, or handoff-dungeon loot.
+3. Complete its signoff workflow. Confirm route marker, reward, XP, Guild share, and dashboard return work, and no resumable active session remains after closeout.
 
-1. Enable **TAG fixed-result controls** immediately before this game. Confirm the selected Rumor, Treasure Map, Thematic Dungeon, or Guild Job is visibly labelled as a developer override and its prompt text/branch buttons match the local extracted narrative.
-2. Follow one branch through an encounter or handoff, then verify the applicable reward policy: no loot, scene reward, purchase/service, no automatic room loot, or handoff dungeon loot.
-3. Run its closeout/signoff workflow, including any route marker, reward, XP, Guild share, and dashboard return. Confirm it does not leave a resumable active session after complete closeout.
+## Record Failures
 
-## Result Recording
-
-For every failure, record: game number, selected developer scenario, exact foe/result, current map element, action taken, and the Copy Narrative Report. A passing forced encounter proves that selected path only; it is not a blanket signoff for other rows in the same PDF table.
+For a failure, provide the game number, selected developer scenario, exact foe/result, current map element, action taken, and a Copy Narrative Report. A passing forced encounter proves that selected row only; it does not sign off an entire PDF table.
