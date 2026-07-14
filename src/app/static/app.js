@@ -504,6 +504,10 @@ const bankDepositBtn = document.getElementById("bank-deposit");
 const bankWithdrawBtn = document.getElementById("bank-withdraw");
 const bankDepositPartyBtn = document.getElementById("bank-deposit-party");
 const dungeonExitDialog = document.getElementById("dungeon-exit-dialog");
+const fallenTransferDialog = document.getElementById("fallen-transfer-dialog");
+const fallenTransferNote = document.getElementById("fallen-transfer-note");
+const fallenTransferOptions = document.getElementById("fallen-transfer-options");
+fallenTransferDialog?.addEventListener("cancel", (event) => event.preventDefault());
 const adventureCloseoutDialog = document.getElementById("adventure-closeout-dialog");
 const adventureCloseoutDialogForm = document.getElementById("adventure-closeout-dialog-form");
 const adventureCloseoutNote = document.getElementById("adventure-closeout-note");
@@ -22142,39 +22146,47 @@ function renderEnvenomChoices(session) {
 }
 
 function renderFallenTransferChoices(session) {
-  if (!fallenTransferChoicesEl) return;
-  fallenTransferChoicesEl.replaceChildren();
+  fallenTransferChoicesEl?.replaceChildren();
   const pending = session.pending_fallen_transfer;
   if (!pending) {
-    fallenTransferChoicesEl.classList.add("hidden");
+    fallenTransferChoicesEl?.classList.add("hidden");
+    if (fallenTransferDialog?.open) fallenTransferDialog.close();
     return;
   }
   const from = (session.party || []).find((member) => member.character_id === pending.from_character_id);
   const living = (session.party || []).filter((member) => member.current_life > 0);
   if (!from || !living.length) {
-    fallenTransferChoicesEl.classList.add("hidden");
+    fallenTransferChoicesEl?.classList.add("hidden");
+    if (fallenTransferDialog?.open) fallenTransferDialog.close();
     return;
   }
   const label = pending.kind === "clues" ? "Clues" : "Secrets";
-  fallenTransferChoicesEl.classList.remove("hidden");
-  fallenTransferChoicesEl.appendChild(
-    node(
-      "span",
-      "search-label",
-      `${from.name} has fallen. Choose who inherits their ${label}.`
-    )
-  );
+  const message = `${from.name} has fallen. Choose which living hero inherits their ${label}.`;
+  fallenTransferChoicesEl?.classList.remove("hidden");
+  fallenTransferChoicesEl?.appendChild(node("span", "search-label", message));
+  fallenTransferOptions?.replaceChildren();
+  if (fallenTransferNote) fallenTransferNote.textContent = message;
   for (const member of living) {
-    const button = node("button", "secondary", member.name);
-    button.type = "button";
-    button.addEventListener("click", () =>
+    const inherit = () => {
+      if (fallenTransferDialog?.open) fallenTransferDialog.close();
       advance("resolve_fallen_transfer", {
         target_character_id: member.character_id,
         fallen_transfer_kind: pending.kind,
-      })
-    );
-    fallenTransferChoicesEl.appendChild(button);
+      });
+    };
+    const inlineButton = node("button", "secondary", member.name);
+    inlineButton.type = "button";
+    inlineButton.addEventListener("click", inherit);
+    setButtonTooltip(inlineButton, `Transfer ${from.name}'s ${label} to ${member.name}. This is required before play can continue.`);
+    fallenTransferChoicesEl?.appendChild(inlineButton);
+
+    const dialogButton = node("button", "secondary", `Give to ${member.name}`);
+    dialogButton.type = "button";
+    dialogButton.addEventListener("click", inherit);
+    setButtonTooltip(dialogButton, `Transfer ${from.name}'s ${label} to ${member.name}. This is required before play can continue.`);
+    fallenTransferOptions?.appendChild(dialogButton);
   }
+  if (fallenTransferDialog && !fallenTransferDialog.open) fallenTransferDialog.showModal();
 }
 
 function renderMantlebeastChoices(session) {

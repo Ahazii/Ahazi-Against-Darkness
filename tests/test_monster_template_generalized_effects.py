@@ -176,7 +176,7 @@ def test_chance_status_marks_each_unmarked_hero_separately(monkeypatch) -> None:
 
 
 def test_status_on_hit_requires_its_declared_save(monkeypatch) -> None:
-    hero = _hero()
+    hero = _hero(class_id="elf", class_name="Elf", level=7)
     session = _session([hero])
     ghoul_king = EnemyState(
         id="ghoul-king",
@@ -193,7 +193,7 @@ def test_status_on_hit_requires_its_declared_save(monkeypatch) -> None:
             "class_bonus": {"elf": "L"},
         }],
     )
-    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
     apply_on_hit_effects(ghoul_king, hero, context=CombatContext(session=session), show_rolls=False)
     assert "Paralyzed" not in hero.statuses
 

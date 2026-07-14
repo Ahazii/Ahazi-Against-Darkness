@@ -1,14 +1,14 @@
 # Consolidated Playtest Plan
 
-Last updated: 2026-07-14. Target build: v0.39.14.
+Last updated: 2026-07-14. Target build: v0.39.15.
 
 ## Immediate Fidelity Check
 
 Before resuming the three-game regression plan, run one short disposable EE + Abyss game with dungeon playtest controls enabled. The prior Workbench ownership sample, ordinary save/reload, 200gp carrying cap, exit blocking, Phasing Panther, Shrieking Fungi, Tentacled Brain, and Fools' Gold bribe checks have already produced useful passing evidence and do not need repeating in this run.
 
-1. Force **Ant People Warriors**. Confirm every unmarked living hero receives a separate displayed 2-in-6 chemical-marker roll. A marked hero has -1 Defense only against Ant People; cast Blessing and confirm the marker clears.
-2. Force **Ghoul King**. Each hero wounded by it must make the printed L5 poison save, with an elf adding Level. On a failed save, confirm the next foe attack automatically hits that hero; the hero must still be able to cast Blessing, which removes paralysis.
-3. Force **Chaos Fanatics** with a Dark Lord leader. Confirm a failed Defense against the Dark Lord loses exactly 2 Life. If a shield-equipped hero rolls a natural 1 on Defense, confirm the shield is destroyed. Do not repeat solely to manufacture a natural 1; record it if it occurs.
+1. Force **Ant People Warriors**, then choose **Fight Round** so combat begins. Confirm every unmarked living hero receives a separate displayed 2-in-6 chemical-marker roll. A marked hero has -1 Defense only against Ant People; cast Blessing and confirm the marker clears. If a Reaction makes the Ant People flee first, the absence of the marker roll is correct because combat never began.
+2. Force **Ghoul King**. Each hero wounded by it must make the printed L5 poison save, with an elf adding Level. On a failed save, confirm the next foe attack automatically hits that hero; the hero must still be able to cast Blessing, which removes paralysis. The Narrative must visibly include the elf’s `+Level` modifier.
+3. Force **Chaos Fanatics** with a Dark Lord leader. Confirm a failed Defense against the Dark Lord loses exactly 2 Life. If a shield-equipped hero rolls a natural 1 on Defense, confirm the shield is destroyed. If a hero carrying Clues or a Secret falls, the mandatory transfer dialog must list living recipients and resolve before other play can continue. Do not repeat solely to manufacture a natural 1 or a fallen hero; record either if it occurs.
 4. Force **Dragon Man**. Confirm the Narrative shows every L8 dragon-fire save before ordinary claw attacks, including the printed +1 only for elves, rogues, and swashbucklers.
 5. Leave to camp, refresh, re-enter, and immediately use the dungeon exit again. The two choices must reflect the real pending-XP state without a hard refresh. This remains an open regression item.
 

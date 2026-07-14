@@ -102,8 +102,10 @@ def chance_roll_succeeds(chance: str, *, roll: int | None = None) -> tuple[bool,
 def _effect_save_modifier(member: PartyMemberState, effect: dict[str, Any]) -> int:
     bonus = 0
     class_id = member.class_id.lower()
-    modifiers = effect.get("save_modifier") or {}
-    if isinstance(modifiers, dict):
+    for modifier_field in ("save_modifier", "class_bonus"):
+        modifiers = effect.get(modifier_field) or {}
+        if not isinstance(modifiers, dict):
+            continue
         for key, value in modifiers.items():
             key_lower = str(key).lower()
             if key_lower == "all":
