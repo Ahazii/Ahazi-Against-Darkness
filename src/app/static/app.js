@@ -508,6 +508,9 @@ const fallenTransferDialog = document.getElementById("fallen-transfer-dialog");
 const fallenTransferNote = document.getElementById("fallen-transfer-note");
 const fallenTransferOptions = document.getElementById("fallen-transfer-options");
 fallenTransferDialog?.addEventListener("cancel", (event) => event.preventDefault());
+const recoveryDialog = document.getElementById("recovery-dialog");
+const recoveryDialogNote = document.getElementById("recovery-dialog-note");
+const recoveryDialogActions = document.getElementById("recovery-dialog-actions");
 const adventureCloseoutDialog = document.getElementById("adventure-closeout-dialog");
 const adventureCloseoutDialogForm = document.getElementById("adventure-closeout-dialog-form");
 const adventureCloseoutNote = document.getElementById("adventure-closeout-note");
@@ -12465,31 +12468,31 @@ function syncTagAdvancedControls(hasDirector = false) {
   if (!hasDirector) tagAdventureActionsDialog.classList.remove("show-advanced");
 }
 
-function enableTagActionDialogDrag() {
-  if (!tagAdventureActionsDialog || tagAdventureActionsDialog.dataset.dragBound === "1") return;
-  const handle = tagAdventureActionsDialog.querySelector(".transfer-dialog-header");
+function enableDialogDrag(dialog) {
+  if (!dialog || dialog.dataset.dragBound === "1") return;
+  const handle = dialog.querySelector(".transfer-dialog-header");
   if (!handle) return;
-  tagAdventureActionsDialog.dataset.dragBound = "1";
+  dialog.dataset.dragBound = "1";
   handle.classList.add("dialog-drag-handle");
   handle.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    const rect = tagAdventureActionsDialog.getBoundingClientRect();
+    if (event.button !== 0 || event.target.closest("button, input, select, textarea, a")) return;
+    const rect = dialog.getBoundingClientRect();
     const offsetX = event.clientX - rect.left;
     const offsetY = event.clientY - rect.top;
-    tagAdventureActionsDialog.style.position = "fixed";
-    tagAdventureActionsDialog.style.margin = "0";
-    tagAdventureActionsDialog.style.left = `${rect.left}px`;
-    tagAdventureActionsDialog.style.top = `${rect.top}px`;
-    tagAdventureActionsDialog.style.right = "auto";
-    tagAdventureActionsDialog.style.bottom = "auto";
+    dialog.style.position = "fixed";
+    dialog.style.margin = "0";
+    dialog.style.left = `${rect.left}px`;
+    dialog.style.top = `${rect.top}px`;
+    dialog.style.right = "auto";
+    dialog.style.bottom = "auto";
     handle.setPointerCapture?.(event.pointerId);
     const move = (moveEvent) => {
-      const width = tagAdventureActionsDialog.offsetWidth;
-      const height = tagAdventureActionsDialog.offsetHeight;
+      const width = dialog.offsetWidth;
+      const height = dialog.offsetHeight;
       const nextLeft = Math.max(8, Math.min(window.innerWidth - width - 8, moveEvent.clientX - offsetX));
       const nextTop = Math.max(8, Math.min(window.innerHeight - Math.min(height, window.innerHeight - 16) - 8, moveEvent.clientY - offsetY));
-      tagAdventureActionsDialog.style.left = `${nextLeft}px`;
-      tagAdventureActionsDialog.style.top = `${nextTop}px`;
+      dialog.style.left = `${nextLeft}px`;
+      dialog.style.top = `${nextTop}px`;
     };
     const cleanup = () => {
       handle.removeEventListener("pointermove", move);
@@ -12500,6 +12503,10 @@ function enableTagActionDialogDrag() {
     handle.addEventListener("pointerup", cleanup, { once: true });
     handle.addEventListener("pointercancel", cleanup, { once: true });
   });
+}
+
+function enableTagActionDialogDrag() {
+  enableDialogDrag(tagAdventureActionsDialog);
 }
 
 async function runTagBranchActionWithDefaults(defaults = {}) {
@@ -19068,6 +19075,7 @@ function renderRecoveryChoices(session) {
       : recoveryChoicesEl;
   if (!target) return;
   target.replaceChildren();
+  recoveryDialogActions?.replaceChildren();
   if (recoveryChoicesEl && recoveryChoicesEl !== target) {
     recoveryChoicesEl.replaceChildren();
     recoveryChoicesEl.classList.add("hidden");
@@ -19078,28 +19086,59 @@ function renderRecoveryChoices(session) {
   }
   if (session.mode !== "exploration") {
     target.classList.add("hidden");
+    if (recoveryDialog?.open) recoveryDialog.close();
     return;
   }
   const tile = currentTile(session);
   const onCurrentTile = Boolean(tile && tile.id === session.map_state.current_tile_id);
   const living = (session.party || []).filter((member) => member.current_life > 0);
   const partyGold = living.reduce((total, member) => total + (member.gold || 0) + (member.bank_gold || 0), 0);
-  const fallenHere = onCurrentTile ? fallenMembersForTile(tile, session) : [];
+  const fallenHere = onCurrentTile
+    ? fallenMembersForTile(tile, session).filter((member) => member.current_life <= 0)
+    : [];
   const outside = (session.fallen_outside_character_ids || [])
     .map((id) => (session.party || []).find((member) => member.character_id === id))
-    .filter(Boolean);
+    .filter((member) => member?.current_life <= 0);
   const hasCarry = !session.carried_body_id && fallenHere.length && living.length;
-  const hasDrop = Boolean(session.carried_body_id);
+  const carriedBody = (session.party || []).find(
+    (member) => member.character_id === session.carried_body_id && member.current_life <= 0
+  );
+  const bodyCarrier = (session.party || []).find(
+    (member) => member.character_id === session.body_carrier_id && member.current_life > 0
+  );
+  const hasDrop = Boolean(carriedBody && bodyCarrier);
   const hasResurrect = outside.length > 0;
   if (!hasCarry && !hasDrop && !hasResurrect) {
     target.classList.add("hidden");
+    if (recoveryDialog?.open) recoveryDialog.close();
     return;
   }
   target.classList.remove("hidden");
+  const recoveryTarget = recoveryDialogActions || target;
+  const recoveryCount = fallenHere.length + outside.length + (hasDrop ? 1 : 0);
+  const summary = [
+    hasCarry ? `${fallenHere.length} ${fallenHere.length === 1 ? "body" : "bodies"} here` : "",
+    hasDrop ? `${carriedBody.name} carried` : "",
+    hasResurrect ? `${outside.length} awaiting recovery` : "",
+  ].filter(Boolean).join(" · ");
+  if (recoveryDialogActions) {
+    if (recoveryDialogNote) recoveryDialogNote.textContent = summary;
+    const openButton = node("button", "secondary", `Recovery (${recoveryCount})`);
+    openButton.type = "button";
+    setButtonTooltip(openButton, "Open the draggable recovery window for body carrying, resurrection, or laying a fallen hero to rest.");
+    openButton.addEventListener("click", () => {
+      if (!recoveryDialog) return;
+      if (recoveryDialog.parentElement !== document.body) document.body.appendChild(recoveryDialog);
+      enableDialogDrag(recoveryDialog);
+      if (!recoveryDialog.open) recoveryDialog.showModal();
+    });
+    target.appendChild(openButton);
+  }
   if (hasCarry) {
-    target.appendChild(node("span", "search-label", "Fallen heroes (p.44):"));
+    recoveryTarget.appendChild(node("span", "search-label", "Carry a fallen hero (p.44):"));
     for (const fallen of fallenHere) {
       for (const carrier of living) {
+        if (carrier.character_id === fallen.character_id) continue;
         const button = document.createElement("button");
         button.type = "button";
         button.className = "secondary";
@@ -19111,29 +19150,27 @@ function renderRecoveryChoices(session) {
         button.addEventListener("click", () =>
           advance("carry_body", { character_id: carrier.character_id, target_character_id: fallen.character_id })
         );
-        target.appendChild(button);
+        recoveryTarget.appendChild(button);
       }
     }
   }
   if (hasDrop) {
-    const carrier = (session.party || []).find((member) => member.character_id === session.body_carrier_id);
-    const body = (session.party || []).find((member) => member.character_id === session.carried_body_id);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "secondary";
-    button.textContent = `Set down ${body?.name || "body"}`;
+    button.textContent = `Set down ${carriedBody.name}`;
     setButtonTooltip(button, "Leave the body on this map element.");
     button.addEventListener("click", () => advance("drop_body"));
-    target.appendChild(button);
-    if (carrier && body) {
-      target.appendChild(
-        subline(`${carrier.name} is carrying ${body.name}. Exit the dungeon at the entrance to deliver the body outside.`)
+    recoveryTarget.appendChild(button);
+    if (bodyCarrier && carriedBody) {
+      recoveryTarget.appendChild(
+        subline(`${bodyCarrier.name} is carrying ${carriedBody.name}. Exit the dungeon at the entrance to deliver the body outside.`)
       );
     }
   }
   if (hasResurrect) {
-    target.appendChild(node("span", "search-label", "Resurrection Ritual (1000gp; L6+ automatic):"));
-    target.appendChild(
+    recoveryTarget.appendChild(node("span", "search-label", "Resurrection Ritual (1000gp; L6+ automatic):"));
+    recoveryTarget.appendChild(
       subline(`Outside funds: ${partyGold}/1000gp. Home bank funds are available outside the dungeon.`)
     );
     for (const fallen of outside) {
@@ -19151,7 +19188,7 @@ function renderRecoveryChoices(session) {
       button.addEventListener("click", () =>
         advance("attempt_resurrection", { target_character_id: fallen.character_id })
       );
-      target.appendChild(button);
+      recoveryTarget.appendChild(button);
       const lossButton = document.createElement("button");
       lossButton.type = "button";
       lossButton.className = "danger-button";
@@ -19160,7 +19197,7 @@ function renderRecoveryChoices(session) {
       lossButton.addEventListener("click", () =>
         advance("accept_fallen_loss", { target_character_id: fallen.character_id })
       );
-      target.appendChild(lossButton);
+      recoveryTarget.appendChild(lossButton);
     }
   }
 }

@@ -1,10 +1,12 @@
 # Consolidated Playtest Plan
 
-Last updated: 2026-07-14. Target build: v0.39.15.
+Last updated: 2026-07-14. Target build: v0.39.16.
 
 ## Immediate Fidelity Check
 
 Before resuming the three-game regression plan, run one short disposable EE + Abyss game with dungeon playtest controls enabled. The prior Workbench ownership sample, ordinary save/reload, 200gp carrying cap, exit blocking, Phasing Panther, Shrieking Fungi, Tentacled Brain, and Fools' Gold bribe checks have already produced useful passing evidence and do not need repeating in this run.
+
+First, if a hero falls, confirm Party Sheets remain visible and only one compact **Recovery** opener is shown. Its draggable window must list only valid carry, set-down, resurrection, or lay-to-rest choices, and must disappear when recovery is no longer applicable.
 
 1. Force **Ant People Warriors**, then choose **Fight Round** so combat begins. Confirm every unmarked living hero receives a separate displayed 2-in-6 chemical-marker roll. A marked hero has -1 Defense only against Ant People; cast Blessing and confirm the marker clears. If a Reaction makes the Ant People flee first, the absence of the marker roll is correct because combat never began.
 2. Force **Ghoul King**. Each hero wounded by it must make the printed L5 poison save, with an elf adding Level. On a failed save, confirm the next foe attack automatically hits that hero; the hero must still be able to cast Blessing, which removes paralysis. The Narrative must visibly include the elf’s `+Level` modifier.

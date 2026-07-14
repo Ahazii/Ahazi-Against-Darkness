@@ -2808,7 +2808,7 @@ button.is-working::after {
   background: linear-gradient(180deg, rgba(29, 31, 24, 0), var(--panel) 28%);
 }
 
-.tag-action-dialog .dialog-drag-handle {
+.dialog-drag-handle {
   cursor: move;
   user-select: none;
 }
@@ -4102,6 +4102,22 @@ button.modern-dashboard-status-icon {
 
 .transfer-dialog {
   width: min(480px, calc(100vw - 32px));
+}
+
+.recovery-dialog {
+  max-height: min(76vh, 720px);
+  overflow: auto;
+}
+
+.recovery-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.recovery-dialog .transfer-dialog-header {
+  padding-right: 24px;
 }
 
 .tag-action-dialog {

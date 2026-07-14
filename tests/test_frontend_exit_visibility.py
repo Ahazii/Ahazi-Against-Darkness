@@ -198,6 +198,21 @@ def test_frontend_exposes_deliberate_clue_spends() -> None:
     assert "state.rulesTables?.druid_spells_table" in app_js
     assert "searchClueHolderSelect?.value || undefined" in app_js
     assert '"clue_spends_table"' in app_js
+
+
+def test_recovery_controls_use_a_compact_draggable_dialog() -> None:
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+    index_html = Path("src/app/static/index.html").read_text(encoding="utf-8")
+
+    recovery = _function_body("renderRecoveryChoices", app_js)
+    assert 'id="recovery-dialog"' in index_html
+    assert 'id="recovery-dialog-actions"' in index_html
+    assert "function enableDialogDrag(dialog)" in app_js
+    assert "fallenMembersForTile(tile, session).filter((member) => member.current_life <= 0)" in recovery
+    assert ".filter((member) => member?.current_life <= 0)" in recovery
+    assert 'node("button", "secondary", `Recovery (${recoveryCount})`)' in recovery
+    assert "enableDialogDrag(recoveryDialog);" in recovery
+    assert "if (carrier.character_id === fallen.character_id) continue;" in recovery
     assert "held Clues are spent deliberately" in app_js
 
 
