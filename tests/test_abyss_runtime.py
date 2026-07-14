@@ -89,6 +89,28 @@ def test_developer_playtest_uses_the_live_abyss_encounter_path(monkeypatch) -> N
     assert any("Developer playtest encounter begins" in entry for entry in session.log)
 
 
+def test_developer_playtest_can_force_an_abyss_minion_leader(monkeypatch) -> None:
+    eng = _engine()
+    session = eng.create_session("abyss-leader-playtest", "party-1", [_member()], ruleset_profile_id="abyss")
+    tile = TileState(id="leader-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_formula", lambda formula: 2)
+
+    eng.advance(
+        session,
+        "developer_playtest",
+        playtest_kind="abyss_foe",
+        playtest_table="abyss_minions_table",
+        playtest_roll=6,
+        playtest_force_leader=True,
+    )
+
+    assert any(enemy.name == "Dark Lord of Xichtul" for enemy in tile.enemies)
+    assert any("leader forced present" in entry for entry in session.log)
+
+
 def test_developer_playtest_runs_the_selected_abyss_event(monkeypatch) -> None:
     eng = _engine()
     member = _member()

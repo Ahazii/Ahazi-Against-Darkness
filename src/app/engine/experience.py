@@ -27,6 +27,7 @@ from .heroic_skill_effects import consume_training_focus_bonus
 MINOR_CATEGORIES = {"vermin", "minions"}
 MAJOR_CATEGORIES = {"weird", "boss"}
 MINOR_ENCOUNTERS_FOR_XP = 10
+ABYSS_MINION_ENCOUNTERS_FOR_XP = 5
 CLUES_FOR_SECRET_XP = 3
 FINAL_BOSS_ROLL_TARGET = 6
 DEFAULT_UNLIMITED_MAP_ELEMENT_CAP = 60
@@ -83,6 +84,15 @@ def is_minor_encounter(defeated: list[EnemyState]) -> bool:
     if not defeated:
         return False
     return all(enemy.category in MINOR_CATEGORIES for enemy in defeated)
+
+
+def is_abyss_minion_encounter(session: SessionState, defeated: list[EnemyState]) -> bool:
+    """Return whether this is an Abyss minion encounter with its own XP tally."""
+    if defeated and all(enemy.category == "minions" for enemy in defeated):
+        from .abyss_tables import is_abyss_profile
+
+        return is_abyss_profile(session)
+    return False
 
 
 def major_foes_defeated(defeated: list[EnemyState]) -> list[EnemyState]:
@@ -257,15 +267,26 @@ def award_encounter_xp(session: SessionState, defeated: list[EnemyState], *, sho
         return
     if not is_minor_encounter(defeated):
         return
-    session.minor_encounters_defeated += 1
+    if is_abyss_minion_encounter(session, defeated):
+        session.abyss_minion_encounters_defeated += 1
+        progress = session.abyss_minion_encounters_defeated
+        target = ABYSS_MINION_ENCOUNTERS_FOR_XP
+        label = "Abyss minion"
+    else:
+        session.minor_encounters_defeated += 1
+        progress = session.minor_encounters_defeated
+        target = MINOR_ENCOUNTERS_FOR_XP
+        label = "minor"
     if show_rolls:
         session.log.append(
-            f"Minor encounter cleared ({session.minor_encounters_defeated}/"
-            f"{MINOR_ENCOUNTERS_FOR_XP} toward next XP credit)."
+            f"{label.title()} encounter cleared ({progress}/{target} toward next XP credit)."
         )
-    if session.minor_encounters_defeated >= MINOR_ENCOUNTERS_FOR_XP:
-        session.minor_encounters_defeated -= MINOR_ENCOUNTERS_FOR_XP
-        grant_xp_credit(session, 1, f"{MINOR_ENCOUNTERS_FOR_XP} minor encounters:")
+    if progress >= target:
+        if label == "Abyss minion":
+            session.abyss_minion_encounters_defeated -= target
+        else:
+            session.minor_encounters_defeated -= target
+        grant_xp_credit(session, 1, f"{target} {label} encounters:")
 
 
 def old_school_level_cost(level: int) -> int:

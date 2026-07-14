@@ -288,7 +288,10 @@ def resolve_spell_cast(
         source_note = " (from scroll)"
     elif from_magic_item:
         source_note = " (from magic item)"
-    log: list[str] = [f"{caster.name} casts {spell_name}.{source_note}"]
+    target_name = next((member.name for member in party if member.character_id == target_character_id), None)
+    target_name = target_name or next((enemy.name for enemy in enemies if enemy.id == target_foe_id), None)
+    target_note = f" on {target_name}" if target_name else ""
+    log: list[str] = [f"{caster.name} casts {spell_name}{target_note}.{source_note}"]
     living_enemies = [enemy for enemy in enemies if enemy.life > 0]
     from .forsaken_depths_legendary_spells import is_fd_legendary_spell, try_resolve_fd_legendary_spell
 
@@ -877,7 +880,12 @@ def _cast_blessing(
         session=session,
     )
     if dark_plague_result is False:
-        return SpellOutcome(log, enemies, party, spell_consumed=True, curse_break_target_id=target.character_id)
+        # Abyss p.37: a failed Dark Plague cure wastes this Blessing.
+        return SpellOutcome(log, enemies, party, spell_consumed=True)
+    before_statuses = list(target.statuses)
+    session_curse = bool(
+        session is not None and session.cursed_character_id == target.character_id
+    )
     had_cordyceps = cordyceps_infected_turns(target) is not None
     target.statuses = [
         item
@@ -886,12 +894,18 @@ def _cast_blessing(
         and item != PETRIFIED_STATUS
         and not item.lower().startswith("cordyceps infected")
     ]
+    removed_statuses = [status for status in before_statuses if status not in target.statuses]
+    if session_curse:
+        removed_statuses.append("Cursed")
     if had_cordyceps:
         log.append(f"Blessing clears cordyceps from {target.name}.")
     healed = heal_madness(target, 1)
     if healed:
         log.append(f"Blessing heals 1 Madness from {target.name}.")
-    log.append(f"Blessing removes curses and petrification effects from {target.name}.")
+    if removed_statuses:
+        log.append(f"Blessing heals {target.name}: {', '.join(removed_statuses)}.")
+    else:
+        log.append(f"Blessing finds no additional curse, petrification, disease, or Madness effect on {target.name}.")
     if session is not None:
         from .cavern_features import cleanse_cavern_water_contamination
 
@@ -905,7 +919,13 @@ def _cast_blessing(
         log.extend(clear_lizardman_horde_poison_with_blessing(target))
     if dark_plague_result is True:
         log.append("Dark Plague uses the Abyss d8+L cure check; other Blessing effects resolve normally.")
-    return SpellOutcome(log, enemies, party, spell_consumed=True, curse_break_target_id=target.character_id)
+    return SpellOutcome(
+        log,
+        enemies,
+        party,
+        spell_consumed=True,
+        curse_break_target_id=target.character_id if session_curse else None,
+    )
 
 
 def _cast_healing_prayer(

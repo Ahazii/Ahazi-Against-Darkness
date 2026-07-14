@@ -371,7 +371,7 @@
   ],
   "abyss_unique_event_table": [
     {"roll": "1", "key": "book_of_secrets", "name": "Book of Secrets", "summary": "A chosen reader gains d6 Clues but saves vs Clues+2 or gains d3 Madness.", "source_page": 59},
-    {"roll": "2", "key": "dark_plague", "name": "Dark Plague", "summary": "Random hero saves vs L10 disease or contracts Dark Plague; infected heroes roll d8 each room and spread saves to non-immune allies.", "source_page": 59},
+    {"roll": "2", "key": "dark_plague", "name": "Dark Plague", "summary": "Random hero saves vs L10 disease or contracts Dark Plague; infected heroes roll d8 each room and spread saves to non-immune allies. A successful initial save or cure grants immunity for this adventure.", "source_page": 59},
     {"roll": "3", "key": "swarm_of_critters", "name": "Swarm of Critters", "summary": "Fireball disperses it; otherwise all heroes take 1 wound.", "source_page": 59},
     {"roll": "4", "key": "secret_stairs", "name": "Secret Stairs", "summary": "Secret passage to an upper-level room/corridor, with possible wandering monster.", "source_page": 59},
     {"roll": "5", "key": "gold_ghost", "name": "Gold Ghost", "summary": "Sacrifice 100 gp or all heroes suffer -1 Defense until individually Blessed.", "source_page": 59},

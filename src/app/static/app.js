@@ -3321,12 +3321,6 @@ function spellCastPayload(casterId, spellName, extra = {}) {
         const waterJetMode = state.spellAimModes?.[waterJetEffectKey(casterId)];
         if (waterJetMode) payload.spell_target_mode = waterJetMode;
       }
-      if (key === "infallible_missile" && member && member.level >= 8) {
-        const secondary = state.spellSecondaryFoeTargets?.[casterId];
-        if (secondary && livingFoes.some((foe) => foe.id === secondary)) {
-          payload.secondary_foe_id = secondary;
-        }
-      }
     }
   }
   if (key === "lifeforce_control" && !payload.life_transfer_amount) {
@@ -7891,8 +7885,8 @@ function statusChipTooltip(label) {
   if (lower.includes("slumber amanita")) return "Slumber Amanita: next Sleep cast gains +Tier, including scrolls and Wand of Sleep.";
   if (lower.includes("phoenix mushroom")) return "Phoenix Mushroom: +1 Defense and Saves until the tile countdown expires, then lose 1 Life.";
   if (lower.includes("toxic spores")) return "Toxic Spores: -1 on all Saves until the room countdown expires.";
-  if (lower === "dark plague") return "Abyss Dark Plague: roll d8 each room; on 1 lose 1 Life. Other party members save vs L10 when entering rooms with an infected hero.";
-  if (lower === "dark plague immunity") return "Legacy status from an older build. Abyss pp.37 and 61 do not grant immunity; it is removed when the session or roster state is next saved.";
+  if (lower === "dark plague") return "Abyss p.37 Dark Plague: roll d8 each room; on 1 lose 1 Life. While an infected hero travels with the party, companions make the printed L10 save. Blessing or Elven Bread can cure it.";
+  if (lower === "dark plague immunity") return "Abyss p.37: a successful initial save, Blessing cure, or Elven Bread cure makes this hero immune to Dark Plague until this adventure ends.";
   if (lower === "lycanthropy") return "Abyss Lycanthropy: Blessing and Healing do not cure it; leave the dungeon for 400gp monastery treatment. If Madness exceeds Level, the hero transforms.";
   if (lower === "lycanthropy immunity") return "Immune to further lycanthropy infection.";
   if (lower === "vampire-rise pending") return "Slain by vampire level drain; ordinary resurrection is blocked until the sire vampire is destroyed.";
@@ -9513,7 +9507,7 @@ function spellTooltip(spellName, session = null, member = null) {
     parts.push("All allies except caster heal 2 Life; vampires in play lose 2 Life.");
   }
   if (key === "infallible_missile") {
-    parts.push("Auto 1 Life wound; exploding d6 chains to same or another foe. L8+ casts two missiles.");
+    parts.push("Automatically inflicts 1 wound; each exploding roll chains another wound to the same or another foe.");
   }
   if (key === "lifeforce_control") {
     parts.push("Transfer Life from caster to a living ally, or equal damage to a vampire foe.");
@@ -9668,21 +9662,6 @@ function appendSpellTargetingRows(container, session, member, livingFoes, extraS
       })
     );
     container.appendChild(foeRow);
-  }
-
-  const hasInfallible = spells.some((spell) => normalizeSpellKey(spell) === "infallible_missile");
-  if (hasInfallible && member.level >= 8 && livingFoes.length > 1) {
-    const secondRow = node("div", "combat-target-row");
-    secondRow.appendChild(document.createTextNode("2nd missile:"));
-    secondRow.appendChild(
-      createFoeTargetSelect(livingFoes, {
-        value: state.spellSecondaryFoeTargets?.[member.character_id],
-        onChange: (foeId) => {
-          state.spellSecondaryFoeTargets[member.character_id] = foeId;
-        },
-      })
-    );
-    container.appendChild(secondRow);
   }
 
   if (spells.some((spell) => normalizeSpellKey(spell) === "lifeforce_control")) {
@@ -18557,7 +18536,7 @@ function renderDeveloperPlaytestControls(session) {
   roll.setAttribute("aria-label", "Printed die result");
   roll.title = "Choose the exact printed d6 result to test. The selected result still uses ordinary spawning, events, reactions, states, and combat.";
   const refillRolls = () => {
-    const selected = previousRoll || roll.value || "1";
+    const selected = roll.value || previousRoll || "1";
     roll.replaceChildren();
     let labels = [];
     if (kind.value === "abyss_foe") {
@@ -18572,6 +18551,14 @@ function renderDeveloperPlaytestControls(session) {
     labels.forEach((label, index) => roll.appendChild(new Option(`d6 = ${index + 1} - ${label}`, String(index + 1))));
     roll.value = [...roll.options].some((option) => option.value === selected) ? selected : "1";
   };
+
+  const forceLeader = document.createElement("label");
+  forceLeader.className = "inline-check hidden";
+  forceLeader.title = "Developer-only: make a leader appear for an Abyss minion row with a printed leader chance. Use this to test leader targeting and reactions without rerolling the encounter.";
+  const forceLeaderInput = document.createElement("input");
+  forceLeaderInput.type = "checkbox";
+  forceLeaderInput.checked = developerPlaytestControls.dataset.forceLeader === "true";
+  forceLeader.append(forceLeaderInput, document.createTextNode(" Force leader"));
 
   const run = document.createElement("button");
   run.type = "button";
@@ -18603,19 +18590,26 @@ function renderDeveloperPlaytestControls(session) {
     refillRolls();
     roll.classList.toggle("hidden", eeFoeSelected || fdFoeSelected);
     roll.disabled = eeFoeSelected || fdFoeSelected;
+    const canForceLeader = kind.value === "abyss_foe" && table.value === "abyss_minions_table" && roll.value === "6";
+    forceLeader.classList.toggle("hidden", !canForceLeader);
+    forceLeaderInput.disabled = !canForceLeader;
+    if (!canForceLeader) forceLeaderInput.checked = false;
   };
   kind.addEventListener("change", updateVisibility);
-  table.addEventListener("change", refillRolls);
+  table.addEventListener("change", updateVisibility);
+  roll.addEventListener("change", updateVisibility);
   run.addEventListener("click", async () => {
     developerPlaytestControls.dataset.kind = kind.value;
     developerPlaytestControls.dataset.table = table.value;
     developerPlaytestControls.dataset.key = kind.value === "fd_foe" ? fdFoe.value : eeFoe.value;
     developerPlaytestControls.dataset.roll = roll.value;
+    developerPlaytestControls.dataset.forceLeader = String(forceLeaderInput.checked);
     await advance("developer_playtest", {
       playtest_kind: kind.value,
       playtest_table: kind.value === "abyss_foe" ? table.value : null,
       playtest_key: (kind.value === "ee_foe" || kind.value === "ee_final_boss") ? eeFoe.value : (kind.value === "fd_foe" ? fdFoe.value : null),
       playtest_roll: Number.parseInt(roll.value, 10),
+      playtest_force_leader: forceLeaderInput.checked,
     });
   });
   updateVisibility();
@@ -18625,7 +18619,7 @@ function renderDeveloperPlaytestControls(session) {
     "Developer override: selected result only; normal encounters still roll."
   );
   note.title = "This control is shown because the Developer Playtest Preference is enabled. It leaves a clear override entry in the narrative for every test.";
-  developerPlaytestControls.replaceChildren(note, kind, table, eeFoe, fdFoe, roll, run);
+  developerPlaytestControls.replaceChildren(note, kind, table, eeFoe, fdFoe, roll, forceLeader, run);
 }
 
 function renderSession() {
@@ -21827,13 +21821,6 @@ function echoSpellCastPayload(session, pending) {
     ) {
       payload.foe_id =
         foePick && livingFoes.some((foe) => foe.id === foePick) ? foePick : livingFoes[0].id;
-      if (key === "infallible_missile" && member && member.level >= 8) {
-        const secondary =
-          state.echoSpellSecondaryFoeTargets?.[casterId] || pending.secondary_foe_id;
-        if (secondary && livingFoes.some((foe) => foe.id === secondary)) {
-          payload.secondary_foe_id = secondary;
-        }
-      }
     }
   }
   return payload;
@@ -21909,20 +21896,6 @@ function renderEchoSpellChoices(session) {
         })
       );
       echoSpellChoicesEl.appendChild(foeRow);
-      if (key === "infallible_missile" && member && member.level >= 8 && livingFoes.length > 1) {
-        const secondaryRow = document.createElement("div");
-        secondaryRow.className = "echo-spell-target-row";
-        secondaryRow.appendChild(node("span", "echo-spell-target-label", "Second foe:"));
-        secondaryRow.appendChild(
-          createFoeTargetSelect(livingFoes, {
-            value: state.echoSpellSecondaryFoeTargets[pending.caster_id],
-            onChange: (foeId) => {
-              state.echoSpellSecondaryFoeTargets[pending.caster_id] = foeId;
-            },
-          })
-        );
-        echoSpellChoicesEl.appendChild(secondaryRow);
-      }
     }
   }
 
@@ -25932,10 +25905,14 @@ function renderTileDetail(session) {
       subline(`Fallen inside dungeon: ${fallenNames || fallenIds.length}. Leave via dungeon exit to camp and return later.`)
     );
   }
+  const abyssMinionProgress =
+    session.ruleset_profile_id === "abyss" || session.ruleset === "abyss"
+      ? ` · ${session.abyss_minion_encounters_defeated || 0}/5 Abyss minions`
+      : "";
   info.appendChild(
     subline(
       `${campaignModeLabel(session.xp_system)}: ${session.clues_found || 0} Clues · ` +
-        `${session.minor_encounters_defeated || 0}/10 minors · ` +
+        `${session.minor_encounters_defeated || 0}/10 minors${abyssMinionProgress} · ` +
         `${session.xp_rolls_pending || 0} roll(s) · ` +
         `${session.slower_xp_bank || 0} banked · ` +
         `${session.old_school_xp_tally || 0} Old School tally`

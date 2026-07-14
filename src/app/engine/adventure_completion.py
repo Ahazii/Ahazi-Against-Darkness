@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from ..schemas import PartyMemberState, SessionState
 from .adventure_runtime import log_imported_departure_narrative
+from .abyss_afflictions import clear_dark_plague_immunity
 from .forsaken_depths_quest import resolve_fd_lady_in_black_oracle_on_exit
 from .fungal_rare_items import expire_unused_healers_chanterelle, expire_white_angel_mushrooms
 from .hirelings import clear_hirelings_on_dungeon_exit
@@ -67,6 +68,8 @@ def complete_adventure(
     clear_hirelings_on_dungeon_exit(session)
     for member in survivors:
         member.current_life = member.max_life
+    for member in session.party:
+        clear_dark_plague_immunity(member)
 
     boss_note = " Final Boss slain." if session.final_boss_defeated else ""
     session.summary = [

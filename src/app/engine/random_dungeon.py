@@ -995,6 +995,7 @@ class RandomDungeonEngine:
         playtest_table: str | None = None,
         playtest_key: str | None = None,
         playtest_roll: int | None = None,
+        playtest_force_leader: bool = False,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -1153,6 +1154,7 @@ class RandomDungeonEngine:
                 table_name=playtest_table,
                 key=playtest_key,
                 roll=playtest_roll,
+                force_leader=playtest_force_leader,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -4282,6 +4284,9 @@ class RandomDungeonEngine:
             return
         tile.major_foe_encounter_counted = True
         session.major_foes_encountered += 1
+        session.log.append(
+            f"Major Foe tally: {session.major_foes_encountered} encountered this adventure."
+        )
         if allow_final_boss_check and not dungeon_has_final_boss(session):
             if map_elements_at_cap(session):
                 boss_log, boss = force_final_boss_designation(
@@ -11905,6 +11910,7 @@ class RandomDungeonEngine:
         table_name: str | None,
         key: str | None,
         roll: int | None,
+        force_leader: bool,
         show_rolls: bool,
         explain_math: bool,
     ) -> None:
@@ -12030,6 +12036,7 @@ class RandomDungeonEngine:
                 str(table_name),
                 category,
                 fixed_roll=roll,
+                force_leader=force_leader,
             )
             if not enemies:
                 session.log.append("That Abyss foe-table result has no encounter row.")
@@ -12136,6 +12143,8 @@ class RandomDungeonEngine:
         category: str,
         *,
         fixed_roll: int | None = None,
+        show_rolls: bool = True,
+        force_leader: bool = False,
     ) -> tuple[list[EnemyState], str]:
         from .abyss_tables import lookup_abyss_table_row
 
@@ -12143,10 +12152,24 @@ class RandomDungeonEngine:
         row = lookup_abyss_table_row(table_name, roll)
         if row is None:
             return [], f"Abyss {category} roll d6={roll}: no row found."
-        enemies = self._abyss_spawn_from_row(session, row, category)
+        enemies = self._abyss_spawn_from_row(
+            session,
+            row,
+            category,
+            show_rolls=show_rolls,
+            force_leader=force_leader,
+        )
         return enemies, f"Abyss {category} roll d6={roll}: {row.get('name')} - {row.get('summary', '')}"
 
-    def _abyss_spawn_from_row(self, session: SessionState, row: dict, category: str) -> list[EnemyState]:
+    def _abyss_spawn_from_row(
+        self,
+        session: SessionState,
+        row: dict,
+        category: str,
+        *,
+        show_rolls: bool,
+        force_leader: bool = False,
+    ) -> list[EnemyState]:
         enemies: list[EnemyState] = []
         count = max(1, self._resolve_abyss_formula(str(row.get("count", "1"))))
         reaction_table = str(row.get("reaction_table") or "").strip()
@@ -12154,7 +12177,20 @@ class RandomDungeonEngine:
             enemies.append(self._abyss_enemy_from_row(row, category, reaction_table=reaction_table or None))
         leader = row.get("leader")
         leader_chance = int(row.get("leader_chance") or 0)
-        if isinstance(leader, dict) and (not leader_chance or roll_d6() <= leader_chance):
+        leader_check_roll = roll_d6() if leader_chance and not force_leader else None
+        leader_present = not leader_chance or force_leader or bool(leader_check_roll and leader_check_roll <= leader_chance)
+        if leader_chance and show_rolls:
+            if force_leader:
+                session.log.append(
+                    f"Developer playtest override: {row.get('name', 'Minion')} leader forced present "
+                    f"(printed chance {leader_chance}-in-6)."
+                )
+            else:
+                session.log.append(
+                    f"{row.get('name', 'Minion')} leader check: d6 = {leader_check_roll}; "
+                    f"leader appears on {leader_chance}-in-6."
+                )
+        if isinstance(leader, dict) and leader_present:
             enemies.append(
                 self._abyss_enemy_from_row(
                     leader,
@@ -12164,13 +12200,15 @@ class RandomDungeonEngine:
                 )
             )
         leader_table = row.get("leader_table")
-        leader_roll = row.get("leader_roll")
-        if leader_table and leader_roll and (not leader_chance or roll_d6() <= leader_chance):
+        leader_table_roll = row.get("leader_roll")
+        if leader_table and leader_table_roll and leader_present:
             leader_enemies, _ = self._roll_abyss_monster_row(
                 session,
                 str(leader_table),
                 "boss",
-                fixed_roll=int(leader_roll),
+                fixed_roll=int(leader_table_roll),
+                show_rolls=show_rolls,
+                force_leader=False,
             )
             for leader_enemy in leader_enemies[:1]:
                 if reaction_table:

@@ -119,7 +119,7 @@ def _run_infallible_missile(
     if not living:
         return
     target = _pick_foe(living, target_foe_id) or living[0]
-    log.append(f"{label} strikes {target.name}.")
+    log.append(f"{caster.name}'s {label} automatically inflicts 1 wound on {target.name}.")
     _infallible_wound(target, log)
     preferred = target if target.category in {"boss", "weird"} else None
     while any(enemy.life > 0 for enemy in enemies):
@@ -130,11 +130,13 @@ def _run_infallible_missile(
                 f"{' + '.join(str(value) for value in rolls)}."
             )
         if len(rolls) <= 1:
+            log.append("Infallible Missile: the roll does not explode; the spell ends.")
             break
         living = [enemy for enemy in enemies if enemy.life > 0]
         chain_target = _chain_target(living, preferred if preferred and preferred.life > 0 else None)
         if chain_target is None:
             break
+        log.append("Infallible Missile: the roll explodes; it inflicts another wound.")
         _infallible_wound(chain_target, log)
         if chain_target.category in {"boss", "weird"}:
             preferred = chain_target
@@ -154,21 +156,14 @@ def cast_infallible_missile(
     if not living:
         log.append("There are no targets for Infallible Missile.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
-    missiles = 2 if caster.level >= 8 else 1
-    if missiles > 1:
-        log.append(f"{caster.name} creates two infallible missiles (L8+).")
-    for missile_index in range(missiles):
-        if not any(enemy.life > 0 for enemy in enemies):
-            break
-        label = "Infallible Missile" if missiles == 1 else f"Infallible Missile #{missile_index + 1}"
-        _run_infallible_missile(
-            caster,
-            enemies,
-            log,
-            show_rolls=show_rolls,
-            target_foe_id=target_foe_id if missile_index == 0 else secondary_foe_id,
-            label=label,
-        )
+    _run_infallible_missile(
+        caster,
+        enemies,
+        log,
+        show_rolls=show_rolls,
+        target_foe_id=target_foe_id,
+        label="Infallible Missile",
+    )
     combat_over = not any(enemy.life > 0 for enemy in enemies)
     return SpellOutcome(log, enemies, party, combat_over=combat_over, spell_consumed=True)
 

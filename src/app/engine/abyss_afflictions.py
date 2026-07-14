@@ -11,8 +11,8 @@ from .inventory import encumbrance_penalty
 
 
 DARK_PLAGUE_STATUS = "Dark Plague"
-# Kept only to clean up saves created by builds that incorrectly added immunity
-# after a Dark Plague save or cure. Abyss pp.37 and 61 do not grant immunity.
+# Abyss p.37: a hero who saves against, or is cured of, Dark Plague is immune
+# until this adventure ends. This is a session-facing status, not permanent.
 DARK_PLAGUE_IMMUNITY_STATUS = "Dark Plague immunity"
 LYCANTHROPY_EXPOSURE_STATUS = "Lycanthropy exposure"
 LYCANTHROPY_STATUS = "Lycanthropy"
@@ -34,8 +34,12 @@ def has_dark_plague(member: PartyMemberState) -> bool:
     return _has_status(member, DARK_PLAGUE_STATUS)
 
 
-def clear_legacy_dark_plague_immunity(member: PartyMemberState) -> bool:
-    """Remove the immunity status accidentally introduced by older app builds."""
+def has_dark_plague_immunity(member: PartyMemberState) -> bool:
+    return _has_status(member, DARK_PLAGUE_IMMUNITY_STATUS)
+
+
+def clear_dark_plague_immunity(member: PartyMemberState) -> bool:
+    """Remove adventure-scoped Dark Plague immunity during closeout."""
     before = len(member.statuses)
     member.statuses = [
         status
@@ -50,7 +54,10 @@ def cure_dark_plague(member: PartyMemberState) -> bool:
     member.statuses = [
         status for status in member.statuses if status.strip().lower() != DARK_PLAGUE_STATUS.lower()
     ]
-    return len(member.statuses) != before
+    cured = len(member.statuses) != before
+    if cured:
+        _add_status(member, DARK_PLAGUE_IMMUNITY_STATUS)
+    return cured
 
 
 def _member_save(
@@ -78,7 +85,8 @@ def _member_save(
             f"+ {modifier} = {final_total} vs L{level}."
         )
     passed = rolls[0] != 1 and final_total >= level
-    log.append(f"{member.name} {'passes' if passed else 'fails'} the {label}.")
+    prefix = "Dark Plague: " if "dark plague" in label.lower() else ""
+    log.append(f"{prefix}{member.name} {'passes' if passed else 'fails'} the {label}.")
     return passed, rolls, final_total
 
 
@@ -94,8 +102,11 @@ def apply_dark_plague_exposure(
     show_rolls: bool,
     source: str = "Dark Plague",
 ) -> bool:
+    if has_dark_plague_immunity(member):
+        log.append(f"Dark Plague: {member.name} is immune for the rest of this adventure.")
+        return False
     if has_dark_plague(member):
-        log.append(f"{member.name} is already infected with the Dark Plague.")
+        log.append(f"Dark Plague: {member.name} is already infected.")
         return False
     passed, _, _ = _member_save(
         member,
@@ -107,10 +118,14 @@ def apply_dark_plague_exposure(
         bonus=dark_plague_save_bonus(member),
     )
     if passed:
-        log.append(f"{member.name} resists the Dark Plague.")
+        _add_status(member, DARK_PLAGUE_IMMUNITY_STATUS)
+        log.append(f"Dark Plague: {member.name} resists the disease and is immune for the rest of this adventure.")
         return False
     _add_status(member, DARK_PLAGUE_STATUS)
-    log.append(f"Effect: {member.name} contracts the Dark Plague (Abyss p.37).")
+    log.append(
+        f"Dark Plague: {member.name} contracts the disease. On each room entry, roll d8; "
+        "a 1 loses 1 Life and may spread the plague to the party next room (Abyss p.37)."
+    )
     return True
 
 
@@ -131,9 +146,9 @@ def tick_dark_plague_on_room_entry(
             log.append(f"Dark Plague: {member.name} rolls d8 = {roll} on entering {tile.title}.")
         if roll == 1:
             member.current_life = max(0, member.current_life - 1)
-            log.append(f"Effect: {member.name} loses 1 Life to the Dark Plague ({member.current_life}/{member.max_life}).")
+            log.append(f"Dark Plague: {member.name} loses 1 Life ({member.current_life}/{member.max_life}).")
             if member.current_life <= 0:
-                log.append(f"{member.name} falls.")
+                log.append(f"Dark Plague: {member.name} falls.")
     carriers = [member for member in session.party if member.current_life > 0 and has_dark_plague(member)]
     if not carriers:
         return log
@@ -169,10 +184,10 @@ def apply_blessing_to_dark_plague(
         )
     if rolls[0] != 1 and final_total >= 10:
         cure_dark_plague(target)
-        log.append(f"Blessing cures the Dark Plague from {target.name}.")
+        log.append(f"Dark Plague: Blessing cures {target.name}; immunity lasts for this adventure.")
         return True
     else:
-        log.append(f"Blessing fails to cure the Dark Plague from {target.name}; the prayer is spent.")
+        log.append(f"Dark Plague: Blessing fails to cure {target.name}; the prayer is spent.")
         return False
 
 

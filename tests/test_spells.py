@@ -330,7 +330,8 @@ def test_blessing_clears_session_curse() -> None:
         target_character_id="cursed",
     )
     assert session.cursed_character_id is None
-    assert any("Blessing removes curses" in entry for entry in session.log)
+    assert any("Cleric casts Blessing on Cursed Hero." in entry for entry in session.log)
+    assert any("Blessing heals Cursed Hero: Cursed." in entry for entry in session.log)
 
 
 def test_healing_prayer_targets_ally() -> None:

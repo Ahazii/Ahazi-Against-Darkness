@@ -69,6 +69,7 @@ from .engine.roster_sync import (
     session_allows_party_edit,
     sync_minor_encounters_to_roster,
     sync_party_members_to_roster,
+    sync_party_states_to_roster,
     unlock_characters_for_session,
 )
 from .engine.supplement_sources import (
@@ -121,7 +122,6 @@ from .engine.expert_skills import (
 from .engine.expert_skill_effects import expert_skill_implementation_rows
 from .engine.hirelings import hirelings_table_rows, load_hirelings_catalog
 from .engine.milestones import milestones_table_rows
-from .engine.abyss_afflictions import clear_legacy_dark_plague_immunity
 from .engine.pdf_text_index import (
     build_rule_text_index_for_pdf,
     local_rule_text_status,
@@ -5950,8 +5950,6 @@ async def get_session(session_id: str) -> SessionState:
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     session, changed = random_engine.normalize_session(session)
-    if any(clear_legacy_dark_plague_immunity(member) for member in session.party):
-        changed = True
     if _restore_missing_recovery_members(session):
         changed = True
     if _refresh_generated_tag_manifest_on_resume(session):
@@ -6625,6 +6623,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         playtest_table=payload.playtest_table,
         playtest_key=payload.playtest_key,
         playtest_roll=payload.playtest_roll,
+        playtest_force_leader=payload.playtest_force_leader,
     )
     _restore_missing_recovery_members(session)
     from .engine.tag_campaign import sync_abyss_campaign_from_session
@@ -6656,6 +6655,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         persist_session_to_roster(session, store)
         if not camped_before:
             sync_minor_encounters_to_roster(session, store)
+    elif session.mode != "complete":
+        sync_party_states_to_roster(session, store)
     if session.mode != "complete":
         lock_characters_for_session(session, store)
     store.save("sessions", session)
@@ -6720,7 +6721,6 @@ def _member_state(character: Character) -> PartyMemberState:
         expert_skill_targets=dict(character.expert_skill_targets or {}),
         milestones=character.milestones.model_copy(deep=True),
     )
-    clear_legacy_dark_plague_immunity(member)
     snapshot_carry_baseline(member)
     return member
 
@@ -6822,7 +6822,6 @@ def _apply_member_state_to_character(character: Character, member: PartyMemberSt
     character.learned_legendary_skills = list(member.learned_legendary_skills)
     character.expert_skill_targets = dict(member.expert_skill_targets or {})
     character.secrets = list(member.secrets)
-    clear_legacy_dark_plague_immunity(member)
     character.statuses = list(member.statuses)
     character.default_melee_weapon = member.default_melee_weapon
     character.default_melee_weapon_secondary = member.default_melee_weapon_secondary

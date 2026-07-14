@@ -924,6 +924,7 @@ class SessionState(BaseModel):
     party_attacked_immediately: bool = False
     foe_flee_strike_pending: bool = False
     minor_encounters_defeated: int = 0
+    abyss_minion_encounters_defeated: int = 0
     clues_found: int = 0
     xp_rolls_pending: int = 0
     alchemist_potion_bought: list[str] = Field(default_factory=list)
@@ -1508,6 +1509,7 @@ class SessionAction(BaseModel):
     playtest_table: str | None = None
     playtest_key: str | None = None
     playtest_roll: int | None = Field(default=None, ge=1, le=8)
+    playtest_force_leader: bool = False
     dungeon_exit_intent: Literal["complete", "return"] | None = None
     direction: ExitDirection | None = None
     character_id: str | None = None

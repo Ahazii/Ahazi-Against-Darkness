@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.engine.abyss_afflictions import (
+    DARK_PLAGUE_IMMUNITY_STATUS,
     DARK_PLAGUE_STATUS,
     LYCANTHROPY_IMMUNITY_STATUS,
     LYCANTHROPY_STATUS,
@@ -89,7 +90,7 @@ def test_dark_plague_ticks_and_spreads_room_by_room(monkeypatch) -> None:
     assert any("Dark Plague spread" in line for line in log)
 
 
-def test_dark_plague_save_does_not_grant_an_unprinted_immunity(monkeypatch) -> None:
+def test_dark_plague_save_grants_adventure_scoped_immunity(monkeypatch) -> None:
     infected = _hero(character_id="h1", name="Carrier", statuses=[DARK_PLAGUE_STATUS])
     exposed = _hero(character_id="h2", name="Companion")
     tile = _tile()
@@ -100,7 +101,7 @@ def test_dark_plague_save_does_not_grant_an_unprinted_immunity(monkeypatch) -> N
     tick_dark_plague_on_room_entry(session, tile, show_rolls=False)
 
     assert DARK_PLAGUE_STATUS not in exposed.statuses
-    assert all("dark plague immunity" not in status.lower() for status in exposed.statuses)
+    assert DARK_PLAGUE_IMMUNITY_STATUS in exposed.statuses
 
 
 def test_blessing_uses_abyss_dark_plague_cure_roll(monkeypatch) -> None:
@@ -119,7 +120,7 @@ def test_blessing_uses_abyss_dark_plague_cure_roll(monkeypatch) -> None:
     )
 
     assert DARK_PLAGUE_STATUS not in target.statuses
-    assert all("dark plague immunity" not in status.lower() for status in target.statuses)
+    assert DARK_PLAGUE_IMMUNITY_STATUS in target.statuses
     assert any("Dark Plague Blessing" in line for line in outcome.log)
 
 
@@ -143,7 +144,7 @@ def test_failed_dark_plague_blessing_is_wasted(monkeypatch) -> None:
     assert any("fails to cure" in line for line in outcome.log)
 
 
-def test_elven_bread_cures_dark_plague_without_granting_immunity() -> None:
+def test_elven_bread_cures_dark_plague_and_grants_adventure_immunity() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     hero = _hero(inventory=["Elven Bread"], statuses=[DARK_PLAGUE_STATUS])
     session = _session([hero])
@@ -151,7 +152,7 @@ def test_elven_bread_cures_dark_plague_without_granting_immunity() -> None:
     engine.advance(session, "use_abyss_item", character_id="h1", item_name="Elven Bread")
 
     assert DARK_PLAGUE_STATUS not in hero.statuses
-    assert all("dark plague immunity" not in status.lower() for status in hero.statuses)
+    assert DARK_PLAGUE_IMMUNITY_STATUS in hero.statuses
 
 
 def test_lycanthropy_exposure_resolves_and_drops_silver_and_lantern(monkeypatch) -> None:

@@ -4,7 +4,8 @@ Last updated: 2026-07-13
 
 ## Summary
 
-- **Printed encounter text and Dark Plague correction (current build):** Active Abyss encounters now show their locally indexed exact PDF excerpt alongside the structured combat controls, and Swarm of Critters explains its printed Fireball-or-one-wound outcome before a player acts. Abyss pp.37 and 61 do not grant Dark Plague immunity after a save, Blessing, or Elven Bread: legacy immunity markers are removed from loaded and completed roster state while Dark Plague itself still persists until cured.
+- **Printed encounter text and Dark Plague correction (current build):** Active Abyss encounters now show their locally indexed exact PDF excerpt alongside the structured combat controls, and Swarm of Critters explains its printed Fireball-or-one-wound outcome before a player acts. Abyss p.37 grants Dark Plague immunity for the current adventure after a successful initial save, a successful Blessing cure, or an Elven Bread cure; the marker clears at adventure closeout.
+- **Dark Plague entry-save clarification pending:** Abyss p.37 describes contact with the plague as a Level 10 disease save, while the Abyss Unique Events table on p.59 says its Dark Plague result is a Level 5 disease save before the character “starts to feel ill.” Current live handling follows p.37's Level 10 procedure, pending an explicit rules decision on whether the event-table instruction is a lower initial exposure check or a distinct preliminary condition.
 
 - **Forsaken Depths named-foe playtests (v0.39.9):** The developer-only dungeon selector now exposes a named Forsaken Depths foe encounter from the shipped Vermin, Minions, Hordes, Boss, Weird, and Citadel-Weird tables. It runs through the ordinary FD spawn and combat path, including the existing horde tags and effects, so the manual plan no longer relies on random FD room rolls to reach those rows.
 - **Camp re-entry and combined-profile test repair (v0.39.8):** Returning from camp now clears outside state before restoring the entrance connections, so the player is returned to the actual entrance with its saved dungeon exits usable immediately. Developer Playtest controls now show both the Abyss scenarios and the EE base-game scenarios in an EE + Abyss session; the EE backend accepts that combined profile too.
@@ -554,7 +555,8 @@ Defer to later releases:
   indexed-but-not-playable rules so partial rows cannot masquerade as fully
   implemented gameplay.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
-  Protective Incense ally, Infallible Missile L8+ second target, Phantasmal Binding / Water Jet foe rows.
+  Protective Incense ally, Phantasmal Binding / Water Jet foe rows. Infallible Missile
+  follows Abyss p.24: one automatic wound, then another only for each exploding chain roll.
 - **Class tricks (Tiers 1–4, full):** acrobat tricks (incl. Knife Throw), assassin hide, illusionist distract/light/knife,
   gnome smokescreen/gadget/door/trap/free prisoner, mushroom spores/hyphae (four choices),
   paladin steed (+1 mounted outdoors), light gladiator/swashbuckler combat styles, bulwark limited healing,

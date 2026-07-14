@@ -216,6 +216,19 @@ def sync_party_members_to_roster(
         store.save("characters", character)
 
 
+def sync_party_states_to_roster(session: SessionState, store: Store) -> None:
+    """Expose persistent in-adventure conditions on the locked home roster."""
+    timestamp = now_utc()
+    for member in session.party:
+        character = store.get("characters", member.character_id, Character.model_validate)
+        if character is None:
+            continue
+        character.statuses = roster_statuses(member.statuses)
+        character.madness = member.madness
+        character.updated_at = timestamp
+        store.save("characters", character)
+
+
 def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
     timestamp = now_utc()
     notes: list[str] = []

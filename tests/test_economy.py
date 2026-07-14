@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.engine.combat import CombatRound
 from app.engine.clues import grant_clue
-from app.engine.experience import MINOR_ENCOUNTERS_FOR_XP
+from app.engine.experience import ABYSS_MINION_ENCOUNTERS_FOR_XP, MINOR_ENCOUNTERS_FOR_XP
 from app.engine.inventory import spend_living_carried_gold
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.secrets import secret_attack_bonus, secret_defense_bonus, secret_weakness_attack_bonus
@@ -95,6 +95,47 @@ def test_minor_encounter_tracks_toward_xp() -> None:
         eng._award_encounter_xp(session, defeated, show_rolls=False)
     assert session.xp_rolls_pending == 1
     assert session.minor_encounters_defeated == 0
+
+
+def test_abyss_minion_encounters_use_separate_five_encounter_tally() -> None:
+    eng = engine()
+    member = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")
+    session = SessionState(
+        id="abyss-xp",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        ruleset="ee",
+        ruleset_profile_id="abyss",
+        party=[member],
+        map_state=MapState(tiles=[tile], current_tile_id=tile.id),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    abyss_minions = [EnemyState(id="1", name="Chaos Fanatic", category="minions", level=7, life=0, max_life=1)]
+    standard_vermin = [EnemyState(id="2", name="Rat", category="vermin", level=2, life=0, max_life=1)]
+
+    eng._award_encounter_xp(session, standard_vermin, show_rolls=False)
+    for _ in range(ABYSS_MINION_ENCOUNTERS_FOR_XP):
+        eng._award_encounter_xp(session, abyss_minions, show_rolls=False)
+
+    assert session.xp_rolls_pending == 1
+    assert session.abyss_minion_encounters_defeated == 0
+    assert session.minor_encounters_defeated == 1
 
 
 def test_major_foe_grants_xp_roll() -> None:
