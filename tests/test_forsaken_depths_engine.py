@@ -6,7 +6,7 @@ from app.engine import random_dungeon
 from app.engine.dungeon_table_roller import TreasureOutcome
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
-from app.schemas import EnemyState, ExitState, PartyMemberState, SessionState, TileState
+from app.schemas import EnemyState, ExitState, PartyMemberState, SessionAction, SessionState, TileState
 
 
 def engine() -> RandomDungeonEngine:
@@ -1333,6 +1333,12 @@ def test_fd_treasure_choice_clues_grants_two() -> None:
     eng = engine()
     outcome = eng.table_roller.resolve_fd_treasure_choice("fd_clues_or_magic", "clues")
     assert outcome.clues_granted == 2
+
+
+def test_session_action_schema_accepts_fd_treasure_choices() -> None:
+    for pick in ["magic", "clues", "double_roll", "quad_roll_wanderers", "masterwork", "potions", "useful"]:
+        action = SessionAction(action="choose_treasure_outcome", treasure_outcome_choice=pick)
+        assert action.treasure_outcome_choice == pick
 
 
 def test_fd_oblivion_redeem_madness_once() -> None:

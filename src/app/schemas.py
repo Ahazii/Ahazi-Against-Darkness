@@ -1626,6 +1626,20 @@ class SessionAction(BaseModel):
             "chicken_blood",
             "red_death_damage",
             "red_death_level",
+            "double_roll",
+            "quad_roll_wanderers",
+            "gold",
+            "masterwork",
+            "silver_melee",
+            "magic_missiles",
+            "bow_arrows",
+            "potions",
+            "scrolls",
+            "clues",
+            "magic",
+            "useful",
+            "jewelry",
+            "defense",
         ]
         | None
     ) = None
