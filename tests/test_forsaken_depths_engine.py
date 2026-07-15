@@ -3395,6 +3395,49 @@ def test_normalize_repairs_phantom_fd_side_sheet() -> None:
     assert any("Recovered from an incomplete side-sheet entry" in entry for entry in session.log)
 
 
+def test_normalize_clears_stale_fd_side_sheet_when_party_already_at_origin() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-stale-side-origin",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_etc_entry_tile(eng)
+    side = TileState(
+        id="old-side-room",
+        x=0,
+        y=-6,
+        tile_key="23",
+        tile_type="room",
+        title="Old Citadel room",
+        description="Stale side room",
+        content_key="fd_empty",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+    )
+    session.map_state.tiles = [origin, side]
+    session.map_state.current_tile_id = origin.id
+    session.mode = "exploration"
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_side_sheet_origin_tile_id = origin.id
+    session.fd_side_sheet_rooms_total = 17
+    session.fd_side_sheet_rooms_entered = 3
+    session.fd_citadel_type = "citadel_of_traps"
+
+    repaired, changed = eng.normalize_session(session)
+
+    assert changed
+    assert repaired is session
+    assert not session.fd_side_sheet_active
+    assert session.fd_side_sheet_kind is None
+    assert session.fd_side_sheet_rooms_total == 0
+    assert session.map_state.current_tile_id == origin.id
+    assert side.fd_side_sheet
+    assert any("already back" in entry for entry in session.log)
+
+
 def test_fd_dungeon_etc_rolls_citadel_on_enter(monkeypatch) -> None:
     eng = engine()
     session = eng.create_session(

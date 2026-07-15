@@ -4695,9 +4695,34 @@ class RandomDungeonEngine:
     def _repair_phantom_fd_side_sheet(self, session: SessionState) -> bool:
         if not session.fd_side_sheet_active:
             return False
-        if any(tile.fd_side_sheet for tile in session.map_state.tiles):
-            return False
+        current = self._current_tile(session)
         origin = self._tile_by_id(session, session.fd_side_sheet_origin_tile_id or "")
+        has_side_tiles = any(tile.fd_side_sheet for tile in session.map_state.tiles)
+        if (
+            has_side_tiles
+            and origin is not None
+            and current is not None
+            and current.id == origin.id
+            and not current.fd_side_sheet
+        ):
+            origin.fd_side_sheet_entry_used = False
+            session.fd_side_sheet_active = False
+            session.fd_side_sheet_kind = None
+            session.fd_side_sheet_origin_tile_id = None
+            session.fd_side_sheet_rooms_total = 0
+            session.fd_side_sheet_rooms_entered = 0
+            session.fd_side_sheet_visited_tile_ids = []
+            session.fd_magic_citadel_mr_active = False
+            session.fd_prisoners_secret_exit_pending = False
+            session.fd_prisoners_secret_exit_tile_id = None
+            session.fd_prisoners_secret_exit_clues_spent = False
+            session.current_tile_entry_exit_id = None
+            session.log.append(
+                f"Recovered stale side-sheet state: the party is already back on {origin.title}, so the side-sheet marker was cleared."
+            )
+            return True
+        if has_side_tiles:
+            return False
         if origin is not None:
             origin.fd_side_sheet_entry_used = False
             session.map_state.current_tile_id = origin.id
