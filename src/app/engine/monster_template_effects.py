@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING, Any
 
 from ..schemas import EnemyState, PartyMemberState, SessionState
-from .class_combat import save_modifier
+from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
 from .class_profiles import max_life_for_level
 from .combat_modifiers import apply_poison_status, poison_save_succeeds
 from .dice import roll_d6, roll_d3, roll_exploding_for_level
@@ -25,6 +26,7 @@ DISEASE_PENDING_PREFIX = "Disease pending:"
 EVIL_EYE_DEFENSE_STATUS = "Defense penalty (evil eye) -1"
 STIRGE_BLOOD_DRAIN_STATUS = "Stirge blood drain"
 ANT_PEOPLE_MARKER_STATUS = "Ant People chemical marker"
+FD_CORROSIVE_MUCUS_STATUS = "FD Corrosive Mucus"
 FIRE_BREATH_USED_TAG = "fire_breath_used"
 RANDOM_POWER_TAG_PREFIX = "random_power:"
 
@@ -536,6 +538,30 @@ def _resolve_encounter_start_effect(
             _add_status(member, TAR_COVERED_STATUS)
             log.append(f"Effect: {member.name} is covered in tar.")
         return log
+    if effect_type == "corrosive_mucus":
+        targets = _living_targets(party, str(effect.get("target", "random_pc")))
+        if not targets:
+            return [f"Event: {enemy.name} spews corrosive mucus, but there is no living target."]
+        target = random.choice(targets)
+        save_level = enemy.level + int(effect.get("defense_level_delta", 1))
+        total, rolls = roll_exploding_for_level(target)
+        modifier = defense_modifier(target, enemy) + armor_defense_bonus(target)
+        final = total + modifier
+        log = [f"Event: {enemy.name} spews corrosive mucus before the melee (FD p.41)."]
+        if show_rolls:
+            log.append(
+                f"Corrosive mucus Defense roll: {target.name} rolls "
+                f"{' + '.join(str(value) for value in rolls)} + {modifier} = {final} vs L{save_level}."
+            )
+        if rolls[0] != 1 and final > save_level:
+            log.append(f"{target.name} avoids the corrosive mucus.")
+            return log
+        _add_status(target, FD_CORROSIVE_MUCUS_STATUS)
+        log.append(
+            f"Effect: {target.name} is covered in corrosive mucus: cannot flee, loses 1 Life per turn, "
+            "and has -2 on all Defense rolls until Blessing or the goblin is defeated."
+        )
+        return log
     if effect_type == "preset_trap":
         if any("wandering_spawn" in {tag.lower() for tag in enemy.tags} for enemy in [enemy]):
             return [f"Event: {enemy.name}'s preset trap is not set for wandering encounters."]
@@ -787,6 +813,46 @@ def apply_blood_drain_after_foe_turn(
             f"Stirge blood drain: {names} "
             f"{'each lose' if len(drained) > 1 else 'loses'} 1 Life (proboscis drain)."
         )
+    return log
+
+
+def living_greater_mutated_goblin_present(enemies: list[EnemyState]) -> bool:
+    return any(enemy.life > 0 and enemy.name == "Greater Mutated Goblin" for enemy in enemies)
+
+
+def clear_corrosive_mucus_if_goblin_defeated(
+    enemies: list[EnemyState],
+    party: list[PartyMemberState],
+) -> list[str]:
+    if living_greater_mutated_goblin_present(enemies):
+        return []
+    log: list[str] = []
+    for member in party:
+        if FD_CORROSIVE_MUCUS_STATUS not in member.statuses:
+            continue
+        member.statuses = [status for status in member.statuses if status != FD_CORROSIVE_MUCUS_STATUS]
+        log.append(f"{member.name}'s corrosive mucus falls away because the Greater Mutated Goblin is defeated.")
+    return log
+
+
+def apply_corrosive_mucus_after_foe_turn(
+    enemies: list[EnemyState],
+    party: list[PartyMemberState],
+) -> list[str]:
+    cleanup = clear_corrosive_mucus_if_goblin_defeated(enemies, party)
+    if cleanup:
+        return cleanup
+    log: list[str] = []
+    for member in party:
+        if member.current_life <= 0 or FD_CORROSIVE_MUCUS_STATUS not in member.statuses:
+            continue
+        member.current_life = max(0, member.current_life - 1)
+        log.append(
+            f"Corrosive mucus: {member.name} loses 1 Life "
+            f"({member.current_life}/{member.max_life}) (FD p.41)."
+        )
+        if member.current_life <= 0:
+            log.append(f"{member.name} falls.")
     return log
 
 

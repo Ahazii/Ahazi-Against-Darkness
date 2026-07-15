@@ -3335,6 +3335,10 @@ class RandomDungeonEngine:
         if citadel_adj:
             roll = max(1, min(6, roll + citadel_adj))
             session.log.extend(citadel_log)
+        goblin_adj, goblin_log = self._greater_mutated_goblin_reaction_adjust(living_enemies, fighters)
+        if goblin_adj:
+            roll = max(1, min(6, roll + goblin_adj))
+            session.log.extend(goblin_log)
         if source.inline_rows:
             row = lookup_reaction_row(source.inline_rows, roll)
             table_label = f"{source.label} reaction table"
@@ -5117,6 +5121,10 @@ class RandomDungeonEngine:
         if citadel_adj:
             roll = max(1, min(6, roll + citadel_adj))
             session.log.extend(citadel_log)
+        goblin_adj, goblin_log = self._greater_mutated_goblin_reaction_adjust(living_enemies, fighters)
+        if goblin_adj:
+            roll = max(1, min(6, roll + goblin_adj))
+            session.log.extend(goblin_log)
         if source.inline_rows:
             row = lookup_reaction_row(source.inline_rows, roll)
             table_label = f"{source.label} reaction table"
@@ -5343,6 +5351,21 @@ class RandomDungeonEngine:
         else:
             session.log.append("Reaction outcome: combat begins.")
         session.reaction_pending = False
+
+    def _greater_mutated_goblin_reaction_adjust(
+        self,
+        living_enemies: list[EnemyState],
+        fighters: list[PartyMemberState],
+    ) -> tuple[int, list[str]]:
+        if not any(enemy.name == "Greater Mutated Goblin" for enemy in living_enemies):
+            return 0, []
+        if not any(
+            "goblin" in member.class_id.lower() or "goblin" in member.class_name.lower()
+            for member in fighters
+            if member.current_life > 0
+        ):
+            return 0, []
+        return -1, ["Greater Mutated Goblin reaction: -1 because the party includes a goblin (FD p.41)."]
 
     def _resolve_reaction_challenge(
         self,
@@ -10114,6 +10137,18 @@ class RandomDungeonEngine:
 
         if any(member_cannot_flee(member) for member in party_here if member.current_life > 0):
             session.log.append("Pinned heroes cannot flee until the lurking mantlebeast is slain.")
+            return
+        from .monster_template_effects import FD_CORROSIVE_MUCUS_STATUS
+
+        slimed = [
+            member.name
+            for member in party_here
+            if member.current_life > 0 and FD_CORROSIVE_MUCUS_STATUS in member.statuses
+        ]
+        if slimed:
+            session.log.append(
+                f"Corrosive mucus blocks fleeing for {', '.join(slimed)} until Blessing or the Greater Mutated Goblin is defeated (FD p.41)."
+            )
             return
         from .courtship_combat import COURTSHIP_CANNOT_FLEE
 

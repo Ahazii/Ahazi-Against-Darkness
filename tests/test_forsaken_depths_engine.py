@@ -1463,6 +1463,7 @@ def test_fd_greater_mutated_goblin_has_printed_fixed_treasure_and_mucus() -> Non
     eng = engine()
     bosses = {row["name"]: row for row in eng.rules.monsters()["fd_boss"]}
     goblin = bosses["Greater Mutated Goblin"]
+    assert "damage_per_hit:tier" in goblin["tags"]
     assert goblin["fixed_treasure"] == {
         "gems_count": "2d6",
         "gem_value_gp": 25,
@@ -1470,12 +1471,39 @@ def test_fd_greater_mutated_goblin_has_printed_fixed_treasure_and_mucus() -> Non
         "masterwork_edged_weapon_value": "(d6+4)x5",
     }
     assert any(
-        attack["type"] == "corrosive_mucus"
-        and attack["timing"] == "before_melee"
-        and attack["blocks_flee"] is True
-        for attack in goblin["special_attacks"]
+        effect["type"] == "corrosive_mucus"
+        and effect["target"] == "random_pc"
+        and effect["blocks_flee"] is True
+        for effect in goblin["encounter_start_effects"]
     )
     assert "FD p.41" in goblin["notes"]
+
+
+def test_fd_greater_mutated_goblin_attack_inflicts_tier_damage() -> None:
+    from app.engine.combat import CombatContext, _foe_hit_damage
+    from app.engine.experience import tier_for_level
+
+    eng = engine()
+    hero = _party_member()
+    hero.level = 9
+    session = eng.create_session(
+        "fd-goblin-tier-damage",
+        "party-1",
+        [hero],
+        ruleset="forsaken_depths",
+    )
+    goblin = EnemyState(
+        id="goblin1",
+        name="Greater Mutated Goblin",
+        category="boss",
+        level=8,
+        life=8,
+        max_life=8,
+        attacks=1,
+        tags=["damage_per_hit:tier"],
+    )
+
+    assert _foe_hit_damage(goblin, CombatContext(session=session)) == tier_for_level(hero.level)
 
 
 def test_session_action_schema_accepts_fd_treasure_choices() -> None:
@@ -3227,6 +3255,109 @@ def test_fd_greater_mutated_goblin_stages_fixed_treasure(monkeypatch) -> None:
     assert "Masterwork edged weapon (40gp)" in tile.treasure_items
     assert any("Greater Mutated Goblin treasure" in entry for entry in session.log)
     assert not any("no treasure rolls" in entry.lower() for entry in session.log)
+
+
+def test_fd_greater_mutated_goblin_corrosive_mucus_runtime(monkeypatch) -> None:
+    from app.engine.monster_template_effects import (
+        FD_CORROSIVE_MUCUS_STATUS,
+        apply_corrosive_mucus_after_foe_turn,
+        apply_encounter_start_effects,
+    )
+    from app.engine.spells import _cast_blessing
+
+    eng = engine()
+    hero = _party_member()
+    hero.spells = ["Blessing"]
+    session = eng.create_session(
+        "fd-goblin-mucus",
+        "party-1",
+        [hero],
+        ruleset="forsaken_depths",
+    )
+    goblin = EnemyState(
+        id="goblin1",
+        name="Greater Mutated Goblin",
+        category="boss",
+        level=8,
+        life=8,
+        max_life=8,
+        attacks=1,
+        encounter_start_effects=[
+            {
+                "type": "corrosive_mucus",
+                "target": "random_pc",
+                "defense_level_delta": 1,
+                "damage_per_turn": 1,
+                "defense_penalty": -2,
+                "blocks_flee": True,
+            }
+        ],
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [goblin]
+    session.mode = "combat"
+
+    monkeypatch.setattr("app.engine.monster_template_effects.random.choice", lambda choices: choices[0])
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda hero: (1, [1]))
+
+    log = apply_encounter_start_effects([goblin], [hero], session, show_rolls=True)
+
+    assert FD_CORROSIVE_MUCUS_STATUS in hero.statuses
+    assert any("Corrosive mucus Defense roll" in entry for entry in log)
+    from app.engine.combat import CombatContext, _defense_bonus
+
+    slimed_defense, _ = _defense_bonus(hero, goblin, context=CombatContext(session=session))
+    hero.statuses = [status for status in hero.statuses if status != FD_CORROSIVE_MUCUS_STATUS]
+    clean_defense, _ = _defense_bonus(hero, goblin, context=CombatContext(session=session))
+    assert slimed_defense == clean_defense - 2
+    hero.statuses.append(FD_CORROSIVE_MUCUS_STATUS)
+
+    eng._flee(session, show_rolls=False)
+    assert any("Corrosive mucus blocks fleeing" in entry for entry in session.log)
+
+    before = hero.current_life
+    tick_log = apply_corrosive_mucus_after_foe_turn([goblin], [hero])
+    assert hero.current_life == before - 1
+    assert any("loses 1 Life" in entry for entry in tick_log)
+
+    spell_log: list[str] = []
+    _cast_blessing(hero, [hero], [goblin], hero.character_id, spell_log, session=session, show_rolls=False)
+    assert FD_CORROSIVE_MUCUS_STATUS not in hero.statuses
+    assert any("FD Corrosive Mucus" in entry for entry in spell_log)
+
+
+def test_fd_greater_mutated_goblin_reaction_penalty_for_goblin_party(monkeypatch) -> None:
+    eng = engine()
+    goblin_hero = _party_member()
+    goblin_hero.class_id = "goblin"
+    goblin_hero.class_name = "Goblin"
+    session = eng.create_session(
+        "fd-goblin-party-reaction",
+        "party-1",
+        [goblin_hero],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(
+            id="goblin1",
+            name="Greater Mutated Goblin",
+            category="boss",
+            level=8,
+            life=8,
+            max_life=8,
+            attacks=1,
+            tags=["boss", "goblin", "chaos", "forsaken_depths"],
+        )
+    ]
+    session.mode = "combat"
+    session.reaction_pending = True
+    monkeypatch.setattr(random_dungeon, "roll_d6", lambda: 3)
+
+    eng._check_reaction(session, show_rolls=True)
+
+    assert any("goblin flees" in entry.lower() for entry in session.log)
+    assert any("party includes a goblin" in entry for entry in session.log)
 
 
 def test_fd_hack_slain_trolls_blocks_body_return() -> None:

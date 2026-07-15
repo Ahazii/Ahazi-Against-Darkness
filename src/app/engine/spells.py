@@ -868,7 +868,7 @@ def _cast_blessing(
     show_rolls: bool = True,
 ) -> SpellOutcome:
     target = _pick_target(party, target_character_id) or caster
-    from .monster_template_effects import PETRIFIED_STATUS
+    from .monster_template_effects import FD_CORROSIVE_MUCUS_STATUS, PETRIFIED_STATUS
     from .fungal_traps import cordyceps_infected_turns
     from .abyss_afflictions import apply_blessing_to_dark_plague
 
@@ -896,6 +896,7 @@ def _cast_blessing(
             "paralyzed",
             "petrified",
             "slime disease",
+            FD_CORROSIVE_MUCUS_STATUS.lower(),
         }
         and item != PETRIFIED_STATUS
         and not item.lower().startswith("cordyceps infected")

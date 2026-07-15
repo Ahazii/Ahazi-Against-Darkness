@@ -111,6 +111,7 @@ COMBAT_END_STATUS_NAMES = {
     "specter swarm",
     "mirror image",
     "strength +1",
+    "fd corrosive mucus",
 }
 
 
@@ -413,7 +414,17 @@ def _enemy_tag_int(enemy: EnemyState, prefix: str, default: int = 0) -> int:
     return default
 
 
-def _foe_hit_damage(enemy: EnemyState) -> int:
+def _foe_hit_damage(enemy: EnemyState, context: CombatContext | None = None) -> int:
+    for tag in enemy.tags:
+        text = str(tag).lower()
+        if text != "damage_per_hit:tier":
+            continue
+        if context is None or context.session is None:
+            return 1
+        levels = [member.level for member in context.session.party if member.current_life > 0]
+        if not levels:
+            levels = [member.level for member in context.session.party]
+        return max(1, tier_for_level(max(levels) if levels else enemy.level))
     return max(1, _enemy_tag_int(enemy, "damage_per_hit:", default=1))
 
 
@@ -963,6 +974,8 @@ def _defense_bonus(
         modifier -= 1
     if any("defense penalty (evil eye)" in status.lower() for status in member.statuses):
         modifier -= 1
+    if any(status.lower() == "fd corrosive mucus" for status in member.statuses):
+        modifier -= 2
     if (
         any(status.lower() == "ant people chemical marker" for status in member.statuses)
         and "ant_people" in enemy.tags
@@ -2164,7 +2177,7 @@ def _resolve_attacks(
             continue
         if any(status.lower() == "paralyzed" for status in target.statuses):
             log.append(f"{target.name} is paralyzed and is automatically hit by {enemy.name}.")
-            damage = _foe_hit_damage(enemy)
+            damage = _foe_hit_damage(enemy, context)
             if context.session is not None:
                 damage, pain_log = adjust_incoming_damage(context.session, target, damage)
                 log.extend(pain_log)
@@ -2201,7 +2214,7 @@ def _resolve_attacks(
             from .party_life import apply_party_life_loss
 
             target_life_before = target.current_life
-            applied = apply_party_life_loss(context.session, target, _foe_hit_damage(enemy))
+            applied = apply_party_life_loss(context.session, target, _foe_hit_damage(enemy, context))
             if applied:
                 log.append(
                     f"{target.name} takes {applied} damage from {enemy.name} "
@@ -2253,7 +2266,7 @@ def _resolve_attacks(
 
             if fd_no_danger_here_active(target):
                 damage_target = target
-                damage = _foe_hit_damage(enemy)
+                damage = _foe_hit_damage(enemy, context)
                 if context.session.courtship_demesne_active:
                     from .courtship_combat import apply_courtship_on_foe_hit, courtship_skip_foe_damage
 
@@ -2607,7 +2620,7 @@ def _resolve_attacks(
                         log.append(f"{damage_target.name} falls.")
                     continue
             _destroy_shield_after_natural_one_defense(enemy, damage_target, rolls[0], log)
-            damage = _foe_hit_damage(enemy)
+            damage = _foe_hit_damage(enemy, context)
             if context.session is not None:
                 damage, pain_log = adjust_incoming_damage(context.session, damage_target, damage)
                 log.extend(pain_log)
@@ -3447,6 +3460,10 @@ def resolve_combat_round(
         if drain_log:
             log.extend(drain_log)
         if context.session is not None:
+            from .monster_template_effects import clear_corrosive_mucus_if_goblin_defeated
+
+            log.extend(clear_corrosive_mucus_if_goblin_defeated(enemies, party))
+        if context.session is not None:
             from .forsaken_depths_hordes import apply_lizardman_horde_poison_after_party_turn
 
             log.extend(
@@ -3461,11 +3478,14 @@ def resolve_combat_round(
     def run_foe_phase() -> None:
         run_foe_ranged_phase()
         run_foe_melee_phase()
-        from .monster_template_effects import apply_blood_drain_after_foe_turn
+        from .monster_template_effects import apply_blood_drain_after_foe_turn, apply_corrosive_mucus_after_foe_turn
 
         drain_log = apply_blood_drain_after_foe_turn(enemies, party, show_rolls=show_rolls)
         if drain_log:
             log.extend(drain_log)
+        mucus_log = apply_corrosive_mucus_after_foe_turn(enemies, party)
+        if mucus_log:
+            log.extend(mucus_log)
 
     phase_runners = {
         "pc_ranged": run_pc_ranged_phase,

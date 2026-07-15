@@ -345,6 +345,7 @@ def _cast_mass_blessing(
 
 BLESSING_STATUS_NAMES = {
     "cursed",
+    "fd corrosive mucus",
     "fd my fingers are worms",
     "fd no danger here",
     "petrified",
