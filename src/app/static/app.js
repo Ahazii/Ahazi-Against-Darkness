@@ -19713,7 +19713,7 @@ function currentObjectiveForSession(session) {
         label: choice.label,
         kind: "advance",
         advanceAction: "choose_treasure_outcome",
-        payload: { treasure_outcome_choice: choice.pick },
+        payload: { treasure_outcome_choice: choice.pick, item_name: choice.itemName || null },
         tooltip: choice.title,
       }));
       return {
@@ -20953,7 +20953,7 @@ function renderTreasureChoices(session) {
     choiceBtn.textContent = choice.label;
     setButtonTooltip(choiceBtn, choice.title);
     choiceBtn.addEventListener("click", () =>
-      advance("choose_treasure_outcome", { treasure_outcome_choice: choice.pick })
+      advance("choose_treasure_outcome", { treasure_outcome_choice: choice.pick, item_name: choice.itemName || null })
     );
     treasureChoicesEl.appendChild(choiceBtn);
   }
@@ -27861,6 +27861,22 @@ function treasureOutcomeChoices(choiceKey) {
       { pick: "clues", label: "Treasure: 2 Clues (secret information)", title: "Scroll with secret information worth 2 Clues (FD p.62)." },
       { pick: "magic", label: "Treasure: magic item roll", title: "Take the tier-appropriate magic item that was rolled (FD p.62)." },
     ];
+  }
+  if (choiceKey === "fd_common_equipment") {
+    const rows = (state.rulesTables?.equipment_shop_table || [])
+      .filter((item) =>
+        item?.name &&
+        Number.isFinite(Number(item.price_gp)) &&
+        Number(item.price_gp) <= 50 &&
+        !item.magic
+      )
+      .sort((a, b) => Number(a.price_gp) - Number(b.price_gp) || String(a.name).localeCompare(String(b.name)));
+    return rows.map((item) => ({
+      pick: "common_equipment",
+      itemName: item.name,
+      label: `Equipment: ${item.name} (${item.price_gp}gp)`,
+      title: `Take ${item.name} as the FD p.62 common equipment result; price ${item.price_gp}gp, within the 50gp limit.`,
+    }));
   }
   if (choiceKey === "fd_double_or_jackpot") {
     return [

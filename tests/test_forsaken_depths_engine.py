@@ -1335,8 +1335,34 @@ def test_fd_treasure_choice_clues_grants_two() -> None:
     assert outcome.clues_granted == 2
 
 
+def test_fd_common_equipment_treasure_requires_item_choice(monkeypatch) -> None:
+    eng = engine()
+    monkeypatch.setattr("app.engine.dungeon_table_roller.random.randint", lambda *args, **kwargs: 2)
+    outcome = eng.table_roller.roll_fd_treasure(show_rolls=False, treasure_bonus=-1)
+    assert outcome.choice_key == "fd_common_equipment"
+    assert outcome.gold == 0
+    assert outcome.items == []
+
+    chosen = eng.table_roller.resolve_fd_treasure_choice(
+        "fd_common_equipment",
+        "common_equipment",
+        item_name="Heavy armor",
+    )
+    assert chosen.items == ["Heavy armor"]
+    assert "30gp" in chosen.summary
+
+
+def test_fd_dark_elf_warlock_has_printed_treasure_and_ice_blast() -> None:
+    eng = engine()
+    bosses = {row["name"]: row for row in eng.rules.monsters()["fd_boss"]}
+    warlock = bosses["Dark Elf Warlock"]
+    assert warlock["treasure_modifier"] == 2
+    assert any(attack["type"] == "ice_blast" and attack["timing"] == "each_turn" for attack in warlock["special_attacks"])
+    assert "Treasure: 1 Forsaken Depths roll +2" in warlock["notes"]
+
+
 def test_session_action_schema_accepts_fd_treasure_choices() -> None:
-    for pick in ["magic", "clues", "double_roll", "quad_roll_wanderers", "masterwork", "potions", "useful"]:
+    for pick in ["magic", "clues", "double_roll", "quad_roll_wanderers", "masterwork", "potions", "useful", "common_equipment"]:
         action = SessionAction(action="choose_treasure_outcome", treasure_outcome_choice=pick)
         assert action.treasure_outcome_choice == pick
 
@@ -3184,10 +3210,10 @@ def _fd_etc_entry_tile(eng: RandomDungeonEngine) -> TileState:
     )
 
 
-def test_fd_enter_citadel_side_sheet_pregenerates_rooms(monkeypatch) -> None:
+def test_fd_enter_citadel_side_sheet_creates_only_first_room(monkeypatch) -> None:
     eng = engine()
     session = eng.create_session(
-        "fd-citadel-pregen",
+        "fd-citadel-first-room",
         "party-1",
         [_party_member()],
         ruleset="forsaken_depths",
@@ -3200,15 +3226,20 @@ def test_fd_enter_citadel_side_sheet_pregenerates_rooms(monkeypatch) -> None:
     session.fd_citadel_room_count = 4
     session.fd_citadel_entry_tile_id = origin.id
     monkeypatch.setattr("app.engine.forsaken_depths_side_sheet.roll_d6", lambda: 3)
+    monkeypatch.setattr(
+        eng,
+        "_roll_fd_content",
+        lambda *args, **kwargs: {"key": "fd_empty", "description": "Empty.", "objects": [], "enemies": []},
+    )
 
     eng.advance(session, "enter_fd_side_sheet")
 
     side_tiles = [tile for tile in session.map_state.tiles if tile.fd_side_sheet]
     assert session.fd_side_sheet_active
     assert session.fd_side_sheet_kind == "citadel"
-    assert len(side_tiles) == 4
+    assert len(side_tiles) == 1
     assert session.map_state.current_tile_id == side_tiles[0].id
-    assert any("Citadel side sheet" in entry for entry in session.log)
+    assert not any("rooms placed on the map" in entry for entry in session.log)
 
 
 def test_fd_citadel_side_sheet_does_not_reuse_dungeon_exit(monkeypatch) -> None:
@@ -3238,18 +3269,70 @@ def test_fd_citadel_side_sheet_does_not_reuse_dungeon_exit(monkeypatch) -> None:
     session.fd_citadel_room_count = 3
     session.fd_citadel_entry_tile_id = origin.id
     monkeypatch.setattr("app.engine.forsaken_depths_side_sheet.roll_d6", lambda: 3)
+    monkeypatch.setattr(
+        eng,
+        "_roll_fd_content",
+        lambda *args, **kwargs: {"key": "fd_empty", "description": "Empty.", "objects": [], "enemies": []},
+    )
 
     eng.advance(session, "enter_fd_side_sheet")
 
     side_tiles = [tile for tile in session.map_state.tiles if tile.fd_side_sheet]
     assert session.mode == "exploration"
     assert session.fd_side_sheet_active
-    assert len(side_tiles) == 3
+    assert len(side_tiles) == 1
     assert session.map_state.current_tile_id == side_tiles[0].id
     assert dungeon_exit.destination_tile_id is None
     assert dungeon_exit.status == "open"
     assert any(exit_state.label == "Side sheet" for exit_state in origin.exits)
     assert not any("leaves the dungeon" in entry for entry in session.log)
+
+
+def test_fd_citadel_trap_room_gets_resolvable_trap(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-citadel-trap-room",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_citadel_type = "citadel_of_traps"
+    session.fd_side_sheet_rooms_total = 4
+    session.fd_side_sheet_rooms_entered = 1
+    tile = TileState(
+        id="citadel-trap",
+        x=0,
+        y=0,
+        tile_key="23",
+        tile_type="room",
+        title="Citadel trap room",
+        description="Side sheet room",
+        content_key="fd_side_sheet",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+    )
+    monkeypatch.setattr(
+        eng,
+        "_roll_fd_content",
+        lambda *args, **kwargs: {
+            "key": "fd_trap",
+            "description": "A Forsaken Depths trap is hidden here.",
+            "objects": ["Trap"],
+            "enemies": [],
+        },
+    )
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 2)
+
+    from app.engine.forsaken_depths_citadel import apply_fd_citadel_room
+
+    apply_fd_citadel_room(eng, session, tile, hcl=3, show_rolls=True)
+
+    assert tile.content_key == "fd_trap"
+    assert tile.trap_key == "fd_oblivion_trapdoor"
+    assert tile.trap_level == 6
+    assert "Trap" not in tile.objects
 
 
 def test_fd_side_sheet_entry_rolls_back_when_first_room_not_placed(monkeypatch) -> None:

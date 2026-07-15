@@ -276,8 +276,6 @@ def enter_fd_side_sheet(
             "The side sheet could not be placed on the map. Choose another open edge or continue from the main map."
         )
         return False
-    if chosen == "citadel" and session.fd_side_sheet_active:
-        engine.pregenerate_fd_citadel_side_sheet_rooms(session, show_rolls=show_rolls)
     return session.fd_side_sheet_active
 
 

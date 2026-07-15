@@ -23,6 +23,19 @@ ENVIRONMENT_MAGIC_TABLES: dict[str, str] = {
 }
 
 
+def _equipment_shop_rows(tables: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = tables.get("equipment_shop_table")
+    if isinstance(rows, list):
+        return rows
+    path = Path(__file__).resolve().parents[3] / "data" / "rules" / "equipment_shop.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    items = payload.get("items", [])
+    return items if isinstance(items, list) else []
+
+
 def environment_trap_table(environment: EnvironmentKind) -> str:
     if environment == "caverns":
         return "caverns_trap_table"
@@ -287,7 +300,13 @@ class DungeonTableRoller:
                 log,
             )
         if key == "common_equipment":
-            return TreasureOutcome("Common equipment worth up to 50 gp.", 50, ["Common equipment (≤50gp)"], log)
+            return TreasureOutcome(
+                "Common equipment worth up to 50 gp (choose before claiming).",
+                0,
+                [],
+                log,
+                choice_key="fd_common_equipment",
+            )
         if key == "precious_silk":
             if silk_already_found:
                 if show_rolls:
@@ -700,11 +719,42 @@ class DungeonTableRoller:
         *,
         staged_gold: int = 0,
         staged_items: list[str] | None = None,
+        item_name: str | None = None,
         silk_already_found: bool = False,
         show_rolls: bool = True,
     ) -> TreasureOutcome:
         log = [f"Forsaken Depths treasure choice ({choice_key}): {pick}."]
         staged_items = list(staged_items or [])
+        if choice_key == "fd_common_equipment":
+            selected = (item_name or "").strip()
+            if pick != "common_equipment" or not selected:
+                return TreasureOutcome(
+                    "Choose one common equipment item worth up to 50 gp.",
+                    0,
+                    [],
+                    log,
+                    choice_key=choice_key,
+                )
+            eligible = {
+                str(row.get("name", "")).strip(): int(row.get("price_gp", 0) or 0)
+                for row in _equipment_shop_rows(self.tables)
+                if row.get("name") and int(row.get("price_gp", 0) or 0) <= 50 and not row.get("magic")
+            }
+            price = eligible.get(selected)
+            if price is None:
+                return TreasureOutcome(
+                    "Choose one common equipment item worth up to 50 gp.",
+                    0,
+                    [],
+                    log + [f"{selected or 'Selected item'} is not eligible for the FD p.62 common equipment result."],
+                    choice_key=choice_key,
+                )
+            return TreasureOutcome(
+                f"Common equipment: {selected} ({price}gp value).",
+                0,
+                [selected],
+                log,
+            )
         if choice_key == "fd_double_or_jackpot":
             if pick == "double_roll":
                 merged = self._roll_fd_treasure_batch(

@@ -1640,6 +1640,7 @@ class SessionAction(BaseModel):
             "useful",
             "jewelry",
             "defense",
+            "common_equipment",
         ]
         | None
     ) = None

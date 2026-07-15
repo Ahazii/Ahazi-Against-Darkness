@@ -1246,6 +1246,7 @@ class RandomDungeonEngine:
             self._choose_treasure_outcome(
                 session,
                 treasure_outcome_choice,
+                item_name=item_name,
                 show_rolls=show_rolls,
             )
         elif action == "fd_oblivion_redeem_madness":
@@ -14844,6 +14845,7 @@ class RandomDungeonEngine:
         session: SessionState,
         pick: str | None,
         *,
+        item_name: str | None = None,
         show_rolls: bool,
     ) -> None:
         tile = self._current_tile(session)
@@ -14865,6 +14867,7 @@ class RandomDungeonEngine:
                 pick,
                 staged_gold=tile.treasure_gold,
                 staged_items=list(tile.treasure_items),
+                item_name=item_name,
                 silk_already_found=session.fd_silk_treasure_used,
                 show_rolls=show_rolls,
             )

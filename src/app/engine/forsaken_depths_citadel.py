@@ -195,6 +195,11 @@ def apply_fd_citadel_room(
     tile.content_key = content["key"]
     tile.description = engine._tile_description(tile.description, content["description"])
     tile.objects = list(content.get("objects") or [])
+    if content.get("key") == "fd_trap" and not tile.trap_key:
+        trap = engine.table_roller.roll_fd_trap(hcl, show_rolls=show_rolls, explain_math=False)
+        tile.trap_key = trap.trap_key
+        tile.trap_level = trap.trap_level
+        tile.objects = [obj for obj in tile.objects if obj.lower() != "trap"] + [trap.summary]
     if content.get("enemies"):
         tile.enemies.extend(content["enemies"])
         tile.initial_enemy_count = len(tile.enemies)

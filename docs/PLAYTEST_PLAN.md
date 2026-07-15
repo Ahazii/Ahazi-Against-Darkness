@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-15. Target build: post-v0.39.17 Deep Troll / FD treasure-choice / Citadel side-sheet repair patch.
+Last updated: 2026-07-15. Target build: post-v0.39.17 FD Citadel reveal / Warlock treasure / common-equipment choice patch.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
@@ -26,16 +26,16 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 ## Next Required: Game 2 Forsaken Depths
 
-The prior disposable Forsaken Depths Game 2 session (`5c6d787968a94dcd9055e537b3498124`) was completed by the Citadel force/dungeon-exit bug before this patch. Start one new disposable Forsaken Depths dungeon with a tier-appropriate four-hero party unless the old session is deliberately restored from backup.
+The active disposable Forsaken Depths Game 2 session is `fed118f1c70a4835b84f245bf8ddefeb`. It is currently still inside a Citadel side sheet; the **Citadel: Citadel of Traps** marker is expected while the current map element has `fd_side_sheet=true`.
 
-1. Deploy the latest build and force-refresh. Start or resume the new disposable Game 2 session.
-2. Force **Forsaken Depths Citadel -> 3: Citadel of Traps**. Confirm the party moves onto a newly created side-sheet map room, not the entrance room or a dungeon exit, and that side-sheet room count/progress is visible in the debug/objective text. The app must not return to Dashboard or mark the adventure complete.
-3. In the Citadel of Traps side sheet, generate and resolve one normal room, then confirm the return/exit route works. Save and reload while the side sheet is active; confirm it restores intact.
-4. Force **FD foe encounter -> Minions -> Deep Trolls** once. Confirm **Hack slain trolls** still appears after a troll body is down and, after using it, no slain Deep Troll returns on the next troll turn. The log should say the hacked bodies prevent the return. Confirm the defeated Deep Troll encounter still gives an FD treasure roll at `-1` and ordinary `minor encounter` XP wording.
-5. If an FD treasure choice appears, confirm the choice buttons are visible in the main action strip as **Choose treasure** and/or in **Current Objective** before using **Claim Treasure**. The marker-menu path may also work, but it should no longer be the only visible route, and the plain **Claim Treasure** button should not be the only prominent treasure control while the choice is pending.
-6. To force a **Citadel-Weird**, choose **FD foe encounter**, confirm the named foe dropdown has a separate **Citadel Weird** group, then select any foe under that group (for example Chaos Mothbeast Queen). Resolve one such encounter.
-7. During exploration, resolve one FD hazard or trap and one treasure or current-event choice. If offered, accept Lady in Gray or Cyclopean Idol and confirm Ongoing Quests shows the progress condition and one reward or choice path.
-8. The following Game 2 checks are complete unless later regression reopens them: FD developer controls appeared with `Supplements: 3`; Shadowbats of the Deep combat looked correct; Infallible Missile created the Level 8+ second missile correctly; Deep Troll chip/hover and Hack button appeared; Deep Troll slain-body return fired before hacking; Horde of Dark Elves opening volley was visible; one Boss and one ordinary Weird entered ordinary combat; Undead Leviathan generated FD treasure.
+1. Deploy the latest build and force-refresh. Start a fresh disposable FD Game 2 only if the current session cannot be used after the patch.
+2. Force or enter **Citadel of Traps**. Confirm only the first side-sheet room is created/revealed on entry, not the full room budget. The side-sheet counter should still show the total room budget.
+3. If a Citadel room shows a trap, confirm the room has a concrete FD trap name/level and the **Resolve Trap** action appears. Resolve one such trap and confirm any post-trap treasure can be claimed normally.
+4. Move one room farther into the Citadel, save, return to Dashboard, resume, and confirm the same Citadel room restores. Then use the side-sheet return route when available and confirm the Citadel marker clears only after returning to the main dungeon map.
+5. Force **FD foe encounter -> Boss -> Dark Elf Warlock**. Confirm the defeated Warlock awards one FD treasure roll at `+2`. Treat the printed ice-blast targeting as still under review unless the log explicitly shows the Defense roll: FD p.44 says the Warlock makes one staff attack and one ice blast each turn; shields count, armor is ignored except Cold defense, and barbarians/Ice-based characters add +1/2 L.
+6. If FD treasure roll 1 appears, confirm the UI asks for **common equipment up to 50 gp** instead of assigning a placeholder item. Current patch exposes one eligible standard equipment-shop item at a time; record feedback if the PDF should support a multi-item basket totaling 50 gp.
+7. During exploration, resolve one FD hazard/event choice and, if offered, accept Lady in Gray or Cyclopean Idol and confirm Ongoing Quests shows the progress condition and one reward or choice path.
+8. The following Game 2 checks are complete unless later regression reopens them: FD developer controls appeared with `Supplements: 3`; Shadowbats of the Deep combat looked correct; Infallible Missile created the Level 8+ second missile correctly; Deep Troll chip/hover and Hack button appeared; Deep Troll slain-body return fired before hacking; Deep Troll hack blocked the next group return after the follow-up patch; Deep Troll treasure at `-1` and ordinary minor XP wording were visible; Horde of Dark Elves opening volley and treasure roll were visible; one Boss and one ordinary Weird entered ordinary combat; Undead Leviathan generated FD treasure; FD p.62 treasure choice buttons appeared in the main action strip/Current Objective and accepted schema payloads; forcing Citadel no longer completes the adventure via the dungeon exit.
 
 ## Game 3: Adventures Guild
 

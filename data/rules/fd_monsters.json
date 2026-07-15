@@ -234,8 +234,22 @@
       "life": 12,
       "attacks": 2,
       "tags": ["boss", "elf", "forsaken_depths"],
+      "treasure_modifier": 2,
+      "special_attacks": [
+        {
+          "type": "ice_blast",
+          "timing": "each_turn",
+          "damage": 2,
+          "defense_save": true,
+          "shield_counts": true,
+          "armor_ignored": true,
+          "cold_defense_exception": true,
+          "barbarian_or_ice_bonus": "+1/2L",
+          "description": "Each turn: one staff attack for 1 damage and one ice blast; target makes a Defense roll or loses 2 Life. Shields count; armor is ignored unless it has special Cold defense. Barbarians and Ice-based characters add +1/2 L."
+        }
+      ],
       "reactions": [{"roll": "1", "key": "peaceful", "result": "The warlock is peaceful."}, {"roll": "2-4", "key": "bribe", "result": "The warlock wants scrolls or magic."}, {"roll": "5-6", "key": "fight", "result": "The warlock attacks!", "foes_first": true}],
-      "notes": "HCL+1 boss (FD p.44)."
+      "notes": "HCL+1 boss, 12 Life, 2 attacks: one staff attack and one ice blast. Treasure: 1 Forsaken Depths roll +2. Hates all females, prioritizing female elves and female spellcasters if available. Reactions are at -1 per Dark Elf Witch killed this adventure (FD p.44)."
     },
     {
       "name": "Greater Mutated Goblin",
