@@ -14,7 +14,7 @@ This is the active player checklist only. Completed and superseded checks are re
 
 Evidence copied 2026-07-15 for live session `2b51e57ab5cd4623942fbef9b65b30d3`: after camping and re-entry, the current room was **Entrance Map Element 06**, mode/camp was `exploration / inside`, no enemies remained, and exits were south passage open plus west/east doors open. Resuming into the Camp screen is valid if the session was saved while `camped_outside`; the invariant is that **(Re)enter Dungeon** returns to Entrance 06 with dungeon exits usable, not to stale Map Element 32.
 
-The session also showed no active recovery/body state in Debug Context after the playtest reset repair removed stale fallen-body markers. Abandonment no longer needs to be repeated for this session unless a new closeout blocker appears; pending Classical XP remains an intentional closeout blocker until banked or spent.
+The session also showed no active recovery/body state in Debug Context after the playtest reset repair removed stale fallen-body markers. The original unfinished-abandon branch is no longer provable from this report because the session later found and defeated the Final Boss. If it was not already confirmed before the report was copied, check the same closeout rule only when a future disposable random dungeon is already camped outside with unfinished content: **Abandon Dungeon** must not require a Final Boss, but pending Classical XP must still be banked or spent first.
 
 ## Passed: Game 1 EE + Abyss Targeted Check
 
