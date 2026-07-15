@@ -41,6 +41,10 @@ _DEFEAT_PATTERN = re.compile(
     r"(?:defeated|slain|destroyed|subdued)",
     re.IGNORECASE,
 )
+_SLAYS_PATTERN = re.compile(
+    r"(?P<actor>[^.;]+?) slays (?P<count>\d+) (?P<target>[^.;]+?)(?: with| as|\.|$)",
+    re.IGNORECASE,
+)
 
 
 def _clean_name(value: str | None) -> str:
@@ -106,6 +110,33 @@ def _extract_damage_events(
                     direction=_direction(actor, target, party_names, enemy_names),
                 )
             )
+    return events
+
+
+def _extract_slay_events(
+    line: str,
+    *,
+    party_names: set[str],
+    enemy_names: set[str],
+) -> list[DamageEvent]:
+    events: list[DamageEvent] = []
+    for match in _SLAYS_PATTERN.finditer(line):
+        actor = _clean_name(match.group("actor"))
+        if "'s " in actor:
+            actor = actor.split("'s ", 1)[0]
+        target = _clean_name(match.group("target"))
+        count = int(match.group("count"))
+        if count <= 0:
+            continue
+        events.append(
+            DamageEvent(
+                actor=actor,
+                target=target,
+                damage=count,
+                direction=_direction(actor, target, party_names, enemy_names),
+                killed=True,
+            )
+        )
     return events
 
 
@@ -191,6 +222,7 @@ def summarize_combat_log(
     regen_blocked = 0
     for line in log_lines:
         events.extend(_extract_damage_events(line, party_names=party_name_set, enemy_names=enemy_name_set))
+        events.extend(_extract_slay_events(line, party_names=party_name_set, enemy_names=enemy_name_set))
         defeated.extend(_extract_defeats(line))
         if "cannot regenerate" in line.lower():
             regen_blocked += 1

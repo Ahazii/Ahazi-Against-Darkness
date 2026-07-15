@@ -68,6 +68,21 @@ def test_summarize_combat_log_counts_takes_damage_wording() -> None:
     assert "No hits this round" not in summary
 
 
+def test_summarize_combat_log_counts_minion_slays_wording() -> None:
+    summary = summarize_combat_log(
+        [
+            "Sly Silas slays 2 Shrieking Fungi with a Magic Bow (Bow, +1 Attack) missile attack.",
+            "Sister Joyce slays 1 Shrieking Fungi with a Mace melee attack.",
+        ],
+        party_names=["Sly Silas", "Sister Joyce"],
+        enemy_names=["Shrieking Fungi"],
+    )
+
+    assert "Sly Silas killed Shrieking Fungi with a hit for 2 damage" in summary
+    assert "Sister Joyce killed Shrieking Fungi with a hit for 1 damage" in summary
+    assert "No hits" not in summary
+
+
 def test_summarize_combat_log_empty_round_is_unambiguous() -> None:
     assert summarize_combat_log(["Warrior misses.", "Troll misses."]) == (
         "No hits, wounds, or foe defeats this round."

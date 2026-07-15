@@ -1,32 +1,30 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-15. Target build: v0.39.17.
+Last updated: 2026-07-15. Target build: post-v0.39.17 recap patch.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
 ## Before Testing
 
-1. Deploy the latest image and force-refresh until the header shows `v0.39.17`.
+1. Deploy the latest image and force-refresh until the header shows the current build.
 2. In Developer Playtest Preferences, enable **dungeon playtest controls**. Leave TAG fixed-result controls off until Game 3.
 3. Keep **Copy Narrative Report** available. Copy one after any failure and after each closeout.
 
-## No New Game Needed
+## Passed: No New Game Needed
 
-1. Resume the current EE + Abyss session. It must open at **Entrance Map Element 06**, not the room where the manual save was made, and its dungeon exit must be usable immediately after a normal refresh.
-2. Choose **Camp outside**, refresh once, then use **(Re)enter Dungeon**. The party must return to that same entrance with its existing exits usable; the saved checkpoint must not move the party back to Map Element 32.
-3. Return to camp again. **Abandon Dungeon** must be present even though the Final Boss is not defeated. This current session has one pending Classical XP roll: bank it to an eligible hero or spend it from the camp XP panel, then confirm **Abandon Dungeon** completes the session. Do not discard or silently lose earned XP.
-4. Party Sheets must remain fully visible and there must be no Recovery control, body carrier, fallen-body marker, or pending transfer. Do not deliberately create another recovery situation in this valuable session.
+Evidence copied 2026-07-15 for live session `2b51e57ab5cd4623942fbef9b65b30d3`: after camping and re-entry, the current room was **Entrance Map Element 06**, mode/camp was `exploration / inside`, no enemies remained, and exits were south passage open plus west/east doors open. Resuming into the Camp screen is valid if the session was saved while `camped_outside`; the invariant is that **(Re)enter Dungeon** returns to Entrance 06 with dungeon exits usable, not to stale Map Element 32.
 
-## Game 1: EE + Abyss Targeted Check
+The session also showed no active recovery/body state in Debug Context after the playtest reset repair removed stale fallen-body markers. Abandonment no longer needs to be repeated for this session unless a new closeout blocker appears; pending Classical XP remains an intentional closeout blocker until banked or spent.
 
-Start one disposable Classical EE + Abyss dungeon with an Elf, a Rogue, and ordinary combat equipment. Use the developer selector only while no encounter is active.
+## Passed: Game 1 EE + Abyss Targeted Check
 
-1. Force **Dragon Man**. Before claw attacks, every living hero must make the displayed Level 8 dragon-fire save. Only Elves, Rogues, and Swashbucklers receive `+1`; Wizards receive no extra printed bonus. A failed save loses exactly 1 Life.
-2. Optional only if a hero naturally falls while carrying Clues or a Secret: confirm Party Sheets stay visible, a single compact **Recovery** opener appears, and its draggable window offers only valid actions. The fallen-transfer modal must then show every living recipient and resolve once. Do not manufacture a death in a non-disposable party just for this check.
+Evidence copied 2026-07-15: Dragon Man was forced from camp re-entry at Entrance 06. Before claw attacks, all living heroes rolled Level 8 dragon-fire saves. The Elf and Rogue received the printed `+1`; the Warrior and Cleric did not. Failed saves lost exactly 1 Life, then ordinary claw attacks and treasure proceeded.
+
+Optional recovery remains passive future evidence only: if a hero naturally falls while carrying Clues or a Secret in a disposable session, confirm Party Sheets stay visible, a single compact **Recovery** opener appears, and its draggable window offers only valid actions. The fallen-transfer modal must then show every living recipient and resolve once. Do not manufacture a death in a valuable party just for this check.
 
 Already passed and deliberately removed from this game: Ant People marker spray, Dark Plague Level 10 workflow, Ghoul King Elf `+Level` save and Blessing cure, save/reload entrance restoration, 200gp carrying cap, left-behind treasure claim, Shrieking Fungi, Flying Skulls, Phasing Panther, Tentacled Brain, and ordinary EE table/sample checks. The Ghoul King automatic-hit-after-failed-save outcome was not rolled before the foe died; leave it as passive future evidence rather than repeating the encounter.
 
-## Game 2: Forsaken Depths
+## Next Required: Game 2 Forsaken Depths
 
 Start one disposable Forsaken Depths dungeon with a tier-appropriate four-hero party.
 
