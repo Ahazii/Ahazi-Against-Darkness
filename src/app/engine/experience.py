@@ -91,7 +91,9 @@ def is_abyss_minion_encounter(session: SessionState, defeated: list[EnemyState])
     if defeated and all(enemy.category == "minions" for enemy in defeated):
         from .abyss_tables import is_abyss_profile
 
-        return is_abyss_profile(session)
+        if not is_abyss_profile(session):
+            return False
+        return all("abyss" in {tag.lower() for tag in enemy.tags} for enemy in defeated)
     return False
 
 

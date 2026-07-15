@@ -1847,6 +1847,8 @@ class RandomDungeonEngine:
                 target_enemy_id=(attack_targets or {}).get(character_id or "") if attack_targets else None,
                 show_rolls=show_rolls,
             )
+        elif action == "hack_slain_trolls":
+            self._hack_slain_trolls(session, character_id, show_rolls=show_rolls)
         elif action == "use_mushroom":
             self._use_mushroom(
                 session,
@@ -18227,6 +18229,42 @@ class RandomDungeonEngine:
                 active_enemy_ids=active_enemy_ids,
                 standing_before=standing_before,
             )
+
+    def _hack_slain_trolls(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Slain trolls can only be hacked apart during combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to hack slain trolls apart.")
+            return
+        tile = self._current_tile(session)
+        party_here = combat_party(session, tile.id)
+        if member.character_id not in {pc.character_id for pc in party_here}:
+            session.log.append(f"{member.name} is not on the current map element.")
+            return
+        slain_trolls = [
+            enemy
+            for enemy in tile.enemies
+            if enemy.life <= 0 and "revives_slain_troll" in {tag.lower() for tag in enemy.tags}
+        ]
+        if not slain_trolls:
+            session.log.append("There are no slain regenerating trolls to hack apart.")
+            return
+        if not self._commit_immediate_attack(session):
+            return
+        for enemy in slain_trolls:
+            enemy.regen_suppressed = True
+        session.log.append(
+            f"{member.name} spends a turn hacking slain Deep Trolls apart; "
+            "their return to life is blocked this troll turn."
+        )
 
     def _eat_food_ration(self, session: SessionState, character_id: str | None) -> None:
         if session.mode != "exploration":

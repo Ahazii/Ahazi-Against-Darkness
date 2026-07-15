@@ -7,6 +7,7 @@ from app.engine import combat, spells
 from app.engine.combat import (
     CombatContext,
     enemy_has_regeneration,
+    revive_one_slain_troll_after_turn,
     resolve_combat_round,
     resolve_flee,
 )
@@ -177,6 +178,46 @@ def test_troll_regeneration_block_logs_in_summary_mode() -> None:
 
     assert beast.life == 3
     assert "Effect: Troll cannot regenerate (fire, acid, lightning, or oil wound) (3/7 HP)." in log
+
+
+def test_deep_troll_slain_body_returns_after_troll_turn() -> None:
+    living = EnemyState(
+        id="troll-1",
+        name="Deep Trolls",
+        category="minions",
+        level=10,
+        life=1,
+        max_life=1,
+        attacks=1,
+        tags=["minions", "troll", "forsaken_depths", "regeneration", "revives_slain_troll"],
+    )
+    slain = living.model_copy(update={"id": "troll-2", "life": 0})
+    log: list[str] = []
+
+    revive_one_slain_troll_after_turn([living, slain], {"Deep Trolls"}, log)
+
+    assert slain.life == 1
+    assert "returns to life" in " ".join(log)
+
+
+def test_deep_troll_body_return_can_be_suppressed() -> None:
+    living = EnemyState(
+        id="troll-1",
+        name="Deep Trolls",
+        category="minions",
+        level=10,
+        life=1,
+        max_life=1,
+        attacks=1,
+        tags=["minions", "troll", "forsaken_depths", "regeneration", "revives_slain_troll"],
+    )
+    slain = living.model_copy(update={"id": "troll-2", "life": 0, "regen_suppressed": True})
+    log: list[str] = []
+
+    revive_one_slain_troll_after_turn([living, slain], {"Deep Trolls"}, log)
+
+    assert slain.life == 0
+    assert "cannot return to life" in " ".join(log)
 
 
 def test_troll_regen_suppressed_by_acid_damage() -> None:

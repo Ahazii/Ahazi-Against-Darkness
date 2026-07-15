@@ -78,7 +78,7 @@ def fd_treasure_roll_bonuses_from_defeated(
         template = lookup_template(enemy)
         if template and template.get("no_treasure"):
             continue
-        rolls = int(template.get("treasure_rolls", 0)) if template else 0
+        rolls = fd_template_treasure_rolls(template)
         if rolls <= 0:
             continue
         per_roll = 0
@@ -86,6 +86,21 @@ def fd_treasure_roll_bonuses_from_defeated(
             per_roll = int(template.get("treasure_bonus", 0)) + int(template.get("treasure_modifier", 0))
         bonuses.extend([per_roll] * rolls)
     return bonuses
+
+
+def fd_template_treasure_rolls(template: dict | None) -> int:
+    """FD rows with treasure modifiers/bonuses imply one FD treasure roll unless overridden."""
+    if not template or template.get("no_treasure"):
+        return 0
+    try:
+        rolls = int(template.get("treasure_rolls", 0) or 0)
+    except (TypeError, ValueError):
+        rolls = 0
+    if rolls <= 0 and (
+        "treasure_modifier" in template or "treasure_bonus" in template
+    ):
+        return 1
+    return max(0, rolls)
 
 
 def treasure_roll_count_from_defeated(
@@ -106,7 +121,10 @@ def treasure_roll_count_from_defeated(
         template = lookup_template(enemy)
         if template and template.get("no_treasure"):
             continue
-        rolls = int(template.get("treasure_rolls", 0)) if template else 0
+        if fd_ruleset:
+            rolls = fd_template_treasure_rolls(template)
+        else:
+            rolls = int(template.get("treasure_rolls", 0)) if template else 0
         if rolls <= 0:
             if fd_ruleset:
                 continue

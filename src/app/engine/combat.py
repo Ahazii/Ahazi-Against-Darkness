@@ -516,6 +516,24 @@ def tick_enemy_regeneration(enemy: EnemyState, log: list[str], *, show_rolls: bo
     enemy.regen_suppressed = False
 
 
+def revive_one_slain_troll_after_turn(
+    enemies: list[EnemyState],
+    active_group_names: set[str],
+    log: list[str],
+) -> None:
+    for enemy in enemies:
+        tags = {tag.lower() for tag in enemy.tags}
+        if enemy.life > 0 or enemy.name not in active_group_names or "revives_slain_troll" not in tags:
+            continue
+        if enemy.regen_suppressed:
+            log.append(f"Effect: {enemy.name} cannot return to life (fire, acid, lightning, or oil wound).")
+            enemy.regen_suppressed = False
+            return
+        enemy.life = max(1, min(enemy.max_life, 1))
+        log.append(f"Effect: {enemy.name} returns to life and can attack on its next turn.")
+        return
+
+
 def enemy_uses_gaze(enemy: EnemyState) -> bool:
     tags = {tag.lower() for tag in enemy.tags}
     return "gaze" in tags or "gaze" in enemy.name.lower()
@@ -3313,6 +3331,11 @@ def resolve_combat_round(
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if morale_failed or not living_enemies or not living_party(party):
             return False
+        reviving_groups = {
+            enemy.name
+            for enemy in living_enemies
+            if "revives_slain_troll" in {tag.lower() for tag in enemy.tags}
+        }
         for enemy in living_enemies:
             tick_enemy_regeneration(enemy, log, show_rolls=show_rolls)
         log.extend(
@@ -3367,6 +3390,8 @@ def resolve_combat_round(
             living_enemies=living_enemies,
         )
         log.extend(attack_log)
+        if not paused:
+            revive_one_slain_troll_after_turn(enemies, reviving_groups, log)
         return paused
 
     def run_party_phase() -> None:

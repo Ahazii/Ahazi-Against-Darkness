@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-15. Target build: post-v0.39.17 FD playtest-controls patch.
+Last updated: 2026-07-15. Target build: post-v0.39.17 FD foe fidelity patch.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
@@ -28,11 +28,12 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 Resume the disposable Forsaken Depths Game 2 already started if it is still active. If it was abandoned, start one disposable Forsaken Depths dungeon with a tier-appropriate four-hero party.
 
-1. Before moving, confirm Developer controls show **FD foe encounter** and **Forsaken Depths Citadel** when the session header says `Supplements: 3`. This validates that the locked `forsaken-depths` supplement snapshot is recognised, not only the legacy `ruleset` field.
-2. Force one FD Vermin, Minion, Horde of Dark Elves, Boss, Weird, and Citadel-Weird. Confirm the named foe enters ordinary combat and the Horde's opening volley is visible.
-3. Force one Citadel, preferably **Citadel of Traps** or **Magic Citadel**. Confirm the side sheet opens, one normal room is generated, and the return/exit route works.
-4. During exploration, resolve one FD hazard or trap and one treasure or current-event choice. Save and reload while the FD side sheet, state, or quest is active; confirm it restores intact.
-5. If offered, accept Lady in Gray or Cyclopean Idol. Confirm Ongoing Quests shows the progress condition and one reward or choice path.
+1. Deploy the latest build and force-refresh. In the current Game 2 session, force **FD foe encounter -> Minions -> Deep Trolls** once. Confirm the combat chip/hover mentions slain-troll return, a troll can return after a troll turn unless blocked, **Hack slain trolls** appears after a troll body is down, treasure is an FD roll at `-1`, Copy Narrative Report shows Forsaken Depths context as active, and the XP line says ordinary `minor encounter`, not `Abyss Minion`.
+2. The following Game 2 checks are complete unless later regression reopens them: FD developer controls appeared with `Supplements: 3`; Shadowbats of the Deep combat looked correct; Infallible Missile created the Level 8+ second missile correctly; Horde of Dark Elves opening volley was visible; one Boss and one Weird entered ordinary combat.
+3. To force a **Citadel-Weird**, choose **FD foe encounter**, then in the named foe dropdown select any foe under the **Citadel Weird** group (for example Chaos Mothbeast Queen). Resolve one such encounter.
+4. Force one **Forsaken Depths Citadel**, preferably **Citadel of Traps** or **Magic Citadel**. Confirm the side sheet opens, one normal room is generated, and the return/exit route works.
+5. During exploration, resolve one FD hazard or trap and one treasure or current-event choice. Save and reload while the FD side sheet, state, or quest is active; confirm it restores intact.
+6. If offered, accept Lady in Gray or Cyclopean Idol. Confirm Ongoing Quests shows the progress condition and one reward or choice path.
 
 ## Game 3: Adventures Guild
 

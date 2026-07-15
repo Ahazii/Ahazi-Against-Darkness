@@ -154,7 +154,7 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Forsaken Depths | Rockslugs | `fd_vermin` | Forsaken Depths Vermin table p.38 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Tiny Land Octopi | `fd_vermin` | Forsaken Depths Vermin table p.38 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Deep Cave Spiders | `fd_vermin` | Forsaken Depths Vermin table p.38 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Deep Trolls | `fd_minions` | Forsaken Depths Minions table p.40 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Deep Trolls | `fd_minions` | Forsaken Depths Minions table p.40 | reviewed | p.40 slain-troll return, fire/acid/lightning/oil suppression hook, ordinary minion attacks, and FD treasure roll at -1 wired after Game 2 feedback |
 | Forsaken Depths | Deep Hobgoblins | `fd_minions` | Forsaken Depths Minions table p.40 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Cultists | `fd_minions` | Forsaken Depths Minions table p.40 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Dark Elves Crossbowmen | `fd_minions` | Forsaken Depths Minions table p.40 | summary only | pending PDF/runtime comparison |

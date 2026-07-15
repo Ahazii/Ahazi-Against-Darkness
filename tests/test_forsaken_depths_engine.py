@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine import random_dungeon
+from app.engine.dungeon_table_roller import TreasureOutcome
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, ExitState, PartyMemberState, SessionState, TileState
@@ -302,8 +303,12 @@ def test_fd_monster_tables_loaded() -> None:
     assert len(monsters["courtship_demons"]) >= 20
     assert len(monsters["fd_horde"]) == 6
     hordes = {row["name"]: row for row in monsters["fd_horde"]}
+    minions = {row["name"]: row for row in monsters["fd_minions"]}
+    assert "regeneration" in minions["Deep Trolls"]["tags"]
+    assert minions["Deep Trolls"]["treasure_modifier"] == -1
     assert hordes["Horde of Deep Trolls"]["attacks"] == 1
     assert "regeneration" in hordes["Horde of Deep Trolls"]["tags"]
+    assert hordes["Horde of Dark Elves"]["treasure_rolls"] == 1
     assert hordes["Horde of Lizardmen of the Deep"]["attacks"] == 2
     assert "fd_horde_lizardman_poison" in hordes["Horde of Lizardmen of the Deep"]["tags"]
     assert hordes["Horde of Goblins of the Deep"]["attacks"] == 1
@@ -2985,7 +2990,7 @@ def test_fd_defeated_foe_treasure_stages_choice(monkeypatch) -> None:
     assert "no treasure rolls" not in " ".join(session.log).lower()
 
 
-def test_fd_defeated_foe_treasure_skips_without_template_rolls() -> None:
+def test_fd_defeated_foe_treasure_uses_modifier_as_one_roll(monkeypatch) -> None:
     eng = engine()
     session = eng.create_session(
         "fd-slay-mod",
@@ -3007,9 +3012,56 @@ def test_fd_defeated_foe_treasure_skips_without_template_rolls() -> None:
             attacks=1,
         )
     ]
+    monkeypatch.setattr(
+        eng.table_roller,
+        "roll_fd_treasure_batch_with_bonuses",
+        lambda bonuses, **kwargs: TreasureOutcome("Gem", 0, ["Gem"], [f"bonuses={bonuses}"]),
+    )
     eng._award_treasure(session, tile, show_rolls=False)
     assert tile.treasure_gold == 0
-    assert any("no treasure rolls" in entry.lower() for entry in session.log)
+    assert tile.treasure_items == ["Gem"]
+    assert not any("no treasure rolls" in entry.lower() for entry in session.log)
+
+
+def test_fd_hack_slain_trolls_blocks_body_return() -> None:
+    eng = engine()
+    hero = _party_member()
+    session = eng.create_session(
+        "fd-hack-trolls",
+        "party-1",
+        [hero],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(
+            id="t1",
+            name="Deep Trolls",
+            category="minions",
+            level=10,
+            life=1,
+            max_life=1,
+            attacks=1,
+            tags=["minions", "troll", "forsaken_depths", "regeneration", "revives_slain_troll"],
+        ),
+        EnemyState(
+            id="t2",
+            name="Deep Trolls",
+            category="minions",
+            level=10,
+            life=0,
+            max_life=1,
+            attacks=1,
+            tags=["minions", "troll", "forsaken_depths", "regeneration", "revives_slain_troll"],
+        ),
+    ]
+    session.mode = "combat"
+
+    eng.advance(session, "hack_slain_trolls", character_id=hero.character_id)
+
+    slain = next(enemy for enemy in tile.enemies if enemy.id == "t2")
+    assert slain.regen_suppressed is True
+    assert any("hacking slain Deep Trolls apart" in entry for entry in session.log)
 
 
 def test_fd_vermin_without_treasure_rolls_skips_loot() -> None:

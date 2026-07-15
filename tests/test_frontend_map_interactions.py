@@ -2276,6 +2276,21 @@ def test_fd_playtest_controls_follow_locked_supplement_snapshot() -> None:
     assert 'const previousKind = developerPlaytestControls.dataset.kind || (isAbyss ? "abyss_foe" : isForsakenDepths ? "fd_foe" : "ee_foe");' in body
 
 
+def test_fd_debug_context_follows_locked_supplement_snapshot() -> None:
+    body = _function_body("forsakenDepthsDebugSummary", APP_JS)
+    assert "if (!sessionIsForsakenDepths(session)) return [\"Forsaken Depths: not active\"];" in body
+
+
+def test_deep_troll_revive_trait_has_player_facing_explanation() -> None:
+    assert 'tags.has("revives_slain_troll")' in APP_JS
+    assert "Slain troll returns" in APP_JS
+    assert "one slain troll returns unless prevented by fire, acid, lightning, oil, or hacking the body apart" in APP_JS
+    assert "function foeIsSlainRevivingTroll" in APP_JS
+    assert "Hack slain trolls" in APP_JS
+    assert "advance(\"hack_slain_trolls\"" in APP_JS
+    assert "FD p.40" in APP_JS
+
+
 def test_exit_closeout_uses_latest_session_and_pending_xp_state() -> None:
     travel_body = _function_body("runTravelExit", APP_JS)
     camp_body = _function_body("renderCampPanel", APP_JS)

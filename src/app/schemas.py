@@ -1388,6 +1388,7 @@ class SessionAction(BaseModel):
         "use_potion",
         "use_holy_water",
         "use_lantern_oil",
+        "hack_slain_trolls",
         "use_mushroom",
         "eat_food_ration",
         "feed_hungry_heroes",

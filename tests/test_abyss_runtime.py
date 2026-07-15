@@ -9,6 +9,7 @@ from app.engine.abyss_tactics import (
     coerce_abyss_attack_targets,
 )
 from app.engine.combat import CombatContext, assign_enemy_attacks
+from app.engine.experience import is_abyss_minion_encounter
 from app.engine.monster_template_effects import apply_encounter_start_effects
 from app.engine.reactions import lookup_reaction_row, resolve_bribe_gold, resolve_reaction_source
 from app.rules.repository import RulesRepository
@@ -217,6 +218,25 @@ def test_developer_playtest_recognizes_forsaken_depths_supplement_session(monkey
 
     assert session.mode == "combat"
     assert tile.enemies[0].name == "Horde of Dark Elves"
+
+
+def test_forsaken_depths_minions_do_not_use_abyss_xp_track() -> None:
+    eng = _engine()
+    session = eng.create_session("fd-abyss-xp", "party-1", [_member()], ruleset_profile_id="abyss")
+    session.active_supplement_ids = ["expanded-edition-core", "four-against-the-abyss", "forsaken-depths"]
+    defeated = [
+        EnemyState(
+            id="fd-troll-1",
+            name="Deep Trolls",
+            category="minions",
+            level=10,
+            life=0,
+            max_life=1,
+            tags=["minions", "troll", "forsaken_depths", "regeneration"],
+        )
+    ]
+
+    assert not is_abyss_minion_encounter(session, defeated)
 
 
 def test_session_action_accepts_forsaken_depths_named_foe_playtest() -> None:

@@ -188,7 +188,7 @@
     {"roll": "6", "name": "Deep Cave Spiders", "enemy_category": "vermin", "summary": "2d6+1 HCL vermin.", "source_page": 38}
   ],
   "fd_minions_table": [
-    {"roll": "1", "name": "Deep Trolls", "enemy_category": "minions", "summary": "2d6+1 HCL+1 minions.", "source_page": 40},
+    {"roll": "1", "name": "Deep Trolls", "enemy_category": "minions", "summary": "2d6+1 HCL+1 minions; 1 slain troll returns after a troll turn unless blocked; 1 FD treasure roll at -1.", "source_page": 40},
     {"roll": "2", "name": "Deep Hobgoblins", "enemy_category": "minions", "summary": "2d6+2 HCL+3 minions.", "source_page": 40},
     {"roll": "3", "name": "Chaos Cultists", "enemy_category": "minions", "summary": "d6+3 HCL+1 minions.", "source_page": 40},
     {"roll": "4", "name": "Dark Elves Crossbowmen", "enemy_category": "minions", "summary": "2d6 HCL+2 minions.", "source_page": 40},

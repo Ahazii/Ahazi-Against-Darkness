@@ -7731,7 +7731,8 @@ function foeStatusLabels(foe) {
   if (tags.has("undead")) labels.push("Undead");
   if (tags.has("dragon")) labels.push("Dragon");
   if (tags.has("construct") || tags.has("artificial") || tags.has("clockwork")) labels.push("Construct");
-  if (tags.has("regeneration")) labels.push("Regenerates");
+  if (tags.has("revives_slain_troll")) labels.push("Slain troll returns");
+  else if (tags.has("regeneration")) labels.push("Regenerates");
   if (foe.regen_suppressed) labels.push("Regen blocked");
   if (foe.level_drop_applied) labels.push("Bloodied L drop");
   if ((foe.attacks || 1) > 1) labels.push(`${foe.attacks} attacks`);
@@ -7782,7 +7783,8 @@ function activeFoeSpecialLabels(foes) {
     if (tags.has("poison")) labels.add("poison saves on hits");
     const mrTier = foeMagicResistanceTier(foe);
     if (mrTier) labels.add(`MR up to +${mrTier}`);
-    if (tags.has("regeneration")) labels.add("regeneration");
+    if (tags.has("revives_slain_troll")) labels.add("slain troll returns");
+    else if (tags.has("regeneration")) labels.add("regeneration");
     if (tags.has("undead")) labels.add("undead");
     if (tags.has("dragon")) labels.add("dragon");
     if (tags.has("construct") || tags.has("artificial") || tags.has("clockwork")) labels.add("construct immunities");
@@ -7804,6 +7806,9 @@ function activeFoeSpecialExplanations(foes) {
   }
   if (labels.has("regeneration")) {
     explanations.push("Regeneration: recovers 1 Life unless blocked by fire, acid, lightning, or oil.");
+  }
+  if (labels.has("slain troll returns")) {
+    explanations.push("Deep Trolls: at the end of a troll turn, one slain troll returns unless prevented by fire, acid, lightning, oil, or hacking the body apart.");
   }
   if (labels.has("multiple attacks")) {
     explanations.push("Multiple attacks: this foe makes each listed attack every foe melee phase.");
@@ -8359,6 +8364,10 @@ function isLanternOilItem(item) {
 
 function foeHasRegeneration(foe) {
   return (foe.tags || []).some((tag) => tag.toLowerCase() === "regeneration");
+}
+
+function foeIsSlainRevivingTroll(foe) {
+  return (foe.life || 0) <= 0 && (foe.tags || []).some((tag) => tag.toLowerCase() === "revives_slain_troll");
 }
 
 function heroUsableLanternOil(session, member, livingFoes) {
@@ -10851,6 +10860,23 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     actions.appendChild(acidBtn);
   }
 
+  if (session.mode === "combat" && member.current_life > 0 && (tile?.enemies || []).some(foeIsSlainRevivingTroll)) {
+    const hackBtn = node("button", "secondary", "Hack slain trolls");
+    hackBtn.type = "button";
+    hackBtn.disabled = immediateLocked;
+    setButtonTooltip(
+      hackBtn,
+      immediateActionTooltip(
+        session,
+        "Spend this hero's turn hacking slain Deep Trolls apart so one cannot return to life at the end of the troll turn (FD p.40)."
+      )
+    );
+    hackBtn.addEventListener("click", () => {
+      advance("hack_slain_trolls", { character_id: member.character_id });
+    });
+    actions.appendChild(hackBtn);
+  }
+
   for (const wolfsbaneName of heroUsableWolfsbane(session, member, livingFoes)) {
     const wolfsbaneBtn = node("button", "secondary", "Throw wolfsbane");
     wolfsbaneBtn.type = "button";
@@ -12321,7 +12347,7 @@ function questDebugSummary(session = state.session) {
 }
 
 function forsakenDepthsDebugSummary(session = state.session) {
-  if (session?.ruleset !== "forsaken_depths") return ["Forsaken Depths: not active"];
+  if (!sessionIsForsakenDepths(session)) return ["Forsaken Depths: not active"];
   const tile = currentTile(session);
   const pending = [];
   if (session.fd_winds_of_despair_pending && Object.keys(session.fd_winds_of_despair_pending).length) {
