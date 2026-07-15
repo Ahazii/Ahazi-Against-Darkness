@@ -3211,6 +3211,47 @@ def test_fd_enter_citadel_side_sheet_pregenerates_rooms(monkeypatch) -> None:
     assert any("Citadel side sheet" in entry for entry in session.log)
 
 
+def test_fd_citadel_side_sheet_does_not_reuse_dungeon_exit(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-citadel-not-dungeon-exit",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_etc_entry_tile(eng)
+    dungeon_exit = ExitState(
+        id="etc-out",
+        direction="south",
+        kind="passage",
+        x=2,
+        y=4,
+        span=1,
+        dungeon_exit=True,
+        status="open",
+    )
+    origin.exits.insert(0, dungeon_exit)
+    session.map_state.tiles = [origin]
+    session.map_state.current_tile_id = origin.id
+    session.mode = "exploration"
+    session.fd_citadel_type = "citadel_of_traps"
+    session.fd_citadel_room_count = 3
+    session.fd_citadel_entry_tile_id = origin.id
+    monkeypatch.setattr("app.engine.forsaken_depths_side_sheet.roll_d6", lambda: 3)
+
+    eng.advance(session, "enter_fd_side_sheet")
+
+    side_tiles = [tile for tile in session.map_state.tiles if tile.fd_side_sheet]
+    assert session.mode == "exploration"
+    assert session.fd_side_sheet_active
+    assert len(side_tiles) == 3
+    assert session.map_state.current_tile_id == side_tiles[0].id
+    assert dungeon_exit.destination_tile_id is None
+    assert dungeon_exit.status == "open"
+    assert any(exit_state.label == "Side sheet" for exit_state in origin.exits)
+    assert not any("leaves the dungeon" in entry for entry in session.log)
+
+
 def test_fd_side_sheet_entry_rolls_back_when_first_room_not_placed(monkeypatch) -> None:
     eng = engine()
     session = eng.create_session(

@@ -181,6 +181,8 @@ def enter_fd_side_sheet(
         "citadel_rooms": session.fd_citadel_room_count,
         "citadel_entry": session.fd_citadel_entry_tile_id,
         "entry_used": tile.fd_side_sheet_entry_used,
+        "mode": session.mode,
+        "camped_outside": session.camped_outside,
         "current_tile_id": session.map_state.current_tile_id,
         "current_entry_exit_id": session.current_tile_entry_exit_id,
     }
@@ -222,7 +224,24 @@ def enter_fd_side_sheet(
         )
     side_exit = engine._ensure_side_sheet_exit(session, tile)
     if side_exit is None:
-        session.fd_side_sheet_active = False
+        session.fd_side_sheet_active = before_state["active"]
+        session.fd_side_sheet_kind = before_state["kind"]
+        session.fd_side_sheet_origin_tile_id = before_state["origin"]
+        session.fd_side_sheet_rooms_total = before_state["total"]
+        session.fd_side_sheet_rooms_entered = before_state["entered"]
+        session.fd_side_sheet_visited_tile_ids = before_state["visited"]
+        session.fd_prisoners_secret_exit_pending = before_state["prisoners_pending"]
+        session.fd_prisoners_secret_exit_tile_id = before_state["prisoners_exit"]
+        session.fd_prisoners_secret_exit_clues_spent = before_state["prisoners_clues"]
+        session.fd_magic_citadel_mr_active = before_state["magic_mr"]
+        session.fd_citadel_type = before_state["citadel_type"]
+        session.fd_citadel_room_count = before_state["citadel_rooms"]
+        session.fd_citadel_entry_tile_id = before_state["citadel_entry"]
+        tile.fd_side_sheet_entry_used = before_state["entry_used"]
+        session.mode = before_state["mode"]
+        session.camped_outside = before_state["camped_outside"]
+        session.map_state.current_tile_id = before_state["current_tile_id"]
+        session.current_tile_entry_exit_id = before_state["current_entry_exit_id"]
         session.log.append("No open edge to place the first side-sheet room.")
         return False
     engine._explore(
@@ -247,6 +266,8 @@ def enter_fd_side_sheet(
         session.fd_citadel_room_count = before_state["citadel_rooms"]
         session.fd_citadel_entry_tile_id = before_state["citadel_entry"]
         tile.fd_side_sheet_entry_used = before_state["entry_used"]
+        session.mode = before_state["mode"]
+        session.camped_outside = before_state["camped_outside"]
         session.map_state.current_tile_id = before_state["current_tile_id"]
         session.current_tile_entry_exit_id = before_state["current_entry_exit_id"]
         side_exit.destination_tile_id = None

@@ -14995,7 +14995,11 @@ class RandomDungeonEngine:
 
     def _ensure_side_sheet_exit(self, session: SessionState, origin: TileState) -> ExitState | None:
         for exit_state in origin.exits:
-            if exit_state.status != "blocked" and not exit_state.destination_tile_id:
+            if (
+                exit_state.label == "Side sheet"
+                and exit_state.status != "blocked"
+                and not exit_state.destination_tile_id
+            ):
                 return exit_state
         width, height = self._rotated_size(
             origin.footprint_width, origin.footprint_height, origin.rotation

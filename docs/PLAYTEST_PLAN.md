@@ -26,10 +26,10 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 ## Next Required: Game 2 Forsaken Depths
 
-Resume the disposable Forsaken Depths Game 2 already started if it is still active. If it was abandoned, start one disposable Forsaken Depths dungeon with a tier-appropriate four-hero party.
+The prior disposable Forsaken Depths Game 2 session (`5c6d787968a94dcd9055e537b3498124`) was completed by the Citadel force/dungeon-exit bug before this patch. Start one new disposable Forsaken Depths dungeon with a tier-appropriate four-hero party unless the old session is deliberately restored from backup.
 
-1. Deploy the latest build and force-refresh. Resume the current Game 2 session. If it opens with the previous phantom Citadel state, it should now repair itself back to the main map and log that no side-sheet rooms were present. It must not remain stuck in a Citadel with zero side-sheet rooms.
-2. Force **Forsaken Depths Citadel -> 3: Citadel of Traps** again. Confirm the party moves onto a newly created side-sheet map room, not the original ETC/Entrance room, and that side-sheet room count/progress is visible in the debug/objective text.
+1. Deploy the latest build and force-refresh. Start or resume the new disposable Game 2 session.
+2. Force **Forsaken Depths Citadel -> 3: Citadel of Traps**. Confirm the party moves onto a newly created side-sheet map room, not the entrance room or a dungeon exit, and that side-sheet room count/progress is visible in the debug/objective text. The app must not return to Dashboard or mark the adventure complete.
 3. In the Citadel of Traps side sheet, generate and resolve one normal room, then confirm the return/exit route works. Save and reload while the side sheet is active; confirm it restores intact.
 4. Force **FD foe encounter -> Minions -> Deep Trolls** once. Confirm **Hack slain trolls** still appears after a troll body is down and, after using it, no slain Deep Troll returns on the next troll turn. The log should say the hacked bodies prevent the return. Confirm the defeated Deep Troll encounter still gives an FD treasure roll at `-1` and ordinary `minor encounter` XP wording.
 5. If an FD treasure choice appears, confirm the choice buttons are visible in the main action strip as **Choose treasure** and/or in **Current Objective** before using **Claim Treasure**. The marker-menu path may also work, but it should no longer be the only visible route, and the plain **Claim Treasure** button should not be the only prominent treasure control while the choice is pending.
