@@ -962,6 +962,9 @@ class SessionState(BaseModel):
     professional_skill_uses: dict[str, list[str]] = Field(default_factory=dict)
     alchemist_order: AlchemistOrderState | None = None
     camped_outside: bool = False
+    # The entrance remains stable even when a developer playtest temporarily
+    # labels that tile with a forced encounter result.
+    entrance_tile_id: str | None = None
     current_tile_entry_exit_id: str | None = None
     summoned_beast_life: int = 0
     summoned_beast_owner_id: str | None = None

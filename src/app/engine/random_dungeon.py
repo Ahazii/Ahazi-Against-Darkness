@@ -737,6 +737,7 @@ class RandomDungeonEngine:
                 tiles=[entrance],
                 current_tile_id=entrance.id,
             ),
+            entrance_tile_id=entrance.id,
             log=log,
             clues_found=starting_clues,
             xp_system=chosen_xp,
@@ -842,6 +843,7 @@ class RandomDungeonEngine:
                 tiles=[seaside],
                 current_tile_id=seaside.id,
             ),
+            entrance_tile_id=seaside.id,
             log=log,
             clues_found=starting_clues,
             xp_system=chosen_xp,
@@ -1003,6 +1005,14 @@ class RandomDungeonEngine:
 
         self._resolve_stale_combat(session)
         self._ensure_individual_clues(session)
+        # Camp is always anchored at the entrance. Older sessions can have a
+        # developer-labelled entrance, so repair the position before resolving
+        # a camp action rather than trusting a stale checkpoint tile.
+        if session.camped_outside:
+            entrance = self._entrance_tile(session)
+            if session.map_state.current_tile_id != entrance.id:
+                session.map_state.current_tile_id = entrance.id
+                session.current_tile_entry_exit_id = None
         self._queue_fallen_transfer(session)
         if action != "resolve_trap" and session.pending_mycelium_snare is not None:
             session.log.append(
@@ -4641,6 +4651,9 @@ class RandomDungeonEngine:
         if self._ensure_individual_clues(session):
             changed = True
         entrance = self._entrance_tile(session)
+        if session.entrance_tile_id != entrance.id:
+            session.entrance_tile_id = entrance.id
+            changed = True
         if self._ensure_entrance_dungeon_exit(entrance):
             changed = True
         if self._initialize_outside_entrance(entrance):
@@ -12645,8 +12658,18 @@ class RandomDungeonEngine:
         return fallen_in_dungeon(session)
 
     def _entrance_tile(self, session: SessionState) -> TileState:
+        if session.entrance_tile_id:
+            stored_entrance = self._tile_by_id(session, session.entrance_tile_id)
+            if stored_entrance is not None:
+                return stored_entrance
         for tile in session.map_state.tiles:
             if tile.content_key == "entrance":
+                return tile
+        # Legacy developer playtests relabelled the active entrance tile with
+        # a forced-result content key. Its real dungeon exit is still the
+        # reliable identity, so recover it before falling back to map order.
+        for tile in session.map_state.tiles:
+            if any(exit_state.dungeon_exit for exit_state in tile.exits):
                 return tile
         return min(session.map_state.tiles, key=lambda item: (item.y, item.x))
 

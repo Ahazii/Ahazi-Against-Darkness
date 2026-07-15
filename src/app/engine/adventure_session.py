@@ -871,6 +871,7 @@ def create_session_from_manifest(
             tiles=tiles,
             current_tile_id=entrance_tile_id,
         ),
+        entrance_tile_id=entrance_tile_id,
         log=[line for line in log if line],
         clues_found=starting_clues,
         xp_system=chosen_xp,

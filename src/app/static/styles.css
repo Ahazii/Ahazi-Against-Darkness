@@ -2808,7 +2808,8 @@ button.is-working::after {
   background: linear-gradient(180deg, rgba(29, 31, 24, 0), var(--panel) 28%);
 }
 
-.dialog-drag-handle {
+.dialog-drag-handle,
+.tag-action-dialog .dialog-drag-handle {
   cursor: move;
   user-select: none;
 }

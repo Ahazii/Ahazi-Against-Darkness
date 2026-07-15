@@ -28463,8 +28463,15 @@ function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode, 
 }
 
 function campDungeonExit(session) {
-  const tile = currentTile(session);
-  return playerFacingExits(session, tile).find((exit) => exit.dungeon_exit && exit.status !== "blocked") || null;
+  const tiles = session?.map_state?.tiles || [];
+  const entrance =
+    tiles.find((tile) => tile.id === session?.entrance_tile_id) ||
+    tiles.find((tile) => tile.content_key === "entrance") ||
+    tiles.find((tile) => (tile.exits || []).some((exit) => exit.dungeon_exit)) ||
+    currentTile(session);
+  // Camp actions are logically at the entrance. Do not hide a valid exit just
+  // because a stale saved client view still renders the previous room.
+  return (entrance?.exits || []).find((exit) => exit.dungeon_exit && exit.status !== "blocked") || null;
 }
 
 function campBankGoldTotal(session) {

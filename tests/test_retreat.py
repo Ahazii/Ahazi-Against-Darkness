@@ -71,6 +71,52 @@ def test_prepare_camp_outside_applies_shared_entrance_and_recovery_state() -> No
     assert session.party[0].current_life == 3
 
 
+def test_camped_session_recovers_a_developer_labelled_entrance_before_reentry() -> None:
+    eng = engine()
+    entrance = TileState(
+        id="ent",
+        x=0,
+        y=0,
+        tile_key="01",
+        tile_type="room",
+        title="Entrance",
+        description="Entrance",
+        # A developer foe test may overwrite this legacy display key.
+        content_key="developer_boss_playtest",
+        exits=[ExitState(id="out", direction="south", kind="passage", dungeon_exit=True, status="open")],
+    )
+    room = TileState(
+        id="room",
+        x=1,
+        y=0,
+        tile_key="02",
+        tile_type="room",
+        title="Saved room",
+        description="Saved room",
+        content_key="developer_boss_playtest",
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[entrance, room], current_tile_id=room.id),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+        camped_outside=True,
+    )
+
+    normalized, changed = eng.normalize_session(session)
+
+    assert changed is True
+    assert normalized.entrance_tile_id == entrance.id
+    assert normalized.map_state.current_tile_id == entrance.id
+    eng.advance(normalized, "return_to_dungeon")
+    assert normalized.camped_outside is False
+    assert normalized.map_state.current_tile_id == entrance.id
+
+
 def test_dungeon_exit_with_fallen_retreats() -> None:
     eng = engine()
     entrance = TileState(

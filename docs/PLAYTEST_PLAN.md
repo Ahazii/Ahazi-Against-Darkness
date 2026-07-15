@@ -1,19 +1,21 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-14. Target build: v0.39.16.
+Last updated: 2026-07-15. Target build: v0.39.17.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
 ## Before Testing
 
-1. Deploy the latest image and force-refresh until the header shows `v0.39.16`.
+1. Deploy the latest image and force-refresh until the header shows `v0.39.17`.
 2. In Developer Playtest Preferences, enable **dungeon playtest controls**. Leave TAG fixed-result controls off until Game 3.
 3. Keep **Copy Narrative Report** available. Copy one after any failure and after each closeout.
 
 ## No New Game Needed
 
-1. Resume the repaired current session. Party Sheets must remain fully visible and there must be no Recovery control, body carrier, fallen-body marker, or pending transfer.
-2. This verifies the live stale-marker repair only. Do not deliberately create another recovery situation in this valuable session.
+1. Resume the current EE + Abyss session. It must open at **Entrance Map Element 06**, not the room where the manual save was made, and its dungeon exit must be usable immediately after a normal refresh.
+2. Choose **Camp outside**, refresh once, then use **(Re)enter Dungeon**. The party must return to that same entrance with its existing exits usable; the saved checkpoint must not move the party back to Map Element 32.
+3. Return to camp again. **Abandon Dungeon** must be present even though the Final Boss is not defeated. This current session has one pending Classical XP roll: bank it to an eligible hero or spend it from the camp XP panel, then confirm **Abandon Dungeon** completes the session. Do not discard or silently lose earned XP.
+4. Party Sheets must remain fully visible and there must be no Recovery control, body carrier, fallen-body marker, or pending transfer. Do not deliberately create another recovery situation in this valuable session.
 
 ## Game 1: EE + Abyss Targeted Check
 
