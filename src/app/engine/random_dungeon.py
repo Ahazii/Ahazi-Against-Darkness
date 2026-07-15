@@ -3166,6 +3166,13 @@ class RandomDungeonEngine:
                     from .forsaken_depths_secret_passage import note_fd_secret_passage_weird_defeated
 
                     note_fd_secret_passage_weird_defeated(session, enemy, show_rolls=show_rolls)
+        if is_fd_ruleset(session):
+            self._apply_fd_deep_cave_spider_level_drop(
+                session,
+                tile,
+                active_enemy_ids=active_enemy_ids,
+                show_rolls=show_rolls,
+            )
         fallen_now = [
             pc.character_id
             for pc in session.party
@@ -3305,10 +3312,7 @@ class RandomDungeonEngine:
             session.log.append(f"{scout_names} checks reactions: the Final Boss fights to the death.")
             return
 
-        reaction_tables = self.rules.monsters().get("reaction_tables", {})
-        if not isinstance(reaction_tables, dict):
-            reaction_tables = {}
-        source = resolve_reaction_source(living_enemies, reaction_tables)
+        source = resolve_reaction_source(living_enemies, self._reaction_tables_with_template_rows())
         roll = roll_d6()
         adjust = max(-1, min(1, int(reaction_adjust or 0)))
         roll, negotiator_log = adjust_reaction_roll(fighters, roll, adjust)
@@ -4961,10 +4965,7 @@ class RandomDungeonEngine:
             session.log.append("The Final Boss fights to the death!")
             return
 
-        reaction_tables = self.rules.monsters().get("reaction_tables", {})
-        if not isinstance(reaction_tables, dict):
-            reaction_tables = {}
-        source = resolve_reaction_source(living_enemies, reaction_tables)
+        source = resolve_reaction_source(living_enemies, self._reaction_tables_with_template_rows())
         fighters = combat_party(session, tile.id)
 
         if session.reaction_nudge_pending:
@@ -7870,10 +7871,7 @@ class RandomDungeonEngine:
         living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
         if not living_enemies:
             return
-        reaction_tables = self.rules.monsters().get("reaction_tables", {})
-        if not isinstance(reaction_tables, dict):
-            reaction_tables = {}
-        source = resolve_reaction_source(living_enemies, reaction_tables)
+        source = resolve_reaction_source(living_enemies, self._reaction_tables_with_template_rows())
         roll = roll_d6()
         fighters = [member for member in session.party if member.current_life > 0]
         roll, negotiator_log = adjust_reaction_roll(fighters, roll, 0)
@@ -9496,6 +9494,13 @@ class RandomDungeonEngine:
                     from .forsaken_depths_secret_passage import note_fd_secret_passage_weird_defeated
 
                     note_fd_secret_passage_weird_defeated(session, enemy, show_rolls=show_rolls)
+        if is_fd_ruleset(session):
+            self._apply_fd_deep_cave_spider_level_drop(
+                session,
+                tile,
+                active_enemy_ids=active_enemy_ids,
+                show_rolls=show_rolls,
+            )
         fallen_now = [
             pc.character_id
             for pc in session.party
@@ -10047,13 +10052,10 @@ class RandomDungeonEngine:
             return
         from .fd_teleport_enemy import tick_teleport_enemy_returns
 
-        reaction_tables = self.rules.monsters().get("reaction_tables", {})
-        if not isinstance(reaction_tables, dict):
-            reaction_tables = {}
         tick_teleport_enemy_returns(
             session,
             reason=reason,
-            reaction_tables=reaction_tables,
+            reaction_tables=self._reaction_tables_with_template_rows(),
             roll_reaction=self.table_roller.roll_reaction,
         )
 
@@ -17439,6 +17441,69 @@ class RandomDungeonEngine:
             return score
 
         return max(candidates, key=template_richness)
+
+    def _reaction_tables_with_template_rows(self) -> dict[str, list[dict]]:
+        if self.rules is None:
+            return {}
+        monsters = self.rules.monsters()
+        base = monsters.get("reaction_tables", {})
+        reaction_tables: dict[str, list[dict]] = dict(base) if isinstance(base, dict) else {}
+        for table in monsters.values():
+            if not isinstance(table, list):
+                continue
+            for template in table:
+                if not isinstance(template, dict):
+                    continue
+                name = str(template.get("name") or "").strip()
+                rows = template.get("reactions")
+                if name and isinstance(rows, list) and rows:
+                    reaction_tables.setdefault(name, rows)
+        return reaction_tables
+
+    def _apply_fd_deep_cave_spider_level_drop(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        active_enemy_ids: set[str],
+        show_rolls: bool,
+    ) -> None:
+        killed = sum(
+            1
+            for enemy in tile.defeated_enemies
+            if enemy.id in active_enemy_ids and enemy.name == "Deep Cave Spiders"
+        )
+        if killed < 2:
+            return
+        target_drop = killed // 2
+        changed = 0
+        for enemy in tile.enemies:
+            if enemy.id not in active_enemy_ids or enemy.name != "Deep Cave Spiders" or enemy.life <= 0:
+                continue
+            existing = 0
+            for tag in enemy.tags:
+                text = str(tag).lower()
+                if text.startswith("deep_cave_spider_level_drop:"):
+                    try:
+                        existing = max(existing, int(text.split(":", 1)[1]))
+                    except ValueError:
+                        existing = max(existing, 0)
+            extra_drop = max(0, target_drop - existing)
+            if extra_drop <= 0:
+                continue
+            new_level = max(3, enemy.level - extra_drop)
+            if new_level < enemy.level:
+                enemy.level = new_level
+                enemy.tags = [
+                    tag for tag in enemy.tags if not str(tag).lower().startswith("deep_cave_spider_level_drop:")
+                ]
+                enemy.tags.append(f"deep_cave_spider_level_drop:{target_drop}")
+                changed += 1
+        if changed and show_rolls:
+            session.log.append(
+                f"Deep Cave Spiders: {killed} slain reduce the remaining spiders by {target_drop} Level "
+                "(minimum L3; FD p.38)."
+            )
 
     def _treasure_roll_count_for_tile(self, session: SessionState, tile: TileState) -> int:
         from .forsaken_depths_map import is_fd_ruleset

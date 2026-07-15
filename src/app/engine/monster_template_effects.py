@@ -31,6 +31,8 @@ RANDOM_POWER_TAG_PREFIX = "random_power:"
 
 def template_combat_tags(template: dict) -> list[str]:
     tags: list[str] = []
+    if template.get("never_test_morale"):
+        tags.append("no_morale")
     for effect in template.get("per_turn_effects", []):
         if str(effect.get("type", "")).lower() != "life_drain":
             continue

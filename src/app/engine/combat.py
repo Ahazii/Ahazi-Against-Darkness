@@ -3307,7 +3307,17 @@ def resolve_combat_round(
             ]
             if minor_enemies and initial_minor_count:
                 if len(minor_enemies) <= initial_minor_count // 2 and not morale_failed:
-                    if context.suppress_morale:
+                    no_morale = context.suppress_morale or all(
+                        (
+                            "no_morale" in {str(tag).lower() for tag in enemy.tags}
+                            or (
+                                context.lookup_monster_template is not None
+                                and bool((context.lookup_monster_template(enemy) or {}).get("never_test_morale"))
+                            )
+                        )
+                        for enemy in minor_enemies
+                    )
+                    if no_morale:
                         if show_rolls:
                             log.append("Morale check skipped: these foes are fighting to the death.")
                     else:

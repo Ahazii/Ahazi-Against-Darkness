@@ -33,8 +33,24 @@
       "never_test_morale": true,
       "immunities": ["sleep"],
       "no_treasure": true,
+      "encounter_start_effects": [
+        {
+          "type": "surprise",
+          "chance": "4-in-6"
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "spore_cough_on_melee_kill",
+          "chance_per_melee_kill": "1-in-6 cumulative",
+          "damage": 1,
+          "prevented_by": "magical healing before encounter end",
+          "wandering_if_all_cough": "Tier-in-6",
+          "source_page": 38
+        }
+      ],
       "reactions": [{"roll": "1-6", "key": "fight_to_death", "result": "The spore spiders attack to the death!", "foes_first": true}],
-      "notes": "HCL+1 vermin (FD p.38)."
+      "notes": "HCL+1 vermin, never tests Morale, no treasure, 4-in-6 surprise, immune to Sleep. Melee kills create a cumulative 1-in-6 coughing chance at encounter end unless magical healing prevents it; if all characters cough, roll Tier-in-6 for Wandering Monsters (FD p.38)."
     },
     {
       "name": "Rockslugs",
@@ -66,8 +82,22 @@
       "tags": ["vermin", "forsaken_depths"],
       "morale_modifier": -1,
       "no_treasure": true,
+      "special_rules": [
+        {
+          "type": "level_drop_per_two_killed",
+          "kills_per_level": 2,
+          "minimum_level": 3,
+          "source_page": 38
+        },
+        {
+          "type": "spawn_spiders_on_character_death",
+          "count": "2d6",
+          "resurrection_forbidden": true,
+          "source_page": 38
+        }
+      ],
       "reactions": [{"roll": "1", "key": "flee", "result": "The deep cave spiders flee."}, {"roll": "2-6", "key": "fight", "result": "The deep cave spiders attack!", "foes_first": true}],
-      "notes": "HCL vermin (FD p.38)."
+      "notes": "HCL vermin, Morale -1, no Treasure. For each 2 spiders killed, reduce Level by 1 to minimum L3. Characters killed by Deep Cave Spiders immediately spawn another 2d6 Deep Cave Spiders and may not be resurrected (FD p.38)."
     }
   ],
   "fd_minions": [

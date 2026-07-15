@@ -182,10 +182,10 @@
   "fd_vermin_table": [
     {"roll": "1", "name": "Shadowbats of the Deep", "enemy_category": "vermin", "summary": "3d6 HCL+1 flying vermin.", "source_page": 38},
     {"roll": "2", "name": "Bloodworms", "enemy_category": "vermin", "summary": "2d6+2 HCL+3 vermin.", "source_page": 38},
-    {"roll": "3", "name": "Spore Spiders", "enemy_category": "vermin", "summary": "d6+3 HCL+1 vermin.", "source_page": 38},
+    {"roll": "3", "name": "Spore Spiders", "enemy_category": "vermin", "summary": "d6+3 HCL+1 vermin; 4-in-6 surprise, never tests Morale, no treasure, Sleep immune.", "source_page": 38},
     {"roll": "4", "name": "Rockslugs", "enemy_category": "vermin", "summary": "2d6 HCL+2 vermin.", "source_page": 38},
     {"roll": "5", "name": "Tiny Land Octopi", "enemy_category": "vermin", "summary": "1d6+3 HCL+2 vermin.", "source_page": 38},
-    {"roll": "6", "name": "Deep Cave Spiders", "enemy_category": "vermin", "summary": "2d6+1 HCL vermin.", "source_page": 38}
+    {"roll": "6", "name": "Deep Cave Spiders", "enemy_category": "vermin", "summary": "2d6+1 HCL vermin; Morale -1, no treasure, remaining spiders lose 1 Level per 2 killed to minimum L3.", "source_page": 38}
   ],
   "fd_minions_table": [
     {"roll": "1", "name": "Deep Trolls", "enemy_category": "minions", "summary": "2d6+1 HCL+1 minions; 1 slain troll returns after a troll turn unless blocked; 1 FD treasure roll at -1.", "source_page": 40},

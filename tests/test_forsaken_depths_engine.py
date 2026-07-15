@@ -71,6 +71,104 @@ def test_forsaken_depths_start_tile_gets_dungeon_exit(monkeypatch) -> None:
     assert any("entered through the" in entry for entry in session.log)
 
 
+def test_fd_named_inline_reaction_rows_are_used(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-spore-reaction",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(id=f"spore-{idx}", name="Spore Spiders", category="vermin", level=6, life=1, max_life=1)
+        for idx in range(2)
+    ]
+    tile.initial_enemy_count = len(tile.enemies)
+    session.mode = "combat"
+    session.reaction_pending = True
+
+    monkeypatch.setattr(random_dungeon, "roll_d6", lambda: 2)
+
+    eng.advance(session, "check_reaction")
+
+    assert session.reaction_key == "fight_to_death"
+    assert session.foes_strike_first is True
+    assert any("Spore Spiders reaction table" in entry for entry in session.log)
+    assert any("will not make morale checks" in entry for entry in session.log)
+
+
+def test_fd_never_morale_template_suppresses_attack_immediate_morale(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-spore-no-morale",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(id=f"spore-{idx}", name="Spore Spiders", category="vermin", level=3, life=1, max_life=1)
+        for idx in range(2)
+    ]
+    tile.initial_enemy_count = len(tile.enemies)
+    session.mode = "combat"
+    session.reaction_pending = False
+
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_d6", lambda: 1)
+
+    eng.advance(session, "combat_round")
+
+    living = [enemy for enemy in tile.enemies if enemy.life > 0]
+    assert len(living) == 1
+    assert any("Morale check skipped: these foes are fighting to the death." in entry for entry in session.log)
+
+
+def test_fd_deep_cave_spiders_reduce_level_per_two_killed() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-deep-spider-drop",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(id="spider-live-1", name="Deep Cave Spiders", category="vermin", level=7, life=1, max_life=1),
+        EnemyState(id="spider-live-2", name="Deep Cave Spiders", category="vermin", level=7, life=1, max_life=1),
+    ]
+    tile.defeated_enemies = [
+        EnemyState(id="spider-dead-1", name="Deep Cave Spiders", category="vermin", level=7, life=0, max_life=1),
+        EnemyState(id="spider-dead-2", name="Deep Cave Spiders", category="vermin", level=7, life=0, max_life=1),
+    ]
+    active_ids = {enemy.id for enemy in tile.enemies + tile.defeated_enemies}
+
+    eng._apply_fd_deep_cave_spider_level_drop(session, tile, active_enemy_ids=active_ids, show_rolls=True)
+
+    assert [enemy.level for enemy in tile.enemies] == [6, 6]
+    assert any("2 slain reduce the remaining spiders by 1 Level" in entry for entry in session.log)
+
+    eng._apply_fd_deep_cave_spider_level_drop(session, tile, active_enemy_ids=active_ids, show_rolls=True)
+
+    assert [enemy.level for enemy in tile.enemies] == [6, 6]
+
+
+def test_fd_spider_templates_record_printed_special_rules() -> None:
+    monsters = engine().rules.monsters()
+    spore = next(row for row in monsters["fd_vermin"] if row["name"] == "Spore Spiders")
+    deep = next(row for row in monsters["fd_vermin"] if row["name"] == "Deep Cave Spiders")
+
+    assert spore["never_test_morale"] is True
+    assert spore["no_treasure"] is True
+    assert spore["encounter_start_effects"] == [{"type": "surprise", "chance": "4-in-6"}]
+    assert any(rule["type"] == "spore_cough_on_melee_kill" for rule in spore["special_rules"])
+    assert deep["morale_modifier"] == -1
+    assert deep["no_treasure"] is True
+    assert any(rule["type"] == "level_drop_per_two_killed" for rule in deep["special_rules"])
+    assert any(rule["type"] == "spawn_spiders_on_character_death" for rule in deep["special_rules"])
+
+
 def test_forsaken_depths_normalize_repairs_missing_start_exit(monkeypatch) -> None:
     eng = engine()
     monkeypatch.setattr(random_dungeon, "roll_fd_dungeon_start_key", lambda: "16")
