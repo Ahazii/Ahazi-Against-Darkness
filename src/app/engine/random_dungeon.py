@@ -24,7 +24,7 @@ from ..schemas import (
     TileDefinition,
     TileState,
 )
-from .combat import CombatContext, CombatRound, apply_enemy_damage, attack_damage, attack_hits, clear_combat_state, end_bear_form, foe_display_labels, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
+from .combat import DEEP_TROLL_HACK_SUPPRESSION_TAG, CombatContext, CombatRound, apply_enemy_damage, attack_damage, attack_hits, clear_combat_state, end_bear_form, foe_display_labels, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
 from .combat_summary import summarize_combat_log
 from .subdual import apply_major_foe_level_drop
 from .fiendish_foes import (
@@ -18259,11 +18259,20 @@ class RandomDungeonEngine:
             return
         if not self._commit_immediate_attack(session):
             return
-        for enemy in slain_trolls:
-            enemy.regen_suppressed = True
+        troll_group_names = {enemy.name for enemy in slain_trolls}
+        for enemy in tile.enemies:
+            if enemy.name not in troll_group_names:
+                continue
+            tags = {tag.lower() for tag in enemy.tags}
+            if "revives_slain_troll" not in tags:
+                continue
+            if DEEP_TROLL_HACK_SUPPRESSION_TAG not in tags:
+                enemy.tags.append(DEEP_TROLL_HACK_SUPPRESSION_TAG)
+            if enemy.life <= 0:
+                enemy.regen_suppressed = True
         session.log.append(
             f"{member.name} spends a turn hacking slain Deep Trolls apart; "
-            "their return to life is blocked this troll turn."
+            "no slain troll from that group can return on the next troll turn."
         )
 
     def _eat_food_ration(self, session: SessionState, character_id: str | None) -> None:

@@ -2287,8 +2287,19 @@ def test_deep_troll_revive_trait_has_player_facing_explanation() -> None:
     assert "one slain troll returns unless prevented by fire, acid, lightning, oil, or hacking the body apart" in APP_JS
     assert "function foeIsSlainRevivingTroll" in APP_JS
     assert "Hack slain trolls" in APP_JS
+    assert "no slain troll from that group returns on the next troll turn" in APP_JS
     assert "advance(\"hack_slain_trolls\"" in APP_JS
     assert "FD p.40" in APP_JS
+
+
+def test_current_objective_surfaces_treasure_choice_buttons() -> None:
+    objective_body = _function_body("currentObjectiveForSession", APP_JS)
+    append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
+    assert "const treasureActions = treasureOutcomeChoices(tile.pending_treasure_choice).map" in objective_body
+    assert "payload: { treasure_outcome_choice: choice.pick }" in objective_body
+    assert "actions: treasureActions" in objective_body
+    assert "action.tooltip || `Run the session action" in append_body
+    assert "advance(action.advanceAction, action.payload || {})" in append_body
 
 
 def test_exit_closeout_uses_latest_session_and_pending_xp_state() -> None:

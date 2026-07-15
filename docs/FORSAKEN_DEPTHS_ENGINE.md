@@ -52,7 +52,7 @@ Hover any badge for rulebook page references.
 | **MR suspended** badge | Magic Citadel side sheet | Spells ignore MR tiers |
 | **Treasure choice** buttons | Pending FD treasure choice on tile | `choose_treasure_outcome` |
 | **FD horde / troll notes** | FD horde or Deep Troll combat | Opening Dark Elf/Goblin volleys, per-character horde attacks, Troll regeneration, Deep Troll slain-body return, Lizardman wound-poison, Goblin Horde half-Life Level drop, and post-horde weapon salvage are handled by the app with FD p.40/p.42 log notes |
-| **Hack slain trolls** | Slain Deep Troll body during combat | `hack_slain_trolls` spends the hero's turn to block the next slain-troll return (FD p.40) |
+| **Hack slain trolls** | Slain Deep Troll body during combat | `hack_slain_trolls` spends the hero's turn to block the active Deep Troll group's next slain-troll return, including bodies slain after the hack action before the troll turn resolves (FD p.40) |
 | **Roll Demesne encounter** | `courtship_demesne_active`, exploration | `courtship_roll_encounter` |
 | **Woo / Fight / Giving / Withholding** | Pending woo or active wooing | `courtship_woo_encounter`, `courtship_fight_encounter`, `courtship_woo_giving`, `courtship_woo_withholding`, `courtship_woo_abort_fight` |
 | **Damsel penalty choice** | After Giving success vs Damsel of Teeming Roses | `courtship_damsel_penalty` (Life or Madness on next Withholding fail) |

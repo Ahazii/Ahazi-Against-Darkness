@@ -516,11 +516,32 @@ def tick_enemy_regeneration(enemy: EnemyState, log: list[str], *, show_rolls: bo
     enemy.regen_suppressed = False
 
 
+DEEP_TROLL_HACK_SUPPRESSION_TAG = "revive_suppressed_by_hack"
+
+
 def revive_one_slain_troll_after_turn(
     enemies: list[EnemyState],
     active_group_names: set[str],
     log: list[str],
 ) -> None:
+    for group_name in active_group_names:
+        group_enemies = [
+            enemy
+            for enemy in enemies
+            if enemy.name == group_name
+            and "revives_slain_troll" in {tag.lower() for tag in enemy.tags}
+        ]
+        if not group_enemies:
+            continue
+        if any(DEEP_TROLL_HACK_SUPPRESSION_TAG in {tag.lower() for tag in enemy.tags} for enemy in group_enemies):
+            for enemy in group_enemies:
+                enemy.tags = [
+                    tag for tag in enemy.tags if tag.lower() != DEEP_TROLL_HACK_SUPPRESSION_TAG
+                ]
+                if enemy.life <= 0:
+                    enemy.regen_suppressed = False
+            log.append(f"Effect: {group_name} cannot return to life (bodies hacked apart).")
+            return
     for enemy in enemies:
         tags = {tag.lower() for tag in enemy.tags}
         if enemy.life > 0 or enemy.name not in active_group_names or "revives_slain_troll" not in tags:

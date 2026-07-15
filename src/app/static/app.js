@@ -10868,7 +10868,7 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
       hackBtn,
       immediateActionTooltip(
         session,
-        "Spend this hero's turn hacking slain Deep Trolls apart so one cannot return to life at the end of the troll turn (FD p.40)."
+        "Spend this hero's turn hacking slain Deep Trolls apart so no slain troll from that group returns on the next troll turn (FD p.40)."
       )
     );
     hackBtn.addEventListener("click", () => {
@@ -19704,11 +19704,19 @@ function currentObjectiveForSession(session) {
       };
     }
     if (tile.pending_treasure_choice) {
+      const treasureActions = treasureOutcomeChoices(tile.pending_treasure_choice).map((choice) => ({
+        label: choice.label,
+        kind: "advance",
+        advanceAction: "choose_treasure_outcome",
+        payload: { treasure_outcome_choice: choice.pick },
+        tooltip: choice.title,
+      }));
       return {
         title: "Current objective: choose treasure",
         body:
           "Forsaken Depths treasure is waiting for a choice from the printed table. Pick the treasure option before claiming or leaving the room.",
         tone: "gold",
+        actions: treasureActions,
         secondaryAction: { label: "Copy FD Playtest Report", kind: "tag-copy-report" },
       };
     }
@@ -19892,8 +19900,8 @@ function appendCurrentObjectiveButton(parent, action) {
   btn.type = "button";
   switch (action.kind) {
     case "advance":
-      setButtonTooltip(btn, `Run the session action: ${action.label}.`);
-      btn.addEventListener("click", () => advance(action.advanceAction));
+      setButtonTooltip(btn, action.tooltip || `Run the session action: ${action.label}.`);
+      btn.addEventListener("click", () => advance(action.advanceAction, action.payload || {}));
       break;
     case "tag-run":
       setButtonTooltip(btn, `${action.procedure?.guidance || "Run the next Adventures Guild procedure."} Records the result and updates the active quest tracker.`);

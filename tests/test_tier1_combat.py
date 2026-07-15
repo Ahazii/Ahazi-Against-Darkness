@@ -220,6 +220,45 @@ def test_deep_troll_body_return_can_be_suppressed() -> None:
     assert "cannot return to life" in " ".join(log)
 
 
+def test_deep_troll_hacked_group_blocks_next_return() -> None:
+    living = EnemyState(
+        id="troll-1",
+        name="Deep Trolls",
+        category="minions",
+        level=10,
+        life=1,
+        max_life=1,
+        attacks=1,
+        tags=[
+            "minions",
+            "troll",
+            "forsaken_depths",
+            "regeneration",
+            "revives_slain_troll",
+            "revive_suppressed_by_hack",
+        ],
+    )
+    slain_before_hack = living.model_copy(update={"id": "troll-2", "life": 0})
+    slain_after_hack = living.model_copy(
+        update={
+            "id": "troll-3",
+            "life": 0,
+            "tags": ["minions", "troll", "forsaken_depths", "regeneration", "revives_slain_troll"],
+        }
+    )
+    log: list[str] = []
+
+    revive_one_slain_troll_after_turn([living, slain_before_hack, slain_after_hack], {"Deep Trolls"}, log)
+
+    assert slain_before_hack.life == 0
+    assert slain_after_hack.life == 0
+    assert "bodies hacked apart" in " ".join(log)
+    assert all(
+        "revive_suppressed_by_hack" not in {tag.lower() for tag in enemy.tags}
+        for enemy in [living, slain_before_hack, slain_after_hack]
+    )
+
+
 def test_troll_regen_suppressed_by_acid_damage() -> None:
     beast = troll()
     beast.life = 3

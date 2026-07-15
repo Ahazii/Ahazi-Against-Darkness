@@ -3061,7 +3061,55 @@ def test_fd_hack_slain_trolls_blocks_body_return() -> None:
 
     slain = next(enemy for enemy in tile.enemies if enemy.id == "t2")
     assert slain.regen_suppressed is True
+    assert all("revive_suppressed_by_hack" in {tag.lower() for tag in enemy.tags} for enemy in tile.enemies)
     assert any("hacking slain Deep Trolls apart" in entry for entry in session.log)
+
+
+def test_fd_hack_slain_trolls_blocks_later_body_return() -> None:
+    from app.engine.combat import revive_one_slain_troll_after_turn
+
+    eng = engine()
+    hero = _party_member()
+    session = eng.create_session(
+        "fd-hack-later-troll",
+        "party-1",
+        [hero],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(
+            id="t1",
+            name="Deep Trolls",
+            category="minions",
+            level=10,
+            life=1,
+            max_life=1,
+            attacks=1,
+            tags=["minions", "troll", "forsaken_depths", "regeneration", "revives_slain_troll"],
+        ),
+        EnemyState(
+            id="t2",
+            name="Deep Trolls",
+            category="minions",
+            level=10,
+            life=0,
+            max_life=1,
+            attacks=1,
+            tags=["minions", "troll", "forsaken_depths", "regeneration", "revives_slain_troll"],
+        ),
+    ]
+    session.mode = "combat"
+
+    eng.advance(session, "hack_slain_trolls", character_id=hero.character_id)
+    later_slain = tile.enemies[0]
+    later_slain.life = 0
+    log: list[str] = []
+
+    revive_one_slain_troll_after_turn(tile.enemies, {"Deep Trolls"}, log)
+
+    assert all(enemy.life == 0 for enemy in tile.enemies)
+    assert any("bodies hacked apart" in entry for entry in log)
 
 
 def test_fd_vermin_without_treasure_rolls_skips_loot() -> None:
