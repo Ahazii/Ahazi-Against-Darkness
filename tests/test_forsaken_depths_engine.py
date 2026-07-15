@@ -3205,6 +3205,66 @@ def test_fd_enter_citadel_side_sheet_pregenerates_rooms(monkeypatch) -> None:
     assert any("Citadel side sheet" in entry for entry in session.log)
 
 
+def test_fd_side_sheet_entry_rolls_back_when_first_room_not_placed(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-side-rollback",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_etc_entry_tile(eng)
+    session.map_state.tiles = [origin]
+    session.map_state.current_tile_id = origin.id
+    session.mode = "exploration"
+    session.fd_citadel_type = "citadel_of_traps"
+    session.fd_citadel_room_count = 21
+    session.fd_citadel_entry_tile_id = origin.id
+    monkeypatch.setattr(eng, "_explore", lambda *args, **kwargs: None)
+
+    eng.advance(session, "enter_fd_side_sheet")
+
+    assert not session.fd_side_sheet_active
+    assert session.fd_side_sheet_kind is None
+    assert session.fd_side_sheet_rooms_total == 0
+    assert not origin.fd_side_sheet_entry_used
+    assert session.map_state.current_tile_id == origin.id
+    assert not [tile for tile in session.map_state.tiles if tile.fd_side_sheet]
+    assert any("side sheet could not be placed" in entry for entry in session.log)
+
+
+def test_normalize_repairs_phantom_fd_side_sheet() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-phantom-side",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_etc_entry_tile(eng)
+    origin.fd_side_sheet_entry_used = True
+    session.map_state.tiles = [origin]
+    session.map_state.current_tile_id = origin.id
+    session.mode = "exploration"
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_side_sheet_origin_tile_id = origin.id
+    session.fd_side_sheet_rooms_total = 21
+    session.fd_side_sheet_rooms_entered = 0
+    session.fd_citadel_type = "citadel_of_traps"
+
+    repaired, changed = eng.normalize_session(session)
+
+    assert changed
+    assert repaired is session
+    assert not session.fd_side_sheet_active
+    assert session.fd_side_sheet_kind is None
+    assert session.fd_side_sheet_rooms_total == 0
+    assert not origin.fd_side_sheet_entry_used
+    assert session.map_state.current_tile_id == origin.id
+    assert any("Recovered from an incomplete side-sheet entry" in entry for entry in session.log)
+
+
 def test_fd_dungeon_etc_rolls_citadel_on_enter(monkeypatch) -> None:
     eng = engine()
     session = eng.create_session(

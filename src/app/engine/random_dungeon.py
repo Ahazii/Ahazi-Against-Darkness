@@ -4668,6 +4668,8 @@ class RandomDungeonEngine:
             changed = True
         if self._resume_orphaned_encounter(session):
             changed = True
+        if self._repair_phantom_fd_side_sheet(session):
+            changed = True
         if self._auto_check_surprise_reaction(session, show_rolls=True):
             changed = True
         if self._resync_session_tile_layouts(session):
@@ -4688,6 +4690,31 @@ class RandomDungeonEngine:
         if changed:
             self._touch(session)
         return session, changed
+
+    def _repair_phantom_fd_side_sheet(self, session: SessionState) -> bool:
+        if not session.fd_side_sheet_active:
+            return False
+        if any(tile.fd_side_sheet for tile in session.map_state.tiles):
+            return False
+        origin = self._tile_by_id(session, session.fd_side_sheet_origin_tile_id or "")
+        if origin is not None:
+            origin.fd_side_sheet_entry_used = False
+            session.map_state.current_tile_id = origin.id
+        session.fd_side_sheet_active = False
+        session.fd_side_sheet_kind = None
+        session.fd_side_sheet_origin_tile_id = None
+        session.fd_side_sheet_rooms_total = 0
+        session.fd_side_sheet_rooms_entered = 0
+        session.fd_side_sheet_visited_tile_ids = []
+        session.fd_magic_citadel_mr_active = False
+        session.fd_prisoners_secret_exit_pending = False
+        session.fd_prisoners_secret_exit_tile_id = None
+        session.fd_prisoners_secret_exit_clues_spent = False
+        session.current_tile_entry_exit_id = None
+        session.log.append(
+            "Recovered from an incomplete side-sheet entry: no side-sheet rooms were present, so the party remains on the main map."
+        )
+        return True
 
     def _sync_clue_total(self, session: SessionState) -> bool:
         return sync_clue_total(session)

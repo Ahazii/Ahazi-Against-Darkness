@@ -166,6 +166,24 @@ def enter_fd_side_sheet(
     if chosen not in {"citadel", "ruins", "dark_pits"}:
         session.log.append("Unknown side dungeon type.")
         return False
+    before_state = {
+        "active": session.fd_side_sheet_active,
+        "kind": session.fd_side_sheet_kind,
+        "origin": session.fd_side_sheet_origin_tile_id,
+        "total": session.fd_side_sheet_rooms_total,
+        "entered": session.fd_side_sheet_rooms_entered,
+        "visited": list(session.fd_side_sheet_visited_tile_ids),
+        "prisoners_pending": session.fd_prisoners_secret_exit_pending,
+        "prisoners_exit": session.fd_prisoners_secret_exit_tile_id,
+        "prisoners_clues": session.fd_prisoners_secret_exit_clues_spent,
+        "magic_mr": session.fd_magic_citadel_mr_active,
+        "citadel_type": session.fd_citadel_type,
+        "citadel_rooms": session.fd_citadel_room_count,
+        "citadel_entry": session.fd_citadel_entry_tile_id,
+        "entry_used": tile.fd_side_sheet_entry_used,
+        "current_tile_id": session.map_state.current_tile_id,
+        "current_entry_exit_id": session.current_tile_entry_exit_id,
+    }
     if chosen == "citadel" and not session.fd_citadel_type:
         from .forsaken_depths_content import roll_fd_citadel
 
@@ -213,6 +231,30 @@ def enter_fd_side_sheet(
         show_rolls=show_rolls,
         explain_math=False,
     )
+    current = engine._current_tile(session)
+    if current is None or not current.fd_side_sheet:
+        session.fd_side_sheet_active = before_state["active"]
+        session.fd_side_sheet_kind = before_state["kind"]
+        session.fd_side_sheet_origin_tile_id = before_state["origin"]
+        session.fd_side_sheet_rooms_total = before_state["total"]
+        session.fd_side_sheet_rooms_entered = before_state["entered"]
+        session.fd_side_sheet_visited_tile_ids = before_state["visited"]
+        session.fd_prisoners_secret_exit_pending = before_state["prisoners_pending"]
+        session.fd_prisoners_secret_exit_tile_id = before_state["prisoners_exit"]
+        session.fd_prisoners_secret_exit_clues_spent = before_state["prisoners_clues"]
+        session.fd_magic_citadel_mr_active = before_state["magic_mr"]
+        session.fd_citadel_type = before_state["citadel_type"]
+        session.fd_citadel_room_count = before_state["citadel_rooms"]
+        session.fd_citadel_entry_tile_id = before_state["citadel_entry"]
+        tile.fd_side_sheet_entry_used = before_state["entry_used"]
+        session.map_state.current_tile_id = before_state["current_tile_id"]
+        session.current_tile_entry_exit_id = before_state["current_entry_exit_id"]
+        side_exit.destination_tile_id = None
+        side_exit.status = "unexplored"
+        session.log.append(
+            "The side sheet could not be placed on the map. Choose another open edge or continue from the main map."
+        )
+        return False
     if chosen == "citadel" and session.fd_side_sheet_active:
         engine.pregenerate_fd_citadel_side_sheet_rooms(session, show_rolls=show_rolls)
     return session.fd_side_sheet_active

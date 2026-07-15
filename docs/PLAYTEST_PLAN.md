@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-15. Target build: post-v0.39.17 Deep Troll / FD treasure-choice patch.
+Last updated: 2026-07-15. Target build: post-v0.39.17 Deep Troll / FD treasure-choice / Citadel side-sheet repair patch.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
@@ -28,12 +28,14 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 Resume the disposable Forsaken Depths Game 2 already started if it is still active. If it was abandoned, start one disposable Forsaken Depths dungeon with a tier-appropriate four-hero party.
 
-1. Deploy the latest build and force-refresh. In the current Game 2 session, force **FD foe encounter -> Minions -> Deep Trolls** once. Confirm **Hack slain trolls** still appears after a troll body is down and, after using it, no slain Deep Troll returns on the next troll turn. The log should say the hacked bodies prevent the return. Confirm the defeated Deep Troll encounter still gives an FD treasure roll at `-1` and ordinary `minor encounter` XP wording.
-2. If an FD treasure choice appears, confirm the choice buttons are visible in **Current Objective** before using **Claim Treasure**. The marker-menu path may also work, but it should no longer be the only visible route.
-3. The following Game 2 checks are complete unless later regression reopens them: FD developer controls appeared with `Supplements: 3`; Shadowbats of the Deep combat looked correct; Infallible Missile created the Level 8+ second missile correctly; Deep Troll chip/hover and Hack button appeared; Deep Troll slain-body return fired before hacking; Horde of Dark Elves opening volley was visible; one Boss and one Weird entered ordinary combat; Undead Leviathan generated FD treasure; Citadel of Traps opened a side sheet.
-4. To force a **Citadel-Weird**, choose **FD foe encounter**, confirm the named foe dropdown has a separate **Citadel Weird** group, then select any foe under that group (for example Chaos Mothbeast Queen). Resolve one such encounter.
-5. In the existing Citadel of Traps side sheet, generate and resolve one normal room, then confirm the return/exit route works. Save and reload while the side sheet is active; confirm it restores intact.
-6. During exploration, resolve one FD hazard or trap and one treasure or current-event choice. If offered, accept Lady in Gray or Cyclopean Idol and confirm Ongoing Quests shows the progress condition and one reward or choice path.
+1. Deploy the latest build and force-refresh. Resume the current Game 2 session. If it opens with the previous phantom Citadel state, it should now repair itself back to the main map and log that no side-sheet rooms were present. It must not remain stuck in a Citadel with zero side-sheet rooms.
+2. Force **Forsaken Depths Citadel -> 3: Citadel of Traps** again. Confirm the party moves onto a newly created side-sheet map room, not the original ETC/Entrance room, and that side-sheet room count/progress is visible in the debug/objective text.
+3. In the Citadel of Traps side sheet, generate and resolve one normal room, then confirm the return/exit route works. Save and reload while the side sheet is active; confirm it restores intact.
+4. Force **FD foe encounter -> Minions -> Deep Trolls** once. Confirm **Hack slain trolls** still appears after a troll body is down and, after using it, no slain Deep Troll returns on the next troll turn. The log should say the hacked bodies prevent the return. Confirm the defeated Deep Troll encounter still gives an FD treasure roll at `-1` and ordinary `minor encounter` XP wording.
+5. If an FD treasure choice appears, confirm the choice buttons are visible in **Current Objective** before using **Claim Treasure**. The marker-menu path may also work, but it should no longer be the only visible route.
+6. To force a **Citadel-Weird**, choose **FD foe encounter**, confirm the named foe dropdown has a separate **Citadel Weird** group, then select any foe under that group (for example Chaos Mothbeast Queen). Resolve one such encounter.
+7. During exploration, resolve one FD hazard or trap and one treasure or current-event choice. If offered, accept Lady in Gray or Cyclopean Idol and confirm Ongoing Quests shows the progress condition and one reward or choice path.
+8. The following Game 2 checks are complete unless later regression reopens them: FD developer controls appeared with `Supplements: 3`; Shadowbats of the Deep combat looked correct; Infallible Missile created the Level 8+ second missile correctly; Deep Troll chip/hover and Hack button appeared; Deep Troll slain-body return fired before hacking; Horde of Dark Elves opening volley was visible; one Boss and one ordinary Weird entered ordinary combat; Undead Leviathan generated FD treasure.
 
 ## Game 3: Adventures Guild
 
