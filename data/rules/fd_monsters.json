@@ -289,8 +289,26 @@
       "attacks": 1,
       "tags": ["boss", "goblin", "chaos", "forsaken_depths"],
       "morale_modifier": 1,
+      "fixed_treasure": {
+        "gems_count": "2d6",
+        "gem_value_gp": 25,
+        "gold": "5d6",
+        "masterwork_edged_weapon_value": "(d6+4)x5"
+      },
+      "special_attacks": [
+        {
+          "type": "corrosive_mucus",
+          "timing": "before_melee",
+          "target": "random_pc",
+          "defense_level_delta": 1,
+          "damage_per_turn": 1,
+          "defense_penalty": -2,
+          "blocks_flee": true,
+          "description": "Before melee, a random character makes a Defense roll vs the goblin's L+1 or is hit by corrosive mucus: may not flee, loses 1 Life per turn, and has -2 Defense until cured/removed as printed."
+        }
+      ],
       "reactions": [{"roll": "0-1", "key": "offer_rest", "result": "The goblin offers food and rest."}, {"roll": "2", "key": "flee", "result": "The goblin flees."}, {"roll": "3", "key": "bribe", "result": "The goblin demands 50 gp."}, {"roll": "4-5", "key": "fight", "result": "The goblin attacks!", "foes_first": true}, {"roll": "6", "key": "fight_to_death", "result": "The goblin fights to the death!", "foes_first": true}],
-      "notes": "HCL+3 boss (FD p.36)."
+      "notes": "HCL+3 Chaos boss, HCL+3 Life, 1 attack inflicting Tier damage, Morale +1. Treasure: 2d6 small gems worth 25gp each, 5d6gp, and 1 masterwork edged weapon worth (d6+4)x5gp. Before melee, corrosive mucus can block fleeing, inflict 1 Life per turn, and apply -2 Defense (FD p.41)."
     }
   ],
   "fd_weird": [

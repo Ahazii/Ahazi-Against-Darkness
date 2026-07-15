@@ -177,7 +177,7 @@
     {"roll": "3", "name": "Chaos Cube", "enemy_category": "weird", "summary": "1 Chaos Cube (HCL+5 weird monster).", "source_page": 36},
     {"roll": "4", "name": "Dark Elves Crossbowmen", "enemy_category": "minions", "count": "d6+4", "summary": "d6+4 Dark Elves Crossbowmen (HCL+2 minions).", "source_page": 36},
     {"roll": "5", "name": "Frogmen of the Deep", "enemy_category": "minions", "summary": "2d6 Frogmen of the Deep (HCL+2 minions).", "source_page": 36},
-    {"roll": "6", "name": "Greater Mutated Goblin", "enemy_category": "boss", "summary": "1 Greater Mutated Goblin (HCL+3 boss).", "source_page": 36}
+    {"roll": "6", "name": "Greater Mutated Goblin", "enemy_category": "boss", "summary": "1 Greater Mutated Goblin (HCL+3 Chaos boss); Tier-damage attack, corrosive mucus before melee, fixed treasure of 2d6 small gems, 5d6gp, and one masterwork edged weapon.", "source_page": 41}
   ],
   "fd_vermin_table": [
     {"roll": "1", "name": "Shadowbats of the Deep", "enemy_category": "vermin", "summary": "3d6 HCL+1 flying vermin.", "source_page": 38},

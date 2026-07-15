@@ -1459,6 +1459,25 @@ def test_fd_dark_elf_warlock_has_printed_treasure_and_ice_blast() -> None:
     assert "Treasure: 1 Forsaken Depths roll +2" in warlock["notes"]
 
 
+def test_fd_greater_mutated_goblin_has_printed_fixed_treasure_and_mucus() -> None:
+    eng = engine()
+    bosses = {row["name"]: row for row in eng.rules.monsters()["fd_boss"]}
+    goblin = bosses["Greater Mutated Goblin"]
+    assert goblin["fixed_treasure"] == {
+        "gems_count": "2d6",
+        "gem_value_gp": 25,
+        "gold": "5d6",
+        "masterwork_edged_weapon_value": "(d6+4)x5",
+    }
+    assert any(
+        attack["type"] == "corrosive_mucus"
+        and attack["timing"] == "before_melee"
+        and attack["blocks_flee"] is True
+        for attack in goblin["special_attacks"]
+    )
+    assert "FD p.41" in goblin["notes"]
+
+
 def test_session_action_schema_accepts_fd_treasure_choices() -> None:
     for pick in ["magic", "clues", "double_roll", "quad_roll_wanderers", "masterwork", "potions", "useful", "common_equipment"]:
         action = SessionAction(action="choose_treasure_outcome", treasure_outcome_choice=pick)
@@ -3164,6 +3183,52 @@ def test_fd_defeated_foe_treasure_uses_modifier_as_one_roll(monkeypatch) -> None
     assert not any("no treasure rolls" in entry.lower() for entry in session.log)
 
 
+def test_fd_greater_mutated_goblin_stages_fixed_treasure(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-goblin-fixed-treasure",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "fd_boss"
+    tile.resolved = True
+    tile.defeated_enemies = [
+        EnemyState(
+            id="bat1",
+            name="Shadowbats of the Deep",
+            category="vermin",
+            level=5,
+            life=0,
+            max_life=1,
+            attacks=1,
+        ),
+        EnemyState(
+            id="goblin1",
+            name="Greater Mutated Goblin",
+            category="boss",
+            level=8,
+            life=0,
+            max_life=8,
+            attacks=1,
+        ),
+    ]
+
+    def fake_roll(formula: str) -> int:
+        return {"2d6": 7, "5d6": 17, "d6+4": 8}[formula]
+
+    monkeypatch.setattr("app.engine.random_dungeon.roll_formula", fake_roll)
+
+    eng._award_treasure(session, tile, show_rolls=True)
+
+    assert tile.treasure_gold == 17
+    assert tile.treasure_items.count("Small gemstone (25gp)") == 7
+    assert "Masterwork edged weapon (40gp)" in tile.treasure_items
+    assert any("Greater Mutated Goblin treasure" in entry for entry in session.log)
+    assert not any("no treasure rolls" in entry.lower() for entry in session.log)
+
+
 def test_fd_hack_slain_trolls_blocks_body_return() -> None:
     eng = engine()
     hero = _party_member()
@@ -3534,6 +3599,68 @@ def test_normalize_clears_stale_fd_side_sheet_when_party_already_at_origin() -> 
     assert session.map_state.current_tile_id == origin.id
     assert side.fd_side_sheet
     assert any("already back" in entry for entry in session.log)
+
+
+def test_fd_side_sheet_marker_clears_when_moving_back_to_origin() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-side-return-edge",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_etc_entry_tile(eng)
+    side = TileState(
+        id="side-room",
+        x=5,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Citadel side room",
+        description="Side room",
+        content_key="fd_empty",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+        exits=[
+            ExitState(
+                id="side-west",
+                direction="west",
+                kind="passage",
+                status="open",
+                destination_tile_id=origin.id,
+            )
+        ],
+    )
+    origin.exits = [
+        ExitState(
+            id="origin-east",
+            direction="east",
+            kind="passage",
+            status="open",
+            destination_tile_id=side.id,
+        )
+    ]
+    origin.fd_side_sheet_entry_used = True
+    session.map_state.tiles = [origin, side]
+    session.map_state.current_tile_id = side.id
+    session.mode = "exploration"
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_side_sheet_origin_tile_id = origin.id
+    session.fd_side_sheet_rooms_total = 18
+    session.fd_side_sheet_rooms_entered = 4
+    session.fd_side_sheet_visited_tile_ids = [side.id]
+    session.fd_citadel_type = "citadel_of_traps"
+
+    eng.advance(session, "explore", exit_id="side-west")
+
+    assert session.map_state.current_tile_id == origin.id
+    assert not session.fd_side_sheet_active
+    assert session.fd_side_sheet_kind is None
+    assert session.fd_side_sheet_rooms_total == 0
+    assert not origin.fd_side_sheet_entry_used
+    assert side.fd_side_sheet
+    assert any("side-sheet marker is cleared" in entry for entry in session.log)
 
 
 def test_fd_dungeon_etc_rolls_citadel_on_enter(monkeypatch) -> None:

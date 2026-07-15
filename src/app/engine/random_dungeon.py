@@ -49,7 +49,7 @@ from .adventure_completion import AdventureCompletionCallbacks, complete_adventu
 from .combat_lifecycle import consume_sleeping_foe_attack_bonus, merge_party_outcome
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
 from .firearm import gnome_repair_firearm
-from .gem_items import remove_inventory_item
+from .gem_items import format_gem_item, remove_inventory_item
 from .hunger import eat_food_ration, feed_hungry_heroes
 from .combat_modifiers import consume_clarity_bonus
 from .consumables import (
@@ -2453,6 +2453,7 @@ class RandomDungeonEngine:
                 self._tick_toxic_spores(session)
                 self._tick_abyss_room_entry_afflictions(session, existing, show_rolls=show_rolls)
                 self._tick_teleport_enemy_returns(session, reason="movement")
+                self._clear_fd_side_sheet_if_returned_to_origin(session, existing)
                 if exit_state.acute_hearing_cleared and existing.id not in session.expert_acute_hearing_tiles:
                     session.expert_acute_hearing_tiles.append(existing.id)
                 session.log.extend(maybe_summon_on_wilderness_entry(session, existing))
@@ -4675,6 +4676,9 @@ class RandomDungeonEngine:
             changed = True
         if self._repair_phantom_fd_side_sheet(session):
             changed = True
+        current = self._current_tile(session)
+        if current is not None and self._clear_fd_side_sheet_if_returned_to_origin(session, current):
+            changed = True
         if self._auto_check_surprise_reaction(session, show_rolls=True):
             changed = True
         if self._resync_session_tile_layouts(session):
@@ -4709,20 +4713,13 @@ class RandomDungeonEngine:
             and current.id == origin.id
             and not current.fd_side_sheet
         ):
-            origin.fd_side_sheet_entry_used = False
-            session.fd_side_sheet_active = False
-            session.fd_side_sheet_kind = None
-            session.fd_side_sheet_origin_tile_id = None
-            session.fd_side_sheet_rooms_total = 0
-            session.fd_side_sheet_rooms_entered = 0
-            session.fd_side_sheet_visited_tile_ids = []
-            session.fd_magic_citadel_mr_active = False
-            session.fd_prisoners_secret_exit_pending = False
-            session.fd_prisoners_secret_exit_tile_id = None
-            session.fd_prisoners_secret_exit_clues_spent = False
-            session.current_tile_entry_exit_id = None
-            session.log.append(
-                f"Recovered stale side-sheet state: the party is already back on {origin.title}, so the side-sheet marker was cleared."
+            self._clear_fd_side_sheet_state(
+                session,
+                origin=origin,
+                log_message=(
+                    f"Recovered stale side-sheet state: the party is already back on {origin.title}, "
+                    "so the side-sheet marker was cleared."
+                ),
             )
             return True
         if has_side_tiles:
@@ -4730,6 +4727,25 @@ class RandomDungeonEngine:
         if origin is not None:
             origin.fd_side_sheet_entry_used = False
             session.map_state.current_tile_id = origin.id
+        self._clear_fd_side_sheet_state(
+            session,
+            origin=origin,
+            log_message=(
+                "Recovered from an incomplete side-sheet entry: no side-sheet rooms were present, "
+                "so the party remains on the main map."
+            ),
+        )
+        return True
+
+    def _clear_fd_side_sheet_state(
+        self,
+        session: SessionState,
+        *,
+        origin: TileState | None,
+        log_message: str | None = None,
+    ) -> None:
+        if origin is not None:
+            origin.fd_side_sheet_entry_used = False
         session.fd_side_sheet_active = False
         session.fd_side_sheet_kind = None
         session.fd_side_sheet_origin_tile_id = None
@@ -4741,8 +4757,26 @@ class RandomDungeonEngine:
         session.fd_prisoners_secret_exit_tile_id = None
         session.fd_prisoners_secret_exit_clues_spent = False
         session.current_tile_entry_exit_id = None
-        session.log.append(
-            "Recovered from an incomplete side-sheet entry: no side-sheet rooms were present, so the party remains on the main map."
+        if log_message:
+            session.log.append(log_message)
+
+    def _clear_fd_side_sheet_if_returned_to_origin(
+        self,
+        session: SessionState,
+        tile: TileState,
+    ) -> bool:
+        if not session.fd_side_sheet_active or tile.fd_side_sheet:
+            return False
+        origin = self._tile_by_id(session, session.fd_side_sheet_origin_tile_id or "")
+        if origin is None or tile.id != origin.id:
+            return False
+        self._clear_fd_side_sheet_state(
+            session,
+            origin=origin,
+            log_message=(
+                f"The party returns to {origin.title} from the side sheet; "
+                "the side-sheet marker is cleared."
+            ),
         )
         return True
 
@@ -17535,9 +17569,19 @@ class RandomDungeonEngine:
             lookup_template=self._monster_template_for_enemy,
             log=session.log,
         )
+        fixed_outcomes = self._fixed_fd_treasure_outcomes_from_defeated(defeated)
         if door_bonus:
             bonuses = [bonus + door_bonus for bonus in bonuses]
         if not bonuses:
+            if fixed_outcomes:
+                outcome = self._merge_treasure_outcomes(fixed_outcomes)
+                if show_rolls:
+                    session.log.extend(outcome.log)
+                self._stage_treasure_outcome(session, tile, outcome, show_rolls=show_rolls)
+                if tile.treasure_gold or tile.treasure_items or tile.pending_treasure_choice:
+                    self._apply_treasure_doubling(tile)
+                    session.pending_treasure_reroll_tile_id = tile.id
+                return
             if tile.final_boss_treasure:
                 tile.treasure_gold = apply_final_boss_treasure_bonus(0)
                 tile.treasure_summary = f"Final Boss treasure: {tile.treasure_gold}gp"
@@ -17557,6 +17601,8 @@ class RandomDungeonEngine:
             show_rolls=show_rolls,
             silk_already_found=session.fd_silk_treasure_used,
         )
+        if fixed_outcomes:
+            outcome = self._merge_treasure_outcomes([outcome] + fixed_outcomes)
         if "Precious silk worth" in outcome.summary or any(
             "silk" in item.lower() for item in outcome.items
         ):
@@ -17575,6 +17621,50 @@ class RandomDungeonEngine:
         if tile.treasure_gold or tile.treasure_items or tile.pending_treasure_choice:
             self._apply_treasure_doubling(tile)
             session.pending_treasure_reroll_tile_id = tile.id
+
+    def _fixed_fd_treasure_outcomes_from_defeated(self, defeated: list[EnemyState]) -> list[TreasureOutcome]:
+        outcomes: list[TreasureOutcome] = []
+        seen_names: set[str] = set()
+        for enemy in defeated:
+            if enemy.name in seen_names:
+                continue
+            seen_names.add(enemy.name)
+            template = self._monster_template_for_enemy(enemy)
+            fixed = template.get("fixed_treasure") if template else None
+            if not isinstance(fixed, dict):
+                continue
+            gold = 0
+            items: list[str] = []
+            log: list[str] = []
+            gem_count_formula = fixed.get("gems_count")
+            gem_value = int(fixed.get("gem_value_gp", 0) or 0)
+            if gem_count_formula and gem_value > 0:
+                gem_count = max(0, roll_formula(str(gem_count_formula)))
+                items.extend(format_gem_item(gem_value, kind="Small gemstone") for _ in range(gem_count))
+                log.append(
+                    f"{enemy.name} treasure: {gem_count_formula} small gems = {gem_count} "
+                    f"worth {gem_value}gp each (FD p.41)."
+                )
+            gold_formula = fixed.get("gold")
+            if gold_formula:
+                rolled_gold = max(0, roll_formula(str(gold_formula)))
+                gold += rolled_gold
+                log.append(f"{enemy.name} treasure: {gold_formula} gp = {rolled_gold}gp (FD p.41).")
+            masterwork_value = str(fixed.get("masterwork_edged_weapon_value") or "").strip().lower()
+            if masterwork_value == "(d6+4)x5":
+                value = max(0, roll_formula("d6+4")) * 5
+                items.append(f"Masterwork edged weapon ({value}gp)")
+                log.append(
+                    f"{enemy.name} treasure: masterwork edged weapon value (d6+4)x5 = {value}gp (FD p.41)."
+                )
+            if gold or items:
+                summary_parts: list[str] = []
+                if gold:
+                    summary_parts.append(f"{gold}gp")
+                if items:
+                    summary_parts.append(", ".join(items))
+                outcomes.append(TreasureOutcome(f"{enemy.name} treasure: {'; '.join(summary_parts)}.", gold, items, log))
+        return outcomes
 
     def _merge_treasure_outcomes(self, outcomes: list[TreasureOutcome]) -> TreasureOutcome:
         return merge_treasure_outcomes(outcomes)
