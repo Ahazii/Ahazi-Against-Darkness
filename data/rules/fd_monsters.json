@@ -340,7 +340,9 @@
       "immunities": ["sleep"],
       "reactions": [{"roll": "1", "key": "ignore", "result": "The chaos cube ignores the party."}, {"roll": "2-3", "key": "bribe", "result": "The cube wants food rations."}, {"roll": "4-6", "key": "fight", "result": "The chaos cube attacks!", "foes_first": true}],
       "notes": "HCL+5 weird monster (FD p.36)."
-    },
+    }
+  ],
+  "fd_citadel_weird": [
     {
       "name": "Chaos Mothbeast Queen",
       "count": "1",

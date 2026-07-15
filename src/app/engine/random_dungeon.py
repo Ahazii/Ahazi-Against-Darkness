@@ -12468,6 +12468,12 @@ class RandomDungeonEngine:
         monsters = self.rules.monsters()
         table = monsters.get(table_key) or []
         template = next((entry for entry in table if entry.get("name") == name), None)
+        if template is None and table_category == "weird" and is_fd_ruleset(session):
+            citadel_table = monsters.get("fd_citadel_weird") or []
+            citadel_template = next((entry for entry in citadel_table if entry.get("name") == name), None)
+            if citadel_template is not None:
+                table_key = "fd_citadel_weird"
+                template = citadel_template
         if template is None:
             session.log.append(f"Forsaken Depths bestiary missing: {name} ({table_key}).")
             return []

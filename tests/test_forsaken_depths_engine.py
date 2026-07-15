@@ -299,7 +299,8 @@ def test_fd_monster_tables_loaded() -> None:
     assert len(monsters["fd_vermin"]) == 6
     assert len(monsters["fd_minions"]) == 9
     assert len(monsters["fd_boss"]) == 7
-    assert len(monsters["fd_weird"]) == 14
+    assert len(monsters["fd_weird"]) == 8
+    assert len(monsters["fd_citadel_weird"]) == 6
     assert len(monsters["courtship_demons"]) >= 20
     assert len(monsters["fd_horde"]) == 6
     hordes = {row["name"]: row for row in monsters["fd_horde"]}
@@ -313,6 +314,16 @@ def test_fd_monster_tables_loaded() -> None:
     assert "fd_horde_lizardman_poison" in hordes["Horde of Lizardmen of the Deep"]["tags"]
     assert hordes["Horde of Goblins of the Deep"]["attacks"] == 1
     assert "half_life_level_drop:2" in hordes["Horde of Goblins of the Deep"]["tags"]
+
+
+def test_fd_weird_and_citadel_weird_bestiaries_are_separate() -> None:
+    monsters = engine().rules.monsters()
+    weird_names = {row["name"] for row in monsters["fd_weird"]}
+    citadel_names = {row["name"] for row in monsters["fd_citadel_weird"]}
+    assert "Chaos Mothbeast" in weird_names
+    assert "Chaos Mothbeast Queen" not in weird_names
+    assert "Chaos Mothbeast Queen" in citadel_names
+    assert not weird_names & citadel_names
 
 
 def test_fd_river_type_rolled_on_etr_transition(monkeypatch) -> None:

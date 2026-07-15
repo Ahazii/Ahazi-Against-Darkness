@@ -184,12 +184,12 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Forsaken Depths | Forsaken Depths Stalker | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Forsaken Depths Fungal Sludge | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Cube | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Chaos Mothbeast Queen | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Undead Leviathan | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Pumpkinhead of the Depths | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Forsaken Depths Colossal Worm | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Forsaken Depths Savage Stalker | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Giant Fungal Sludge | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Chaos Mothbeast Queen | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Undead Leviathan | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Pumpkinhead of the Depths | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Forsaken Depths Colossal Worm | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Forsaken Depths Savage Stalker | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Giant Fungal Sludge | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
 | Abyss | Black Orc Bandits | `abyss_vermin_table` | Abyss Vermin table p.49 | summary only | pending PDF/runtime comparison |
 | Abyss | Shrieking Fungi | `abyss_vermin_table` | Abyss Vermin table p.49 | per_turn_effects:attract_wandering_after_turns | reviewed |
 | Abyss | Champions of Ssikliss | `abyss_vermin_table` | Abyss Vermin table p.49 | summary only | pending PDF/runtime comparison |

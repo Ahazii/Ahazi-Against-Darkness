@@ -107,7 +107,7 @@ All rows are in `data/rules/forsaken_depths_tables.json` and appear on the home 
 | `courtship_lex_shop_table` | catalog | Lex shop (BoS entry 32) |
 | `courtship_apothecary_recipes_table` | catalog | TCOTFD p.79–98 Apothecary Cookbook |
 
-Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `fd_weird`, `fd_horde`); `data/rules/courtship_monsters.json` (`courtship_demons`).
+Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `fd_weird`, `fd_citadel_weird`, `fd_horde`); `data/rules/courtship_monsters.json` (`courtship_demons`).
 
 **Gem/jewelry items** — pocket gems use `Gem (Ngp)` / `Jewelry (Ngp)` item names; `gem_items.py` parses value for bribes, milestones, and Furnace imbue (200+ gp).
 
