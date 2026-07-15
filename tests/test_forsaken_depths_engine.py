@@ -36,6 +36,20 @@ def _party_member() -> PartyMemberState:
     )
 
 
+def _js_function_body(name: str, src: str) -> str:
+    start = src.index(f"function {name}")
+    brace = src.index("{", start)
+    depth = 0
+    for idx in range(brace, len(src)):
+        if src[idx] == "{":
+            depth += 1
+        elif src[idx] == "}":
+            depth -= 1
+            if depth == 0:
+                return src[brace + 1 : idx]
+    raise AssertionError(f"Could not parse function body for {name}")
+
+
 def test_forsaken_depths_session_uses_dungeon_catalog() -> None:
     eng = engine()
     session = eng.create_session(
@@ -313,6 +327,15 @@ def test_setup_includes_forsaken_depths_ruleset_select() -> None:
     assert "There is No Danger Here (FD p.55)" in app_js
     assert "enterFdSideSheet" in app_js
     assert "fdPrisonersEscape" in app_js
+
+
+def test_fd_citadel_badge_only_shows_for_active_citadel_side_sheet() -> None:
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+    body = _js_function_body("fdCitadelDisplay", app_js)
+
+    assert '!session.fd_side_sheet_active' in body
+    assert 'session.fd_side_sheet_kind !== "citadel"' in body
+    assert '!session.fd_citadel_type' in body
 
 
 def test_map_styles_include_river_water_overlay() -> None:

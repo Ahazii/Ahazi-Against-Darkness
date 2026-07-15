@@ -14202,7 +14202,14 @@ const FD_CITADEL_LABELS = {
 };
 
 function fdCitadelDisplay(session) {
-  if (session?.ruleset !== "forsaken_depths" || !session.fd_citadel_type) return "";
+  if (
+    session?.ruleset !== "forsaken_depths" ||
+    !session.fd_side_sheet_active ||
+    session.fd_side_sheet_kind !== "citadel" ||
+    !session.fd_citadel_type
+  ) {
+    return "";
+  }
   const name = FD_CITADEL_LABELS[session.fd_citadel_type] || session.fd_citadel_type.replace(/_/g, " ");
   const rooms = session.fd_citadel_room_count;
   return rooms != null ? `Citadel: ${name} (${rooms} rooms)` : `Citadel: ${name}`;
