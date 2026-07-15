@@ -2295,11 +2295,19 @@ def test_deep_troll_revive_trait_has_player_facing_explanation() -> None:
 def test_current_objective_surfaces_treasure_choice_buttons() -> None:
     objective_body = _function_body("currentObjectiveForSession", APP_JS)
     append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
+    quick_body = _function_body("renderTreasureChoices", APP_JS)
+    session_body = _function_body("renderSession", APP_JS)
+    assert 'id="treasure-choices"' in INDEX_HTML
     assert "const treasureActions = treasureOutcomeChoices(tile.pending_treasure_choice).map" in objective_body
     assert "payload: { treasure_outcome_choice: choice.pick }" in objective_body
     assert "actions: treasureActions" in objective_body
     assert "action.tooltip || `Run the session action" in append_body
     assert "advance(action.advanceAction, action.payload || {})" in append_body
+    assert "const choices = treasureOutcomeChoices(tile.pending_treasure_choice);" in quick_body
+    assert "advance(\"choose_treasure_outcome\", { treasure_outcome_choice: choice.pick })" in quick_body
+    assert "safeSessionRender(\"treasureChoices\", () => renderTreasureChoices(session));" in session_body
+    assert "pendingTreasureChoice" in session_body
+    assert "hasTrap || pendingTreasureChoice" in session_body
 
 
 def test_exit_closeout_uses_latest_session_and_pending_xp_state() -> None:

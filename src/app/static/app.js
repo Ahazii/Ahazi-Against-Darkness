@@ -605,6 +605,7 @@ const spellChoicesEl = document.getElementById("spell-choices");
 const levelUpSpellChoicesEl = document.getElementById("level-up-spell-choices");
 const economyChoicesEl = document.getElementById("economy-choices");
 const questChoicesEl = document.getElementById("quest-choices");
+const treasureChoicesEl = document.getElementById("treasure-choices");
 const ongoingQuestsEl = document.getElementById("ongoing-quests");
 const potionChoicesEl = document.getElementById("potion-choices");
 const recoveryChoicesEl = document.getElementById("recovery-choices");
@@ -11109,6 +11110,8 @@ function applySessionActionTooltips(session, sessionUi = {}) {
   let claimTooltip = ACTION_TOOLTIPS.claimTreasure;
   if (session?.mode === "exploration" && hasTrap) {
     claimTooltip = "Resolve the trap before claiming treasure.";
+  } else if (session?.mode === "exploration" && tile?.pending_treasure_choice) {
+    claimTooltip = "Choose the printed treasure outcome before claiming this room's treasure.";
   } else if (session?.mode === "exploration" && !hasTreasure && tile?.treasure_summary) {
     claimTooltip = tile.treasure_summary;
   }
@@ -18888,6 +18891,7 @@ function renderSession() {
   safeSessionRender("recoveryChoices", () => renderRecoveryChoices(session));
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
   safeSessionRender("clueChoices", () => renderClueChoices(session));
+  safeSessionRender("treasureChoices", () => renderTreasureChoices(session));
   safeSessionRender("armoryChoices", () => renderArmoryChoices(session));
   safeSessionRender("specialFeatureChoices", () => renderSpecialFeatureChoices(session));
   safeSessionRender("tileContentChoices", () => renderTileContentChoices(session));
@@ -18905,9 +18909,10 @@ function renderSession() {
   searchBtn.classList.toggle("hidden", inCombat || !canSearch);
   restBtn.classList.toggle("hidden", inCombat || !restStatus.ok);
   resolveTrapBtn.classList.toggle("hidden", inCombat || !hasTrap);
-  claimTreasureBtn.classList.toggle("hidden", inCombat || !hasTreasure || hasTrap);
+  const pendingTreasureChoice = Boolean(tile?.pending_treasure_choice);
+  claimTreasureBtn.classList.toggle("hidden", inCombat || !hasTreasure || hasTrap || pendingTreasureChoice);
   resolveTrapBtn.disabled = session.mode !== "exploration" || !hasTrap;
-  claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap;
+  claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap || pendingTreasureChoice;
   saveSessionBtn.disabled = false;
   if (transferItemsSessionBtn) {
     const transferMemberCount = session.camped_outside
@@ -20929,6 +20934,29 @@ function renderQuestChoices(session) {
   if (!questChoicesEl) return;
   questChoicesEl.replaceChildren();
   questChoicesEl.classList.add("hidden");
+}
+
+function renderTreasureChoices(session) {
+  if (!treasureChoicesEl) return;
+  treasureChoicesEl.replaceChildren();
+  treasureChoicesEl.classList.add("hidden");
+  const tile = currentTile(session);
+  if (session.mode !== "exploration" || !tile?.pending_treasure_choice) return;
+  const choices = treasureOutcomeChoices(tile.pending_treasure_choice);
+  if (!choices.length) return;
+  treasureChoicesEl.classList.remove("hidden");
+  treasureChoicesEl.appendChild(node("span", "search-label", "Choose treasure:"));
+  for (const choice of choices) {
+    const choiceBtn = document.createElement("button");
+    choiceBtn.type = "button";
+    choiceBtn.className = "secondary";
+    choiceBtn.textContent = choice.label;
+    setButtonTooltip(choiceBtn, choice.title);
+    choiceBtn.addEventListener("click", () =>
+      advance("choose_treasure_outcome", { treasure_outcome_choice: choice.pick })
+    );
+    treasureChoicesEl.appendChild(choiceBtn);
+  }
 }
 
 function renderClueChoices(session) {
