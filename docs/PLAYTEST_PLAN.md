@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-15. Target build: post-v0.39.17 recap patch.
+Last updated: 2026-07-15. Target build: post-v0.39.17 FD playtest-controls patch.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
@@ -14,7 +14,7 @@ This is the active player checklist only. Completed and superseded checks are re
 
 Evidence copied 2026-07-15 for live session `2b51e57ab5cd4623942fbef9b65b30d3`: after camping and re-entry, the current room was **Entrance Map Element 06**, mode/camp was `exploration / inside`, no enemies remained, and exits were south passage open plus west/east doors open. Resuming into the Camp screen is valid if the session was saved while `camped_outside`; the invariant is that **(Re)enter Dungeon** returns to Entrance 06 with dungeon exits usable, not to stale Map Element 32.
 
-The session also showed no active recovery/body state in Debug Context after the playtest reset repair removed stale fallen-body markers. The original unfinished-abandon branch is no longer provable from this report because the session later found and defeated the Final Boss. If it was not already confirmed before the report was copied, check the same closeout rule only when a future disposable random dungeon is already camped outside with unfinished content: **Abandon Dungeon** must not require a Final Boss, but pending Classical XP must still be banked or spent first.
+The session also showed no active recovery/body state in Debug Context after the playtest reset repair removed stale fallen-body markers. Follow-up player evidence found one UI freshness issue: **Complete / abandon** stayed dimmed after the pending Classical XP roll was spent until a hard refresh. The next build now rechecks exit completion against the latest in-memory session and gives the camp **Abandon Dungeon** button an explicit pending-XP disabled state/tooltip. Reconfirm once after deployment: spend or bank pending XP, return to the entrance, and the completion choice should enable without a browser hard refresh. A Final Boss is not required to abandon; pending Classical XP still intentionally blocks closeout until banked or spent.
 
 ## Passed: Game 1 EE + Abyss Targeted Check
 
@@ -26,12 +26,13 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 ## Next Required: Game 2 Forsaken Depths
 
-Start one disposable Forsaken Depths dungeon with a tier-appropriate four-hero party.
+Resume the disposable Forsaken Depths Game 2 already started if it is still active. If it was abandoned, start one disposable Forsaken Depths dungeon with a tier-appropriate four-hero party.
 
-1. Force one FD Vermin, Minion, Horde of Dark Elves, Boss, Weird, and Citadel-Weird. Confirm the named foe enters ordinary combat and the Horde's opening volley is visible.
-2. Force one Citadel, preferably **Citadel of Traps** or **Magic Citadel**. Confirm the side sheet opens, one normal room is generated, and the return/exit route works.
-3. During exploration, resolve one FD hazard or trap and one treasure or current-event choice. Save and reload while the FD side sheet, state, or quest is active; confirm it restores intact.
-4. If offered, accept Lady in Gray or Cyclopean Idol. Confirm Ongoing Quests shows the progress condition and one reward or choice path.
+1. Before moving, confirm Developer controls show **FD foe encounter** and **Forsaken Depths Citadel** when the session header says `Supplements: 3`. This validates that the locked `forsaken-depths` supplement snapshot is recognised, not only the legacy `ruleset` field.
+2. Force one FD Vermin, Minion, Horde of Dark Elves, Boss, Weird, and Citadel-Weird. Confirm the named foe enters ordinary combat and the Horde's opening volley is visible.
+3. Force one Citadel, preferably **Citadel of Traps** or **Magic Citadel**. Confirm the side sheet opens, one normal room is generated, and the return/exit route works.
+4. During exploration, resolve one FD hazard or trap and one treasure or current-event choice. Save and reload while the FD side sheet, state, or quest is active; confirm it restores intact.
+5. If offered, accept Lady in Gray or Cyclopean Idol. Confirm Ongoing Quests shows the progress condition and one reward or choice path.
 
 ## Game 3: Adventures Guild
 

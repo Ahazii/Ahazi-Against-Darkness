@@ -9,16 +9,19 @@ Last updated: 2026-07-15. Repository branch: `main`. Latest release: `v0.39.17` 
 3. The Docker app runs on Unraid at `http://192.168.1.55:8001`; user-visible persistent data is under `\\TOWER\appdata\ahazi-against-darkness`.
 4. Do not mutate `game.db` directly unless necessary to repair a live blocker; make a timestamped backup beside it first.
 
-## Current Priority: Finish Blocking Fix Validation
+## Current Priority: Deploy Follow-up Patch, Then Resume Game 2
 
 The previous playtest exposed a real camp/re-entry failure after developer-forced encounters. `v0.39.17` fixes it by storing `SessionState.entrance_tile_id`, recovering it for legacy sessions from the marked dungeon exit, and anchoring camp actions to that entrance rather than a stale saved-room location.
 
-Before further modularisation, ask the user to deploy `v0.39.17`, force-refresh, and complete the **No New Game Needed** section of `docs/PLAYTEST_PLAN.md`:
+Follow-up player testing then exposed two smaller UI blockers: after spending the last pending Classical XP roll, the entrance **Complete / abandon** choice could remain dimmed until a hard refresh; and Forsaken Depths Game 2 showed `Supplements: 3` but no FD developer force controls. The follow-up patch makes closeout use the latest in-memory session and makes both frontend/backend FD recognition supplement-snapshot aware.
+
+Before further modularisation, ask the user to deploy the latest `main` build, force-refresh, and complete the updated **No New Game Needed** / **Game 2 Forsaken Depths** checks in `docs/PLAYTEST_PLAN.md`:
 
 - Resume the current EE + Abyss session. It must open at Entrance Map Element 06, not Map Element 32.
 - Camp, refresh, then re-enter. The dungeon entrance and exits must remain usable.
-- Return to camp and abandon the unfinished dungeon after resolving its one pending Classical XP roll. A Final Boss is not required for abandonment; pending XP, pending spell selection, and prisoner reward choices intentionally block closeout so earned rewards are never silently lost.
+- Return to camp and abandon the unfinished dungeon after resolving any pending Classical XP roll. A Final Boss is not required for abandonment; pending XP, pending spell selection, and prisoner reward choices intentionally block closeout so earned rewards are never silently lost. After XP is resolved, the completion choice must enable without a browser hard refresh.
 - Confirm the recovery redesign has not left stray body/recovery controls in Party Sheets.
+- Resume Forsaken Depths Game 2 if still active and confirm **FD foe encounter** plus **Forsaken Depths Citadel** appear in Developer controls when the header says `Supplements: 3`.
 
 The current live session id was `2b51e57ab5cd4623942fbef9b65b30d3` when this note was written. It may be complete by the time this handoff is read.
 
@@ -26,9 +29,8 @@ The current live session id was `2b51e57ab5cd4623942fbef9b65b30d3` when this not
 
 After the blocking check passes, continue the minimum-game plan in `docs/PLAYTEST_PLAN.md`:
 
-1. Disposable EE + Abyss game: force Dragon Man. Optional natural fallen-hero recovery check only.
-2. Disposable Forsaken Depths game: named foe families, one Citadel, save/reload side-sheet state, and one quest path where offered.
-3. One TAG generated lead with TAG fixed-result controls enabled only for that game; verify prompt wording, reward policy, signoff, and no active session after closeout.
+1. Disposable Forsaken Depths game: named foe families, one Citadel, save/reload side-sheet state, and one quest path where offered.
+2. One TAG generated lead with TAG fixed-result controls enabled only for that game; verify prompt wording, reward policy, signoff, and no active session after closeout.
 
 Completed checks should not be repeated unless a new change reopens them. In particular, Ant People, Dark Plague, Ghoul King Elf `+Level` save/Blessing cure, treasure cap/claiming, Shrieking Fungi, Flying Skulls, Phasing Panther, and Tentacled Brain already have recorded evidence. Ghoul King's automatic hit after a failed paralysis save remains passive future evidence, not a reason to force repeated encounters.
 

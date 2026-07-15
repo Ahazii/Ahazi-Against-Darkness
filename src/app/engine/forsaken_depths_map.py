@@ -15,7 +15,18 @@ def normalize_ruleset(value: str | None) -> str:
 
 
 def is_fd_ruleset(session: SessionState) -> bool:
-    return normalize_ruleset(getattr(session, "ruleset", RULESET_EE)) == RULESET_FD
+    if normalize_ruleset(getattr(session, "ruleset", RULESET_EE)) == RULESET_FD:
+        return True
+    profile_id = str(getattr(session, "ruleset_profile_id", "") or "").strip().lower()
+    if profile_id.startswith("forsaken_depths"):
+        return True
+    if session_tile_catalog(session) in ("forsaken_depths", "forsaken_depths_rivers"):
+        return True
+    active_supplements = {
+        str(item).strip().lower()
+        for item in (getattr(session, "active_supplement_ids", None) or [])
+    }
+    return "forsaken-depths" in active_supplements
 
 
 def session_tile_catalog(session: SessionState) -> TileCatalogId:

@@ -2252,6 +2252,9 @@ def test_session_header_shows_locked_supplement_snapshot() -> None:
     assert "const sessionSupplements = document.getElementById(\"session-supplements\")" in APP_JS
     assert "const SUPPLEMENT_TITLE_BY_ID" in APP_JS
     assert "function sessionSupplementTitles(session)" in APP_JS
+    assert "function sessionHasSupplement(session, supplementId)" in APP_JS
+    assert "function sessionIsForsakenDepths(session)" in APP_JS
+    assert 'sessionHasSupplement(session, "forsaken-depths")' in APP_JS
     assert "function sessionSupplementTitleList(session, prefix = \"- \")" in APP_JS
     assert "function renderSessionSupplementChip(session)" in APP_JS
     assert "renderSessionSupplementChip(session)" in APP_JS
@@ -2263,6 +2266,25 @@ def test_session_header_shows_locked_supplement_snapshot() -> None:
     assert "active_supplement_ids: Array.isArray(session.active_supplement_ids)" in APP_JS
     assert ".session-list-supplements" in STYLES_CSS
     assert ".session-list-supplements-items" in STYLES_CSS
+
+
+def test_fd_playtest_controls_follow_locked_supplement_snapshot() -> None:
+    body = _function_body("renderDeveloperPlaytestControls", APP_JS)
+    assert "const isForsakenDepths = sessionIsForsakenDepths(session);" in body
+    assert 'new Option("FD foe encounter", "fd_foe")' in body
+    assert 'new Option("Forsaken Depths Citadel", "fd_citadel")' in body
+    assert 'const previousKind = developerPlaytestControls.dataset.kind || (isAbyss ? "abyss_foe" : isForsakenDepths ? "fd_foe" : "ee_foe");' in body
+
+
+def test_exit_closeout_uses_latest_session_and_pending_xp_state() -> None:
+    travel_body = _function_body("runTravelExit", APP_JS)
+    camp_body = _function_body("renderCampPanel", APP_JS)
+    assert "const currentSession = state.session?.id === session?.id ? state.session : session;" in travel_body
+    assert "chooseDungeonExitIntent(currentSession, exit)" in travel_body
+    assert "const pendingXp = currentSession.xp_rolls_pending || 0;" in travel_body
+    assert "const pendingClassicalXp =" in camp_body
+    assert "abandonBtn.disabled = hasUnresolvedBodies || pendingClassicalXp || !campDungeonExit(session);" in camp_body
+    assert "Bank pending XP rolls to specific heroes, or spend them now from the camp XP panel before abandoning." in camp_body
 
 
 def test_adventure_pdf_source_scanner_is_exposed_without_marking_pdfs_playable() -> None:

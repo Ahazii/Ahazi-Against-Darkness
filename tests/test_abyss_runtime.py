@@ -197,6 +197,28 @@ def test_developer_playtest_spawns_named_forsaken_depths_foe(monkeypatch) -> Non
     assert "fd_horde_dark_elf_volley" in tile.enemies[0].tags
 
 
+def test_developer_playtest_recognizes_forsaken_depths_supplement_session(monkeypatch) -> None:
+    eng = _engine()
+    session = eng.create_session("fd-supplement-playtest", "party-1", [_member()], ruleset="ee")
+    session.ruleset_profile_id = "forsaken_depths_no_courtship"
+    session.active_supplement_ids = ["expanded-edition-core", "forsaken-depths"]
+    tile = TileState(id="fd-supplement-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_formula", lambda formula: 1)
+
+    eng.advance(
+        session,
+        "developer_playtest",
+        playtest_kind="fd_foe",
+        playtest_key="fd_horde::Horde of Dark Elves",
+    )
+
+    assert session.mode == "combat"
+    assert tile.enemies[0].name == "Horde of Dark Elves"
+
+
 def test_session_action_accepts_forsaken_depths_named_foe_playtest() -> None:
     action = SessionAction(
         action="developer_playtest",

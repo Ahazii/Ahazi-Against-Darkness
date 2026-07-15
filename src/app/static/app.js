@@ -2932,6 +2932,22 @@ function sessionSupplementTitles(session) {
   return ids.map((id) => SUPPLEMENT_TITLE_BY_ID[id] || id).filter(Boolean);
 }
 
+function sessionHasSupplement(session, supplementId) {
+  const ids = Array.isArray(session?.active_supplement_ids) ? session.active_supplement_ids : [];
+  return ids.includes(supplementId);
+}
+
+function sessionIsForsakenDepths(session) {
+  const profileId = String(session?.ruleset_profile_id || "");
+  return (
+    session?.ruleset === "forsaken_depths" ||
+    profileId.startsWith("forsaken_depths") ||
+    session?.tile_catalog === "forsaken_depths" ||
+    session?.tile_catalog === "forsaken_depths_rivers" ||
+    sessionHasSupplement(session, "forsaken-depths")
+  );
+}
+
 function sessionSupplementTitleList(session, prefix = "- ") {
   const titles = sessionSupplementTitles(session);
   return titles.length ? titles.map((title) => `${prefix}${title}`).join("\n") : `${prefix}Legacy session: no supplement snapshot`;
@@ -14110,7 +14126,7 @@ function syncRulesetControls() {
 }
 
 function fdMapModeLabel(session) {
-  if (session?.ruleset !== "forsaken_depths") return "";
+  if (!sessionIsForsakenDepths(session)) return "";
   if (session.tile_catalog === "forsaken_depths_rivers") return "FD · Underground river";
   return "FD · Dungeon";
 }
@@ -18490,7 +18506,7 @@ function renderDeveloperPlaytestControls(session) {
   if (!developerPlaytestControls) return;
   const enabled = Boolean(state.preferences?.show_dungeon_playtest_controls);
   const isAbyss = session.ruleset_profile_id === "abyss";
-  const isForsakenDepths = session.ruleset === "forsaken_depths";
+  const isForsakenDepths = sessionIsForsakenDepths(session);
   const isExpandedEdition = session.ruleset === "ee";
   const available = enabled && session.mode === "exploration" && !session.camped_outside && (isAbyss || isForsakenDepths || isExpandedEdition);
   developerPlaytestControls.classList.toggle("hidden", !available);
@@ -27554,17 +27570,18 @@ function chooseDungeonExitIntent(session, exit) {
 }
 
 async function runTravelExit(session, exit) {
-  if (session.camped_outside && !exit.dungeon_exit) {
+  const currentSession = state.session?.id === session?.id ? state.session : session;
+  if (currentSession.camped_outside && !exit.dungeon_exit) {
     advance("return_to_dungeon");
     return;
   }
-  const dungeonExitIntent = await chooseDungeonExitIntent(session, exit);
-  if (dungeonExitNeedsIntent(session, exit) && !dungeonExitIntent) return;
-  const pendingXp = session.xp_rolls_pending || 0;
+  const dungeonExitIntent = await chooseDungeonExitIntent(currentSession, exit);
+  if (dungeonExitNeedsIntent(currentSession, exit) && !dungeonExitIntent) return;
+  const pendingXp = currentSession.xp_rolls_pending || 0;
   const completing =
     exit.dungeon_exit &&
-    !fallenInDungeon(session).length &&
-    (dungeonExitIntent === "complete" || (!dungeonExitNeedsIntent(session, exit) && session.final_boss_defeated));
+    !fallenInDungeon(currentSession).length &&
+    (dungeonExitIntent === "complete" || (!dungeonExitNeedsIntent(currentSession, exit) && currentSession.final_boss_defeated));
   if (
     completing &&
     pendingXp > 0 &&
@@ -29883,11 +29900,15 @@ function renderCampPanel(session) {
     fallenInDungeon(session).length > 0 ||
     (session.fallen_outside_character_ids || []).length > 0 ||
     Boolean(session.carried_body_id);
-  abandonBtn.disabled = hasUnresolvedBodies || !campDungeonExit(session);
+  const pendingClassicalXp =
+    (session.xp_rolls_pending || 0) > 0 && (session.xp_system || "classical") === "classical";
+  abandonBtn.disabled = hasUnresolvedBodies || pendingClassicalXp || !campDungeonExit(session);
   setButtonTooltip(
     abandonBtn,
     hasUnresolvedBodies
       ? "Resolve fallen heroes before completing or abandoning the adventure."
+      : pendingClassicalXp
+        ? "Bank pending XP rolls to specific heroes, or spend them now from the camp XP panel before abandoning."
       : "End this active dungeon and persist the party back to the home roster."
   );
   abandonBtn.addEventListener("click", () => completeCampedDungeon(session));
