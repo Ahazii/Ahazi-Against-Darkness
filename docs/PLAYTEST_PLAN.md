@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-16. Target build: post-v0.39.17 FD Soulbinding Blessing and Citadel route patch.
+Last updated: 2026-07-16. Target build: v0.39.18 FD Soulbinding Blessing and Citadel route patch.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
@@ -28,7 +28,7 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 The latest disposable Game 2 report was session `003f51881ebc417a8a70891da9e0de00`: an EE+Abyss+FD session in the first Citadel room where Soulbinding had affected Sly Silas, Blessing did not free him, and the side-sheet route looked one-way/confusing. Older sessions `f0ab5c80eee34a9c9cec7b3e95484823` and `fed118f1c70a4835b84f245bf8ddefeb` may now be complete or abandoned. Use the active disposable session if it is still available; otherwise start a fresh disposable EE+Abyss+FD Game 2 after deployment.
 
-1. Deploy the latest build and force-refresh. Continue disposable session `003f51881ebc417a8a70891da9e0de00` if it is still available; otherwise start a fresh disposable EE+Abyss+FD Game 2 and force a Citadel of Traps/Soulbinding path only as needed.
+1. Deploy v0.39.18 or later and force-refresh. Continue disposable session `003f51881ebc417a8a70891da9e0de00` if it is still available; otherwise start a fresh disposable EE+Abyss+FD Game 2 and force a Citadel of Traps/Soulbinding path only as needed.
 2. In the resumed Citadel room, confirm **Return to main map** appears in the Exits panel even while the current `fd_obsidian_disk` trap is unresolved. It may also appear as a room-panel or Current Objective action. Use it when safe; on the origin/main-map tile, confirm the Exits panel shows **Enter Citadel sheet**. Re-enter and confirm the Citadel marker returns only while actually on the side sheet.
 3. Soulbinding Blessing cure has live evidence from 2026-07-16: Sister Joyce cast Blessing on Sly Silas, the Narrative logged `Blessing frees Sly Silas from Soulbinding (FD p.58)`, the `FD Soulbound` chip disappeared, and pending Soulbinding choices cleared. Do not repeat unless a later regression reopens it. If a fresh Soulbinding trap naturally appears later, move away once and confirm the **Lose 1 Life** / **Gain 1 Madness** buttons appear before continuing.
 4. Resolve the current Citadel of Traps room content. The latest evidence already shows Minions/Hordes replacement created a concrete active trap (`fd_obsidian_disk`) and **Resolve Trap** appeared. Resolve that trap and confirm any post-trap treasure can be claimed normally.

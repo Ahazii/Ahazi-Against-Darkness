@@ -15424,7 +15424,7 @@ function appendFdQuestActions(parent, session, tile, quest) {
 
 function fdPrisonersEscapeAvailable(session) {
   return (
-    session?.ruleset === "forsaken_depths" &&
+    sessionIsForsakenDepths(session) &&
     session.fd_side_sheet_active &&
     session.fd_citadel_type === "prisoners_citadel" &&
     session.mode === "exploration"
@@ -15434,7 +15434,7 @@ function fdPrisonersEscapeAvailable(session) {
 function fdSideSheetEntryAvailable(session, tile) {
   if (
     !tile ||
-    session?.ruleset !== "forsaken_depths" ||
+    !sessionIsForsakenDepths(session) ||
     session.fd_side_sheet_active
   ) {
     return null;
