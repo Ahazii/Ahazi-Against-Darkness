@@ -281,6 +281,17 @@ function select(id, title, options = []) {
   return node;
 }
 
+const CHARACTER_GENDER_OPTIONS = [
+  ["unspecified", "Unspecified"],
+  ["female", "Female"],
+  ["male", "Male"],
+];
+
+function characterGenderLabel(character) {
+  const value = character?.gender || "unspecified";
+  return CHARACTER_GENDER_OPTIONS.find(([key]) => key === value)?.[1] || "Unspecified";
+}
+
 function textarea(id, title, rows = 5) {
   const node = document.createElement("textarea");
   node.id = id;
@@ -1335,7 +1346,24 @@ function renderCharacterInventoryDetails(character) {
   details.appendChild(summary);
   const body = el("div", "modern-stack");
   const armor = equippedArmorSummary(character);
+  const genderSelect = select(
+    `modern-${character.id}-gender`,
+    "Character gender used only when a printed rule targets female or male characters. Existing characters default to Unspecified.",
+    CHARACTER_GENDER_OPTIONS
+  );
+  genderSelect.value = character.gender || "unspecified";
   body.appendChild(modernStatusRow("Core stats", `Attack +${character.attack_bonus || 0} · Defense +${character.defense_bonus || 0} · Save +${character.save_bonus || 0} · Madness ${character.madness || 0}`, "Permanent roster modifiers and Madness. Adventure-specific temporary effects are shown during play."));
+  body.append(
+    field("Gender", genderSelect),
+    button("Save gender", "Save Female, Male, or Unspecified on the character sheet. Printed rules such as FD p.44 Dark Elf Warlock targeting use this field.", async () => {
+      await api(`/api/characters/${character.id}/gender`, {
+        method: "POST",
+        body: JSON.stringify({ gender: genderSelect.value }),
+      });
+      setStatus("Character gender saved.");
+      await refreshCoreAndRender();
+    })
+  );
   body.appendChild(modernStatusRow("World assignment", characterWorldSummary(character), "Campaign, Guild, Troupe, Party, and home settlement context. Use the quick links above to edit assignments."));
   body.appendChild(renderReadinessRows(characterReadinessRows(character)));
   body.appendChild(modernStatusRow("Equipment slots", characterEquipmentSummary(character), "Assigned defaults used by the adventure combat sheet when a fight starts."));
@@ -2393,6 +2421,7 @@ function renderCharacters() {
       const warnings = readiness.filter(([, , status]) => status === "warn").length;
       row.appendChild(el("strong", "", `${character.name} - ${character.class_name} L${character.level}`));
       row.appendChild(el("span", "muted", `HP ${character.current_life}/${character.max_life} · XP ${character.xp || 0} · carried ${character.gold || 0}gp · TAG bank ${tagBankForCharacter(character.id)}gp · ${character.clues || 0} Clues`));
+      row.appendChild(el("span", "muted", `Gender: ${characterGenderLabel(character)}`));
       row.appendChild(el("span", "muted", `Party: ${parties.join(", ") || "none"} · ${troupe}`));
       row.appendChild(el("span", "muted", characterWorldSummary(character)));
       row.appendChild(el("span", "muted", characterEquipmentSummary(character)));
@@ -2439,16 +2468,17 @@ function renderCharacters() {
 
   const create = card("Create / Add Character", "Choose a class, enter a name, and create a roster hero.");
   const name = input("text", "modern-character-name", "Name for the new character.");
+  const gender = select("modern-character-gender", "Character gender used only for printed rules that target female or male characters.", CHARACTER_GENDER_OPTIONS);
   const classSelect = select("modern-character-class", "Class for the new character.", modernState.classes.map((item) => [item.id, item.name]));
   const classDossierMount = el("div", "modern-class-dossier-mount");
   function drawClassDossier() {
     classDossierMount.replaceChildren(renderClassDossier(classProfileById(classSelect.value)));
   }
   classSelect.addEventListener("change", drawClassDossier);
-  create.append(field("Name", name), field("Class", classSelect), classDossierMount);
+  create.append(field("Name", name), field("Gender", gender), field("Class", classSelect), classDossierMount);
   drawClassDossier();
   create.appendChild(button("Create", "Create this character in the roster.", async () => {
-    await api("/api/characters", { method: "POST", body: JSON.stringify({ name: name.value, class_id: classSelect.value }) });
+    await api("/api/characters", { method: "POST", body: JSON.stringify({ name: name.value, gender: gender.value, class_id: classSelect.value }) });
     setStatus("Character created.");
     await refreshCoreAndRender();
   }, ""));

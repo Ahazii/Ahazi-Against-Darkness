@@ -3,6 +3,43 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 
+def test_character_gender_persists_and_syncs_to_session_member(client: TestClient) -> None:
+    character_ids: list[str] = []
+    for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
+        payload = {"name": f"Gender Hero {index}", "class_id": class_id}
+        if index == 1:
+            payload["gender"] = "female"
+        response = client.post("/api/characters", json=payload)
+        assert response.status_code == 200
+        if index == 1:
+            assert response.json()["gender"] == "female"
+        character_ids.append(response.json()["id"])
+
+    party_response = client.post("/api/parties", json={"name": "Gender Party", "character_ids": character_ids})
+    assert party_response.status_code == 200
+    session_response = client.post(
+        "/api/sessions",
+        json={
+            "party_id": party_response.json()["id"],
+            "adventure_id": "random",
+            "xp_system": "classical",
+            "map_bounds_mode": "unlimited",
+            "unlimited_map_element_cap": 60,
+            "start_camped_outside": False,
+        },
+    )
+    assert session_response.status_code == 200
+    first_member = session_response.json()["party"][0]
+    assert first_member["gender"] == "female"
+
+    update = client.post(f"/api/characters/{character_ids[0]}/gender", json={"gender": "male"})
+    assert update.status_code == 200
+    assert update.json()["gender"] == "male"
+    refreshed = client.get(f"/api/sessions/{session_response.json()['id']}")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["party"][0]["gender"] == "male"
+
+
 def test_create_session_accepts_frontend_json_scalar_payload(client: TestClient) -> None:
     character_ids: list[str] = []
     for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):

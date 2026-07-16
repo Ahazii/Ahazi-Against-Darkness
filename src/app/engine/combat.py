@@ -24,6 +24,7 @@ from .combat_modifiers import (
     consume_mirror_image,
     enemy_has_poison,
     envenom_attack_bonus,
+    fd_dark_elf_warlock_preferred_target,
     poison_save_succeeds,
     tick_poisoned_heroes,
 )
@@ -844,7 +845,12 @@ def assign_enemy_attacks(
         for enemy in attackers:
             repeat = 1 if once_per_foe else _enemy_attack_repetitions(enemy, target_count=len(eligible))
             for attack_index in range(repeat):
-                target = eligible[attack_index % len(eligible)]
+                preferred = (
+                    fd_dark_elf_warlock_preferred_target(eligible)
+                    if enemy.name == "Dark Elf Warlock"
+                    else None
+                )
+                target = preferred if preferred in eligible else eligible[attack_index % len(eligible)]
                 attack_pairs.append((enemy, target))
         return attack_pairs
 
@@ -868,7 +874,11 @@ def assign_enemy_attacks(
 
     if len(strikes) <= len(living):
         for index, enemy in enumerate(strikes):
-            preferred = sworn_enemy_target_preference(living, enemy)
+            preferred = (
+                fd_dark_elf_warlock_preferred_target(living)
+                if enemy.name == "Dark Elf Warlock"
+                else sworn_enemy_target_preference(living, enemy)
+            )
             mimic = _doppelganger_target(enemy)
             target = mimic if mimic is not None else (preferred if preferred and preferred in living else living[index % len(living)])
             attack_pairs.append((enemy, target))
@@ -882,7 +892,11 @@ def assign_enemy_attacks(
     while len(targets) < len(strikes):
         targets.append(pool[len(targets) % len(pool)])
     for enemy, target in zip(strikes, targets, strict=False):
-        preferred = sworn_enemy_target_preference(living, enemy)
+        preferred = (
+            fd_dark_elf_warlock_preferred_target(living)
+            if enemy.name == "Dark Elf Warlock"
+            else sworn_enemy_target_preference(living, enemy)
+        )
         mimic = _doppelganger_target(enemy)
         attack_pairs.append(
             (enemy, mimic if mimic is not None else (preferred if preferred and preferred in living else target))

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from app.engine.combat import CombatContext, resolve_combat_round
+from app.engine.combat import CombatContext, assign_enemy_attacks, resolve_combat_round
 from app.engine.monster_combat_hooks import (
     apply_free_slaves_choice,
     apply_mantlebeast_ambush_drop,
@@ -345,6 +345,57 @@ def test_dark_elf_warlock_ice_blast_ignores_armor_but_keeps_shield() -> None:
     assert context.pc_damage_this_round == 2
     assert any("ice blast" in entry.lower() for entry in log)
     assert any("shields count; armor is ignored" in entry for entry in log)
+
+
+def test_dark_elf_warlock_targets_female_spellcaster_with_ice_blast() -> None:
+    front = _hero(character_id="front", name="Front", marching_order=1, gender="male")
+    caster = _hero(
+        character_id="caster",
+        name="Caster",
+        class_id="wizard",
+        class_name="Wizard",
+        marching_order=4,
+        gender="female",
+    )
+    warlock = EnemyState(
+        id="w1",
+        name="Dark Elf Warlock",
+        category="boss",
+        level=11,
+        life=12,
+        max_life=12,
+        attacks=1,
+        special_attacks=[{"type": "ice_blast", "timing": "each_turn", "damage": 2}],
+    )
+    context = CombatContext(session=_session([front, caster]))
+    with patch("app.engine.monster_combat_hooks.roll_exploding_for_level", return_value=(1, [1])):
+        log = apply_per_turn_monster_effects([warlock], [front, caster], context=context, show_rolls=True)
+    assert front.current_life == front.max_life
+    assert caster.current_life == caster.max_life - 2
+    assert any("ice blast at Caster" in entry for entry in log)
+
+
+def test_dark_elf_warlock_staff_attack_prefers_female_elf() -> None:
+    front = _hero(character_id="front", name="Front", marching_order=1, gender="male")
+    elf = _hero(
+        character_id="elf",
+        name="Elf",
+        class_id="elf",
+        class_name="Elf",
+        marching_order=4,
+        gender="female",
+    )
+    warlock = EnemyState(
+        id="w1",
+        name="Dark Elf Warlock",
+        category="boss",
+        level=11,
+        life=12,
+        max_life=12,
+        attacks=1,
+    )
+    pairs = assign_enemy_attacks([warlock], [front, elf], context=CombatContext())
+    assert pairs == [(warlock, elf)]
 
 
 def test_possessed_dwarf_revives_on_d6_3_plus() -> None:

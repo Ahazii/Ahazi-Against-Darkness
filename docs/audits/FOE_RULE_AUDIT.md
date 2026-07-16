@@ -174,7 +174,7 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Forsaken Depths | Chaos Lionman Champion | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Cave Master Psionic | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Dark Elf Witch | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Dark Elf Warlock | `fd_boss` | Forsaken Depths Boss Monster table p.44 | treasure_modifier:+2, special_attacks:ice_blast, attacks:1 | staff-plus-ice-blast implemented with regression tests; live reconfirm pending; female-priority targeting needs PC sex/gender data |
+| Forsaken Depths | Dark Elf Warlock | `fd_boss` | Forsaken Depths Boss Monster table p.44 | treasure_modifier:+2, special_attacks:ice_blast, attacks:1, female-priority targeting | staff-plus-ice-blast and female-priority targeting implemented with regression tests; live reconfirm pending |
 | Forsaken Depths | Greater Mutated Goblin | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Walking Idol | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Mothbeast | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |

@@ -3345,10 +3345,11 @@
         "guild",
         "troupe",
         "party",
-        "readiness"
+        "readiness",
+        "gender"
       ],
       "summary": "Character Management exposes full roster sheets, readiness filters, weapon slots, armor/shield detection, and world context.",
-      "body": "Character Management now filters roster heroes by class, campaign, guild, troupe, party, and readiness warnings. Full sheets show core stats, campaign/guild/troupe/party/home settlement, Life readiness, weapon defaults, detected armor/shield inventory, carried inventory, spells, abilities, learned skills, traits, statuses, and reference links. Weapon slots use the existing roster weapon-defaults endpoint. Armor and shield are displayed from inventory rather than adding new persistent armor-slot fields.",
+      "body": "Character Management now filters roster heroes by class, campaign, guild, troupe, party, and readiness warnings. Full sheets show core stats, gender, campaign/guild/troupe/party/home settlement, Life readiness, weapon defaults, detected armor/shield inventory, carried inventory, spells, abilities, learned skills, traits, statuses, and reference links. Gender is a dropdown with Female, Male, and Unspecified; it is used only when a printed rule targets female or male characters, such as FD p.44 Dark Elf Warlock priority. Weapon slots use the existing roster weapon-defaults endpoint. Armor and shield are displayed from inventory rather than adding new persistent armor-slot fields.",
       "implementation_status": "implemented"
     },
     {

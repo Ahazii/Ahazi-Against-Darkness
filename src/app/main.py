@@ -150,6 +150,7 @@ from .schemas import (
     CharacterBuyEquipment,
     CharacterCreate,
     CharacterClass,
+    CharacterGenderUpdate,
     CharacterMilestoneRequest,
     CharacterMilestoneResult,
     CharacterPanopliaFavorRequest,
@@ -2547,6 +2548,7 @@ def _sync_session_tag_payment_character(
     member.secrets = list(character.secrets)
     member.current_life = character.current_life
     member.max_life = character.max_life
+    member.gender = character.gender
     member.inventory = list(character.inventory)
     member.spells = list(character.spells)
     member.statuses = list(character.statuses)
@@ -4791,6 +4793,7 @@ async def create_character(payload: CharacterCreate) -> Character:
     character = Character(
         id=new_id(),
         name=payload.name.strip(),
+        gender=payload.gender,
         class_id=profile.id,
         class_name=profile.name,
         level=1,
@@ -4818,6 +4821,25 @@ async def create_character(payload: CharacterCreate) -> Character:
     character.default_missile_weapon = default_missile
     prune_weapon_defaults(character)
     store.save("characters", character)
+    return character
+
+
+@app.post("/api/characters/{character_id}/gender")
+async def set_character_gender(character_id: str, payload: CharacterGenderUpdate) -> Character:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    character.gender = payload.gender
+    character.updated_at = now_utc()
+    store.save("characters", character)
+    if character.active_session_id:
+        session = store.get("sessions", character.active_session_id, SessionState.model_validate)
+        if session is not None and session.mode != "complete":
+            member = next((item for item in session.party if item.character_id == character.id), None)
+            if member is not None:
+                member.gender = payload.gender
+                session.updated_at = now_utc()
+                store.save("sessions", session)
     return character
 
 
@@ -6688,6 +6710,7 @@ def _member_state(character: Character) -> PartyMemberState:
     member = PartyMemberState(
         character_id=character.id,
         name=character.name,
+        gender=character.gender,
         class_id=character.class_id,
         class_name=character.class_name,
         level=character.level,
@@ -6806,6 +6829,7 @@ def _sync_roster_service_to_session(
 
 def _apply_member_state_to_character(character: Character, member: PartyMemberState) -> None:
     character.level = member.level
+    character.gender = member.gender
     character.xp = member.xp
     character.gold = member.gold + member.bank_gold
     character.current_life = member.current_life

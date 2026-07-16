@@ -7,9 +7,8 @@ from uuid import uuid4
 
 from ..schemas import EnemyState, PartyMemberState, SessionState, TileState
 from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
-from .combat_modifiers import poison_save_succeeds
+from .combat_modifiers import fd_dark_elf_warlock_preferred_target, poison_save_succeeds
 from .dice import roll_d6, roll_exploding_for_level, roll_formula
-from .combat_modifiers import poison_save_succeeds
 from .monster_template_effects import (
     DOPPELGANGER_MIMIC_PREFIX,
     chance_roll_succeeds,
@@ -155,12 +154,7 @@ def _ice_blast_bonus(member: PartyMemberState) -> int:
 
 
 def _dark_elf_warlock_ice_target(party: list[PartyMemberState]) -> PartyMemberState | None:
-    living = sorted(_living_party(party), key=lambda member: member.marching_order)
-    if not living:
-        return None
-    # Saved characters currently have no sex/gender field, so the FD p.44 female-priority clause
-    # remains a data-model gap. Until that exists, keep the target deterministic.
-    return living[0]
+    return fd_dark_elf_warlock_preferred_target(party)
 
 
 def _apply_ice_blast(

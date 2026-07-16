@@ -163,6 +163,7 @@ const classPickerEl = document.getElementById("class-picker");
 const classDetailEl = document.getElementById("class-detail");
 const characterForm = document.getElementById("character-form");
 const characterName = document.getElementById("character-name");
+const characterGender = document.getElementById("character-gender");
 const characterCount = document.getElementById("character-count");
 const charactersEl = document.getElementById("characters");
 const characterFilterClass = document.getElementById("character-filter-class");
@@ -12943,6 +12944,17 @@ function renderSelectOptions(select, options, selectedValue) {
   return current;
 }
 
+const CHARACTER_GENDER_OPTIONS = [
+  ["unspecified", "Unspecified"],
+  ["female", "Female"],
+  ["male", "Male"],
+];
+
+function characterGenderLabel(character) {
+  const value = character?.gender || "unspecified";
+  return CHARACTER_GENDER_OPTIONS.find(([key]) => key === value)?.[1] || "Unspecified";
+}
+
 function characterLevels() {
   return [...new Set(state.characters.map((character) => character.level))].sort((left, right) => left - right);
 }
@@ -16553,6 +16565,7 @@ function renderCharacters() {
         `L${character.level} HP ${character.current_life}/${character.max_life} ATK +${character.attack_bonus} DEF +${character.defense_bonus} SAVE +${character.save_bonus}`
       )
     );
+    body.appendChild(subline(`Gender: ${characterGenderLabel(character)}`));
     body.appendChild(subline(rosterGoldLine(character)));
     const expertLine = learnedExpertSkillsLine(character);
     if (expertLine) body.appendChild(subline(expertLine));
@@ -16581,6 +16594,21 @@ function renderCharacters() {
       body.appendChild(subline(characterAdventureLabel(character)));
     }
     if (character.id === state.selectedCharacterId) {
+      const genderRow = node("div", "item-actions");
+      const genderLabel = node("label", "inline-field", "Gender ");
+      const genderSelect = document.createElement("select");
+      genderSelect.title = "Character gender used only when a printed rule targets female or male characters, such as FD p.44 Dark Elf Warlock priority.";
+      renderSelectOptions(genderSelect, CHARACTER_GENDER_OPTIONS, character.gender || "unspecified");
+      genderLabel.appendChild(genderSelect);
+      const saveGender = node("button", "secondary", "Save gender");
+      saveGender.type = "button";
+      setButtonTooltip(saveGender, "Save Female, Male, or Unspecified on this character sheet.");
+      saveGender.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await setCharacterGender(character.id, genderSelect.value);
+      });
+      genderRow.append(genderLabel, saveGender);
+      body.appendChild(genderRow);
       appendInventoryTooltipLine(body, "Stored gear", character.inventory, character);
       appendSpellSubline(body, character.spells);
       appendPendingSecretPrompts(body, character, activeSessionMemberForCharacter(character) ? state.session : null);
@@ -23560,6 +23588,21 @@ async function healCharacter(characterId) {
     if (activeSessionId && character.active_session_id === activeSessionId) {
       state.session = await api(`/api/sessions/${activeSessionId}`);
     }
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+async function setCharacterGender(characterId, gender) {
+  try {
+    const character = await api(`/api/characters/${characterId}/gender`, {
+      method: "POST",
+      body: JSON.stringify({ gender }),
+    });
+    const index = state.characters.findIndex((item) => item.id === character.id);
+    if (index >= 0) state.characters[index] = character;
+    setStatus("Character gender saved");
+    renderCharacters();
   } catch (error) {
     handleError(error);
   }
@@ -32844,6 +32887,7 @@ characterForm.addEventListener("submit", async (event) => {
   try {
     const payload = {
       name: characterName.value,
+      gender: characterGender?.value || "unspecified",
       class_id: characterClass.value,
     };
     if (payload.class_id === "swashbuckler") payload.trait_id = state.selectedCreateTraitId || "roll";
@@ -32852,6 +32896,7 @@ characterForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(payload),
     });
     characterName.value = "";
+    if (characterGender) characterGender.value = "unspecified";
     setStatus("Character saved");
     await loadAll({ restoreSession: false });
   } catch (error) {

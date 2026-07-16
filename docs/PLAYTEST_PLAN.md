@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-16. Target build: v0.39.24 Dark Elf Warlock combat follow-up.
+Last updated: 2026-07-16. Target build: v0.39.25 character gender / Dark Elf Warlock targeting follow-up.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
@@ -26,20 +26,21 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 ## Next Required: Game 2 Forsaken Depths Resume Checklist
 
-The latest disposable Game 2 report was session `003f51881ebc417a8a70891da9e0de00`: an EE+Abyss+FD session where Soulbinding Blessing cure works, the Citadel side sheet now re-enters, returns to the main map, saves/reloads, generates deeper Citadel rooms, and clears its active marker after return. v0.39.23 included the follow-up concrete weapon-choice fixes for FD p.62 row 3, FD p.62 row 7, Greater Mutated Goblin fixed loot, and Abyss weapon-choice treasure. v0.39.24 changes Dark Elf Warlock from two generic attacks to the printed FD p.44 split: one staff attack plus one separate ice blast. Older sessions `f0ab5c80eee34a9c9cec7b3e95484823` and `fed118f1c70a4835b84f245bf8ddefeb` may now be complete or abandoned. Use the active disposable session if it is still available; otherwise start a fresh disposable EE+Abyss+FD Game 2 after deployment.
+The latest disposable Game 2 report was session `003f51881ebc417a8a70891da9e0de00`: an EE+Abyss+FD session where Soulbinding Blessing cure works, the Citadel side sheet now re-enters, returns to the main map, saves/reloads, generates deeper Citadel rooms, and clears its active marker after return. v0.39.23 included the follow-up concrete weapon-choice fixes for FD p.62 row 3, FD p.62 row 7, Greater Mutated Goblin fixed loot, and Abyss weapon-choice treasure. v0.39.24 changed Dark Elf Warlock from two generic attacks to the printed FD p.44 split: one staff attack plus one separate ice blast. v0.39.25 adds character-sheet gender (`Female`, `Male`, `Unspecified`) so the Warlock can prioritize female elves and female spellcasters. Older sessions `f0ab5c80eee34a9c9cec7b3e95484823` and `fed118f1c70a4835b84f245bf8ddefeb` may now be complete or abandoned. Use the active disposable session if it is still available; otherwise start a fresh disposable EE+Abyss+FD Game 2 after deployment.
 
 Active goal: prove only the latest fixes and still-open FD fidelity gaps. Do not rerun passed Citadel, Soulbinding, spider, Deep Troll, or Greater Mutated Goblin checks unless a later deploy visibly reopens one of them.
 
 ### Must Do Next
 
-1. Deploy v0.39.24 or later and force-refresh until the app header shows that build.
-2. Force or naturally produce FD p.62 treasure roll row 3. Choose the masterwork alternative and confirm the UI asks for the concrete weapon type, then awards that exact weapon. FD p.62 row 3 is player choice: `10d6+10 gp OR a Masterwork weapon of your choice`.
-3. Force or naturally produce FD p.62 treasure roll row 7. Choose **10 silvered melee weapons** and confirm the app asks which melee weapon type, then awards ten concrete silvered weapons.
-4. Force **Forsaken Depths Event** from Developer Playtest controls. Pick any d10 row that is easy to inspect; `d10 = 3 - Something Stirs in the Darkness` should set the six-area state and log the FD p.63 event. Event generation now exists for Abyss unique events, EE quests/foes/final bosses, and Forsaken Depths Events/Citadels/foes; Courtship Demesne event overrides are not yet added because that supplement's route is not a single d6/d10 dungeon-event table.
-5. Force **Dark Elf Warlock** once after deploying v0.39.24. Treasure at `+2` is passed; the open live check is FD p.44's printed split: one staff attack and one ice blast each turn. The ice-blast target should make a Defense roll or lose 2 Life, shields should count, armor should be ignored except Cold defense, and barbarians/Ice-based characters should add +1/2 L. Current limitation: the app does not yet store PC sex/gender, so the printed female elf/female spellcaster targeting priority cannot be faithfully automated yet.
-6. During ordinary exploration, resolve one FD hazard/event choice and, if offered, accept Lady in Gray or Cyclopean Idol. Confirm Ongoing Quests shows the progress condition and one reward or choice path.
-7. If an Armored Forsaken Depths Troll appears naturally and a caster uses an offensive spell, confirm the second MR penetration roll is against HCL-1 unless a Magic Citadel is active. HCL means Highest Character Level; for a highest-level-10 party, HCL-1 is MR penetration level 9.
-8. After any failed path or newly fixed path, save, return to Dashboard, resume, and confirm the same room restores with the expected route labels and no stale side-sheet marker. Skip this save/reload step if nothing new or suspicious happened.
+1. Deploy v0.39.25 or later and force-refresh until the app header shows that build.
+2. On Character Management, set one disposable party member's Gender dropdown to **Female**. Prefer a female Elf or female spellcaster for the Warlock targeting check; leave at least one earlier-marching non-female hero so priority is visible.
+3. Force or naturally produce FD p.62 treasure roll row 3. Choose the masterwork alternative and confirm the UI asks for the concrete weapon type, then awards that exact weapon. FD p.62 row 3 is player choice: `10d6+10 gp OR a Masterwork weapon of your choice`.
+4. Force or naturally produce FD p.62 treasure roll row 7. Choose **10 silvered melee weapons** and confirm the app asks which melee weapon type, then awards ten concrete silvered weapons.
+5. Force **Forsaken Depths Event** from Developer Playtest controls. Pick any d10 row that is easy to inspect; `d10 = 3 - Something Stirs in the Darkness` should set the six-area state and log the FD p.63 event. Event generation now exists for Abyss unique events, EE quests/foes/final bosses, and Forsaken Depths Events/Citadels/foes; Courtship Demesne event overrides are not yet added because that supplement's route is not a single d6/d10 dungeon-event table.
+6. Force **Dark Elf Warlock** once after deploying v0.39.25. Treasure at `+2` is passed; the open live check is FD p.44's printed split: one staff attack and one ice blast each turn. The Warlock should prioritize a female Elf or female spellcaster when one is alive; the ice-blast target should make a Defense roll or lose 2 Life, shields should count, armor should be ignored except Cold defense, and barbarians/Ice-based characters should add +1/2 L.
+7. During ordinary exploration, resolve one FD hazard/event choice and, if offered, accept Lady in Gray or Cyclopean Idol. Confirm Ongoing Quests shows the progress condition and one reward or choice path.
+8. If an Armored Forsaken Depths Troll appears naturally and a caster uses an offensive spell, confirm the second MR penetration roll is against HCL-1 unless a Magic Citadel is active. HCL means Highest Character Level; for a highest-level-10 party, HCL-1 is MR penetration level 9.
+9. After any failed path or newly fixed path, save, return to Dashboard, resume, and confirm the same room restores with the expected route labels and no stale side-sheet marker. Skip this save/reload step if nothing new or suspicious happened.
 
 ### Do Not Repeat Unless Reopened
 

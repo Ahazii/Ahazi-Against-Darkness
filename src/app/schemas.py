@@ -112,7 +112,12 @@ class AppPreferences(BaseModel):
 class CharacterCreate(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     class_id: str = Field(min_length=1, max_length=40)
+    gender: Literal["female", "male", "unspecified"] = "unspecified"
     trait_id: str | None = None
+
+
+class CharacterGenderUpdate(BaseModel):
+    gender: Literal["female", "male", "unspecified"] = "unspecified"
 
 
 class CharacterTransfer(BaseModel):
@@ -187,6 +192,7 @@ class EquipmentTransactionResult(BaseModel):
 class Character(BaseModel):
     id: str
     name: str
+    gender: Literal["female", "male", "unspecified"] = "unspecified"
     class_id: str
     class_name: str
     level: int = 1
@@ -355,6 +361,7 @@ class AbyssCampaignPlotState(BaseModel):
 class PartyMemberState(BaseModel):
     character_id: str
     name: str
+    gender: Literal["female", "male", "unspecified"] = "unspecified"
     class_id: str
     class_name: str
     level: int

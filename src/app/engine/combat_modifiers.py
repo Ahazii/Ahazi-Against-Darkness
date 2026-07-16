@@ -97,6 +97,31 @@ def is_spellcaster(member: PartyMemberState) -> bool:
     return member.class_id.lower() in SPELLCASTER_CLASS_IDS
 
 
+def is_female_character(member: PartyMemberState) -> bool:
+    return getattr(member, "gender", "unspecified") == "female"
+
+
+def fd_dark_elf_warlock_preferred_target(party: list[PartyMemberState]) -> PartyMemberState | None:
+    living = sorted(
+        (member for member in party if member.current_life > 0),
+        key=lambda member: member.marching_order,
+    )
+    if not living:
+        return None
+    female_priority = [
+        member
+        for member in living
+        if is_female_character(member)
+        and (member.class_id.lower() == "elf" or is_spellcaster(member))
+    ]
+    if female_priority:
+        return female_priority[0]
+    female = [member for member in living if is_female_character(member)]
+    if female:
+        return female[0]
+    return living[0]
+
+
 def spellcasting_modifier(member: PartyMemberState, *, spell_key: str = "") -> int:
     from .special_items import wand_cast_bonus
 
