@@ -2312,6 +2312,16 @@ def test_current_objective_surfaces_treasure_choice_buttons() -> None:
     assert "hasTrap || pendingTreasureChoice" in session_body
 
 
+def test_treasure_choice_buttons_include_concrete_weapon_picks() -> None:
+    body = _function_body("treasureOutcomeChoices", APP_JS)
+    assert 'choiceKey === "fd_masterwork_edged_weapon"' in body
+    assert 'choiceKey === "fd_silver_melee_weapons"' in body
+    assert 'choiceKey === "abyss_nonmagical_weapon"' in body
+    assert 'itemName: "Masterwork sword"' in body
+    assert 'itemName: "Silvered sword"' in body
+    assert 'itemName: "Sword"' in body
+
+
 def test_exit_closeout_uses_latest_session_and_pending_xp_state() -> None:
     travel_body = _function_body("runTravelExit", APP_JS)
     camp_body = _function_body("renderCampPanel", APP_JS)

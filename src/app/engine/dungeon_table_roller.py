@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -49,6 +50,34 @@ FD_MASTERWORK_WEAPON_CHOICES = {
     "masterwork_sling": "Masterwork sling",
     "masterwork_two_handed_weapon": "Masterwork two-handed weapon",
 }
+
+
+FD_MASTERWORK_EDGED_WEAPON_CHOICES = {
+    "masterwork_edged_sword": "Masterwork sword",
+    "masterwork_edged_axe": "Masterwork axe",
+    "masterwork_edged_spear": "Masterwork spear",
+    "masterwork_edged_dagger": "Masterwork dagger",
+    "masterwork_edged_two_handed_weapon": "Masterwork two-handed weapon",
+}
+
+
+FD_SILVERED_MELEE_WEAPON_CHOICES = {
+    "silvered_sword": "Silvered sword",
+    "silvered_axe": "Silvered axe",
+    "silvered_spear": "Silvered spear",
+    "silvered_mace": "Silvered mace",
+    "silvered_hammer": "Silvered hammer",
+    "silvered_club": "Silvered club",
+    "silvered_dagger": "Silvered dagger",
+    "silvered_two_handed_weapon": "Silvered two-handed weapon",
+}
+
+
+def _with_value_suffix(item_name: str, placeholder: str | None) -> str:
+    if not placeholder:
+        return item_name
+    match = re.search(r"\((\d+gp)\)", placeholder)
+    return f"{item_name} ({match.group(1)})" if match else item_name
 
 
 def environment_trap_table(environment: EnvironmentKind) -> str:
@@ -821,14 +850,54 @@ class DungeonTableRoller:
                 )
         if choice_key == "fd_silver_weapons_or_arrows":
             if pick == "silver_melee":
-                items = [f"Silvered melee weapon ({index + 1})" for index in range(10)]
-                return TreasureOutcome("10 silvered melee weapons.", 0, items, log)
+                return TreasureOutcome(
+                    "Choose the silvered melee weapon type.",
+                    0,
+                    [],
+                    log,
+                    choice_key="fd_silver_melee_weapons",
+                )
             if pick == "magic_missiles":
                 items = [f"Legendary magic missile ({index + 1})" for index in range(5)]
                 return TreasureOutcome("5 Legendary magic missiles.", 0, items, log)
             if pick == "bow_arrows":
                 items = ["Masterwork bow"] + [f"Silver-tipped arrow ({index + 1})" for index in range(24)]
                 return TreasureOutcome("Masterwork bow with 24 silver-tipped arrows.", 0, items, log)
+        if choice_key == "fd_silver_melee_weapons":
+            selected = (item_name or FD_SILVERED_MELEE_WEAPON_CHOICES.get(pick) or "").strip()
+            if selected not in FD_SILVERED_MELEE_WEAPON_CHOICES.values():
+                return TreasureOutcome(
+                    "Choose the silvered melee weapon type.",
+                    0,
+                    [],
+                    log + [f"{selected or 'Selected item'} is not an eligible FD p.62 silvered melee weapon choice."],
+                    choice_key=choice_key,
+                )
+            return TreasureOutcome(
+                f"10 silvered melee weapons: {selected}.",
+                0,
+                [f"{selected} ({index + 1})" for index in range(10)],
+                log,
+            )
+        if choice_key == "fd_masterwork_edged_weapon":
+            selected = (item_name or FD_MASTERWORK_EDGED_WEAPON_CHOICES.get(pick) or "").strip()
+            placeholder = next((item for item in staged_items if item.startswith("Masterwork edged weapon")), None)
+            if selected not in FD_MASTERWORK_EDGED_WEAPON_CHOICES.values() or placeholder is None:
+                return TreasureOutcome(
+                    "Choose the Masterwork edged weapon type.",
+                    staged_gold,
+                    staged_items,
+                    log + [f"{selected or 'Selected item'} is not an eligible FD p.41 Masterwork edged weapon choice."],
+                    choice_key=choice_key,
+                )
+            replacement = _with_value_suffix(selected, placeholder)
+            items = [replacement if item == placeholder else item for item in staged_items]
+            return TreasureOutcome(
+                f"Masterwork edged weapon: {replacement}.",
+                staged_gold,
+                items,
+                log,
+            )
         if choice_key == "fd_potions_or_scrolls":
             if pick == "potions":
                 return TreasureOutcome(

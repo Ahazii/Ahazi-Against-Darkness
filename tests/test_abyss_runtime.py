@@ -238,6 +238,25 @@ def test_developer_playtest_runs_selected_forsaken_depths_event() -> None:
     assert any("Developer playtest override: Forsaken Depths Event d10=3" in entry for entry in session.log)
 
 
+def test_abyss_nonmagical_weapon_treasure_requires_weapon_type() -> None:
+    eng = _engine()
+    session = eng.create_session("abyss-weapon-choice", "party-1", [_member()], ruleset_profile_id="abyss")
+    tile = session.map_state.tiles[0]
+    tile.pending_treasure_choice = "abyss_gold_or_weapon"
+    tile.treasure_gold = 25
+
+    eng.advance(session, "choose_treasure_outcome", treasure_outcome_choice="weapon", show_rolls=False)
+
+    assert tile.pending_treasure_choice == "abyss_nonmagical_weapon"
+    assert tile.treasure_gold == 0
+    assert tile.treasure_items == []
+
+    eng.advance(session, "choose_treasure_outcome", treasure_outcome_choice="nonmagical_sword", show_rolls=False)
+
+    assert tile.pending_treasure_choice is None
+    assert tile.treasure_items == ["Sword"]
+
+
 def test_forsaken_depths_minions_do_not_use_abyss_xp_track() -> None:
     eng = _engine()
     session = eng.create_session("fd-abyss-xp", "party-1", [_member()], ruleset_profile_id="abyss")

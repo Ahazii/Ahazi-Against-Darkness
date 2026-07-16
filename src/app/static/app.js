@@ -28011,6 +28011,27 @@ function treasureOutcomeChoices(choiceKey) {
       { pick: "bow_arrows", label: "Treasure: Masterwork bow + 24 silver arrows", title: "Masterwork bow with 24 silver-tipped arrows (FD p.62)." },
     ];
   }
+  if (choiceKey === "fd_silver_melee_weapons") {
+    return [
+      { pick: "silvered_sword", label: "Silvered: swords x10", itemName: "Silvered sword", title: "Take ten silvered swords as the FD p.62 melee weapon result." },
+      { pick: "silvered_axe", label: "Silvered: axes x10", itemName: "Silvered axe", title: "Take ten silvered axes as the FD p.62 melee weapon result." },
+      { pick: "silvered_spear", label: "Silvered: spears x10", itemName: "Silvered spear", title: "Take ten silvered spears as the FD p.62 melee weapon result." },
+      { pick: "silvered_mace", label: "Silvered: maces x10", itemName: "Silvered mace", title: "Take ten silvered maces as the FD p.62 melee weapon result." },
+      { pick: "silvered_hammer", label: "Silvered: hammers x10", itemName: "Silvered hammer", title: "Take ten silvered hammers as the FD p.62 melee weapon result." },
+      { pick: "silvered_club", label: "Silvered: clubs x10", itemName: "Silvered club", title: "Take ten silvered clubs as the FD p.62 melee weapon result." },
+      { pick: "silvered_dagger", label: "Silvered: daggers x10", itemName: "Silvered dagger", title: "Take ten silvered daggers as the FD p.62 melee weapon result." },
+      { pick: "silvered_two_handed_weapon", label: "Silvered: two-handed x10", itemName: "Silvered two-handed weapon", title: "Take ten silvered two-handed weapons as the FD p.62 melee weapon result." },
+    ];
+  }
+  if (choiceKey === "fd_masterwork_edged_weapon") {
+    return [
+      { pick: "masterwork_edged_sword", label: "Masterwork edged: sword", itemName: "Masterwork sword", title: "Choose a Masterwork sword for the FD p.41 Greater Mutated Goblin edged weapon." },
+      { pick: "masterwork_edged_axe", label: "Masterwork edged: axe", itemName: "Masterwork axe", title: "Choose a Masterwork axe for the FD p.41 Greater Mutated Goblin edged weapon." },
+      { pick: "masterwork_edged_spear", label: "Masterwork edged: spear", itemName: "Masterwork spear", title: "Choose a Masterwork spear for the FD p.41 Greater Mutated Goblin edged weapon." },
+      { pick: "masterwork_edged_dagger", label: "Masterwork edged: dagger", itemName: "Masterwork dagger", title: "Choose a Masterwork dagger for the FD p.41 Greater Mutated Goblin edged weapon." },
+      { pick: "masterwork_edged_two_handed_weapon", label: "Masterwork edged: two-handed", itemName: "Masterwork two-handed weapon", title: "Choose a Masterwork two-handed weapon for the FD p.41 Greater Mutated Goblin edged weapon." },
+    ];
+  }
   if (choiceKey === "fd_potions_or_scrolls") {
     return [
       { pick: "potions", label: "Treasure: 2 healing potions", title: "Two potions of healing (FD p.62)." },
@@ -28057,6 +28078,21 @@ function treasureOutcomeChoices(choiceKey) {
     return [
       { pick: "gold", label: "Abyss: take gold", title: "Abyss p.48: d8 x 5 gp." },
       { pick: "weapon", label: "Abyss: non-magical weapon", title: "Abyss p.48: take one non-magical weapon of your choice." },
+    ];
+  }
+  if (choiceKey === "abyss_nonmagical_weapon") {
+    return [
+      { pick: "nonmagical_sword", label: "Weapon: sword", itemName: "Sword", title: "Take a non-magical sword." },
+      { pick: "nonmagical_axe", label: "Weapon: axe", itemName: "Axe", title: "Take a non-magical axe." },
+      { pick: "nonmagical_spear", label: "Weapon: spear", itemName: "Spear", title: "Take a non-magical spear." },
+      { pick: "nonmagical_mace", label: "Weapon: mace", itemName: "Mace", title: "Take a non-magical mace." },
+      { pick: "nonmagical_hammer", label: "Weapon: hammer", itemName: "Hammer", title: "Take a non-magical hammer." },
+      { pick: "nonmagical_club", label: "Weapon: club", itemName: "Club", title: "Take a non-magical club." },
+      { pick: "nonmagical_dagger", label: "Weapon: dagger", itemName: "Dagger", title: "Take a non-magical dagger." },
+      { pick: "nonmagical_bow", label: "Weapon: bow", itemName: "Bow", title: "Take a non-magical bow." },
+      { pick: "nonmagical_crossbow", label: "Weapon: crossbow", itemName: "Crossbow", title: "Take a non-magical crossbow." },
+      { pick: "nonmagical_sling", label: "Weapon: sling", itemName: "Sling", title: "Take a non-magical sling." },
+      { pick: "nonmagical_two_handed_weapon", label: "Weapon: two-handed", itemName: "Two-handed weapon", title: "Take a non-magical two-handed weapon." },
     ];
   }
   if (choiceKey === "abyss_gold_or_useful") {

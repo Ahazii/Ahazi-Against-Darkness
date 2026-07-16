@@ -1571,6 +1571,19 @@ def test_fd_treasure_choice_clues_grants_two() -> None:
     assert outcome.clues_granted == 2
 
 
+def test_fd_treasure_choice_silver_melee_requires_weapon_type() -> None:
+    eng = engine()
+    pending = eng.table_roller.resolve_fd_treasure_choice("fd_silver_weapons_or_arrows", "silver_melee")
+    assert pending.choice_key == "fd_silver_melee_weapons"
+    assert pending.items == []
+
+    chosen = eng.table_roller.resolve_fd_treasure_choice(
+        "fd_silver_melee_weapons",
+        "silvered_sword",
+    )
+    assert chosen.items == [f"Silvered sword ({index})" for index in range(1, 11)]
+
+
 def test_fd_common_equipment_treasure_requires_item_choice(monkeypatch) -> None:
     eng = engine()
     monkeypatch.setattr("app.engine.dungeon_table_roller.random.randint", lambda *args, **kwargs: 2)
@@ -1645,7 +1658,21 @@ def test_fd_greater_mutated_goblin_attack_inflicts_tier_damage() -> None:
 
 
 def test_session_action_schema_accepts_fd_treasure_choices() -> None:
-    for pick in ["magic", "clues", "double_roll", "quad_roll_wanderers", "masterwork", "masterwork_sword", "potions", "useful", "common_equipment"]:
+    for pick in [
+        "magic",
+        "clues",
+        "double_roll",
+        "quad_roll_wanderers",
+        "masterwork",
+        "masterwork_sword",
+        "masterwork_edged_sword",
+        "silver_melee",
+        "silvered_sword",
+        "nonmagical_sword",
+        "potions",
+        "useful",
+        "common_equipment",
+    ]:
         action = SessionAction(action="choose_treasure_outcome", treasure_outcome_choice=pick)
         assert action.treasure_outcome_choice == pick
 
@@ -3425,8 +3452,34 @@ def test_fd_greater_mutated_goblin_stages_fixed_treasure(monkeypatch) -> None:
     assert tile.treasure_gold == 17
     assert tile.treasure_items.count("Small gemstone (25gp)") == 7
     assert "Masterwork edged weapon (40gp)" in tile.treasure_items
+    assert tile.pending_treasure_choice == "fd_masterwork_edged_weapon"
     assert any("Greater Mutated Goblin treasure" in entry for entry in session.log)
     assert not any("no treasure rolls" in entry.lower() for entry in session.log)
+
+
+def test_fd_greater_mutated_goblin_edged_weapon_choice_preserves_value(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-goblin-fixed-treasure-choice",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.pending_treasure_choice = "fd_masterwork_edged_weapon"
+    tile.treasure_gold = 14
+    tile.treasure_items = ["Small gemstone (25gp)", "Masterwork edged weapon (40gp)"]
+
+    eng.advance(
+        session,
+        "choose_treasure_outcome",
+        treasure_outcome_choice="masterwork_edged_sword",
+        show_rolls=False,
+    )
+
+    assert tile.pending_treasure_choice is None
+    assert tile.treasure_gold == 14
+    assert tile.treasure_items == ["Small gemstone (25gp)", "Masterwork sword (40gp)"]
 
 
 def test_fd_greater_mutated_goblin_corrosive_mucus_runtime(monkeypatch) -> None:

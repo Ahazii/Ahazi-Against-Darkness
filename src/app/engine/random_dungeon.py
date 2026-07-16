@@ -15046,8 +15046,26 @@ class RandomDungeonEngine:
     def _resolve_abyss_treasure_choice(self, choice_key: str, pick: str, tile: TileState) -> TreasureOutcome:
         if choice_key == "abyss_gold_or_weapon":
             if pick == "weapon":
-                return TreasureOutcome("Abyss treasure: one non-magical weapon of your choice.", 0, ["Non-magical weapon"], [])
+                return TreasureOutcome("Choose one non-magical weapon.", 0, [], [], choice_key="abyss_nonmagical_weapon")
             return TreasureOutcome(tile.treasure_summary or "Abyss gold.", tile.treasure_gold, [], [])
+        if choice_key == "abyss_nonmagical_weapon":
+            weapon_map = {
+                "nonmagical_sword": "Sword",
+                "nonmagical_axe": "Axe",
+                "nonmagical_spear": "Spear",
+                "nonmagical_mace": "Mace",
+                "nonmagical_hammer": "Hammer",
+                "nonmagical_club": "Club",
+                "nonmagical_dagger": "Dagger",
+                "nonmagical_bow": "Bow",
+                "nonmagical_crossbow": "Crossbow",
+                "nonmagical_sling": "Sling",
+                "nonmagical_two_handed_weapon": "Two-handed weapon",
+            }
+            selected = weapon_map.get(pick)
+            if not selected:
+                return TreasureOutcome("Choose one non-magical weapon.", 0, [], [], choice_key=choice_key)
+            return TreasureOutcome(f"Abyss treasure: {selected}.", 0, [selected], [])
         if choice_key == "abyss_gold_or_useful":
             if pick == "useful":
                 item = self._roll_abyss_useful_item()
@@ -17896,7 +17914,11 @@ class RandomDungeonEngine:
                     summary_parts.append(f"{gold}gp")
                 if items:
                     summary_parts.append(", ".join(items))
-                outcomes.append(TreasureOutcome(f"{enemy.name} treasure: {'; '.join(summary_parts)}.", gold, items, log))
+                choice_key = "fd_masterwork_edged_weapon" if any(item.startswith("Masterwork edged weapon") for item in items) else None
+                summary = f"{enemy.name} treasure: {'; '.join(summary_parts)}."
+                if choice_key:
+                    summary += " Choose the Masterwork edged weapon type before claiming."
+                outcomes.append(TreasureOutcome(summary, gold, items, log, choice_key=choice_key))
         return outcomes
 
     def _merge_treasure_outcomes(self, outcomes: list[TreasureOutcome]) -> TreasureOutcome:

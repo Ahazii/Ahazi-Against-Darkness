@@ -105,7 +105,11 @@ def merge_treasure_outcomes(outcomes: list[TreasureOutcome]) -> TreasureOutcome:
     items = [item for outcome in outcomes for item in outcome.items]
     log = [entry for outcome in outcomes for entry in outcome.log]
     summaries = [outcome.summary for outcome in outcomes if outcome.summary]
-    return TreasureOutcome("; ".join(summaries) if summaries else "Treasure", gold, items, log)
+    choice_keys = [outcome.choice_key for outcome in outcomes if outcome.choice_key]
+    choice_key = choice_keys[0] if len(choice_keys) == 1 else None
+    if len(choice_keys) > 1:
+        log.append("Multiple treasure choices were rolled together; resolve the listed choices manually before claiming.")
+    return TreasureOutcome("; ".join(summaries) if summaries else "Treasure", gold, items, log, choice_key=choice_key)
 
 
 def apply_secret_door_treasure_doubling(tile: TileState) -> bool:
