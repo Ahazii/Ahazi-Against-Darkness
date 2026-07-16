@@ -19782,6 +19782,10 @@ function currentObjectiveForSession(session) {
       body: "Resolve the trap before searching, claiming treasure, or pushing deeper. The app blocks treasure claiming while the trap is still live.",
       tone: "warn",
       action: { label: "Resolve Trap", kind: "advance", advanceAction: "resolve_trap" },
+      secondaryAction:
+        session.fd_side_sheet_active && tile.fd_side_sheet
+          ? { label: "Return to main map", kind: "advance", advanceAction: "exit_fd_side_sheet" }
+          : null,
     };
   }
   const caveProgress = tagCaveTargetProgress(session);

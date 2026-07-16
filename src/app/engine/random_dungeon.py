@@ -15194,7 +15194,18 @@ class RandomDungeonEngine:
         if origin_exit.status != "open":
             origin_exit.status = "open"
             changed = True
-        reciprocal = self._reciprocal_exit_on_tile(side_tile, origin.id, direction=OPPOSITE[origin_exit.direction])
+        reciprocal = self._reciprocal_exit_on_tile(side_tile, origin.id)
+        if reciprocal is None and session.current_tile_entry_exit_id:
+            reciprocal = next(
+                (
+                    exit_state
+                    for exit_state in side_tile.exits
+                    if exit_state.id == session.current_tile_entry_exit_id
+                    and exit_state.status != "blocked"
+                    and exit_state.destination_tile_id in (None, origin.id)
+                ),
+                None,
+            )
         if reciprocal is None:
             reciprocal = self._set_reciprocal_exit(side_tile, origin, origin_exit)
             changed = True

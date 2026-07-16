@@ -3999,6 +3999,64 @@ def test_normalize_labels_active_fd_side_sheet_return_route() -> None:
     assert side.exits[0].destination_tile_id == origin.id
 
 
+def test_normalize_repairs_current_entry_exit_as_side_sheet_return() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-side-current-entry-repair",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_etc_entry_tile(eng)
+    side = TileState(
+        id="side-room",
+        x=0,
+        y=-5,
+        tile_key="25",
+        tile_type="room",
+        title="Citadel side room",
+        description="Side room",
+        content_key="fd_trap",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+        exits=[
+            ExitState(
+                id="side-entry",
+                direction="west",
+                kind="passage",
+                status="open",
+            ),
+            ExitState(
+                id="side-blocked",
+                direction="west",
+                kind="passage",
+                status="blocked",
+            ),
+        ],
+    )
+    origin.exits = []
+    origin.fd_side_sheet_entry_used = True
+    session.map_state.tiles = [origin, side]
+    session.map_state.current_tile_id = side.id
+    session.current_tile_entry_exit_id = "side-entry"
+    session.mode = "exploration"
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_side_sheet_origin_tile_id = origin.id
+    session.fd_side_sheet_rooms_total = 21
+    session.fd_side_sheet_rooms_entered = 1
+    session.fd_side_sheet_visited_tile_ids = [side.id]
+    session.fd_citadel_type = "citadel_of_traps"
+
+    _, changed = eng.normalize_session(session)
+
+    assert changed
+    assert any(exit_state.label == "Enter Citadel sheet" for exit_state in origin.exits)
+    assert side.exits[0].label == "Return to main map"
+    assert side.exits[0].status == "open"
+    assert side.exits[0].destination_tile_id == origin.id
+
+
 def test_fd_dungeon_etc_rolls_citadel_on_enter(monkeypatch) -> None:
     eng = engine()
     session = eng.create_session(
