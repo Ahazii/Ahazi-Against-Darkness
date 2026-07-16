@@ -12301,6 +12301,34 @@ class RandomDungeonEngine:
             roll_fd_citadel(self, session, tile, show_rolls=show_rolls, fixed_roll=roll)
             enter_fd_side_sheet(self, session, tile, kind="citadel", force=True, show_rolls=show_rolls)
             return
+        if kind == "fd_event":
+            from .forsaken_depths_content import apply_fd_event
+            from .forsaken_depths_map import is_fd_ruleset
+
+            if not is_fd_ruleset(session) or roll is None or not 1 <= roll <= 10:
+                session.log.append("Choose an available Forsaken Depths Event d10 result.")
+                return
+            event_row = self.table_roller.lookup("fd_event_table", roll)
+            if event_row is None:
+                session.log.append("That Forsaken Depths Event result has no row.")
+                return
+            tile.content_key = "fd_event"
+            tile.special_event_key = str(event_row.get("key") or "") or None
+            tile.special_event_summary = str(event_row.get("summary") or "")
+            tile.environment_event_resolved = False
+            tile.resolved = False
+            session.log.append(
+                f"Developer playtest override: Forsaken Depths Event d10={roll} - "
+                f"{event_row.get('name') or 'Unknown event'}."
+            )
+            apply_fd_event(
+                self,
+                session,
+                tile,
+                hcl=self._highest_character_level(session.party),
+                show_rolls=show_rolls,
+            )
+            return
         session.log.append("Choose a supported developer playtest scenario.")
 
     def _roll_abyss_monster_row(

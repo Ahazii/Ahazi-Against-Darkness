@@ -18609,7 +18609,13 @@ function renderDeveloperPlaytestControls(session) {
   if (isAbyss) {
     kind.append(new Option("Abyss foe encounter", "abyss_foe"), new Option("Abyss unique event", "abyss_unique_event"));
   }
-  if (isForsakenDepths) kind.append(new Option("FD foe encounter", "fd_foe"), new Option("Forsaken Depths Citadel", "fd_citadel"));
+  if (isForsakenDepths) {
+    kind.append(
+      new Option("FD foe encounter", "fd_foe"),
+      new Option("Forsaken Depths Event", "fd_event"),
+      new Option("Forsaken Depths Citadel", "fd_citadel")
+    );
+  }
   if (isExpandedEdition) {
     kind.append(
       new Option("EE foe encounter", "ee_foe"),
@@ -18682,12 +18688,26 @@ function renderDeveloperPlaytestControls(session) {
       labels = foeTables.find(([value]) => value === table.value)?.[2] || [];
     } else if (kind.value === "abyss_unique_event") {
       labels = ["Book of Secrets", "Dark Plague", "Swarm of Critters", "Secret Stairs", "Gold Ghost", "Mana Sink"];
+    } else if (kind.value === "fd_event") {
+      labels = [
+        "Lady in Gray",
+        "Winds of Despair",
+        "Something Stirs in the Darkness",
+        "Labyrinth Shifts",
+        "Flood",
+        "Earthquake",
+        "Nightmare Mist",
+        "The Portal",
+        "The Passage",
+        "Hidden Treasure Chamber",
+      ];
     } else if (kind.value === "ee_quest") {
       labels = ["Bring me its head", "Bring me Gold", "I want it alive", "Bring me that", "Let peace be your way", "Slay all the Foes"];
     } else {
       labels = ["Ghost Citadel", "Crowded Citadel", "Citadel of Traps", "Prisoners of the Citadel", "Citadel of Dead Things", "Magic Citadel"];
     }
-    labels.forEach((label, index) => roll.appendChild(new Option(`d6 = ${index + 1} - ${label}`, String(index + 1))));
+    const dieLabel = kind.value === "fd_event" ? "d10" : "d6";
+    labels.forEach((label, index) => roll.appendChild(new Option(`${dieLabel} = ${index + 1} - ${label}`, String(index + 1))));
     roll.value = [...roll.options].some((option) => option.value === selected) ? selected : "1";
   };
 
@@ -27971,7 +27991,17 @@ function treasureOutcomeChoices(choiceKey) {
   if (choiceKey === "fd_gold_or_masterwork") {
     return [
       { pick: "gold", label: "Treasure: take gold", title: "Take the rolled gold instead of a Masterwork weapon (FD p.62)." },
-      { pick: "masterwork", label: "Treasure: Masterwork weapon", title: "Take a Masterwork weapon of your choice instead of gold (FD p.62)." },
+      { pick: "masterwork_sword", label: "Masterwork: sword", itemName: "Masterwork sword", title: "Take a Masterwork sword as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_axe", label: "Masterwork: axe", itemName: "Masterwork axe", title: "Take a Masterwork axe as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_spear", label: "Masterwork: spear", itemName: "Masterwork spear", title: "Take a Masterwork spear as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_mace", label: "Masterwork: mace", itemName: "Masterwork mace", title: "Take a Masterwork mace as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_hammer", label: "Masterwork: hammer", itemName: "Masterwork hammer", title: "Take a Masterwork hammer as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_club", label: "Masterwork: club", itemName: "Masterwork club", title: "Take a Masterwork club as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_dagger", label: "Masterwork: dagger", itemName: "Masterwork dagger", title: "Take a Masterwork dagger as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_bow", label: "Masterwork: bow", itemName: "Masterwork bow", title: "Take a Masterwork bow as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_crossbow", label: "Masterwork: crossbow", itemName: "Masterwork crossbow", title: "Take a Masterwork crossbow as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_sling", label: "Masterwork: sling", itemName: "Masterwork sling", title: "Take a Masterwork sling as the FD p.62 weapon of your choice." },
+      { pick: "masterwork_two_handed_weapon", label: "Masterwork: two-handed weapon", itemName: "Masterwork two-handed weapon", title: "Take a Masterwork two-handed weapon as the FD p.62 weapon of your choice." },
     ];
   }
   if (choiceKey === "fd_silver_weapons_or_arrows") {
@@ -28059,7 +28089,7 @@ function collectTreasureMenuItems(session, tile) {
         label: choice.label,
         title: choice.title,
         onClick: () =>
-          advance("choose_treasure_outcome", { treasure_outcome_choice: choice.pick }),
+          advance("choose_treasure_outcome", { treasure_outcome_choice: choice.pick, item_name: choice.itemName || null }),
       });
     }
     return items;

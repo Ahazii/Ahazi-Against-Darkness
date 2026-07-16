@@ -1551,10 +1551,18 @@ def test_fd_treasure_choice_gold_or_masterwork() -> None:
     assert outcome.gold == 120
     outcome = eng.table_roller.resolve_fd_treasure_choice(
         "fd_gold_or_masterwork",
+        "masterwork_sword",
+        staged_gold=120,
+    )
+    assert outcome.items == ["Masterwork sword"]
+
+    pending = eng.table_roller.resolve_fd_treasure_choice(
+        "fd_gold_or_masterwork",
         "masterwork",
         staged_gold=120,
     )
-    assert "Masterwork weapon" in outcome.items[0]
+    assert pending.choice_key == "fd_gold_or_masterwork"
+    assert "Choose the Masterwork weapon type" in pending.summary
 
 
 def test_fd_treasure_choice_clues_grants_two() -> None:
@@ -1637,7 +1645,7 @@ def test_fd_greater_mutated_goblin_attack_inflicts_tier_damage() -> None:
 
 
 def test_session_action_schema_accepts_fd_treasure_choices() -> None:
-    for pick in ["magic", "clues", "double_roll", "quad_roll_wanderers", "masterwork", "potions", "useful", "common_equipment"]:
+    for pick in ["magic", "clues", "double_roll", "quad_roll_wanderers", "masterwork", "masterwork_sword", "potions", "useful", "common_equipment"]:
         action = SessionAction(action="choose_treasure_outcome", treasure_outcome_choice=pick)
         assert action.treasure_outcome_choice == pick
 

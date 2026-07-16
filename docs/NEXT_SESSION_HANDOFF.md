@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-16. Repository branch: `main`. Latest release: `v0.39.21`.
+Last updated: 2026-07-16. Repository branch: `main`. Latest release: `v0.39.22`.
 
 ## Start Here
 
@@ -21,7 +21,7 @@ Before further modularisation, ask the user to deploy the latest `main` build, f
 - Camp, refresh, then re-enter. The dungeon entrance and exits must remain usable.
 - Return to camp and abandon the unfinished dungeon after resolving any pending Classical XP roll. A Final Boss is not required for abandonment; pending XP, pending spell selection, and prisoner reward choices intentionally block closeout so earned rewards are never silently lost. After XP is resolved, the completion choice must enable without a browser hard refresh.
 - Confirm the recovery redesign has not left stray body/recovery controls in Party Sheets.
-- Resume disposable session `003f51881ebc417a8a70891da9e0de00` if still active, or start a fresh EE+Abyss+FD Game 2. The Citadel entry/return/deeper-room route passed on 2026-07-16, so do not repeat it unless a later regression reopens it. After deploying v0.39.21, force or naturally encounter **Armored Forsaken Depths Troll** once and confirm normal weapons/bows/unarmed hits roll 4-in-6 armor deflection before damage, magic weapons bypass that deflection, and offensive spells show MR penetration against HCL-1 unless a Magic Citadel is active. Do not repeat Spore Spiders, Deep Cave Spiders, Greater Mutated Goblin, Soulbinding Blessing cure, or stale Citadel badge checks unless a later regression reopens them.
+- Resume disposable session `003f51881ebc417a8a70891da9e0de00` if still active, or start a fresh EE+Abyss+FD Game 2. The Citadel entry/return/deeper-room route passed on 2026-07-16, so do not repeat it unless a later regression reopens it. After deploying v0.39.22, confirm Sir Benedict's repaired placeholder is now **Masterwork sword**, confirm FD p.62 row 3 asks for a specific masterwork weapon type, force one **Forsaken Depths Event** d10 result from Developer Playtest controls, and force or naturally encounter **Armored Forsaken Depths Troll** once if the v0.39.21 armor/MR patch has not yet been reconfirmed. Do not repeat Spore Spiders, Deep Cave Spiders, Greater Mutated Goblin, Soulbinding Blessing cure, or stale Citadel badge checks unless a later regression reopens them. Dark Elf Warlock treasure at `+2` is passed, but its printed staff-plus-ice-blast combat split remains open.
 
 The current live session id was `2b51e57ab5cd4623942fbef9b65b30d3` when this note was written. It may be complete by the time this handoff is read.
 
@@ -42,6 +42,7 @@ Then choose one bounded shared runtime responsibility from `docs/STATUS.md`/`doc
 
 ## Recent Releases
 
+- `v0.39.22`: FD p.62 concrete masterwork weapon choices and FD Event developer override.
 - `v0.39.21`: FD Armored Forsaken Depths Troll HCL-1 Magic Resistance and 4-in-6 armor deflection.
 - `v0.39.20`: FD Citadel origin re-entry and deeper side-sheet room action.
 - `v0.39.19`: FD Soulbinding Blessing cure and labelled Citadel side-sheet routes.

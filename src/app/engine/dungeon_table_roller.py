@@ -36,6 +36,21 @@ def _equipment_shop_rows(tables: dict[str, Any]) -> list[dict[str, Any]]:
     return items if isinstance(items, list) else []
 
 
+FD_MASTERWORK_WEAPON_CHOICES = {
+    "masterwork_sword": "Masterwork sword",
+    "masterwork_axe": "Masterwork axe",
+    "masterwork_spear": "Masterwork spear",
+    "masterwork_mace": "Masterwork mace",
+    "masterwork_hammer": "Masterwork hammer",
+    "masterwork_club": "Masterwork club",
+    "masterwork_dagger": "Masterwork dagger",
+    "masterwork_bow": "Masterwork bow",
+    "masterwork_crossbow": "Masterwork crossbow",
+    "masterwork_sling": "Masterwork sling",
+    "masterwork_two_handed_weapon": "Masterwork two-handed weapon",
+}
+
+
 def environment_trap_table(environment: EnvironmentKind) -> str:
     if environment == "caverns":
         return "caverns_trap_table"
@@ -780,11 +795,28 @@ class DungeonTableRoller:
         if choice_key == "fd_gold_or_masterwork":
             if pick == "gold":
                 return TreasureOutcome(f"Took {staged_gold}gp.", staged_gold, [], log)
-            if pick == "masterwork":
+            if pick in {"masterwork", "masterwork_weapon"} and not item_name:
                 return TreasureOutcome(
-                    "Masterwork weapon of your choice.",
+                    "Choose the Masterwork weapon type.",
                     0,
-                    ["Masterwork weapon"],
+                    [],
+                    log,
+                    choice_key=choice_key,
+                )
+            if pick.startswith("masterwork") or item_name:
+                selected = (item_name or FD_MASTERWORK_WEAPON_CHOICES.get(pick) or "").strip()
+                if selected not in FD_MASTERWORK_WEAPON_CHOICES.values():
+                    return TreasureOutcome(
+                        "Choose the Masterwork weapon type.",
+                        0,
+                        [],
+                        log + [f"{selected or 'Selected item'} is not an eligible FD p.62 Masterwork weapon choice."],
+                        choice_key=choice_key,
+                    )
+                return TreasureOutcome(
+                    f"Masterwork weapon of your choice: {selected}.",
+                    0,
+                    [selected],
                     log,
                 )
         if choice_key == "fd_silver_weapons_or_arrows":

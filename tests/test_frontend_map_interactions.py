@@ -2272,7 +2272,9 @@ def test_fd_playtest_controls_follow_locked_supplement_snapshot() -> None:
     body = _function_body("renderDeveloperPlaytestControls", APP_JS)
     assert "const isForsakenDepths = sessionIsForsakenDepths(session);" in body
     assert 'new Option("FD foe encounter", "fd_foe")' in body
+    assert 'new Option("Forsaken Depths Event", "fd_event")' in body
     assert 'new Option("Forsaken Depths Citadel", "fd_citadel")' in body
+    assert 'const dieLabel = kind.value === "fd_event" ? "d10" : "d6";' in body
     assert 'const previousKind = developerPlaytestControls.dataset.kind || (isAbyss ? "abyss_foe" : isForsakenDepths ? "fd_foe" : "ee_foe");' in body
 
 
@@ -2299,12 +2301,12 @@ def test_current_objective_surfaces_treasure_choice_buttons() -> None:
     session_body = _function_body("renderSession", APP_JS)
     assert 'id="treasure-choices"' in INDEX_HTML
     assert "const treasureActions = treasureOutcomeChoices(tile.pending_treasure_choice).map" in objective_body
-    assert "payload: { treasure_outcome_choice: choice.pick }" in objective_body
+    assert "payload: { treasure_outcome_choice: choice.pick, item_name: choice.itemName || null }" in objective_body
     assert "actions: treasureActions" in objective_body
     assert "action.tooltip || `Run the session action" in append_body
     assert "advance(action.advanceAction, action.payload || {})" in append_body
     assert "const choices = treasureOutcomeChoices(tile.pending_treasure_choice);" in quick_body
-    assert "advance(\"choose_treasure_outcome\", { treasure_outcome_choice: choice.pick })" in quick_body
+    assert "advance(\"choose_treasure_outcome\", { treasure_outcome_choice: choice.pick, item_name: choice.itemName || null })" in quick_body
     assert "safeSessionRender(\"treasureChoices\", () => renderTreasureChoices(session));" in session_body
     assert "pendingTreasureChoice" in session_body
     assert "hasTrap || pendingTreasureChoice" in session_body

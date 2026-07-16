@@ -220,6 +220,24 @@ def test_developer_playtest_recognizes_forsaken_depths_supplement_session(monkey
     assert tile.enemies[0].name == "Horde of Dark Elves"
 
 
+def test_developer_playtest_runs_selected_forsaken_depths_event() -> None:
+    eng = _engine()
+    session = eng.create_session("fd-event-playtest", "party-1", [_member()], ruleset="forsaken_depths")
+    tile = TileState(id="fd-event-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+
+    eng.advance(session, "developer_playtest", playtest_kind="fd_event", playtest_roll=3)
+
+    assert tile.content_key == "fd_event"
+    assert tile.special_event_key == "something_stirs"
+    assert tile.environment_event_resolved is True
+    assert tile.resolved is True
+    assert session.fd_stirs_in_darkness_remaining == 6
+    assert any("Developer playtest override: Forsaken Depths Event d10=3" in entry for entry in session.log)
+
+
 def test_forsaken_depths_minions_do_not_use_abyss_xp_track() -> None:
     eng = _engine()
     session = eng.create_session("fd-abyss-xp", "party-1", [_member()], ruleset_profile_id="abyss")
