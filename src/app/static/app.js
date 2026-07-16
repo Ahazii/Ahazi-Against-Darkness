@@ -15435,11 +15435,16 @@ function fdSideSheetEntryAvailable(session, tile) {
   if (
     !tile ||
     session?.ruleset !== "forsaken_depths" ||
-    session.fd_side_sheet_active ||
-    tile.fd_side_sheet_entry_used
+    session.fd_side_sheet_active
   ) {
     return null;
   }
+  if (tile.id === session.fd_side_sheet_origin_tile_id && tile.fd_side_sheet_entry_used) {
+    if (session.fd_side_sheet_kind === "ruins") return "ruins";
+    if (session.fd_side_sheet_kind === "dark_pits") return "dark_pits";
+    if (session.fd_side_sheet_kind === "citadel" || session.fd_citadel_type) return "citadel";
+  }
+  if (tile.fd_side_sheet_entry_used) return null;
   const codes = tile.room_codes || [];
   if (codes.includes("Ru")) return "ruins";
   if (codes.includes("ETC") || (session.fd_citadel_entry_tile_id === tile.id && session.fd_citadel_type)) {
@@ -24058,7 +24063,7 @@ function tileOverlay(tile, session, cellOwnership, { skipContentMarkers = false,
       );
     }
   }
-  for (const exit of facingExits) {
+  for (const exit of facingExits.filter((item) => !item.virtual_action)) {
     overlay.appendChild(mapExitMarker(tile, exit, width, height, sideLabels.get(exit.id), session));
   }
   const contentMarkers = skipContentMarkers ? null : tileContentMarkers(tile, session, width, height);
@@ -24599,17 +24604,58 @@ function isExitOnWalkableCell(tile, exit) {
 function playerFacingExits(session, tile) {
   if (!tile) return [];
   const cellOwnership = buildMapCellOwnership(session);
-  return (tile.exits || []).filter((exit) => {
+  const exits = (tile.exits || []).filter((exit) => {
     if (!isExitOnDisplayedCell(tile, exit, cellOwnership)) return false;
     if (!isExitOnWalkableCell(tile, exit)) return false;
     return true;
   });
+  const sideEntry = fdSideSheetEntryAvailable(session, tile);
+  const hasVisibleSideEntry = exits.some((exit) => {
+    const destination = (session.map_state?.tiles || []).find((candidate) => candidate.id === exit.destination_tile_id);
+    return destination?.fd_side_sheet || /side sheet|citadel|ruins/i.test(exit.label || "");
+  });
+  if (sideEntry && effectiveSessionMode(session) === "exploration" && !session.camped_outside && !hasVisibleSideEntry) {
+    const entryLabel =
+      sideEntry === "ruins"
+        ? "Enter Forsaken Ruins sheet"
+        : sideEntry === "dark_pits"
+        ? "Enter Dark Pits sheet"
+        : "Enter Citadel sheet";
+    exits.push({
+      id: `virtual-fd-side-entry-${tile.id}`,
+      label: entryLabel,
+      direction: "side",
+      kind: "passage",
+      status: "open",
+      virtual_action: "enter_fd_side_sheet",
+    });
+  }
+  const hasVisibleSideReturn = exits.some(
+    (exit) =>
+      exit.destination_tile_id === session.fd_side_sheet_origin_tile_id ||
+      /return to main map/i.test(exit.label || "")
+  );
+  if (session.fd_side_sheet_active && tile.fd_side_sheet && effectiveSessionMode(session) === "exploration" && !hasVisibleSideReturn) {
+    exits.push({
+      id: `virtual-fd-side-return-${tile.id}`,
+      label: "Return to main map",
+      direction: "return",
+      kind: "passage",
+      status: "open",
+      virtual_action: "exit_fd_side_sheet",
+    });
+  }
+  return exits;
 }
 
 function exitSideLabelsForExits(exits) {
   const labels = new Map();
   const counts = new Map();
   for (const exit of exits || []) {
+    if (exit.virtual_action && exit.label) {
+      labels.set(exit.id, exit.label);
+      continue;
+    }
     const direction = exit.direction || "north";
     const nextCount = (counts.get(direction) || 0) + 1;
     counts.set(direction, nextCount);
@@ -27649,6 +27695,10 @@ function chooseDungeonExitIntent(session, exit) {
 }
 
 async function runTravelExit(session, exit) {
+  if (exit.virtual_action) {
+    advance(exit.virtual_action);
+    return;
+  }
   const currentSession = state.session?.id === session?.id ? state.session : session;
   if (currentSession.camped_outside && !exit.dungeon_exit) {
     advance("return_to_dungeon");
@@ -30095,6 +30145,7 @@ function renderExitActions(session) {
 }
 
 function exitButtonLabel(exit, sideLabel, session) {
+  if (exit.virtual_action) return exit.label || sideLabel || "Go through";
   const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
   const label = sideLabel || titleCase(exit.direction);
   const doorTag = exit.kind === "door" ? (exit.door_open ? " (open)" : " (closed)") : "";
@@ -30117,6 +30168,8 @@ function exitButtonLabel(exit, sideLabel, session) {
 }
 
 function exitTooltip(exit, session, sideLabel) {
+  if (exit.virtual_action === "enter_fd_side_sheet") return ACTION_TOOLTIPS.enterFdSideSheet;
+  if (exit.virtual_action === "exit_fd_side_sheet") return ACTION_TOOLTIPS.exitFdSideSheet;
   const label = sideLabel || titleCase(exit.direction);
   const tile = currentTile(session);
   if (
