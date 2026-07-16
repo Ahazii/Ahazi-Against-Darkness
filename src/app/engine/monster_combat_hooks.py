@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from ..schemas import EnemyState, PartyMemberState, SessionState, TileState
-from .class_combat import save_modifier
+from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
 from .combat_modifiers import poison_save_succeeds
 from .dice import roll_d6, roll_exploding_for_level, roll_formula
 from .combat_modifiers import poison_save_succeeds
@@ -137,6 +137,69 @@ def _living_party(party: list[PartyMemberState]) -> list[PartyMemberState]:
     return [member for member in party if member.current_life > 0]
 
 
+def _shield_only_defense_bonus(member: PartyMemberState) -> int:
+    return max(
+        0,
+        armor_defense_bonus(member, include_shield=True)
+        - armor_defense_bonus(member, include_shield=False),
+    )
+
+
+def _ice_blast_bonus(member: PartyMemberState) -> int:
+    class_id = member.class_id.lower()
+    if class_id == "barbarian" or "ice" in class_id:
+        return max(1, member.level // 2)
+    if any("ice" in status.lower() or "cold" in status.lower() for status in member.statuses):
+        return max(1, member.level // 2)
+    return 0
+
+
+def _dark_elf_warlock_ice_target(party: list[PartyMemberState]) -> PartyMemberState | None:
+    living = sorted(_living_party(party), key=lambda member: member.marching_order)
+    if not living:
+        return None
+    # Saved characters currently have no sex/gender field, so the FD p.44 female-priority clause
+    # remains a data-model gap. Until that exists, keep the target deterministic.
+    return living[0]
+
+
+def _apply_ice_blast(
+    enemy: EnemyState,
+    attack: dict[str, Any],
+    party: list[PartyMemberState],
+    *,
+    context: CombatContext,
+    show_rolls: bool,
+) -> list[str]:
+    target = _dark_elf_warlock_ice_target(party)
+    if target is None:
+        return []
+    damage = max(1, int(attack.get("damage", 2) or 2))
+    total, rolls = roll_exploding_for_level(target)
+    shield_bonus = _shield_only_defense_bonus(target)
+    modifier = defense_modifier(target, enemy) + shield_bonus + _ice_blast_bonus(target)
+    final_total = total + modifier
+    log = [f"{enemy.name} releases an ice blast at {target.name} (FD p.44)."]
+    if show_rolls:
+        log.append(
+            f"Ice blast Defense roll: {target.name} vs {enemy.name}: "
+            f"{' + '.join(str(value) for value in rolls)} + {modifier} = {final_total}."
+        )
+        log.append("Ice blast: shields count; armor is ignored unless it has special Cold defense.")
+    if context.round_explain_math:
+        log.append(f"Ice blast Defense math: need total > enemy level {enemy.level} to avoid damage.")
+    if rolls[0] != 1 and final_total > enemy.level:
+        log.append(f"{target.name} defends against the ice blast.")
+        return log
+    old_life = target.current_life
+    target.current_life = max(0, target.current_life - damage)
+    record_pc_damage(context, old_life - target.current_life, member=target)
+    log.append(f"{target.name} loses {old_life - target.current_life} Life from the ice blast ({old_life}->{target.current_life} HP).")
+    if target.current_life <= 0:
+        log.append(f"{target.name} falls.")
+    return log
+
+
 def _has_rogue(party: list[PartyMemberState]) -> bool:
     return any(member.class_id.lower() == "rogue" and member.current_life > 0 for member in party)
 
@@ -243,6 +306,19 @@ def apply_per_turn_monster_effects(
         return log
 
     for enemy in living_enemies:
+        for attack in enemy.special_attacks:
+            attack_type = str(attack.get("type", "")).lower()
+            timing = str(attack.get("timing", "")).lower()
+            if attack_type == "ice_blast" and timing == "each_turn":
+                log.extend(
+                    _apply_ice_blast(
+                        enemy,
+                        attack,
+                        party,
+                        context=context,
+                        show_rolls=show_rolls,
+                    )
+                )
         for effect in enemy.per_turn_effects:
             effect_type = str(effect.get("type", "")).lower()
             if effect_type == "attract_wandering_after_turns":

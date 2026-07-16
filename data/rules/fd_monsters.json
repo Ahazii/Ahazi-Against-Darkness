@@ -271,7 +271,7 @@
       "count": "1",
       "level_delta": 1,
       "life": 12,
-      "attacks": 2,
+      "attacks": 1,
       "tags": ["boss", "elf", "forsaken_depths"],
       "treasure_modifier": 2,
       "special_attacks": [

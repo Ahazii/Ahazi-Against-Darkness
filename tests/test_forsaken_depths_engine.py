@@ -1605,6 +1605,7 @@ def test_fd_dark_elf_warlock_has_printed_treasure_and_ice_blast() -> None:
     eng = engine()
     bosses = {row["name"]: row for row in eng.rules.monsters()["fd_boss"]}
     warlock = bosses["Dark Elf Warlock"]
+    assert warlock["attacks"] == 1
     assert warlock["treasure_modifier"] == 2
     assert any(attack["type"] == "ice_blast" and attack["timing"] == "each_turn" for attack in warlock["special_attacks"])
     assert "Treasure: 1 Forsaken Depths roll +2" in warlock["notes"]

@@ -321,6 +321,32 @@ def test_confusion_save_blocks_attack() -> None:
     assert any("confused" in line.lower() for line in log)
 
 
+def test_dark_elf_warlock_ice_blast_ignores_armor_but_keeps_shield() -> None:
+    hero = _hero(
+        level=5,
+        max_life=6,
+        current_life=6,
+        inventory=["Heavy armor", "Shield"],
+    )
+    warlock = EnemyState(
+        id="w1",
+        name="Dark Elf Warlock",
+        category="boss",
+        level=11,
+        life=12,
+        max_life=12,
+        attacks=1,
+        special_attacks=[{"type": "ice_blast", "timing": "each_turn", "damage": 2}],
+    )
+    context = CombatContext(session=_session([hero]))
+    with patch("app.engine.monster_combat_hooks.roll_exploding_for_level", return_value=(9, [9])):
+        log = apply_per_turn_monster_effects([warlock], [hero], context=context, show_rolls=True)
+    assert hero.current_life == 4
+    assert context.pc_damage_this_round == 2
+    assert any("ice blast" in entry.lower() for entry in log)
+    assert any("shields count; armor is ignored" in entry for entry in log)
+
+
 def test_possessed_dwarf_revives_on_d6_3_plus() -> None:
     dwarf = EnemyState(id="p1", name="Possessed Dwarves", category="minions", level=8, life=0, max_life=1)
     hero = _hero()

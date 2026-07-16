@@ -169,12 +169,12 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Forsaken Depths | Horde of Dark Elves | `fd_horde` | Forsaken Depths Horde table p.42 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Horde of Lizardmen of the Deep | `fd_horde` | Forsaken Depths Horde table p.42 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Horde of Goblins of the Deep | `fd_horde` | Forsaken Depths Horde table p.42 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Armored Forsaken Depths Troll | `fd_boss` | Forsaken Depths Boss Monster table p.44 | magic_resistance:HCL-1, special_rules:armor_deflection, treasure_modifier:+2 | implemented with regression tests; live reconfirm pending |
+| Forsaken Depths | Armored Forsaken Depths Troll | `fd_boss` | Forsaken Depths Boss Monster table p.44 | magic_resistance:HCL-1, special_rules:armor_deflection, treasure_modifier:+2 | implemented with regression tests; armor deflection live-confirmed; MR spell roll remains passive evidence |
 | Forsaken Depths | Deep Hobgoblin Champion | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Lionman Champion | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Cave Master Psionic | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Dark Elf Witch | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Dark Elf Warlock | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Dark Elf Warlock | `fd_boss` | Forsaken Depths Boss Monster table p.44 | treasure_modifier:+2, special_attacks:ice_blast, attacks:1 | staff-plus-ice-blast implemented with regression tests; live reconfirm pending; female-priority targeting needs PC sex/gender data |
 | Forsaken Depths | Greater Mutated Goblin | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Walking Idol | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Mothbeast | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
