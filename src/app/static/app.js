@@ -14316,6 +14316,16 @@ function appendFdCitadelSideSheetActions(parent, session) {
   parent.appendChild(escapeBtn);
 }
 
+function fdSideSheetReturnAvailable(session, tile = currentTile(session)) {
+  return Boolean(
+    sessionIsForsakenDepths(session) &&
+      session?.fd_side_sheet_active &&
+      tile?.fd_side_sheet &&
+      session.mode === "exploration" &&
+      !(session.fd_side_sheet_kind === "citadel" && session.fd_citadel_type === "prisoners_citadel")
+  );
+}
+
 const COURTSHIP_REGION_LABELS = {
   seaside: "Seaside",
   riverside: "Riverside",
@@ -19763,7 +19773,7 @@ function currentObjectiveForSession(session) {
         tone: "quest",
         action: session.fd_citadel_type === "prisoners_citadel" && currentTile(session)?.id === session.fd_prisoners_secret_exit_tile_id
           ? { label: "Open Secret Exit", kind: "advance", advanceAction: "fd_prisoners_escape" }
-          : entered >= total && session.fd_citadel_type !== "prisoners_citadel"
+          : fdSideSheetReturnAvailable(session, currentTile(session))
           ? { label: "Return to main map", kind: "advance", advanceAction: "exit_fd_side_sheet" }
           : null,
         secondaryAction: { label: "Copy FD Playtest Report", kind: "tag-copy-report" },
@@ -24652,7 +24662,7 @@ function exitSideLabelsForExits(exits) {
   const labels = new Map();
   const counts = new Map();
   for (const exit of exits || []) {
-    if (exit.virtual_action && exit.label) {
+    if (exit.label) {
       labels.set(exit.id, exit.label);
       continue;
     }
@@ -26355,12 +26365,12 @@ function renderTileDetail(session) {
     enterBtn.addEventListener("click", () => advance("enter_fd_side_sheet"));
     info.appendChild(enterBtn);
   }
-  if (session.fd_side_sheet_active && tile.fd_side_sheet && session.mode === "exploration") {
-    const exitBtn = node("button", "secondary", "Return to main map");
-    exitBtn.type = "button";
-    setButtonTooltip(exitBtn, ACTION_TOOLTIPS.exitFdSideSheet);
-    exitBtn.addEventListener("click", () => advance("exit_fd_side_sheet"));
-    info.appendChild(exitBtn);
+  if (fdSideSheetReturnAvailable(session, tile)) {
+    const returnBtn = node("button", "secondary", "Return to main map");
+    returnBtn.type = "button";
+    setButtonTooltip(returnBtn, ACTION_TOOLTIPS.exitFdSideSheet);
+    returnBtn.addEventListener("click", () => advance("exit_fd_side_sheet"));
+    info.appendChild(returnBtn);
   }
   if (session.fd_side_sheet_active) {
     const modLine = fdCitadelModifierLine(session);
@@ -30146,6 +30156,7 @@ function renderExitActions(session) {
 
 function exitButtonLabel(exit, sideLabel, session) {
   if (exit.virtual_action) return exit.label || sideLabel || "Go through";
+  if (exit.label) return exit.label;
   const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
   const label = sideLabel || titleCase(exit.direction);
   const doorTag = exit.kind === "door" ? (exit.door_open ? " (open)" : " (closed)") : "";
@@ -30196,7 +30207,8 @@ function exitTooltip(exit, session, sideLabel) {
 }
 
 function exitDisplayLabel(exit, sideLabel) {
-  const label = sideLabel || titleCase(exit.direction);
+  const label = exit.label || sideLabel || titleCase(exit.direction);
+  if (exit.label) return label;
   if (exit.dungeon_exit) return `${label} dungeon exit`;
   return `${label} ${exit.kind}`;
 }
