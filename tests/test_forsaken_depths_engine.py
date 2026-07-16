@@ -333,9 +333,24 @@ def test_fd_citadel_badge_only_shows_for_active_citadel_side_sheet() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
     body = _js_function_body("fdCitadelDisplay", app_js)
 
+    assert '!sessionIsForsakenDepths(session)' in body
     assert '!session.fd_side_sheet_active' in body
     assert 'session.fd_side_sheet_kind !== "citadel"' in body
     assert '!session.fd_citadel_type' in body
+
+
+def test_fd_pending_choices_render_for_fd_supplement_sessions() -> None:
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+    pending_body = _js_function_body("appendFdPendingChoiceActions", app_js)
+    status_body = _js_function_body("fdRoomPendingStatus", app_js)
+    tooltip_body = _js_function_body("statusChipTooltip", app_js)
+    soulbinding_block = pending_body[pending_body.index("const soulbinding = session.fd_soulbinding_pending") :]
+
+    assert '!sessionIsForsakenDepths(session)' in pending_body
+    assert 'tileId !== tile.id ? " away" : ""' in soulbinding_block
+    assert 'if (tile?.id && tileId !== tile.id) continue;' not in soulbinding_block
+    assert '!sessionIsForsakenDepths(session)' in status_body
+    assert 'fd soulbound:' in tooltip_body
 
 
 def test_map_styles_include_river_water_overlay() -> None:

@@ -320,6 +320,10 @@ def test_state_registry_maps_existing_statuses_and_counters() -> None:
     assert psychic["source"]["page"] == 56
     assert "FD Psychic Residue +3 Save" in psychic["legacy_mappings"]["statuses"]
 
+    soulbound = states["fd-soulbound"]
+    assert soulbound["source"]["page"] == 58
+    assert "FD Soulbound:" in soulbound["legacy_mappings"]["status_prefixes"]
+
     legacy = {item["field"]: item for item in payload["legacy_fields"]}
     assert legacy["PartyMemberState.statuses"]["status"] == "legacy_compatibility"
     assert "madness_and_fear" in payload["families"]
@@ -361,7 +365,7 @@ def test_states_api_is_read_only_registry(client: TestClient) -> None:
     payload = response.json()
     assert payload["read_only"] is True
     ids = {item["id"] for item in payload["states"]}
-    assert {"dark-plague", "lycanthropy", "madness", "hungry", "envenomed-weapon", "fd-psychic-residue-save"}.issubset(ids)
+    assert {"dark-plague", "lycanthropy", "madness", "hungry", "envenomed-weapon", "fd-psychic-residue-save", "fd-soulbound"}.issubset(ids)
 
 
 def test_terrain_registry_maps_existing_environment_and_terrain_values() -> None:

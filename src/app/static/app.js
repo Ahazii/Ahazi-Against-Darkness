@@ -7915,6 +7915,7 @@ function statusChipTooltip(label) {
   if (lower === "kerrak dar hoard") return "Epic Reward: spend 1 held Clue while exploring to find Kerrak Dar's 500gp hoard.";
   if (lower === "fd my fingers are worms") return "Forsaken Depths p.55: cannot use weapons or held items until the encounter ends, the hero takes damage, or Blessing is cast.";
   if (lower === "fd no danger here") return "Forsaken Depths p.55: the hero ignores the next dangerous Save or attack; the next damaging event clears it.";
+  if (lower.startsWith("fd soulbound:")) return "Soulbinding Trap (FD p.58): this hero is bound to the named room. Each area moved away requires choosing 1 Life loss or 1 Madness until Blessing removes the binding.";
   if (lower.includes("holy symbol")) return "Epic Reward: a cleric's Healing prayer restores +2 Life; if the cleric dies and body plus symbol reach the temple, the church pays for one resurrection attempt and keeps the symbol.";
   if (lower.includes("scout warning +1 saves")) return "Scout warning: +1 to all Saves and no surprise in this environment until it is left.";
   if (lower.includes("slumber amanita")) return "Slumber Amanita: next Sleep cast gains +Tier, including scrolls and Wand of Sleep.";
@@ -14203,7 +14204,7 @@ const FD_CITADEL_LABELS = {
 
 function fdCitadelDisplay(session) {
   if (
-    session?.ruleset !== "forsaken_depths" ||
+    !sessionIsForsakenDepths(session) ||
     !session.fd_side_sheet_active ||
     session.fd_side_sheet_kind !== "citadel" ||
     !session.fd_citadel_type
@@ -14249,7 +14250,7 @@ function fdNoDangerHereDisplay(session) {
 }
 
 function fdSideSheetDisplay(session) {
-  if (session?.ruleset !== "forsaken_depths" || !session.fd_side_sheet_active) return "";
+  if (!sessionIsForsakenDepths(session) || !session.fd_side_sheet_active) return "";
   const kind = session.fd_side_sheet_kind === "ruins" ? "Ruins" : "Citadel";
   const entered = session.fd_side_sheet_rooms_entered || 0;
   const total = session.fd_side_sheet_rooms_total || 0;
@@ -15210,7 +15211,7 @@ function memberById(session, characterId) {
 }
 
 function appendFdPendingChoiceActions(parent, session, tile) {
-  if (session?.ruleset !== "forsaken_depths" || session.mode !== "exploration") return;
+  if (!sessionIsForsakenDepths(session) || session.mode !== "exploration") return;
   const winds = session.fd_winds_of_despair_pending || {};
   for (const [characterId, tileId] of Object.entries(winds)) {
     if (tile?.id && tileId !== tile.id) continue;
@@ -15271,11 +15272,16 @@ function appendFdPendingChoiceActions(parent, session, tile) {
 
   const soulbinding = session.fd_soulbinding_pending || {};
   for (const [characterId, tileId] of Object.entries(soulbinding)) {
-    if (tile?.id && tileId !== tile.id) continue;
     const member = memberById(session, characterId);
     if (!member || member.current_life <= 0) continue;
     const row = node("div", "fd-ruins-action-row");
-    row.appendChild(node("span", "search-label", `${member.name} Soulbinding:`));
+    row.appendChild(
+      node(
+        "span",
+        "search-label",
+        `${member.name} Soulbinding${tile?.id && tileId !== tile.id ? " away" : ""}:`
+      )
+    );
     const lifeBtn = node("button", "secondary", "Lose 1 Life");
     lifeBtn.type = "button";
     setButtonTooltip(lifeBtn, ACTION_TOOLTIPS.fdSoulbindingLife);
@@ -15295,7 +15301,7 @@ function appendFdPendingChoiceActions(parent, session, tile) {
 }
 
 function fdRoomPendingStatus(session, tile) {
-  if (session?.ruleset !== "forsaken_depths" || !tile) return null;
+  if (!sessionIsForsakenDepths(session) || !tile) return null;
   if (session.fd_disintegration_pending && session.fd_disintegration_pending.tile_id === tile.id) {
     return "FD room status: Disintegration Blast choice pending";
   }

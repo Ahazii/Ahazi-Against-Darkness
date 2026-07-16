@@ -285,6 +285,18 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         "ui": {"label": "No Danger Here", "hover": "Forsaken Depths hallucination state currently applied through FD room content."},
     },
     {
+        "id": "fd-soulbound",
+        "name": "Soulbound",
+        "family": "traps_and_hazards",
+        "scope": "character",
+        "value_type": "room_binding",
+        "source": {"supplement_id": "forsaken-depths", "source_pdf": "Four_Against_the_Forsaken_Depths.pdf", "page": 58, "topic": "Soulbinding Trap"},
+        "legacy_mappings": {"status_prefixes": ["FD Soulbound:"]},
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {"label": "Soulbound", "hover": "Forsaken Depths Soulbinding Trap marker; moving away prompts the printed Life-or-Madness consequence until Blessing removes it."},
+    },
+    {
         "id": "fd-lizardman-horde-poison",
         "name": "Lizardman Horde Poison",
         "family": "combat_modifiers",
