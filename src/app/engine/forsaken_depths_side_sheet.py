@@ -152,6 +152,52 @@ def enter_fd_side_sheet(
     force: bool = False,
     show_rolls: bool = True,
 ) -> bool:
+    if (
+        not force
+        and not session.fd_side_sheet_active
+        and tile.fd_side_sheet_entry_used
+        and tile.id == session.fd_side_sheet_origin_tile_id
+    ):
+        side_tiles = [candidate for candidate in session.map_state.tiles if candidate.fd_side_sheet]
+        target = None
+        for exit_state in tile.exits:
+            if not exit_state.destination_tile_id:
+                continue
+            candidate = engine._tile_by_id(session, exit_state.destination_tile_id)
+            if candidate is not None and candidate.fd_side_sheet:
+                target = candidate
+                break
+        if target is None and session.fd_side_sheet_visited_tile_ids:
+            target = engine._tile_by_id(session, session.fd_side_sheet_visited_tile_ids[-1])
+            if target is not None and not target.fd_side_sheet:
+                target = None
+        if target is None and side_tiles:
+            target = side_tiles[0]
+        if target is None:
+            session.log.append("No side dungeon entrance is available here.")
+            return False
+        session.fd_side_sheet_active = True
+        session.fd_side_sheet_kind = session.fd_side_sheet_kind or (  # type: ignore[assignment]
+            "citadel" if session.fd_citadel_type else "ruins"
+        )
+        if session.fd_side_sheet_rooms_total <= 0:
+            session.fd_side_sheet_rooms_total = session.fd_citadel_room_count or max(1, len(side_tiles))
+        if target.id not in session.fd_side_sheet_visited_tile_ids:
+            session.fd_side_sheet_visited_tile_ids.append(target.id)
+        session.fd_side_sheet_rooms_entered = max(
+            session.fd_side_sheet_rooms_entered,
+            len(session.fd_side_sheet_visited_tile_ids),
+            1,
+        )
+        session.map_state.current_tile_id = target.id
+        reciprocal = engine._reciprocal_exit_on_tile(target, tile.id)
+        session.current_tile_entry_exit_id = reciprocal.id if reciprocal is not None else None
+        engine._repair_fd_side_sheet_return_route(session)
+        if show_rolls:
+            session.log.append(
+                f"The party re-enters the {fd_side_sheet_kind_label(session.fd_side_sheet_kind)} side sheet."
+            )
+        return True
     if kind == "dark_pits":
         chosen = "dark_pits"
     else:

@@ -1463,6 +1463,7 @@ class SessionAction(BaseModel):
         "fd_secret_passage_unlock_clues",
         "choose_fd_secret_passage_destination",
         "enter_fd_side_sheet",
+        "explore_fd_side_sheet",
         "exit_fd_side_sheet",
         "assign_milestone",
         "bind_scroll_librarian",

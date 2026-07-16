@@ -39,6 +39,7 @@ Hover any badge for rulebook page references.
 | **Revelation** buttons (5) | `fd_hallucination_revelation_available` | `fd_spend_hallucination_revelation` |
 | **Worms / No danger** badges | FD p.55 hallucination status active | Blocks weapons/items or next danger as appropriate |
 | **Enter … sheet** | Ru or ETC tile, exploration | `enter_fd_side_sheet` |
+| **Explore deeper into …** | Active side sheet, room budget not exhausted | `explore_fd_side_sheet` |
 | **Return to main map** | On side-sheet tile | `exit_fd_side_sheet` |
 | **Examine Machinery** | Ruins roll 2-3 room | `resolve_fd_ruins_machinery` |
 | **Psychic Residue choices** | Failed ruins roll 6 Save | `resolve_fd_ruins_psychic_choice` |

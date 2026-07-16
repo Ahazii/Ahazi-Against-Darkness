@@ -3938,6 +3938,140 @@ def test_fd_side_sheet_can_reenter_after_returning_to_origin() -> None:
     assert any("re-enters the side sheet" in entry for entry in session.log)
 
 
+def test_fd_side_sheet_enter_action_reenters_existing_sheet_from_origin() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-side-reenter-action",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_etc_entry_tile(eng)
+    side = TileState(
+        id="side-room",
+        x=5,
+        y=0,
+        tile_key="25",
+        tile_type="room",
+        title="Citadel side room",
+        description="Side room",
+        content_key="fd_trap",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+        exits=[
+            ExitState(
+                id="side-west",
+                label="Return to main map",
+                direction="west",
+                kind="passage",
+                status="open",
+                destination_tile_id=origin.id,
+            )
+        ],
+    )
+    origin.exits = [
+        ExitState(
+            id="origin-east",
+            label="Enter Citadel sheet",
+            direction="east",
+            kind="passage",
+            status="open",
+            destination_tile_id=side.id,
+        )
+    ]
+    origin.fd_side_sheet_entry_used = True
+    session.map_state.tiles = [origin, side]
+    session.map_state.current_tile_id = origin.id
+    session.mode = "exploration"
+    session.fd_side_sheet_active = False
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_side_sheet_origin_tile_id = origin.id
+    session.fd_side_sheet_rooms_total = 21
+    session.fd_side_sheet_rooms_entered = 1
+    session.fd_side_sheet_visited_tile_ids = [side.id]
+    session.fd_citadel_type = "citadel_of_traps"
+
+    eng.advance(session, "enter_fd_side_sheet")
+
+    assert session.map_state.current_tile_id == side.id
+    assert session.fd_side_sheet_active
+    assert origin.exits[0].label == "Enter Citadel sheet"
+    assert side.exits[0].label == "Return to main map"
+    assert not any("No side dungeon entrance" in entry for entry in session.log)
+    assert any("re-enters the Citadel side sheet" in entry for entry in session.log)
+
+
+def test_fd_side_sheet_explore_action_adds_deeper_room_from_return_only_citadel(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-side-deeper-action",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_etc_entry_tile(eng)
+    side = TileState(
+        id="side-room",
+        x=5,
+        y=0,
+        tile_key="25",
+        tile_type="room",
+        footprint_width=5,
+        footprint_height=5,
+        title="Citadel side room",
+        description="Side room",
+        content_key="fd_empty",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+        exits=[
+            ExitState(
+                id="side-west",
+                label="Return to main map",
+                direction="west",
+                kind="passage",
+                status="open",
+                destination_tile_id=origin.id,
+            )
+        ],
+    )
+    origin.exits = [
+        ExitState(
+            id="origin-east",
+            label="Enter Citadel sheet",
+            direction="east",
+            kind="passage",
+            status="open",
+            destination_tile_id=side.id,
+        )
+    ]
+    origin.fd_side_sheet_entry_used = True
+    session.map_state.tiles = [origin, side]
+    session.map_state.current_tile_id = side.id
+    session.mode = "exploration"
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_side_sheet_origin_tile_id = origin.id
+    session.fd_side_sheet_rooms_total = 21
+    session.fd_side_sheet_rooms_entered = 1
+    session.fd_side_sheet_visited_tile_ids = [side.id]
+    session.fd_citadel_type = "citadel_of_traps"
+    monkeypatch.setattr(
+        eng,
+        "_roll_fd_content",
+        lambda *args, **kwargs: {"key": "fd_empty", "description": "Empty.", "objects": [], "enemies": []},
+    )
+
+    eng.advance(session, "explore_fd_side_sheet")
+
+    side_tiles = [tile for tile in session.map_state.tiles if tile.fd_side_sheet]
+    assert len(side_tiles) == 2
+    assert session.fd_side_sheet_active
+    assert session.fd_side_sheet_rooms_entered == 2
+    assert session.map_state.current_tile_id != side.id
+    assert any(exit_state.label == "Return to main map" for exit_state in side.exits)
+    assert any("Citadel room 2/21" in entry for entry in session.log)
+
+
 def test_normalize_labels_active_fd_side_sheet_return_route() -> None:
     eng = engine()
     session = eng.create_session(

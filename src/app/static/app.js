@@ -805,6 +805,8 @@ const ACTION_TOOLTIPS = {
     "River of Oblivion (once per adventure): remove 1 Madness from this hero while the redemption offer is pending (FD p.32).",
   enterFdSideSheet:
     "Enter the citadel or river ruins side dungeon on a separate sheet (FD p.39–40 / p.60). Procedural rooms use Forsaken Ruins or citadel rules.",
+  exploreFdSideSheet:
+    "Explore the next room on this separate side sheet while the Citadel/Ruins room budget remains (FD p.39–40 / p.60).",
   exitFdSideSheet: "Leave the side dungeon sheet and return to the main map element where you entered.",
   fdPrisonersEscape:
     "Prisoners of the Citadel (FD p.60): spend 4 Clues to locate the Secret Exit. It appears in the next room entered; if all rooms are already visited, open it from the first Citadel room.",
@@ -14326,6 +14328,31 @@ function fdSideSheetReturnAvailable(session, tile = currentTile(session)) {
   );
 }
 
+function fdSideSheetExploreLabel(session) {
+  if (session?.fd_side_sheet_kind === "citadel" || session?.fd_citadel_type) return "Explore deeper into Citadel";
+  if (session?.fd_side_sheet_kind === "dark_pits") return "Explore deeper into Dark Pits";
+  if (session?.fd_side_sheet_kind === "ruins") return "Explore deeper into Forsaken Ruins";
+  return "Explore deeper into side sheet";
+}
+
+function fdSideSheetExploreAvailable(session, tile = currentTile(session)) {
+  if (
+    !sessionIsForsakenDepths(session) ||
+    !session?.fd_side_sheet_active ||
+    !tile?.fd_side_sheet ||
+    session.mode !== "exploration" ||
+    session.camped_outside
+  ) {
+    return false;
+  }
+  const entered = session.fd_side_sheet_rooms_entered || 0;
+  const total = session.fd_side_sheet_rooms_total || 0;
+  if (!total || entered >= total) return false;
+  if (tile.trap_key && !tile.trap_resolved) return false;
+  if ((tile.enemies || []).some((enemy) => (enemy.life ?? enemy.current_life ?? 0) > 0)) return false;
+  return true;
+}
+
 const COURTSHIP_REGION_LABELS = {
   seaside: "Seaside",
   riverside: "Riverside",
@@ -19703,7 +19730,7 @@ function currentObjectiveForSession(session) {
       tone: "danger",
     };
   }
-  if (session.ruleset === "forsaken_depths") {
+  if (sessionIsForsakenDepths(session)) {
     if (session.fd_disintegration_pending && Object.keys(session.fd_disintegration_pending).length) {
       return {
         title: "Current objective: choose Disintegration outcome",
@@ -19773,6 +19800,8 @@ function currentObjectiveForSession(session) {
         tone: "quest",
         action: session.fd_citadel_type === "prisoners_citadel" && currentTile(session)?.id === session.fd_prisoners_secret_exit_tile_id
           ? { label: "Open Secret Exit", kind: "advance", advanceAction: "fd_prisoners_escape" }
+          : fdSideSheetExploreAvailable(session, currentTile(session))
+          ? { label: fdSideSheetExploreLabel(session), kind: "advance", advanceAction: "explore_fd_side_sheet" }
           : fdSideSheetReturnAvailable(session, currentTile(session))
           ? { label: "Return to main map", kind: "advance", advanceAction: "exit_fd_side_sheet" }
           : null,
@@ -24655,6 +24684,24 @@ function playerFacingExits(session, tile) {
       virtual_action: "exit_fd_side_sheet",
     });
   }
+  if (fdSideSheetExploreAvailable(session, tile)) {
+    const hasVisibleSideDeeper = exits.some(
+      (exit) =>
+        !exit.destination_tile_id &&
+        exit.status !== "blocked" &&
+        !/return to main map/i.test(exit.label || "")
+    );
+    if (!hasVisibleSideDeeper) {
+      exits.push({
+        id: `virtual-fd-side-deeper-${tile.id}`,
+        label: fdSideSheetExploreLabel(session),
+        direction: "side",
+        kind: "passage",
+        status: "unexplored",
+        virtual_action: "explore_fd_side_sheet",
+      });
+    }
+  }
   return exits;
 }
 
@@ -26371,6 +26418,13 @@ function renderTileDetail(session) {
     setButtonTooltip(returnBtn, ACTION_TOOLTIPS.exitFdSideSheet);
     returnBtn.addEventListener("click", () => advance("exit_fd_side_sheet"));
     info.appendChild(returnBtn);
+  }
+  if (fdSideSheetExploreAvailable(session, tile)) {
+    const deeperBtn = node("button", "secondary", fdSideSheetExploreLabel(session));
+    deeperBtn.type = "button";
+    setButtonTooltip(deeperBtn, ACTION_TOOLTIPS.exploreFdSideSheet);
+    deeperBtn.addEventListener("click", () => advance("explore_fd_side_sheet"));
+    info.appendChild(deeperBtn);
   }
   if (session.fd_side_sheet_active) {
     const modLine = fdCitadelModifierLine(session);
@@ -30180,6 +30234,7 @@ function exitButtonLabel(exit, sideLabel, session) {
 
 function exitTooltip(exit, session, sideLabel) {
   if (exit.virtual_action === "enter_fd_side_sheet") return ACTION_TOOLTIPS.enterFdSideSheet;
+  if (exit.virtual_action === "explore_fd_side_sheet") return ACTION_TOOLTIPS.exploreFdSideSheet;
   if (exit.virtual_action === "exit_fd_side_sheet") return ACTION_TOOLTIPS.exitFdSideSheet;
   const label = sideLabel || titleCase(exit.direction);
   const tile = currentTile(session);

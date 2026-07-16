@@ -1148,6 +1148,7 @@ class RandomDungeonEngine:
             "abyss_plot_resolve_finale",
             "hunt_vampire_sire",
             "enter_fd_side_sheet",
+            "explore_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
             "detached_combat_round",
@@ -1570,6 +1571,8 @@ class RandomDungeonEngine:
             )
         elif action == "enter_fd_side_sheet":
             self._enter_fd_side_sheet(session, show_rolls=show_rolls)
+        elif action == "explore_fd_side_sheet":
+            self._explore_fd_side_sheet(session, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "exit_fd_side_sheet":
             self._exit_fd_side_sheet(session, show_rolls=show_rolls)
         elif action == "burn_scroll":
@@ -15231,6 +15234,35 @@ class RandomDungeonEngine:
                     return tile, exit_state
         return None
 
+    def _fd_side_sheet_deeper_label(self, session: SessionState) -> str:
+        if session.fd_side_sheet_kind == "citadel" or session.fd_citadel_type:
+            return "Explore deeper into Citadel"
+        if session.fd_side_sheet_kind == "dark_pits":
+            return "Explore deeper into Dark Pits"
+        if session.fd_side_sheet_kind == "ruins":
+            return "Explore deeper into Forsaken Ruins"
+        return "Explore deeper into side sheet"
+
+    def _find_current_fd_side_sheet_expansion_exit(
+        self,
+        session: SessionState,
+        current: TileState,
+    ) -> ExitState | None:
+        for exit_state in current.exits:
+            if exit_state.status == "blocked" or exit_state.destination_tile_id:
+                continue
+            if "return to main map" in (exit_state.label or "").lower():
+                continue
+            return exit_state
+        exit_state = self._add_emergency_exit(session, current)
+        if exit_state is None:
+            return None
+        exit_state.label = self._fd_side_sheet_deeper_label(session)
+        exit_state.kind = "passage"
+        exit_state.status = "unexplored"
+        exit_state.destination_tile_id = None
+        return exit_state
+
     def _place_fd_side_sheet_room(
         self,
         session: SessionState,
@@ -15317,6 +15349,42 @@ class RandomDungeonEngine:
         from .forsaken_depths_side_sheet import enter_fd_side_sheet
 
         enter_fd_side_sheet(self, session, tile, show_rolls=show_rolls)
+
+    def _explore_fd_side_sheet(
+        self,
+        session: SessionState,
+        *,
+        show_rolls: bool,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Explore a side dungeon during exploration.")
+            return
+        if not is_fd_ruleset(session) or not session.fd_side_sheet_active:
+            session.log.append("No side dungeon sheet is active.")
+            return
+        current = self._current_tile(session)
+        if current is None or not current.fd_side_sheet:
+            session.log.append("Move onto the active side sheet before exploring deeper.")
+            return
+        from .forsaken_depths_side_sheet import fd_side_sheet_can_expand, fd_side_sheet_kind_label
+
+        if not fd_side_sheet_can_expand(session):
+            label = fd_side_sheet_kind_label(session.fd_side_sheet_kind)
+            session.log.append(f"{label} room budget is complete.")
+            return
+        exit_state = self._find_current_fd_side_sheet_expansion_exit(session, current)
+        if exit_state is None:
+            session.log.append("No open edge is available to place the next side-sheet room.")
+            return
+        if not exit_state.label:
+            exit_state.label = self._fd_side_sheet_deeper_label(session)
+        self._explore(
+            session,
+            exit_id=exit_state.id,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
 
     def _exit_fd_side_sheet(self, session: SessionState, *, show_rolls: bool) -> None:
         if session.mode != "exploration":
