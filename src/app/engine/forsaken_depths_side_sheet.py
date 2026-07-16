@@ -244,6 +244,12 @@ def enter_fd_side_sheet(
         session.current_tile_entry_exit_id = before_state["current_entry_exit_id"]
         session.log.append("No open edge to place the first side-sheet room.")
         return False
+    if chosen == "citadel":
+        side_exit.label = "Enter Citadel sheet"
+    elif chosen == "dark_pits":
+        side_exit.label = "Enter Dark Pits sheet"
+    else:
+        side_exit.label = "Enter Forsaken Ruins sheet"
     engine._explore(
         session,
         exit_id=side_exit.id,
@@ -276,6 +282,7 @@ def enter_fd_side_sheet(
             "The side sheet could not be placed on the map. Choose another open edge or continue from the main map."
         )
         return False
+    engine._repair_fd_side_sheet_return_route(session)
     return session.fd_side_sheet_active
 
 
@@ -305,6 +312,7 @@ def exit_fd_side_sheet(
     if origin is None:
         session.log.append("The side sheet origin map element is no longer on the map.")
         return False
+    engine._repair_fd_side_sheet_return_route(session)
     session.fd_side_sheet_active = False
     session.fd_magic_citadel_mr_active = False
     session.fd_prisoners_secret_exit_pending = False

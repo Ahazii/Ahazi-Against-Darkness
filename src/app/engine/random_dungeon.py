@@ -1050,7 +1050,12 @@ class RandomDungeonEngine:
                 "resolve_fd_soulbinding_choice",
                 "resolve_fd_ruins_psychic_choice",
             }
-            if action not in fd_choice_actions and pending_fd_player_choice(session):
+            blessing_action = (
+                action in {"cast_spell", "burn_scroll", "surgeon_burn_scroll"}
+                and str(spell_name or "").strip().lower().replace(" ", "_") == "blessing"
+                and bool(session.fd_soulbinding_pending)
+            )
+            if action not in fd_choice_actions and not blessing_action and pending_fd_player_choice(session):
                 session.log.append(pending_fd_player_choice_label(session))
                 return self._touch(session)
         if self._fd_block_hallucinated_item_action(session, action, character_id):
@@ -2404,6 +2409,24 @@ class RandomDungeonEngine:
 
             was_visited = existing.id in session.visited_tile_ids
             mark_tile_visited(session, existing.id)
+            if existing.fd_side_sheet and not session.fd_side_sheet_active:
+                session.fd_side_sheet_active = True
+                session.fd_side_sheet_origin_tile_id = session.fd_side_sheet_origin_tile_id or current.id
+                if session.fd_side_sheet_kind is None:
+                    session.fd_side_sheet_kind = "citadel" if session.fd_citadel_type else "ruins"
+                if session.fd_side_sheet_rooms_total <= 0:
+                    session.fd_side_sheet_rooms_total = session.fd_citadel_room_count or max(
+                        1,
+                        len([tile for tile in session.map_state.tiles if tile.fd_side_sheet]),
+                    )
+                if existing.id not in session.fd_side_sheet_visited_tile_ids:
+                    session.fd_side_sheet_visited_tile_ids.append(existing.id)
+                session.fd_side_sheet_rooms_entered = max(
+                    session.fd_side_sheet_rooms_entered,
+                    len(session.fd_side_sheet_visited_tile_ids),
+                )
+                self._repair_fd_side_sheet_return_route(session)
+                session.log.append("The party re-enters the side sheet.")
             self._fd_on_area_entered(session, existing, show_rolls=show_rolls)
             if was_visited:
                 self._maybe_trigger_alchemist_revisit_trap(
@@ -4680,6 +4703,8 @@ class RandomDungeonEngine:
             changed = True
         if self._repair_phantom_fd_side_sheet(session):
             changed = True
+        if self._repair_fd_side_sheet_return_route(session):
+            changed = True
         current = self._current_tile(session)
         if current is not None and self._clear_fd_side_sheet_if_returned_to_origin(session, current):
             changed = True
@@ -4774,13 +4799,13 @@ class RandomDungeonEngine:
         origin = self._tile_by_id(session, session.fd_side_sheet_origin_tile_id or "")
         if origin is None or tile.id != origin.id:
             return False
-        self._clear_fd_side_sheet_state(
-            session,
-            origin=origin,
-            log_message=(
-                f"The party returns to {origin.title} from the side sheet; "
-                "the side-sheet marker is cleared."
-            ),
+        self._repair_fd_side_sheet_return_route(session)
+        session.fd_side_sheet_active = False
+        session.fd_magic_citadel_mr_active = False
+        session.current_tile_entry_exit_id = None
+        session.log.append(
+            f"The party returns to {origin.title} from the side sheet; "
+            "the active side-sheet marker is cleared."
         )
         return True
 
@@ -15117,6 +15142,72 @@ class RandomDungeonEngine:
         )
         origin.exits.append(exit_state)
         return exit_state
+
+    def _fd_side_sheet_entry_label(self, session: SessionState) -> str:
+        if session.fd_side_sheet_kind == "citadel" or session.fd_citadel_type:
+            return "Enter Citadel sheet"
+        if session.fd_side_sheet_kind == "dark_pits":
+            return "Enter Dark Pits sheet"
+        if session.fd_side_sheet_kind == "ruins":
+            return "Enter Forsaken Ruins sheet"
+        return "Enter side sheet"
+
+    def _repair_fd_side_sheet_return_route(self, session: SessionState) -> bool:
+        if not session.fd_side_sheet_active or not session.fd_side_sheet_origin_tile_id:
+            return False
+        origin = self._tile_by_id(session, session.fd_side_sheet_origin_tile_id)
+        if origin is None:
+            return False
+        current = self._current_tile(session)
+        side_tile = current if current is not None and current.fd_side_sheet else None
+        if side_tile is None:
+            for exit_state in origin.exits:
+                if not exit_state.destination_tile_id:
+                    continue
+                candidate = self._tile_by_id(session, exit_state.destination_tile_id)
+                if candidate is not None and candidate.fd_side_sheet:
+                    side_tile = candidate
+                    break
+        if side_tile is None:
+            return False
+        changed = False
+        origin_exit = next(
+            (
+                exit_state
+                for exit_state in origin.exits
+                if exit_state.destination_tile_id == side_tile.id or exit_state.label == "Side sheet"
+            ),
+            None,
+        )
+        if origin_exit is None:
+            origin_exit = self._ensure_side_sheet_exit(session, origin)
+            changed = True
+        if origin_exit is None:
+            return changed
+        label = self._fd_side_sheet_entry_label(session)
+        if origin_exit.label != label:
+            origin_exit.label = label
+            changed = True
+        if origin_exit.destination_tile_id != side_tile.id:
+            origin_exit.destination_tile_id = side_tile.id
+            changed = True
+        if origin_exit.status != "open":
+            origin_exit.status = "open"
+            changed = True
+        reciprocal = self._reciprocal_exit_on_tile(side_tile, origin.id, direction=OPPOSITE[origin_exit.direction])
+        if reciprocal is None:
+            reciprocal = self._set_reciprocal_exit(side_tile, origin, origin_exit)
+            changed = True
+        if reciprocal.label != "Return to main map":
+            reciprocal.label = "Return to main map"
+            changed = True
+        if reciprocal.destination_tile_id != origin.id:
+            reciprocal.destination_tile_id = origin.id
+            changed = True
+        if reciprocal.status != "open":
+            reciprocal.status = "open"
+            changed = True
+        return changed
 
     def _find_fd_side_sheet_expansion_exit(
         self,

@@ -272,7 +272,7 @@
     {
       "roll": "5",
       "trap_key": "fd_soulbinding_trap",
-      "result": "Soulbinding Trap — rear hero Saves or is bound to this room; app prompts 1 Life loss or 1 Madness for each later area away until Blessing (FD p.58).",
+      "result": "Soulbinding Trap — rear hero Saves or is bound to this room; app prompts 1 Life loss or 1 Madness for each later area away until Blessing frees the hero (FD p.58).",
       "target": "rear",
       "save": "defense",
       "damage": 0,

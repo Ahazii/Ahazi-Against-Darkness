@@ -409,3 +409,13 @@ def resolve_fd_soulbinding_choice(
         session.log.extend(_grant_madness(session, member, source="Soulbinding Trap", log=[]))
         return
     session.log.append("Choose 1 Life loss or 1 Madness for Soulbinding (FD p.58).")
+
+
+def clear_fd_soulbinding_with_blessing(session: SessionState, member: PartyMemberState) -> list[str]:
+    before = list(member.statuses)
+    member.statuses = [status for status in member.statuses if not status.startswith(FD_SOULBOUND_PREFIX)]
+    removed = len(before) - len(member.statuses)
+    if not removed:
+        return []
+    session.fd_soulbinding_pending.pop(member.character_id, None)
+    return [f"Blessing frees {member.name} from Soulbinding (FD p.58)."]
