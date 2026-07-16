@@ -169,7 +169,7 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Forsaken Depths | Horde of Dark Elves | `fd_horde` | Forsaken Depths Horde table p.42 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Horde of Lizardmen of the Deep | `fd_horde` | Forsaken Depths Horde table p.42 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Horde of Goblins of the Deep | `fd_horde` | Forsaken Depths Horde table p.42 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Armored Forsaken Depths Troll | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Armored Forsaken Depths Troll | `fd_boss` | Forsaken Depths Boss Monster table p.44 | magic_resistance:HCL-1, special_rules:armor_deflection, treasure_modifier:+2 | implemented with regression tests; live reconfirm pending |
 | Forsaken Depths | Deep Hobgoblin Champion | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Lionman Champion | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Cave Master Psionic | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |

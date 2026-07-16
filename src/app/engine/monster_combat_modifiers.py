@@ -8,7 +8,8 @@ from ..schemas import EnemyState, PartyMemberState, SessionState
 from .combat_modifiers import poison_save_succeeds
 from .dice import roll_d6
 from .expert_skill_effects import expert_morale_modifier
-from .monster_template_effects import party_hcl, resolve_effect_level
+from .magic_weapons import is_magic_weapon
+from .monster_template_effects import chance_roll_succeeds, party_hcl, resolve_effect_level
 from .weapons import WeaponProfile, _is_skeleton
 
 if TYPE_CHECKING:
@@ -70,6 +71,39 @@ def pc_attack_modifier_from_template(
                     adj += penalty
                     notes.append(f"Effect: arrows hit {enemy.name} at {penalty}.")
     return adj, notes
+
+
+def armor_deflection_rule(template: dict | None) -> dict[str, Any] | None:
+    if not template:
+        return None
+    for rule in template.get("special_rules", []) or []:
+        if str(rule.get("type", "")).lower() == "armor_deflection":
+            return dict(rule)
+    return None
+
+
+def armor_deflects_pc_blow(
+    enemy: EnemyState,
+    weapon: WeaponProfile | None,
+    template: dict | None,
+    *,
+    attack_label: str,
+    show_rolls: bool,
+) -> tuple[bool, list[str]]:
+    rule = armor_deflection_rule(template)
+    if rule is None:
+        return False, []
+    applies_to = str(rule.get("applies_to") or rule.get("source") or "non_magical_attacks").lower()
+    if "non_magical" in applies_to and weapon is not None and is_magic_weapon(weapon.item):
+        return False, []
+    chance = str(rule.get("chance", "1-in-6"))
+    deflected, rolled, need, sides = chance_roll_succeeds(chance)
+    log: list[str] = []
+    if show_rolls:
+        log.append(f"{enemy.name} armor deflection: d{sides} = {rolled} (deflects on {need} or less).")
+    if deflected:
+        log.append(f"{enemy.name}'s armor deflects the non-magical {attack_label}; no damage is dealt.")
+    return deflected, log
 
 
 def foe_frenzy_attack_bonus(

@@ -210,8 +210,17 @@
       "attacks": 4,
       "tags": ["boss", "troll", "forsaken_depths"],
       "treasure_modifier": 2,
+      "magic_resistance": "HCL-1",
+      "special_rules": [
+        {
+          "type": "armor_deflection",
+          "chance": "4-in-6",
+          "applies_to": "non_magical_attacks",
+          "description": "Any blow from a non-magical source has a 4-in-6 chance of being deflected by the troll's armor and thick skin."
+        }
+      ],
       "reactions": [{"roll": "1-3", "key": "bribe", "result": "The armored troll demands 200 gp or a gem."}, {"roll": "4-6", "key": "fight", "result": "The armored troll attacks!", "foes_first": true}],
-      "notes": "HCL+2 boss (FD p.44)."
+      "notes": "HCL+2 boss, HCL+2 Life, 4 attacks, normal morale, 1 FD Treasure +2, HCL-1 Magic Resistance, and 4-in-6 deflection against non-magical blows (FD p.44)."
     },
     {
       "name": "Deep Hobgoblin Champion",

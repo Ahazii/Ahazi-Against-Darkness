@@ -204,7 +204,7 @@
     {"roll": "6", "name": "Horde of Goblins of the Deep", "enemy_category": "horde", "summary": "HCL horde, HCL-1 Life, opening javelin volley, Morale -1, L drops by 2 at half Life.", "source_page": 42}
   ],
   "fd_boss_table": [
-    {"roll": "1", "name": "Armored Forsaken Depths Troll", "enemy_category": "boss", "summary": "HCL+2 boss, HCL+2 Life, 4 attacks.", "source_page": 44},
+    {"roll": "1", "name": "Armored Forsaken Depths Troll", "enemy_category": "boss", "summary": "HCL+2 boss, HCL+2 Life, 4 attacks, normal morale, FD Treasure +2, HCL-1 Magic Resistance, 4-in-6 deflection against non-magical blows.", "source_page": 44},
     {"roll": "2", "name": "Deep Hobgoblin Champion", "enemy_category": "boss", "summary": "HCL+4 boss, 7 Life, 3 attacks.", "source_page": 44},
     {"roll": "3", "name": "Chaos Lionman Champion", "enemy_category": "boss", "summary": "HCL+2 boss, HCL Life, 3 attacks.", "source_page": 44},
     {"roll": "4", "name": "Cave Master Psionic", "enemy_category": "boss", "summary": "HCL+3 boss, 10 Life.", "source_page": 44},

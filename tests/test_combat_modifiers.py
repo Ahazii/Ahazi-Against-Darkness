@@ -4,6 +4,7 @@ from app.engine import combat
 from app.engine.combat_modifiers import (
     envenomed_weapon_kind,
     enemy_magic_resist_bonus,
+    enemy_magic_resistance_level,
     has_blade_poison,
     resolve_spell_effect,
     spell_mr_penetration_level,
@@ -11,7 +12,7 @@ from app.engine.combat_modifiers import (
 )
 from app.engine.madness import apply_envenom_weapon
 from app.engine.spells import resolve_spell_cast
-from app.schemas import EnemyState, PartyMemberState
+from app.schemas import EnemyState, PartyMemberState, SessionState
 
 
 def member(*, inventory: list[str] | None = None) -> PartyMemberState:
@@ -115,6 +116,39 @@ def test_magic_resist_raises_spell_target_level() -> None:
     assert enemy_magic_resist_bonus(foe) == 2
     assert spell_target_level(foe) == foe.level
     assert spell_mr_penetration_level(foe) == foe.level + 2
+
+
+def test_hcl_magic_resistance_tag_sets_penetration_level() -> None:
+    from app.schemas import MapState, TileState
+
+    hero = member()
+    hero.level = 9
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=[hero],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")],
+            current_tile_id="t",
+        ),
+        created_at="now",
+        updated_at="now",
+    )
+    foe = EnemyState(
+        id="troll",
+        name="Armored Forsaken Depths Troll",
+        category="boss",
+        level=11,
+        life=11,
+        max_life=11,
+        tags=["boss", "magic_resistance:HCL-1"],
+    )
+
+    assert enemy_magic_resistance_level(foe, session=session) == 8
+    assert spell_mr_penetration_level(foe, session=session) == 8
 
 
 def test_spell_connect_failure_logs_roll(monkeypatch) -> None:

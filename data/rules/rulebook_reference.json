@@ -1320,8 +1320,8 @@
         "penetrate",
         "connect"
       ],
-      "summary": "Two-step rolls: connect vs foe Level, then penetrate vs Level + MR.",
-      "body": "Offensive spells against foes with Magic Resistance (MR):\n\n1. Spellcasting roll must meet or beat the foe's Level (connect).\n2. If connected, roll again to penetrate — target number is foe Level + MR.\n\nFailed penetration wastes the spell slot for that attempt. Defensive and non-targeted spells may bypass MR per spell description.\n\nCasters add class Level to spellcasting rolls.",
+      "summary": "Two-step rolls: connect vs foe Level, then penetrate vs Level + MR or the printed MR level.",
+      "body": "Offensive spells against foes with Magic Resistance (MR):\n\n1. Spellcasting roll must meet or beat the foe's Level (connect).\n2. If connected, roll again to penetrate — target number is foe Level + MR, or a fixed printed MR level such as HCL-1/HCL/HCL+1 when the foe row gives one.\n\nFailed penetration wastes the spell slot for that attempt. Defensive and non-targeted spells may bypass MR per spell description.\n\nCasters add class Level to spellcasting rolls.",
       "implementation_status": "implemented"
     },
     {

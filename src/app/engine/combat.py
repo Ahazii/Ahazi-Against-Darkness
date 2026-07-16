@@ -1120,6 +1120,18 @@ def _apply_pc_hit(
         if blocked:
             log.append(block_reason)
             return living_enemies
+        from .monster_combat_modifiers import armor_deflects_pc_blow
+
+        deflected, deflect_log = armor_deflects_pc_blow(
+            target,
+            weapon,
+            context.lookup_monster_template(target) if context.lookup_monster_template else None,
+            attack_label=attack_label,
+            show_rolls=context.round_show_rolls,
+        )
+        log.extend(deflect_log)
+        if deflected:
+            return living_enemies
         from .monster_template_effects import mark_enemy_hit
 
         mark_enemy_hit(context, target.id)
@@ -1286,6 +1298,18 @@ def _apply_pc_hit(
     )
     if blocked:
         log.append(block_reason)
+        return living_enemies
+    from .monster_combat_modifiers import armor_deflects_pc_blow
+
+    deflected, deflect_log = armor_deflects_pc_blow(
+        target,
+        weapon,
+        context.lookup_monster_template(target) if context.lookup_monster_template else None,
+        attack_label=attack_label,
+        show_rolls=context.round_show_rolls,
+    )
+    log.extend(deflect_log)
+    if deflected:
         return living_enemies
     from .monster_template_effects import mark_enemy_hit
 

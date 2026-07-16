@@ -11,7 +11,7 @@ def enemy_has_poison(enemy: EnemyState) -> bool:
 
 
 def enemy_has_magic_resistance(enemy: EnemyState, session: SessionState | None = None) -> bool:
-    return enemy_magic_resist_bonus(enemy, session=session) > 0
+    return enemy_magic_resist_bonus(enemy, session=session) > 0 or enemy_magic_resistance_level(enemy, session=session) is not None
 
 
 def enemy_magic_resist_bonus(enemy: EnemyState, session: SessionState | None = None) -> int:
@@ -26,6 +26,41 @@ def enemy_magic_resist_bonus(enemy: EnemyState, session: SessionState | None = N
     if "dragon" in tags:
         bonus += 1
     return bonus
+
+
+def enemy_magic_resistance_level(enemy: EnemyState, session: SessionState | None = None) -> int | None:
+    if session is not None and session.fd_magic_citadel_mr_active:
+        return None
+    hcl = 1
+    if session is not None and session.party:
+        living = [member for member in session.party if member.current_life > 0] or session.party
+        hcl = max(member.level for member in living)
+    for tag in enemy.tags:
+        text = str(tag).strip().lower()
+        if text.startswith("magic_resistance_level:"):
+            try:
+                return max(1, int(text.split(":", 1)[1]))
+            except ValueError:
+                continue
+        if text.startswith("magic_resistance:"):
+            value = text.split(":", 1)[1].replace(" ", "")
+            if value.startswith("hcl+"):
+                try:
+                    return max(1, hcl + int(value[4:]))
+                except ValueError:
+                    continue
+            if value.startswith("hcl-"):
+                try:
+                    return max(1, hcl - int(value[4:]))
+                except ValueError:
+                    continue
+            if value == "hcl":
+                return max(1, hcl)
+            if value.startswith("l") and value[1:].isdigit():
+                return max(1, int(value[1:]))
+            if value.isdigit():
+                return max(1, int(value))
+    return None
 
 
 def spell_target_level(enemy: EnemyState) -> int:
@@ -49,6 +84,9 @@ def ranged_or_spell_target_level(enemy: EnemyState) -> int:
 
 def spell_mr_penetration_level(enemy: EnemyState, session: SessionState | None = None) -> int:
     """Level + MR tiers for the penetration roll (p.97 step 2)."""
+    override = enemy_magic_resistance_level(enemy, session=session)
+    if override is not None:
+        return override
     return enemy.level + enemy_magic_resist_bonus(enemy, session=session)
 
 
@@ -113,7 +151,8 @@ def resolve_spell_effect(
         return False, log, final_total, exploded
 
     mr = enemy_magic_resist_bonus(enemy, session=session)
-    if mr <= 0:
+    mr_level = enemy_magic_resistance_level(enemy, session=session)
+    if mr <= 0 and mr_level is None:
         if session is not None and session.fd_magic_citadel_mr_active and show_rolls:
             log.append("Magic Citadel: magic resistance suspended (FD p.60).")
         return True, log, final_total, exploded
@@ -122,8 +161,9 @@ def resolve_spell_effect(
     pen_final = pen_total + modifier
     pen_level = spell_mr_penetration_level(enemy, session=session)
     if show_rolls:
+        mr_label = f"L{mr_level}" if mr_level is not None else f"+{mr}"
         log.append(
-            f"{label} (penetrate MR +{mr}): {' + '.join(str(value) for value in pen_rolls)} + "
+            f"{label} (penetrate MR {mr_label}): {' + '.join(str(value) for value in pen_rolls)} + "
             f"{modifier} = {pen_final} vs L{pen_level}."
         )
     if pen_final >= pen_level:

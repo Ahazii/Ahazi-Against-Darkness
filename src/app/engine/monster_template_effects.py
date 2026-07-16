@@ -35,6 +35,8 @@ def template_combat_tags(template: dict) -> list[str]:
     tags: list[str] = []
     if template.get("never_test_morale"):
         tags.append("no_morale")
+    if template.get("magic_resistance") is not None:
+        tags.append(f"magic_resistance:{template.get('magic_resistance')}")
     for effect in template.get("per_turn_effects", []):
         if str(effect.get("type", "")).lower() != "life_drain":
             continue
@@ -82,6 +84,8 @@ def resolve_effect_level(value: int | str | None, *, hcl: int, default: int = 1)
     text = str(value).strip().upper().replace(" ", "")
     if text.startswith("HCL+"):
         return hcl + int(text[4:])
+    if text.startswith("HCL-"):
+        return hcl - int(text[4:])
     if text.startswith("L") and text[1:].isdigit():
         return int(text[1:])
     if text.isdigit():

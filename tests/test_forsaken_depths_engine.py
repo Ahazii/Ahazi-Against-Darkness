@@ -183,6 +183,98 @@ def test_fd_spider_templates_record_printed_special_rules() -> None:
     assert any(rule["type"] == "spawn_spiders_on_character_death" for rule in deep["special_rules"])
 
 
+def test_fd_armored_troll_records_printed_mr_and_deflection() -> None:
+    monsters = engine().rules.monsters()
+    troll = next(row for row in monsters["fd_boss"] if row["name"] == "Armored Forsaken Depths Troll")
+
+    assert troll["magic_resistance"] == "HCL-1"
+    deflect = next(rule for rule in troll["special_rules"] if rule["type"] == "armor_deflection")
+    assert deflect["chance"] == "4-in-6"
+    assert deflect["applies_to"] == "non_magical_attacks"
+
+
+def test_fd_armored_troll_deflects_non_magical_weapon_hit(monkeypatch) -> None:
+    from app.engine.combat import CombatContext, _resolve_pc_attack
+
+    eng = engine()
+    hero = _party_member()
+    troll = EnemyState(
+        id="troll",
+        name="Armored Forsaken Depths Troll",
+        category="boss",
+        level=11,
+        life=11,
+        max_life=11,
+    )
+    context = CombatContext(
+        lookup_monster_template=eng._monster_template_for_enemy,
+        round_show_rolls=True,
+        round_explain_math=True,
+    )
+    log: list[str] = []
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (20, [10, 10]))
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_d6", lambda: 4)
+
+    _resolve_pc_attack(
+        hero,
+        troll,
+        show_rolls=True,
+        explain_math=True,
+        party_attack_bonus=0,
+        subdual=False,
+        missile=False,
+        living_enemies=[troll],
+        log=log,
+        context=context,
+    )
+
+    assert troll.life == 11
+    assert any("armor deflection" in entry.lower() for entry in log)
+    assert any("no damage is dealt" in entry.lower() for entry in log)
+
+
+def test_fd_armored_troll_does_not_deflect_magic_weapon_hit(monkeypatch) -> None:
+    from app.engine.combat import CombatContext, _resolve_pc_attack
+
+    eng = engine()
+    hero = _party_member()
+    hero.inventory = ["Magic Bow (Bow, +1 Attack)"]
+    troll = EnemyState(
+        id="troll",
+        name="Armored Forsaken Depths Troll",
+        category="boss",
+        level=11,
+        life=11,
+        max_life=11,
+    )
+    context = CombatContext(
+        lookup_monster_template=eng._monster_template_for_enemy,
+        round_show_rolls=True,
+    )
+    log: list[str] = []
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (20, [10, 10]))
+    monkeypatch.setattr(
+        "app.engine.monster_template_effects.roll_d6",
+        lambda: (_ for _ in ()).throw(AssertionError("magic weapons bypass armor deflection")),
+    )
+
+    _resolve_pc_attack(
+        hero,
+        troll,
+        show_rolls=True,
+        explain_math=True,
+        party_attack_bonus=0,
+        subdual=False,
+        missile=True,
+        living_enemies=[troll],
+        log=log,
+        context=context,
+    )
+
+    assert troll.life < 11
+    assert not any("armor deflection" in entry.lower() for entry in log)
+
+
 def test_forsaken_depths_normalize_repairs_missing_start_exit(monkeypatch) -> None:
     eng = engine()
     monkeypatch.setattr(random_dungeon, "roll_fd_dungeon_start_key", lambda: "16")
