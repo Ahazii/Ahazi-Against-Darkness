@@ -295,10 +295,11 @@ class DungeonTableRoller:
         silk_already_found: bool = False,
         _depth: int = 0,
         allow_jackpot: bool = True,
+        fixed_roll: int | None = None,
     ) -> TreasureOutcome:
         if _depth > 8:
             return TreasureOutcome("Treasure roll limit reached.", 0, [], [])
-        raw_roll = random.randint(0, 10)
+        raw_roll = fixed_roll if fixed_roll is not None else random.randint(0, 10)
         roll = max(0, min(10, raw_roll + treasure_bonus))
         log: list[str] = []
         if show_rolls:

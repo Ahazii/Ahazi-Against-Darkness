@@ -12301,6 +12301,28 @@ class RandomDungeonEngine:
             roll_fd_citadel(self, session, tile, show_rolls=show_rolls, fixed_roll=roll)
             enter_fd_side_sheet(self, session, tile, kind="citadel", force=True, show_rolls=show_rolls)
             return
+        if kind == "fd_treasure":
+            from .forsaken_depths_map import is_fd_ruleset
+
+            if not is_fd_ruleset(session) or roll is None or not 0 <= roll <= 10:
+                session.log.append("Choose an available Forsaken Depths Treasure row from FD p.62.")
+                return
+            if tile.pending_treasure_choice or tile.treasure_gold or tile.treasure_items:
+                session.log.append("Claim or resolve the current room treasure before forcing another FD treasure row.")
+                return
+            outcome = self.table_roller.roll_fd_treasure(
+                show_rolls=show_rolls,
+                silk_already_found=session.fd_silk_treasure_used,
+                fixed_roll=roll,
+            )
+            row = self.table_roller.lookup("fd_treasure_table", roll)
+            label = row.get("result") if row else outcome.summary
+            session.log.append(f"Developer playtest override: Forsaken Depths Treasure row {roll} - {label}")
+            tile.content_key = tile.content_key or "developer_fd_treasure"
+            if not any("treasure" in item.lower() for item in tile.objects):
+                tile.objects.append("Treasure")
+            self._stage_treasure_outcome(session, tile, outcome, show_rolls=show_rolls)
+            return
         if kind == "fd_event":
             from .forsaken_depths_content import apply_fd_event
             from .forsaken_depths_map import is_fd_ruleset

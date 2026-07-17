@@ -2274,7 +2274,8 @@ def test_fd_playtest_controls_follow_locked_supplement_snapshot() -> None:
     assert 'new Option("FD foe encounter", "fd_foe")' in body
     assert 'new Option("Forsaken Depths Event", "fd_event")' in body
     assert 'new Option("Forsaken Depths Citadel", "fd_citadel")' in body
-    assert 'const dieLabel = kind.value === "fd_event" ? "d10" : "d6";' in body
+    assert 'new Option("Forsaken Depths Treasure row", "fd_treasure")' in body
+    assert 'kind.value === "fd_treasure" ? "row" : "d6"' in body
     assert 'const previousKind = developerPlaytestControls.dataset.kind || (isAbyss ? "abyss_foe" : isForsakenDepths ? "fd_foe" : "ee_foe");' in body
 
 

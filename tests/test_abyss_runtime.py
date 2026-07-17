@@ -286,6 +286,29 @@ def test_session_action_accepts_forsaken_depths_named_foe_playtest() -> None:
     assert action.playtest_kind == "fd_foe"
 
 
+def test_session_action_accepts_forsaken_depths_event_and_treasure_playtests() -> None:
+    event = SessionAction(action="developer_playtest", playtest_kind="fd_event", playtest_roll=10)
+    treasure = SessionAction(action="developer_playtest", playtest_kind="fd_treasure", playtest_roll=7)
+
+    assert event.playtest_kind == "fd_event"
+    assert treasure.playtest_kind == "fd_treasure"
+
+
+def test_developer_playtest_stages_selected_forsaken_depths_treasure_row() -> None:
+    eng = _engine()
+    session = eng.create_session("fd-treasure-playtest", "party-1", [_member()], ruleset="forsaken_depths")
+    tile = TileState(id="fd-treasure-tile", x=0, y=0, tile_key="11", tile_type="room", title="Test room", description="Test")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+
+    eng.advance(session, "developer_playtest", playtest_kind="fd_treasure", playtest_roll=7)
+
+    assert tile.pending_treasure_choice == "fd_silver_weapons_or_arrows"
+    assert "Treasure" in tile.objects
+    assert any("Developer playtest override: Forsaken Depths Treasure row 7" in entry for entry in session.log)
+
+
 def test_developer_playtest_creates_selected_expanded_edition_quest() -> None:
     eng = _engine()
     session = eng.create_session("ee-quest-playtest", "party-1", [_member()], ruleset="ee")

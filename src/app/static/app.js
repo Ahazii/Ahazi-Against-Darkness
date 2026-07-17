@@ -18641,7 +18641,8 @@ function renderDeveloperPlaytestControls(session) {
     kind.append(
       new Option("FD foe encounter", "fd_foe"),
       new Option("Forsaken Depths Event", "fd_event"),
-      new Option("Forsaken Depths Citadel", "fd_citadel")
+      new Option("Forsaken Depths Citadel", "fd_citadel"),
+      new Option("Forsaken Depths Treasure row", "fd_treasure")
     );
   }
   if (isExpandedEdition) {
@@ -18729,14 +18730,31 @@ function renderDeveloperPlaytestControls(session) {
         "The Passage",
         "Hidden Treasure Chamber",
       ];
+    } else if (kind.value === "fd_treasure") {
+      labels = [
+        "Food and fine wine",
+        "Common equipment up to 50gp",
+        "Precious silk",
+        "10d6+10gp OR Masterwork weapon",
+        "Gem",
+        "Jewelry",
+        "Masks of Thar-Tizan",
+        "10 silvered melee weapons / missiles / bow",
+        "Potions OR scrolls",
+        "2 Clues OR magic item",
+        "Jackpot",
+      ];
     } else if (kind.value === "ee_quest") {
       labels = ["Bring me its head", "Bring me Gold", "I want it alive", "Bring me that", "Let peace be your way", "Slay all the Foes"];
     } else {
       labels = ["Ghost Citadel", "Crowded Citadel", "Citadel of Traps", "Prisoners of the Citadel", "Citadel of Dead Things", "Magic Citadel"];
     }
-    const dieLabel = kind.value === "fd_event" ? "d10" : "d6";
-    labels.forEach((label, index) => roll.appendChild(new Option(`${dieLabel} = ${index + 1} - ${label}`, String(index + 1))));
-    roll.value = [...roll.options].some((option) => option.value === selected) ? selected : "1";
+    const dieLabel = kind.value === "fd_event" ? "d10" : kind.value === "fd_treasure" ? "row" : "d6";
+    labels.forEach((label, index) => {
+      const value = kind.value === "fd_treasure" ? index : index + 1;
+      roll.appendChild(new Option(`${dieLabel} = ${value} - ${label}`, String(value)));
+    });
+    roll.value = [...roll.options].some((option) => option.value === selected) ? selected : (kind.value === "fd_treasure" ? "0" : "1");
   };
 
   const forceLeader = document.createElement("label");
