@@ -400,7 +400,116 @@ def _tag_scene_branch_label(text: str, start: int, end: int) -> str:
     prefix = text[max(0, start - 180) : end].strip()
     sentence_start = max(prefix.rfind(". "), prefix.rfind("? "), prefix.rfind("! "), prefix.rfind(": "))
     label = prefix[sentence_start + 2 :].strip() if sentence_start >= 0 else prefix
+    lower_label = label.lower()
+    if lower_label.startswith(("if so", "go to", "read scene", "play scene", "playing scene")):
+        before_label = prefix[: sentence_start + 2].rstrip() if sentence_start >= 0 else ""
+        question_end = before_label.rfind("?")
+        if question_end >= 0:
+            question_start = max(
+                before_label.rfind(". ", 0, question_end),
+                before_label.rfind("! ", 0, question_end),
+                before_label.rfind(": ", 0, question_end),
+            )
+            question = before_label[question_start + 2 : question_end + 1].strip()
+            if question:
+                label = f"{question} {label}".strip()
     return " ".join(label.split())[:180] or "Follow scene branch"
+
+
+def _strip_tag_scene_routing(text: str) -> str:
+    import re
+
+    cleaned = re.sub(
+        r"(?i)\b(?:if you (?:want to )?investigate|to investigate),?\s*(?:go|read|play)\s+(?:to\s+)?Scene\s+\d+\b\.?",
+        "",
+        text,
+    )
+    cleaned = re.sub(
+        r"(?i)\b(?:go|read|play)\s+(?:to\s+)?Scene\s+\d+\s+if you (?:want to )?investigate\b\.?",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(?i)\b(?:and\s+)?(?:go|read|play|playing|continue\s+investigating\s+by\s+playing)\s+(?:to\s+)?Scene\s+\d+\b\.?",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(r"\s+([?.!,;:])", r"\1", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = cleaned.replace("starshaped", "star-shaped").replace("Starshaped", "Star-shaped")
+    return cleaned.strip(" .;")
+
+
+def _ensure_sentence_punctuation(text: str) -> str:
+    value = text.strip()
+    return value if not value or value.endswith((".", "!", "?")) else f"{value}."
+
+
+def _tag_player_branch_label(branch_label: str, target_scene: str) -> str:
+    label = " ".join(str(branch_label or "").split())
+    label = _strip_tag_scene_routing(label)
+    label = label.strip(" -:.;,")
+    lower = label.lower()
+    if lower.startswith("if so,"):
+        label = label[6:].strip()
+    elif lower == "if so":
+        label = ""
+    if label.lower().startswith("choose one of your characters"):
+        label = f"Try this approach: {label}"
+    if not label:
+        label = f"Follow {target_scene}"
+    return label[:180]
+
+
+def _tag_branch_display_label(branch: dict[str, Any], scene_text: str) -> str:
+    target = str(branch.get("target_scene") or "").strip()
+    if scene_text and target:
+        for extracted in _extract_tag_scene_branches(0, scene_text):
+            if extracted.get("target_scene") == target:
+                return str(extracted.get("label") or "").strip()
+    return _tag_player_branch_label(str(branch.get("source_label") or branch.get("label") or f"Follow {target}"), target)
+
+
+def _tag_player_scene_body(text: str) -> str:
+    import re
+
+    body = " ".join(str(text or "").split())
+    if not body:
+        return ""
+    lower = body.lower()
+    for marker in ("will you:", "will you "):
+        index = lower.find(marker)
+        if index >= 0:
+            body = body[:index].strip()
+            break
+    if "Scene " in body or "scene " in body:
+        sentences = re.split(r"(?<=[.!?])\s+", body)
+        kept = [sentence for sentence in sentences if not _scene_refs_from_text(sentence)]
+        if kept:
+            body = " ".join(kept)
+    body = _strip_tag_scene_routing(body)
+    return _ensure_sentence_punctuation(body) or "Resolve this extracted Adventures Guild scene."
+
+
+def _tag_terminal_scene_label(text: str) -> str:
+    import re
+
+    body = " ".join(str(text or "").split())
+    match = re.search(r"(?i)\bYou may decide that[^.]+", body)
+    if match:
+        return match.group(0).strip(" .")
+    return "Leave or resolve this scene"
+
+
+def _tag_player_rumor_body(text: str) -> str:
+    body = _strip_tag_scene_routing(" ".join(str(text or "").split()))
+    if not body:
+        return ""
+    if body.lower().startswith(("you hear", "you overhear", "rumor", "rumour")):
+        rumor = body
+    else:
+        rumor = f"You overhear a rumour that {body}"
+    return _ensure_sentence_punctuation(rumor)
 
 
 def _extract_tag_scene_branches(scene_number: int, text: str) -> list[dict[str, Any]]:
@@ -413,9 +522,11 @@ def _extract_tag_scene_branches(scene_number: int, text: str) -> list[dict[str, 
         if target == scene_number or target in seen:
             continue
         seen.add(target)
+        raw_label = _tag_scene_branch_label(text, match.start(), match.end())
         branches.append(
             {
-                "label": _tag_scene_branch_label(text, match.start(), match.end()),
+                "label": _tag_player_branch_label(raw_label, f"Scene {target}"),
+                "source_label": raw_label,
                 "target_scene": f"Scene {target}",
                 "target_scene_number": target,
             }
@@ -1338,6 +1449,7 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "scene": "Scene 9, then Scene 17 if the family is questioned",
         "pdf_pages": "TAG pp.22, 29, 31",
         "objective": "Investigate Bofto's strange star-shaped object and decide whether to steal it, question the family, or leave it alone.",
+        "player_objective": "Investigate Bofto's star-shaped object.",
         "entry": "Bofto's vineyard has been quiet since the star-shaped object appeared.",
         "side": "Questioning the family confirms Bofto has changed and points back to the object.",
         "complication": "Treat theft or confrontation as a manual TAG social choice before combat starts.",
@@ -4728,17 +4840,22 @@ def _tag_unlocked_scene_prompt(
             ],
         }
     branches = scene_node.get("branches") if isinstance(scene_node.get("branches"), list) else []
-    actions = [
-        _tag_prompt_action(
-            str(branch.get("label") or f"Follow {branch.get('target_scene')}"),
-            f"Follow the extracted PDF branch from {scene_key} to {branch.get('target_scene')}.",
-            action_type="route",
-            action_value="unlock_scene",
-            reference=f"{scene_key} -> {branch.get('target_scene')}: {branch.get('label') or 'Follow scene branch'}",
+    actions = []
+    scene_text = str(scene_node.get("description") or "")
+    for branch in branches:
+        if not isinstance(branch, dict) or not branch.get("target_scene"):
+            continue
+        target = str(branch.get("target_scene"))
+        label = _tag_branch_display_label(branch, scene_text)
+        actions.append(
+            _tag_prompt_action(
+                label,
+                f"Follow the extracted PDF branch from {scene_key} to {target}.",
+                action_type="route",
+                action_value="unlock_scene",
+                reference=f"{scene_key} -> {target}: {label}",
+            )
         )
-        for branch in branches
-        if isinstance(branch, dict) and branch.get("target_scene")
-    ]
     terminal_actions = []
     if not actions and isinstance(tag_reference, dict):
         values = tag_reference.get("scene_graph_terminal_actions")
@@ -4767,7 +4884,7 @@ def _tag_unlocked_scene_prompt(
         )
     return {
         "title": scene_key,
-        "body": str(scene_node.get("description") or "Resolve the extracted Adventures Guild scene."),
+        "body": _tag_player_scene_body(str(scene_node.get("description") or "Resolve the extracted Adventures Guild scene.")),
         "checklist": [
             "Read only this unlocked scene text and choose one of its extracted branches if it offers one.",
             "If the scene has no branch, resolve its printed reward, XP, combat, or return-to-town consequence.",
@@ -5989,16 +6106,17 @@ def _tag_scene_graph_actions(profile: dict[str, object], scene_key: str | None =
     if not isinstance(branches, list):
         return []
     actions: list[dict[str, object]] = []
+    scene_text = str(scene.get("description") or "")
     for branch in branches:
         if not isinstance(branch, dict):
             continue
         target = str(branch.get("target_scene") or "").strip()
         if not target:
             continue
-        label = str(branch.get("label") or f"Follow {target}").strip()
+        label = _tag_branch_display_label(branch, scene_text)
         actions.append(
             _tag_prompt_action(
-                label if label.lower().startswith("go to") else f"{target}: {label}",
+                label,
                 f"Follow the extracted PDF branch from {scene_key} to {target}. The generated module will open/update the unlocked scene room with the target scene text.",
                 action_type="route",
                 action_value="unlock_scene",
@@ -6101,22 +6219,64 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     graph_actions = _tag_scene_graph_actions(profile)
     profile_final_actions = _tag_profile_actions(profile, "final_prompt_actions")
     final_actions = graph_actions or profile_final_actions
+    start_scene_body = ""
+    entry_actions = [
+        _tag_prompt_action("Adventures Guild Actions", "Open the full Adventures Guild Actions dialog without changing any values."),
+        _tag_prompt_action(
+            "Record lead choice",
+            "Prefill a social/choice branch marker for this Adventures Guild lead.",
+            action_type="branch",
+            action_value="social_choice",
+            reference=f"{base_ref}: lead choice",
+        ),
+        _tag_prompt_action(
+            "Skip side scene",
+            "Prefill a route marker for choosing not to pursue the optional side clue.",
+            action_type="route",
+            action_value="skip_scene",
+            reference=f"{base_ref}: skipped side scene",
+        ),
+    ]
     if graph_actions:
         start_scene = _tag_scene_graph_start_key(profile)
+        scene_graph = profile.get("scene_graph") if isinstance(profile.get("scene_graph"), dict) else {}
+        scenes = scene_graph.get("scenes") if isinstance(scene_graph.get("scenes"), dict) else {}
+        start_node = scenes.get(start_scene) if isinstance(scenes, dict) else None
+        start_scene_body = str(start_node.get("description") or "") if isinstance(start_node, dict) else ""
+        terminal_label = _tag_terminal_scene_label(start_scene_body) if start_scene_body else "Leave or resolve this scene"
         final_actions = [
             *graph_actions,
             _tag_prompt_action(
-                "Leave or resolve this scene",
+                terminal_label,
                 "Use this when the printed scene has been resolved without following another extracted Scene branch.",
                 action_type="route",
                 action_value="final_route",
                 reference=f"{start_scene or base_ref}: resolved",
             ),
         ]
+        if lead_type == "rumor":
+            entry_actions = [
+                _tag_prompt_action(
+                    "Choose to investigate",
+                    "Follow the rumor and open the first extracted scene without showing the technical scene number in play.",
+                    action_type="route",
+                    action_value="unlock_scene",
+                    reference=f"{base_ref} -> {start_scene}: choose to investigate",
+                ),
+                _tag_prompt_action(
+                    "Don't investigate",
+                    "Cross off or leave this rumor alone and return to normal TAG settlement activity.",
+                    action_type="route",
+                    action_value="final_route",
+                    reference=f"{base_ref}: do not investigate",
+                ),
+            ]
     entry_override_body = _room_override_text(profile, "tag-lead-entry")
     side_override_body = _room_override_text(profile, "tag-side-clue")
     complication_override_body = _room_override_text(profile, "tag-complication")
     final_override_body = _room_override_text(profile, "tag-final-scene")
+    if lead_type == "rumor" and graph_actions and entry_override_body and _scene_refs_from_text(entry_override_body):
+        entry_override_body = _tag_player_rumor_body(entry_override_body)
     entry_body = entry_override_body or (
         f"{mood} {how_to} {entry_guidance} "
         "This is the lead handoff: decide why the party trusts the lead, what they risk by following it, and whether any visible scene branch should be chosen before ordinary exploration continues."
@@ -6131,7 +6291,9 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         f"{complication_guidance} "
         "If this room has no scene-specific button, no procedure is due here; keep moving and let the next scene surface the actual bargain, fight, Clue spend, reward, or route choice."
     )
-    final_body = final_override_body or _tag_final_prompt_body(profile, finale_guidance)
+    if graph_actions and final_override_body:
+        final_override_body = _tag_player_scene_body(final_override_body)
+    final_body = final_override_body or (_tag_player_scene_body(start_scene_body) if start_scene_body else "") or _tag_final_prompt_body(profile, finale_guidance)
     prompts: dict[str, object] = {
         "tag-lead-entry": {
             "title": "Lead entry choices",
@@ -6141,23 +6303,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
                 "Use the visible scene branch buttons when the PDF text says to go to another scene.",
                 "Only open Adventures Guild Actions if a value, route, reward, XP, or payment must be recorded.",
             ],
-            "actions": [
-                _tag_prompt_action("Adventures Guild Actions", "Open the full Adventures Guild Actions dialog without changing any values."),
-                _tag_prompt_action(
-                    "Record lead choice",
-                    "Prefill a social/choice branch marker for this Adventures Guild lead.",
-                    action_type="branch",
-                    action_value="social_choice",
-                    reference=f"{base_ref}: lead choice",
-                ),
-                _tag_prompt_action(
-                    "Skip side scene",
-                    "Prefill a route marker for choosing not to pursue the optional side clue.",
-                    action_type="route",
-                    action_value="skip_scene",
-                    reference=f"{base_ref}: skipped side scene",
-                ),
-            ],
+            "actions": entry_actions,
         },
         "tag-side-clue": {
             "title": "Side clue and reward",
@@ -6383,7 +6529,7 @@ def _tag_scene_graph_extra_rooms(profile: dict[str, object], start_scene_key: st
         if not scene_key or scene_key == start_scene_key or not isinstance(node, dict):
             continue
         room_id = tag_scene_room_id(scene_key, start_scene_key=start_scene_key)
-        description = str(node.get("description") or f"Resolve {scene_key}.")
+        description = _tag_player_scene_body(str(node.get("description") or f"Resolve {scene_key}."))
         branches = node.get("branches") if isinstance(node.get("branches"), list) else []
         branch_exits: list[dict[str, object]] = []
         for branch in branches:
@@ -6598,6 +6744,8 @@ def _tag_manifest(
         final_foes=final_foes,
     )
     scene_graph_start_key = _tag_scene_graph_start_key(profile)
+    if lead_type == "rumor" and scene_graph_start_key and profile.get("player_objective"):
+        objective = str(profile["player_objective"])
     scene_graph_extra_rooms = _tag_scene_graph_extra_rooms(profile, scene_graph_start_key)
     scene_graph_start_exits = _tag_scene_graph_start_exits(profile, scene_graph_start_key)
     if lead_structure == "scene_chain" and scene_graph_start_key:
@@ -6646,6 +6794,24 @@ def _tag_manifest(
             "room_prompts": _tag_room_prompts(title=title, lead_detail=lead_detail, profile=profile),
         },
     }
+    entry_description = _room_description(profile, "tag-lead-entry", (
+        f"{profile.get('entry') or 'The party follows a TAG campaign lead out of the settlement.'} "
+        "The trail opens from the settlement into the first hard choice of the lead. The main route presses north, while a side clue lies east for players who want leverage before the trouble shows its teeth."
+    ))
+    if lead_type == "rumor" and scene_graph_start_key and _scene_refs_from_text(entry_description):
+        entry_description = _tag_player_rumor_body(entry_description)
+    final_description = _room_description(profile, "tag-final-scene", f"{final_room_description}")
+    if scene_graph_start_key:
+        final_override_raw = _room_override_text(profile, "tag-final-scene")
+        if final_override_raw:
+            if _scene_refs_from_text(final_description) or "will you" in final_description.lower():
+                final_description = _tag_player_scene_body(final_description)
+        else:
+            scene_graph = profile.get("scene_graph") if isinstance(profile.get("scene_graph"), dict) else {}
+            scenes = scene_graph.get("scenes") if isinstance(scene_graph.get("scenes"), dict) else {}
+            start_node = scenes.get(scene_graph_start_key) if isinstance(scenes, dict) else None
+            extracted_start_description = str(start_node.get("description") or "") if isinstance(start_node, dict) else ""
+            final_description = _tag_player_scene_body(extracted_start_description or final_description)
     return {
         "schema_version": 1,
         "id": adventure_id,
@@ -6679,10 +6845,7 @@ def _tag_manifest(
                 "id": "tag-lead-entry",
                 "tile_key": "02",
                 "title": _room_title(profile, "tag-lead-entry", "Lead Trail"),
-                "description": _room_description(profile, "tag-lead-entry", (
-                    f"{profile.get('entry') or 'The party follows a TAG campaign lead out of the settlement.'} "
-                    "The trail opens from the settlement into the first hard choice of the lead. The main route presses north, while a side clue lies east for players who want leverage before the trouble shows its teeth."
-                )),
+                "description": entry_description,
                 "environment": "dungeon",
                 "exits": [
                     {
@@ -6771,9 +6934,7 @@ def _tag_manifest(
                 "id": "tag-final-scene",
                 "tile_key": "11",
                 "title": _room_title(profile, "tag-final-scene", final_room_title),
-                "description": _room_description(profile, "tag-final-scene", (
-                    f"{final_room_description}"
-                )),
+                "description": final_description,
                 "exits": [
                     {
                         "id": "tag-final-scene-south",
@@ -6788,7 +6949,7 @@ def _tag_manifest(
                     {
                         "when": "on_enter",
                         "once": True,
-                        "log": _room_log(profile, "tag-final-scene", str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions.")),
+                        "log": _tag_player_scene_body(_room_log(profile, "tag-final-scene", str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions."))) if scene_graph_start_key else _room_log(profile, "tag-final-scene", str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions.")),
                         **({} if noncombat_finale or defer_final_encounter else {"encounter": {"foes": final_foes}}),
                     }
                 ],

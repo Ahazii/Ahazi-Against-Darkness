@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-17. Target build: v0.39.29 TAG scene-chain portal repair.
+Last updated: 2026-07-17. Target build: v0.39.30 TAG rumor/scene text split.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
@@ -26,12 +26,12 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 ## Must Do Next
 
-1. Deploy v0.39.29 or later and force-refresh until the app header shows that build.
+1. Deploy v0.39.30 or later and force-refresh until the app header shows that build.
 2. Start a fresh **Game 3: Adventures Guild** generated lead with TAG fixed-result controls enabled. Choose Rumor 1, **Bofto's Star-Shaped Find**.
-3. Confirm the generated lead uses the local PDF scene text, not generic filler: the lead should present Bofto's setup, Scene 9 should show the star-object scene, and the current-room buttons should include the extracted Scene 14 / Scene 17 branch choices without needing **Sign off Adventures Guild lead** first.
+3. Confirm the generated lead uses the local PDF scene text, not generic filler: the opening should frame Bofto as a rumour with **Choose to investigate** / **Don't investigate** buttons, Scene 9 should show only the star-object scene prose, and the current-room buttons should include the extracted steal / family / leave choices without exposing `go to Scene` routing.
 4. Click the Scene 17 branch. Confirm the party moves to a real **Scene 17** room/prompt with the PDF-derived family text and that the quest is **not** already complete just because Scene 9 was reached.
 5. From the scene prompt, mark the scene resolved only after the printed choice has actually been handled. Then complete generated-lead closeout and confirm the signoff panel records route/reward/XP/Guild/banking review without leaving a resumable active session.
-6. If Bofto passes, run one small non-Rumor generated lead smoke check only if time allows: generate either one Treasure Map or one Guild Job and confirm its first prompt/action wording is understandable. Do not restart broad FD/adventure testing unless this v0.39.29 TAG repair fails.
+6. If Bofto passes, run one small non-Rumor generated lead smoke check only if time allows: generate either one Treasure Map or one Guild Job and confirm its first prompt/action wording is understandable. Do not restart broad FD/adventure testing unless this v0.39.30 TAG repair fails.
 7. After the TAG scene-chain check passes, stop adventure regression testing for now and resume modularisation only in small tested slices.
 
 ## Passed: Game 2 Forsaken Depths
@@ -76,9 +76,9 @@ Do not repeat these passed Game 2 checks unless a later deploy visibly reopens o
 
 ## Game 3: Adventures Guild
 
-Enable **TAG fixed-result controls** immediately before this game. v0.39.29 focuses on Rumor 1 because the previous runs proved the app had the extracted Scene text but first hid the branch buttons/completed too early, then generated scene exits that did not match native tile portals.
+Enable **TAG fixed-result controls** immediately before this game. v0.39.30 focuses on Rumor 1 because the previous runs proved the app had the extracted Scene text but first hid the branch buttons/completed too early, then generated scene exits that did not match native tile portals, then exposed PDF routing text directly to the player.
 
-1. Force Rumor 1, Bofto's Star-Shaped Find. Confirm Scene 9 is a choice scene, not quest completion.
+1. Force Rumor 1, Bofto's Star-Shaped Find. Confirm the opening is framed as a rumour and Scene 9 is a choice scene, not quest completion.
 2. Follow Scene 17 from the visible branch button. Confirm the target scene room/prompt uses the local PDF-derived text and offers only relevant next actions.
 3. Resolve/close out from the scene prompt. Confirm route marker, reward/XP/Guild/banking signoff, and dashboard return work, and no resumable active session remains after closeout.
 

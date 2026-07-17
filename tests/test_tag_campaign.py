@@ -705,7 +705,7 @@ def test_tag_scene_graph_defers_profile_reward_actions_until_terminal_scene(tmp_
     assert tag_reference["module_profile"]["target_rooms"] == "10-room solo Bandit Hideout handoff"
 
     final_labels = [action["label"] for action in tag_reference["room_prompts"]["tag-final-scene"]["actions"]]
-    assert any("Scene 7" in label for label in final_labels)
+    assert any("Choose a sword-using character" in label for label in final_labels)
     assert "Apply Agaratha" not in final_labels
     assert [action["label"] for action in tag_reference["scene_graph_terminal_actions"]] == ["Apply Agaratha"]
 
@@ -731,13 +731,24 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
             {
                 "schema_version": 1,
                 "tag": {
-                    "rumor": {
-                        "1": {
-                            "scene_graph": {
+                        "rumor": {
+                            "1": {
+                                "rooms": {
+                                    "tag-lead-entry": {
+                                        "description": "Bofto the halfling vine dresser has found a strange star-shaped object in his vineyard and has been behaving strangely. If you investigate, go to Scene 9."
+                                    }
+                                },
+                                "scene_graph": {
                                 "start_scenes": ["Scene 9"],
                                 "scenes": {
                                     "Scene 9": {
-                                        "description": "Opening choice text.",
+                                        "description": (
+                                            "Bofto the halfling looks after a large vineyard together with his wife and his two sons. "
+                                            "A star-shaped object hangs from his neck. Will you: Try to steal the star shaped object? "
+                                            "If so, choose one of your characters to do so and go to Scene 14. "
+                                            "Try to talk to Bofto's family? Go to Scene 17. "
+                                            "You may decide that you have nothing to do here."
+                                        ),
                                         "branches": [
                                             {
                                                 "label": "Steal the star object",
@@ -782,6 +793,7 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="1")
 
     assert manifest["quest"]["complete_when"] == {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
+    assert manifest["quest"]["objective_text"] == "Investigate Bofto's star-shaped object."
     result = validate_adventure_manifest(
         manifest,
         rules_repo=RulesRepository(Path("data/rules"), Path("data/rules/_override")),
@@ -801,7 +813,22 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
         ("north", "passage"),
         ("west", "door"),
     ]
+    entry = next(room for room in manifest["rooms"] if room["id"] == "tag-lead-entry")
+    assert entry["description"].startswith("You overhear a rumour that")
+    assert "go to Scene" not in entry["description"]
+    assert [action["label"] for action in manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"]] == [
+        "Choose to investigate",
+        "Don't investigate",
+    ]
     final_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]["actions"]
+    final_prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]
+    assert "Will you:" not in final_prompt["body"]
+    assert "go to Scene" not in final_prompt["body"]
+    assert [action["label"] for action in final_actions] == [
+        "Try to steal the star shaped object? If so, choose one of your characters to do so",
+        "Try to talk to Bofto's family?",
+        "You may decide that you have nothing to do here",
+    ]
     assert any(action["action_value"] == "unlock_scene" and "Scene 14" in action["reference"] for action in final_actions)
     assert any(action["action_value"] == "final_route" for action in final_actions)
     scene_14_prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-scene-14"]
