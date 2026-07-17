@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
 from app import main
 from app.engine.adventure_allowlists import major_foe_table_keys
+from app.engine.adventure_session import create_session_from_manifest
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.tag_campaign import build_tag_adventure_manifest, default_campaign
 from app.engine.tag_compat import upgrade_tag_manifest
@@ -153,6 +155,81 @@ def test_generated_tag_guidance_repair_endpoint_rebuilds_prompt_metadata(client)
     assert reference["room_prompts"]["tag-complication"]["actions"][0]["action_type"] == "route"
     assert "Apply The Map Leads To" not in " ".join(payload["log"])
     assert payload["active_quest"]["tag_generated_lead_state"]["guidance_repaired"] is True
+
+
+def test_generated_tag_route_action_moves_without_debug_route_log(client, monkeypatch, tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    (data_dir / "tag_scene_narrative_overrides.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "tag": {
+                    "rumor": {
+                        "1": {
+                            "scene_graph": {
+                                "start_scenes": ["Scene 9"],
+                                "scenes": {
+                                    "Scene 9": {
+                                        "description": "Star object scene. Will you: Talk to the family? Go to Scene 17.",
+                                        "branches": [
+                                            {
+                                                "label": "Talk to the family",
+                                                "target_scene": "Scene 17",
+                                                "target_scene_number": 17,
+                                            }
+                                        ],
+                                    },
+                                    "Scene 17": {
+                                        "description": (
+                                            "You talk to Bofto family. They kindly ask you to leave. "
+                                            "If you insist, you may continue investigating by playing Scene 9."
+                                        ),
+                                        "branches": [
+                                            {
+                                                "label": "If you insist, you may continue investigating by playing Scene 9",
+                                                "target_scene": "Scene 9",
+                                                "target_scene_number": 9,
+                                            }
+                                        ],
+                                    },
+                                },
+                            }
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="1")
+    session = create_session_from_manifest(
+        engine(),
+        "tag-route-session",
+        "party-1",
+        [base_session().party[0]],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    session.active_quest = ActiveQuestState(
+        tile_id=session.map_state.current_tile_id,
+        key="tag_generated_lead",
+        description="Resolve generated Adventures Guild lead.",
+    )
+    main.store.save("sessions", session)
+
+    response = client.post(
+        "/api/sessions/tag-route-session/tag-route-action",
+        json={"route_action": "unlock_scene", "reference": "Scene 9 -> Scene 17: Talk to the family"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["session"]
+    assert payload["map_state"]["current_tile_id"] != session.map_state.current_tile_id
+    log_text = "\n".join(payload["log"])
+    assert "You talk to Bofto family" in log_text
+    assert "TAG route:" not in log_text
 
 
 def test_legacy_leprechaun_manifest_upgrades_to_vendor_finale() -> None:

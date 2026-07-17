@@ -777,7 +777,20 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
                                             }
                                         ],
                                     },
-                                    "Scene 17": {"description": "The family explains the star.", "branches": []},
+                                    "Scene 17": {
+                                        "description": (
+                                            "You talk to Bofto's wife and two young sons, who are working somewhere else in the vineyard. "
+                                            "They confirm that Bofto is behaving strangely and they kindly ask you to leave. "
+                                            "If you insist, you may continue investigating by playing Scene 9."
+                                        ),
+                                        "branches": [
+                                            {
+                                                "label": "If you insist, you may continue investigating by playing Scene 9",
+                                                "target_scene": "Scene 9",
+                                                "target_scene_number": 9,
+                                            }
+                                        ],
+                                    },
                                     "Scene 18": {"description": "The theft fails.", "branches": []},
                                     "Scene 19": {"description": "The theft succeeds.", "branches": []},
                                 },
@@ -836,6 +849,18 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     assert any(action["action_value"] == "final_route" for action in final_actions)
     scene_14_prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-scene-14"]
     assert scene_14_prompt["body"].startswith("Thievery Save vs L6")
+    scene_17_prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-scene-17"]
+    assert scene_17_prompt["body"].startswith("You talk to Bofto's wife")
+    assert "playing Scene 9" not in scene_17_prompt["body"]
+    assert [action["label"] for action in scene_17_prompt["actions"]] == [
+        "Insist on investigating",
+        "You choose to leave",
+    ]
+    assert scene_17_prompt["actions"][0]["action_value"] == "unlock_scene"
+    assert scene_17_prompt["actions"][0]["reference"].startswith("Scene 17 -> Scene 9")
+    assert scene_17_prompt["actions"][1]["action_value"] == "final_route"
+    assert all(action["label"] != "Mark scene resolved" for action in scene_17_prompt["actions"])
+    assert all(action["label"] != "Apply scene reward" for action in scene_17_prompt["actions"])
 
     tag_campaign.resolve_tag_route_action(
         campaign,

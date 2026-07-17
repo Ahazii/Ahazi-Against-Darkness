@@ -447,6 +447,9 @@ def _ensure_sentence_punctuation(text: str) -> str:
 
 def _tag_player_branch_label(branch_label: str, target_scene: str) -> str:
     label = " ".join(str(branch_label or "").split())
+    raw_lower = label.lower()
+    if "if you insist" in raw_lower and ("investigat" in raw_lower or target_scene.strip().lower() == "scene 9"):
+        return "Insist on investigating"
     label = _strip_tag_scene_routing(label)
     label = label.strip(" -:.;,")
     lower = label.lower()
@@ -495,9 +498,15 @@ def _tag_terminal_scene_label(text: str) -> str:
     import re
 
     body = " ".join(str(text or "").split())
+    lower = body.lower()
+    if "ask you to leave" in lower or "kindly ask you to leave" in lower:
+        return "You choose to leave"
     match = re.search(r"(?i)\bYou may decide that[^.]+", body)
     if match:
         return match.group(0).strip(" .")
+    match = re.search(r"(?i)\b(?:decide|choose) to (?:leave|go back|return to town)[^.]*", body)
+    if match:
+        return _strip_tag_scene_routing(match.group(0)).strip(" .")
     return "Leave or resolve this scene"
 
 
@@ -4871,32 +4880,23 @@ def _tag_unlocked_scene_prompt(
             terminal_actions = [action for action in values if isinstance(action, dict)]
     if terminal_actions:
         actions.extend(terminal_actions)
+    terminal_label = _tag_terminal_scene_label(scene_text)
     actions.append(
         _tag_prompt_action(
-            "Mark scene resolved",
+            terminal_label,
             "Record that this extracted Adventures Guild scene has been resolved at the table.",
             action_type="route",
             action_value="final_route",
-            reference=f"{scene_key}: resolved",
+            reference=f"{scene_key}: {terminal_label}",
         )
     )
-    if not terminal_actions:
-        actions.append(
-            _tag_prompt_action(
-                "Apply scene reward",
-                "Prefill the printed reward action if this extracted scene grants gp, items, or another reward.",
-                action_type="branch",
-                action_value="claim_reward",
-                reference=f"{scene_key}: reward",
-            )
-        )
     return {
         "title": scene_key,
         "body": _tag_player_scene_body(str(scene_node.get("description") or "Resolve the extracted Adventures Guild scene.")),
         "checklist": [
             "Read only this unlocked scene text and choose one of its extracted branches if it offers one.",
             "If the scene has no branch, resolve its printed reward, XP, combat, or return-to-town consequence.",
-            "Use the scene reward/resolved buttons only after the table has made the printed choice.",
+            "Use the displayed choice button only after the table has made the printed choice.",
         ],
         "actions": actions,
     }

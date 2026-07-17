@@ -6487,10 +6487,8 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
             session.current_tile_entry_exit_id = None
             mark_tile_visited(session, target_tile.id)
             fire_imported_triggers(random_engine, session, target_tile, "on_enter", show_rolls=True)
-            if entry.result_text:
-                entry.result_text = f"{entry.result_text} The party moves to {target_tile.title}."
         elif target_room_id:
-            session.log.append(f"TAG route target {target_room_id} is not present in this older generated session; use Refresh narrative or start a fresh generated lead.")
+            session.log.append(f"Generated Adventures Guild route target is not present in this older generated session; use Refresh narrative or start a fresh generated lead.")
     if route_action == "final_route" and session.active_quest is not None and not session.active_quest.completed:
         session.active_quest.completed = True
         state = dict(session.active_quest.tag_generated_lead_state or {})
@@ -6503,8 +6501,6 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
         store.save("characters", character)
         _sync_character_to_session_party(session, character)
     campaign = save_campaign(store, campaign)
-    if entry.result_text and entry.result_text not in session.log:
-        session.log.append(f"TAG route: {entry.result_text}")
     store.save("sessions", session)
     return {
         "campaign": campaign,
