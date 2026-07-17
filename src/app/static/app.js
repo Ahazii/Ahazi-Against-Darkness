@@ -28069,7 +28069,7 @@ function treasureOutcomeChoices(choiceKey) {
     return [
       { pick: "silver_melee", label: "Treasure: 10 silvered melee weapons", title: "Ten silvered melee weapons (FD p.62)." },
       { pick: "magic_missiles", label: "Treasure: 5 Legendary magic missiles", title: "Five Legendary magic missiles (FD p.62)." },
-      { pick: "bow_arrows", label: "Treasure: Masterwork bow + 24 silver arrows", title: "Masterwork bow with 24 silver-tipped arrows (FD p.62)." },
+      { pick: "bow_arrows", label: "Treasure: Masterwork bow + 24 silver-tipped arrows", title: "Take one bundled Masterwork bow with 24 silver-tipped arrows (FD p.62)." },
     ];
   }
   if (choiceKey === "fd_silver_melee_weapons") {

@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-17. Repository branch: `main`. Latest release: `v0.39.26`.
+Last updated: 2026-07-17. Repository branch: `main`. Latest release: `v0.39.27`.
 
 ## Start Here
 
@@ -21,7 +21,7 @@ Before further modularisation, ask the user to deploy the latest `main` build, f
 - Camp, refresh, then re-enter. The dungeon entrance and exits must remain usable.
 - Return to camp and abandon the unfinished dungeon after resolving any pending Classical XP roll. A Final Boss is not required for abandonment; pending XP, pending spell selection, and prisoner reward choices intentionally block closeout so earned rewards are never silently lost. After XP is resolved, the completion choice must enable without a browser hard refresh.
 - Confirm the recovery redesign has not left stray body/recovery controls in Party Sheets.
-- Resume disposable session `003f51881ebc417a8a70891da9e0de00` if still active, or start a fresh EE+Abyss+FD Game 2. The Citadel entry/return/deeper-room route passed on 2026-07-16, so do not repeat it unless a later regression reopens it. After deploying v0.39.26, set one disposable party member to **Female** in Character Management, use Developer Playtest controls **Forsaken Depths Treasure row** to force FD p.62 row 3 and row 7, force one **Forsaken Depths Event** d10 result, and force **Dark Elf Warlock** once to reconfirm the printed staff-plus-ice-blast split plus female-priority targeting. Do not repeat Spore Spiders, Deep Cave Spiders, Greater Mutated Goblin, Soulbinding Blessing cure, stale Citadel badge, Sir Benedict Masterwork sword, or Armored Troll armor-deflection checks unless a later regression reopens them. Armored Troll HCL-1 MR remains passive evidence if an offensive spell is naturally cast at one.
+- Resume disposable session `003f51881ebc417a8a70891da9e0de00` only for one v0.39.27 sanity check if it is still active: force FD p.62 row 7 and choose the Masterwork bow + 24 silver-tipped arrows branch. It should now claim as one bundled item instead of splitting bow and arrows across party sheets. All wider Game 2 FD checks have enough evidence and should not be repeated unless the sanity check fails or a later regression reopens them. After that, close/abandon the disposable session after resolving pending Classical XP and move to Game 3 Adventures Guild. Armored Troll HCL-1 MR remains passive evidence if an offensive spell is naturally cast at one.
 
 The current live session id was `2b51e57ab5cd4623942fbef9b65b30d3` when this note was written. It may be complete by the time this handoff is read.
 
@@ -42,6 +42,7 @@ Then choose one bounded shared runtime responsibility from `docs/STATUS.md`/`doc
 
 ## Recent Releases
 
+- `v0.39.27`: FD p.62 row 7 bow branch now claims as one Masterwork bow plus 24 silver-tipped arrows bundle.
 - `v0.39.26`: FD Event schema fix and FD p.62 treasure-row developer forcing.
 - `v0.39.25`: Character gender dropdowns and Dark Elf Warlock female-priority targeting.
 - `v0.39.24`: Dark Elf Warlock staff-plus-ice-blast combat split.

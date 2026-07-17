@@ -1584,6 +1584,17 @@ def test_fd_treasure_choice_silver_melee_requires_weapon_type() -> None:
     assert chosen.items == [f"Silvered sword ({index})" for index in range(1, 11)]
 
 
+def test_fd_treasure_choice_masterwork_bow_bundle_stays_together() -> None:
+    eng = engine()
+    chosen = eng.table_roller.resolve_fd_treasure_choice(
+        "fd_silver_weapons_or_arrows",
+        "bow_arrows",
+    )
+
+    assert chosen.summary == "Masterwork bow with 24 silver-tipped arrows."
+    assert chosen.items == ["Masterwork bow with 24 silver-tipped arrows"]
+
+
 def test_fd_common_equipment_treasure_requires_item_choice(monkeypatch) -> None:
     eng = engine()
     monkeypatch.setattr("app.engine.dungeon_table_roller.random.randint", lambda *args, **kwargs: 2)

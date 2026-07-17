@@ -389,7 +389,7 @@ class DungeonTableRoller:
             return TreasureOutcome(f"{count} Masks of Thar-Tizan (50 gp each).", count * 50, items, log)
         if key == "silver_weapons_or_arrows":
             return TreasureOutcome(
-                "Choose: 10 silvered melee weapons, 5 Legendary magic missiles, or masterwork bow + 24 silver arrows.",
+                "Choose: 10 silvered melee weapons, 5 Legendary magic missiles, or masterwork bow + 24 silver-tipped arrows.",
                 0,
                 [],
                 log,
@@ -862,7 +862,7 @@ class DungeonTableRoller:
                 items = [f"Legendary magic missile ({index + 1})" for index in range(5)]
                 return TreasureOutcome("5 Legendary magic missiles.", 0, items, log)
             if pick == "bow_arrows":
-                items = ["Masterwork bow"] + [f"Silver-tipped arrow ({index + 1})" for index in range(24)]
+                items = ["Masterwork bow with 24 silver-tipped arrows"]
                 return TreasureOutcome("Masterwork bow with 24 silver-tipped arrows.", 0, items, log)
         if choice_key == "fd_silver_melee_weapons":
             selected = (item_name or FD_SILVERED_MELEE_WEAPON_CHOICES.get(pick) or "").strip()
