@@ -184,6 +184,12 @@ def quest_from_manifest(
             description=description,
             peaceful_required=required,
         )
+    if complete_type == "tag_scene_resolved":
+        return ActiveQuestState(
+            tile_id=giver_tile_id,
+            key="tag_generated_scene",
+            description=description,
+        )
     return ActiveQuestState(tile_id=giver_tile_id, key="imported_generic", description=description)
 
 

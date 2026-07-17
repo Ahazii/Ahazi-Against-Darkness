@@ -714,8 +714,9 @@ def test_tag_scene_graph_defers_profile_reward_actions_until_terminal_scene(tmp_
         route_action="unlock_scene",
         reference="Scene 4 -> Scene 7: Go to Scene 7",
     )
-    tag_campaign.apply_tag_route_to_manifest(manifest, campaign)
-    unlocked_prompt = tag_reference["room_prompts"]["tag-unlocked-scene"]
+    change = tag_campaign.apply_tag_route_to_manifest(manifest, campaign)
+    assert change == "extracted scene branch target ready"
+    unlocked_prompt = tag_reference["room_prompts"]["tag-scene-7"]
     unlocked_labels = [action["label"] for action in unlocked_prompt["actions"]]
     assert "Apply Agaratha" in unlocked_labels
     assert "Apply scene reward" not in unlocked_labels
@@ -768,6 +769,15 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     campaign = default_campaign()
     manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="1")
 
+    assert manifest["quest"]["complete_when"] == {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
+    room_ids = {room["id"] for room in manifest["rooms"]}
+    assert {"tag-scene-14", "tag-scene-18"} <= room_ids
+    final_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]["actions"]
+    assert any(action["action_value"] == "unlock_scene" and "Scene 14" in action["reference"] for action in final_actions)
+    assert any(action["action_value"] == "final_route" for action in final_actions)
+    scene_14_prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-scene-14"]
+    assert scene_14_prompt["body"].startswith("Thievery Save vs L6")
+
     tag_campaign.resolve_tag_route_action(
         campaign,
         route_action="unlock_scene",
@@ -775,11 +785,11 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     )
     change = tag_campaign.apply_tag_route_to_manifest(manifest, campaign)
 
-    assert change == "follow-up scene inserted and route opened"
-    unlocked = next(room for room in manifest["rooms"] if room["id"] == "tag-unlocked-scene")
+    assert change == "extracted scene branch target ready"
+    unlocked = next(room for room in manifest["rooms"] if room["id"] == "tag-scene-14")
     assert unlocked["title"] == "Scene 14"
     assert unlocked["description"].startswith("Thievery Save vs L6")
-    prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-unlocked-scene"]
+    prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-scene-14"]
     assert prompt["title"] == "Scene 14"
     assert any(action["reference"].startswith("Scene 14 -> Scene 18") for action in prompt["actions"])
 

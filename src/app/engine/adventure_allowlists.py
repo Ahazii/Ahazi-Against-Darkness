@@ -142,6 +142,7 @@ COMPLETE_WHEN_TYPES = (
     "item_collected",
     "room_reached",
     "peaceful_count",
+    "tag_scene_resolved",
 )
 
 

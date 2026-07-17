@@ -668,6 +668,11 @@ def _validate_complete_when(
         if not isinstance(peaceful_required, int) or peaceful_required < 1:
             errors.append("quest.complete_when.peaceful_required must be an integer >= 1.")
 
+    elif complete_type == "tag_scene_resolved":
+        room_id = complete_when.get("room_id")
+        if room_id is not None and room_id not in room_ids:
+            errors.append(f"quest.complete_when.room_id {room_id!r} does not match any room id.")
+
 
 def _unreachable_room_ids(room_by_id: dict[str, dict[str, Any]], entrance_room_id: str) -> set[str]:
     visited: set[str] = set()

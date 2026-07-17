@@ -302,7 +302,7 @@ Unknown references = **hard error** on import. The API returns `errors` (full li
 ### 7.4 Quest and victory
 
 - `quest` block present with `objective_text` and `complete_when`.
-- `complete_when` is one of: `boss_defeated`, `item_collected`, `room_reached`, `peaceful_count` (extensible enum — document additions here).
+- `complete_when` is one of: `boss_defeated`, `item_collected`, `room_reached`, `peaceful_count`, `tag_scene_resolved` (extensible enum — document additions here). `tag_scene_resolved` is reserved for generated Adventures Guild scene-chain modules where the player must explicitly resolve the printed Scene choice before closeout.
 - `exit_room_id` required; party must use normal dungeon exit from that tile (or adjacent policy — implement to match random entrance/exit UX).
 
 ### 7.5 AI safety
@@ -418,6 +418,7 @@ Import extracts to `data/adventures/{adventure_id}/`. Validator only reads `adve
 | `item_collected` | Party holds `item_name` |
 | `room_reached` | Party enters `room_id` |
 | `peaceful_count` | N peaceful encounters (engine counter) |
+| `tag_scene_resolved` | Generated Adventures Guild scene-chain lead is complete only after an explicit scene-resolved route action |
 
 Engine maps this to `ActiveQuestState` at session start. `completed` flips when condition met; session wins only after exit flow at `exit_room_id`.
 

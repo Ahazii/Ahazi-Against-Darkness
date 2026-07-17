@@ -4654,6 +4654,21 @@ def _scene_key_from_route_reference(reference: str) -> str:
     return f"Scene {refs[-1]}"
 
 
+def tag_scene_room_id(scene_key: str, *, start_scene_key: str = "") -> str:
+    refs = _scene_refs_from_text(scene_key)
+    if start_scene_key and scene_key.strip().lower() == start_scene_key.strip().lower():
+        return "tag-final-scene"
+    return f"tag-scene-{refs[0]}" if refs else "tag-unlocked-scene"
+
+
+def tag_route_target_room_id(tag_reference: dict[str, Any], reference: str) -> str:
+    scene_key = _scene_key_from_route_reference(reference)
+    if not scene_key:
+        return ""
+    start_scene_key = _tag_scene_graph_start_key(tag_reference)
+    return tag_scene_room_id(scene_key, start_scene_key=start_scene_key)
+
+
 def _tag_scene_graph_node(tag_reference: dict[str, Any], scene_key: str) -> dict[str, Any] | None:
     graph = tag_reference.get("scene_graph")
     if not isinstance(graph, dict):
@@ -4663,6 +4678,22 @@ def _tag_scene_graph_node(tag_reference: dict[str, Any], scene_key: str) -> dict
         return None
     node = scenes.get(scene_key)
     return node if isinstance(node, dict) else None
+
+
+def _tag_scene_graph_start_key(source: dict[str, Any]) -> str:
+    graph = source.get("scene_graph")
+    if not isinstance(graph, dict):
+        return ""
+    scenes = graph.get("scenes")
+    if not isinstance(scenes, dict) or not scenes:
+        return ""
+    start_scenes = graph.get("start_scenes")
+    if isinstance(start_scenes, list):
+        for scene in start_scenes:
+            key = str(scene or "").strip()
+            if key in scenes:
+                return key
+    return next(iter(scenes), "")
 
 
 def _tag_unlocked_scene_prompt(
@@ -4859,11 +4890,17 @@ def apply_tag_route_to_manifest(manifest: dict[str, Any], campaign: CampaignStat
             if removed:
                 changed_detail += f"; {removed} hostile trigger(s) removed"
         elif route.route_action in {"clue_gate_unlocked", "unlock_scene"}:
-            inserted = _ensure_unlocked_scene_room(rooms, route, tag_reference)
-            retargeted = _retarget_exit(complication, "tag-final-scene", "tag-unlocked-scene", status="open")
-            if not retargeted:
-                _set_exit_status(complication, "tag-unlocked-scene", "open")
-            changed_detail = "follow-up scene inserted and route opened" if inserted else "follow-up scene route opened"
+            target_room_id = tag_route_target_room_id(tag_reference, route.reference)
+            target_room = _tag_room_by_id(rooms, target_room_id) if target_room_id else None
+            if target_room_id and isinstance(target_room, dict):
+                _append_room_note(target_room, f"TAG route marker: {route.result_text}")
+                changed_detail = "extracted scene branch target ready"
+            else:
+                inserted = _ensure_unlocked_scene_room(rooms, route, tag_reference)
+                retargeted = _retarget_exit(complication, "tag-final-scene", "tag-unlocked-scene", status="open")
+                if not retargeted:
+                    _set_exit_status(complication, "tag-unlocked-scene", "open")
+                changed_detail = "follow-up scene inserted and route opened" if inserted else "follow-up scene route opened"
         elif route.route_action == "clue_gate_blocked":
             _set_exit_status(complication, "tag-final-scene", "closed")
             _set_exit_status(complication, "tag-unlocked-scene", "closed")
@@ -6064,6 +6101,18 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     graph_actions = _tag_scene_graph_actions(profile)
     profile_final_actions = _tag_profile_actions(profile, "final_prompt_actions")
     final_actions = graph_actions or profile_final_actions
+    if graph_actions:
+        start_scene = _tag_scene_graph_start_key(profile)
+        final_actions = [
+            *graph_actions,
+            _tag_prompt_action(
+                "Leave or resolve this scene",
+                "Use this when the printed scene has been resolved without following another extracted Scene branch.",
+                action_type="route",
+                action_value="final_route",
+                reference=f"{start_scene or base_ref}: resolved",
+            ),
+        ]
     entry_override_body = _room_override_text(profile, "tag-lead-entry")
     side_override_body = _room_override_text(profile, "tag-side-clue")
     complication_override_body = _room_override_text(profile, "tag-complication")
@@ -6251,6 +6300,29 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
             ],
         },
     }
+    scene_graph = profile.get("scene_graph")
+    if isinstance(scene_graph, dict):
+        scenes = scene_graph.get("scenes")
+        start_scene = _tag_scene_graph_start_key(profile)
+        if isinstance(scenes, dict):
+            tag_reference_stub = {"scene_graph": scene_graph, "scene_graph_terminal_actions": profile_final_actions}
+            for scene_key, scene_node in scenes.items():
+                scene_key = str(scene_key or "").strip()
+                if not scene_key or scene_key == start_scene or not isinstance(scene_node, dict):
+                    continue
+                prompt_key = tag_scene_room_id(scene_key, start_scene_key=start_scene)
+                prompts[prompt_key] = _tag_unlocked_scene_prompt(
+                    scene_key,
+                    scene_node,
+                    TagAdventureRouteState(
+                        route_action="unlock_scene",
+                        reference=f"{start_scene or base_ref} -> {scene_key}",
+                        resolved=True,
+                        result_text=f"Scene unlocked: {scene_key}.",
+                        created_at=now_utc(),
+                    ),
+                    tag_reference_stub,
+                )
     _extend_prompt_actions(prompts["tag-lead-entry"], profile.get("entry_prompt_actions"))
     _extend_prompt_actions(prompts["tag-complication"], profile.get("complication_prompt_actions"))
     return prompts
@@ -6285,6 +6357,101 @@ TAG_REWARD_POLICY_CLASSES = {
     "compact_module_no_random_loot",
     "handoff_dungeon_has_own_loot",
 }
+
+
+def _tag_scene_graph_extra_rooms(profile: dict[str, object], start_scene_key: str) -> list[dict[str, object]]:
+    graph = profile.get("scene_graph")
+    if not isinstance(graph, dict):
+        return []
+    scenes = graph.get("scenes")
+    if not isinstance(scenes, dict):
+        return []
+    rooms: list[dict[str, object]] = []
+    for scene_key, node in scenes.items():
+        scene_key = str(scene_key or "").strip()
+        if not scene_key or scene_key == start_scene_key or not isinstance(node, dict):
+            continue
+        room_id = tag_scene_room_id(scene_key, start_scene_key=start_scene_key)
+        description = str(node.get("description") or f"Resolve {scene_key}.")
+        branches = node.get("branches") if isinstance(node.get("branches"), list) else []
+        directions = ["north", "east", "west", "northeast", "northwest", "southeast"]
+        branch_exits: list[dict[str, object]] = []
+        for branch in branches:
+            if not isinstance(branch, dict):
+                continue
+            target = str(branch.get("target_scene") or "").strip()
+            if not target or target not in scenes:
+                continue
+            branch_exits.append(
+                {
+                    "id": f"{room_id}-{tag_scene_room_id(target, start_scene_key=start_scene_key)}",
+                    "direction": directions[len(branch_exits) % len(directions)],
+                    "to": tag_scene_room_id(target, start_scene_key=start_scene_key),
+                    "kind": "passage",
+                    "status": "open",
+                }
+            )
+        rooms.append(
+            {
+                "id": room_id,
+                "tile_key": "13",
+                "title": scene_key,
+                "description": description,
+                "environment": "dungeon",
+                "exits": [
+                    {
+                        "id": f"{room_id}-south",
+                        "direction": "south",
+                        "to": "tag-final-scene",
+                        "kind": "passage",
+                        "status": "open",
+                    },
+                    *branch_exits,
+                ],
+                "triggers": [
+                    {
+                        "when": "on_enter",
+                        "once": True,
+                        "log": description,
+                    }
+                ],
+            }
+        )
+    return rooms
+
+
+def _tag_scene_graph_start_exits(profile: dict[str, object], start_scene_key: str) -> list[dict[str, object]]:
+    graph = profile.get("scene_graph")
+    if not isinstance(graph, dict):
+        return []
+    scenes = graph.get("scenes")
+    if not isinstance(scenes, dict):
+        return []
+    start_node = scenes.get(start_scene_key)
+    if not isinstance(start_node, dict):
+        return []
+    branches = start_node.get("branches")
+    if not isinstance(branches, list):
+        return []
+    directions = ["north", "east", "west", "northeast", "northwest", "southeast"]
+    exits: list[dict[str, object]] = []
+    for branch in branches:
+        if not isinstance(branch, dict):
+            continue
+        target = str(branch.get("target_scene") or "").strip()
+        if not target or target not in scenes:
+            continue
+        target_room_id = tag_scene_room_id(target, start_scene_key=start_scene_key)
+        exits.append(
+            {
+                "id": f"tag-final-scene-{target_room_id}",
+                "direction": directions[len(exits) % len(directions)],
+                "to": target_room_id,
+                "kind": "passage",
+                "status": "open",
+            }
+        )
+    return exits
 
 
 def _tag_reward_action_labels(profile: dict[str, object]) -> list[str]:
@@ -6411,6 +6578,19 @@ def _tag_manifest(
         finale_mode=finale_mode,
         final_foes=final_foes,
     )
+    scene_graph_start_key = _tag_scene_graph_start_key(profile)
+    scene_graph_extra_rooms = _tag_scene_graph_extra_rooms(profile, scene_graph_start_key)
+    scene_graph_start_exits = _tag_scene_graph_start_exits(profile, scene_graph_start_key)
+    if lead_structure == "scene_chain" and scene_graph_start_key:
+        complete_when = {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
+    elif noncombat_finale:
+        complete_when = {"type": "room_reached", "room_id": "tag-final-scene"}
+    else:
+        complete_when = {
+            "type": "boss_defeated",
+            "boss_name": final_foe,
+            "room_id": "tag-final-scene",
+        }
     source_parameters = {
         "origin": "Tales from the Adventurers' Guild",
         "lead_type": lead_type,
@@ -6464,14 +6644,7 @@ def _tag_manifest(
             "key": "tag_lead",
             "objective_text": objective,
             "giver_room_id": "tag-lead-entry",
-            "complete_when": {
-                "type": "room_reached",
-                "room_id": "tag-final-scene",
-            } if noncombat_finale else {
-                "type": "boss_defeated",
-                "boss_name": final_foe,
-                "room_id": "tag-final-scene",
-            },
+            "complete_when": complete_when,
         },
         "npcs": [
             {
@@ -6589,7 +6762,8 @@ def _tag_manifest(
                         "to": "tag-complication",
                         "kind": "door",
                         "status": "closed",
-                    }
+                    },
+                    *scene_graph_start_exits,
                 ],
                 "triggers": [
                     {
@@ -6616,6 +6790,7 @@ def _tag_manifest(
                 ],
                 "triggers": [],
             },
+            *scene_graph_extra_rooms,
         ],
         "ending": {
             "victory_text": f"The party returns to the settlement with the TAG lead resolved. Review any scene choices, rewards, XP, Guild share, banking/storage, and closeout tasks before starting another lead.",

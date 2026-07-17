@@ -4236,7 +4236,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "surface": "Extracted scene branch buttons",
             "shown_in": "Generated Adventures Guild room prompts, Current Objective, and Relevant Now actions.",
-            "player_use": "When local scene_graph metadata contains go-to Scene branches, the final/current scene prompt shows those branches as route buttons. Clicking a branch records the route, updates the active session manifest, opens or refreshes the unlocked scene room with the extracted target Scene text, and exposes any next branches from that target scene.",
+            "player_use": "When local scene_graph metadata contains go-to Scene branches, the current scene prompt shows those branches as route buttons. Clicking a branch records the route, moves the active session into the extracted target Scene room, and exposes any next branches from that target scene. Scene-chain leads use explicit scene-resolved completion instead of completing when the first choice room is reached.",
             "pdf_boundary": "The app follows the branch the player selected; it does not auto-choose between printed options. Exact rewards, saves, combat consequences, and optional choices still require the player/PDF decision.",
         },
         {
@@ -6444,7 +6444,15 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
 
 @app.post("/api/sessions/{session_id}/tag-route-action")
 async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    from .engine.tag_campaign import apply_tag_route_to_manifest, load_campaign, resolve_tag_route_action, save_campaign
+    from .engine.adventure_runtime import fire_imported_triggers
+    from .engine.heroic_skill_effects import mark_tile_visited
+    from .engine.tag_campaign import (
+        apply_tag_route_to_manifest,
+        load_campaign,
+        resolve_tag_route_action,
+        save_campaign,
+        tag_route_target_room_id,
+    )
 
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
@@ -6462,6 +6470,35 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
     if isinstance(session.imported_manifest, dict):
         changed_detail = apply_tag_route_to_manifest(session.imported_manifest, campaign)
         rewrite_result = f"Applied route marker to active session: {changed_detail}."
+    tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference")
+    route_action = str(payload.get("route_action") or "parley_success")
+    if route_action == "unlock_scene" and isinstance(tag_ref, dict):
+        target_room_id = tag_route_target_room_id(tag_ref, str(payload.get("reference") or ""))
+        target_tile = next(
+            (
+                tile
+                for tile in session.map_state.tiles
+                if str(tile.content_key or "") == f"imported:{target_room_id}"
+            ),
+            None,
+        )
+        if target_tile is not None:
+            session.map_state.current_tile_id = target_tile.id
+            session.current_tile_entry_exit_id = None
+            mark_tile_visited(session, target_tile.id)
+            fire_imported_triggers(random_engine, session, target_tile, "on_enter", show_rolls=True)
+            if entry.result_text:
+                entry.result_text = f"{entry.result_text} The party moves to {target_tile.title}."
+        elif target_room_id:
+            session.log.append(f"TAG route target {target_room_id} is not present in this older generated session; use Refresh narrative or start a fresh generated lead.")
+    if route_action == "final_route" and session.active_quest is not None and not session.active_quest.completed:
+        session.active_quest.completed = True
+        state = dict(session.active_quest.tag_generated_lead_state or {})
+        state["route_recorded"] = True
+        state["scene_resolved"] = True
+        state["next_action"] = "Generated Adventures Guild scene resolved. Review reward, XP, Guild share, banking/storage, and closeout signoff."
+        session.active_quest.tag_generated_lead_state = state
+        session.log.append("Quest complete: generated Adventures Guild scene resolved.")
     if character is not None:
         store.save("characters", character)
         _sync_character_to_session_party(session, character)

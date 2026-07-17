@@ -25702,7 +25702,6 @@ const TAG_GENERIC_COMPLICATION_ACTIONS = new Set([
   "final_route",
   "claim_reward",
   "mark_scene_xp",
-  "unlock_scene",
 ]);
 
 function generatedTagSpecificActions(promptData = {}) {

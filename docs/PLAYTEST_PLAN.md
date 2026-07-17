@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-17. Target build: v0.39.27 FD closeout and TAG handoff.
+Last updated: 2026-07-17. Target build: v0.39.28 TAG scene-chain repair.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
@@ -26,15 +26,17 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 ## Must Do Next
 
-1. Deploy v0.39.27 or later and force-refresh until the app header shows that build.
-2. One tiny Game 2 sanity check: in Developer Playtest controls choose **Forsaken Depths Treasure row**, then `row = 7 - 10 silvered melee weapons / missiles / bow`; choose the **Masterwork bow + 24 silver-tipped arrows** branch. Confirm the claim gives one bundled item, `Masterwork bow with 24 silver-tipped arrows`, rather than scattering the bow and arrows across different party sheets.
-3. Close or abandon the disposable Game 2 session when convenient, after banking/spending pending Classical XP. Do not repeat the wider FD adventure tests unless the v0.39.27 sanity check fails.
-4. Proceed to **Game 3: Adventures Guild** below.
-5. After Game 3 passes, resume modularisation only in small tested slices.
+1. Deploy v0.39.28 or later and force-refresh until the app header shows that build.
+2. Start a fresh **Game 3: Adventures Guild** generated lead with TAG fixed-result controls enabled. Choose Rumor 1, **Bofto's Star-Shaped Find**.
+3. Confirm the generated lead uses the local PDF scene text, not generic filler: the lead should present Bofto's setup, Scene 9 should show the star-object scene, and the current-room buttons should include the extracted Scene 14 / Scene 17 branch choices without needing **Sign off Adventures Guild lead** first.
+4. Click the Scene 17 branch. Confirm the party moves to a real **Scene 17** room/prompt with the PDF-derived family text and that the quest is **not** already complete just because Scene 9 was reached.
+5. From the scene prompt, mark the scene resolved only after the printed choice has actually been handled. Then complete generated-lead closeout and confirm the signoff panel records route/reward/XP/Guild/banking review without leaving a resumable active session.
+6. If Bofto passes, run one small non-Rumor generated lead smoke check only if time allows: generate either one Treasure Map or one Guild Job and confirm its first prompt/action wording is understandable. Do not restart broad FD/adventure testing unless this v0.39.28 TAG repair fails.
+7. After the TAG scene-chain check passes, stop adventure regression testing for now and resume modularisation only in small tested slices.
 
 ## Passed: Game 2 Forsaken Depths
 
-Latest evidence copied 2026-07-17 for disposable session `003f51881ebc417a8a70891da9e0de00`: the FD p.62 row 3 developer-forced treasure path offered the printed gold/masterwork choice, accepted a concrete Masterwork sword choice, and awarded the exact weapon. FD p.62 row 7 offered the printed branches and the silvered melee weapon path accepted a concrete sword choice. The bow branch also awarded the bow according to the Narrative, but because the bow and arrows were separate claim items they could be split across different heroes; v0.39.27 changes that branch to one bundled item and needs only the sanity check above.
+Latest evidence copied 2026-07-17 for disposable session `003f51881ebc417a8a70891da9e0de00`: the FD p.62 row 3 developer-forced treasure path offered the printed gold/masterwork choice, accepted a concrete Masterwork sword choice, and awarded the exact weapon. FD p.62 row 7 offered the printed branches and the silvered melee weapon path accepted a concrete sword choice. The bow branch was patched in v0.39.27 to award one bundled `Masterwork bow with 24 silver-tipped arrows` item rather than split bow/arrows across different heroes. Do not repeat Game 2 unless this exact bow bundle appears broken in later incidental play.
 
 The same report forced FD Event `d10 = 6 - Earthquake`: the Narrative logged FD p.63, each hero rolled `d3` falling stones, each stone made a Save vs HCL 10, and each failed Save cost exactly 1 Life. Dark Elf Warlock then showed the v0.39.24/25 combat correction live: one ordinary staff attack plus one separate ice blast per round, ice blast logs FD p.44, armor is ignored, and failed ice saves cost 2 Life. The Warlock targeted Faelar Sunshadow in the supplied run, matching the intended female-priority check if Faelar's character-sheet gender was set to Female.
 
@@ -74,11 +76,11 @@ Do not repeat these passed Game 2 checks unless a later deploy visibly reopens o
 
 ## Game 3: Adventures Guild
 
-Enable **TAG fixed-result controls** immediately before this game. Start one generated lead from the family least recently checked.
+Enable **TAG fixed-result controls** immediately before this game. v0.39.28 focuses on Rumor 1 because the previous run proved the app had the extracted Scene 9 text but hid the branch buttons and completed the objective too early.
 
-1. Confirm the selected Rumor, Treasure Map, Thematic Dungeon, or Guild Job is visibly marked as a developer override and the prompt/branch wording matches the extracted local narrative.
-2. Follow one branch through an encounter or handoff. Confirm its reward policy: no loot, scene reward, purchase/service, no automatic room loot, or handoff-dungeon loot.
-3. Complete its signoff workflow. Confirm route marker, reward, XP, Guild share, and dashboard return work, and no resumable active session remains after closeout.
+1. Force Rumor 1, Bofto's Star-Shaped Find. Confirm Scene 9 is a choice scene, not quest completion.
+2. Follow Scene 17 from the visible branch button. Confirm the target scene room/prompt uses the local PDF-derived text and offers only relevant next actions.
+3. Resolve/close out from the scene prompt. Confirm route marker, reward/XP/Guild/banking signoff, and dashboard return work, and no resumable active session remains after closeout.
 
 ## Record Failures
 

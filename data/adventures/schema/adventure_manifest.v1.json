@@ -94,7 +94,8 @@
             "boss_defeated",
             "item_collected",
             "room_reached",
-            "peaceful_count"
+            "peaceful_count",
+            "tag_scene_resolved"
           ]
         },
         "boss_name": { "type": "string" },
