@@ -6359,6 +6359,17 @@ TAG_REWARD_POLICY_CLASSES = {
 }
 
 
+TAG_SCENE_HUB_BRANCH_PORTALS: tuple[tuple[str, str], ...] = (
+    ("north", "door"),
+    ("east", "passage"),
+)
+TAG_SCENE_ROOM_RETURN_PORTAL: tuple[str, str] = ("south", "door")
+TAG_SCENE_ROOM_BRANCH_PORTALS: tuple[tuple[str, str], ...] = (
+    ("north", "passage"),
+    ("west", "door"),
+)
+
+
 def _tag_scene_graph_extra_rooms(profile: dict[str, object], start_scene_key: str) -> list[dict[str, object]]:
     graph = profile.get("scene_graph")
     if not isinstance(graph, dict):
@@ -6374,7 +6385,6 @@ def _tag_scene_graph_extra_rooms(profile: dict[str, object], start_scene_key: st
         room_id = tag_scene_room_id(scene_key, start_scene_key=start_scene_key)
         description = str(node.get("description") or f"Resolve {scene_key}.")
         branches = node.get("branches") if isinstance(node.get("branches"), list) else []
-        directions = ["north", "east", "west", "northeast", "northwest", "southeast"]
         branch_exits: list[dict[str, object]] = []
         for branch in branches:
             if not isinstance(branch, dict):
@@ -6382,15 +6392,22 @@ def _tag_scene_graph_extra_rooms(profile: dict[str, object], start_scene_key: st
             target = str(branch.get("target_scene") or "").strip()
             if not target or target not in scenes:
                 continue
+            target_room_id = tag_scene_room_id(target, start_scene_key=start_scene_key)
+            if target_room_id == "tag-final-scene":
+                continue
+            if len(branch_exits) >= len(TAG_SCENE_ROOM_BRANCH_PORTALS):
+                continue
+            direction, kind = TAG_SCENE_ROOM_BRANCH_PORTALS[len(branch_exits)]
             branch_exits.append(
                 {
-                    "id": f"{room_id}-{tag_scene_room_id(target, start_scene_key=start_scene_key)}",
-                    "direction": directions[len(branch_exits) % len(directions)],
-                    "to": tag_scene_room_id(target, start_scene_key=start_scene_key),
-                    "kind": "passage",
+                    "id": f"{room_id}-{target_room_id}",
+                    "direction": direction,
+                    "to": target_room_id,
+                    "kind": kind,
                     "status": "open",
                 }
             )
+        return_direction, return_kind = TAG_SCENE_ROOM_RETURN_PORTAL
         rooms.append(
             {
                 "id": room_id,
@@ -6400,10 +6417,10 @@ def _tag_scene_graph_extra_rooms(profile: dict[str, object], start_scene_key: st
                 "environment": "dungeon",
                 "exits": [
                     {
-                        "id": f"{room_id}-south",
-                        "direction": "south",
+                        "id": f"{room_id}-{return_direction}",
+                        "direction": return_direction,
                         "to": "tag-final-scene",
-                        "kind": "passage",
+                        "kind": return_kind,
                         "status": "open",
                     },
                     *branch_exits,
@@ -6433,7 +6450,6 @@ def _tag_scene_graph_start_exits(profile: dict[str, object], start_scene_key: st
     branches = start_node.get("branches")
     if not isinstance(branches, list):
         return []
-    directions = ["north", "east", "west", "northeast", "northwest", "southeast"]
     exits: list[dict[str, object]] = []
     for branch in branches:
         if not isinstance(branch, dict):
@@ -6441,13 +6457,16 @@ def _tag_scene_graph_start_exits(profile: dict[str, object], start_scene_key: st
         target = str(branch.get("target_scene") or "").strip()
         if not target or target not in scenes:
             continue
+        if len(exits) >= len(TAG_SCENE_HUB_BRANCH_PORTALS):
+            continue
         target_room_id = tag_scene_room_id(target, start_scene_key=start_scene_key)
+        direction, kind = TAG_SCENE_HUB_BRANCH_PORTALS[len(exits)]
         exits.append(
             {
                 "id": f"tag-final-scene-{target_room_id}",
-                "direction": directions[len(exits) % len(directions)],
+                "direction": direction,
                 "to": target_room_id,
-                "kind": "passage",
+                "kind": kind,
                 "status": "open",
             }
         )

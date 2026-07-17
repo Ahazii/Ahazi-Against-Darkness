@@ -404,6 +404,51 @@ def test_repair_imported_map_layout_fixes_overlapping_tiles(engine: RandomDungeo
     assert max(ownership.values(), default=0) <= 1
 
 
+def test_repair_imported_map_layout_ignores_manifest_rooms_without_tiles(engine: RandomDungeonEngine) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "session-1",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    patched_manifest = json.loads(json.dumps(manifest))
+    patched_manifest["rooms"][0]["exits"].append(
+        {
+            "id": "orphan-link",
+            "direction": "east",
+            "to": "manifest-only-room",
+            "kind": "door",
+            "status": "open",
+        }
+    )
+    patched_manifest["rooms"].append(
+        {
+            "id": "manifest-only-room",
+            "tile_key": "11",
+            "title": "Manifest Only Room",
+            "description": "This older generated scene was never placed on the map.",
+            "environment": "dungeon",
+            "exits": [
+                {
+                    "id": "manifest-only-room-west",
+                    "direction": "west",
+                    "to": patched_manifest["rooms"][0]["id"],
+                    "kind": "door",
+                    "status": "open",
+                }
+            ],
+            "triggers": [],
+        }
+    )
+    session.imported_manifest = patched_manifest
+
+    assert repair_imported_map_layout(engine, session)
+    assert all(tile.content_key != "imported:manifest-only-room" for tile in session.map_state.tiles)
+
+
 def test_imported_ossuary_hall_has_north_exit(engine: RandomDungeonEngine) -> None:
     manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
     session = create_session_from_manifest(

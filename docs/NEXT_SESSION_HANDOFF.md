@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-17. Repository branch: `main`. Latest release: `v0.39.28`.
+Last updated: 2026-07-17. Repository branch: `main`. Latest release: `v0.39.29`.
 
 ## Start Here
 
@@ -21,7 +21,7 @@ Before further modularisation, ask the user to deploy the latest `main` build, f
 - Camp, refresh, then re-enter. The dungeon entrance and exits must remain usable.
 - Return to camp and abandon the unfinished dungeon after resolving any pending Classical XP roll. A Final Boss is not required for abandonment; pending XP, pending spell selection, and prisoner reward choices intentionally block closeout so earned rewards are never silently lost. After XP is resolved, the completion choice must enable without a browser hard refresh.
 - Confirm the recovery redesign has not left stray body/recovery controls in Party Sheets.
-- Start a fresh generated Adventures Guild lead with TAG fixed-result controls and force Rumor 1, **Bofto's Star-Shaped Find**. v0.39.28 fixes the previous Bofto failure: extracted Scene 9 branch choices should be visible without using signoff, clicking Scene 17 should move to a real Scene 17 prompt with PDF-derived text, and reaching Scene 9 should not complete the quest by itself. Complete/sign off only after explicitly resolving the printed scene choice. All wider Game 2 FD checks have enough evidence and should not be repeated unless a later regression reopens them. Armored Troll HCL-1 MR remains passive evidence if an offensive spell is naturally cast at one.
+- Start a fresh generated Adventures Guild lead with TAG fixed-result controls and force Rumor 1, **Bofto's Star-Shaped Find**. v0.39.29 fixes the previous Bofto failures: extracted Scene 9 branch choices should be visible without using signoff, clicking Scene 17 should move to a real Scene 17 prompt with PDF-derived text, reaching Scene 9 should not complete the quest by itself, and generated scene-chain exits now match the native tile portals/kinds used by tiles 11 and 13. Complete/sign off only after explicitly resolving the printed scene choice. All wider Game 2 FD checks have enough evidence and should not be repeated unless a later regression reopens them. Armored Troll HCL-1 MR remains passive evidence if an offensive spell is naturally cast at one.
 
 The current live session id was `2b51e57ab5cd4623942fbef9b65b30d3` when this note was written. It may be complete by the time this handoff is read.
 
@@ -29,7 +29,7 @@ The current live session id was `2b51e57ab5cd4623942fbef9b65b30d3` when this not
 
 After the blocking check passes, continue the minimum-game plan in `docs/PLAYTEST_PLAN.md`:
 
-1. One TAG generated lead with TAG fixed-result controls enabled only for that game; verify Bofto Scene 9 branch wording, Scene 17 movement/text, scene-resolved completion, signoff, and no active session after closeout.
+1. One TAG generated lead with TAG fixed-result controls enabled only for that game; verify Bofto generation succeeds, Scene 9 branch wording, Scene 17 movement/text, scene-resolved completion, signoff, and no active session after closeout.
 2. Optional only if time allows: one non-Rumor generated lead smoke check for first-prompt clarity.
 
 Completed checks should not be repeated unless a new change reopens them. In particular, Ant People, Dark Plague, Ghoul King Elf `+Level` save/Blessing cure, treasure cap/claiming, Shrieking Fungi, Flying Skulls, Phasing Panther, and Tentacled Brain already have recorded evidence. Ghoul King's automatic hit after a failed paralysis save remains passive future evidence, not a reason to force repeated encounters.
@@ -42,6 +42,7 @@ Then choose one bounded shared runtime responsibility from `docs/STATUS.md`/`doc
 
 ## Recent Releases
 
+- `v0.39.29`: TAG scene-chain generated leads now use native-valid scene exits and legacy imported-session repair ignores manifest-only orphan rooms.
 - `v0.39.28`: TAG scene-chain generated leads now use extracted Scene rooms/buttons and complete only after explicit scene resolution.
 - `v0.39.27`: FD p.62 row 7 bow branch now claims as one Masterwork bow plus 24 silver-tipped arrows bundle.
 - `v0.39.26`: FD Event schema fix and FD p.62 treasure-row developer forcing.

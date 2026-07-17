@@ -743,6 +743,11 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
                                                 "label": "Steal the star object",
                                                 "target_scene": "Scene 14",
                                                 "target_scene_number": 14,
+                                            },
+                                            {
+                                                "label": "Speak with the family",
+                                                "target_scene": "Scene 17",
+                                                "target_scene_number": 17,
                                             }
                                         ],
                                     },
@@ -753,10 +758,17 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
                                                 "label": "If you fail, go to Scene 18",
                                                 "target_scene": "Scene 18",
                                                 "target_scene_number": 18,
+                                            },
+                                            {
+                                                "label": "If you succeed, go to Scene 19",
+                                                "target_scene": "Scene 19",
+                                                "target_scene_number": 19,
                                             }
                                         ],
                                     },
+                                    "Scene 17": {"description": "The family explains the star.", "branches": []},
                                     "Scene 18": {"description": "The theft fails.", "branches": []},
+                                    "Scene 19": {"description": "The theft succeeds.", "branches": []},
                                 },
                             }
                         }
@@ -770,8 +782,25 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="1")
 
     assert manifest["quest"]["complete_when"] == {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
+    result = validate_adventure_manifest(
+        manifest,
+        rules_repo=RulesRepository(Path("data/rules"), Path("data/rules/_override")),
+    )
+    assert result.valid, result.errors
     room_ids = {room["id"] for room in manifest["rooms"]}
-    assert {"tag-scene-14", "tag-scene-18"} <= room_ids
+    assert {"tag-scene-14", "tag-scene-17", "tag-scene-18", "tag-scene-19"} <= room_ids
+    finale = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+    assert [(exit_def["direction"], exit_def["kind"]) for exit_def in finale["exits"]] == [
+        ("south", "door"),
+        ("north", "door"),
+        ("east", "passage"),
+    ]
+    scene_14 = next(room for room in manifest["rooms"] if room["id"] == "tag-scene-14")
+    assert [(exit_def["direction"], exit_def["kind"]) for exit_def in scene_14["exits"]] == [
+        ("south", "door"),
+        ("north", "passage"),
+        ("west", "door"),
+    ]
     final_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]["actions"]
     assert any(action["action_value"] == "unlock_scene" and "Scene 14" in action["reference"] for action in final_actions)
     assert any(action["action_value"] == "final_route" for action in final_actions)

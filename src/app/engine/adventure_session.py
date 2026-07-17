@@ -351,6 +351,8 @@ def _ensure_reciprocal_exits_from_manifest(
 ) -> None:
     rooms = _room_dict(manifest)
     for room_id, room in rooms.items():
+        if room_id not in tiles_by_room:
+            continue
         tile = tiles_by_room[room_id]
         tile_def = engine.rules.tiles().get(room["tile_key"])
         for manifest_exit in room.get("exits") or []:
@@ -418,6 +420,8 @@ def _layout_rooms(
 
     while queue:
         room_id = queue.pop(0)
+        if room_id not in tiles_by_room:
+            continue
         parent = tiles_by_room[room_id]
         px, py = positions[room_id]
         parent_placed = parent.model_copy(update={"x": px, "y": py})
@@ -437,6 +441,8 @@ def _layout_rooms(
                 next((item for item in parent_placed.exits if item.direction == direction), None),
             )
             if parent_exit is None:
+                continue
+            if target_id not in tiles_by_room:
                 continue
             child = tiles_by_room[target_id]
             reciprocal_direction = OPPOSITE.get(direction, "south")
@@ -551,8 +557,12 @@ def _apply_imported_walkable_truncation(
     rooms = _room_dict(manifest)
     placed: set[str] = set()
     for room_id in _imported_layout_bfs_order(manifest):
+        if room_id not in tiles_by_room:
+            continue
         child = tiles_by_room[room_id]
         for parent_id in placed:
+            if parent_id not in tiles_by_room:
+                continue
             parent = tiles_by_room[parent_id]
             for manifest_exit in rooms[parent_id].get("exits") or []:
                 if not isinstance(manifest_exit, dict) or manifest_exit.get("to") != room_id:
@@ -575,6 +585,8 @@ def _wire_imported_connections(
     _ = manifest
     tile_by_id = {tile.id: tile for tile in tiles_by_room.values()}
     for room_id, room in rooms.items():
+        if room_id not in tiles_by_room:
+            continue
         tile = tiles_by_room[room_id]
         for manifest_exit in room.get("exits") or []:
             if not isinstance(manifest_exit, dict):
