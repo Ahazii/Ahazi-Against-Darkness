@@ -815,6 +815,7 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     ]
     entry = next(room for room in manifest["rooms"] if room["id"] == "tag-lead-entry")
     assert entry["description"].startswith("You overhear a rumour that")
+    assert entry["description"].endswith("Do you investigate?")
     assert "go to Scene" not in entry["description"]
     assert [action["label"] for action in manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"]] == [
         "Choose to investigate",
@@ -822,6 +823,8 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     ]
     final_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]["actions"]
     final_prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]
+    assert finale["triggers"][0]["log"] == final_prompt["body"]
+    assert "Choose the Scene 9 resolution" not in finale["triggers"][0]["log"]
     assert "Will you:" not in final_prompt["body"]
     assert "go to Scene" not in final_prompt["body"]
     assert [action["label"] for action in final_actions] == [

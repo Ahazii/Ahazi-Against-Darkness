@@ -512,6 +512,14 @@ def _tag_player_rumor_body(text: str) -> str:
     return _ensure_sentence_punctuation(rumor)
 
 
+def _tag_player_rumor_prompt_body(text: str) -> str:
+    body = _tag_player_rumor_body(text)
+    if not body:
+        return ""
+    question = "Do you investigate?"
+    return body if question.lower() in body.lower() else f"{body} {question}"
+
+
 def _extract_tag_scene_branches(scene_number: int, text: str) -> list[dict[str, Any]]:
     import re
 
@@ -6276,7 +6284,7 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     complication_override_body = _room_override_text(profile, "tag-complication")
     final_override_body = _room_override_text(profile, "tag-final-scene")
     if lead_type == "rumor" and graph_actions and entry_override_body and _scene_refs_from_text(entry_override_body):
-        entry_override_body = _tag_player_rumor_body(entry_override_body)
+        entry_override_body = _tag_player_rumor_prompt_body(entry_override_body)
     entry_body = entry_override_body or (
         f"{mood} {how_to} {entry_guidance} "
         "This is the lead handoff: decide why the party trusts the lead, what they risk by following it, and whether any visible scene branch should be chosen before ordinary exploration continues."
@@ -6799,7 +6807,7 @@ def _tag_manifest(
         "The trail opens from the settlement into the first hard choice of the lead. The main route presses north, while a side clue lies east for players who want leverage before the trouble shows its teeth."
     ))
     if lead_type == "rumor" and scene_graph_start_key and _scene_refs_from_text(entry_description):
-        entry_description = _tag_player_rumor_body(entry_description)
+        entry_description = _tag_player_rumor_prompt_body(entry_description)
     final_description = _room_description(profile, "tag-final-scene", f"{final_room_description}")
     if scene_graph_start_key:
         final_override_raw = _room_override_text(profile, "tag-final-scene")
@@ -6812,6 +6820,14 @@ def _tag_manifest(
             start_node = scenes.get(scene_graph_start_key) if isinstance(scenes, dict) else None
             extracted_start_description = str(start_node.get("description") or "") if isinstance(start_node, dict) else ""
             final_description = _tag_player_scene_body(extracted_start_description or final_description)
+    if scene_graph_start_key:
+        explicit_final_log = _room_override_text(profile, "tag-final-scene", key="log")
+        if explicit_final_log and not _scene_refs_from_text(explicit_final_log) and "will you" not in explicit_final_log.lower():
+            final_trigger_log = explicit_final_log
+        else:
+            final_trigger_log = final_description
+    else:
+        final_trigger_log = _room_log(profile, "tag-final-scene", str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions."))
     return {
         "schema_version": 1,
         "id": adventure_id,
@@ -6949,7 +6965,7 @@ def _tag_manifest(
                     {
                         "when": "on_enter",
                         "once": True,
-                        "log": _tag_player_scene_body(_room_log(profile, "tag-final-scene", str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions."))) if scene_graph_start_key else _room_log(profile, "tag-final-scene", str(profile.get("final_log") or profile.get("finale_instruction") or "Resolve the final scene choices shown in Current Objective and Adventures Guild Actions.")),
+                        "log": final_trigger_log,
                         **({} if noncombat_finale or defer_final_encounter else {"encounter": {"foes": final_foes}}),
                     }
                 ],
