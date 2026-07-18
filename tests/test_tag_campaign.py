@@ -875,7 +875,11 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     assert unlocked["description"].startswith("Thievery Save vs L6")
     prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-scene-14"]
     assert prompt["title"] == "Scene 14"
-    assert any(action["reference"].startswith("Scene 14 -> Scene 18") for action in prompt["actions"])
+    assert [action["label"] for action in prompt["actions"]] == ["Choose thief and roll"]
+    assert prompt["actions"][0]["action_type"] == "branch"
+    assert prompt["actions"][0]["action_value"] == "bofto_theft_save"
+    assert all("If you fail" not in action["label"] for action in prompt["actions"])
+    assert all("If you succeed" not in action["label"] for action in prompt["actions"])
 
 
 def test_tag_pdf_rumor_parser_keeps_scene_10_and_continued_entries() -> None:
@@ -1920,6 +1924,28 @@ def test_tag_rumor_branch_actions_roll_scene_procedures(monkeypatch) -> None:
     theft = resolve_tag_branch_action(campaign, hero, branch_action="bofto_theft_save", reference="mod=1")
     assert theft.total == 6
     assert "Go to Scene 19" in theft.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    halfling_theft = resolve_tag_branch_action(
+        campaign,
+        _character(class_id="halfling", class_name="Halfling", level=2),
+        branch_action="bofto_theft_save",
+    )
+    assert halfling_theft.total == 6
+
+    assassin_theft = resolve_tag_branch_action(
+        campaign,
+        _character(class_id="assassin", class_name="Assassin", level=5),
+        branch_action="bofto_theft_save",
+    )
+    assert assassin_theft.total == 6
+
+    elf_theft = resolve_tag_branch_action(
+        campaign,
+        _character(class_id="elf", class_name="Elf", level=5),
+        branch_action="bofto_theft_save",
+    )
+    assert elf_theft.total == 5
 
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
     will = resolve_tag_branch_action(campaign, hero, branch_action="star_object_will_save", reference="mod=3")

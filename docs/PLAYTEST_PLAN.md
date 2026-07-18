@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-18. Target build: v0.39.32 TAG scene-choice cleanup.
+Last updated: 2026-07-18. Target build: v0.39.33 TAG Scene 14 theft automation.
 
 This is the active player checklist only. Completed and superseded checks are retained as release history in `docs/STATUS.md`; do not repeat them unless a later change specifically reopens them.
 
@@ -26,13 +26,14 @@ Already passed and deliberately removed from this game: Ant People marker spray,
 
 ## Must Do Next
 
-1. Deploy v0.39.32 or later and force-refresh until the app header shows that build.
+1. Deploy v0.39.33 or later and force-refresh until the app header shows that build.
 2. Start a fresh **Game 3: Adventures Guild** generated lead with TAG fixed-result controls enabled. Choose Rumor 1, **Bofto's Star-Shaped Find**.
 3. Confirm the generated lead uses the local PDF scene text, not generic filler: the opening should frame Bofto as a rumour, ask **Do you investigate?**, and show **Choose to investigate** / **Don't investigate** buttons. After choosing investigate, the Narrative should log the cleaned Scene 9 star-object prose, not the old `Choose the Scene 9 resolution...` instruction and not a `TAG route:` debug line.
-4. Click the Scene 17 branch. Confirm the party moves to a real **Scene 17** room/prompt with the PDF-derived family text, no visible `playing Scene 9` routing instruction, and only **Insist on investigating** / **You choose to leave** action buttons. **Insist on investigating** must return to Scene 9; **You choose to leave** ends the module.
-5. Complete generated-lead closeout and confirm the signoff panel records route/reward/XP/Guild/banking review without leaving a resumable active session.
-6. If Bofto passes, run one small non-Rumor generated lead smoke check only if time allows: generate either one Treasure Map or one Guild Job and confirm its first prompt/action wording is understandable. Do not restart broad FD/adventure testing unless this v0.39.32 TAG repair fails.
-7. After the TAG scene-chain check passes, stop adventure regression testing for now and resume modularisation only in small tested slices.
+4. Click the Scene 14 theft branch. Confirm the prompt gives a character dropdown plus **Roll theft Save**, not **If you fail** / **If you succeed** buttons. Choose a thief and confirm the app rolls Scene 14's thievery Save vs L6 with the printed modifier: rogues/halflings +Level, swashbucklers/assassins +half Level, elves +1. Success must move to Scene 19; failure must move to Scene 18.
+5. Also click the Scene 17 branch in a fresh or repeated Bofto run if needed. Confirm the party moves to a real **Scene 17** room/prompt with the PDF-derived family text, no visible `playing Scene 9` routing instruction, and only **Insist on investigating** / **You choose to leave** action buttons. **Insist on investigating** must return to Scene 9; **You choose to leave** ends the module.
+6. Complete generated-lead closeout and confirm the signoff panel records route/reward/XP/Guild/banking review without leaving a resumable active session.
+7. If Bofto passes, run one small non-Rumor generated lead smoke check only if time allows: generate either one Treasure Map or one Guild Job and confirm its first prompt/action wording is understandable. Do not restart broad FD/adventure testing unless this v0.39.33 TAG repair fails.
+8. After the TAG scene-chain check passes, stop adventure regression testing for now and resume modularisation only in small tested slices.
 
 ## Passed: Game 2 Forsaken Depths
 
@@ -76,11 +77,12 @@ Do not repeat these passed Game 2 checks unless a later deploy visibly reopens o
 
 ## Game 3: Adventures Guild
 
-Enable **TAG fixed-result controls** immediately before this game. v0.39.32 focuses on Rumor 1 because the previous runs proved the app had the extracted Scene text but first hid the branch buttons/completed too early, then generated scene exits that did not match native tile portals, then exposed PDF routing text directly to the player, then logged old resolution/debug instructions instead of clean player-facing scene prose.
+Enable **TAG fixed-result controls** immediately before this game. v0.39.33 focuses on Rumor 1 because the previous runs proved the app had the extracted Scene text but first hid the branch buttons/completed too early, then generated scene exits that did not match native tile portals, exposed PDF routing/debug text directly to the player, and treated Scene 14 success/failure outcomes as player choices instead of rolling the printed Save.
 
 1. Force Rumor 1, Bofto's Star-Shaped Find. Confirm the opening is framed as a rumour and Scene 9 is a choice scene, not quest completion.
-2. Follow Scene 17 from the visible branch button. Confirm the target scene room/prompt uses the local PDF-derived text and offers only **Insist on investigating** and **You choose to leave**.
-3. Resolve/close out from the scene prompt. Confirm route marker, reward/XP/Guild/banking signoff, and dashboard return work, and no resumable active session remains after closeout.
+2. Follow Scene 14 from the visible branch button. Confirm the target scene asks who steals the object, rolls automatically, and opens Scene 18 or Scene 19 from the result.
+3. Follow Scene 17 from the visible branch button. Confirm the target scene room/prompt uses the local PDF-derived text and offers only **Insist on investigating** and **You choose to leave**.
+4. Resolve/close out from the scene prompt. Confirm route marker, reward/XP/Guild/banking signoff, and dashboard return work, and no resumable active session remains after closeout.
 
 ## Record Failures
 

@@ -4348,7 +4348,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "surface": "Rumor audit metadata",
             "shown_in": "Generated Adventures Guild Rumor manifests and exploration prompt panels.",
-            "player_use": "Carries rumor number, play focus, entry guidance, complication narrative, finale mode, scene-specific action buttons, and signoff reminders for all twelve Rumor Scene leads.",
+            "player_use": "Carries rumor number, play focus, entry guidance, complication narrative, finale mode, scene-specific action buttons, outcome-roll automation such as Bofto Scene 14 thief selection, and signoff reminders for all twelve Rumor Scene leads.",
             "pdf_boundary": "App-authored atmosphere and workflow notes only; exact scene text, rolls, rewards, and consequences remain with the PDF/player signoff.",
         },
         {
@@ -4366,7 +4366,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "surface": "Prompt checklist",
             "shown_in": "Exploration room detail panel.",
-            "player_use": "Shows room-specific reminders beside Adventures Guild Action buttons so the player knows why a branch, Clue cost, route rewrite, reward, or XP marker matters.",
+            "player_use": "Shows room-specific reminders beside Adventures Guild Action buttons so the player knows why a branch, Clue cost, route rewrite, reward, XP marker, or printed outcome roll matters. If the PDF defines success/failure by a roll, the prompt should roll and route rather than asking the player to choose the result.",
             "pdf_boundary": "Buttons and reminders prefill app state only; the player confirms exact values/results.",
         },
     ]
@@ -6243,6 +6243,65 @@ def _spawn_generated_tag_foes_from_choice(session: SessionState, branch_action: 
     return True
 
 
+def _move_generated_tag_scene_target(session: SessionState, *, tag_ref: dict[str, Any], reference: str) -> str:
+    from .engine.adventure_runtime import fire_imported_triggers
+    from .engine.heroic_skill_effects import mark_tile_visited
+    from .engine.tag_campaign import tag_route_target_room_id
+
+    target_room_id = tag_route_target_room_id(tag_ref, reference)
+    target_tile = next(
+        (
+            tile
+            for tile in session.map_state.tiles
+            if str(tile.content_key or "") == f"imported:{target_room_id}"
+        ),
+        None,
+    )
+    if target_tile is not None:
+        session.map_state.current_tile_id = target_tile.id
+        session.current_tile_entry_exit_id = None
+        mark_tile_visited(session, target_tile.id)
+        fire_imported_triggers(random_engine, session, target_tile, "on_enter", show_rolls=True)
+        return target_room_id
+    if target_room_id:
+        session.log.append("Generated Adventures Guild route target is not present in this older generated session; use Refresh narrative or start a fresh generated lead.")
+    return ""
+
+
+def _advance_generated_tag_scene_from_branch(
+    session: SessionState,
+    campaign: Any,
+    character: Character | None,
+    *,
+    branch_action: str,
+    entry: Any,
+) -> str:
+    from .engine.tag_campaign import apply_tag_route_to_manifest, resolve_tag_route_action
+
+    if branch_action != "bofto_theft_save" or not _is_generated_tag_session(session):
+        return ""
+    tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference")
+    if not isinstance(tag_ref, dict):
+        return ""
+    total = int(getattr(entry, "total", 0) or 0)
+    if total >= 6:
+        target = "Scene 19"
+        outcome = "theft succeeds"
+    else:
+        target = "Scene 18"
+        outcome = "theft fails"
+    reference = f"Scene 14 -> {target}: {outcome}"
+    resolve_tag_route_action(
+        campaign,
+        character,
+        route_action="unlock_scene",
+        reference=reference,
+    )
+    if isinstance(session.imported_manifest, dict):
+        apply_tag_route_to_manifest(session.imported_manifest, campaign)
+    return _move_generated_tag_scene_target(session, tag_ref=tag_ref, reference=reference)
+
+
 @app.post("/api/sessions/{session_id}/tag-treasure-map-signoff")
 async def session_tag_treasure_map_signoff(session_id: str, payload: dict[str, Any]) -> SessionState:
     session = store.get("sessions", session_id, SessionState.model_validate)
@@ -6425,6 +6484,13 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     _update_generated_tag_procedure_state(session, branch_action, entry)
     if entry.result_text and entry.result_text not in session.log:
         session.log.append(f"Adventures Guild procedure: {entry.result_text}")
+    _advance_generated_tag_scene_from_branch(
+        session,
+        campaign,
+        character,
+        branch_action=branch_action,
+        entry=entry,
+    )
     _spawn_generated_tag_foes_from_choice(session, branch_action, entry)
     if branch_action == "map_cave_room_count":
         next_action = (
@@ -6444,14 +6510,11 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
 
 @app.post("/api/sessions/{session_id}/tag-route-action")
 async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    from .engine.adventure_runtime import fire_imported_triggers
-    from .engine.heroic_skill_effects import mark_tile_visited
     from .engine.tag_campaign import (
         apply_tag_route_to_manifest,
         load_campaign,
         resolve_tag_route_action,
         save_campaign,
-        tag_route_target_room_id,
     )
 
     session = store.get("sessions", session_id, SessionState.model_validate)
@@ -6473,22 +6536,7 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
     tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference")
     route_action = str(payload.get("route_action") or "parley_success")
     if route_action == "unlock_scene" and isinstance(tag_ref, dict):
-        target_room_id = tag_route_target_room_id(tag_ref, str(payload.get("reference") or ""))
-        target_tile = next(
-            (
-                tile
-                for tile in session.map_state.tiles
-                if str(tile.content_key or "") == f"imported:{target_room_id}"
-            ),
-            None,
-        )
-        if target_tile is not None:
-            session.map_state.current_tile_id = target_tile.id
-            session.current_tile_entry_exit_id = None
-            mark_tile_visited(session, target_tile.id)
-            fire_imported_triggers(random_engine, session, target_tile, "on_enter", show_rolls=True)
-        elif target_room_id:
-            session.log.append(f"Generated Adventures Guild route target is not present in this older generated session; use Refresh narrative or start a fresh generated lead.")
+        _move_generated_tag_scene_target(session, tag_ref=tag_ref, reference=str(payload.get("reference") or ""))
     if route_action == "final_route" and session.active_quest is not None and not session.active_quest.completed:
         session.active_quest.completed = True
         state = dict(session.active_quest.tag_generated_lead_state or {})

@@ -11626,6 +11626,7 @@ function handleError(error) {
 }
 
 const DIRECT_TAG_BRANCH_ACTIONS = new Set([
+  "bofto_theft_save",
   "tag_ambush_chance",
   "temple_dungeon_handoff",
   "medusa_assassin_ambush",
@@ -11780,6 +11781,15 @@ function populateIllusionSpellSelect(select, selectedSpell = "") {
 function selectedIllusionSpellReference(spell, isFree) {
   const chosen = String(spell || "illusion spell").trim();
   return `Scene 2 illusion spell: ${chosen}${isFree ? " (free)" : ""}`;
+}
+
+function boftoTheftSaveModifier(member) {
+  const text = `${member?.class_id || ""} ${member?.class_name || ""}`.toLowerCase();
+  const level = Math.max(1, Number(member?.level || 1));
+  if (text.includes("rogue") || text.includes("halfling")) return level;
+  if (text.includes("swashbuckler") || text.includes("assassin")) return Math.floor(level / 2);
+  if (text.includes("elf")) return 1;
+  return 0;
 }
 
 function openLeprechaunSpellDialog(defaults = {}) {
@@ -25417,6 +25427,50 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
   return true;
 }
 
+function appendBoftoTheftGuidedAction(parent, action, fallbackReference) {
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  if (defaults.branchAction !== "bofto_theft_save") return false;
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  const wrap = node("div", "tag-context-guided-action");
+  setTooltip(wrap, "TAG Scene 14: choose the character attempting the theft, then roll the printed thievery Save vs L6. The app follows success to Scene 19 or failure to Scene 18.");
+  wrap.appendChild(node("strong", "", "Scene 14 theft Save"));
+  const select = document.createElement("select");
+  setTooltip(select, "Choose the party member trying to steal Bofto's star-shaped object.");
+  for (const member of living) {
+    const modifier = boftoTheftSaveModifier(member);
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = `${member.name} (${modifier >= 0 ? "+" : ""}${modifier})`;
+    option.title = `Scene 14 theft Save modifier from class/Level: ${modifier >= 0 ? "+" : ""}${modifier}.`;
+    select.appendChild(option);
+  }
+  wrap.appendChild(select);
+  const btn = node("button", "primary", "Roll theft Save");
+  btn.type = "button";
+  btn.disabled = !living.length;
+  setButtonTooltip(btn, `${action.tooltip || "Roll Scene 14's thievery Save vs L6."} Do not choose success or failure manually; the result moves to the correct Scene.`);
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Rolling...";
+    try {
+      await runTagBranchActionWithDefaults({
+        ...defaults,
+        characterId: select.value,
+      });
+    } catch (error) {
+      handleError(error);
+    } finally {
+      btn.disabled = !living.length;
+      btn.textContent = originalText;
+    }
+  });
+  wrap.appendChild(btn);
+  wrap.appendChild(subline("Success opens Scene 19. Failure opens Scene 18."));
+  parent.appendChild(wrap);
+  return true;
+}
+
 function tagPromptDefaultsFromAction(action = {}, fallbackReference = "") {
   if (!action.action_type || action.action_type === "dialog") return {};
   const defaults = {
@@ -25933,6 +25987,7 @@ function renderTagRelevantActions(session = state.session) {
   const displayActions = [...focusedActions, ...actions.filter((action) => !focusedActions.includes(action))].slice(0, 6);
   for (const action of displayActions) {
     if (appendLeprechaunGuidedAction(row, action, fallback)) continue;
+    if (appendBoftoTheftGuidedAction(row, action, fallback)) continue;
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
     const tooltip = String(action.tooltip || "Prefill Adventures Guild Actions from the current generated-room prompt.");
@@ -25978,6 +26033,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
   for (const action of promptData.actions) {
     if (!action?.label) continue;
     if (appendLeprechaunGuidedAction(row, action, fallbackReference)) continue;
+    if (appendBoftoTheftGuidedAction(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
     if (defaults.sceneAction === "deoldyn_training") {

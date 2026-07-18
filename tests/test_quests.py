@@ -232,6 +232,96 @@ def test_generated_tag_route_action_moves_without_debug_route_log(client, monkey
     assert "TAG route:" not in log_text
 
 
+def test_generated_bofto_theft_roll_moves_to_result_scene(client, monkeypatch, tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    (data_dir / "tag_scene_narrative_overrides.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "tag": {
+                    "rumor": {
+                        "1": {
+                            "scene_graph": {
+                                "start_scenes": ["Scene 9"],
+                                "scenes": {
+                                    "Scene 9": {
+                                        "description": "Star object scene. Will you: Try to steal it? Go to Scene 14.",
+                                        "branches": [
+                                            {
+                                                "label": "Try to steal it",
+                                                "target_scene": "Scene 14",
+                                                "target_scene_number": 14,
+                                            }
+                                        ],
+                                    },
+                                    "Scene 14": {
+                                        "description": "Choose one character to steal the star-shaped object. If you fail, go to Scene 18. If you succeed, go to Scene 19.",
+                                        "branches": [
+                                            {"label": "If you fail, go to Scene 18", "target_scene": "Scene 18", "target_scene_number": 18},
+                                            {"label": "If you succeed, go to Scene 19", "target_scene": "Scene 19", "target_scene_number": 19},
+                                        ],
+                                    },
+                                    "Scene 18": {"description": "The theft fails.", "branches": []},
+                                    "Scene 19": {"description": "The theft succeeds.", "branches": []},
+                                },
+                            }
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="1")
+    character = Character(
+        id="h",
+        name="Hero",
+        class_id="rogue",
+        class_name="Rogue",
+        level=1,
+        gold=0,
+        clues=0,
+        max_life=3,
+        current_life=3,
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    main.store.save("characters", character)
+    session = create_session_from_manifest(
+        engine(),
+        "bofto-theft-session",
+        "party-1",
+        [base_session().party[0]],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    scene_14_tile = next(tile for tile in session.map_state.tiles if tile.content_key == "imported:tag-scene-14")
+    session.map_state.current_tile_id = scene_14_tile.id
+    session.active_quest = ActiveQuestState(
+        tile_id=session.map_state.current_tile_id,
+        key="tag_generated_lead",
+        description="Resolve generated Adventures Guild lead.",
+    )
+    main.store.save("sessions", session)
+    monkeypatch.setattr("app.engine.tag_campaign.roll_d6", lambda: 6)
+
+    response = client.post(
+        "/api/sessions/bofto-theft-session/tag-branch-action",
+        json={"character_id": "h", "branch_action": "bofto_theft_save", "reference": "Scene 14 star-object theft"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["session"]
+    current_tile = next(tile for tile in payload["map_state"]["tiles"] if tile["id"] == payload["map_state"]["current_tile_id"])
+    assert current_tile["content_key"] == "imported:tag-scene-19"
+    log_text = "\n".join(payload["log"])
+    assert "Scene 14 thievery Save d6=6+1=7 vs L6: success" in log_text
+    assert "The theft succeeds." in log_text
+    assert "If you succeed" not in log_text
+
+
 def test_legacy_leprechaun_manifest_upgrades_to_vendor_finale() -> None:
     manifest = {
         "title": "TAG Guild Job 4: Leprechauns at Blackbird Hill",

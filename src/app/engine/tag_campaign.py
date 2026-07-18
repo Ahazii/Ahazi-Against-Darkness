@@ -4112,6 +4112,22 @@ def _tag_reference_int(reference: str, key: str, default: int = 0) -> int:
     return default
 
 
+def _tag_reference_has_int(reference: str, key: str) -> bool:
+    clean_key = key.lower().strip()
+    for raw_part in reference.replace(",", " ").replace(";", " ").split():
+        if "=" not in raw_part:
+            continue
+        left, right = raw_part.split("=", 1)
+        if left.lower().strip() != clean_key:
+            continue
+        try:
+            int(right.strip())
+            return True
+        except ValueError:
+            return False
+    return False
+
+
 def _tag_reference_flag(reference: str, key: str) -> bool:
     clean_key = key.lower().strip()
     for raw_part in reference.replace(",", " ").replace(";", " ").split():
@@ -4122,6 +4138,20 @@ def _tag_reference_flag(reference: str, key: str) -> bool:
             if left.lower().strip() == clean_key and right.lower().strip() in {"1", "true", "yes", "y"}:
                 return True
     return False
+
+
+def _bofto_theft_save_modifier(character: Character | None) -> int:
+    if character is None:
+        return 0
+    class_text = f"{character.class_id} {character.class_name}".lower()
+    level = max(1, int(character.level or 1))
+    if "rogue" in class_text or "halfling" in class_text:
+        return level
+    if "swashbuckler" in class_text or "assassin" in class_text:
+        return level // 2
+    if "elf" in class_text:
+        return 1
+    return 0
 
 
 def resolve_tag_branch_action(
@@ -4503,7 +4533,7 @@ def resolve_tag_branch_action(
         else:
             parts.append(f"White gargoyle stone-hard skin d6={roll}: hit affects the gargoyle normally. Magic and masterwork weapons ignore this check.")
     elif clean_action == "bofto_theft_save":
-        modifier = _tag_reference_int(reference, "mod", cost)
+        modifier = _tag_reference_int(reference, "mod", cost) if _tag_reference_has_int(reference, "mod") or cost else _bofto_theft_save_modifier(character)
         roll = roll_d6()
         total = roll + modifier
         if total >= 6:
@@ -4856,9 +4886,22 @@ def _tag_unlocked_scene_prompt(
                 ),
             ],
         }
-    branches = scene_node.get("branches") if isinstance(scene_node.get("branches"), list) else []
-    actions = []
     scene_text = str(scene_node.get("description") or "")
+    branches = scene_node.get("branches") if isinstance(scene_node.get("branches"), list) else []
+    special_action = _tag_scene_graph_special_action(scene_key, scene_text, branches)
+    if special_action:
+        actions = [special_action]
+        return {
+            "title": scene_key,
+            "body": _tag_player_scene_body(str(scene_node.get("description") or "Resolve the extracted Adventures Guild scene.")),
+            "checklist": [
+                "Choose the character named by the printed scene before rolling.",
+                "Let the app roll the printed Save and move to the resulting Scene automatically.",
+                "Do not choose success or failure manually.",
+            ],
+            "actions": actions,
+        }
+    actions = []
     for branch in branches:
         if not isinstance(branch, dict) or not branch.get("target_scene"):
             continue
@@ -4900,6 +4943,27 @@ def _tag_unlocked_scene_prompt(
         ],
         "actions": actions,
     }
+
+
+def _tag_scene_graph_special_action(scene_key: str, scene_text: str, branches: list[Any] | None = None) -> dict[str, object] | None:
+    text = f"{scene_key} {scene_text}".lower()
+    branch_targets = {
+        str(branch.get("target_scene") or "").strip().lower()
+        for branch in branches or []
+        if isinstance(branch, dict)
+    }
+    if scene_key.strip().lower() == "scene 14" and (
+        ("scene 18" in text and "scene 19" in text)
+        or {"scene 18", "scene 19"} <= branch_targets
+    ):
+        return _tag_prompt_action(
+            "Choose thief and roll",
+            "Choose the party member trying to steal Bofto's star-shaped object, then roll Scene 14's thievery Save vs L6. The app moves to Scene 19 on success or Scene 18 on failure.",
+            action_type="branch",
+            action_value="bofto_theft_save",
+            reference="Scene 14 star-object theft",
+        )
+    return None
 
 
 def _ensure_unlocked_scene_room(
