@@ -2564,10 +2564,13 @@ async def campaign_tag_branch_action(payload: dict[str, Any]) -> dict[str, Any]:
 
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
+    branch_action = str(payload.get("branch_action") or "social_choice")
+    if branch_action == "bofto_theft_save" and character is None:
+        raise HTTPException(status_code=400, detail="Choose the character attempting the Scene 14 theft before rolling.")
     entry = resolve_tag_branch_action(
         campaign,
         character,
-        branch_action=str(payload.get("branch_action") or "social_choice"),
+        branch_action=branch_action,
         reference=str(payload.get("reference") or ""),
         clue_cost=int(payload.get("clue_cost") or 0),
         reward_gp=int(payload.get("reward_gp") or 0),
@@ -6444,6 +6447,8 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
     branch_action = str(payload.get("branch_action") or "social_choice")
+    if branch_action == "bofto_theft_save" and character is None:
+        raise HTTPException(status_code=400, detail="Choose the character attempting the Scene 14 theft before rolling.")
     payment_member, carried_gold_before = _prepare_session_tag_payment_character(session, character, branch_action)
     stored = _stored_single_run_procedure(session, branch_action)
     if stored is not None and not payload.get("force_reroll"):

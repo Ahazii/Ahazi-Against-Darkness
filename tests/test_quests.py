@@ -307,6 +307,17 @@ def test_generated_bofto_theft_roll_moves_to_result_scene(client, monkeypatch, t
     main.store.save("sessions", session)
     monkeypatch.setattr("app.engine.tag_campaign.roll_d6", lambda: 6)
 
+    missing_character_response = client.post(
+        "/api/sessions/bofto-theft-session/tag-branch-action",
+        json={"branch_action": "bofto_theft_save", "reference": "Scene 14 star-object theft"},
+    )
+
+    assert missing_character_response.status_code == 400
+    assert "Choose the character" in missing_character_response.json()["detail"]
+    stored_session = main.store.get("sessions", "bofto-theft-session", SessionState.model_validate)
+    assert stored_session is not None
+    assert stored_session.map_state.current_tile_id == scene_14_tile.id
+
     response = client.post(
         "/api/sessions/bofto-theft-session/tag-branch-action",
         json={"character_id": "h", "branch_action": "bofto_theft_save", "reference": "Scene 14 star-object theft"},

@@ -4533,13 +4533,16 @@ def resolve_tag_branch_action(
         else:
             parts.append(f"White gargoyle stone-hard skin d6={roll}: hit affects the gargoyle normally. Magic and masterwork weapons ignore this check.")
     elif clean_action == "bofto_theft_save":
-        modifier = _tag_reference_int(reference, "mod", cost) if _tag_reference_has_int(reference, "mod") or cost else _bofto_theft_save_modifier(character)
-        roll = roll_d6()
-        total = roll + modifier
-        if total >= 6:
-            parts.append(f"Scene 14 thievery Save d6={roll}+{modifier}={total} vs L6: success. Go to Scene 19 and resolve the star-shaped object Will Save.")
+        if character is None:
+            parts.append("Scene 14 theft requires choosing the character attempting to steal Bofto's star-shaped object before rolling the thievery Save vs L6.")
         else:
-            parts.append(f"Scene 14 thievery Save d6={roll}+{modifier}={total} vs L6: failed. Go to Scene 18; delete Rumor 1 from the Rumors Table.")
+            modifier = _tag_reference_int(reference, "mod", cost) if _tag_reference_has_int(reference, "mod") or cost else _bofto_theft_save_modifier(character)
+            roll = roll_d6()
+            total = roll + modifier
+            if total >= 6:
+                parts.append(f"Scene 14 thievery Save d6={roll}+{modifier}={total} vs L6: success. Go to Scene 19 and resolve the star-shaped object Will Save.")
+            else:
+                parts.append(f"Scene 14 thievery Save d6={roll}+{modifier}={total} vs L6: failed. Go to Scene 18; delete Rumor 1 from the Rumors Table.")
     elif clean_action == "star_object_will_save":
         modifier = _tag_reference_int(reference, "mod", cost)
         roll = roll_d6()
@@ -4922,7 +4925,18 @@ def _tag_unlocked_scene_prompt(
         if isinstance(values, list):
             terminal_actions = [action for action in values if isinstance(action, dict)]
     if terminal_actions:
-        actions.extend(terminal_actions)
+        lead_type = str((tag_reference or {}).get("lead_type") or "").lower()
+        lead_detail = str((tag_reference or {}).get("lead_detail") or "")
+        rumor_number = int((tag_reference or {}).get("rumor_number") or 0)
+        title = str((tag_reference or {}).get("title") or "")
+        is_bofto = lead_type == "rumor" and (
+            rumor_number == 1
+            or lead_detail == "1"
+            or "Bofto" in lead_detail
+            or "Bofto" in title
+        )
+        if not (is_bofto and scene_key.strip().lower() == "scene 18"):
+            actions.extend(terminal_actions)
     terminal_label = _tag_terminal_scene_label(scene_text)
     actions.append(
         _tag_prompt_action(
@@ -6523,7 +6537,14 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         scenes = scene_graph.get("scenes")
         start_scene = _tag_scene_graph_start_key(profile)
         if isinstance(scenes, dict):
-            tag_reference_stub = {"scene_graph": scene_graph, "scene_graph_terminal_actions": profile_final_actions}
+            tag_reference_stub = {
+                "scene_graph": scene_graph,
+                "scene_graph_terminal_actions": profile_final_actions,
+                "lead_type": lead_type,
+                "lead_detail": lead_detail,
+                "rumor_number": profile.get("rumor_number", 0),
+                "title": profile_title,
+            }
             for scene_key, scene_node in scenes.items():
                 scene_key = str(scene_key or "").strip()
                 if not scene_key or scene_key == start_scene or not isinstance(scene_node, dict):

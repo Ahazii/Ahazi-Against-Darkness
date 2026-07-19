@@ -880,6 +880,9 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     assert prompt["actions"][0]["action_value"] == "bofto_theft_save"
     assert all("If you fail" not in action["label"] for action in prompt["actions"])
     assert all("If you succeed" not in action["label"] for action in prompt["actions"])
+    scene_18_prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-scene-18"]
+    assert [action["label"] for action in scene_18_prompt["actions"]] == ["Leave or resolve this scene"]
+    assert all(action["action_value"] != "bofto_theft_save" for action in scene_18_prompt["actions"])
 
 
 def test_tag_pdf_rumor_parser_keeps_scene_10_and_continued_entries() -> None:
@@ -1204,7 +1207,7 @@ def test_tag_rumor_manifests_include_contextual_scene_procedure_prompts() -> Non
     repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
     campaign = default_campaign()
     expected_actions = {
-        "1": {"bofto_scene_choice", "bofto_theft_save", "star_object_will_save", "star_slayer_check"},
+        "1": {"bofto_theft_save"},
         "3": {"tag_ambush_chance"},
         "4": {"mutant_fish_hypnosis", "mutant_fish_rations", "mark_minor_encounters"},
         "5": {"dragon_type_reveal"},
@@ -1921,6 +1924,10 @@ def test_tag_rumor_branch_actions_roll_scene_procedures(monkeypatch) -> None:
     assert "bounces off" in skin.result_text
 
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 5)
+    missing_character_theft = resolve_tag_branch_action(campaign, None, branch_action="bofto_theft_save")
+    assert missing_character_theft.total is None
+    assert "requires choosing the character" in missing_character_theft.result_text
+
     theft = resolve_tag_branch_action(campaign, hero, branch_action="bofto_theft_save", reference="mod=1")
     assert theft.total == 6
     assert "Go to Scene 19" in theft.result_text

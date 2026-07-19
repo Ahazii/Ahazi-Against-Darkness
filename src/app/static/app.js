@@ -11970,6 +11970,7 @@ function tagDirectSceneCost(defaults = {}, member = null) {
 
 function chooseTagDirectBranchCharacter(defaults = {}) {
   if (defaults.characterId) return defaults.characterId;
+  if (defaults.branchAction === "bofto_theft_save") return "";
   const living = (state.session?.party || []).filter((member) => member.current_life > 0);
   if (!living.length) return "";
   const cost = tagDirectBranchCost(defaults);
@@ -11988,6 +11989,9 @@ function chooseTagDirectSceneCharacter(defaults = {}) {
 
 function tagDirectBranchBlockedReason(defaults = {}) {
   if (!directTagBranchAllowed(defaults)) return "";
+  if (defaults.branchAction === "bofto_theft_save" && !defaults.characterId) {
+    return "Choose the character attempting the Scene 14 theft before rolling.";
+  }
   const cost = tagDirectBranchCost(defaults);
   if (cost <= 0) return "";
   const living = (state.session?.party || []).filter((member) => member.current_life > 0);
@@ -20075,6 +20079,10 @@ function appendCurrentObjectiveButton(parent, action) {
     case "tag-prompt-action":
       {
         const defaults = generatedTagPromptActionDefaults(action.promptAction, action.fallbackReference, action.tagReference);
+        if (defaults.branchAction === "bofto_theft_save") {
+          appendBoftoTheftGuidedAction(parent, action.promptAction, action.fallbackReference);
+          return;
+        }
         const directBranch = directTagBranchAllowed(defaults);
         const directRoute = directTagRouteAllowed(defaults);
         const directScene = directTagSceneAllowed(defaults);
