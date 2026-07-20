@@ -4,10 +4,10 @@
 
 ## Status
 
-- Encounter foe rows in scope: **172** (Abyss: 30, Expanded Edition: 100, Forsaken Depths: 42).
-- Rows with structured mechanics beyond base stats/reactions: **94**.
-- Rows fully source-compared with focused runtime tests: **4**.
-- Rows that currently have prose notes/summary but no structured mechanic: **74**.
+- Encounter foe rows in scope: **184** (Abyss: 30, Expanded Edition: 100, Forsaken Depths: 36, Tales from the Adventurers Guild: 18).
+- Rows with structured mechanics beyond base stats/reactions: **105**.
+- Rows fully source-compared with focused runtime tests: **5**.
+- Rows that currently have prose notes/summary but no structured mechanic: **75**.
 - Declared mechanics with no matching runtime handler: **0**.
 
 A prose summary is not evidence that its full rule is executed. Rows not marked **reviewed** remain open audit work, even when they have a spawn row, a reaction, or basic statistics.
@@ -33,16 +33,19 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Expanded Edition | EE Fiendish Foes Weird Monsters table | PDF table crosswalk pending | 6 | 6 | 0 |
 | Expanded Edition | EE Fiendish Foes Boss Monsters table | PDF table crosswalk pending | 6 | 5 | 0 |
 | Expanded Edition | EE wandering-monster table | PDF table crosswalk pending | 4 | 0 | 0 |
-| Forsaken Depths | Forsaken Depths Vermin table | 38 | 6 | 0 | 0 |
+| Forsaken Depths | Forsaken Depths Vermin table | 38 | 6 | 2 | 0 |
 | Forsaken Depths | Forsaken Depths Minions table | 40 | 9 | 0 | 0 |
 | Forsaken Depths | Forsaken Depths Horde table | 42 | 6 | 0 | 0 |
-| Forsaken Depths | Forsaken Depths Boss Monster table | 44 | 7 | 0 | 0 |
-| Forsaken Depths | Forsaken Depths Weird Monster and Citadel Weird Monster tables | 45 | 14 | 0 | 0 |
-| Abyss | Abyss Vermin table | 49 | 6 | 2 | 1 |
+| Forsaken Depths | Forsaken Depths Boss Monster table | 44 | 7 | 3 | 0 |
+| Forsaken Depths | Forsaken Depths Weird Monster and Citadel Weird Monster tables | 45 | 8 | 0 | 0 |
+| Abyss | Abyss Vermin table | 49 | 6 | 3 | 1 |
 | Abyss | Abyss Minions table | 52 | 6 | 2 | 1 |
 | Abyss | Abyss Boss table | 55 | 6 | 4 | 1 |
 | Abyss | Abyss Weird Monster table | 56 | 6 | 3 | 1 |
 | Abyss | Abyss Dragon table | 58 | 6 | 1 | 0 |
+| Tales from the Adventurers Guild | TAG Rumor/Thematic/Guild Job minion profiles | PDF table crosswalk pending | 6 | 2 | 0 |
+| Tales from the Adventurers Guild | TAG Weird Monster and generated-lead profiles | PDF table crosswalk pending | 2 | 1 | 1 |
+| Tales from the Adventurers Guild | TAG Rumor/Thematic/Guild Job Boss profiles | PDF table crosswalk pending | 10 | 2 | 0 |
 
 ## Row Index
 
@@ -150,11 +153,11 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Expanded Edition | Wandering Boss Monster | `wandering` | EE wandering-monster table | stats/reaction only | pending PDF/runtime comparison |
 | Forsaken Depths | Shadowbats of the Deep | `fd_vermin` | Forsaken Depths Vermin table p.38 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Bloodworms | `fd_vermin` | Forsaken Depths Vermin table p.38 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Spore Spiders | `fd_vermin` | Forsaken Depths Vermin table p.38 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Spore Spiders | `fd_vermin` | Forsaken Depths Vermin table p.38 | encounter_start_effects:surprise, special_rules:spore_cough_on_melee_kill | pending PDF/runtime comparison |
 | Forsaken Depths | Rockslugs | `fd_vermin` | Forsaken Depths Vermin table p.38 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Tiny Land Octopi | `fd_vermin` | Forsaken Depths Vermin table p.38 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Deep Cave Spiders | `fd_vermin` | Forsaken Depths Vermin table p.38 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Deep Trolls | `fd_minions` | Forsaken Depths Minions table p.40 | reviewed | p.40 slain-troll return, fire/acid/lightning/oil suppression hook, ordinary minion attacks, and FD treasure roll at -1 wired after Game 2 feedback |
+| Forsaken Depths | Deep Cave Spiders | `fd_vermin` | Forsaken Depths Vermin table p.38 | special_rules:level_drop_per_two_killed, special_rules:spawn_spiders_on_character_death | pending PDF/runtime comparison |
+| Forsaken Depths | Deep Trolls | `fd_minions` | Forsaken Depths Minions table p.40 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Deep Hobgoblins | `fd_minions` | Forsaken Depths Minions table p.40 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Cultists | `fd_minions` | Forsaken Depths Minions table p.40 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Dark Elves Crossbowmen | `fd_minions` | Forsaken Depths Minions table p.40 | summary only | pending PDF/runtime comparison |
@@ -169,13 +172,13 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Forsaken Depths | Horde of Dark Elves | `fd_horde` | Forsaken Depths Horde table p.42 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Horde of Lizardmen of the Deep | `fd_horde` | Forsaken Depths Horde table p.42 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Horde of Goblins of the Deep | `fd_horde` | Forsaken Depths Horde table p.42 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Armored Forsaken Depths Troll | `fd_boss` | Forsaken Depths Boss Monster table p.44 | magic_resistance:HCL-1, special_rules:armor_deflection, treasure_modifier:+2 | implemented with regression tests; armor deflection live-confirmed; MR spell roll remains passive evidence |
+| Forsaken Depths | Armored Forsaken Depths Troll | `fd_boss` | Forsaken Depths Boss Monster table p.44 | special_rules:armor_deflection | pending PDF/runtime comparison |
 | Forsaken Depths | Deep Hobgoblin Champion | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Lionman Champion | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Cave Master Psionic | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Dark Elf Witch | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Dark Elf Warlock | `fd_boss` | Forsaken Depths Boss Monster table p.44 | treasure_modifier:+2, special_attacks:ice_blast, attacks:1, female-priority targeting | staff-plus-ice-blast and female-priority targeting implemented with regression tests; live reconfirm pending |
-| Forsaken Depths | Greater Mutated Goblin | `fd_boss` | Forsaken Depths Boss Monster table p.44 | summary only | pending PDF/runtime comparison |
+| Forsaken Depths | Dark Elf Warlock | `fd_boss` | Forsaken Depths Boss Monster table p.44 | special_attacks:ice_blast | pending PDF/runtime comparison |
+| Forsaken Depths | Greater Mutated Goblin | `fd_boss` | Forsaken Depths Boss Monster table p.44 | encounter_start_effects:corrosive_mucus | pending PDF/runtime comparison |
 | Forsaken Depths | Walking Idol | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Mothbeast | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Forsaken Depths Leviathan | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
@@ -184,16 +187,10 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Forsaken Depths | Forsaken Depths Stalker | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Forsaken Depths Fungal Sludge | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
 | Forsaken Depths | Chaos Cube | `fd_weird` | Forsaken Depths Weird Monster and Citadel Weird Monster tables p.45 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Chaos Mothbeast Queen | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Undead Leviathan | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Pumpkinhead of the Depths | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Forsaken Depths Colossal Worm | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Forsaken Depths Savage Stalker | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
-| Forsaken Depths | Giant Fungal Sludge | `fd_citadel_weird` | Forsaken Depths Citadel Weird Monster table p.61 | summary only | pending PDF/runtime comparison |
 | Abyss | Black Orc Bandits | `abyss_vermin_table` | Abyss Vermin table p.49 | summary only | pending PDF/runtime comparison |
 | Abyss | Shrieking Fungi | `abyss_vermin_table` | Abyss Vermin table p.49 | per_turn_effects:attract_wandering_after_turns | reviewed |
 | Abyss | Champions of Ssikliss | `abyss_vermin_table` | Abyss Vermin table p.49 | summary only | pending PDF/runtime comparison |
-| Abyss | Ant People Warriors | `abyss_vermin_table` | Abyss Vermin table p.49 | summary only | pending PDF/runtime comparison |
+| Abyss | Ant People Warriors | `abyss_vermin_table` | Abyss Vermin table p.49 | encounter_start_effects:chance_status | pending PDF/runtime comparison |
 | Abyss | Kobold Ghouls | `abyss_vermin_table` | Abyss Vermin table p.49 | on_hit_effects:status | pending PDF/runtime comparison |
 | Abyss | Brownies | `abyss_vermin_table` | Abyss Vermin table p.49 | summary only | pending PDF/runtime comparison |
 | Abyss | Hairy Goblins | `abyss_minions_table` | Abyss Minions table p.52 | summary only | pending PDF/runtime comparison |
@@ -220,6 +217,24 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Abyss | Ghoul Dragon | `abyss_dragon_table` | Abyss Dragon table p.58 | on_hit_effects:status | pending PDF/runtime comparison |
 | Abyss | Darkness Dragon | `abyss_dragon_table` | Abyss Dragon table p.58 | summary only | pending PDF/runtime comparison |
 | Abyss | Young Chaos Dragon | `abyss_dragon_table` | Abyss Dragon table p.58 | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | TAG Assassins | `tag_minions` | TAG Rumor/Thematic/Guild Job minion profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | White Gargoyles | `tag_minions` | TAG Rumor/Thematic/Guild Job minion profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Silent Scream Cultists | `tag_minions` | TAG Rumor/Thematic/Guild Job minion profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | TAG Bandits | `tag_minions` | TAG Rumor/Thematic/Guild Job minion profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Gorungar's Goblin Archers | `tag_minions` | TAG Rumor/Thematic/Guild Job minion profiles | on_hit_effects:poison | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Young Minotaurs | `tag_minions` | TAG Rumor/Thematic/Guild Job minion profiles | encounter_start_effects:charge | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Star-Slayer from Beyond | `tag_weird` | TAG Weird Monster and generated-lead profiles | encounter_start_effects:save_damage_madness | reviewed |
+| Tales from the Adventurers Guild | Adult Minotaur | `tag_weird` | TAG Weird Monster and generated-lead profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Mutant Fish | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Silent Scream Priestess | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Hill Giant | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | encounter_start_effects:preset_trap | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Minotaur Lord | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Bandit Chieftain | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Gorungar the Mighty | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Griffin | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Red Portrait Horror | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Sewer Thief | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | summary only | pending PDF/runtime comparison |
+| Tales from the Adventurers Guild | Monoceros | `tag_boss` | TAG Rumor/Thematic/Guild Job Boss profiles | encounter_start_effects:charge | pending PDF/runtime comparison |
 
 ## Audit Method
 

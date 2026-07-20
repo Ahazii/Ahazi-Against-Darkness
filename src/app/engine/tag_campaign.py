@@ -35,7 +35,7 @@ from ..schemas import (
     WorldTroupeRecord,
 )
 from .abyss_tables import is_abyss_profile
-from .dice import roll_advancement, roll_d6
+from .dice import roll_advancement, roll_d6, roll_exploding_for_level
 from .experience import advancement_succeeds
 from .magic_weapons import can_member_wield_weapon
 from .tier_advancement import level_tier_band
@@ -360,11 +360,21 @@ def _extract_tag_pdf_scenes(text: str) -> dict[int, str]:
     scenes: dict[int, str] = {}
     heading_pattern = re.compile(r"(?im)^Scene\s+(\d+)\s*$")
     headings = list(heading_pattern.finditer(text))
+    if not headings:
+        return scenes
     lower = text.lower()
+    # Search after the last scene heading. Page joining can remove the newline
+    # before the next section, and earlier scenes may mention later table names.
+    scene_section_end = headings[-1].end()
     hard_stops = [
         index
-        for marker in ("\nthematic dungeons\n", "\ntreasure maps\n", "\nthe map leads to\n")
-        if (index := lower.find(marker)) >= 0
+        for marker in (
+            "following the treasure map table",
+            "thematic dungeons",
+            "treasure maps",
+            "the map leads to",
+        )
+        if (index := lower.find(marker, scene_section_end)) >= 0
     ]
     hard_stop = min(hard_stops) if hard_stops else len(text)
     for index, match in enumerate(headings):
@@ -375,6 +385,13 @@ def _extract_tag_pdf_scenes(text: str) -> dict[int, str]:
         if start >= hard_stop:
             continue
         body = _normalize_tag_pdf_body(text[start:end])
+        if number == 19:
+            body = re.sub(
+                r"\s+The Star-Slayer From Beyond\s*$",
+                "",
+                body,
+                flags=re.IGNORECASE,
+            ).strip()
         if body:
             scenes[number] = body
     return scenes
@@ -1469,41 +1486,27 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "player_objective": "Investigate Bofto's star-shaped object.",
         "entry": "Bofto's vineyard has been quiet since the star-shaped object appeared.",
         "side": "Questioning the family confirms Bofto has changed and points back to the object.",
-        "complication": "Treat theft or confrontation as a manual TAG social choice before combat starts.",
+        "complication": "Follow the visible Scene branch. If the party attempts the theft, choose the thief and let the app resolve the printed Save.",
         "final_title": "The Star Object",
-        "final_description": "A star-shaped object hums in the vineyard. Use the TAG Scene 9 choices: steal, talk, or leave; record consequences manually.",
+        "final_description": "A star-shaped object hangs from Bofto's neck. Use the visible scene choices to investigate, speak to his family, attempt the theft, or leave.",
         "finale_mode": "choice",
-        "finale_instruction": "Choose the Scene 9 resolution that actually applies: leave the object alone, question Bofto's family, steal it, or trigger the cursed-object follow-up.",
+        "finale_instruction": "Choose the route the party takes. A theft attempt requires a selected character and is resolved automatically from the printed Save.",
         "rewards": "Depends on the chosen Scene 9 resolution.",
         "final_prompt_actions": [
             {
                 "label": "Record Bofto choice",
-                "tooltip": "Prefill the Scene 9 choice: steal the object, talk to the family, or leave.",
+                "tooltip": "Fallback for a game without locally extracted Scene text: record whether the party investigates, talks to the family, or leaves.",
                 "action_type": "branch",
                 "action_value": "bofto_scene_choice",
                 "reference": "Bofto Scene 9 choice",
             },
             {
-                "label": "Steal star object",
-                "tooltip": "Prefill Scene 14 thievery Save vs L6 for stealing the star-shaped object.",
+                "label": "Choose thief and roll",
+                "tooltip": "Choose the party member attempting the printed thievery Save vs L6. The app rolls and resolves the outcome automatically.",
                 "action_type": "branch",
                 "action_value": "bofto_theft_save",
-                "reference": "Scene 14 star-object theft",
+                "reference": "Bofto star-object theft",
             },
-            {
-                "label": "Star Will save",
-                "tooltip": "Prefill Scene 19 Will Save vs L8 after taking the star-shaped object.",
-                "action_type": "branch",
-                "action_value": "star_object_will_save",
-                "reference": "Scene 19 star-shaped object Will Save",
-            },
-            {
-                "label": "Star-Slayer check",
-                "tooltip": "Prefill the cursed object's 2-in-6 Boss/Weird replacement check.",
-                "action_type": "branch",
-                "action_value": "star_slayer_check",
-                "reference": "Scene 19 Star-Slayer replacement check",
-            }
         ],
         "rules": [
             "Rumor is crossed off once played.",
@@ -3696,6 +3699,19 @@ def store_tag_treasure(
     gold = max(0, int(gold_gp))
     qty = max(1, int(quantity))
     clean_item = item_name.strip()[:100]
+    if clean_item:
+        from .star_object_curse import is_star_object_item
+
+        if is_star_object_item(clean_item):
+            return append_tag_log(
+                campaign,
+                action="store_treasure",
+                character=character,
+                result_text=(
+                    "Bofto's cursed star-shaped object cannot be stored, banked, or placed in a magic locker. "
+                    "Only Invisible Gremlins can take it (TAG p.30)."
+                ),
+            )
     fee = ceil(gold * 0.1) if clean_storage == "bank" and gold else 0
     total_gold_needed = gold + fee
     if total_gold_needed > character.gold:
@@ -4537,31 +4553,23 @@ def resolve_tag_branch_action(
             parts.append("Scene 14 theft requires choosing the character attempting to steal Bofto's star-shaped object before rolling the thievery Save vs L6.")
         else:
             modifier = _tag_reference_int(reference, "mod", cost) if _tag_reference_has_int(reference, "mod") or cost else _bofto_theft_save_modifier(character)
-            roll = roll_d6()
-            total = roll + modifier
-            if total >= 6:
-                parts.append(f"Scene 14 thievery Save d6={roll}+{modifier}={total} vs L6: success. Go to Scene 19 and resolve the star-shaped object Will Save.")
+            rolled_total, rolls = roll_exploding_for_level(max(1, int(character.level or 1)))
+            roll = rolls[0]
+            total = rolled_total + modifier
+            roll_text = " + ".join(str(value) for value in rolls)
+            if roll != 1 and total >= 6:
+                parts.append(f"Scene 14 thievery Save {roll_text}+{modifier}={total} vs L6: success. Go to Scene 19 and resolve the star-shaped object Will Save.")
             else:
-                parts.append(f"Scene 14 thievery Save d6={roll}+{modifier}={total} vs L6: failed. Go to Scene 18; delete Rumor 1 from the Rumors Table.")
+                parts.append(f"Scene 14 thievery Save {roll_text}+{modifier}={total} vs L6: failed. Go to Scene 18; delete Rumor 1 from the Rumors Table.")
     elif clean_action == "star_object_will_save":
-        modifier = _tag_reference_int(reference, "mod", cost)
-        roll = roll_d6()
-        total = roll + modifier
-        if total >= 8:
-            parts.append(f"Scene 19 Will Save d6={roll}+{modifier}={total} vs L8: success; no Madness from picking up the star-shaped object.")
-        else:
-            if character is not None and "TAG star-shaped object curse carrier" not in character.statuses:
-                character.statuses.append("TAG star-shaped object curse carrier")
-                character.updated_at = now_utc()
-            parts.append(
-                f"Scene 19 Will Save d6={roll}+{modifier}={total} vs L8: failed. Character gains 1 Madness and carries the star-shaped object curse; add the Madness/status effect manually if not already tracked."
-            )
+        parts.append(
+            "Scene 19 must be resolved inside the active adventure session so the app can assign the "
+            "cursed object, apply class modifiers and the halfling reroll, persist the curse, and close the module."
+        )
     elif clean_action == "star_slayer_check":
-        roll = roll_d6()
-        if roll <= 2:
-            parts.append("Star-shaped object curse d6={}: replace this Boss/Weird Monster with a Star-Slayer from Beyond; it always fights to the death.".format(roll))
-        else:
-            parts.append(f"Star-shaped object curse d6={roll}: no Star-Slayer replacement for this major foe.")
+        parts.append(
+            "Star-Slayer replacement checks are automatic whenever the cursed carrier meets a Boss or Weird Monster."
+        )
     elif clean_action == "treasure_map_follow":
         bonus = cost
         roll = roll_d6()
@@ -4891,6 +4899,37 @@ def _tag_unlocked_scene_prompt(
         }
     scene_text = str(scene_node.get("description") or "")
     branches = scene_node.get("branches") if isinstance(scene_node.get("branches"), list) else []
+    lead_type = str((tag_reference or {}).get("lead_type") or "").lower()
+    lead_detail = str((tag_reference or {}).get("lead_detail") or "")
+    rumor_number = int((tag_reference or {}).get("rumor_number") or 0)
+    adventure_title = str((tag_reference or {}).get("title") or "")
+    is_bofto = lead_type == "rumor" and (
+        rumor_number == 1
+        or lead_detail == "1"
+        or "bofto" in lead_detail.lower()
+        or "bofto" in adventure_title.lower()
+    )
+    if is_bofto and scene_key.strip().lower() == "scene 19":
+        return {
+            "title": scene_key,
+            "body": _tag_player_scene_body(
+                str(scene_node.get("description") or "Resolve Bofto's star-shaped object curse.")
+            ),
+            "checklist": [
+                "Choose the character who succeeded at the Scene 14 theft.",
+                "The app assigns the cursed object, rolls the L8 Will Save with printed modifiers, and closes the module.",
+                "The curse persists until the carrier explicitly lets Invisible Gremlins take the object.",
+            ],
+            "actions": [
+                _tag_prompt_action(
+                    "Choose carrier and resolve Scene 19",
+                    "Choose the successful thief. The app assigns the cursed object, rolls the TAG p.30 L8 Will Save, applies Spellcaster/Cleric +L and the Halfling reroll, then closes this module. The curse persists after either result.",
+                    action_type="branch",
+                    action_value="star_object_will_save",
+                    reference="Scene 19 star-shaped object pickup and Will Save",
+                )
+            ],
+        }
     special_action = _tag_scene_graph_special_action(scene_key, scene_text, branches)
     if special_action:
         actions = [special_action]
@@ -4925,16 +4964,6 @@ def _tag_unlocked_scene_prompt(
         if isinstance(values, list):
             terminal_actions = [action for action in values if isinstance(action, dict)]
     if terminal_actions:
-        lead_type = str((tag_reference or {}).get("lead_type") or "").lower()
-        lead_detail = str((tag_reference or {}).get("lead_detail") or "")
-        rumor_number = int((tag_reference or {}).get("rumor_number") or 0)
-        title = str((tag_reference or {}).get("title") or "")
-        is_bofto = lead_type == "rumor" and (
-            rumor_number == 1
-            or lead_detail == "1"
-            or "Bofto" in lead_detail
-            or "Bofto" in title
-        )
         if not (is_bofto and scene_key.strip().lower() == "scene 18"):
             actions.extend(terminal_actions)
     terminal_label = _tag_terminal_scene_label(scene_text)
@@ -4972,7 +5001,7 @@ def _tag_scene_graph_special_action(scene_key: str, scene_text: str, branches: l
     ):
         return _tag_prompt_action(
             "Choose thief and roll",
-            "Choose the party member trying to steal Bofto's star-shaped object, then roll Scene 14's thievery Save vs L6. The app moves to Scene 19 on success or Scene 18 on failure.",
+            "Choose the party member trying to steal Bofto's star-shaped object, then roll Scene 14's thievery Save vs L6. On success the app resolves Scene 19's pickup and Will Save and closes the module; on failure it moves to Scene 18 and closes the module.",
             action_type="branch",
             action_value="bofto_theft_save",
             reference="Scene 14 star-object theft",

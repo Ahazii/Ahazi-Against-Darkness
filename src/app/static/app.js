@@ -9164,8 +9164,6 @@ const TAG_BRANCH_ACTION_HINTS = {
   gargoyle_surprise: "Reference optional. Amount ignored. Rolls 3-in-6 camouflage surprise.",
   gargoyle_skin: "Reference optional. Amount ignored. Rolls 2-in-6 mundane-weapon bounce.",
   bofto_theft_save: "Reference: use mod=1 or mod=-1 for thievery modifiers. Amount: positive modifier if any.",
-  star_object_will_save: "Reference: use mod=1 or mod=-1 for Will modifiers. Amount: positive modifier if any.",
-  star_slayer_check: "Reference optional. Amount ignored. Rolls 2-in-6 Boss/Weird replacement from the star-object curse.",
   treasure_map_follow: "Reference optional. Amount: stored or Guild cartographer map bonus. Use this before a destination module is known.",
   map_cave_room_count: "Reference optional. Amount ignored. Rolls/logs the Underground caves d6+3 target-room count. This is separate from Claim Treasure in the current room.",
   map_temple_idol: "Reference optional. Amount ignored. Rolls 1d3 x 100 gp idol value for Map Leads To 2.",
@@ -9354,6 +9352,7 @@ function setButtonTooltip(button, text) {
 }
 
 const ITEM_TOOLTIP_RULES = [
+  [/bofto.*star-shaped cursed object|star-shaped object/i, "Bofto's Star-Shaped Cursed Object (TAG pp.30-31): it cannot be sold, dropped, or voluntarily transferred. No magic or Blessing removes it. The curse ends only when its carrier explicitly lets Invisible Gremlins take it."],
   [/shoes of fast walk/i, "Shoes of Fast Walk: 200 gp per pair from the leprechaun bargain. The wearer adds +Tier to Defense when withdrawing or fleeing melee."],
   [/potion of healing/i, "Potion of Healing: drink when allowed to recover Life. Barbarians cannot use magic potions; transfer it to an eligible ally."],
   [/food ration/i, "Food ration: eaten to reset a hero's hunger timer. Track carried rations against food limits where those rules are active."],
@@ -11627,6 +11626,7 @@ function handleError(error) {
 
 const DIRECT_TAG_BRANCH_ACTIONS = new Set([
   "bofto_theft_save",
+  "star_object_will_save",
   "tag_ambush_chance",
   "temple_dungeon_handoff",
   "medusa_assassin_ambush",
@@ -11635,7 +11635,6 @@ const DIRECT_TAG_BRANCH_ACTIONS = new Set([
   "gargoyle_count",
   "gargoyle_surprise",
   "gargoyle_skin",
-  "star_slayer_check",
   "treasure_map_follow",
   "map_cave_room_count",
   "map_temple_idol",
@@ -11989,8 +11988,10 @@ function chooseTagDirectSceneCharacter(defaults = {}) {
 
 function tagDirectBranchBlockedReason(defaults = {}) {
   if (!directTagBranchAllowed(defaults)) return "";
-  if (defaults.branchAction === "bofto_theft_save" && !defaults.characterId) {
-    return "Choose the character attempting the Scene 14 theft before rolling.";
+  if (["bofto_theft_save", "star_object_will_save"].includes(defaults.branchAction) && !defaults.characterId) {
+    return defaults.branchAction === "bofto_theft_save"
+      ? "Choose the character attempting the Scene 14 theft before rolling."
+      : "Choose the successful Scene 14 thief who picked up the cursed object.";
   }
   const cost = tagDirectBranchCost(defaults);
   if (cost <= 0) return "";
@@ -12603,8 +12604,12 @@ async function runTagBranchActionWithDefaults(defaults = {}) {
   }
   if (result.session) {
     state.session = result.session;
-    renderSession();
     syncSessionListFromSession(state.session);
+    if (state.session.mode === "complete") {
+      await finishCompletedAdventureClient(state.session);
+    } else {
+      renderSession();
+    }
   }
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "Adventures Guild procedure logged.");
@@ -17462,6 +17467,7 @@ function renderSavedGames() {
 const RULES_TABLE_META_KEYS = new Set(["ruleset_status", "open_items", "validation"]);
 
 const ENVIRONMENT_TABLE_HINTS = {
+  tag_star_object_curse_table: "Bofto's Star-Shaped Object curse procedure (TAG pp.30-31): pickup Save, persistent curse, Star-Slayer, Gremlin cure, carrier death, and campaign recovery.",
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
   caverns_special_features_table: "Caverns Special Features (d6), EE p.112. Roll on room content 5 in caverns.",
   caverns_water_pool_table: "Cavern water pool sub-table (d6), EE p.112.",
@@ -17564,6 +17570,7 @@ const RULES_TABLE_ORDER = [
   "fd_legendary_magic_item_table",
   "fd_legendary_spell_table",
   "fd_cyclopean_idol_table",
+  "tag_star_object_curse_table",
   "courtship_seaside_encounter_table",
   "courtship_riverside_encounter_table",
   "courtship_woods_encounter_table",
@@ -18634,6 +18641,9 @@ function renderDeveloperPlaytestControls(session) {
   const isAbyss = session.ruleset_profile_id === "abyss";
   const isForsakenDepths = sessionIsForsakenDepths(session);
   const isExpandedEdition = session.ruleset === "ee";
+  const hasTag = sessionHasSupplement(session, "tag") || Boolean(
+    session.tag_star_object_curse_active || session.tag_star_object_recovery_pending
+  );
   const available = enabled && session.mode === "exploration" && !session.camped_outside && (isAbyss || isForsakenDepths || isExpandedEdition);
   developerPlaytestControls.classList.toggle("hidden", !available);
   if (!available) {
@@ -18664,6 +18674,12 @@ function renderDeveloperPlaytestControls(session) {
       new Option("EE foe encounter", "ee_foe"),
       new Option("EE Final Boss", "ee_final_boss"),
       new Option("EE Quest result", "ee_quest")
+    );
+  }
+  if (hasTag) {
+    kind.append(
+      new Option("TAG Star-Slayer curse encounter", "tag_star_slayer"),
+      new Option("TAG Invisible Gremlins curse encounter", "tag_invisible_gremlins")
     );
   }
   kind.value = [...kind.options].some((option) => option.value === previousKind) ? previousKind : kind.options[0].value;
@@ -18807,8 +18823,9 @@ function renderDeveloperPlaytestControls(session) {
       }
     }
     refillRolls();
-    roll.classList.toggle("hidden", eeFoeSelected || fdFoeSelected);
-    roll.disabled = eeFoeSelected || fdFoeSelected;
+    const tagCurseSelected = kind.value === "tag_star_slayer" || kind.value === "tag_invisible_gremlins";
+    roll.classList.toggle("hidden", eeFoeSelected || fdFoeSelected || tagCurseSelected);
+    roll.disabled = eeFoeSelected || fdFoeSelected || tagCurseSelected;
     const canForceLeader = kind.value === "abyss_foe" && table.value === "abyss_minions_table" && roll.value === "6";
     forceLeader.classList.toggle("hidden", !canForceLeader);
     forceLeaderInput.disabled = !canForceLeader;
@@ -18820,7 +18837,7 @@ function renderDeveloperPlaytestControls(session) {
   run.addEventListener("click", async () => {
     developerPlaytestControls.dataset.kind = kind.value;
     developerPlaytestControls.dataset.table = table.value;
-    developerPlaytestControls.dataset.key = kind.value === "fd_foe" ? fdFoe.value : eeFoe.value;
+    developerPlaytestControls.dataset.key = kind.value === "fd_foe" ? fdFoe.value : (kind.value.startsWith("ee_") ? eeFoe.value : "");
     developerPlaytestControls.dataset.roll = roll.value;
     developerPlaytestControls.dataset.forceLeader = String(forceLeaderInput.checked);
     await advance("developer_playtest", {
@@ -19800,6 +19817,43 @@ function currentObjectiveForSession(session) {
   }
   const tile = currentTile(session);
   if (!tile) return null;
+  if (session.tag_star_object_gremlin_choice_pending) {
+    return {
+      title: "Current objective: choose what the Invisible Gremlins take",
+      body:
+        "The cursed carrier has met Invisible Gremlins. Letting them take Bofto's star-shaped object bypasses Gremlin protection and permanently breaks the curse; keeping it resolves the encounter under the ordinary protection and theft rules.",
+      tone: "warn",
+      actions: [
+        {
+          label: "Let them take the cursed object",
+          kind: "advance",
+          advanceAction: "resolve_star_object_gremlins",
+          payload: { star_object_choice: "release" },
+          tooltip: "TAG pp.30-31: explicitly surrender the cursed object to the Invisible Gremlins. This bypasses all Gremlin protection and is the only way to break the curse.",
+        },
+        {
+          label: "Keep the cursed object",
+          kind: "advance",
+          advanceAction: "resolve_star_object_gremlins",
+          payload: { star_object_choice: "keep" },
+          tooltip: "Keep Bofto's cursed object. Resolve Invisible Gremlins normally, including any active protection; the object and its curse remain.",
+        },
+      ],
+    };
+  }
+  if (session.tag_star_object_assignment_pending) {
+    return {
+      title: "Current objective: assign the recovered cursed object",
+      body:
+        "The 1-in-6 campaign recovery check found Bofto's star-shaped object in this treasure. Choose one living hero to carry it; the curse then becomes operative again.",
+      tone: "warn",
+      action: {
+        label: "Assign cursed object",
+        kind: "star-object-assign",
+        tooltip: "TAG p.31: choose one living party member to receive the recovered star-shaped object and its persistent curse.",
+      },
+    };
+  }
   const livingFoes = livingFoesOnTile(session);
   if (session.mode === "combat") {
     return {
@@ -20083,6 +20137,10 @@ function appendCurrentObjectiveButton(parent, action) {
           appendBoftoTheftGuidedAction(parent, action.promptAction, action.fallbackReference);
           return;
         }
+        if (defaults.branchAction === "star_object_will_save") {
+          appendBoftoScene19GuidedAction(parent, action.promptAction, action.fallbackReference);
+          return;
+        }
         const directBranch = directTagBranchAllowed(defaults);
         const directRoute = directTagRouteAllowed(defaults);
         const directScene = directTagSceneAllowed(defaults);
@@ -20111,6 +20169,9 @@ function appendCurrentObjectiveButton(parent, action) {
         });
       }
       break;
+    case "star-object-assign":
+      appendRecoveredStarObjectAssignment(parent, action);
+      return;
     case "tag-actions":
       setButtonTooltip(btn, "Open the advanced/manual Adventures Guild fallback controls.");
       btn.addEventListener("click", () => openTagAdventureActions());
@@ -25474,7 +25535,66 @@ function appendBoftoTheftGuidedAction(parent, action, fallbackReference) {
     }
   });
   wrap.appendChild(btn);
-  wrap.appendChild(subline("Success opens Scene 19. Failure opens Scene 18."));
+  wrap.appendChild(subline("Success automatically resolves Scene 19 and its Will Save; failure resolves Scene 18. Either result closes the module."));
+  parent.appendChild(wrap);
+  return true;
+}
+
+function appendBoftoScene19GuidedAction(parent, action, fallbackReference) {
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  if (defaults.branchAction !== "star_object_will_save") return false;
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  const wrap = node("div", "tag-context-guided-action");
+  setTooltip(wrap, "TAG p.30, Scene 19: identify the successful Scene 14 thief. The app assigns the object, rolls the L8 Will Save with all printed modifiers, applies Madness on failure, and closes the module.");
+  wrap.appendChild(node("strong", "", "Scene 19 carrier"));
+  const select = document.createElement("select");
+  setTooltip(select, "Choose the living hero who successfully stole and picked up Bofto's star-shaped object in Scene 14.");
+  for (const member of living) {
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = `${member.name} (L${member.level})`;
+    option.title = "This hero receives the cursed item and makes the automatic L8 Will Save.";
+    select.appendChild(option);
+  }
+  wrap.appendChild(select);
+  const btn = node("button", "primary", "Resolve Scene 19");
+  btn.type = "button";
+  btn.disabled = !living.length;
+  setButtonTooltip(btn, `${action.tooltip || "Resolve Scene 19."} The app rolls the result; the player does not choose success or failure.`);
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Rolling...";
+    try {
+      await runTagBranchActionWithDefaults({ ...defaults, characterId: select.value });
+    } catch (error) {
+      handleError(error);
+    } finally {
+      btn.disabled = !living.length;
+      btn.textContent = originalText;
+    }
+  });
+  wrap.appendChild(btn);
+  wrap.appendChild(subline("Spellcasters and clerics add +L; halflings reroll one failed Save. The curse persists after either result."));
+  parent.appendChild(wrap);
+  return true;
+}
+
+function appendRecoveredStarObjectAssignment(parent, action = {}) {
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  const wrap = node("div", "tag-context-guided-action");
+  setTooltip(wrap, action.tooltip || "Choose a living hero to receive the recovered cursed object.");
+  const select = document.createElement("select");
+  setTooltip(select, "Select the living party member who will carry Bofto's recovered star-shaped object.");
+  for (const member of living) {
+    select.appendChild(new Option(`${member.name} (L${member.level})`, member.character_id));
+  }
+  const btn = node("button", "primary", action.label || "Assign cursed object");
+  btn.type = "button";
+  btn.disabled = !living.length;
+  setButtonTooltip(btn, action.tooltip || "Assign the recovered cursed object; its Boss/Weird replacement effect resumes immediately.");
+  btn.addEventListener("click", () => advance("assign_star_object", { character_id: select.value }));
+  wrap.append(select, btn);
   parent.appendChild(wrap);
   return true;
 }
@@ -25996,6 +26116,7 @@ function renderTagRelevantActions(session = state.session) {
   for (const action of displayActions) {
     if (appendLeprechaunGuidedAction(row, action, fallback)) continue;
     if (appendBoftoTheftGuidedAction(row, action, fallback)) continue;
+    if (appendBoftoScene19GuidedAction(row, action, fallback)) continue;
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
     const tooltip = String(action.tooltip || "Prefill Adventures Guild Actions from the current generated-room prompt.");
@@ -26042,6 +26163,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
     if (!action?.label) continue;
     if (appendLeprechaunGuidedAction(row, action, fallbackReference)) continue;
     if (appendBoftoTheftGuidedAction(row, action, fallbackReference)) continue;
+    if (appendBoftoScene19GuidedAction(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
     if (defaults.sceneAction === "deoldyn_training") {

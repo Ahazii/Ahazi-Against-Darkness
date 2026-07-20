@@ -544,11 +544,15 @@ def _destroy_belongings_and_summon(
     show_rolls: bool,
     log: list[str],
 ) -> None:
-    destroyed = list(member.inventory)
-    member.inventory = []
+    from .star_object_curse import removable_inventory_items
+
+    destroyed = removable_inventory_items(member.inventory)
+    member.inventory = [item for item in member.inventory if item not in destroyed]
     member.gold = 0
     if destroyed:
         log.append(f"{member.name}'s belongings are destroyed in the blaze ({len(destroyed)} item(s), TCOTFD p.27).")
+    if member.inventory:
+        log.append("The bound star-shaped object survives the blaze (TAG p.30).")
     from .courtship_demesne import _spawn_courtship
 
     hcl = engine._highest_character_level(session.party)

@@ -503,6 +503,7 @@ class TileState(BaseModel):
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
     cavern_feature_key: str | None = None
     terrain: TileTerrain = "indoor"
+    tag_star_object_recovery_checked: bool = False
 
 
 class DetachedGroupState(BaseModel):
@@ -846,6 +847,7 @@ class CampaignState(BaseModel):
     tag_hidden_trove_robbed: bool = False
     tag_hidden_trove_stolen_gold_gp: int = Field(default=0, ge=0)
     tag_hidden_trove_stolen_items: list[TagStoredItemState] = Field(default_factory=list)
+    tag_star_object_recovery_pending: bool = False
     tag_magic_lockers: list[TagMagicLockerState] = Field(default_factory=list)
     tag_bank_accounts: list[TagBankAccountState] = Field(default_factory=list)
     tag_adventure_routes: list[TagAdventureRouteState] = Field(default_factory=list)
@@ -955,6 +957,12 @@ class SessionState(BaseModel):
     spear_shield_readied: list[str] = Field(default_factory=list)
     monster_encounter_start_applied: bool = False
     gremlin_wm_protection_pending: bool = False
+    tag_star_object_curse_active: bool = False
+    tag_star_object_curse_cleared: bool = False
+    tag_star_object_recovery_pending: bool = False
+    tag_star_object_assignment_pending: bool = False
+    tag_star_object_gremlin_choice_pending: bool = False
+    star_slayer_no_flee_character_ids: list[str] = Field(default_factory=list)
     miner_amulet_consumed: bool = False
     herbal_tonic_used_character_ids: list[str] = Field(default_factory=list)
     expended_spells: dict[str, list[str]] = Field(default_factory=dict)
@@ -1463,6 +1471,8 @@ class SessionAction(BaseModel):
         "use_miners_ointment",
         "use_herbal_tonic",
         "apply_gremlin_repellant",
+        "resolve_star_object_gremlins",
+        "assign_star_object",
         "choose_treasure_outcome",
         "fd_oblivion_redeem_madness",
         "fd_spend_hallucination_revelation",
@@ -1527,6 +1537,8 @@ class SessionAction(BaseModel):
         "ee_foe",
         "ee_final_boss",
         "ee_quest",
+        "tag_star_slayer",
+        "tag_invisible_gremlins",
     ] | None = None
     playtest_table: str | None = None
     playtest_key: str | None = None
@@ -1537,6 +1549,7 @@ class SessionAction(BaseModel):
     character_id: str | None = None
     target_character_id: str | None = None
     item_name: str | None = None
+    star_object_choice: Literal["release", "keep"] | None = None
     target_weapon: str | None = None
     gold_amount: int | None = Field(default=None, ge=1)
     marching_order: int | None = Field(default=None, ge=1, le=6)

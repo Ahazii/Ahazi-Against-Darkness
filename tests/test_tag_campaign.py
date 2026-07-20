@@ -984,6 +984,9 @@ def test_bundled_tag_pdf_extraction_keeps_medusa_rumor_page_wrap() -> None:
     assert "for her services. If you want to investigate, go to Scene 10." in rumors[2]
     assert len(rumors) == 12
     assert len(scenes) == 19
+    assert len(scenes[19]) < 5000
+    assert "Following the Treasure Map Table" not in scenes[19]
+    assert not scenes[19].endswith("The Star-Slayer From Beyond")
     assert not [warning for warning in warnings if "may be cut off" in warning]
 
 
@@ -1037,7 +1040,7 @@ def test_tag_scene_graph_follows_reachable_scene_branches_from_profile() -> None
 
     graph = tag_campaign._scene_graph_for_profile(tag_campaign.TAG_RUMOR_PROFILES[1], scenes, "Tales.pdf")
 
-    assert graph["start_scenes"] == ["Scene 9", "Scene 17", "Scene 14", "Scene 19"]
+    assert graph["start_scenes"] == ["Scene 9", "Scene 17"]
     assert set(graph["scenes"]) == {"Scene 9", "Scene 14", "Scene 17", "Scene 18", "Scene 19"}
     assert graph["scenes"]["Scene 9"]["branches"][0]["target_scene"] == "Scene 14"
     assert graph["scenes"]["Scene 14"]["branches"][1]["target_scene"] == "Scene 19"
@@ -1928,11 +1931,12 @@ def test_tag_rumor_branch_actions_roll_scene_procedures(monkeypatch) -> None:
     assert missing_character_theft.total is None
     assert "requires choosing the character" in missing_character_theft.result_text
 
+    theft_rolls = iter([(5, [5]), (4, [4]), (4, [4]), (4, [4])])
+    monkeypatch.setattr(tag_campaign, "roll_exploding_for_level", lambda *_args, **_kwargs: next(theft_rolls))
     theft = resolve_tag_branch_action(campaign, hero, branch_action="bofto_theft_save", reference="mod=1")
     assert theft.total == 6
     assert "Go to Scene 19" in theft.result_text
 
-    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
     halfling_theft = resolve_tag_branch_action(
         campaign,
         _character(class_id="halfling", class_name="Halfling", level=2),
@@ -1954,14 +1958,13 @@ def test_tag_rumor_branch_actions_roll_scene_procedures(monkeypatch) -> None:
     )
     assert elf_theft.total == 5
 
-    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
     will = resolve_tag_branch_action(campaign, hero, branch_action="star_object_will_save", reference="mod=3")
-    assert will.total == 5
-    assert "TAG star-shaped object curse carrier" in hero.statuses
+    assert will.total is None
+    assert "active adventure session" in will.result_text
+    assert "TAG star-shaped object curse carrier" not in hero.statuses
 
-    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
     slayer = resolve_tag_branch_action(campaign, hero, branch_action="star_slayer_check")
-    assert "Star-Slayer from Beyond" in slayer.result_text
+    assert "automatic" in slayer.result_text
 
 
 def test_tag_treasure_map_branch_actions_roll_destination_procedures(monkeypatch) -> None:
@@ -2043,6 +2046,16 @@ def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
     assert "Apply The Map Leads To" not in translated
     assert "Claim Treasure" in translated
     assert "Underground caves room target" in translated
+
+    oversized_scene19 = (
+        "As you steal the star-shaped object, the halfling collapses. "
+        "The curse remains. The Star-Slayer From Beyond Following the Treasure Map Table (d6) "
+        "1-2 Deathtrap."
+    )
+    repaired_scene19 = normalize_tag_log_line(oversized_scene19)
+    assert repaired_scene19 == (
+        "As you steal the star-shaped object, the halfling collapses. The curse remains."
+    )
 
     manifest = {
         "source": {

@@ -126,7 +126,17 @@ def test_abyss_minion_encounters_use_separate_five_encounter_tally() -> None:
         created_at="2026-01-01T00:00:00Z",
         updated_at="2026-01-01T00:00:00Z",
     )
-    abyss_minions = [EnemyState(id="1", name="Chaos Fanatic", category="minions", level=7, life=0, max_life=1)]
+    abyss_minions = [
+        EnemyState(
+            id="1",
+            name="Chaos Fanatic",
+            category="minions",
+            level=7,
+            life=0,
+            max_life=1,
+            tags=["abyss"],
+        )
+    ]
     standard_vermin = [EnemyState(id="2", name="Rat", category="vermin", level=2, life=0, max_life=1)]
 
     eng._award_encounter_xp(session, standard_vermin, show_rolls=False)

@@ -214,6 +214,7 @@ API_MERGED_TABLE_KEYS = {
     "tier_training_costs_table",
     "hirelings_table",
     "milestones_table",
+    "tag_star_object_curse_table",
 }
 
 VERIFIED_RULE_TABLE_KEYS = {
@@ -322,6 +323,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "secrets_table",
     "special_event_wandering_table",
     "swashbuckler_traits_table",
+    "tag_star_object_curse_table",
     "tier_training_costs_table",
     "trap_table",
     "treasure_table",

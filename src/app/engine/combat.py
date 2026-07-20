@@ -164,6 +164,7 @@ def clear_combat_state(session: SessionState) -> None:
     session.combat_lanterns_extinguished = False
     session.spear_shield_readied = []
     session.monster_encounter_start_applied = False
+    session.star_slayer_no_flee_character_ids = []
     session.missile_used_character_ids = []
     session.spell_used_character_ids = []
     session.summoned_beast_life = 0

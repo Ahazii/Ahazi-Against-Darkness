@@ -18,7 +18,8 @@
     "locations",
     "campaign_state",
     "generators",
-    "narrative"
+    "narrative",
+    "foes"
   ],
   "content_sources": [
     {"kind": "foes", "path": "data/rules/tag_monsters.json", "description": "TAG generated-adventure foe groups."}

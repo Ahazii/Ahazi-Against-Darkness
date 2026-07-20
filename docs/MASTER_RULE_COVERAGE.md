@@ -100,12 +100,13 @@ Implemented first slice:
 - TAG Rumor Scene, Treasure Map, Thematic Dungeon, and Guild Job leads create normal installed adventure modules in the Adventure section/dropdown.
 - TAG lead modules carry `source.parameters.tag_reference` with PDF pages, scene/theme notes, reward notes, and the current finale foes; all 12 Rumor Scenes, six Thematic Dungeons, and six Guild Job minor quests have structured profiles.
 - TAG-specific monster supplement adds named finale/minion spawns for white gargoyles, mutant fish, Silent Scream cultists/priestess, hill giant, minotaur lord, bandit chieftain/guards, Gorungar/archers, griffin, red portrait horror, monoceros, and maze minotaurs without changing the locked EE bestiary rows.
+- Rumor 1's extracted Scene 9/14/17/18/19 graph is playable from player-facing choices. Scene 14 selects the thief and rolls its printed Save; Scene 19 automatically assigns the cursed object and implements the complete TAG pp.30-31 persistent curse, Star-Slayer, Invisible Gremlin cure, carrier-death transfer, and total-party-kill recovery procedure.
 - TAG Actions section resolves/logs social branches, Clue spends, variable counts, capture-alive outcomes, printed rewards, exact scene rewards, structured route markers, safe route rewrites to the latest generated module, Clue-gate follow-up scene insertion, optional side-scene removal, structured XP markers/awards, trinket use, Guild spell use/marker clearing, Speedy Recovery settlement-healing markers, Look Tough Streetwise bonus consumption, Wizard's Luck Gambling House resolution, per-character bank deposit/withdrawal, inheritance notes/transfers, storage robbery risk/recovery, bank robbery recovery into Bandit Hideout, moneylender enforcement, guild upkeep, Guild 50% loot share, resurrection funding, and Guild reroll reset with hover hints.
 - Home-panel TAG tools are grouped into collapsible sections with compact `?` help summaries for settlement, troupe, travel, availability, Streetwise, storage, buyer, magic lockers, maps/adventure leads, and services/log.
 
 Next slices:
 
-- broader playtest signoff.
+- complete the short v0.39.35 Scene 19/curse live check, then stop broad adventure testing and resume one bounded modularisation slice at a time.
 
 Later slices can deepen exact branch-specific item handling, robbery recovery,
 and Guild spell math if playtesting shows those surfaces are needed.

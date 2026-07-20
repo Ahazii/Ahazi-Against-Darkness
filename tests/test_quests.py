@@ -305,7 +305,22 @@ def test_generated_bofto_theft_roll_moves_to_result_scene(client, monkeypatch, t
         description="Resolve generated Adventures Guild lead.",
     )
     main.store.save("sessions", session)
-    monkeypatch.setattr("app.engine.tag_campaign.roll_d6", lambda: 6)
+    monkeypatch.setattr(
+        "app.engine.tag_campaign.roll_exploding_for_level",
+        lambda *_args, **_kwargs: (6, [6]),
+    )
+    monkeypatch.setattr(
+        "app.engine.star_object_curse.roll_exploding_for_level",
+        lambda *_args, **_kwargs: (8, [6, 2]),
+    )
+
+    premature_scene_19_response = client.post(
+        "/api/sessions/bofto-theft-session/tag-branch-action",
+        json={"character_id": "h", "branch_action": "star_object_will_save"},
+    )
+
+    assert premature_scene_19_response.status_code == 400
+    assert "Scene 19 is not active" in premature_scene_19_response.json()["detail"]
 
     missing_character_response = client.post(
         "/api/sessions/bofto-theft-session/tag-branch-action",
@@ -327,8 +342,14 @@ def test_generated_bofto_theft_roll_moves_to_result_scene(client, monkeypatch, t
     payload = response.json()["session"]
     current_tile = next(tile for tile in payload["map_state"]["tiles"] if tile["id"] == payload["map_state"]["current_tile_id"])
     assert current_tile["content_key"] == "imported:tag-scene-19"
+    assert payload["mode"] == "complete"
+    assert payload["active_quest"]["completed"] is True
+    assert payload["summary"]
+    assert "Bofto's Star-Shaped Cursed Object" in payload["party"][0]["inventory"]
+    assert "Bofto's Star-Shaped Object Curse" in payload["party"][0]["statuses"]
     log_text = "\n".join(payload["log"])
-    assert "Scene 14 thievery Save d6=6+1=7 vs L6: success" in log_text
+    assert "Scene 14 thievery Save 6+1=7 vs L6: success" in log_text
+    assert "Scene 19 Will Save" in log_text
     assert "The theft succeeds." in log_text
     assert "If you succeed" not in log_text
 

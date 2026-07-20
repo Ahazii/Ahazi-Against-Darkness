@@ -62,6 +62,12 @@ def treasure_map_note_for(roll: int | None, *, final: bool = False) -> str:
 
 def normalize_tag_log_line(line: str) -> str:
     text = str(line or "")
+    if "star-shaped object" in text.lower() and re.search(
+        r"\bFollowing the Treasure Map Table\b",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        return _trim_bofto_scene19_text(text)
     match = _LEGACY_MAP_NOTE_RE.match(text.strip())
     if not match:
         return text
@@ -485,6 +491,145 @@ def _upgrade_leprechaun_vendor_manifest(manifest: dict[str, Any], tag_reference:
                         trigger["log"] = "The leprechaun bargain is ready: buy Shoes of Fast Walk or choose one illusion lesson before leaving Blackbird Hill."
 
 
+def _trim_bofto_scene19_text(value: str) -> str:
+    trimmed = re.split(
+        r"\bFollowing the Treasure Map Table\b",
+        str(value or ""),
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].strip()
+    return re.sub(
+        r"\s+The Star-Slayer From Beyond\s*$",
+        "",
+        trimmed,
+        flags=re.IGNORECASE,
+    ).strip()
+
+
+def _bofto_scene19_prompt(body: str) -> dict[str, Any]:
+    return {
+        "title": "Scene 19",
+        "body": _trim_bofto_scene19_text(body),
+        "checklist": [
+            "Choose the character who succeeded at the Scene 14 theft.",
+            "The app assigns the cursed object, rolls the L8 Will Save with printed modifiers, and closes the module.",
+            "The curse persists until the carrier explicitly lets Invisible Gremlins take the object.",
+        ],
+        "actions": [
+            {
+                "label": "Choose carrier and resolve Scene 19",
+                "tooltip": (
+                    "Choose the successful thief. The app assigns the cursed object, rolls the TAG p.30 "
+                    "L8 Will Save, applies Spellcaster/Cleric +L and the Halfling reroll, then closes this "
+                    "module. The curse persists after either result."
+                ),
+                "action_type": "branch",
+                "action_value": "star_object_will_save",
+                "reference": "Scene 19 star-shaped object pickup and Will Save",
+                "amount": 0,
+            }
+        ],
+    }
+
+
+def _upgrade_bofto_manifest(manifest: dict[str, Any], tag_reference: dict[str, Any]) -> bool:
+    lead_type = str(tag_reference.get("lead_type") or "").strip().lower()
+    lead_detail = str(tag_reference.get("lead_detail") or "").strip()
+    title = str(tag_reference.get("title") or manifest.get("title") or "")
+    try:
+        rumor_number = int(tag_reference.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    is_bofto = lead_type == "rumor" and (
+        rumor_number == 1
+        or lead_detail == "1"
+        or "bofto" in lead_detail.lower()
+        or "bofto" in title.lower()
+    )
+    if not is_bofto:
+        return False
+
+    changed = False
+    scene_graph = tag_reference.get("scene_graph")
+    scenes = scene_graph.get("scenes") if isinstance(scene_graph, dict) else None
+    scene19_body = ""
+    if isinstance(scenes, dict):
+        for scene_key, node in scenes.items():
+            if not isinstance(node, dict) or str(scene_key).strip().lower() != "scene 19":
+                continue
+            original = str(node.get("description") or "")
+            trimmed = _trim_bofto_scene19_text(original)
+            scene19_body = trimmed
+            if trimmed != original:
+                node["description"] = trimmed
+                changed = True
+
+    prompts = tag_reference.get("room_prompts")
+    if not isinstance(prompts, dict):
+        prompts = {}
+        tag_reference["room_prompts"] = prompts
+        changed = True
+    legacy_values = {"bofto_scene_choice", "star_slayer_check", "star_object_will_save"}
+    for prompt_key, prompt in list(prompts.items()):
+        if not isinstance(prompt, dict):
+            continue
+        original_body = str(prompt.get("body") or "")
+        trimmed_body = _trim_bofto_scene19_text(original_body)
+        if trimmed_body != original_body:
+            prompt["body"] = trimmed_body
+            changed = True
+        prompt_title = str(prompt.get("title") or "").strip().lower()
+        is_scene19 = prompt_title == "scene 19" or str(prompt_key).strip().lower() == "tag-scene-19"
+        if str(prompt_key).strip().lower() == "tag-unlocked-scene" and (
+            "star-shaped object writhes" in trimmed_body.lower()
+            or "character who picked it up" in trimmed_body.lower()
+        ):
+            is_scene19 = True
+        if is_scene19:
+            replacement = _bofto_scene19_prompt(trimmed_body or scene19_body)
+            if prompt != replacement:
+                prompts[prompt_key] = replacement
+                changed = True
+            continue
+        actions = prompt.get("actions")
+        if isinstance(actions, list):
+            filtered = [
+                action
+                for action in actions
+                if not (
+                    isinstance(action, dict)
+                    and str(action.get("action_value") or "") in legacy_values
+                )
+            ]
+            if filtered != actions:
+                prompt["actions"] = filtered
+                changed = True
+
+    for room in manifest.get("rooms") or []:
+        if not isinstance(room, dict):
+            continue
+        original = str(room.get("description") or "")
+        trimmed = _trim_bofto_scene19_text(original)
+        if trimmed != original:
+            room["description"] = trimmed
+            changed = True
+        for trigger in room.get("triggers") or []:
+            if not isinstance(trigger, dict) or not isinstance(trigger.get("log"), str):
+                continue
+            original_log = trigger["log"]
+            trimmed_log = _trim_bofto_scene19_text(original_log)
+            if trimmed_log != original_log:
+                trigger["log"] = trimmed_log
+                changed = True
+
+    if tag_reference.get("scene_graph_terminal_actions"):
+        tag_reference["scene_graph_terminal_actions"] = []
+        changed = True
+    if changed:
+        tag_reference["bofto_scene19_rules_upgrade"] = "TAG pp.30-31 automatic curse flow"
+    return changed
+
+
 def _repaired_room_prompts(tag_reference: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
     title = str(tag_reference.get("title") or manifest.get("title") or "Generated Adventures Guild lead")
     lead_type = str(tag_reference.get("lead_type") or "generated Adventures Guild lead").replace("_", " ")
@@ -558,6 +703,7 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
             )
             prompts = tag_reference["room_prompts"]
         _apply_local_tag_narrative_override(manifest, tag_reference)
+        _upgrade_bofto_manifest(manifest, tag_reference)
         if is_treasure_map:
             if isinstance(prompts, dict):
                 for prompt in prompts.values():

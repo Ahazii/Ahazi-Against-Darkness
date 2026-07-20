@@ -2565,6 +2565,14 @@ async def campaign_tag_branch_action(payload: dict[str, Any]) -> dict[str, Any]:
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
     branch_action = str(payload.get("branch_action") or "social_choice")
+    if branch_action in {"star_object_will_save", "star_slayer_check"}:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This cursed-object procedure is automatic inside an active adventure session "
+                "(TAG pp.30-31)."
+            ),
+        )
     if branch_action == "bofto_theft_save" and character is None:
         raise HTTPException(status_code=400, detail="Choose the character attempting the Scene 14 theft before rolling.")
     entry = resolve_tag_branch_action(
@@ -4140,6 +4148,44 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "shown_on": "Settlement Management.",
             "tracks": "Settlement name, size modifier, notes, tracked settlements, availability checks, travel logs.",
             "player_use": "Understand what settlement size affects and keep service/travel context visible.",
+        },
+    ]
+    data["tag_star_object_curse_table"] = [
+        {
+            "step": "Scene 19 pickup",
+            "rule": "The selected thief carries the star-shaped object and rolls a Will Save vs L8. Spellcasters and clerics add +L; halflings reroll one failure.",
+            "automation": "The app assigns the item, rolls the Save, applies Madness on failure, and closes Bofto's module.",
+            "source": "TAG p.30, Scene 19",
+        },
+        {
+            "step": "Curse removal",
+            "rule": "No magic or Blessing removes the curse. It ends only when the carrier explicitly lets Invisible Gremlins take the object.",
+            "automation": "Gremlin encounters pause for Let them take it or Keep it; releasing bypasses repellant/protection.",
+            "source": "TAG p.30, Star-Shaped Object Curse",
+        },
+        {
+            "step": "Major foe replacement",
+            "rule": "Each Boss or Weird Monster has a 2-in-6 chance to be replaced by the Star-Slayer from Beyond.",
+            "automation": "Checked once per encountered major foe while a living carrier has the curse.",
+            "source": "TAG p.30, Star-Slayer from Beyond",
+        },
+        {
+            "step": "Sight and fleeing",
+            "rule": "All heroes Save vs HCL+1 or gain 1 Madness and lose 2 Life. Heroes who gain Madness cannot flee; successful savers may split away.",
+            "automation": "Sight resolves before reactions. A split flee moves eligible survivors to the prior map element while combat continues.",
+            "source": "TAG pp.30-31, Star-Slayer from Beyond",
+        },
+        {
+            "step": "Treasure and XP",
+            "rule": "The Star-Slayer has no treasure unless replacing a Final Boss, whose treasure it retains. Defeating it gives exactly 2 XP rolls.",
+            "automation": "Original Final Boss treasure metadata is retained; Star-Slayer XP bypasses extra Final Boss XP.",
+            "source": "TAG p.31, Star-Slayer from Beyond",
+        },
+        {
+            "step": "Death and total party kill",
+            "rule": "Death transfers the object automatically. After a total party kill, each future treasure has a 1-in-6 recovery chance until found and assigned.",
+            "automation": "Session and campaign state preserve the curse across death, completion, saves, and future parties.",
+            "source": "TAG p.31, Star-Shaped Object Curse",
         },
     ]
     data["tag_generated_adventure_signoff_table"] = [
@@ -5899,6 +5945,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+    from .engine.star_object_curse import apply_star_object_campaign_to_session
     from .engine.tag_campaign import apply_abyss_campaign_to_session
 
     if requested_active_supplement_ids is not None:
@@ -5932,6 +5979,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
     session.active_item_ids = list(content_registry.active_item_ids)
     session.declared_content_sources = [dict(source) for source in content_registry.declared_content_sources]
     session = apply_abyss_campaign_to_session(store, session)
+    session = apply_star_object_campaign_to_session(store, session)
     from .engine.supplements import supplement_registry, supplement_snapshot_log_line
 
     supplement_log_line = supplement_snapshot_log_line(
@@ -5974,7 +6022,24 @@ async def get_session(session_id: str) -> SessionState:
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
+    from .engine.star_object_curse import (
+        apply_star_object_campaign_to_session,
+        sync_star_object_campaign_from_session,
+    )
+
+    curse_before = (
+        session.tag_star_object_curse_active,
+        session.tag_star_object_recovery_pending,
+        session.tag_star_object_assignment_pending,
+    )
+    session = apply_star_object_campaign_to_session(store, session)
     session, changed = random_engine.normalize_session(session)
+    curse_after = (
+        session.tag_star_object_curse_active,
+        session.tag_star_object_recovery_pending,
+        session.tag_star_object_assignment_pending,
+    )
+    changed = changed or curse_before != curse_after
     if _restore_missing_recovery_members(session):
         changed = True
     if _refresh_generated_tag_manifest_on_resume(session):
@@ -5983,6 +6048,7 @@ async def get_session(session_id: str) -> SessionState:
         lock_characters_for_session(session, store)
     if changed:
         store.save("sessions", session)
+    sync_star_object_campaign_from_session(store, session)
     return enrich_session(session)
 
 
@@ -6105,6 +6171,50 @@ def _is_generated_tag_session(session: SessionState) -> bool:
         return False
     tag_ref = params.get("tag_reference") if isinstance(params, dict) else None
     return isinstance(tag_ref, dict) or params.get("origin") == "Tales from the Adventurers' Guild"
+
+
+def _is_bofto_generated_session(session: SessionState) -> bool:
+    params = ((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}
+    tag_ref = params.get("tag_reference") if isinstance(params, dict) else None
+    if not isinstance(tag_ref, dict):
+        return False
+    title = str(tag_ref.get("title") or session.imported_title or "")
+    detail = str(tag_ref.get("lead_detail") or "")
+    try:
+        rumor_number = int(tag_ref.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    return str(tag_ref.get("lead_type") or "").lower() == "rumor" and (
+        rumor_number == 1
+        or detail == "1"
+        or "bofto" in detail.lower()
+        or "bofto" in title.lower()
+    )
+
+
+def _is_bofto_scene19_active(session: SessionState) -> bool:
+    if (
+        not _is_bofto_generated_session(session)
+        or session.active_quest is None
+        or session.active_quest.completed
+    ):
+        return False
+    room_id = _imported_room_id_for_tile(session, random_engine._current_tile(session))
+    if room_id == "tag-scene-19":
+        return True
+    params = ((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}
+    tag_ref = params.get("tag_reference") if isinstance(params, dict) else None
+    prompts = tag_ref.get("room_prompts") if isinstance(tag_ref, dict) else None
+    prompt = prompts.get(room_id) if isinstance(prompts, dict) else None
+    if not isinstance(prompt, dict):
+        return False
+    if str(prompt.get("title") or "").strip().lower() == "scene 19":
+        return True
+    return any(
+        isinstance(action, dict)
+        and str(action.get("action_value") or "") == "star_object_will_save"
+        for action in prompt.get("actions") or []
+    )
 
 
 def _update_session_tag_procedure_state(session: SessionState, branch_action: str, entry: Any) -> None:
@@ -6287,7 +6397,8 @@ def _advance_generated_tag_scene_from_branch(
     if not isinstance(tag_ref, dict):
         return ""
     total = int(getattr(entry, "total", 0) or 0)
-    if total >= 6:
+    natural = int(getattr(entry, "roll", 0) or 0)
+    if natural != 1 and total >= 6:
         target = "Scene 19"
         outcome = "theft succeeds"
     else:
@@ -6303,6 +6414,43 @@ def _advance_generated_tag_scene_from_branch(
     if isinstance(session.imported_manifest, dict):
         apply_tag_route_to_manifest(session.imported_manifest, campaign)
     return _move_generated_tag_scene_target(session, tag_ref=tag_ref, reference=reference)
+
+
+def _mark_bofto_generated_lead_complete(session: SessionState, outcome: str) -> None:
+    quest = session.active_quest
+    if quest is None:
+        return
+    quest.completed = True
+    quest.tag_generated_lead_signoff = True
+    state = dict(quest.tag_generated_lead_state or {})
+    state["scene_resolved"] = True
+    state["route_recorded"] = True
+    state["closeout"] = {
+        "completed": True,
+        "result": outcome,
+        "warnings": [],
+        "updated_at": now_utc(),
+    }
+    state["next_action"] = "Bofto's rumor is resolved; review the normal adventure summary."
+    quest.tag_generated_lead_state = state
+    session.log.append(f"Quest complete: Bofto's Star-Shaped Find - {outcome}")
+
+
+def _persist_completed_session(session: SessionState) -> list[str]:
+    from .engine.tag_campaign import record_adventure_complete
+
+    record_adventure_complete(store, session)
+    roster_notes = persist_session_to_roster(session, store)
+    unlock_characters_for_session(session, store)
+    session.saved_at = None
+    if roster_notes:
+        if not any("Character roster updated" in line for line in session.summary or []):
+            session.summary = list(session.summary or [])
+            session.summary.append("Character roster updated with adventure rewards.")
+        for line in roster_notes:
+            if line not in session.log:
+                session.log.append(line)
+    return roster_notes
 
 
 @app.post("/api/sessions/{session_id}/tag-treasure-map-signoff")
@@ -6439,7 +6587,16 @@ async def session_tag_repair_guidance(session_id: str) -> SessionState:
 
 @app.post("/api/sessions/{session_id}/tag-branch-action")
 async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    from .engine.tag_campaign import load_campaign, resolve_tag_branch_action, save_campaign
+    from .engine.star_object_curse import (
+        resolve_scene19_pickup,
+        sync_star_object_campaign_from_session,
+    )
+    from .engine.tag_campaign import (
+        append_tag_log,
+        load_campaign,
+        resolve_tag_branch_action,
+        save_campaign,
+    )
 
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
@@ -6447,8 +6604,51 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
     branch_action = str(payload.get("branch_action") or "social_choice")
-    if branch_action == "bofto_theft_save" and character is None:
-        raise HTTPException(status_code=400, detail="Choose the character attempting the Scene 14 theft before rolling.")
+    if branch_action in {"bofto_theft_save", "star_object_will_save"} and character is None:
+        raise HTTPException(status_code=400, detail="Choose the character named by the Bofto scene before rolling.")
+    if branch_action == "star_slayer_check":
+        raise HTTPException(
+            status_code=400,
+            detail="Star-Slayer replacement checks now run automatically when a cursed carrier meets a major foe.",
+        )
+    if branch_action == "star_object_will_save":
+        if not _is_bofto_scene19_active(session):
+            raise HTTPException(status_code=400, detail="Scene 19 is not active in this generated adventure.")
+        member = next(
+            (item for item in session.party if character is not None and item.character_id == character.id),
+            None,
+        )
+        if member is None or member.current_life <= 0:
+            raise HTTPException(status_code=400, detail="Choose a living party member as the Scene 19 carrier.")
+        scene_result = resolve_scene19_pickup(session, member, show_rolls=True)
+        session.log.extend(scene_result.log)
+        entry = append_tag_log(
+            campaign,
+            action="star_object_will_save",
+            character=character,
+            roll=scene_result.roll,
+            modifier=scene_result.modifier,
+            total=scene_result.total,
+            result_text=scene_result.result_text,
+        )
+        _mark_bofto_generated_lead_complete(session, "Scene 19 resolved; the cursed object remains in the campaign.")
+        random_engine._complete_dungeon(session)
+        campaign = save_campaign(store, campaign)
+        campaign = sync_star_object_campaign_from_session(store, session)
+        if session.mode == "complete":
+            _persist_completed_session(session)
+        store.save("sessions", session)
+        refreshed_character = (
+            store.get("characters", character.id, Character.model_validate)
+            if character is not None
+            else None
+        )
+        return {
+            "campaign": campaign,
+            "character": refreshed_character,
+            "entry": entry,
+            "session": enrich_session(session),
+        }
     payment_member, carried_gold_before = _prepare_session_tag_payment_character(session, character, branch_action)
     stored = _stored_single_run_procedure(session, branch_action)
     if stored is not None and not payload.get("force_reroll"):
@@ -6482,9 +6682,8 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         store.save("characters", character)
         if payment_member is not None:
             _sync_session_tag_payment_character(session, character, payment_member, carried_gold_before)
-        else:
+        elif branch_action != "bofto_theft_save":
             _sync_character_to_session_party(session, character)
-    campaign = save_campaign(store, campaign)
     _update_session_tag_procedure_state(session, branch_action, entry)
     _update_generated_tag_procedure_state(session, branch_action, entry)
     if entry.result_text and entry.result_text not in session.log:
@@ -6497,6 +6696,37 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         entry=entry,
     )
     _spawn_generated_tag_foes_from_choice(session, branch_action, entry)
+    if branch_action == "bofto_theft_save":
+        succeeded = int(getattr(entry, "roll", 0) or 0) != 1 and int(getattr(entry, "total", 0) or 0) >= 6
+        member = next(
+            (item for item in session.party if character is not None and item.character_id == character.id),
+            None,
+        )
+        if succeeded:
+            if member is None or member.current_life <= 0:
+                raise HTTPException(status_code=400, detail="The selected Scene 14 thief is not a living party member.")
+            scene_result = resolve_scene19_pickup(session, member, show_rolls=True)
+            session.log.extend(scene_result.log)
+            entry.result_text = f"{entry.result_text} {scene_result.result_text}"
+            append_tag_log(
+                campaign,
+                action="star_object_will_save",
+                character=character,
+                roll=scene_result.roll,
+                modifier=scene_result.modifier,
+                total=scene_result.total,
+                result_text=scene_result.result_text,
+            )
+            _mark_bofto_generated_lead_complete(
+                session,
+                "The theft succeeded; Scene 19 and its Will Save were resolved automatically.",
+            )
+        else:
+            _mark_bofto_generated_lead_complete(
+                session,
+                "The theft failed; Scene 18 ended the rumor.",
+            )
+        random_engine._complete_dungeon(session)
     if branch_action == "map_cave_room_count":
         next_action = (
             session.active_quest.tag_generated_lead_state.get("next_action")
@@ -6509,8 +6739,17 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         )
         if next_action:
             session.log.append(f"TAG next: {next_action}")
+    campaign = save_campaign(store, campaign)
+    campaign = sync_star_object_campaign_from_session(store, session)
+    if session.mode == "complete":
+        _persist_completed_session(session)
     store.save("sessions", session)
-    return {"campaign": campaign, "character": character, "entry": entry, "session": enrich_session(session)}
+    refreshed_character = (
+        store.get("characters", character.id, Character.model_validate)
+        if character is not None and session.mode == "complete"
+        else character
+    )
+    return {"campaign": campaign, "character": refreshed_character, "entry": entry, "session": enrich_session(session)}
 
 
 @app.post("/api/sessions/{session_id}/tag-route-action")
@@ -6732,11 +6971,14 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         playtest_key=payload.playtest_key,
         playtest_roll=payload.playtest_roll,
         playtest_force_leader=payload.playtest_force_leader,
+        star_object_choice=payload.star_object_choice,
     )
     _restore_missing_recovery_members(session)
+    from .engine.star_object_curse import sync_star_object_campaign_from_session
     from .engine.tag_campaign import sync_abyss_campaign_from_session
 
     sync_abyss_campaign_from_session(store, session)
+    sync_star_object_campaign_from_session(store, session)
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
     if payload.action in {"transfer_gold", "transfer_item"} and payload.character_id and payload.target_character_id:
@@ -6746,19 +6988,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
             {payload.character_id, payload.target_character_id},
         )
     if session.mode == "complete":
-        from .engine.tag_campaign import record_adventure_complete
-
-        record_adventure_complete(store, session)
-        roster_notes = persist_session_to_roster(session, store)
-        unlock_characters_for_session(session, store)
-        session.saved_at = None
-        if roster_notes:
-            if not any("Character roster updated" in line for line in session.summary or []):
-                session.summary = list(session.summary or [])
-                session.summary.append("Character roster updated with adventure rewards.")
-            for line in roster_notes:
-                if line not in session.log:
-                    session.log.append(line)
+        _persist_completed_session(session)
     elif session.camped_outside:
         persist_session_to_roster(session, store)
         if not camped_before:

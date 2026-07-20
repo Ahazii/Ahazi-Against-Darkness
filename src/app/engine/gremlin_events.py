@@ -3,9 +3,15 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from ..schemas import PartyMemberState, SessionState
-from .dice import roll_d6, roll_formula
+from .dice import roll_d6
 from .equipment_effects import scroll_protected_by_tube
 from .magic_weapons import is_magic_weapon
+from .star_object_curse import (
+    is_star_object_item,
+    reconcile_star_object_carrier,
+    remove_star_object,
+    star_object_carrier,
+)
 
 
 def has_gremlin_repellant(member: PartyMemberState) -> bool:
@@ -70,7 +76,7 @@ def _stealable_items(member: PartyMemberState) -> list[tuple[str, str]]:
     buckets: list[tuple[str, str]] = []
     for item in member.inventory:
         lower = item.lower()
-        if "gremlin repellant" in lower:
+        if "gremlin repellant" in lower or is_star_object_item(item):
             continue
         if is_magic_weapon(item) or ("magic " in lower and ("armor" in lower or "wand" in lower or "ring" in lower)):
             buckets.append(("magic_items", item))
@@ -92,16 +98,37 @@ def resolve_invisible_gremlins(
     party: list[PartyMemberState],
     *,
     roll_fn: Callable[[], int] | None = None,
+    star_object_choice: str | None = None,
 ) -> list[str]:
     log = ["Invisible Gremlins are an event, not a Foe."]
     living = [member for member in party if member.current_life > 0]
     if not living:
         return log + ["There is no gear left to steal."]
+    reconcile_star_object_carrier(session)
+    carrier = star_object_carrier(session)
+    if carrier is not None:
+        if star_object_choice not in {"release", "keep"}:
+            session.tag_star_object_gremlin_choice_pending = True
+            return log + [
+                f"{carrier.name} may let the Invisible Gremlins take Bofto's cursed star-shaped object. "
+                "Choose Let them take it to break the curse, or Keep it to resolve the normal theft event "
+                "(TAG p.30)."
+            ]
+        session.tag_star_object_gremlin_choice_pending = False
+        if star_object_choice == "release":
+            remove_star_object(session)
+            return log + [
+                f"{carrier.name} lets the Invisible Gremlins take Bofto's star-shaped object. "
+                "The curse is broken; Gremlin protection is not used (TAG p.30)."
+            ]
+        log.append(f"{carrier.name} keeps the cursed star-shaped object; the normal Gremlin event continues.")
+    else:
+        session.tag_star_object_gremlin_choice_pending = False
     if gremlin_protection_active(session, party):
         log.extend(consume_gremlin_protection(session, party))
         return log
 
-    count = roll_formula("d6+3")
+    count = (roll_fn or roll_d6)() + 3
     if count <= 0:
         count = 1
     log.append(f"Invisible Gremlins steal {count} item(s).")

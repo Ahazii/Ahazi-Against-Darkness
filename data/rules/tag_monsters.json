@@ -78,6 +78,38 @@
   ],
   "tag_weird": [
     {
+      "name": "Star-Slayer from Beyond",
+      "level_delta": 6,
+      "count": "1",
+      "life": "HCL+5",
+      "attacks": 4,
+      "tags": ["weird", "tag", "demon", "star_slayer", "damage_per_hit:tier", "no_treasure"],
+      "treasure_rolls": 0,
+      "no_treasure": true,
+      "never_test_morale": true,
+      "encounter_start_effects": [
+        {
+          "type": "save_damage_madness",
+          "save_level": "HCL+1",
+          "save_type": "generic",
+          "target": "all_pcs",
+          "damage": 2,
+          "madness": 1,
+          "no_flee_on_failure": true,
+          "label": "Star-Slayer sight Save"
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The Star-Slayer fights to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "TAG pp.30-31: cursed-object replacement. HCL+6 Weird demon, HCL+5 Life, four Tier-damage attacks, no treasure except when replacing a Final Boss, sight Save vs HCL+1, never tests morale, and awards exactly two XP rolls."
+    },
+    {
       "name": "Adult Minotaur",
       "level_delta": 4,
       "count": "1",

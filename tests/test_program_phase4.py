@@ -299,7 +299,7 @@ def test_supplement_snapshot_log_line_uses_titles_and_legacy_fallback() -> None:
 
 def test_state_registry_maps_existing_statuses_and_counters() -> None:
     payload = state_payload()
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["read_only"] is True
     assert payload["diagnostics"] == []
     states = {item["id"]: item for item in payload["states"]}
@@ -573,6 +573,7 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
         "tag_generated_lead_structure_table",
         "tag_closeout_checklist_automation_table",
         "tag_generated_prompt_playtest_table",
+        "tag_star_object_curse_table",
         "tag_guild_job_playthrough_audit_table",
         "tag_rumor_playthrough_audit_table",
         "tag_treasure_map_playthrough_audit_table",
@@ -643,7 +644,7 @@ def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     assert "satyr" not in payload["active_class_ids"]
     assert "bow" in payload["active_item_ids"]
     assert payload["supplement_registry_version"] == 1
-    assert payload["state_registry_version"] == 1
+    assert payload["state_registry_version"] == 2
     assert payload["terrain_registry_version"] == 1
 
 

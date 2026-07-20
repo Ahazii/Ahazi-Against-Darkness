@@ -732,6 +732,18 @@
     "notes": "FD vermin category icon."
   },
   {
+    "id": "monster-category-fd-citadel-weird",
+    "label": "Forsaken Depths Citadel Weird",
+    "category": "monster",
+    "description": "Fallback icon for Forsaken Depths Citadel weird monster encounters.",
+    "file": "icons/user/game-icons/tentacles-skull.svg",
+    "fallback": "monster",
+    "source_url": "https://game-icons.net/1x1/lorc/tentacles-skull.html",
+    "attribution": "Icons made by Lorc from game-icons.net",
+    "license": "CC BY 3.0",
+    "notes": "FD Citadel weird category icon."
+  },
+  {
     "id": "monster-category-fd-weird",
     "label": "Forsaken Depths Weird",
     "category": "monster",

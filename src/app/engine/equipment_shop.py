@@ -414,6 +414,13 @@ def sell_item(
     trimmed = item_name.strip()
     if not trimmed:
         return False, "Choose an item to sell.", 0
+    from .star_object_curse import is_star_object_item
+
+    if is_star_object_item(trimmed):
+        return False, (
+            "Bofto's cursed star-shaped object cannot be sold or discarded. "
+            "Only Invisible Gremlins can break its curse (TAG p.30)."
+        ), 0
     try:
         index = character.inventory.index(trimmed)
     except ValueError:
@@ -439,6 +446,15 @@ def sell_quote(
     trimmed = item_name.strip()
     if not trimmed:
         return {"item_name": "", "quote_gp": None, "kind": "none", "note": ""}
+    from .star_object_curse import is_star_object_item
+
+    if is_star_object_item(trimmed):
+        return {
+            "item_name": trimmed,
+            "quote_gp": None,
+            "kind": "cursed",
+            "note": "Cannot be sold or discarded; only Invisible Gremlins remove it (TAG p.30).",
+        }
     if trimmed not in character.inventory:
         return {"item_name": trimmed, "quote_gp": None, "kind": "none", "note": "Not in inventory."}
 

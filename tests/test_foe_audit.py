@@ -5,7 +5,7 @@ from tools.audit_foe_rules import FOE_TABLE_SOURCES, REVIEWED_ROWS, UNHANDLED_DE
 
 def test_all_shipped_foe_tables_have_a_source_crosswalk() -> None:
     records = foe_rows()
-    assert len(records) == 172
+    assert len(records) == 184
     assert {record["file"] for record in records} == set(FOE_TABLE_SOURCES)
     assert all(record["source"].get("book") and record["source"].get("source") for record in records)
 

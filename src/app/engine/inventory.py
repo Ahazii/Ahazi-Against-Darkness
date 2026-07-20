@@ -303,6 +303,13 @@ def transfer_item_between(
 ) -> tuple[bool, str]:
     if not item_name or not item_name.strip():
         return False, "Choose an item to transfer."
+    from .star_object_curse import is_star_object_item
+
+    if is_star_object_item(item_name):
+        return False, (
+            "Bofto's cursed star-shaped object cannot be transferred, dropped, or given away. "
+            "Only a carrier's death or Invisible Gremlins can move or remove it (TAG pp.30-31)."
+        )
     try:
         index = source.inventory.index(item_name)
     except ValueError:

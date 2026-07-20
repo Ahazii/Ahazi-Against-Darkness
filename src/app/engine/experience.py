@@ -243,7 +243,24 @@ def grant_xp_credit(session: SessionState, amount: int, reason: str) -> None:
 
 def award_encounter_xp(session: SessionState, defeated: list[EnemyState], *, show_rolls: bool) -> None:
     """Award encounter XP according to the active campaign mode and foe mix."""
-    if not defeated or session.xp_system == "slow_and_sure":
+    if not defeated:
+        return
+    star_slayers = [
+        enemy
+        for enemy in defeated
+        if enemy.name == "Star-Slayer from Beyond"
+        or "star_slayer" in {str(tag).lower() for tag in enemy.tags}
+    ]
+    if star_slayers:
+        if any("final_boss" in {str(tag).lower() for tag in enemy.tags} for enemy in star_slayers):
+            session.final_boss_defeated = True
+        grant_xp_credit(
+            session,
+            2,
+            "Defeated Star-Slayer from Beyond (TAG p.31; exactly two XP rolls):",
+        )
+        return
+    if session.xp_system == "slow_and_sure":
         return
     if session.xp_system == "old_school":
         points = old_school_xp_for_defeated(defeated)

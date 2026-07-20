@@ -7,7 +7,13 @@ from ..schemas import EnemyState
 from .adventure_allowlists import MONSTER_TABLE_KEYS
 from .cavern_features import template_surprise_tags
 from .foe_weapon_restrictions import template_weapon_allow_tags
-from .monster_template_effects import template_combat_tags, template_encounter_start_effects, template_on_hit_effects
+from .monster_template_effects import (
+    template_combat_tags,
+    template_encounter_start_effects,
+    template_on_hit_effects,
+    template_per_turn_effects,
+    template_special_attacks,
+)
 from .monster_stats import parse_monster_attacks, parse_monster_life
 
 CATEGORY_BY_TABLE = {
@@ -75,6 +81,8 @@ def spawn_manifest_foes(monsters: dict[str, Any], foes: list[dict[str, Any]], hc
                     tags=tags,
                     on_hit_effects=template_on_hit_effects(template),
                     encounter_start_effects=template_encounter_start_effects(template),
+                    per_turn_effects=template_per_turn_effects(template),
+                    special_attacks=template_special_attacks(template),
                 )
             )
     return enemies

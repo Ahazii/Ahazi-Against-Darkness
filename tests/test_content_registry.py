@@ -37,7 +37,7 @@ def test_resolved_content_registry_separates_runtime_and_review_only_supplements
     assert "protection" in context.active_state_ids
     assert "fd-psychic-residue-save" in context.active_state_ids
     assert "dark-plague" not in context.active_state_ids
-    assert context.payload()["state_registry_version"] == 1
+    assert context.payload()["state_registry_version"] == 2
     assert context.terrain_provider_ids == ("expanded-edition-core", "forsaken-depths")
     assert "forest" in context.active_terrain_ids
     assert "fd-river-bank" in context.active_terrain_ids

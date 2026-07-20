@@ -8,7 +8,7 @@ from .state_catalog import ResolvedStateCatalog, resolve_state_catalog
 from .supplements import LOCKED_CORE_SUPPLEMENT_ID, known_supplement_ids
 
 
-STATE_REGISTRY_VERSION = 1
+STATE_REGISTRY_VERSION = 2
 
 LEGACY_STATE_FIELDS: list[dict[str, str]] = [
     {
@@ -163,6 +163,41 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         "implemented": True,
         "review_status": "needs_pdf_page",
         "ui": {"label": "Cursed", "hover": "Defense penalty condition currently removable by Blessing and other printed exits."},
+    },
+    {
+        "id": "tag-bofto-star-shaped-cursed-object",
+        "name": "Bofto's Star-Shaped Object Curse",
+        "family": "curse_and_campaign",
+        "scope": "character",
+        "value_type": "flag",
+        "source": {
+            "supplement_id": "tag",
+            "source_pdf": "Tales_from_the_adventurers_guild.pdf",
+            "page": 30,
+            "topic": "Scene 19 / Star-Shaped Object Curse",
+        },
+        "legacy_mappings": {
+            "statuses": [
+                "Bofto's Star-Shaped Object Curse",
+                "TAG star-shaped object curse carrier",
+            ],
+            "inventory": ["Bofto's Star-Shaped Cursed Object"],
+            "fields": [
+                "SessionState.tag_star_object_curse_active",
+                "SessionState.tag_star_object_recovery_pending",
+                "CampaignState.tag_star_object_recovery_pending",
+            ],
+        },
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {
+            "label": "Star-shaped object curse",
+            "hover": (
+                "TAG pp.30-31. Each encountered Boss or Weird Monster may be replaced by the "
+                "Star-Slayer. The object cannot be transferred, dropped, sold, or removed by magic; "
+                "only explicitly letting Invisible Gremlins take it breaks the curse. Death transfers it automatically."
+            ),
+        },
     },
     {
         "id": "blessed-temple-bonus",

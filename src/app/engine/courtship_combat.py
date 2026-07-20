@@ -482,11 +482,15 @@ def apply_courtship_on_foe_hit(
                 target.statuses.append(COURTSHIP_PARALYZED)
                 log.append(f"{target.name} is paralyzed until a Blessing is cast (TCOTFD).")
         else:
-            if target.inventory:
-                lost = target.inventory.pop(random.randrange(len(target.inventory)))
+            from .star_object_curse import removable_inventory_items
+
+            eligible = removable_inventory_items(target.inventory)
+            if eligible:
+                lost = random.choice(eligible)
+                target.inventory.remove(lost)
                 log.append(f"{target.name}'s {lost} is destroyed by corrosive sap (TCOTFD).")
             else:
-                log.append(f"{target.name} has no gear to destroy (TCOTFD).")
+                log.append(f"{target.name} has no eligible gear to destroy (TCOTFD; cursed objects remain bound).")
         return log
 
     if "courtship_necrogaunt" in enemy.tags and session is not None:

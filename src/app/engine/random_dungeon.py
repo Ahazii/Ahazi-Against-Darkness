@@ -221,6 +221,16 @@ from .inventory import (
 )
 from .magic_weapons import resolve_treasure_item_list
 from .gremlin_events import gremlin_protection_active, resolve_invisible_gremlins
+from .star_object_curse import (
+    assign_recovered_star_object,
+    give_star_object,
+    maybe_find_star_object_in_treasure,
+    maybe_replace_major_foes,
+    reconcile_star_object_carrier,
+    spawn_star_slayer,
+    star_object_carrier,
+    star_slayer_final_treasure_source,
+)
 from .special_items import (
     BERSERKER_MUSHROOM_STATUS,
     apply_enchanted_paint,
@@ -998,7 +1008,9 @@ class RandomDungeonEngine:
         playtest_key: str | None = None,
         playtest_roll: int | None = None,
         playtest_force_leader: bool = False,
+        star_object_choice: str | None = None,
     ) -> SessionState:
+        reconcile_star_object_carrier(session)
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
             return self._touch(session)
@@ -1014,6 +1026,14 @@ class RandomDungeonEngine:
                 session.map_state.current_tile_id = entrance.id
                 session.current_tile_entry_exit_id = None
         self._queue_fallen_transfer(session)
+        if action != "resolve_star_object_gremlins" and session.tag_star_object_gremlin_choice_pending:
+            session.log.append(
+                "Choose whether to let the Invisible Gremlins take the cursed star-shaped object."
+            )
+            return self._touch(session)
+        if action != "assign_star_object" and session.tag_star_object_assignment_pending:
+            session.log.append("Choose a living hero to carry the recovered star-shaped object.")
+            return self._touch(session)
         if action != "resolve_trap" and session.pending_mycelium_snare is not None:
             session.log.append(
                 "Choose which held object the mycelium snatches (use the trap menu on that tile)."
@@ -1771,6 +1791,16 @@ class RandomDungeonEngine:
             self._use_herbal_tonic(session, character_id)
         elif action == "apply_gremlin_repellant":
             self._apply_gremlin_repellant(session, character_id)
+        elif action == "resolve_star_object_gremlins":
+            session.log.extend(
+                resolve_invisible_gremlins(
+                    session,
+                    session.party,
+                    star_object_choice=star_object_choice,
+                )
+            )
+        elif action == "assign_star_object":
+            session.log.extend(assign_recovered_star_object(session, character_id))
         elif action == "use_berserkers_mushroom":
             self._use_berserkers_mushroom(session, character_id, item_name=item_name)
         elif action == "climb_from_pit":
@@ -2194,6 +2224,7 @@ class RandomDungeonEngine:
         if action in turn_actions:
             self._advance_call_of_the_wild(session)
 
+        reconcile_star_object_carrier(session)
         return self._touch(session)
 
     def _call_of_the_wild(
@@ -4328,37 +4359,43 @@ class RandomDungeonEngine:
         living_majors = [enemy for enemy in tile.enemies if enemy.life > 0 and enemy.category in {"weird", "boss"}]
         if not living_majors:
             return
-        if tile.major_foe_encounter_counted:
-            return
-        tile.major_foe_encounter_counted = True
-        session.major_foes_encountered += 1
-        session.log.append(
-            f"Major Foe tally: {session.major_foes_encountered} encountered this adventure."
-        )
-        if allow_final_boss_check and not dungeon_has_final_boss(session):
-            if map_elements_at_cap(session):
-                boss_log, boss = force_final_boss_designation(
-                    tile.enemies,
-                    reason=(
-                        f"Dungeon extent exhausted ({unlimited_map_element_cap(session)} map elements): "
-                        "the major foe here is the Final Boss."
-                    ),
-                )
-            else:
-                boss_log, boss = mark_final_boss_candidate(
-                    tile.enemies,
-                    major_foes_encountered=session.major_foes_encountered,
-                    show_rolls=show_rolls,
-                )
-            session.log.extend(boss_log)
-            if boss is not None:
-                tile.final_boss_treasure = True
-                session.final_boss_designated = True
-        from .forsaken_depths_map import is_fd_ruleset
-        from .forsaken_depths_quest import maybe_spawn_fd_quest_servitor_in_lair
+        if not tile.major_foe_encounter_counted:
+            tile.major_foe_encounter_counted = True
+            session.major_foes_encountered += 1
+            session.log.append(
+                f"Major Foe tally: {session.major_foes_encountered} encountered this adventure."
+            )
+            if allow_final_boss_check and not dungeon_has_final_boss(session):
+                if map_elements_at_cap(session):
+                    boss_log, boss = force_final_boss_designation(
+                        tile.enemies,
+                        reason=(
+                            f"Dungeon extent exhausted ({unlimited_map_element_cap(session)} map elements): "
+                            "the major foe here is the Final Boss."
+                        ),
+                    )
+                else:
+                    boss_log, boss = mark_final_boss_candidate(
+                        tile.enemies,
+                        major_foes_encountered=session.major_foes_encountered,
+                        show_rolls=show_rolls,
+                    )
+                session.log.extend(boss_log)
+                if boss is not None:
+                    tile.final_boss_treasure = True
+                    session.final_boss_designated = True
+            from .forsaken_depths_map import is_fd_ruleset
+            from .forsaken_depths_quest import maybe_spawn_fd_quest_servitor_in_lair
 
-        if is_fd_ruleset(session):
-            maybe_spawn_fd_quest_servitor_in_lair(self, session, tile, show_rolls=show_rolls)
+            if is_fd_ruleset(session):
+                maybe_spawn_fd_quest_servitor_in_lair(self, session, tile, show_rolls=show_rolls)
+        if self.rules is not None:
+            maybe_replace_major_foes(
+                session,
+                tile,
+                self.rules.monsters(),
+                show_rolls=show_rolls,
+            )
 
     def _begin_combat(
         self,
@@ -4384,6 +4421,7 @@ class RandomDungeonEngine:
         session.torch_spent_this_combat = False
         session.combat_lanterns_extinguished = False
         session.monster_encounter_start_applied = False
+        session.star_slayer_no_flee_character_ids = []
         session.wielded_melee_weapons = {}
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
@@ -4456,9 +4494,6 @@ class RandomDungeonEngine:
         session.reaction_no_fools_gold = False
         session.foe_flee_strike_pending = False
         session.log.append(message)
-        foe_summary = self._format_living_foes(tile.enemies)
-        if foe_summary:
-            session.log.append(f"You face: {foe_summary}.")
         from .monster_combat_hooks import apply_mantlebeast_ambush_drop
 
         session.log.extend(
@@ -4472,6 +4507,34 @@ class RandomDungeonEngine:
             show_rolls=show_rolls,
             allow_final_boss_check=allow_final_boss_check,
         )
+        from .monster_template_effects import apply_star_slayer_sight_effects
+
+        standing_before_sight = {
+            member.character_id for member in fighters if member.current_life > 0
+        }
+        session.log.extend(
+            apply_star_slayer_sight_effects(
+                tile.enemies,
+                fighters,
+                session,
+                show_rolls=show_rolls,
+            )
+        )
+        for member in fighters:
+            if (
+                member.character_id in standing_before_sight
+                and member.current_life <= 0
+                and member.character_id not in tile.fallen_character_ids
+            ):
+                tile.fallen_character_ids.append(member.character_id)
+        foe_summary = self._format_living_foes(tile.enemies)
+        if foe_summary:
+            session.log.append(f"You face: {foe_summary}.")
+        if not any(member.current_life > 0 for member in fighters):
+            session.mode = "complete"
+            session.log.append("The party has fallen after seeing the Star-Slayer.")
+            reconcile_star_object_carrier(session)
+            return
         if any("final_boss" in {str(tag).lower() for tag in enemy.tags} for enemy in tile.enemies):
             recovered = list(session.final_boss_recovery_items)
             session.final_boss_recovery_items = []
@@ -4727,6 +4790,8 @@ class RandomDungeonEngine:
         from .hirelings import repair_shared_marching_orders
 
         if repair_shared_marching_orders(session):
+            changed = True
+        if reconcile_star_object_carrier(session):
             changed = True
         if changed:
             self._touch(session)
@@ -6360,12 +6425,15 @@ class RandomDungeonEngine:
 
     def _strip_captive(self, session: SessionState, member: "PartyMemberState") -> dict:
         """Remove a captured hero's gold and portable items; return stripped values."""
+        from .star_object_curse import removable_inventory_items
+
         stripped: dict = {}
         if member.gold > 0:
             stripped["gold"] = member.gold
             member.gold = 0
+        portable_inventory = removable_inventory_items(member.inventory)
         has_equipment = bool(
-            member.inventory
+            portable_inventory
             or member.default_melee_weapon
             or member.default_melee_weapon_secondary
             or member.default_missile_weapon
@@ -6375,7 +6443,7 @@ class RandomDungeonEngine:
             if isinstance(existing, dict):
                 existing = CapturedEquipmentState(**existing)
             equipment = CapturedEquipmentState(
-                inventory=list(existing.inventory if existing else []) + list(member.inventory),
+                inventory=list(existing.inventory if existing else []) + portable_inventory,
                 default_melee_weapon=(existing.default_melee_weapon if existing else None) or member.default_melee_weapon,
                 default_melee_weapon_secondary=(
                     existing.default_melee_weapon_secondary if existing else None
@@ -6385,8 +6453,8 @@ class RandomDungeonEngine:
                 or member.default_missile_weapon,
             )
             session.captured_stripped_equipment[member.character_id] = equipment
-            stripped["equipment_count"] = len(member.inventory)
-            member.inventory = []
+            stripped["equipment_count"] = len(portable_inventory)
+            member.inventory = [item for item in member.inventory if item not in portable_inventory]
             member.default_melee_weapon = None
             member.default_melee_weapon_secondary = None
             member.default_missile_weapon = None
@@ -10194,10 +10262,61 @@ class RandomDungeonEngine:
                 "The queen's court fights to the death — the party cannot flee (BoS entry 3, TCOTFD)."
             )
             return
+        star_slayer_present = any(
+            enemy.life > 0
+            and (
+                enemy.name == "Star-Slayer from Beyond"
+                or "star_slayer" in {str(tag).lower() for tag in enemy.tags}
+            )
+            for enemy in tile.enemies
+        )
+        no_flee_ids = set(session.star_slayer_no_flee_character_ids) if star_slayer_present else set()
+        blocked_by_sight = [
+            member
+            for member in party_here
+            if member.current_life > 0 and member.character_id in no_flee_ids
+        ]
+        fleeing_party = [
+            member
+            for member in party_here
+            if member.current_life > 0 and member.character_id not in no_flee_ids
+        ]
+        split_flee_destination: TileState | None = None
+        if blocked_by_sight:
+            if not fleeing_party:
+                session.log.append(
+                    "Every surviving hero gained Madness from seeing the Star-Slayer; none can flee this encounter "
+                    "(TAG p.31)."
+                )
+                return
+            entry_exit = next(
+                (
+                    exit_state
+                    for exit_state in tile.exits
+                    if exit_state.id == session.current_tile_entry_exit_id
+                    and exit_state.destination_tile_id
+                ),
+                None,
+            )
+            if entry_exit is None:
+                entry_exit = next(
+                    (exit_state for exit_state in tile.exits if exit_state.destination_tile_id),
+                    None,
+                )
+            if entry_exit is not None:
+                split_flee_destination = self._tile_by_id(
+                    session,
+                    entry_exit.destination_tile_id or "",
+                )
+            if split_flee_destination is None:
+                session.log.append(
+                    "The heroes who resisted the Star-Slayer have no known prior map element to flee to."
+                )
+                return
         if not self._commit_immediate_attack(session):
             return
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
+        standing_before = {pc.character_id for pc in fleeing_party if pc.current_life > 0}
         skip_parting_attacks = session.skip_parting_flee or session.gnome_smokescreen_ready
         puffball_flee = session.puffball_flee
         if puffball_flee:
@@ -10209,7 +10328,7 @@ class RandomDungeonEngine:
                 None,
             )
             foe = next((enemy for enemy in tile.enemies if enemy.id == foe_id and enemy.life > 0), None)
-            if swash is None or swash.class_id.lower() != "swashbuckler":
+            if swash is None or swash not in fleeing_party or swash.class_id.lower() != "swashbuckler":
                 session.log.append("Choose a swashbuckler to use Daring Escape.")
             elif ally is None or ally.character_id == swash.character_id:
                 session.log.append("Choose an ally to grant +1 on their next attack.")
@@ -10225,7 +10344,7 @@ class RandomDungeonEngine:
                     skip_parting_attacks = True
         if use_luck_flee:
             luck_hero = next((member for member in session.party if member.character_id == character_id), None)
-            if luck_hero is None or luck_hero.current_life <= 0:
+            if luck_hero is None or luck_hero not in fleeing_party or luck_hero.current_life <= 0:
                 session.log.append("Choose a living hero with Luck to spend for a clean escape.")
             elif not spend_luck_point(session, luck_hero):
                 session.log.append(f"{luck_hero.name} has no Luck points remaining.")
@@ -10241,7 +10360,7 @@ class RandomDungeonEngine:
             session.log.append(block_reason)
             return
         result = resolve_flee(
-            party_here,
+            fleeing_party,
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
@@ -10249,6 +10368,77 @@ class RandomDungeonEngine:
             skip_parting_attacks=skip_parting_attacks,
             parting_foe_filter=puffball_parting_foe if puffball_flee else None,
         )
+        if blocked_by_sight and split_flee_destination is not None:
+            fleeing_names = ", ".join(member.name for member in fleeing_party)
+            staying_names = ", ".join(member.name for member in blocked_by_sight)
+            if result.log:
+                result.log[0] = f"{fleeing_names} attempt to flee while {staying_names} remain with the Star-Slayer."
+            escaped_ids = [
+                member.character_id for member in result.party if member.current_life > 0
+            ]
+            result.combat_over = False
+            result.fled = False
+            self._apply_combat_result(
+                session,
+                tile,
+                result,
+                show_rolls=show_rolls,
+                fled=False,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
+            if escaped_ids:
+                escaped = set(escaped_ids)
+                for group in session.detached_groups:
+                    group.character_ids = [
+                        character_id
+                        for character_id in group.character_ids
+                        if character_id not in escaped
+                    ]
+                session.detached_groups = [
+                    group for group in session.detached_groups if group.character_ids
+                ]
+                destination_group = next(
+                    (
+                        group
+                        for group in session.detached_groups
+                        if group.tile_id == split_flee_destination.id
+                    ),
+                    None,
+                )
+                if destination_group is None:
+                    session.detached_groups.append(
+                        DetachedGroupState(
+                            tile_id=split_flee_destination.id,
+                            character_ids=escaped_ids,
+                            reason="star_slayer_fled",
+                        )
+                    )
+                else:
+                    destination_group.character_ids = list(
+                        dict.fromkeys([*destination_group.character_ids, *escaped_ids])
+                    )
+                escaped_names = ", ".join(
+                    member.name for member in session.party if member.character_id in escaped
+                )
+                session.log.append(
+                    f"{escaped_names} reach {split_flee_destination.title}; combat continues for the heroes "
+                    "who failed the sight Save (TAG p.31)."
+                )
+                if show_rolls:
+                    roll = roll_d6()
+                    session.log.append(f"Split-flee wandering check: d6 = {roll}.")
+                    if roll == 1:
+                        self._spawn_wandering_monsters(
+                            session,
+                            split_flee_destination,
+                            show_rolls=show_rolls,
+                            start_combat=False,
+                        )
+            session.skip_parting_flee = False
+            session.puffball_flee = False
+            session.gnome_smokescreen_ready = False
+            return
         self._apply_combat_result(
             session,
             tile,
@@ -12093,6 +12283,42 @@ class RandomDungeonEngine:
         tile = self._current_tile(session)
         if any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("Resolve the current encounter before running a developer playtest override.")
+            return
+        if kind in {"tag_star_slayer", "tag_invisible_gremlins"}:
+            living = [
+                member
+                for member in sorted(session.party, key=lambda item: item.marching_order)
+                if member.current_life > 0
+            ]
+            if not living:
+                session.log.append("A living hero is required for this Adventures Guild curse playtest.")
+                return
+            if star_object_carrier(session) is None:
+                give_star_object(session, living[0])
+                session.log.append(
+                    f"Developer playtest setup: {living[0].name} receives Bofto's cursed star-shaped object."
+                )
+            if kind == "tag_invisible_gremlins":
+                session.log.append("Developer playtest override: Invisible Gremlins meet the cursed carrier.")
+                session.log.extend(resolve_invisible_gremlins(session, session.party))
+                return
+            try:
+                enemy = spawn_star_slayer(session, self.rules.monsters())
+            except ValueError as exc:
+                session.log.append(str(exc))
+                return
+            tile.content_key = "developer_tag_star_slayer"
+            tile.enemies = [enemy]
+            tile.initial_enemy_count = 1
+            tile.resolved = False
+            session.log.append("Developer playtest override: Star-Slayer from Beyond.")
+            self._begin_combat(
+                session,
+                "Developer Star-Slayer encounter begins.",
+                tile=tile,
+                show_rolls=show_rolls,
+                allow_final_boss_check=False,
+            )
             return
         if kind in {"ee_foe", "ee_final_boss"}:
             if str(session.ruleset or "") != "ee":
@@ -17749,6 +17975,13 @@ class RandomDungeonEngine:
 
         return max(candidates, key=template_richness)
 
+    def _treasure_template_for_enemy(self, enemy: EnemyState) -> dict | None:
+        source_name = star_slayer_final_treasure_source(enemy)
+        if not source_name:
+            return self._monster_template_for_enemy(enemy)
+        source = enemy.model_copy(update={"name": source_name})
+        return self._monster_template_for_enemy(source)
+
     def _reaction_tables_with_template_rows(self) -> dict[str, list[dict]]:
         if self.rules is None:
             return {}
@@ -17821,7 +18054,7 @@ class RandomDungeonEngine:
             return 1
         return treasure_roll_count_for_defeated(
             defeated,
-            lookup_template=self._monster_template_for_enemy,
+            lookup_template=self._treasure_template_for_enemy,
             log=session.log,
             fd_ruleset=is_fd_ruleset(session),
         )
@@ -17839,7 +18072,7 @@ class RandomDungeonEngine:
         door_bonus = self._entry_treasure_bonus(session)
         bonuses = fd_treasure_roll_bonuses_from_defeated(
             defeated,
-            lookup_template=self._monster_template_for_enemy,
+            lookup_template=self._treasure_template_for_enemy,
             log=session.log,
         )
         fixed_outcomes = self._fixed_fd_treasure_outcomes_from_defeated(defeated)
@@ -17902,7 +18135,7 @@ class RandomDungeonEngine:
             if enemy.name in seen_names:
                 continue
             seen_names.add(enemy.name)
-            template = self._monster_template_for_enemy(enemy)
+            template = self._treasure_template_for_enemy(enemy)
             fixed = template.get("fixed_treasure") if template else None
             if not isinstance(fixed, dict):
                 continue
@@ -18056,6 +18289,9 @@ class RandomDungeonEngine:
         from .milestones import record_inventory_item_acquired
 
         tile = self._current_tile(session)
+        before_gold = tile.treasure_gold
+        before_items = list(tile.treasure_items)
+        was_claimed = tile.treasure_claimed
         claim_treasure(
             session,
             tile,
@@ -18070,6 +18306,17 @@ class RandomDungeonEngine:
                 roll_d6=roll_d6,
             ),
         )
+        claimed_any = (
+            not was_claimed
+            and bool(before_gold or before_items)
+            and (
+                tile.treasure_claimed
+                or tile.treasure_gold != before_gold
+                or tile.treasure_items != before_items
+            )
+        )
+        if claimed_any:
+            maybe_find_star_object_in_treasure(session, tile)
     def _carry_body(
         self,
         session: SessionState,

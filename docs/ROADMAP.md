@@ -19,6 +19,8 @@ Status: foundation implemented; low-priority feature growth.
 
 Status: active priority.
 
+- Release gate: deploy and complete the short `v0.39.35` Bofto Scene 19 / persistent curse checklist in `docs/PLAYTEST_PLAN.md`. Once it passes, stop broad adventure regression testing; reopen only the exact failed workflow if a defect is found.
+- First modularisation slice after that gate: extract the now-repeated item-disposition eligibility checks (transfer, drop, storage, sale, sacrifice, confiscation, and random destruction) behind one reusable policy boundary. Preserve the TAG star-object prohibition and all existing item behavior with focused tests; do not combine this with a wider `random_dungeon.py` reorganization.
 - Next dashboard work should focus on making every modern section complete enough to avoid falling back to the legacy homepage: clearer page summaries, denser lists, better hover explanations, tighter controls, and targeted rules-reference links.
 - Next TAG work should focus on player-facing completeness: closeout workflows, Guild/banking/troupe/settlement actions, generated TAG adventure prompt/signoff coverage, and clearer post-adventure guidance.
 - TAG-heavy modern pages now share a workflow summary and generated-adventure signoff panel; future TAG passes should deepen the underlying automation and playtest signoff rather than adding more campaign-map features.

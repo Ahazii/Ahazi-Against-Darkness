@@ -1,68 +1,56 @@
 # Next Session Handoff
 
-Last updated: 2026-07-19. Repository branch: `main`. Latest release: `v0.39.34`.
+Last updated: 2026-07-20. Repository branch: `main`. Latest release: `v0.39.35`.
 
 ## Start Here
 
-1. Read `AGENTS.md`, `docs/STATUS.md`, and `docs/PLAYTEST_PLAN.md` before changing code.
-2. Treat the owned Rules PDFs as the source of truth for every rule. Quote the PDF page/topic when a rule is ambiguous. Do not silently invent a rule or discard player rewards.
-3. The Docker app runs on Unraid at `http://192.168.1.55:8001`; user-visible persistent data is under `\\TOWER\appdata\ahazi-against-darkness`.
-4. Do not mutate `game.db` directly unless necessary to repair a live blocker; make a timestamped backup beside it first.
+1. Read `AGENTS.md`, `docs/STATUS.md`, `docs/PLAYTEST_PLAN.md`, and `docs/ROADMAP.md` before changing code.
+2. Treat the owned Rules PDFs as the source of truth. Quote the PDF page/topic when a rule is ambiguous; do not invent a rule or discard a reward.
+3. The Docker app runs on Unraid at `http://192.168.1.55:8001`. User-visible persistent data belongs under `\\TOWER\appdata\ahazi-against-darkness`.
+4. Do not alter `game.db` directly without first making a timestamped backup beside it.
 
-## Current Priority: Deploy TAG Scene-Chain Patch, Then Resume Game 3
+## Current Priority
 
-The previous playtest exposed a real camp/re-entry failure after developer-forced encounters. `v0.39.17` fixes it by storing `SessionState.entrance_tile_id`, recovering it for legacy sessions from the marked dungeon exit, and anchoring camp actions to that entrance rather than a stale saved-room location.
+Ask the user to deploy `v0.39.35`, force-refresh, and run only the remaining checks at the top of `docs/PLAYTEST_PLAN.md`.
 
-Follow-up player testing then exposed two smaller UI blockers: after spending the last pending Classical XP roll, the entrance **Complete / abandon** choice could remain dimmed until a hard refresh; and Forsaken Depths Game 2 showed `Supplements: 3` but no FD developer force controls. That patch made closeout use the latest in-memory session and made both frontend/backend FD recognition supplement-snapshot aware. Later Game 2 evidence confirmed the controls appear and Infallible Missile's Level 8+ second missile works, but exposed FD p.40/p.42 gaps: Deep Trolls did not revive/roll treasure at -1, Horde of Dark Elves lacked its printed FD treasure roll, FD debug context said inactive, and FD minions could tick the Abyss minion XP track in an Abyss+FD session. The next feedback confirmed the Deep Troll chip and Hack button appeared, but a newly slain body could still return after hacking; hacking now blocks the next return for the whole active Deep Troll group. FD p.62 treasure choices also now appear directly in Current Objective. The latest FD Citadel reports confirmed first-room-only side-sheet reveal and save/reload restoration, then exposed FD p.38 vermin gaps, a stale Citadel marker after returning to main-map Tile 41 in session `f0ab5c80eee34a9c9cec7b3e95484823`, and missing Greater Mutated Goblin handling. Named inline FD reactions now resolve, `never_test_morale` suppresses morale on attack-immediate, Spore Spiders have structured 4-in-6 surprise, Deep Cave Spiders reduce remaining spiders by 1 Level per two killed to minimum L3, movement/normalization clear stale side-sheet markers when the party is back on the non-side-sheet origin, and Greater Mutated Goblin now follows the FD p.41 row: Tier damage, fixed loot, corrosive mucus with flee/Defense/damage effects, Blessing/goblin-defeat cleanup, and -1 reactions when the party includes a goblin. Follow-up evidence then showed the backend side sheet was already inactive (`Side sheet: none; active=false; origin=none`) while the frontend still displayed the remembered Citadel label on main-map Tile 41; the Citadel badge/debug line now require an active Citadel side sheet. The next deploy proved the stale badge is gone, but a new EE+Abyss+FD disposable session showed Soulbinding and Citadel routing blockers: the backend correctly added `FD Soulbound:<tile id>` and later UI showed Life/Madness choices, but Blessing did not free the hero; the first Citadel room also had an unclear route with no obvious return/re-entry path. FD p.58 says Soulbinding lasts until Blessing frees the character, so Blessing now removes the Soulbound status, clears pending Soulbinding choices, and logs the cure. Citadel side-sheet routes now repair on resume and are labelled **Enter Citadel sheet** / **Return to main map**; returning to the origin clears only the active marker and preserves the route so the party can re-enter the Citadel. v0.39.20 also fixes the origin **Enter Citadel sheet** action for already-used entries and adds **Explore deeper into Citadel/Ruins/Dark Pits** while the side-sheet room budget remains, creating a side-sheet passage when clipped tile geometry leaves only the return route visible. The Citadel route playtest passed save/dashboard/resume, return-to-main-map, and deeper-room generation, then exposed that Armored Forsaken Depths Troll was missing FD p.44 HCL-1 Magic Resistance and 4-in-6 non-magical blow deflection. v0.39.21 records and applies those rules, and later live evidence confirmed the deflection rolls fire for non-magical weapon hits. The same report showed Dark Elf Warlock still using two generic attacks instead of FD p.44's staff-plus-ice-blast split; v0.39.24 changes the Warlock to one normal staff attack plus a separate ice blast Defense roll where shields count, armor is ignored, failed targets lose 2 Life, and barbarians/Ice-based characters add +1/2 L. v0.39.25 adds character-sheet gender dropdowns and uses them for the printed Warlock priority: female elves/female spellcasters, then other female heroes. Spore coughing and Deep Cave character-death spawn/no-resurrection remain future fidelity hooks.
+The blocking path is a fresh TAG Rumor 1, **Bofto's Star-Shaped Find**, successful Scene 14 theft followed by automatic Scene 19 resolution. Confirm the Narrative ends with the Scene 19 curse material rather than absorbing **Following the Treasure Map Table** and later book sections. The selected thief must make the printed L8 Will Save automatically, receive the persistent cursed item after either outcome, and reach the normal adventure-complete summary without stale manual Will/Star-Slayer controls.
 
-Before further modularisation, ask the user to deploy the latest `main` build, force-refresh, and complete the updated **Game 3: Adventures Guild** check in `docs/PLAYTEST_PLAN.md`:
+Then run the three focused curse checks: voluntary transfer/sale/storage is blocked; Developer **TAG Star-Slayer curse encounter** follows the TAG pp.30-31 profile and awards exactly two XP rolls; Developer **TAG Invisible Gremlins curse encounter** asks whether to keep or release the object, with explicit release bypassing protection and ending the curse.
 
-- Resume the current EE + Abyss session. It must open at Entrance Map Element 06, not Map Element 32.
-- Camp, refresh, then re-enter. The dungeon entrance and exits must remain usable.
-- Return to camp and abandon the unfinished dungeon after resolving any pending Classical XP roll. A Final Boss is not required for abandonment; pending XP, pending spell selection, and prisoner reward choices intentionally block closeout so earned rewards are never silently lost. After XP is resolved, the completion choice must enable without a browser hard refresh.
-- Confirm the recovery redesign has not left stray body/recovery controls in Party Sheets.
-- Start a fresh generated Adventures Guild lead with TAG fixed-result controls and force Rumor 1, **Bofto's Star-Shaped Find**. v0.39.34 fixes the previous Bofto failures: extracted Scene 9 branch choices should be visible without using signoff, clicking Scene 14 should move to a real Scene 14 prompt with a character dropdown and **Roll theft Save** instead of **If you fail** / **If you succeed** buttons or the old **Steal star object** shortcut, Scene 14 applies the printed TAG pp.22/29/31 thievery Save vs L6 modifiers and automatically opens Scene 18 or Scene 19, a no-character `d6+0` theft roll should be impossible, Scene 18 should not show stale Bofto procedure buttons, clicking Scene 17 should move to a real Scene 17 prompt with PDF-derived text, reaching Scene 9 should not complete the quest by itself, generated scene-chain exits now match the native tile portals/kinds used by tiles 11 and 13, PDF routing text such as `go to Scene 9` is hidden behind player-facing choice buttons, entering Scene 9 logs the cleaned PDF scene prose rather than the old resolution instruction, route clicks no longer add `TAG route:` debug chatter to the player Narrative, and Scene 17 offers **Insist on investigating** / **You choose to leave** instead of generic **Mark scene resolved** / **Apply scene reward** controls. All wider Game 2 FD checks have enough evidence and should not be repeated unless a later regression reopens them. Armored Troll HCL-1 MR remains passive evidence if an offensive spell is naturally cast at one.
+If old session `b47cac2be0eb4977b52e5eb19172d4d5` still exists, resume it once as a compatibility check. Its oversized Scene 19 prompt/Narrative should trim before **Following the Treasure Map Table** and stale Bofto controls should be removed. Skip it if already completed or deleted.
 
-The current live session id was `2b51e57ab5cd4623942fbef9b65b30d3` when this note was written. It may be complete by the time this handoff is read.
+## Implemented In v0.39.35
 
-## Remaining Playtests
+Rules source: `Tales_from_the_adventurers_guild.pdf`, Scene 19 and Star-Slayer, printed pp.30-31.
 
-After the blocking check passes, continue the minimum-game plan in `docs/PLAYTEST_PLAN.md`:
+- Scene 19 PDF extraction has a structural end boundary and strips the trailing illustration caption. Resume-time compatibility repair trims affected manifests, room triggers, prompts, and saved Narrative lines.
+- A successful Scene 14 theft assigns the object to the selected thief, resolves the L8 Will Save with Spellcaster/Cleric +Level and one Halfling failure reroll, applies Madness on failure, and closes the generated module.
+- The curse persists after either Will result. Blessing and magic do not remove it, and voluntary transfer/drop/store/sale plus generic equipment-loss paths cannot discard it.
+- Carrier death transfers the object automatically. A total party kill stores campaign recovery state; each later claimed treasure receives the printed 1-in-6 check until a living character is assigned the recovered object.
+- Each encountered Boss/Weird receives one 2-in-6 replacement check while the curse operates. Star-Slayer is HCL+6 with HCL+5 Life, four Tier-damage attacks, no ordinary treasure, and always fights to the death.
+- On sight, every living hero Saves vs HCL+1 or gains 1 Madness and loses 2 Life. Heroes who gained Madness cannot flee; successful savers may flee as a split group.
+- A Star-Slayer replacing a Final Boss retains that Boss's treasure. Any defeated Star-Slayer awards exactly two XP rolls, including when it replaced a Final Boss, and never breaks the curse.
+- Invisible Gremlins present a player choice. **Let them take the cursed object** bypasses Gremlin protection and clears the curse; **Keep the cursed object** follows ordinary protection/theft handling.
+- State Registry, supplement capabilities, Tables List, Rules Reference, item hover text, developer controls, and focused tests cover the new state and procedure.
 
-1. One TAG generated lead with TAG fixed-result controls enabled only for that game; verify Bofto generation succeeds, rumour framing, investigate/ignore entry, cleaned Scene 9 Narrative log with no `TAG route:` line, hidden scene-routing text, Scene 9 branch wording, Scene 14 thief selection/roll/Scene 18-or-19 movement, no stale Scene 18 Bofto procedure buttons, Scene 17 movement/text/buttons, scene-resolved completion, signoff, and no active session after closeout.
-2. Optional only if time allows: one non-Rumor generated lead smoke check for first-prompt clarity.
+## Testing Boundary
 
-Completed checks should not be repeated unless a new change reopens them. In particular, Ant People, Dark Plague, Ghoul King Elf `+Level` save/Blessing cure, treasure cap/claiming, Shrieking Fungi, Flying Skulls, Phasing Panther, and Tentacled Brain already have recorded evidence. Ghoul King's automatic hit after a failed paralysis save remains passive future evidence, not a reason to force repeated encounters.
+Do not reopen broad EE, Abyss, Forsaken Depths, Citadel, or earlier Bofto Scene 9/14/17 testing. Those passes are retained in `docs/STATUS.md`. Full death/TPK recovery, Final Boss treasure retention, mixed-result split fleeing, and generic loss protection have automated coverage and do not justify risking a valuable live party.
 
-## Modularisation Direction After Playtests
-
-The project has already extracted reusable lifecycle modules for adventure completion, combat lifecycle, treasure claims, Quest transactions, healing potions, and manifest-backed supplement/catalogue ownership. Do not resume broad refactoring until the active exit/camp regression is proven on the deployed container.
-
-Then choose one bounded shared runtime responsibility from `docs/STATUS.md`/`docs/ROADMAP.md`, preserve existing API/UI behaviour, add focused tests, and update `STATUS.md`, `PLAYTEST_PLAN.md`, Rules Reference, and Tables List whenever player-visible rules change. Keep review/import packages declarative until a validated promotion explicitly creates trusted runtime content.
+After the remaining v0.39.35 checks pass, stop adventure regression testing and resume modularisation in one small tested runtime slice at a time. Preserve current API/UI behavior, update Rules Reference and Tables whenever a player-visible rule changes, and keep imported/review packages declarative until explicitly promoted.
 
 ## Recent Releases
 
-- `v0.39.34`: TAG Bofto Scene 14 now requires a selected thief on every UI/API path, and extracted terminal scenes such as Scene 18 no longer show stale Bofto procedure shortcuts.
-- `v0.39.33`: TAG Bofto Scene 14 now asks for the stealing character, rolls the printed thievery Save vs L6 with class modifiers, and automatically opens Scene 18 or Scene 19 instead of asking the player to choose success/failure.
-- `v0.39.32`: TAG scene-chain route clicks no longer log `TAG route:` debug chatter, and extracted terminal scene prompts use player-facing choices such as **Insist on investigating** / **You choose to leave** instead of generic resolution/reward buttons.
-- `v0.39.31`: TAG scene-chain room-entry triggers now log cleaned extracted Scene prose instead of old fallback resolution instructions.
-- `v0.39.30`: TAG rumor-generated leads split player-facing rumour/scene prose from hidden `go to Scene` routing and expose investigate/ignore choice buttons.
-- `v0.39.29`: TAG scene-chain generated leads now use native-valid scene exits and legacy imported-session repair ignores manifest-only orphan rooms.
-- `v0.39.28`: TAG scene-chain generated leads now use extracted Scene rooms/buttons and complete only after explicit scene resolution.
-- `v0.39.27`: FD p.62 row 7 bow branch now claims as one Masterwork bow plus 24 silver-tipped arrows bundle.
-- `v0.39.26`: FD Event schema fix and FD p.62 treasure-row developer forcing.
-- `v0.39.25`: Character gender dropdowns and Dark Elf Warlock female-priority targeting.
-- `v0.39.24`: Dark Elf Warlock staff-plus-ice-blast combat split.
-- `v0.39.23`: Concrete weapon choices for Greater Mutated Goblin fixed loot, FD silvered melee bundles, and Abyss non-magical weapon treasure.
-- `v0.39.22`: FD p.62 concrete masterwork weapon choices and FD Event developer override.
-- `v0.39.21`: FD Armored Forsaken Depths Troll HCL-1 Magic Resistance and 4-in-6 armor deflection.
-- `v0.39.20`: FD Citadel origin re-entry and deeper side-sheet room action.
-- `v0.39.19`: FD Soulbinding Blessing cure and labelled Citadel side-sheet routes.
+- `v0.39.35`: Bofto Scene 19 extraction/automation and complete persistent star-object curse lifecycle.
+- `v0.39.34`: Scene 14 requires a selected thief on every UI/API path; stale terminal-scene shortcuts removed.
+- `v0.39.33`: Scene 14 rolls the printed L6 theft Save and routes automatically.
+- `v0.39.32`: scene-route debug chatter removed; Scene 17 receives player-facing choices.
+- `v0.39.31`: scene entry logs cleaned extracted prose.
+- `v0.39.30`: rumour/scene prose separated from hidden route instructions.
+- `v0.39.29`: generated scene exits use native-valid tile portals.
+- `v0.39.28`: extracted Scene rooms/buttons and explicit scene completion.
 - `v0.39.17` / `961dae0`: stable camp entrance identity and closeout repair.
-- `v0.39.16` / `c834f935`: recovery controls moved into a compact draggable dialog.
-- `v0.39.15` / `94e5b16`: fallen transfer dialog and Ghoul King Elf `+Level` save correction.
-- `v0.39.14` / `22d5f3e1`: Abyss encounter-effect fidelity pass.
 
-## Verification and Delivery
+## Verification And Delivery
 
-Use `apply_patch` for edits. Run focused tests plus `node --check src/app/static/app.js` for frontend work and `git diff --check` before committing. Commit and push substantial Docker changes to `main`; tell the user the exact version and Unraid tests to perform.
+Run focused Python tests, `node --check src/app/static/app.js`, JSON parsing, Python compilation, and `git diff --check`. Commit and push substantial Docker changes to `main`; report the exact release and only the remaining Unraid checks.

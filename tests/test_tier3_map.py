@@ -152,6 +152,9 @@ def test_secret_passage_return_syncs_environment(monkeypatch) -> None:
         explain_math=False,
     )
     destination = next(item for item in session.map_state.tiles if item.id != source.id)
+    # This test covers return/environment synchronization, not encounter escape.
+    # Generated destination content is random, so remove any rolled foes first.
+    destination.enemies = []
     assert session.environment == "caverns"
     return_exit = next(
         exit_state

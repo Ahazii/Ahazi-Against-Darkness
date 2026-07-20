@@ -1112,7 +1112,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.18"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.19"></script>' in INDEX_HTML
 
 
 def test_party_sheet_summary_toggle_ignores_controls_and_inventory_opens_sheet() -> None:
@@ -2689,8 +2689,6 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "gargoyle_surprise",
         "gargoyle_skin",
         "bofto_theft_save",
-        "star_object_will_save",
-        "star_slayer_check",
         "treasure_map_follow",
         "map_cave_room_count",
         "map_temple_idol",
@@ -2706,6 +2704,12 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "giant_lair_treasure",
     ]:
         assert f'value="{action_value}"' in INDEX_HTML
+    assert 'value="star_object_will_save"' not in INDEX_HTML
+    assert 'value="star_slayer_check"' not in INDEX_HTML
+    assert "tag_star_slayer" in APP_JS
+    assert "tag_invisible_gremlins" in APP_JS
+    assert "resolve_star_object_gremlins" in APP_JS
+    assert "assign_star_object" in APP_JS
     assert "Minotaur Maze Special Event Table" in INDEX_HTML
     assert "Fiendish Abyss Prisoner Table" in INDEX_HTML
     assert "Ghastly Mine cave-in trap" in INDEX_HTML
@@ -2725,7 +2729,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "white gargoyle count" in INDEX_HTML
     assert "medusa_assassin_ambush" in APP_JS
     assert "gargoyle_skin" in APP_JS
-    assert "star-shaped object curse" in INDEX_HTML
+    assert "star-shaped object curse" in APP_JS.lower()
     assert "Following Treasure Map table" in INDEX_HTML
     assert "Underground caves room target" in INDEX_HTML
     assert "separate from Claim Treasure" in INDEX_HTML

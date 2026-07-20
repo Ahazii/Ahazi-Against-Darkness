@@ -51,6 +51,11 @@ FOE_TABLE_SOURCES: dict[str, dict[str, dict[str, str | int]]] = {
         "abyss_weird_table": {"book": "Abyss", "source": "Abyss Weird Monster table", "page": 56},
         "abyss_dragon_table": {"book": "Abyss", "source": "Abyss Dragon table", "page": 58},
     },
+    "tag_monsters.json": {
+        "tag_minions": {"book": "Tales from the Adventurers Guild", "source": "TAG Rumor/Thematic/Guild Job minion profiles"},
+        "tag_weird": {"book": "Tales from the Adventurers Guild", "source": "TAG Weird Monster and generated-lead profiles"},
+        "tag_boss": {"book": "Tales from the Adventurers Guild", "source": "TAG Rumor/Thematic/Guild Job Boss profiles"},
+    },
 }
 
 MECHANIC_FIELDS = (
@@ -70,6 +75,7 @@ REVIEWED_ROWS = {
     ("abyss_tables.json", "abyss_minions_table", "Flying Skulls"),
     ("abyss_tables.json", "abyss_boss_table", "Dragon Man"),
     ("abyss_tables.json", "abyss_weird_table", "Phasing Panther"),
+    ("tag_monsters.json", "tag_weird", "Star-Slayer from Beyond"),
 }
 
 # This set records any deliberate placeholder declaration. It should normally

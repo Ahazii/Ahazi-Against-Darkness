@@ -317,6 +317,30 @@ def _resolve_save_damage_encounter_effect(
                     )
                 )
             continue
+        madness = max(0, int(effect.get("madness", 0) or 0))
+        if madness and session is not None:
+            from .madness import apply_madness_gain
+
+            before_madness = member.madness
+            for _ in range(madness):
+                log.extend(
+                    apply_madness_gain(
+                        session,
+                        member,
+                        source=label,
+                        show_rolls=show_rolls,
+                        allow_damage_choice=False,
+                    )
+                )
+            if (
+                member.madness > before_madness
+                and effect.get("no_flee_on_failure")
+                and member.character_id not in session.star_slayer_no_flee_character_ids
+            ):
+                session.star_slayer_no_flee_character_ids.append(member.character_id)
+                log.append(
+                    f"{member.name} gained Madness from seeing the Star-Slayer and cannot flee this encounter."
+                )
         if damage > 0:
             member.current_life = max(0, member.current_life - damage)
             log.append(f"Effect: {member.name} loses {damage} Life ({member.current_life}/{member.max_life}).")
@@ -429,7 +453,7 @@ def _resolve_encounter_start_effect(
         else:
             log.append("The party's lanterns stay lit.")
         return log
-    if effect_type in {"death_gaze", "poison_burst", "save_damage"}:
+    if effect_type in {"death_gaze", "poison_burst", "save_damage", "save_damage_madness"}:
         return _resolve_save_damage_encounter_effect(
             enemy,
             effect,
@@ -877,6 +901,12 @@ def apply_encounter_start_effects(
         if enemy.life <= 0:
             continue
         for effect in enemy.encounter_start_effects:
+            if (
+                enemy.name == "Star-Slayer from Beyond"
+                and "star_slayer_sight_applied" in {str(tag).lower() for tag in enemy.tags}
+                and str(effect.get("type", "")).lower() == "save_damage_madness"
+            ):
+                continue
             key = (enemy.name, str(effect.get("type", "")))
             if key in applied:
                 continue
@@ -892,6 +922,49 @@ def apply_encounter_start_effects(
                 )
             )
     session.monster_encounter_start_applied = True
+    return log
+
+
+def apply_star_slayer_sight_effects(
+    enemies: list[EnemyState],
+    party: list[PartyMemberState],
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    """Resolve the Star-Slayer's sight rule before reactions or a flee decision."""
+    star_slayers = [
+        enemy
+        for enemy in enemies
+        if enemy.life > 0 and enemy.name == "Star-Slayer from Beyond"
+    ]
+    if not star_slayers or all(
+        "star_slayer_sight_applied" in {str(tag).lower() for tag in enemy.tags}
+        for enemy in star_slayers
+    ):
+        return []
+    source = star_slayers[0]
+    effect = next(
+        (
+            entry
+            for entry in source.encounter_start_effects
+            if str(entry.get("type", "")).lower() == "save_damage_madness"
+        ),
+        None,
+    )
+    if effect is None:
+        return []
+    log = _resolve_encounter_start_effect(
+        source,
+        effect,
+        party,
+        session,
+        hcl=party_hcl(party),
+        show_rolls=show_rolls,
+    )
+    for enemy in star_slayers:
+        if "star_slayer_sight_applied" not in {str(tag).lower() for tag in enemy.tags}:
+            enemy.tags.append("star_slayer_sight_applied")
     return log
 
 

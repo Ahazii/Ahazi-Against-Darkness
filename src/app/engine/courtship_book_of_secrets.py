@@ -263,17 +263,19 @@ def apply_curse_of_tamas_zeya(
 ) -> list[str]:
     """BoS entry 16 — permanent loss; gear stripped; hirelings flee (TCOTFD p.56)."""
     from .hirelings import handle_hireling_removed
+    from .star_object_curse import reconcile_star_object_carrier
 
     log: list[str] = []
     if show_rolls:
         log.append("Curse of Tamas Zeya (Goddess of Oaths) — BoS entry 16 (TCOTFD).")
     name = member.name
     char_id = member.character_id
-    member.inventory.clear()
     member.gold = 0
     member.kukla_compartment_items.clear()
     member.kukla_compartment_gold = 0
     member.current_life = 0
+    reconcile_star_object_carrier(session)
+    member.inventory.clear()
     if char_id not in session.permanently_lost_character_ids:
         session.permanently_lost_character_ids.append(char_id)
     if session.courtship_truelove_character_id == char_id:
@@ -428,8 +430,12 @@ def apply_book_of_secrets_entry(
         if victim is None:
             return log
         if roll <= 3:
-            if victim.inventory:
-                lost = victim.inventory.pop(random.randrange(len(victim.inventory)))
+            from .star_object_curse import removable_inventory_items
+
+            eligible = removable_inventory_items(victim.inventory)
+            if eligible:
+                lost = random.choice(eligible)
+                victim.inventory.remove(lost)
                 log.append(f"{victim.name} loses {lost} to the mirror (TCOTFD).")
         else:
             from .courtship_demesne import _grant_party_clues
