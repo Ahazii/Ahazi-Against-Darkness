@@ -3783,6 +3783,9 @@ function canMemberReceiveItem(member, itemName, session = null) {
 
 function memberReceiveItemBlockReason(member, itemName, session = null) {
   if (!member || !itemName) return false;
+  if (/^bag of carrying$/i.test(itemName) && String(member.class_id || "").toLowerCase() === "barbarian") {
+    return `${member.name} will not carry a magic Bag of Carrying (TAG p.13).`;
+  }
   if (isCarriedShield(itemName) && countCarriedShields(member.inventory) >= CARRY_LIMITS.shields) {
     return `${member.name} already carries ${CARRY_LIMITS.shields}/${CARRY_LIMITS.shields} shields.`;
   }
@@ -9388,7 +9391,8 @@ const ITEM_TOOLTIP_RULES = [
   [/amulet/i, "Amulet: magic item. Keep in inventory; app prompts apply specific amulet effects where implemented."],
   [/talisman/i, "Talisman: magic item. Keep in inventory; app prompts apply specific talisman effects where implemented."],
   [/herbal tonic/i, "Herbal tonic: herbal remedy used by exploration recovery prompts when available."],
-  [/gremlin repellant/i, "Gremlin repellant: remedy/tool used when the app offers a gremlin-related protection prompt."],
+  [/gremlin repellant/i, "Gremlin Repellant (EE p.87): before an adventure, consume one dose and choose one item. That item cannot be stolen by Invisible Gremlins during this adventure; the protection then expires."],
+  [/bag of carrying/i, "Bag of Carrying (TAG p.13): a magic container that can hold carried items. If the bag is lost or stolen, every item inside it is lost too. Characters who cannot use magic will not carry it."],
   [/wolfsbane/i, "Wolfsbane: herbal remedy relevant to werecreatures and similar prompts."],
   [/berserker'?s mushroom/i, "Berserker's Mushroom: mushroom remedy that can affect the next combat when the relevant action is used."],
   [/mushroom|truffle|chanterelle|morel|amanita|puffball|xicthul/i, "Rare mushroom: special food/remedy/valuable item. Use or sell through the matching fungal prompts when offered."],
@@ -10405,6 +10409,60 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
   return hasActions;
 }
 
+function bagContainerForInventoryIndex(member, inventoryIndex) {
+  if (!/^bag of carrying$/i.test(String(member?.inventory?.[inventoryIndex] || ""))) return null;
+  const bagPosition = (member.inventory || [])
+    .slice(0, inventoryIndex + 1)
+    .filter((itemName) => /^bag of carrying$/i.test(String(itemName))).length - 1;
+  return (member.item_containers || []).filter((container) => container.kind === "bag_of_carrying")[bagPosition] || null;
+}
+
+function gremlinRepellantTargetOptions(session) {
+  const options = [];
+  for (const target of session?.party || []) {
+    if (target.current_life <= 0) continue;
+    (target.inventory || []).forEach((itemName, index) => {
+      if (/gremlin repellant/i.test(itemName) || /bofto.*star-shaped|star-shaped object/i.test(itemName)) return;
+      const bag = bagContainerForInventoryIndex(target, index);
+      if (bag) {
+        const protectedBag = (session.gremlin_protected_items || []).some(
+          (item) => item.item_container_id === bag.id
+        );
+        if (protectedBag) return;
+        options.push({
+          value: JSON.stringify({ target_character_id: target.character_id, item_container_id: bag.id }),
+          label: `${target.name}: ${bag.name} (${(bag.contents || []).length} inside)`,
+          title: "EE p.87: one dose protects this Bag of Carrying and therefore keeps the bag and its contents from being stolen during this adventure.",
+        });
+        return;
+      }
+      options.push({
+        value: JSON.stringify({ target_character_id: target.character_id, item_name: itemName }),
+        label: `${target.name}: ${itemName}`,
+        title: `EE p.87: use one Gremlin Repellant dose to protect this one item for the current adventure. ${itemTooltip(itemName)}`,
+      });
+    });
+  }
+  return options;
+}
+
+function openGremlinRepellantPicker(session, owner) {
+  openInventoryPickerDialog({
+    title: "Protect one item",
+    note: "Gremlin Repellant is applied before the adventure. One dose protects one selected item until the adventure ends (EE p.87).",
+    items: gremlinRepellantTargetOptions(session),
+    selectLabel: "Item to protect",
+    confirmLabel: "Apply Repellant",
+    onConfirm: (value) => {
+      const selected = JSON.parse(value);
+      advance("apply_gremlin_repellant", {
+        character_id: owner.character_id,
+        ...selected,
+      });
+    },
+  });
+}
+
 function appendMemberExplorationActions(item, session, member, tile = null) {
   if (session.mode !== "exploration" || member.current_life <= 0) return;
   const inExploration = session.mode === "exploration" && member.current_life > 0;
@@ -10675,13 +10733,11 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
     hasActions = true;
   }
 
-  if (inExploration && (member.inventory || []).some((item) => /gremlin repellant/i.test(item))) {
+  if (inExploration && session.camped_outside && (member.inventory || []).some((item) => /gremlin repellant/i.test(item))) {
     const repBtn = node("button", "secondary", "Apply gremlin repellant");
     repBtn.type = "button";
-    setButtonTooltip(repBtn, "Ward off the next Wandering Monsters or gremlin event.");
-    repBtn.addEventListener("click", () =>
-      advance("apply_gremlin_repellant", { character_id: member.character_id })
-    );
+    setButtonTooltip(repBtn, "EE p.87: before the adventure, consume one dose and select one item to protect from Invisible Gremlins until the adventure ends.");
+    repBtn.addEventListener("click", () => openGremlinRepellantPicker(session, member));
     actions.appendChild(repBtn);
     hasActions = true;
   }
@@ -13272,6 +13328,7 @@ function renderTagCampaignSettlementPanel(campaign = state.campaign) {
 function renderTagRouteXpSummary(campaign) {
   if (!tagRouteXpSummary) return;
   tagRouteXpSummary.replaceChildren();
+  const campaignId = campaign.active_world_campaign_id || "";
   const routeItems = (campaign.tag_adventure_routes || []).slice(-3).map((item) => ({
     text: `Route ${item.resolved ? "applied" : "pending"}: ${item.result_text}`,
     hint: "Structured TAG route marker. These markers can update generated Adventures Guild module notes and route state.",
@@ -13284,7 +13341,21 @@ function renderTagRouteXpSummary(campaign) {
     text: `Bank: ${item.owner_name} ${item.gold_gp || 0} gp${item.heir_name ? `, heir ${item.heir_name}` : ""}.`,
     hint: "TAG per-character bank account: deposits pay 10%, inheritance transfer applies 20% tax.",
   }));
-  const entries = [...routeItems, ...xpItems, ...bankItems].slice(-6).reverse();
+  const rumorItems = (campaign.tag_rumor_states || [])
+    .filter((item) => item.campaign_id === campaignId)
+    .slice(-3)
+    .map((item) => ({
+      text: `Rumor ${item.rumor_number}: ${item.status}.`,
+      hint: "Campaign-scoped TAG rumor state. Heard means saved but not yet played; investigating means its numbered Scene was entered; resolved means the paragraph and corresponding Scene were played (TAG p.22).",
+    }));
+  const effectItems = (campaign.campaign_effects || [])
+    .filter((item) => item.campaign_id === campaignId)
+    .slice(-3)
+    .map((item) => ({
+      text: `Campaign effect: ${String(item.key || "effect").replaceAll("_", " ")} (${item.status}).`,
+      hint: "Persistent effect scoped to the selected campaign. Bofto's star-shaped-object curse follows its carrier, death recovery, and explicit Gremlin cure across sessions in this campaign (TAG pp.30-31).",
+    }));
+  const entries = [...routeItems, ...xpItems, ...bankItems, ...rumorItems, ...effectItems].slice(-8).reverse();
   if (!entries.length) {
     const line = node("div", "campaign-status-line muted", "No TAG route, XP, or bank ledger entries yet.");
     setTooltip(line, TAG_SETTLEMENT_TOOLTIPS.routeXpSummary);
@@ -17468,6 +17539,9 @@ const RULES_TABLE_META_KEYS = new Set(["ruleset_status", "open_items", "validati
 
 const ENVIRONMENT_TABLE_HINTS = {
   tag_star_object_curse_table: "Bofto's Star-Shaped Object curse procedure (TAG pp.30-31): pickup Save, persistent curse, Star-Slayer, Gremlin cure, carrier death, and campaign recovery.",
+  invisible_gremlins_procedure_table: "Invisible Gremlins procedure (EE pp.74, 87, 105, 160, 169; TAG pp.11, 13): staged theft, protection, Disbelief, special property, and Clue handling.",
+  tag_bag_of_carrying_table: "Bag of Carrying procedure (TAG p.13): purchase, explicit multi-bag contents, transfer, theft/loss, and magic-user restriction.",
+  tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG p.22): heard, investigating, then resolved only after the paragraph and corresponding Scene are played.",
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
   caverns_special_features_table: "Caverns Special Features (d6), EE p.112. Roll on room content 5 in caverns.",
   caverns_water_pool_table: "Cavern water pool sub-table (d6), EE p.112.",
@@ -17571,6 +17645,9 @@ const RULES_TABLE_ORDER = [
   "fd_legendary_spell_table",
   "fd_cyclopean_idol_table",
   "tag_star_object_curse_table",
+  "invisible_gremlins_procedure_table",
+  "tag_bag_of_carrying_table",
+  "tag_rumor_lifecycle_table",
   "courtship_seaside_encounter_table",
   "courtship_riverside_encounter_table",
   "courtship_woods_encounter_table",
@@ -19841,6 +19918,48 @@ function currentObjectiveForSession(session) {
       ],
     };
   }
+  if (session.pending_gremlin_event) {
+    const pending = session.pending_gremlin_event;
+    const actions = [];
+    const disbeliefCasters = (session.party || []).filter(
+      (member) =>
+        member.current_life > 0 &&
+        (member.spells || []).some((spell) => String(spell).trim().toLowerCase() === "disbelief")
+    );
+    if (disbeliefCasters.length) {
+      actions.push({
+        label: "Cast Disbelief",
+        kind: "gremlin-disbelief",
+        tooltip: "EE p.74: choose a hero with Disbelief. The event becomes d6+1 L3 Minions with -1 Morale, one attack, and one Treasure roll; failed Defense lets them steal instead of dealing Life damage.",
+      });
+    }
+    for (const member of session.party || []) {
+      if (member.current_life <= 0) continue;
+      for (const itemName of member.inventory || []) {
+        if (!/^tag (resurrection|blessing) tag$/i.test(itemName)) continue;
+        actions.push({
+          label: `Offer ${itemName}`,
+          kind: "advance",
+          advanceAction: "offer_gremlin_temple_tag",
+          payload: { character_id: member.character_id, item_name: itemName },
+          tooltip: `TAG p.11: ${itemName} is not stolen unless you voluntarily let the Invisible Gremlins take it. Offering it uses one of the ${pending.theft_count} remaining theft slots.`,
+        });
+      }
+    }
+    actions.push({
+      label: `Resolve ${pending.theft_count} theft${pending.theft_count === 1 ? "" : "s"}`,
+      kind: "advance",
+      advanceAction: "resolve_invisible_gremlin_theft",
+      tooltip: "EE p.169: steal in order from magic items, scrolls, potions, weapons, gems, then 10gp at a time. Repellant protects only its selected item.",
+    });
+    return {
+      title: "Current objective: resolve Invisible Gremlins",
+      body:
+        `The event has ${pending.theft_count} theft slot(s). Choose Disbelief if available, voluntarily offer a temple tag, or resolve the printed theft priority. Invisible Gremlins count toward the Major Foe tally but cannot become the Final Boss.`,
+      tone: "warn",
+      actions,
+    };
+  }
   if (session.tag_star_object_assignment_pending) {
     return {
       title: "Current objective: assign the recovered cursed object",
@@ -20172,6 +20291,9 @@ function appendCurrentObjectiveButton(parent, action) {
     case "star-object-assign":
       appendRecoveredStarObjectAssignment(parent, action);
       return;
+    case "gremlin-disbelief":
+      appendGremlinDisbeliefAction(parent, action);
+      return;
     case "tag-actions":
       setButtonTooltip(btn, "Open the advanced/manual Adventures Guild fallback controls.");
       btn.addEventListener("click", () => openTagAdventureActions());
@@ -20194,6 +20316,30 @@ function appendCurrentObjectiveButton(parent, action) {
       return;
   }
   parent.appendChild(btn);
+}
+
+function appendGremlinDisbeliefAction(parent, action) {
+  const session = state.session;
+  const casters = (session?.party || []).filter(
+    (member) =>
+      member.current_life > 0 &&
+      (member.spells || []).some((spell) => String(spell).trim().toLowerCase() === "disbelief")
+  );
+  if (!casters.length) return;
+  const row = node("div", "combat-target-row");
+  const select = document.createElement("select");
+  select.setAttribute("aria-label", "Disbelief caster");
+  for (const caster of casters) {
+    select.appendChild(new Option(caster.name, caster.character_id));
+  }
+  const button = node("button", "primary", action.label || "Cast Disbelief");
+  button.type = "button";
+  setButtonTooltip(button, action.tooltip || "Cast Disbelief on the Invisible Gremlins event.");
+  button.addEventListener("click", () =>
+    advance("cast_spell", { character_id: select.value, spell_name: "Disbelief" })
+  );
+  row.append(select, button);
+  parent.appendChild(row);
 }
 
 function renderCurrentObjectiveBanner(session) {
@@ -30868,6 +31014,10 @@ function refreshTransferDialog(fromChanged = false) {
       transferItemOptions.appendChild(node("div", "item muted", "No inventory items."));
     } else {
       fromMember.inventory.forEach((itemName, index) => {
+        const bag = bagContainerForInventoryIndex(fromMember, index);
+        const itemLabel = bag
+          ? `${itemName}${(fromMember.item_containers || []).filter((container) => container.kind === "bag_of_carrying").length > 1 ? ` ${(fromMember.item_containers || []).filter((container) => container.kind === "bag_of_carrying").indexOf(bag) + 1}` : ""} (${(bag.contents || []).length} inside)`
+          : itemName;
         const label = document.createElement("label");
         label.className = "transfer-item-option";
         const radio = document.createElement("input");
@@ -30879,13 +31029,13 @@ function refreshTransferDialog(fromChanged = false) {
         radio.disabled = blocked;
         label.title = blocked
           ? `${blockReason} ${itemTooltip(itemName)}`
-          : `${itemTooltip(itemName)} Transfer to ${toMember?.name || "the selected hero"}.`;
+          : `${itemTooltip(itemName)} Transfer to ${toMember?.name || "the selected hero"}.${bag ? " The bag and all of its contents move together." : ""}`;
         radio.addEventListener("change", () => {
           rememberTransferPayloadSelection();
           syncTransferGoldControls(fromMember, toMember);
           updateTransferConfirmState();
         });
-        label.append(radio, document.createTextNode(blocked ? `${itemName} (${blockReason})` : itemName));
+        label.append(radio, document.createTextNode(blocked ? `${itemLabel} (${blockReason})` : itemLabel));
         transferItemOptions.appendChild(label);
       });
     }
@@ -30904,7 +31054,8 @@ function selectedTransferPayload(fromMember) {
     const index = Number.parseInt(checked.value.slice(5), 10);
     const itemName = fromMember.inventory[index];
     if (!itemName || !toMember || !canMemberReceiveItem(toMember, itemName, transferSessionContext())) return null;
-    return { item_name: itemName };
+    const bag = bagContainerForInventoryIndex(fromMember, index);
+    return { item_name: itemName, ...(bag ? { item_container_id: bag.id } : {}) };
   }
   if (transferGoldRadio?.checked) {
     const amount = Number.parseInt(transferGoldAmount?.value || "0", 10);
@@ -31084,7 +31235,10 @@ function createSheetIconButton({ kind, ariaLabel, tooltip, disabled = false, pre
 }
 
 function memberInventoryCount(member) {
-  return (member.inventory || []).length;
+  return (member.inventory || []).length + (member.item_containers || []).reduce(
+    (total, container) => total + (container.contents || []).length,
+    0
+  );
 }
 
 function updateInventoryIconBadge(inventoryBtn, member, isOpen) {
@@ -31111,10 +31265,28 @@ function buildMemberInventoryPanel(member, session = null) {
   const list = document.createElement("ul");
   list.className = "member-inventory-list";
   const showEat = session && canEatRations(session) && member.current_life > 0;
-  for (const itemName of items) {
+  const canRepack = Boolean(session && session.mode === "exploration" && member.current_life > 0);
+  const bagCount = items.filter((itemName) => /^bag of carrying$/i.test(itemName)).length;
+  let bagNumber = 0;
+  const protectedLoose = new Map();
+  for (const protection of session?.gremlin_protected_items || []) {
+    if (protection.character_id !== member.character_id || protection.item_container_id || !protection.item_name) continue;
+    protectedLoose.set(protection.item_name, (protectedLoose.get(protection.item_name) || 0) + 1);
+  }
+  for (const [itemIndex, itemName] of items.entries()) {
     const entry = document.createElement("li");
     entry.className = "member-inventory-item";
-    const label = node("span", "member-inventory-label", itemName);
+    const bag = bagContainerForInventoryIndex(member, itemIndex);
+    if (bag) bagNumber += 1;
+    const displayName = bag && bagCount > 1 ? `${itemName} ${bagNumber}` : itemName;
+    const bagProtected = bag && (session?.gremlin_protected_items || []).some(
+      (protection) => protection.item_container_id === bag.id
+    );
+    const looseProtectionCount = protectedLoose.get(itemName) || 0;
+    const looseProtected = !bag && looseProtectionCount > 0;
+    if (looseProtected) protectedLoose.set(itemName, looseProtectionCount - 1);
+    const protectedLabel = bagProtected || looseProtected ? " (Gremlin-protected)" : "";
+    const label = node("span", "member-inventory-label", `${displayName}${protectedLabel}`);
     const lexTooltip = lexItemTooltip(session, member, itemName);
     const blossomsTooltip = blossomsItemInventoryTooltip(itemName);
     const baseTooltip = itemTooltip(itemName);
@@ -31125,6 +31297,36 @@ function buildMemberInventoryPanel(member, session = null) {
       label.textContent = `${itemName} (transfer to ally)`;
     }
     entry.appendChild(label);
+    if (bag && canRepack) {
+      const eligible = items.filter(
+        (candidate) =>
+          !/^bag of carrying$/i.test(candidate) &&
+          !/bofto.*star-shaped|star-shaped object/i.test(candidate)
+      );
+      const putBtn = node("button", "secondary", "Put in");
+      putBtn.type = "button";
+      putBtn.disabled = !eligible.length;
+      setButtonTooltip(
+        putBtn,
+        "TAG p.13: move one loose carried item into this Bag of Carrying. Contained items are unavailable for use until taken out; losing the bag loses all contents."
+      );
+      putBtn.addEventListener("click", () =>
+        openInventoryPickerDialog({
+          title: `Put item in ${displayName}`,
+          note: "Contained items travel with this specific bag and are unavailable to use until taken out.",
+          items: eligible,
+          selectLabel: "Loose item",
+          confirmLabel: "Put in Bag",
+          onConfirm: (selectedItem) =>
+            advance("put_item_in_container", {
+              character_id: member.character_id,
+              item_container_id: bag.id,
+              item_name: selectedItem,
+            }),
+        })
+      );
+      entry.appendChild(putBtn);
+    }
     if (showEat && isFoodRationItem(itemName)) {
       const eatBtn = node("button", "secondary", "Eat");
       eatBtn.type = "button";
@@ -31137,6 +31339,37 @@ function buildMemberInventoryPanel(member, session = null) {
       );
       entry.appendChild(eatBtn);
     }
+    if (bag) {
+      const contents = node("div", "bag-contents");
+      contents.appendChild(
+        node(
+          "div",
+          "bag-contents-heading",
+          (bag.contents || []).length ? `${(bag.contents || []).length} contained` : "Empty"
+        )
+      );
+      for (const containedItem of bag.contents || []) {
+        const row = node("div", "bag-content-row");
+        const containedLabel = node("span", "member-inventory-label", containedItem);
+        setTooltip(containedLabel, `${itemTooltip(containedItem)} Stored in ${displayName}; take it out before use.`);
+        row.appendChild(containedLabel);
+        if (canRepack) {
+          const takeBtn = node("button", "secondary", "Take out");
+          takeBtn.type = "button";
+          setButtonTooltip(takeBtn, `Take ${containedItem} out of ${displayName} and return it to loose carried inventory.`);
+          takeBtn.addEventListener("click", () =>
+            advance("take_item_from_container", {
+              character_id: member.character_id,
+              item_container_id: bag.id,
+              item_name: containedItem,
+            })
+          );
+          row.appendChild(takeBtn);
+        }
+        contents.appendChild(row);
+      }
+      entry.appendChild(contents);
+    }
     list.appendChild(entry);
   }
   panel.appendChild(list);
@@ -31144,7 +31377,7 @@ function buildMemberInventoryPanel(member, session = null) {
 }
 
 function inventoryIconTooltip(member) {
-  const count = (member.inventory || []).length;
+  const count = memberInventoryCount(member);
   const summary = count ? `${count} item${count === 1 ? "" : "s"}` : "empty";
   return `Inventory (${summary}) — click to show or hide carried items.`;
 }

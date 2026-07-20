@@ -2491,6 +2491,7 @@ def _sync_character_to_session_party(session: SessionState, character: Character
         member.current_life = character.current_life
         member.max_life = character.max_life
         member.inventory = list(character.inventory)
+        member.item_containers = [container.model_copy(deep=True) for container in character.item_containers]
         member.spells = list(character.spells)
         member.statuses = list(character.statuses)
         member.learned_expert_skills = list(character.learned_expert_skills)
@@ -2525,6 +2526,7 @@ def _prepare_session_tag_payment_character(
     character.current_life = member.current_life
     character.max_life = member.max_life
     character.inventory = list(member.inventory)
+    character.item_containers = [container.model_copy(deep=True) for container in member.item_containers]
     character.spells = list(member.spells)
     character.statuses = list(member.statuses)
     character.default_melee_weapon = member.default_melee_weapon
@@ -2550,6 +2552,7 @@ def _sync_session_tag_payment_character(
     member.max_life = character.max_life
     member.gender = character.gender
     member.inventory = list(character.inventory)
+    member.item_containers = [container.model_copy(deep=True) for container in character.item_containers]
     member.spells = list(character.spells)
     member.statuses = list(character.statuses)
     member.default_melee_weapon = character.default_melee_weapon
@@ -2885,11 +2888,14 @@ async def campaign_tag_create_adventure(payload: dict[str, Any]) -> dict[str, An
     from .engine.tag_campaign import build_tag_adventure_manifest, load_campaign, save_campaign
 
     campaign = load_campaign(store)
-    manifest, entry = build_tag_adventure_manifest(
-        campaign,
-        lead_type=str(payload.get("lead_type") or "rumor"),
-        detail=str(payload.get("detail") or ""),
-    )
+    try:
+        manifest, entry = build_tag_adventure_manifest(
+            campaign,
+            lead_type=str(payload.get("lead_type") or "rumor"),
+            detail=str(payload.get("detail") or ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     path, result = import_adventure_manifest(
         settings.root_dir,
         settings.data_dir,
@@ -4184,8 +4190,89 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "step": "Death and total party kill",
             "rule": "Death transfers the object automatically. After a total party kill, each future treasure has a 1-in-6 recovery chance until found and assigned.",
-            "automation": "Session and campaign state preserve the curse across death, completion, saves, and future parties.",
+            "automation": "Session and campaign-effect state preserve the curse across death, completion, saves, and future parties assigned to the same campaign.",
             "source": "TAG p.31, Star-Shaped Object Curse",
+        },
+    ]
+    data["invisible_gremlins_procedure_table"] = [
+        {
+            "step": "Event and tally",
+            "rule": "Invisible Gremlins are an event with no stats and cannot be the Final Boss; the encounter still counts toward the Major Foe tally.",
+            "automation": "The pending event records its own exactly-once tally marker and never invokes Final Boss replacement.",
+            "source": "EE pp.105, 169, Major Foes / Invisible Gremlins",
+        },
+        {
+            "step": "Theft roll and order",
+            "rule": "Roll d6+3 items, then take magic items, scrolls, potions, weapons, gems, and 10gp units in that order.",
+            "automation": "The rolled count is persisted before the player chooses Disbelief, an eligible temple tag, or ordinary theft resolution.",
+            "source": "EE p.169, Invisible Gremlins",
+        },
+        {
+            "step": "Protection",
+            "rule": "A Gremlin Repellant dose is applied before the adventure to one named item and expires at adventure end. Miners' Ointment instead ignores the whole event.",
+            "automation": "Camp exposes an item/Bag picker; protected items are skipped without being consumed during the event.",
+            "source": "EE pp.87, 160, Gremlin Repellant / Miners' Ointment",
+        },
+        {
+            "step": "Special property",
+            "rule": "A stolen Bag of Carrying loses everything inside; Clockwork Armor counts as two stolen items; a living Kukla's secret compartment is protected; eligible TAG temple tags are taken only voluntarily.",
+            "automation": "Specific Bag identity, contents, clockwork theft cost, Kukla life state, and player-volunteered tag choices are resolved explicitly.",
+            "source": "EE pp.38, 44-46; TAG pp.11, 13",
+        },
+        {
+            "step": "Disbelief",
+            "rule": "Disbelief reveals d6+1 L3 Minions with -1 Morale, one attack, and one Treasure. They steal only after a failed Defense roll.",
+            "automation": "Casting Disbelief consumes the spell, starts combat, makes failed Defense steal instead of lose Life, and awards one encounter Treasure roll.",
+            "source": "EE p.74, Disbelief",
+        },
+        {
+            "step": "Thank-you Clue",
+            "rule": "If all eligible property is stolen, the Gremlins leave a thank-you message worth 1 Clue.",
+            "automation": "Protected eligible property prevents this reward because it remains with the party.",
+            "source": "EE p.169, Invisible Gremlins",
+        },
+    ]
+    data["tag_bag_of_carrying_table"] = [
+        {
+            "step": "Purchase",
+            "rule": "A Bag of Carrying costs 200gp and is subject to an L6 availability roll.",
+            "automation": "Each purchased Bag receives a distinct persistent container identity, so one hero may own several Bags.",
+            "source": "TAG p.13, Bag of Carrying",
+        },
+        {
+            "step": "Contents",
+            "rule": "The Bag can hold any weight, including large weapons that fit through its opening.",
+            "automation": "Party Sheets expose Put in and Take out controls and list each Bag's contents separately.",
+            "source": "TAG p.13, Bag of Carrying",
+        },
+        {
+            "step": "Loss or transfer",
+            "rule": "If the Bag is lost or stolen, all contents are lost or stolen with it.",
+            "automation": "A selected Bag transfers with its contents; Gremlin theft removes that Bag and every contained item together.",
+            "source": "TAG p.13, Bag of Carrying",
+        },
+        {
+            "step": "Magic restriction",
+            "rule": "The Bag is a magic item, so characters who cannot use magic will not carry one.",
+            "automation": "Purchase and transfer reject an ineligible recipient with a source-linked explanation.",
+            "source": "TAG p.13, Bag of Carrying",
+        },
+    ]
+    data["tag_rumor_lifecycle_table"] = [
+        {
+            "state": "heard",
+            "meaning": "The rumor was generated or saved for later; it remains available because its numbered Scene has not been played through.",
+            "source": "TAG p.22, Rumors",
+        },
+        {
+            "state": "investigating",
+            "meaning": "The party chose to investigate and entered the rumor's corresponding numbered Scene.",
+            "source": "TAG p.22, Rumors",
+        },
+        {
+            "state": "resolved",
+            "meaning": "The rumor paragraph and corresponding Scene were played; reroll this unique result if it appears again in the same campaign.",
+            "source": "TAG p.22, Rumors",
         },
     ]
     data["tag_generated_adventure_signoff_table"] = [
@@ -4967,6 +5054,7 @@ async def transfer_character_gear(character_id: str, payload: CharacterTransfer)
         character.current_life = member.current_life
         character.max_life = member.max_life
         character.inventory = list(member.inventory)
+        character.item_containers = [container.model_copy(deep=True) for container in member.item_containers]
         character.default_melee_weapon = member.default_melee_weapon
         character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
         character.default_missile_weapon = member.default_missile_weapon
@@ -4979,11 +5067,27 @@ async def transfer_character_gear(character_id: str, payload: CharacterTransfer)
     if has_item == has_gold:
         raise HTTPException(status_code=400, detail="Provide either item_name or gold_amount.")
     if has_item:
-        ok, message = transfer_character_item(source, target, item_name=payload.item_name or "")
+        ok, message = transfer_character_item(
+            source,
+            target,
+            item_name=payload.item_name or "",
+            item_container_id=payload.item_container_id,
+        )
     else:
         ok, message = transfer_character_gold(source, target, amount=payload.gold_amount or 0)
     if not ok:
         raise HTTPException(status_code=400, detail=message)
+    if has_item:
+        from .engine.gremlin_events import move_gremlin_item_protection
+
+        for session in active_sessions.values():
+            move_gremlin_item_protection(
+                session,
+                from_character_id=source.id,
+                to_character_id=target.id,
+                item_name=payload.item_name or "",
+                item_container_id=payload.item_container_id,
+            )
     timestamp = now_utc()
     source.updated_at = timestamp
     target.updated_at = timestamp
@@ -5978,6 +6082,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
     session.item_catalog_version = content_registry.item_catalog_version
     session.active_item_ids = list(content_registry.active_item_ids)
     session.declared_content_sources = [dict(source) for source in content_registry.declared_content_sources]
+    session.campaign_id = party.campaign_id or campaign.active_world_campaign_id
     session = apply_abyss_campaign_to_session(store, session)
     session = apply_star_object_campaign_to_session(store, session)
     from .engine.supplements import supplement_registry, supplement_snapshot_log_line
@@ -6028,6 +6133,7 @@ async def get_session(session_id: str) -> SessionState:
     )
 
     curse_before = (
+        session.campaign_id,
         session.tag_star_object_curse_active,
         session.tag_star_object_recovery_pending,
         session.tag_star_object_assignment_pending,
@@ -6035,6 +6141,7 @@ async def get_session(session_id: str) -> SessionState:
     session = apply_star_object_campaign_to_session(store, session)
     session, changed = random_engine.normalize_session(session)
     curse_after = (
+        session.campaign_id,
         session.tag_star_object_curse_active,
         session.tag_star_object_recovery_pending,
         session.tag_star_object_assignment_pending,
@@ -6390,20 +6497,22 @@ def _advance_generated_tag_scene_from_branch(
     entry: Any,
 ) -> str:
     from .engine.tag_campaign import apply_tag_route_to_manifest, resolve_tag_route_action
+    from .engine.tag_scene_actions import tag_scene_action_definition, tag_scene_action_succeeded
 
     if branch_action != "bofto_theft_save" or not _is_generated_tag_session(session):
         return ""
     tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference")
     if not isinstance(tag_ref, dict):
         return ""
+    definition = tag_scene_action_definition(branch_action)
+    if definition is None:
+        return ""
     total = int(getattr(entry, "total", 0) or 0)
     natural = int(getattr(entry, "roll", 0) or 0)
-    if natural != 1 and total >= 6:
-        target = "Scene 19"
-        outcome = "theft succeeds"
-    else:
-        target = "Scene 18"
-        outcome = "theft fails"
+    succeeded = tag_scene_action_succeeded(definition, natural_roll=natural, total=total)
+    result = definition.success if succeeded else definition.failure
+    target = result.target_scene
+    outcome = result.result_label
     reference = f"Scene 14 -> {target}: {outcome}"
     resolve_tag_route_action(
         campaign,
@@ -6594,6 +6703,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     from .engine.tag_campaign import (
         append_tag_log,
         load_campaign,
+        record_session_tag_rumor_state,
         resolve_tag_branch_action,
         save_campaign,
     )
@@ -6632,6 +6742,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
             result_text=scene_result.result_text,
         )
         _mark_bofto_generated_lead_complete(session, "Scene 19 resolved; the cursed object remains in the campaign.")
+        record_session_tag_rumor_state(campaign, session, status="resolved")
         random_engine._complete_dungeon(session)
         campaign = save_campaign(store, campaign)
         campaign = sync_star_object_campaign_from_session(store, session)
@@ -6697,7 +6808,17 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     )
     _spawn_generated_tag_foes_from_choice(session, branch_action, entry)
     if branch_action == "bofto_theft_save":
-        succeeded = int(getattr(entry, "roll", 0) or 0) != 1 and int(getattr(entry, "total", 0) or 0) >= 6
+        from .engine.tag_scene_actions import tag_scene_action_definition, tag_scene_action_succeeded
+
+        definition = tag_scene_action_definition(branch_action)
+        succeeded = bool(
+            definition is not None
+            and tag_scene_action_succeeded(
+                definition,
+                natural_roll=int(getattr(entry, "roll", 0) or 0),
+                total=int(getattr(entry, "total", 0) or 0),
+            )
+        )
         member = next(
             (item for item in session.party if character is not None and item.character_id == character.id),
             None,
@@ -6726,6 +6847,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
                 session,
                 "The theft failed; Scene 18 ended the rumor.",
             )
+        record_session_tag_rumor_state(campaign, session, status="resolved")
         random_engine._complete_dungeon(session)
     if branch_action == "map_cave_room_count":
         next_action = (
@@ -6757,6 +6879,7 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
     from .engine.tag_campaign import (
         apply_tag_route_to_manifest,
         load_campaign,
+        record_session_tag_rumor_state,
         resolve_tag_route_action,
         save_campaign,
     )
@@ -6780,8 +6903,15 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
     tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference")
     route_action = str(payload.get("route_action") or "parley_success")
     if route_action == "unlock_scene" and isinstance(tag_ref, dict):
+        record_session_tag_rumor_state(campaign, session, status="investigating")
         _move_generated_tag_scene_target(session, tag_ref=tag_ref, reference=str(payload.get("reference") or ""))
     if route_action == "final_route" and session.active_quest is not None and not session.active_quest.completed:
+        reference = str(payload.get("reference") or "")
+        record_session_tag_rumor_state(
+            campaign,
+            session,
+            status="heard" if "do not investigate" in reference.lower() else "resolved",
+        )
         session.active_quest.completed = True
         state = dict(session.active_quest.tag_generated_lead_state or {})
         state["route_recorded"] = True
@@ -6877,6 +7007,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         xp_spent=payload.xp_spent,
         target_character_id=payload.target_character_id,
         item_name=payload.item_name,
+        item_container_id=payload.item_container_id,
         target_weapon=payload.target_weapon,
         gold_amount=payload.gold_amount,
         weapon_kind=payload.weapon_kind,
@@ -7042,6 +7173,7 @@ def _member_state(character: Character) -> PartyMemberState:
         save_bonus=character.save_bonus,
         marching_order=1,
         inventory=list(character.inventory),
+        item_containers=[container.model_copy(deep=True) for container in character.item_containers],
         spells=list(character.spells),
         abilities=list(character.abilities),
         class_traits=list(character.class_traits),
@@ -7093,6 +7225,7 @@ def _prepare_roster_service_character(
     character.current_life = member.current_life
     character.max_life = member.max_life
     character.inventory = list(member.inventory)
+    character.item_containers = [container.model_copy(deep=True) for container in member.item_containers]
     character.class_traits = list(member.class_traits)
     character.secrets = list(member.secrets)
     character.default_melee_weapon = member.default_melee_weapon
@@ -7133,6 +7266,7 @@ def _sync_roster_service_to_session(
     member.current_life = character.current_life
     member.max_life = character.max_life
     member.inventory = list(character.inventory)
+    member.item_containers = [container.model_copy(deep=True) for container in character.item_containers]
     member.class_traits = list(character.class_traits)
     member.secrets = list(character.secrets)
     member.default_melee_weapon = character.default_melee_weapon
@@ -7154,6 +7288,7 @@ def _apply_member_state_to_character(character: Character, member: PartyMemberSt
     character.defense_bonus = member.defense_bonus
     character.save_bonus = member.save_bonus
     character.inventory = list(member.inventory)
+    character.item_containers = [container.model_copy(deep=True) for container in member.item_containers]
     character.spells = list(member.spells)
     character.abilities = list(member.abilities)
     character.class_traits = list(member.class_traits)

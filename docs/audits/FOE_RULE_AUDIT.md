@@ -68,7 +68,7 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Expanded Edition | Chimera | `weird` | EE core Weird Monsters table | special_attacks:fire_breath | pending PDF/runtime comparison |
 | Expanded Edition | Catoblepas | `weird` | EE core Weird Monsters table | encounter_start_effects:death_gaze | pending PDF/runtime comparison |
 | Expanded Edition | Giant Spider | `weird` | EE core Weird Monsters table | on_hit_effects:poison | pending PDF/runtime comparison |
-| Expanded Edition | Invisible Gremlins | `weird` | EE core Weird Monsters table | summary only | pending PDF/runtime comparison |
+| Expanded Edition | Invisible Gremlins | event / revealed `minions` | EE pp.74, 105, 107, 169 | staged d6+3 theft priority, Major tally/no Final Boss, reroll as wandering result, Disbelief d6+1 L3 Minions, steal-on-failed-Defence, Morale -1, one Treasure | implemented and focused-tested in v0.39.36 |
 | Expanded Edition | Mummy | `boss` | EE core Boss Monsters table | vulnerabilities:fire | pending PDF/runtime comparison |
 | Expanded Edition | Orc Brute | `boss` | EE core Boss Monsters table | combat_modifiers:racial_bonus | pending PDF/runtime comparison |
 | Expanded Edition | Ogre | `boss` | EE core Boss Monsters table | summary only | pending PDF/runtime comparison |

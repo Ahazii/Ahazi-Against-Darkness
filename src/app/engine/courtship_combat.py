@@ -487,8 +487,12 @@ def apply_courtship_on_foe_hit(
             eligible = removable_inventory_items(target.inventory)
             if eligible:
                 lost = random.choice(eligible)
-                target.inventory.remove(lost)
-                log.append(f"{target.name}'s {lost} is destroyed by corrosive sap (TCOTFD).")
+                from .item_containers import contained_loss_suffix, remove_inventory_item_with_contents
+
+                _removed, contents = remove_inventory_item_with_contents(target, item_name=lost)
+                log.append(
+                    f"{target.name}'s {lost}{contained_loss_suffix(contents)} is destroyed by corrosive sap (TCOTFD)."
+                )
             else:
                 log.append(f"{target.name} has no eligible gear to destroy (TCOTFD; cursed objects remain bound).")
         return log

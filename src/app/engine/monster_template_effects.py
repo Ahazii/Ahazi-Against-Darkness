@@ -37,6 +37,12 @@ def template_combat_tags(template: dict) -> list[str]:
         tags.append("no_morale")
     if template.get("magic_resistance") is not None:
         tags.append(f"magic_resistance:{template.get('magic_resistance')}")
+    try:
+        morale_modifier = int(template.get("morale_modifier", 0) or 0)
+    except (TypeError, ValueError):
+        morale_modifier = 0
+    if morale_modifier:
+        tags.append(f"morale_modifier:{morale_modifier}")
     for effect in template.get("per_turn_effects", []):
         if str(effect.get("type", "")).lower() != "life_drain":
             continue
@@ -1219,6 +1225,13 @@ def apply_on_hit_effects(
                 log.append(f"Effect: {enemy.name} destroys {target.name}'s {destroyed}.")
             else:
                 log.append(f"{enemy.name} finds no metal items on {target.name} to destroy.")
+        elif effect_type == "steal_item":
+            if session is None:
+                log.append(f"{enemy.name} cannot resolve its theft without session state.")
+            else:
+                from .gremlin_events import steal_one_revealed_gremlin_item
+
+                log.extend(steal_one_revealed_gremlin_item(session, target))
         elif effect_type == "magic":
             if str(effect.get("effect", "")).lower() == "attack_penalty":
                 save_level = resolve_effect_level(effect.get("save_level"), hcl=enemy.level, default=enemy.level)

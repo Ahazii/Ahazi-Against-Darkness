@@ -208,6 +208,7 @@ def sync_party_members_to_roster(
             continue
         character.gold = member.gold + member.bank_gold
         character.inventory = list(member.inventory)
+        character.item_containers = [container.model_copy(deep=True) for container in member.item_containers]
         character.class_traits = list(member.class_traits)
         character.default_melee_weapon = member.default_melee_weapon
         character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
@@ -258,6 +259,7 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
         character.defense_bonus = member.defense_bonus
         character.save_bonus = member.save_bonus
         character.inventory = list(member.inventory)
+        character.item_containers = [container.model_copy(deep=True) for container in member.item_containers]
         temporary_spells = list(session.secret_temporary_spells.get(member.character_id, []))
         persisted_spells = list(member.spells)
         for spell in temporary_spells:

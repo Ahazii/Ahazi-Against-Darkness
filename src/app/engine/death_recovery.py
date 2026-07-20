@@ -110,6 +110,26 @@ def deliver_carried_body_outside(
         fallen.gold = remaining
         if payouts:
             log.append(f"Gear from {fallen.name}: gold redistributed ({', '.join(payouts)}).")
+    if fallen.item_containers:
+        from .inventory import transfer_item_between
+
+        for bag in list(fallen.item_containers):
+            moved = False
+            for survivor in survivors:
+                ok, message = transfer_item_between(
+                    fallen,
+                    survivor,
+                    item_name=bag.name,
+                    item_container_id=bag.id,
+                )
+                if ok:
+                    log.append(message)
+                    moved = True
+                    break
+            if not moved:
+                log.append(
+                    f"{fallen.name}'s {bag.name} and its {len(bag.contents)} contained item(s) remain with the body."
+                )
     retained_for_temple: list[str] = []
     transferable_inventory = list(fallen.inventory)
     if fallen.class_id.lower() == "cleric":
@@ -355,10 +375,16 @@ def steal_from_unattended_bodies(
             if show_rolls:
                 session.log.append(f"No theft from {member.name}'s body (d6 = {roll}).")
             continue
-        stolen = member.inventory.pop(0)
+        from .item_containers import contained_loss_suffix, remove_inventory_item_with_contents
+
+        stolen, contents = remove_inventory_item_with_contents(member, inventory_index=0)
+        if stolen is None:
+            continue
+        stolen_label = f"{stolen}{contained_loss_suffix(contents)}"
         if show_rolls:
             session.log.append(
-                f"Loot stolen from {member.name}'s unattended body: {stolen} (d6 = {roll}, need 6 to avoid)."
+                f"Loot stolen from {member.name}'s unattended body: {stolen_label} "
+                f"(d6 = {roll}, need 6 to avoid)."
             )
         else:
-            session.log.append(f"Loot stolen from {member.name}'s unattended body: {stolen}.")
+            session.log.append(f"Loot stolen from {member.name}'s unattended body: {stolen_label}.")

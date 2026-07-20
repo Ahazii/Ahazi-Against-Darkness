@@ -426,12 +426,23 @@ def sell_item(
     except ValueError:
         return False, f"{character.name} does not carry {trimmed}.", 0
 
+    from .item_containers import bag_for_inventory_index
+
+    bag = bag_for_inventory_index(character, index)
+    if bag is not None and bag.contents:
+        return False, (
+            f"Empty this Bag of Carrying before selling it; it still contains "
+            f"{len(bag.contents)} item(s)."
+        ), 0
+
     payout, note = _payout_for_loot(character, catalog, trimmed)
     if _is_gem_or_jewelry(trimmed) and _has_secret(character, "big_money_buyer"):
         payout *= 3
         note = f"{note}; Big Money Buyer Secret x3"
         _consume_secret(character, "big_money_buyer")
-    character.inventory.pop(index)
+    from .item_containers import remove_inventory_item_with_contents
+
+    remove_inventory_item_with_contents(character, inventory_index=index)
     character.gold += payout
     prune_weapon_defaults(character)
     return True, f"{character.name} sells {trimmed} for {payout}gp ({note}).", payout

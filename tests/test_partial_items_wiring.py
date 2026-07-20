@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.engine.class_combat import armor_defense_bonus
 from app.engine.dungeon_table_roller import DungeonTableRoller
-from app.engine.gremlin_events import resolve_invisible_gremlins
+from app.engine.gremlin_events import apply_gremlin_repellant, resolve_invisible_gremlins
 from app.rules.repository import RulesRepository
 from app.engine.magic_armor import is_magic_armor, magic_armor_defense_bonus, resolve_magic_armor_placeholder
 from app.engine.magic_weapons import resolve_treasure_item_list
@@ -112,9 +112,19 @@ def test_fiendish_foes_treasure_table_rolls():
 def test_gremlin_repellant_blocks_steal():
     member = _member(inventory=["Gremlin repellant", "Magic Sword (+1 Attack)"])
     session = _session([member])
+    session.camped_outside = True
+    applied = apply_gremlin_repellant(
+        session,
+        repellant_owner=member,
+        target=member,
+        item_name="Magic Sword (+1 Attack)",
+    )
+    session.camped_outside = False
     log = resolve_invisible_gremlins(session, [member])
-    assert any("repellant" in line.lower() or "wards off" in line.lower() for line in log)
+    assert any("protected" in line.lower() for line in applied)
     assert not any("gremlin repellant" in item.lower() for item in member.inventory)
+    assert "Magic Sword (+1 Attack)" in member.inventory
+    assert not any("Magic Sword" in line for line in log)
 
 
 def test_gremlins_steal_magic_first():

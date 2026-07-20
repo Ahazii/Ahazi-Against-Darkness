@@ -276,6 +276,7 @@ def apply_curse_of_tamas_zeya(
     member.current_life = 0
     reconcile_star_object_carrier(session)
     member.inventory.clear()
+    member.item_containers.clear()
     if char_id not in session.permanently_lost_character_ids:
         session.permanently_lost_character_ids.append(char_id)
     if session.courtship_truelove_character_id == char_id:
@@ -435,8 +436,12 @@ def apply_book_of_secrets_entry(
             eligible = removable_inventory_items(victim.inventory)
             if eligible:
                 lost = random.choice(eligible)
-                victim.inventory.remove(lost)
-                log.append(f"{victim.name} loses {lost} to the mirror (TCOTFD).")
+                from .item_containers import contained_loss_suffix, remove_inventory_item_with_contents
+
+                _removed, contents = remove_inventory_item_with_contents(victim, item_name=lost)
+                log.append(
+                    f"{victim.name} loses {lost}{contained_loss_suffix(contents)} to the mirror (TCOTFD)."
+                )
         else:
             from .courtship_demesne import _grant_party_clues
 

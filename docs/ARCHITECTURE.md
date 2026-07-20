@@ -42,6 +42,11 @@ Key files:
 - `src/app/engine/scrolls.py` - scroll identification, burning, and wizard copy-to-spellbook
 - `src/app/engine/magic_items.py` - charged wand/staff parsing, `use_magic_item` cast, charge consumption
 - `src/app/engine/inventory.py` - item and gold transfer between heroes (session and roster)
+- `src/app/engine/item_containers.py` - stable Bag of Carrying identity, explicit contents, exact-Bag transfer/removal, and container-safe loss helpers
+- `src/app/engine/gremlin_events.py` - staged Invisible Gremlins event, item-level protection, printed theft priority, and Disbelief conversion
+- `src/app/engine/tag_campaign.py` - TAG campaign services, generated leads, campaign-scoped Rumor lifecycle, and campaign-effect persistence
+- `src/app/engine/tag_scene_actions.py` - typed PDF-backed scene action definitions shared by generated manifests and runtime resolution
+- `src/app/engine/star_object_curse.py` - campaign-scoped Bofto curse, carrier/recovery reconciliation, and Star-Slayer hooks
 - `src/app/engine/class_profiles.py` - class Life offsets, spell slots, level-up benefit notes
 - `src/app/engine/experience.py` - XP awards, Classical XP rolls and spending, Old School and Slower Advancement transactions, level-up application, spell-slot assignment
 - `src/app/engine/rest.py` - rest eligibility, recovery, wandering-check resolution, and reusable between-foray resource reset
@@ -73,6 +78,11 @@ Collections:
 - `characters`
 - `parties`
 - `sessions`
+- `campaigns`
+
+Sessions and campaigns remain separate records. `SessionState.campaign_id` is the
+stable join for campaign-owned effects and TAG Rumor lifecycle state; changing
+the dashboard's active campaign does not retarget an existing session.
 
 Editable rule overrides are seeded to:
 
@@ -421,11 +431,16 @@ Home screen character UI:
   matching task automatically; `/api/campaign/tag/closeout-task` can mark a
   task done when the player handled it manually.
 - Shared logic lives in `src/app/engine/inventory.py` (carry limits, transfers).
+- **Bag of Carrying:** `Character.item_containers` and
+  `PartyMemberState.item_containers` hold one stable container record per carried
+  Bag. Contained items are not loose inventory; the selected Bag and its contents
+  move together. Save/resume, capture, death, theft, and roster sync preserve the
+  exact container. Losing the Bag discards its contents as required by TAG p.13.
 
 ## Session roster sync
 
 On clean dungeon exit (`mode == complete`), `src/app/engine/roster_sync.py`
-writes surviving heroes' gold, inventory, levels, spells, XP tallies, default
+writes surviving heroes' gold, inventory, item containers, levels, spells, XP tallies, default
 weapons, and filtered statuses back to `Character` records in SQLite. The UI
 reloads `/api/characters` after completion, clears the active session id, and
 returns to the home screen.

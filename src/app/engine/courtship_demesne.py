@@ -967,8 +967,10 @@ def apply_courtship_encounter(
             eligible = removable_inventory_items(member.inventory)
             if failed and eligible:
                 lost = min(len(eligible), roll_d3())
+                from .item_containers import remove_inventory_item_with_contents
+
                 for item in random.sample(eligible, k=lost):
-                    member.inventory.remove(item)
+                    remove_inventory_item_with_contents(member, item_name=item)
                 session.log.append(f"{member.name} loses {lost} item(s) dodging the rockslide.")
         return
     if effect == "acid_spring":

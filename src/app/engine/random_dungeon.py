@@ -220,7 +220,16 @@ from .inventory import (
     transfer_inventory_item,
 )
 from .magic_weapons import resolve_treasure_item_list
-from .gremlin_events import gremlin_protection_active, resolve_invisible_gremlins
+from .gremlin_events import (
+    apply_gremlin_repellant,
+    begin_invisible_gremlins,
+    consume_gremlin_protection,
+    gremlin_protection_active,
+    offer_gremlin_temple_tag,
+    resolve_invisible_gremlins,
+    resolve_pending_gremlin_theft,
+    reveal_invisible_gremlins,
+)
 from .star_object_curse import (
     assign_recovered_star_object,
     give_star_object,
@@ -913,6 +922,7 @@ class RandomDungeonEngine:
         xp_spent: int | None = None,
         target_character_id: str | None = None,
         item_name: str | None = None,
+        item_container_id: str | None = None,
         target_weapon: str | None = None,
         gold_amount: int | None = None,
         weapon_kind: str | None = None,
@@ -1031,6 +1041,18 @@ class RandomDungeonEngine:
                 "Choose whether to let the Invisible Gremlins take the cursed star-shaped object."
             )
             return self._touch(session)
+        gremlin_actions = {
+            "resolve_star_object_gremlins",
+            "resolve_invisible_gremlin_theft",
+            "offer_gremlin_temple_tag",
+        }
+        disbelief_action = action == "cast_spell" and str(spell_name or "").strip().lower() == "disbelief"
+        if session.pending_gremlin_event is not None and action not in gremlin_actions and not disbelief_action:
+            session.log.append(
+                "Resolve the Invisible Gremlins event: cast Disbelief, volunteer an eligible temple tag, "
+                "or apply the printed theft priority."
+            )
+            return self._touch(session)
         if action != "assign_star_object" and session.tag_star_object_assignment_pending:
             session.log.append("Choose a living hero to carry the recovered star-shaped object.")
             return self._touch(session)
@@ -1110,6 +1132,10 @@ class RandomDungeonEngine:
             "use_miners_ointment",
             "use_herbal_tonic",
             "apply_gremlin_repellant",
+            "put_item_in_container",
+            "take_item_from_container",
+            "resolve_invisible_gremlin_theft",
+            "offer_gremlin_temple_tag",
             "choose_treasure_outcome",
             "fd_oblivion_redeem_madness",
             "fd_spend_hallucination_revelation",
@@ -1790,13 +1816,46 @@ class RandomDungeonEngine:
         elif action == "use_herbal_tonic":
             self._use_herbal_tonic(session, character_id)
         elif action == "apply_gremlin_repellant":
-            self._apply_gremlin_repellant(session, character_id)
+            self._apply_gremlin_repellant(
+                session,
+                character_id,
+                target_character_id=target_character_id,
+                item_name=item_name,
+                item_container_id=item_container_id,
+            )
+        elif action == "put_item_in_container":
+            self._move_bag_item(
+                session,
+                character_id,
+                item_container_id=item_container_id,
+                item_name=item_name,
+                take_out=False,
+            )
+        elif action == "take_item_from_container":
+            self._move_bag_item(
+                session,
+                character_id,
+                item_container_id=item_container_id,
+                item_name=item_name,
+                take_out=True,
+            )
+        elif action == "resolve_invisible_gremlin_theft":
+            session.log.extend(resolve_pending_gremlin_theft(session, session.party))
+        elif action == "offer_gremlin_temple_tag":
+            session.log.extend(
+                offer_gremlin_temple_tag(
+                    session,
+                    character_id=character_id,
+                    item_name=item_name,
+                )
+            )
         elif action == "resolve_star_object_gremlins":
             session.log.extend(
                 resolve_invisible_gremlins(
                     session,
                     session.party,
                     star_object_choice=star_object_choice,
+                    defer_theft=True,
                 )
             )
         elif action == "assign_star_object":
@@ -2086,7 +2145,13 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
             )
         elif action == "transfer_item":
-            self._transfer_item(session, character_id, target_character_id, item_name)
+            self._transfer_item(
+                session,
+                character_id,
+                target_character_id,
+                item_name,
+                item_container_id=item_container_id,
+            )
         elif action == "transfer_gold":
             self._transfer_gold(session, character_id, target_character_id, gold_amount)
         elif action == "deposit_bank_gold":
@@ -3008,8 +3073,7 @@ class RandomDungeonEngine:
         if self._consume_mycelial_warning(session, tile, "Wandering Monsters"):
             return
         if gremlin_protection_active(session, session.party):
-            session.gremlin_wm_protection_pending = False
-            session.log.append("Miners' Ointment or gremlin repellant wards off Wandering Monsters.")
+            session.log.extend(consume_gremlin_protection(session, session.party))
             return
         hcl = self._highest_character_level(session.party)
         from .abyss_tables import is_abyss_profile
@@ -4129,7 +4193,13 @@ class RandomDungeonEngine:
         for enemy in tile.enemies:
             tags = {tag.lower() for tag in enemy.tags}
             if "gremlin" in enemy.name.lower() and ("event" in tags or "not_foe" in tags):
-                session.log.extend(resolve_invisible_gremlins(session, session.party))
+                session.log.extend(
+                    begin_invisible_gremlins(
+                        session,
+                        session.party,
+                        tile_id=tile.id,
+                    )
+                )
                 continue
             if enemy.life <= 0 and ("event" in tags or "not_foe" in tags):
                 if show_rolls:
@@ -6444,6 +6514,12 @@ class RandomDungeonEngine:
                 existing = CapturedEquipmentState(**existing)
             equipment = CapturedEquipmentState(
                 inventory=list(existing.inventory if existing else []) + portable_inventory,
+                item_containers=(
+                    [container.model_copy(deep=True) for container in existing.item_containers]
+                    if existing
+                    else []
+                )
+                + [container.model_copy(deep=True) for container in member.item_containers],
                 default_melee_weapon=(existing.default_melee_weapon if existing else None) or member.default_melee_weapon,
                 default_melee_weapon_secondary=(
                     existing.default_melee_weapon_secondary if existing else None
@@ -6455,6 +6531,7 @@ class RandomDungeonEngine:
             session.captured_stripped_equipment[member.character_id] = equipment
             stripped["equipment_count"] = len(portable_inventory)
             member.inventory = [item for item in member.inventory if item not in portable_inventory]
+            member.item_containers = []
             member.default_melee_weapon = None
             member.default_melee_weapon_secondary = None
             member.default_missile_weapon = None
@@ -6467,6 +6544,9 @@ class RandomDungeonEngine:
         if isinstance(equipment, dict):
             equipment = CapturedEquipmentState(**equipment)
         member.inventory.extend(equipment.inventory)
+        member.item_containers.extend(
+            container.model_copy(deep=True) for container in equipment.item_containers
+        )
         member.default_melee_weapon = equipment.default_melee_weapon
         member.default_melee_weapon_secondary = equipment.default_melee_weapon_secondary
         member.default_missile_weapon = equipment.default_missile_weapon
@@ -6585,6 +6665,9 @@ class RandomDungeonEngine:
             return
 
         spell_key = normalize_spell_name(spell_name)
+        gremlin_disbelief = bool(
+            session.pending_gremlin_event is not None and spell_key == "disbelief"
+        )
         in_combat = session.mode == "combat"
         from_garment_escape = False
         if spell_key == "escape" and not from_item and not echo_repeat and not in_combat:
@@ -6627,7 +6710,7 @@ class RandomDungeonEngine:
         if spell_key != "eldritch_fist":
             session.log.extend(clear_eldritch_fist_on_cast(session, caster.character_id))
 
-        no_foe_ok = spell_key in EXPLORATION_SPELLS or from_item or from_garment_escape
+        no_foe_ok = spell_key in EXPLORATION_SPELLS or from_item or from_garment_escape or gremlin_disbelief
         if in_combat and not from_item and not echo_repeat:
             if caster.character_id in session.spell_used_character_ids:
                 session.log.append(f"{caster.name} has already cast a spell this combat round.")
@@ -6643,7 +6726,7 @@ class RandomDungeonEngine:
             door_type = exit_state.door_type if exit_state and exit_state.kind == "door" else None
             from .courtship_blossoms_spells import is_blossoms_spell
 
-            allowed = spell_key in EXPLORATION_SPELLS or from_garment_escape
+            allowed = spell_key in EXPLORATION_SPELLS or from_garment_escape or gremlin_disbelief
             allowed = allowed or (from_scroll and is_blossoms_spell(spell_name or ""))
             allowed = allowed or (
                 is_satyr(caster) and is_blossoms_spell(spell_name or "") and not from_item
@@ -6893,6 +6976,24 @@ class RandomDungeonEngine:
             session.mode = "exploration"
             session.combat_round = 0
             tile.enemies = []
+
+        if gremlin_disbelief and outcome.spell_consumed:
+            revealed, reveal_log = reveal_invisible_gremlins(session)
+            session.party = merge_party_outcome(session.party, outcome.party)
+            tile.enemies = revealed
+            tile.initial_enemy_count = len(revealed)
+            session.log.extend(reveal_log)
+            self._begin_combat(
+                session,
+                "The revealed Invisible Gremlins attack.",
+                tile=tile,
+                show_rolls=show_rolls,
+                allow_final_boss_check=False,
+            )
+            session.reaction_pending = False
+            session.reaction_checked = True
+            session.reaction_key = "fight"
+            return
 
         if in_combat and session.mode == "combat":
             from .monster_combat_modifiers import mark_spider_webs_burned, orc_looter_spell_morale_check
@@ -10672,6 +10773,8 @@ class RandomDungeonEngine:
         from_character_id: str | None,
         to_character_id: str | None,
         item_name: str | None,
+        *,
+        item_container_id: str | None = None,
     ) -> None:
         if session.mode != "exploration":
             session.log.append("Exchange gear during exploration, not in combat.")
@@ -10687,11 +10790,12 @@ class RandomDungeonEngine:
         if target and is_paranoid(target):
             session.log.append(f"{target.name} is too paranoid to exchange equipment.")
             return
-        _ok, message = transfer_inventory_item(
+        moved, message = transfer_inventory_item(
             session.party,
             from_character_id=from_character_id,
             to_character_id=to_character_id,
             item_name=item_name or "",
+            item_container_id=item_container_id,
         )
         session.log.append(message)
         session.log.extend(enforce_single_pole_carrier(session.party, session=session))
@@ -12300,7 +12404,13 @@ class RandomDungeonEngine:
                 )
             if kind == "tag_invisible_gremlins":
                 session.log.append("Developer playtest override: Invisible Gremlins meet the cursed carrier.")
-                session.log.extend(resolve_invisible_gremlins(session, session.party))
+                session.log.extend(
+                    begin_invisible_gremlins(
+                        session,
+                        session.party,
+                        tile_id=tile.id,
+                    )
+                )
                 return
             try:
                 enemy = spawn_star_slayer(session, self.rules.monsters())
@@ -13247,6 +13357,11 @@ class RandomDungeonEngine:
                 reset_between_foray_resources=self._reset_between_foray_resources,
             ),
         )
+        if session.gremlin_protected_items:
+            session.log.append("Gremlin Repellant protection expires at the end of the adventure (EE p.87).")
+        session.gremlin_protected_items = []
+        session.pending_gremlin_event = None
+        session.tag_star_object_gremlin_choice_pending = False
 
     def _resolve_monster_table_key(
         self,
@@ -18585,23 +18700,79 @@ class RandomDungeonEngine:
         session.log.extend(use_herbal_tonic(member, tonic))
         session.herbal_tonic_used_character_ids.append(member.character_id)
 
-    def _apply_gremlin_repellant(self, session: SessionState, character_id: str | None) -> None:
-        if session.mode != "exploration":
-            session.log.append("Apply gremlin repellant during exploration.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to apply gremlin repellant.")
-            return
-        repellant = next((item for item in member.inventory if "gremlin repellant" in item.lower()), None)
-        if repellant is None:
-            session.log.append(f"{member.name} has no gremlin repellant.")
-            return
-        member.inventory = [item for item in member.inventory if item != repellant]
-        session.gremlin_wm_protection_pending = True
-        session.log.append(
-            f"{member.name} applies {repellant}; the next Wandering Monsters or gremlin event is ignored."
+    def _apply_gremlin_repellant(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        target_character_id: str | None,
+        item_name: str | None,
+        item_container_id: str | None,
+    ) -> None:
+        owner = next((item for item in session.party if item.character_id == character_id), None)
+        target = next(
+            (
+                item
+                for item in session.party
+                if item.character_id == (target_character_id or character_id)
+            ),
+            None,
         )
+        if owner is None or owner.current_life <= 0 or target is None or target.current_life <= 0:
+            session.log.append("Choose living heroes to apply and receive Gremlin Repellant.")
+            return
+        session.log.extend(
+            apply_gremlin_repellant(
+                session,
+                repellant_owner=owner,
+                target=target,
+                item_name=item_name,
+                item_container_id=item_container_id,
+            )
+        )
+
+    def _move_bag_item(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        item_container_id: str | None,
+        item_name: str | None,
+        take_out: bool,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Repack a Bag of Carrying during exploration, not combat.")
+            return
+        member = next(
+            (
+                item
+                for item in session.party
+                if item.character_id == character_id and item.current_life > 0
+            ),
+            None,
+        )
+        if member is None:
+            session.log.append("Choose a living hero with a Bag of Carrying.")
+            return
+        from .item_containers import put_item_in_bag, take_item_from_bag
+
+        mover = take_item_from_bag if take_out else put_item_in_bag
+        _ok, message = mover(
+            member,
+            container_id=item_container_id,
+            item_name=item_name,
+        )
+        if moved:
+            from .gremlin_events import move_gremlin_item_protection
+
+            move_gremlin_item_protection(
+                session,
+                from_character_id=from_character_id,
+                to_character_id=to_character_id,
+                item_name=item_name or "",
+                item_container_id=item_container_id,
+            )
+        session.log.append(message)
 
     def _use_berserkers_mushroom(
         self,

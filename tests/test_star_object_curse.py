@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.db import Store, init_db
 from app.engine.combat import CombatRound
 from app.engine.courtship_book_of_secrets import apply_curse_of_tamas_zeya
 from app.engine.equipment_shop import sell_item
 from app.engine.experience import award_encounter_xp
-from app.engine.gremlin_events import resolve_invisible_gremlins
+from app.engine.gremlin_events import apply_gremlin_repellant, resolve_invisible_gremlins
 from app.engine.inventory import transfer_inventory_item
 from app.engine.monster_template_effects import apply_star_slayer_sight_effects
 from app.engine.random_dungeon import RandomDungeonEngine
@@ -16,6 +17,7 @@ from app.engine.star_object_curse import (
     STAR_OBJECT_STATUS,
     STAR_SLAYER_NAME,
     assign_recovered_star_object,
+    apply_star_object_campaign_to_session,
     give_star_object,
     maybe_find_star_object_in_treasure,
     maybe_replace_major_foes,
@@ -25,8 +27,9 @@ from app.engine.star_object_curse import (
     spawn_star_slayer,
     star_object_carrier,
     star_slayer_final_treasure_source,
+    sync_star_object_campaign_from_session,
 )
-from app.engine.tag_campaign import default_campaign, store_tag_treasure
+from app.engine.tag_campaign import STAR_OBJECT_EFFECT_KEY, campaign_effect, default_campaign, load_campaign, store_tag_treasure
 from app.rules.repository import RulesRepository
 from app.schemas import (
     Character,
@@ -206,12 +209,20 @@ def test_invisible_gremlins_require_choice_and_release_bypasses_protection() -> 
     assert session.tag_star_object_curse_active is False
     assert session.tag_star_object_curse_cleared is True
     assert "Gremlin Repellant" in carrier.inventory
-    assert any("protection is not used" in line for line in released)
+    assert any("protection is bypassed" in line for line in released)
 
 
 def test_keeping_star_object_uses_normal_gremlin_protection() -> None:
     carrier = _hero("carrier", "Carrier", inventory=["Gremlin Repellant", "Magic Sword"])
     session = _session([carrier])
+    session.camped_outside = True
+    applied = apply_gremlin_repellant(
+        session,
+        repellant_owner=carrier,
+        target=carrier,
+        item_name="Magic Sword",
+    )
+    session.camped_outside = False
     give_star_object(session, carrier)
 
     log = resolve_invisible_gremlins(session, session.party, star_object_choice="keep")
@@ -219,7 +230,41 @@ def test_keeping_star_object_uses_normal_gremlin_protection() -> None:
     assert star_object_carrier(session) is carrier
     assert "Gremlin Repellant" not in carrier.inventory
     assert "Magic Sword" in carrier.inventory
-    assert any("keeps the invisible gremlins away" in line for line in log)
+    assert any("protected" in line.lower() for line in applied)
+    assert any("normal Gremlin event continues" in line for line in log)
+
+
+def test_star_object_campaign_effect_is_scoped_to_assigned_campaign(tmp_path) -> None:
+    store = Store(tmp_path / "game.db")
+    init_db(store.db_path)
+    carrier = _hero("carrier", "Carrier")
+    source = _session([carrier])
+    source.campaign_id = "campaign-a"
+    give_star_object(source, carrier)
+
+    sync_star_object_campaign_from_session(store, source)
+
+    campaign = load_campaign(store)
+    effect = campaign_effect(campaign, campaign_id="campaign-a", key=STAR_OBJECT_EFFECT_KEY)
+    assert effect is not None
+    assert effect.status == "active"
+    assert effect.carrier_character_id == "carrier"
+    assert campaign_effect(campaign, campaign_id="campaign-b", key=STAR_OBJECT_EFFECT_KEY) is None
+
+    resumed = _session([_hero("carrier", "Carrier")])
+    resumed.campaign_id = "campaign-a"
+    unrelated = _session([_hero("other", "Other")])
+    unrelated.campaign_id = "campaign-b"
+
+    apply_star_object_campaign_to_session(store, resumed)
+    apply_star_object_campaign_to_session(store, unrelated)
+    sync_star_object_campaign_from_session(store, unrelated)
+
+    assert star_object_carrier(resumed) is resumed.party[0]
+    assert star_object_carrier(unrelated) is None
+    campaign = load_campaign(store)
+    assert campaign_effect(campaign, campaign_id="campaign-a", key=STAR_OBJECT_EFFECT_KEY).status == "active"
+    assert campaign_effect(campaign, campaign_id="campaign-b", key=STAR_OBJECT_EFFECT_KEY) is None
 
 
 def test_death_transfers_curse_and_total_party_loss_queues_recovery() -> None:

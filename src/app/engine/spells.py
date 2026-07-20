@@ -498,7 +498,7 @@ def resolve_spell_cast(
         )
         return SpellOutcome(log, living_enemies, party, spell_consumed=True, illusionary_servant=True)
     if key == "disbelief":
-        return _cast_disbelief(caster, party, living_enemies, log)
+        return _cast_disbelief(caster, party, living_enemies, log, session=session)
     if key == "phantasmal_binding":
         return _cast_phantasmal_binding(
             caster,
@@ -1246,6 +1246,8 @@ def _cast_disbelief(
     party: list[PartyMemberState],
     enemies: list[EnemyState],
     log: list[str],
+    *,
+    session: SessionState | None = None,
 ) -> SpellOutcome:
     for member in party:
         member.statuses = [item for item in member.statuses if "illusion" not in item.lower() and "mirror" not in item.lower()]
@@ -1257,7 +1259,10 @@ def _cast_disbelief(
             enemy.level = max(1, enemy.level - 2)
             enemy.tags = [tag for tag in enemy.tags if tag not in {"invisible", "illusion"}]
             revealed += 1
-    log.append(f"Disbelief dispels illusions and reveals {revealed} hidden foe(s).")
+    if session is not None and session.pending_gremlin_event is not None:
+        log.append("Disbelief is cast on the Invisible Gremlins event (EE p.74).")
+    else:
+        log.append(f"Disbelief dispels illusions and reveals {revealed} hidden foe(s).")
     return SpellOutcome(log, enemies, party, spell_consumed=True)
 
 

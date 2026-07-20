@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from ..schemas import CampaignState, EnemyState, PartyMemberState, SessionState, TileState
+from ..schemas import CampaignState, EnemyState, Party, PartyMemberState, SessionState, TileState
 from .cavern_features import template_surprise_tags
 from .class_combat import save_modifier
 from .combat_modifiers import SPELLCASTER_CLASS_IDS
@@ -298,30 +298,97 @@ def assign_recovered_star_object(session: SessionState, character_id: str | None
 
 
 def apply_star_object_campaign_to_session(store: Store, session: SessionState) -> SessionState:
-    from .tag_campaign import load_campaign
+    from .tag_campaign import STAR_OBJECT_EFFECT_KEY, campaign_effect, load_campaign
 
     campaign = load_campaign(store)
-    if campaign.tag_star_object_recovery_pending and star_object_carrier(session) is None:
+    party = store.get("parties", session.party_id, Party.model_validate) if not session.campaign_id else None
+    campaign_id = session.campaign_id or (party.campaign_id if party is not None else None) or campaign.active_world_campaign_id
+    session.campaign_id = campaign_id
+    effect = campaign_effect(
+        campaign,
+        campaign_id=campaign_id,
+        key=STAR_OBJECT_EFFECT_KEY,
+    )
+    carrier = star_object_carrier(session)
+    if effect is not None and effect.status == "cleared":
+        remove_star_object(session)
+        return session
+    if effect is not None and effect.status == "recovery_pending":
+        for member in session.party:
+            _strip_star_object(member)
         session.tag_star_object_curse_cleared = False
         session.tag_star_object_curse_active = False
         session.tag_star_object_recovery_pending = True
+        session.tag_star_object_assignment_pending = False
+        return session
+    if effect is not None and effect.status == "active":
+        expected = next(
+            (
+                member
+                for member in session.party
+                if member.character_id == effect.carrier_character_id
+            ),
+            None,
+        )
+        if expected is None:
+            for member in session.party:
+                _strip_star_object(member)
+            session.tag_star_object_curse_active = False
+            session.tag_star_object_curse_cleared = False
+            session.tag_star_object_recovery_pending = False
+            session.tag_star_object_assignment_pending = False
+            return session
+        if carrier is None or carrier.character_id != expected.character_id:
+            give_star_object(session, expected)
     reconcile_star_object_carrier(session)
     return session
 
 
 def sync_star_object_campaign_from_session(store: Store, session: SessionState) -> CampaignState:
-    from .tag_campaign import load_campaign, save_campaign
+    from .tag_campaign import (
+        STAR_OBJECT_EFFECT_KEY,
+        campaign_effect,
+        load_campaign,
+        save_campaign,
+        set_campaign_effect,
+    )
 
     campaign = load_campaign(store)
-    old_value = campaign.tag_star_object_recovery_pending
+    campaign_id = session.campaign_id or campaign.active_world_campaign_id
+    session.campaign_id = campaign_id
+    reconcile_star_object_carrier(session)
     carrier = star_object_carrier(session)
+    desired_status: str | None = None
+    desired_carrier_id: str | None = None
     if session.tag_star_object_curse_cleared:
-        campaign.tag_star_object_recovery_pending = False
+        desired_status = "cleared"
     elif session.tag_star_object_recovery_pending or session.tag_star_object_assignment_pending:
-        campaign.tag_star_object_recovery_pending = True
+        desired_status = "recovery_pending"
     elif carrier is not None and carrier.current_life > 0:
-        campaign.tag_star_object_recovery_pending = False
-    if campaign.tag_star_object_recovery_pending != old_value:
+        desired_status = "active"
+        desired_carrier_id = carrier.character_id
+    current = campaign_effect(
+        campaign,
+        campaign_id=campaign_id,
+        key=STAR_OBJECT_EFFECT_KEY,
+    )
+    changed = False
+    if desired_status is not None and (
+        current is None
+        or current.status != desired_status
+        or current.carrier_character_id != desired_carrier_id
+    ):
+        set_campaign_effect(
+            campaign,
+            campaign_id=campaign_id,
+            key=STAR_OBJECT_EFFECT_KEY,
+            status=desired_status,
+            source="TAG pp.30-31, Bofto's Star-Shaped Object",
+            carrier_character_id=desired_carrier_id,
+            details={"item": STAR_OBJECT_ITEM},
+        )
+        changed = True
+    if changed:
         save_campaign(store, campaign)
     return campaign
 

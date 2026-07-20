@@ -186,6 +186,7 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
                 "SessionState.tag_star_object_curse_active",
                 "SessionState.tag_star_object_recovery_pending",
                 "CampaignState.tag_star_object_recovery_pending",
+                "CampaignState.campaign_effects[tag_bofto_star_object_curse]",
             ],
         },
         "implemented": True,
@@ -197,6 +198,94 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
                 "Star-Slayer. The object cannot be transferred, dropped, sold, or removed by magic; "
                 "only explicitly letting Invisible Gremlins take it breaks the curse. Death transfers it automatically."
             ),
+        },
+    },
+    {
+        "id": "invisible-gremlins-pending-event",
+        "name": "Pending Invisible Gremlins Event",
+        "family": "encounter_procedure",
+        "scope": "party",
+        "value_type": "pending_choice",
+        "source": {
+            "supplement_id": LOCKED_CORE_SUPPLEMENT_ID,
+            "source_pdf": "Four_Against_Darkness_Expanded_Edition.pdf",
+            "page": 169,
+            "topic": "Invisible Gremlins",
+        },
+        "legacy_mappings": {"fields": ["SessionState.pending_gremlin_event"]},
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {
+            "label": "Invisible Gremlins pending",
+            "hover": (
+                "EE pp.74, 169. Persists the d6+3 theft count and exactly-once Major Foe tally while "
+                "the player chooses Disbelief, a voluntary eligible temple tag, or ordinary theft."
+            ),
+        },
+    },
+    {
+        "id": "gremlin-repellant-item-protection",
+        "name": "Gremlin Repellant Item Protection",
+        "family": "item_protection",
+        "scope": "party",
+        "value_type": "collection",
+        "source": {
+            "supplement_id": LOCKED_CORE_SUPPLEMENT_ID,
+            "source_pdf": "Four_Against_Darkness_Expanded_Edition.pdf",
+            "page": 87,
+            "topic": "Gremlin Repellant",
+        },
+        "legacy_mappings": {"fields": ["SessionState.gremlin_protected_items"]},
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {
+            "label": "Gremlin-protected item",
+            "hover": "EE p.87. One dose protects one selected loose item or Bag before the adventure and expires when that adventure ends.",
+        },
+    },
+    {
+        "id": "tag-bag-of-carrying-contents",
+        "name": "Bag of Carrying Contents",
+        "family": "item_container",
+        "scope": "character",
+        "value_type": "collection",
+        "source": {
+            "supplement_id": "tag",
+            "source_pdf": "Tales_from_the_adventurers_guild.pdf",
+            "page": 13,
+            "topic": "Bag of Carrying",
+        },
+        "legacy_mappings": {
+            "inventory": ["Bag of Carrying"],
+            "fields": ["Character.item_containers", "PartyMemberState.item_containers"],
+        },
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {
+            "label": "Bag of Carrying contents",
+            "hover": "TAG p.13. Each Bag has separate persistent contents; transfer or theft moves or loses the Bag and all contents together.",
+        },
+    },
+    {
+        "id": "tag-rumor-lifecycle",
+        "name": "TAG Rumor Lifecycle",
+        "family": "campaign_progress",
+        "scope": "campaign",
+        "value_type": "enum",
+        "source": {
+            "supplement_id": "tag",
+            "source_pdf": "Tales_from_the_adventurers_guild.pdf",
+            "page": 22,
+            "topic": "Rumors",
+        },
+        "legacy_mappings": {
+            "fields": ["CampaignState.tag_used_rumor_numbers", "CampaignState.tag_rumor_states"],
+        },
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {
+            "label": "Rumor state",
+            "hover": "TAG p.22. Campaign-scoped heard, investigating, and resolved state; cross off only after the paragraph and corresponding Scene are played.",
         },
     },
     {

@@ -300,6 +300,7 @@ def transfer_item_between(
     target: InventoryHolder,
     *,
     item_name: str,
+    item_container_id: str | None = None,
 ) -> tuple[bool, str]:
     if not item_name or not item_name.strip():
         return False, "Choose an item to transfer."
@@ -310,6 +311,37 @@ def transfer_item_between(
             "Bofto's cursed star-shaped object cannot be transferred, dropped, or given away. "
             "Only a carrier's death or Invisible Gremlins can move or remove it (TAG pp.30-31)."
         )
+    from .item_containers import bag_for_inventory_index, bag_inventory_index, is_bag_of_carrying
+
+    if is_bag_of_carrying(item_name):
+        from .scrolls import barbarian_cannot_use_magic
+
+        if barbarian_cannot_use_magic(str(getattr(target, "class_id", ""))):
+            return False, (
+                f"{target.name} will not carry a Bag of Carrying because that character cannot use magic items "
+                "(TAG p.13, Bag of Carrying)."
+            )
+        source_containers = getattr(source, "item_containers", None)
+        target_containers = getattr(target, "item_containers", None)
+        if source_containers is None or target_containers is None:
+            return False, "Bag of Carrying contents are unavailable on this inventory holder."
+        if item_container_id:
+            index = bag_inventory_index(source, item_container_id)
+            bag = next((item for item in source_containers if item.id == item_container_id), None)
+        else:
+            try:
+                index = source.inventory.index(item_name)
+            except ValueError:
+                index = None
+            bag = bag_for_inventory_index(source, index) if index is not None else None
+        if index is None or bag is None:
+            return False, f"{source.name} does not carry that Bag of Carrying."
+        source.inventory.pop(index)
+        source_containers.remove(bag)
+        target.inventory.append(item_name)
+        target_containers.append(bag)
+        contents = f" with {len(bag.contents)} contained item(s)" if bag.contents else ""
+        return True, f"{source.name} gives {item_name}{contents} to {target.name}."
     try:
         index = source.inventory.index(item_name)
     except ValueError:
@@ -360,6 +392,7 @@ def transfer_inventory_item(
     from_character_id: str,
     to_character_id: str,
     item_name: str,
+    item_container_id: str | None = None,
 ) -> tuple[bool, str]:
     if from_character_id == to_character_id:
         return False, "Choose a different hero to receive the item."
@@ -369,7 +402,12 @@ def transfer_inventory_item(
     target = _living_member(party, to_character_id)
     if target is None:
         return False, "Choose a living hero to receive the item."
-    return transfer_item_between(source, target, item_name=item_name)
+    return transfer_item_between(
+        source,
+        target,
+        item_name=item_name,
+        item_container_id=item_container_id,
+    )
 
 
 def transfer_gold(
@@ -395,10 +433,16 @@ def transfer_character_item(
     target: Character,
     *,
     item_name: str,
+    item_container_id: str | None = None,
 ) -> tuple[bool, str]:
     if source.id == target.id:
         return False, "Choose a different hero to receive the item."
-    return transfer_item_between(source, target, item_name=item_name)
+    return transfer_item_between(
+        source,
+        target,
+        item_name=item_name,
+        item_container_id=item_container_id,
+    )
 
 
 def transfer_character_gold(

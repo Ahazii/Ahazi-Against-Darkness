@@ -545,9 +545,11 @@ def _destroy_belongings_and_summon(
     log: list[str],
 ) -> None:
     from .star_object_curse import removable_inventory_items
+    from .item_containers import remove_inventory_item_with_contents
 
     destroyed = removable_inventory_items(member.inventory)
-    member.inventory = [item for item in member.inventory if item not in destroyed]
+    for item in destroyed:
+        remove_inventory_item_with_contents(member, item_name=item)
     member.gold = 0
     if destroyed:
         log.append(f"{member.name}'s belongings are destroyed in the blaze ({len(destroyed)} item(s), TCOTFD p.27).")

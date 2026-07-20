@@ -215,6 +215,9 @@ API_MERGED_TABLE_KEYS = {
     "hirelings_table",
     "milestones_table",
     "tag_star_object_curse_table",
+    "invisible_gremlins_procedure_table",
+    "tag_bag_of_carrying_table",
+    "tag_rumor_lifecycle_table",
 }
 
 VERIFIED_RULE_TABLE_KEYS = {
@@ -324,6 +327,9 @@ VERIFIED_RULE_TABLE_KEYS = {
     "special_event_wandering_table",
     "swashbuckler_traits_table",
     "tag_star_object_curse_table",
+    "invisible_gremlins_procedure_table",
+    "tag_bag_of_carrying_table",
+    "tag_rumor_lifecycle_table",
     "tier_training_costs_table",
     "trap_table",
     "treasure_table",

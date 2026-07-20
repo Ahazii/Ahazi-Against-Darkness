@@ -66,6 +66,8 @@ Status labels:
 
 **TAG v0.39.35 addendum:** Rumor 1 now runs its extracted Scene graph through automatic Scene 14/19 resolution, and the TAG pp.30-31 star-object curse is source-backed runtime behavior rather than a manual marker. Coverage includes the persistent item, Will Save, Star-Slayer replacement/sight/combat/treasure/XP rules, explicit Invisible Gremlin cure, carrier-death transfer, total-party-kill campaign recovery, resume repair, developer controls, Rules Reference, Tables, and `tests/test_star_object_curse.py`.
 
+**TAG/EE v0.39.36 addendum:** Persistent TAG effects and Rumor lifecycle records are keyed to the session's assigned campaign. Rumors move through heard/investigating/resolved and random generation rerolls campaign-resolved entries. Bofto Scene 14 uses a typed, reusable action definition. TAG p.13 Bags of Carrying now have stable per-Bag container ids and explicit persisted contents. Invisible Gremlins implement EE pp.74, 87, 105, 107, and 169 plus TAG p.11 voluntary tags: staged `d6+3` theft, printed priority, selected-item Repellant, Bag/Clockwork/Kukla handling, Major tally without Final Boss eligibility, and Disbelief combat conversion. Tests: `tests/test_tag_campaign.py`, `tests/test_item_containers_and_gremlins.py`, `tests/test_star_object_curse.py`, and `tests/test_partial_items_wiring.py`.
+
 ## Indexed-but-not-playable audit
 
 | Indexed rule | Source | Status | Notes |

@@ -746,7 +746,18 @@
         "not_foe"
       ],
       "is_event": true,
+      "never_wandering": true,
       "cannot_be_final_boss": true,
+      "disbelief_reveal": {
+        "count": "d6+1",
+        "category": "minions",
+        "level": 3,
+        "attacks": 1,
+        "damage": 0,
+        "morale_modifier": -1,
+        "treasure_rolls": 1,
+        "failed_defense": "steal_one_object"
+      },
       "event_effects": [
         {
           "type": "steal_items",

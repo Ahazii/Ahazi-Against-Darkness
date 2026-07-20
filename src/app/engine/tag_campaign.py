@@ -12,7 +12,14 @@ from uuid import uuid4
 
 from ..db import now_utc
 from .adventure_import import ADVENTURE_MANIFEST_FILENAME, installed_adventure_dir
+from .tag_scene_actions import (
+    tag_scene_action_definition,
+    tag_scene_action_manifest,
+    tag_scene_action_modifier,
+    tag_scene_action_succeeded,
+)
 from ..schemas import (
+    CampaignEffectState,
     CampaignState,
     CampaignChronicleEntry,
     Character,
@@ -25,6 +32,7 @@ from ..schemas import (
     TagCloseoutTaskState,
     TagDowntimeLogEntry,
     TagMagicLockerState,
+    TagRumorState,
     TagSettlementState,
     TagStoredItemState,
     TagTravelLogEntry,
@@ -57,6 +65,7 @@ TAG_LOG_LIMIT = 20
 CAMPAIGN_CHRONICLE_LIMIT = 120
 GUIDANCE_TASK_LIMIT = 80
 TAG_GUILD_STARTING_COFFERS_GP = 5000
+STAR_OBJECT_EFFECT_KEY = "tag_bofto_star_object_curse"
 
 
 def _data_dir() -> Path:
@@ -1492,6 +1501,7 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "finale_mode": "choice",
         "finale_instruction": "Choose the route the party takes. A theft attempt requires a selected character and is resolved automatically from the printed Save.",
         "rewards": "Depends on the chosen Scene 9 resolution.",
+        "scene_action_keys": ["bofto_theft_save"],
         "final_prompt_actions": [
             {
                 "label": "Record Bofto choice",
@@ -2685,6 +2695,245 @@ def trim_tag_logs(campaign: CampaignState) -> CampaignState:
     return campaign
 
 
+def campaign_effect(
+    campaign: CampaignState,
+    *,
+    campaign_id: str,
+    key: str,
+) -> CampaignEffectState | None:
+    return next(
+        (
+            effect
+            for effect in campaign.campaign_effects
+            if effect.campaign_id == campaign_id and effect.key == key
+        ),
+        None,
+    )
+
+
+def set_campaign_effect(
+    campaign: CampaignState,
+    *,
+    campaign_id: str,
+    key: str,
+    status: str,
+    source: str,
+    carrier_character_id: str | None = None,
+    details: dict[str, object] | None = None,
+) -> CampaignEffectState:
+    timestamp = now_utc()
+    effect = campaign_effect(campaign, campaign_id=campaign_id, key=key)
+    if effect is None:
+        effect = CampaignEffectState(
+            campaign_id=campaign_id,
+            key=key,
+            source=source,
+            status=status,  # type: ignore[arg-type]
+            carrier_character_id=carrier_character_id,
+            details=dict(details or {}),
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        campaign.campaign_effects.append(effect)
+    else:
+        effect.source = source or effect.source
+        effect.status = status  # type: ignore[assignment]
+        effect.carrier_character_id = carrier_character_id
+        if details is not None:
+            effect.details = dict(details)
+        effect.updated_at = timestamp
+    _sync_legacy_campaign_state(campaign)
+    return effect
+
+
+def tag_rumor_state(
+    campaign: CampaignState,
+    *,
+    campaign_id: str,
+    rumor_number: int,
+) -> TagRumorState | None:
+    return next(
+        (
+            state
+            for state in campaign.tag_rumor_states
+            if state.campaign_id == campaign_id and state.rumor_number == rumor_number
+        ),
+        None,
+    )
+
+
+def resolved_tag_rumor_numbers(campaign: CampaignState, *, campaign_id: str) -> set[int]:
+    return {
+        state.rumor_number
+        for state in campaign.tag_rumor_states
+        if state.campaign_id == campaign_id and state.status == "resolved"
+    }
+
+
+def roll_available_tag_rumor_number(campaign: CampaignState, *, campaign_id: str) -> int:
+    resolved = resolved_tag_rumor_numbers(campaign, campaign_id=campaign_id)
+    available = [number for number in range(1, 13) if number not in resolved]
+    if not available:
+        raise ValueError("All twelve Adventures Guild rumors are resolved in this campaign (TAG p.22).")
+    for _ in range(36):
+        rolled = roll_d12()
+        if rolled in available:
+            return rolled
+    return available[0]
+
+
+def record_tag_rumor_state(
+    campaign: CampaignState,
+    *,
+    campaign_id: str,
+    rumor_number: int,
+    status: str,
+    source: str = "rumor",
+    adventure_id: str | None = None,
+) -> TagRumorState:
+    timestamp = now_utc()
+    state = tag_rumor_state(
+        campaign,
+        campaign_id=campaign_id,
+        rumor_number=rumor_number,
+    )
+    rank = {"heard": 0, "investigating": 1, "resolved": 2}
+    if state is None:
+        state = TagRumorState(
+            campaign_id=campaign_id,
+            rumor_number=rumor_number,
+            status=status,  # type: ignore[arg-type]
+            source=source,  # type: ignore[arg-type]
+            adventure_id=adventure_id,
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        campaign.tag_rumor_states.append(state)
+    else:
+        if rank.get(status, 0) >= rank.get(state.status, 0):
+            state.status = status  # type: ignore[assignment]
+        state.source = source  # type: ignore[assignment]
+        if adventure_id:
+            state.adventure_id = adventure_id
+        state.updated_at = timestamp
+    _sync_legacy_campaign_state(campaign)
+    return state
+
+
+def _session_tag_rumor_number(session: SessionState) -> int | None:
+    manifest = session.imported_manifest if isinstance(session.imported_manifest, dict) else {}
+    parameters = ((manifest.get("source") or {}).get("parameters") or {}) if isinstance(manifest, dict) else {}
+    tag_reference = parameters.get("tag_reference") if isinstance(parameters, dict) else None
+    if not isinstance(tag_reference, dict):
+        return None
+    raw = tag_reference.get("rumor_number")
+    try:
+        rumor_number = int(raw or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    if 1 <= rumor_number <= 12:
+        return rumor_number
+    legacy_text = " ".join(
+        str(value or "")
+        for value in (
+            tag_reference.get("title"),
+            tag_reference.get("lead_detail"),
+            manifest.get("title"),
+        )
+    )
+    match = re.search(r"\brumou?r\s+(\d{1,2})\b", legacy_text, flags=re.IGNORECASE)
+    if match:
+        inferred = int(match.group(1))
+        if 1 <= inferred <= 12:
+            return inferred
+    clean_text = legacy_text.casefold()
+    return next(
+        (
+            number
+            for number, profile in TAG_RUMOR_PROFILES.items()
+            if str(profile.get("title") or "").casefold() in clean_text
+        ),
+        None,
+    )
+
+
+def record_session_tag_rumor_state(
+    campaign: CampaignState,
+    session: SessionState,
+    *,
+    status: str,
+) -> TagRumorState | None:
+    rumor_number = _session_tag_rumor_number(session)
+    if rumor_number is None:
+        return None
+    manifest = session.imported_manifest if isinstance(session.imported_manifest, dict) else {}
+    parameters = ((manifest.get("source") or {}).get("parameters") or {}) if isinstance(manifest, dict) else {}
+    lead_type = str(parameters.get("lead_type") or "rumor")
+    source = "guild_job" if lead_type == "guild_job" else "rumor"
+    return record_tag_rumor_state(
+        campaign,
+        campaign_id=session.campaign_id or campaign.active_world_campaign_id,
+        rumor_number=rumor_number,
+        status=status,
+        source=source,
+        adventure_id=session.adventure_id,
+    )
+
+
+def _sync_legacy_campaign_state(campaign: CampaignState) -> bool:
+    changed = False
+    active_campaign_id = campaign.active_world_campaign_id or DEFAULT_WORLD_CAMPAIGN_ID
+    if not campaign.tag_rumor_states and campaign.tag_used_rumor_numbers:
+        timestamp = now_utc()
+        for number in sorted(set(campaign.tag_used_rumor_numbers)):
+            if 1 <= number <= 12:
+                campaign.tag_rumor_states.append(
+                    TagRumorState(
+                        campaign_id=active_campaign_id,
+                        rumor_number=number,
+                        status="resolved",
+                        source="rumor",
+                        created_at=timestamp,
+                        updated_at=timestamp,
+                    )
+                )
+        changed = True
+    resolved = sorted(
+        {
+            state.rumor_number
+            for state in campaign.tag_rumor_states
+            if state.campaign_id == active_campaign_id and state.status == "resolved"
+        }
+    )
+    if campaign.tag_used_rumor_numbers != resolved:
+        campaign.tag_used_rumor_numbers = resolved
+        changed = True
+    effect = campaign_effect(
+        campaign,
+        campaign_id=active_campaign_id,
+        key=STAR_OBJECT_EFFECT_KEY,
+    )
+    if effect is None and campaign.tag_star_object_recovery_pending:
+        timestamp = now_utc()
+        campaign.campaign_effects.append(
+            CampaignEffectState(
+                campaign_id=active_campaign_id,
+                key=STAR_OBJECT_EFFECT_KEY,
+                source="TAG pp.30-31, legacy recovery state",
+                status="recovery_pending",
+                created_at=timestamp,
+                updated_at=timestamp,
+            )
+        )
+        effect = campaign.campaign_effects[-1]
+        changed = True
+    recovery_pending = bool(effect is not None and effect.status == "recovery_pending")
+    if campaign.tag_star_object_recovery_pending != recovery_pending:
+        campaign.tag_star_object_recovery_pending = recovery_pending
+        changed = True
+    return changed
+
+
 def append_campaign_chronicle(
     campaign: CampaignState,
     *,
@@ -3084,7 +3333,7 @@ def append_tag_log(
         character_id=character.id if character is not None else None,
         character_name=character.name if character is not None else None,
         roll=roll,
-        modifier=modifier,
+        modifier=modifier or 0,
         total=total,
         cost_gp=max(0, int(cost_gp)),
         result_text=result_text,
@@ -3881,6 +4130,19 @@ def purchase_tag_service(
             character=character,
             result_text=f"Unknown TAG purchase service: {service_key}.",
         )
+    if service_key == "bag_of_carrying":
+        from .scrolls import barbarian_cannot_use_magic
+
+        if barbarian_cannot_use_magic(character.class_id):
+            return append_tag_log(
+                campaign,
+                action="purchase_service",
+                character=character,
+                result_text=(
+                    f"{character.name} will not carry a Bag of Carrying because that character cannot use "
+                    "magic items (TAG p.13, Bag of Carrying)."
+                ),
+            )
     unit_cost = int(service["cost_gp"])
     free_guild_martial_arts = service_key == "martial_arts_training" and tag_guild_benefits_active(campaign)
     if free_guild_martial_arts:
@@ -3896,7 +4158,12 @@ def purchase_tag_service(
     character.gold -= cost
     item = service.get("inventory")
     status = service.get("status")
-    if isinstance(item, str):
+    if service_key == "bag_of_carrying":
+        from .item_containers import add_bag_of_carrying
+
+        for _ in range(qty):
+            add_bag_of_carrying(character)
+    elif isinstance(item, str):
         character.inventory.extend([item] * qty)
     if isinstance(status, str) and status not in character.statuses:
         character.statuses.append(status)
@@ -4156,20 +4423,6 @@ def _tag_reference_flag(reference: str, key: str) -> bool:
     return False
 
 
-def _bofto_theft_save_modifier(character: Character | None) -> int:
-    if character is None:
-        return 0
-    class_text = f"{character.class_id} {character.class_name}".lower()
-    level = max(1, int(character.level or 1))
-    if "rogue" in class_text or "halfling" in class_text:
-        return level
-    if "swashbuckler" in class_text or "assassin" in class_text:
-        return level // 2
-    if "elf" in class_text:
-        return 1
-    return 0
-
-
 def resolve_tag_branch_action(
     campaign: CampaignState,
     character: Character | None = None,
@@ -4185,6 +4438,7 @@ def resolve_tag_branch_action(
     reward = max(0, int(reward_gp))
     roll: int | None = None
     total: int | None = None
+    modifier: int | None = None
     parts: list[str] = [f"{TAG_BRANCH_ACTIONS[clean_action]}: {label}."]
     if clean_action == "spend_clues":
         if character is None:
@@ -4549,18 +4803,31 @@ def resolve_tag_branch_action(
         else:
             parts.append(f"White gargoyle stone-hard skin d6={roll}: hit affects the gargoyle normally. Magic and masterwork weapons ignore this check.")
     elif clean_action == "bofto_theft_save":
-        if character is None:
+        definition = tag_scene_action_definition(clean_action)
+        if definition is None:
+            parts.append("Scene 14 theft procedure is unavailable.")
+        elif character is None:
             parts.append("Scene 14 theft requires choosing the character attempting to steal Bofto's star-shaped object before rolling the thievery Save vs L6.")
         else:
-            modifier = _tag_reference_int(reference, "mod", cost) if _tag_reference_has_int(reference, "mod") or cost else _bofto_theft_save_modifier(character)
+            modifier = (
+                _tag_reference_int(reference, "mod", cost)
+                if _tag_reference_has_int(reference, "mod") or cost
+                else tag_scene_action_modifier(definition, character)
+            )
             rolled_total, rolls = roll_exploding_for_level(max(1, int(character.level or 1)))
             roll = rolls[0]
             total = rolled_total + modifier
             roll_text = " + ".join(str(value) for value in rolls)
-            if roll != 1 and total >= 6:
-                parts.append(f"Scene 14 thievery Save {roll_text}+{modifier}={total} vs L6: success. Go to Scene 19 and resolve the star-shaped object Will Save.")
-            else:
-                parts.append(f"Scene 14 thievery Save {roll_text}+{modifier}={total} vs L6: failed. Go to Scene 18; delete Rumor 1 from the Rumors Table.")
+            outcome = (
+                definition.success
+                if tag_scene_action_succeeded(definition, natural_roll=roll, total=total)
+                else definition.failure
+            )
+            result_word = "success" if outcome is definition.success else "failed"
+            parts.append(
+                f"{definition.scene} thievery Save {roll_text}+{modifier}={total} vs L{definition.difficulty}: "
+                f"{result_word}. Go to {outcome.target_scene}; {outcome.player_text}"
+            )
     elif clean_action == "star_object_will_save":
         parts.append(
             "Scene 19 must be resolved inside the active adventure session so the app can assign the "
@@ -4670,6 +4937,7 @@ def resolve_tag_branch_action(
         action=f"branch_{clean_action}",
         character=character,
         roll=roll,
+        modifier=modifier,
         total=total,
         cost_gp=0,
         result_text=" ".join(parts),
@@ -6880,6 +7148,13 @@ def _tag_manifest(
             "boss_name": final_foe,
             "room_id": "tag-final-scene",
         }
+    scene_action_definitions = [
+        definition
+        for key in profile.get("scene_action_keys", [])
+        if isinstance(key, str)
+        for definition in [tag_scene_action_manifest(key)]
+        if definition is not None
+    ]
     source_parameters = {
         "origin": "Tales from the Adventurers' Guild",
         "lead_type": lead_type,
@@ -6903,6 +7178,7 @@ def _tag_manifest(
                 "playthrough_focus": profile.get("playthrough_focus", ""),
                 "signoff_checks": profile.get("signoff_checks", []),
                 "scene_graph_terminal_actions": _tag_profile_actions(profile, "final_prompt_actions"),
+            "scene_actions": scene_action_definitions,
             "rules": profile.get("rules", []),
             "rewards": profile.get("rewards", ""),
             "side_reward_note": profile.get("side_reward_note", ""),
@@ -7251,10 +7527,12 @@ def _guild_job_profile(campaign: CampaignState, detail: str) -> tuple[str, str, 
         profile = TAG_MINOR_QUEST_PROFILES[quest_roll]
         lead_detail = f"Guild Job {job_roll}: Minor Unique Quest {quest_roll} - {_profile_title(profile, TAG_MINOR_UNIQUE_QUESTS[quest_roll])}"
     elif job_roll <= 5:
-        rumor_roll = roll_d12()
-        profile = TAG_RUMOR_PROFILES[rumor_roll]
+        rumor_roll = roll_available_tag_rumor_number(
+            campaign,
+            campaign_id=campaign.active_world_campaign_id,
+        )
+        profile = {**TAG_RUMOR_PROFILES[rumor_roll], "rumor_number": rumor_roll}
         lead_detail = f"Guild Job {job_roll}: Rumor {rumor_roll} - {_profile_title(profile, TAG_RUMORS[rumor_roll])}"
-        campaign.tag_used_rumor_numbers = sorted(set(campaign.tag_used_rumor_numbers + [rumor_roll]))
     else:
         theme_roll = roll_d6()
         profile = TAG_THEMATIC_DUNGEON_PROFILES[theme_roll]
@@ -7270,13 +7548,21 @@ def build_tag_adventure_manifest(
 ) -> tuple[dict[str, object], TagDowntimeLogEntry]:
     clean_type = lead_type if lead_type in {"rumor", "treasure_map", "thematic_dungeon", "guild_job"} else "rumor"
     clean_detail = detail.strip()
+    selected_rumor_number: int | None = None
     if clean_type == "rumor":
-        rumor_number = int(clean_detail) if clean_detail.isdigit() else roll_d12()
+        rumor_number = (
+            int(clean_detail)
+            if clean_detail.isdigit()
+            else roll_available_tag_rumor_number(
+                campaign,
+                campaign_id=campaign.active_world_campaign_id,
+            )
+        )
         rumor_number = max(1, min(12, rumor_number))
+        selected_rumor_number = rumor_number
         label = f"Rumor {rumor_number}"
-        profile = TAG_RUMOR_PROFILES[rumor_number]
+        profile = {**TAG_RUMOR_PROFILES[rumor_number], "rumor_number": rumor_number}
         lead_detail = f"{_profile_title(profile, TAG_RUMORS[rumor_number])}: {profile.get('scene', 'TAG scene')}"
-        campaign.tag_used_rumor_numbers = sorted(set(campaign.tag_used_rumor_numbers + [rumor_number]))
         title = f"The Adventures Guild {label}: {_profile_title(profile, TAG_RUMORS[rumor_number])}"
         objective = str(profile.get("objective") or f"Investigate TAG {label} from the settlement rumor list.")
         final_title = str(profile.get("final_title") or f"{label} Resolution")
@@ -7325,6 +7611,9 @@ def build_tag_adventure_manifest(
         final_description = str(profile.get("final_description") or f"This is the TAG adventure handoff for {lead_detail}.")
     else:
         label, lead_detail, profile = _guild_job_profile(campaign, clean_detail)
+        raw_nested_rumor = profile.get("rumor_number")
+        if isinstance(raw_nested_rumor, int) and 1 <= raw_nested_rumor <= 12:
+            selected_rumor_number = raw_nested_rumor
         player_label = label.replace("Guild Job", "Job")
         title = f"The Adventures Guild {player_label}: {_profile_title(profile, lead_detail)}"
         objective = str(profile.get("objective") or "Complete the work assigned by the Adventurers Guild job table.")
@@ -7345,6 +7634,15 @@ def build_tag_adventure_manifest(
     if profile.get("suppress_side_clue"):
         _suppress_optional_side_scene(manifest)
     campaign.tag_generated_adventure_ids.append(adventure_id)
+    if selected_rumor_number is not None:
+        record_tag_rumor_state(
+            campaign,
+            campaign_id=campaign.active_world_campaign_id,
+            rumor_number=selected_rumor_number,
+            status="heard",
+            source="guild_job" if clean_type == "guild_job" else "rumor",
+            adventure_id=adventure_id,
+        )
     entry = append_tag_log(
         campaign,
         action="create_tag_adventure",
@@ -7358,13 +7656,15 @@ def load_campaign(store: Store) -> CampaignState:
     if campaign is None:
         campaign = default_campaign()
         store.save("campaigns", campaign)
+    migrated = _sync_legacy_campaign_state(campaign)
     campaign, changed = ensure_worldbuilder_defaults(campaign, store)
-    if changed:
+    if changed or migrated:
         store.save("campaigns", campaign)
     return campaign
 
 
 def save_campaign(store: Store, campaign: CampaignState) -> CampaignState:
+    _sync_legacy_campaign_state(campaign)
     campaign.updated_at = now_utc()
     store.save("campaigns", campaign)
     return campaign

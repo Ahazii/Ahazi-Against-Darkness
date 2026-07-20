@@ -993,6 +993,9 @@ function renderCampaignChronicle(title = "Campaign Chronicle", limit = 12) {
 
 function tagWorkflowCounts() {
   const campaign = modernState.campaign || {};
+  const campaignId = campaign.active_world_campaign_id || "";
+  const rumorStates = (campaign.tag_rumor_states || []).filter((state) => state.campaign_id === campaignId);
+  const campaignEffects = (campaign.campaign_effects || []).filter((effect) => effect.campaign_id === campaignId);
   return {
     troupeMembers: (campaign.tag_troupe_member_character_ids || []).length,
     activeMembers: (campaign.tag_troupe_active_character_ids || []).length,
@@ -1007,6 +1010,10 @@ function tagWorkflowCounts() {
     routes: (campaign.tag_adventure_routes || []).length,
     xpPending: (campaign.tag_xp_markers || []).filter((marker) => !marker.applied).length,
     generatedLeads: (campaign.tag_generated_adventure_ids || []).length,
+    rumorsHeard: rumorStates.filter((state) => state.status === "heard").length,
+    rumorsInvestigating: rumorStates.filter((state) => state.status === "investigating").length,
+    rumorsResolved: rumorStates.filter((state) => state.status === "resolved").length,
+    activeEffects: campaignEffects.filter((effect) => effect.status !== "cleared").length,
     openCloseout: (campaign.tag_closeout_tasks || []).filter((task) => !task.resolved).length,
     openGuidance: (campaign.guidance_tasks || []).filter((task) => task.status === "open").length,
   };
@@ -1021,6 +1028,7 @@ function renderTagWorkflowDashboard(context = "overview") {
     modernStatusRow("Guild status", `${counts.guildActive ? "member" : "not a member"} · benefits ${counts.guildBenefits ? "active" : "inactive"} · ${counts.guildCoffers} gp coffers`, "Guild benefits depend on active membership and coffers above 0 gp; coffers affect benefits, upkeep, resurrection funding, and loot-share obligations."),
     modernStatusRow("Finance/storage", `${counts.bankAccounts} bank account(s) · ${counts.robbedAccounts} robbed · trove ${counts.hiddenTroveGold} gp / ${counts.hiddenTroveItems} item stack(s)${counts.hiddenTroveRobbed ? " · stolen" : ""}`, "Bank accounts, robbery recovery, hidden troves, and stolen trove recovery are handled from Banking and Finance."),
     modernStatusRow("Adventure signoff", `${counts.generatedLeads} generated Adventures Guild lead(s) · ${counts.routes} route marker(s) · ${counts.xpPending} pending XP marker(s)`, "Generated Adventures Guild adventures use room prompts and Adventures Guild Actions to record branch, route, reward, and XP signoff."),
+    modernStatusRow("Rumors/effects", `${counts.rumorsHeard} heard · ${counts.rumorsInvestigating} investigating · ${counts.rumorsResolved} resolved · ${counts.activeEffects} active campaign effect(s)`, "These records belong to the selected campaign. A rumor is heard when generated, investigating after its numbered Scene is entered, and resolved only after its paragraph and corresponding Scene are played (TAG p.22). Persistent effects such as Bofto's curse remain with that campaign."),
     modernStatusRow("Needs attention", `${counts.openCloseout} closeout prompt(s) · ${counts.openGuidance} open guidance task(s)`, "Closeout and guidance tasks should be reviewed before the next adventure; Go Adventure enforces required closeout warnings with explicit override.")
   );
   const row = actions();

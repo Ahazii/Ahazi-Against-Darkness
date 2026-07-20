@@ -427,7 +427,15 @@ def _foe_hit_damage(enemy: EnemyState, context: CombatContext | None = None) -> 
         if not levels:
             levels = [member.level for member in context.session.party]
         return max(1, tier_for_level(max(levels) if levels else enemy.level))
-    return max(1, _enemy_tag_int(enemy, "damage_per_hit:", default=1))
+    for tag in enemy.tags:
+        text = str(tag).lower()
+        if not text.startswith("damage_per_hit:"):
+            continue
+        try:
+            return max(0, int(text.split(":", 1)[1]))
+        except (IndexError, ValueError):
+            return 1
+    return 1
 
 
 def _destroy_shield_after_natural_one_defense(
@@ -3393,15 +3401,33 @@ def resolve_combat_round(
                             morale_failed = True
                             living_enemies = []
                         else:
-                            morale_roll = roll_d6()
+                            morale_natural = roll_d6()
+                            morale_roll = morale_natural
+                            foe_morale_modifier = _enemy_tag_int(
+                                living_enemies[0],
+                                "morale_modifier:",
+                                default=0,
+                            )
+                            morale_roll += foe_morale_modifier
+                            expert_modifier = 0
                             if context.session is not None:
-                                morale_roll += expert_morale_modifier(
+                                expert_modifier = expert_morale_modifier(
                                     context.session,
                                     party,
                                     eligible_character_ids=context.minion_kill_character_ids,
                                 )
+                                morale_roll += expert_modifier
                             if show_rolls:
-                                log.append(f"Morale roll: d6 = {morale_roll}.")
+                                modifier_text = "".join(
+                                    part
+                                    for part in (
+                                        f" {foe_morale_modifier:+d} foe Morale" if foe_morale_modifier else "",
+                                        f" {expert_modifier:+d} skill" if expert_modifier else "",
+                                    )
+                                )
+                                log.append(
+                                    f"Morale roll: d6 = {morale_natural}{modifier_text}; total {morale_roll}."
+                                )
                             if morale_roll <= 3:
                                 log.append("The remaining foes flee.")
                                 for enemy in living_enemies:

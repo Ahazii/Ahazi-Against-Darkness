@@ -561,6 +561,7 @@ Default mode should remain dark unless the user chooses otherwise or system sett
 - Make the read-only State Registry searchable/filterable by family, scope, source supplement, and review status before adding state-instance mutation.
 - Adventure View room details now show active registry-backed state/status matches in the Registry Context block. Party Sheet summaries and expanded State Context rows show whether each hero's visible effects map to State Registry rows, and status-chip hovers append matching State Registry metadata to the existing rules tooltip when a legacy status string maps to a registry row.
 - Backend resolver helpers and diagnostic APIs now map legacy status/effect labels to State Registry rows so future loaders and reports do not need to duplicate matching logic.
+- Campaign-owned TAG effects and Rumor lifecycle records now use structured `CampaignState.campaign_effects` and `CampaignState.tag_rumor_states`, joined from `SessionState.campaign_id`. The pending Invisible Gremlins procedure uses `SessionState.pending_gremlin_event`; per-adventure item protection uses `SessionState.gremlin_protected_items`; explicit Bag contents use `Character.item_containers` and `PartyMemberState.item_containers`. These are active structured save fields, not new legacy status strings.
 
 Good first candidates:
 
@@ -572,6 +573,11 @@ Good first candidates:
 - Hungry
 - Envenomed weapon
 - FD Psychic Residue +3 Save
+- Bofto star-object campaign effect
+- TAG Rumor heard/investigating/resolved lifecycle
+- Invisible Gremlins pending theft
+- Gremlin-protected item
+- Bag of Carrying contents
 
 ### Phase 3: Terrain Registry
 

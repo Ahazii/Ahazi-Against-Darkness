@@ -123,6 +123,7 @@ class CharacterGenderUpdate(BaseModel):
 class CharacterTransfer(BaseModel):
     target_character_id: str = Field(min_length=1)
     item_name: str | None = None
+    item_container_id: str | None = None
     gold_amount: int | None = Field(default=None, ge=1)
 
 
@@ -189,6 +190,47 @@ class EquipmentTransactionResult(BaseModel):
     gold_received: int = 0
 
 
+class ItemContainerState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    kind: Literal["bag_of_carrying"] = "bag_of_carrying"
+    name: str = "Bag of Carrying"
+    contents: list[str] = Field(default_factory=list)
+
+
+def _migrate_bag_containers(data):
+    if not isinstance(data, dict):
+        return data
+    inventory = data.get("inventory")
+    if not isinstance(inventory, list):
+        return data
+    containers = data.get("item_containers")
+    if not isinstance(containers, list):
+        containers = []
+        data["item_containers"] = containers
+    bag_count = sum(1 for item in inventory if str(item).strip().lower() == "bag of carrying")
+    existing_count = sum(
+        1
+        for container in containers
+        if (
+            container.get("kind", "bag_of_carrying")
+            if isinstance(container, dict)
+            else getattr(container, "kind", None)
+        )
+        == "bag_of_carrying"
+    )
+    owner_id = str(data.get("id") or data.get("character_id") or "legacy")
+    for index in range(existing_count, bag_count):
+        containers.append(
+            {
+                "id": f"{owner_id}-bag-{index + 1}",
+                "kind": "bag_of_carrying",
+                "name": "Bag of Carrying",
+                "contents": [],
+            }
+        )
+    return data
+
+
 class Character(BaseModel):
     id: str
     name: str
@@ -206,6 +248,7 @@ class Character(BaseModel):
     defense_bonus: int = 0
     save_bonus: int = 0
     inventory: list[str] = Field(default_factory=list)
+    item_containers: list[ItemContainerState] = Field(default_factory=list)
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
     class_traits: list[str] = Field(default_factory=list)
@@ -232,6 +275,11 @@ class Character(BaseModel):
     milestones: MilestonesProgress = Field(default_factory=MilestonesProgress)
     created_at: str
     updated_at: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_item_containers(cls, data):
+        return _migrate_bag_containers(data)
 
 
 class CharacterMilestoneRequest(BaseModel):
@@ -377,6 +425,7 @@ class PartyMemberState(BaseModel):
     save_bonus: int
     marching_order: int = Field(default=1, ge=1, le=4)
     inventory: list[str] = Field(default_factory=list)
+    item_containers: list[ItemContainerState] = Field(default_factory=list)
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
     class_traits: list[str] = Field(default_factory=list)
@@ -399,6 +448,11 @@ class PartyMemberState(BaseModel):
     kukla_compartment_items: list[str] = Field(default_factory=list)
     kukla_compartment_gold: int = Field(default=0, ge=0, le=100)
     milestones: MilestonesProgress = Field(default_factory=MilestonesProgress)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_item_containers(cls, data):
+        return _migrate_bag_containers(data)
 
 
 class ExitState(BaseModel):
@@ -514,6 +568,7 @@ class DetachedGroupState(BaseModel):
 
 class CapturedEquipmentState(BaseModel):
     inventory: list[str] = Field(default_factory=list)
+    item_containers: list[ItemContainerState] = Field(default_factory=list)
     default_melee_weapon: str | None = None
     default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
@@ -819,6 +874,29 @@ class WorldSettlementRecord(BaseModel):
     created_at: str
 
 
+class CampaignEffectState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    campaign_id: str
+    key: str
+    source: str = ""
+    status: Literal["active", "recovery_pending", "cleared"] = "active"
+    carrier_character_id: str | None = None
+    details: dict[str, object] = Field(default_factory=dict)
+    created_at: str
+    updated_at: str
+
+
+class TagRumorState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    campaign_id: str
+    rumor_number: int = Field(ge=1, le=12)
+    status: Literal["heard", "investigating", "resolved"] = "heard"
+    source: Literal["rumor", "guild_job"] = "rumor"
+    adventure_id: str | None = None
+    created_at: str
+    updated_at: str
+
+
 class CampaignState(BaseModel):
     id: str = "default"
     active_world_campaign_id: str = "norindaal"
@@ -842,12 +920,14 @@ class CampaignState(BaseModel):
     tag_map_bonus: int = Field(default=0, ge=0)
     tag_look_tough_character_ids: list[str] = Field(default_factory=list)
     tag_used_rumor_numbers: list[int] = Field(default_factory=list)
+    tag_rumor_states: list[TagRumorState] = Field(default_factory=list)
     tag_generated_adventure_ids: list[str] = Field(default_factory=list)
     tag_stored_items: list[TagStoredItemState] = Field(default_factory=list)
     tag_hidden_trove_robbed: bool = False
     tag_hidden_trove_stolen_gold_gp: int = Field(default=0, ge=0)
     tag_hidden_trove_stolen_items: list[TagStoredItemState] = Field(default_factory=list)
     tag_star_object_recovery_pending: bool = False
+    campaign_effects: list[CampaignEffectState] = Field(default_factory=list)
     tag_magic_lockers: list[TagMagicLockerState] = Field(default_factory=list)
     tag_bank_accounts: list[TagBankAccountState] = Field(default_factory=list)
     tag_adventure_routes: list[TagAdventureRouteState] = Field(default_factory=list)
@@ -884,9 +964,24 @@ class PlayContextView(BaseModel):
     ranger_outdoor_missile_ok: bool = False
 
 
+class GremlinProtectedItemState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    character_id: str
+    item_name: str | None = None
+    item_container_id: str | None = None
+
+
+class PendingGremlinEventState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    tile_id: str
+    theft_count: int = Field(ge=0)
+    major_tally_counted: bool = False
+
+
 class SessionState(BaseModel):
     id: str
     party_id: str
+    campaign_id: str | None = None
     adventure_id: str
     adventure_type: Literal["random", "imported"]
     mode: Literal["exploration", "combat", "complete"] = "exploration"
@@ -957,6 +1052,8 @@ class SessionState(BaseModel):
     spear_shield_readied: list[str] = Field(default_factory=list)
     monster_encounter_start_applied: bool = False
     gremlin_wm_protection_pending: bool = False
+    gremlin_protected_items: list[GremlinProtectedItemState] = Field(default_factory=list)
+    pending_gremlin_event: PendingGremlinEventState | None = None
     tag_star_object_curse_active: bool = False
     tag_star_object_curse_cleared: bool = False
     tag_star_object_recovery_pending: bool = False
@@ -1471,6 +1568,10 @@ class SessionAction(BaseModel):
         "use_miners_ointment",
         "use_herbal_tonic",
         "apply_gremlin_repellant",
+        "put_item_in_container",
+        "take_item_from_container",
+        "resolve_invisible_gremlin_theft",
+        "offer_gremlin_temple_tag",
         "resolve_star_object_gremlins",
         "assign_star_object",
         "choose_treasure_outcome",
@@ -1549,6 +1650,7 @@ class SessionAction(BaseModel):
     character_id: str | None = None
     target_character_id: str | None = None
     item_name: str | None = None
+    item_container_id: str | None = None
     star_object_choice: Literal["release", "keep"] | None = None
     target_weapon: str | None = None
     gold_amount: int | None = Field(default=None, ge=1)

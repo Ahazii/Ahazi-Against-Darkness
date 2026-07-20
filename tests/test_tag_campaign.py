@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from app.db import now_utc
 from app.engine import tag_campaign
 from app.engine.adventure_import import ADVENTURE_MANIFEST_FILENAME, installed_adventure_dir
@@ -16,6 +18,8 @@ from app.engine.tag_campaign import (
     follow_treasure_map,
     look_for_clues,
     purchase_tag_service,
+    record_tag_rumor_state,
+    record_session_tag_rumor_state,
     recover_hidden_treasure_trove,
     reroll_guild_availability,
     reset_guild_availability_reroll,
@@ -42,6 +46,7 @@ from app.engine.tag_campaign import (
     store_tag_treasure,
     summon_magic_locker,
     tag_guild_benefits_active,
+    tag_rumor_state,
     travel_to_new_settlement,
     use_tag_trinket,
     update_troupe,
@@ -51,8 +56,13 @@ from app.engine.adventure_manifest import validate_adventure_manifest
 from app.engine.dice import AdvancementRollResult
 from app.engine.tag_compat import upgrade_tag_manifest
 from app.engine.equipment_shop import buy_equipment
+from app.engine.tag_scene_actions import (
+    tag_scene_action_definition,
+    tag_scene_action_modifier,
+    tag_scene_action_succeeded,
+)
 from app.rules.repository import RulesRepository
-from app.schemas import Character, TagXpMarkerState
+from app.schemas import Character, SessionState, TagXpMarkerState
 
 
 def _character(**overrides) -> Character:
@@ -76,6 +86,147 @@ def _character(**overrides) -> Character:
 
 def test_tag_settlement_size_table() -> None:
     assert [settlement_size_from_roll(roll) for roll in range(1, 7)] == [-2, -1, 0, 1, 2, 3]
+
+
+def test_bag_purchase_creates_multiple_containers_and_rejects_barbarian() -> None:
+    campaign = default_campaign()
+    buyer = _character(gold=1000)
+    barbarian = _character(
+        id="barbarian",
+        name="Barbarian",
+        class_id="barbarian",
+        class_name="Barbarian",
+        gold=500,
+    )
+
+    purchased = purchase_tag_service(campaign, buyer, service_key="bag_of_carrying", quantity=2)
+    refused = purchase_tag_service(campaign, barbarian, service_key="bag_of_carrying")
+
+    assert buyer.gold == 600
+    assert buyer.inventory.count("Bag of Carrying") == 2
+    assert len(buyer.item_containers) == 2
+    assert len({bag.id for bag in buyer.item_containers}) == 2
+    assert all(bag.contents == [] for bag in buyer.item_containers)
+    assert "buys 2x Bag of Carrying" in purchased.result_text
+    assert barbarian.gold == 500
+    assert "cannot use magic items" in refused.result_text
+
+
+def test_tag_rumor_state_is_campaign_scoped_and_not_consumed_when_heard() -> None:
+    campaign = default_campaign()
+    campaign.active_world_campaign_id = "campaign-a"
+
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="1")
+
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    assert reference["rumor_number"] == 1
+    assert reference["scene_actions"][0]["key"] == "bofto_theft_save"
+    assert reference["scene_actions"][0]["success"]["target_scene"] == "Scene 19"
+    assert tag_rumor_state(campaign, campaign_id="campaign-a", rumor_number=1).status == "heard"
+    assert campaign.tag_used_rumor_numbers == []
+
+    record_tag_rumor_state(
+        campaign,
+        campaign_id="campaign-b",
+        rumor_number=1,
+        status="resolved",
+    )
+    assert tag_rumor_state(campaign, campaign_id="campaign-a", rumor_number=1).status == "heard"
+    assert tag_rumor_state(campaign, campaign_id="campaign-b", rumor_number=1).status == "resolved"
+    assert campaign.tag_used_rumor_numbers == []
+
+
+def test_bofto_uses_typed_actor_check_and_outcome_contract() -> None:
+    definition = tag_scene_action_definition("bofto_theft_save")
+
+    assert definition is not None
+    assert definition.difficulty == 6
+    assert definition.actor_required is True
+    assert tag_scene_action_modifier(definition, _character(class_id="rogue", class_name="Rogue", level=4)) == 4
+    assert tag_scene_action_modifier(
+        definition,
+        _character(class_id="swashbuckler", class_name="Swashbuckler", level=5),
+    ) == 2
+    assert tag_scene_action_modifier(definition, _character(class_id="elf", class_name="Elf", level=5)) == 1
+    assert tag_scene_action_succeeded(definition, natural_roll=1, total=9) is False
+    assert tag_scene_action_succeeded(definition, natural_roll=4, total=6) is True
+
+
+def test_legacy_tag_manifest_title_recovers_rumor_number_for_assigned_campaign() -> None:
+    campaign = default_campaign()
+    session = SessionState.model_validate(
+        {
+            "id": "legacy-bofto",
+            "party_id": "party",
+            "campaign_id": "campaign-b",
+            "adventure_id": "legacy-tag-rumor",
+            "adventure_type": "imported",
+            "party": [],
+            "map_state": {"current_tile_id": "", "tiles": []},
+            "created_at": now_utc(),
+            "updated_at": now_utc(),
+            "imported_manifest": {
+                "title": "The Adventures Guild Rumor 1: Bofto's Star-Shaped Find",
+                "source": {
+                    "parameters": {
+                        "lead_type": "rumor",
+                        "tag_reference": {
+                            "title": "Bofto's Star-Shaped Find",
+                            "rumor_number": 0,
+                        },
+                    }
+                },
+            },
+        }
+    )
+
+    state = record_session_tag_rumor_state(campaign, session, status="investigating")
+
+    assert state is not None
+    assert state.campaign_id == "campaign-b"
+    assert state.rumor_number == 1
+    assert state.status == "investigating"
+
+
+def test_random_tag_rumor_rerolls_resolved_results_in_same_campaign(monkeypatch) -> None:
+    campaign = default_campaign()
+    record_tag_rumor_state(
+        campaign,
+        campaign_id=campaign.active_world_campaign_id,
+        rumor_number=1,
+        status="resolved",
+    )
+    rolls = iter([1, 2])
+    monkeypatch.setattr(tag_campaign, "roll_d12", lambda: next(rolls))
+
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor")
+
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    assert reference["rumor_number"] == 2
+    assert tag_rumor_state(
+        campaign,
+        campaign_id=campaign.active_world_campaign_id,
+        rumor_number=1,
+    ).status == "resolved"
+    assert tag_rumor_state(
+        campaign,
+        campaign_id=campaign.active_world_campaign_id,
+        rumor_number=2,
+    ).status == "heard"
+
+
+def test_random_tag_rumor_reports_exhausted_campaign() -> None:
+    campaign = default_campaign()
+    for rumor_number in range(1, 13):
+        record_tag_rumor_state(
+            campaign,
+            campaign_id=campaign.active_world_campaign_id,
+            rumor_number=rumor_number,
+            status="resolved",
+        )
+
+    with pytest.raises(ValueError, match="All twelve"):
+        build_tag_adventure_manifest(campaign, lead_type="rumor")
 
 
 def test_tag_availability_success_surcharge_and_unavailable(monkeypatch) -> None:

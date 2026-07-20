@@ -1874,7 +1874,9 @@ class DungeonTableRoller:
         eligible = removable_inventory_items(member.inventory)
         if eligible:
             lost = eligible[0]
-            member.inventory.remove(lost)
+            from .item_containers import remove_inventory_item_with_contents
+
+            remove_inventory_item_with_contents(member, item_name=lost)
             return lost
         return "held object"
 
