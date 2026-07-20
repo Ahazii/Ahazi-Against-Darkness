@@ -44,6 +44,7 @@ Key files:
 - `src/app/engine/inventory.py` - item and gold transfer between heroes (session and roster)
 - `src/app/engine/item_containers.py` - stable Bag of Carrying identity, explicit contents, exact-Bag transfer/removal, and container-safe loss helpers
 - `src/app/engine/gremlin_events.py` - staged Invisible Gremlins event, item-level protection, printed theft priority, and Disbelief conversion
+- `src/app/engine/tag_temporary_weapon_enchantment.py` - shared TAG p.65 weapon marker and encounter theft/destruction decision policy
 - `src/app/engine/tag_campaign.py` - TAG campaign services, generated leads, campaign-scoped Rumor lifecycle, and campaign-effect persistence
 - `src/app/engine/tag_scene_actions.py` - typed PDF-backed scene action definitions shared by generated manifests and runtime resolution
 - `src/app/engine/star_object_curse.py` - campaign-scoped Bofto curse, carrier/recovery reconciliation, and Star-Slayer hooks

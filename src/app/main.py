@@ -4215,9 +4215,9 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "step": "Special property",
-            "rule": "A stolen Bag of Carrying loses everything inside; Clockwork Armor counts as two stolen items; a living Kukla's secret compartment is protected; eligible TAG temple tags are taken only voluntarily.",
-            "automation": "Specific Bag identity, contents, clockwork theft cost, Kukla life state, and player-volunteered tag choices are resolved explicitly.",
-            "source": "EE pp.38, 44-46; TAG pp.11, 13",
+            "rule": "A stolen Bag of Carrying loses everything inside; Clockwork Armor counts as two stolen items; a living Kukla's secret compartment is protected; eligible TAG temple tags and temporarily enchanted weapons are taken only if the player chooses.",
+            "automation": "Specific Bag identity, contents, clockwork theft cost, Kukla life state, and player-volunteered tag or temporary-weapon choices are resolved explicitly.",
+            "source": "EE pp.38, 44-46; TAG pp.11, 13, 65",
         },
         {
             "step": "Disbelief",
@@ -7009,6 +7009,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         item_name=payload.item_name,
         item_container_id=payload.item_container_id,
         target_weapon=payload.target_weapon,
+        temporary_weapon_choice=payload.temporary_weapon_choice,
         gold_amount=payload.gold_amount,
         weapon_kind=payload.weapon_kind,
         attack_targets=payload.attack_targets,

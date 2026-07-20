@@ -22,14 +22,14 @@ Do not reopen the broad EE, Abyss, Forsaken Depths, Citadel, or earlier Bofto/St
 
 ## Implemented In v0.39.36
 
-Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 105, 107, 160, and 169; TAG pp.11, 13, 22, and 29-31.
+Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 105, 107, 160, and 169; TAG pp.11, 13, 22, 29-31, and 65.
 
 - `SessionState.campaign_id` pins a session to its campaign. Star-object recovery/effects and Rumor lifecycle records are stored in that `CampaignState`, so switching the active dashboard campaign cannot redirect an existing session's state.
 - Rumors progress through heard, investigating, and resolved. Random Rumor generation rerolls resolved results within the same campaign; the fixed developer selector deliberately permits exact replay.
 - Bofto Scene 14 uses the reusable typed action contract in `tag_scene_actions.py` for actor requirement, modifiers, L6 threshold, one-attempt rule, and automatic Scene 18/19 outcomes. Other TAG scenes are not guessed from prose; convert them source-by-source.
 - Every Bag of Carrying has a stable id and explicit contents. Multiple Bags persist independently through character/session sync, save/resume, transfer, capture, death, and loss. A stolen/lost Bag loses its contents, Barbarians will not carry one, Bags cannot nest, cursed objects cannot be stored, and non-empty Bags cannot be sold accidentally.
 - Invisible Gremlins are a persisted event rather than a normal foe. They roll `d6+3` theft slots, use the printed item priority, count once toward Major Foes, cannot be a Final Boss, and are rerolled as a Wandering Monster result.
-- Gremlin Repellant protects one selected item for one adventure. Miners' Ointment remains the separate ignore-next-Wandering-Monsters/Gremlins effect. TAG Resurrection/Blessing tags are offered only as an explicit voluntary choice.
+- Gremlin Repellant protects one selected item for one adventure. Miners' Ointment remains the separate ignore-next-Wandering-Monsters/Gremlins effect. TAG Resurrection/Blessing tags and weapons under Temporary Weapon Enchantment are offered only as explicit voluntary choices during the ordinary event. Revealed Gremlins and Iron Eaters ask whether each temporarily enchanted weapon is eligible for their normal loss effect; the encounter choice persists through save/resume (TAG pp.11, 65).
 - Disbelief reveals `d6+1` L3 Minions with Morale -1, one attack, and one group Treasure roll. A failed Defence steals an eligible item instead of causing Life loss.
 - Rules Reference, Tables List, State Registry, Party Sheets, developer controls, modern campaign workflow summary, hover text, docs, and focused tests cover the new state.
 
@@ -42,6 +42,8 @@ Campaign and saved game remain separate records in the same user-facing `DATA_DI
 Automated tests own campaign isolation and legacy migration, all twelve Rumors exhausted, exact Gremlin priority/Clue/Kukla/Clockwork Armor edges, Star-Slayer replacement, carrier death, total-party-kill recovery, and mixed-result split fleeing. Do not risk a valuable live party to force those dice.
 
 After the `v0.39.36` gate, resume the item-disposition policy modularisation slice. Keep it narrow: consolidate eligibility and container-aware removal behavior without reorganising `random_dungeon.py`. Then migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time.
+
+Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its one-week or qualifying-use expiry remains on the existing manual **Guild marker** clear control and is a bounded later TAG spell task, not part of the release gate.
 
 ## Recent Releases
 

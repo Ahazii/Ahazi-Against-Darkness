@@ -34,10 +34,10 @@ Rules source: TAG p.13, **Bag of Carrying**.
 
 ### 4. Ordinary Invisible Gremlins
 
-Rules sources: Expanded Edition pp.87, 105, 107, 169, **Gremlin Repellant** and **Invisible Gremlins**; TAG p.11 temple tags; TAG p.13 Bag of Carrying.
+Rules sources: Expanded Edition pp.87, 105, 107, 169, **Gremlin Repellant** and **Invisible Gremlins**; TAG p.11 temple tags; TAG p.13 Bag of Carrying; TAG p.65 **Temporary Weapon Enchantment**.
 
 1. At camp before entering, apply one Gremlin Repellant dose to one specific Bag or loose item. Re-enter and force **TAG Invisible Gremlins curse encounter**. If the star-object choice appears, choose **Keep it** for this ordinary-theft check.
-2. Confirm the app pauses with the rolled `d6+3` theft count and offers **Cast Disbelief**, eligible voluntary Resurrection/Blessing tags, and **Resolve Gremlin theft**. Save/resume once while this choice is pending; the same count and controls must remain.
+2. Confirm the app pauses with the rolled `d6+3` theft count and offers **Cast Disbelief**, eligible voluntary Resurrection/Blessing tags, and **Resolve Gremlin theft**. If the party happens to carry a temporarily enchanted weapon, confirm **Let Gremlins take [weapon]** also appears; ordinary resolution must keep it unless that explicit choice is used. Save/resume once while this choice is pending; the same count and controls must remain.
 3. Resolve theft. Confirm the protected item survives, ordinary theft follows magic items -> scrolls -> potions -> weapons -> gems -> 10gp, and a stolen Bag loses everything inside it. Clockwork Armor consumes two theft slots if present.
 4. Confirm the event increments the Major Foe tally once, cannot become the Final Boss, and creates no combat unless Disbelief is cast.
 
@@ -48,12 +48,12 @@ Rules source: Expanded Edition p.74, **Disbelief**, and p.169, **Invisible Greml
 Run this only if the disposable party has a character with Disbelief.
 
 1. Force another Invisible Gremlins event and cast **Disbelief** from the pending-event controls.
-2. Confirm combat starts against `d6+1` L3 Minions with one attack, Morale -1, and one Treasure roll for the group.
+2. Confirm combat starts against `d6+1` L3 Minions with one attack, Morale -1, and one Treasure roll for the group. If a temporarily enchanted weapon is present, first choose whether it is eligible for theft; the choice must survive save/resume and must not itself remove the weapon.
 3. A failed Defence must steal an eligible item instead of causing Life loss. This exact hit behavior also has automated coverage; do not repeat the fight merely to force a failed roll.
 
 ## Automated Coverage Only
 
-Do not risk a valuable party to force campaign isolation, all twelve rumors being exhausted, exact random dice, Kukla secret-compartment exposure, Clockwork Armor's two-slot edge, full-party item exhaustion/Clue creation, Star-Slayer replacement, carrier death, total-party-kill curse recovery, or mixed-result split fleeing. Focused tests own those cases.
+Do not risk a valuable party to force campaign isolation, all twelve rumors being exhausted, exact random dice, Kukla secret-compartment exposure, Clockwork Armor's two-slot edge, full-party item exhaustion/Clue creation, Star-Slayer replacement, carrier death, total-party-kill curse recovery, mixed-result split fleeing, or the Iron Eater's TAG p.65 temporary-weapon decision. Focused tests own those cases.
 
 ## Stop Gate
 

@@ -1054,6 +1054,7 @@ class SessionState(BaseModel):
     gremlin_wm_protection_pending: bool = False
     gremlin_protected_items: list[GremlinProtectedItemState] = Field(default_factory=list)
     pending_gremlin_event: PendingGremlinEventState | None = None
+    temporary_weapon_loss_choices: dict[str, Literal["keep", "allow"]] = Field(default_factory=dict)
     tag_star_object_curse_active: bool = False
     tag_star_object_curse_cleared: bool = False
     tag_star_object_recovery_pending: bool = False
@@ -1572,6 +1573,8 @@ class SessionAction(BaseModel):
         "take_item_from_container",
         "resolve_invisible_gremlin_theft",
         "offer_gremlin_temple_tag",
+        "offer_gremlin_temporary_weapon",
+        "resolve_temporary_weapon_loss_choice",
         "resolve_star_object_gremlins",
         "assign_star_object",
         "choose_treasure_outcome",
@@ -1652,6 +1655,7 @@ class SessionAction(BaseModel):
     item_name: str | None = None
     item_container_id: str | None = None
     star_object_choice: Literal["release", "keep"] | None = None
+    temporary_weapon_choice: Literal["keep", "allow"] | None = None
     target_weapon: str | None = None
     gold_amount: int | None = Field(default=None, ge=1)
     marching_order: int | None = Field(default=None, ge=1, le=6)

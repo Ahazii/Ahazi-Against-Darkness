@@ -17539,7 +17539,7 @@ const RULES_TABLE_META_KEYS = new Set(["ruleset_status", "open_items", "validati
 
 const ENVIRONMENT_TABLE_HINTS = {
   tag_star_object_curse_table: "Bofto's Star-Shaped Object curse procedure (TAG pp.30-31): pickup Save, persistent curse, Star-Slayer, Gremlin cure, carrier death, and campaign recovery.",
-  invisible_gremlins_procedure_table: "Invisible Gremlins procedure (EE pp.74, 87, 105, 160, 169; TAG pp.11, 13): staged theft, protection, Disbelief, special property, and Clue handling.",
+  invisible_gremlins_procedure_table: "Invisible Gremlins procedure (EE pp.74, 87, 105, 160, 169; TAG pp.11, 13, 65): staged theft, protection, Disbelief, special property, temporary-enchantment choice, and Clue handling.",
   tag_bag_of_carrying_table: "Bag of Carrying procedure (TAG p.13): purchase, explicit multi-bag contents, transfer, theft/loss, and magic-user restriction.",
   tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG p.22): heard, investigating, then resolved only after the paragraph and corresponding Scene are played.",
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
@@ -19884,6 +19884,64 @@ function appendTagCaveProgressPanel(parent, session) {
   return true;
 }
 
+function temporarilyEnchantedInventoryItems(member) {
+  const enchantments = new Map();
+  const markerPrefix = "tag temporary weapon enchantment:";
+  const markerSuffix = " is magical, no attack bonus";
+  for (const status of member?.statuses || []) {
+    const marker = String(status).trim().toLowerCase();
+    if (!marker.startsWith(markerPrefix) || !marker.endsWith(markerSuffix)) continue;
+    const weaponName = marker.slice(markerPrefix.length, -markerSuffix.length).trim();
+    if (weaponName) enchantments.set(weaponName, (enchantments.get(weaponName) || 0) + 1);
+  }
+  const items = [];
+  for (const itemName of member?.inventory || []) {
+    const key = String(itemName).toLowerCase();
+    const remaining = enchantments.get(key) || 0;
+    if (!remaining) continue;
+    enchantments.set(key, remaining - 1);
+    items.push(itemName);
+  }
+  return items;
+}
+
+function pendingTemporaryWeaponLossChoice(session, tile) {
+  if (session?.mode !== "combat" || !tile) return null;
+  const sources = [];
+  const seenKinds = new Set();
+  for (const enemy of tile.enemies || []) {
+    if (Number(enemy.life || 0) <= 0) continue;
+    for (const effect of enemy.on_hit_effects || []) {
+      const effectType = String(effect.type || "").toLowerCase();
+      const lossKind = effectType === "steal_item"
+        ? "stolen"
+        : effectType === "destroy_metal_items"
+          ? "destroyed"
+          : null;
+      if (!lossKind || seenKinds.has(lossKind)) continue;
+      seenKinds.add(lossKind);
+      sources.push({ lossKind, sourceName: enemy.name || "this foe" });
+    }
+  }
+  const decisions = session.temporary_weapon_loss_choices || {};
+  for (const source of sources) {
+    for (const member of session.party || []) {
+      if (Number(member.current_life || 0) <= 0) continue;
+      for (const itemName of temporarilyEnchantedInventoryItems(member)) {
+        const key = `${member.character_id}|${String(itemName).toLowerCase()}|${source.lossKind}`;
+        if (Object.prototype.hasOwnProperty.call(decisions, key)) continue;
+        return {
+          characterName: member.name,
+          itemName,
+          lossKind: source.lossKind,
+          sourceName: source.sourceName,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 function currentObjectiveForSession(session) {
   if (session.mode === "complete") {
     return {
@@ -19945,6 +20003,15 @@ function currentObjectiveForSession(session) {
           tooltip: `TAG p.11: ${itemName} is not stolen unless you voluntarily let the Invisible Gremlins take it. Offering it uses one of the ${pending.theft_count} remaining theft slots.`,
         });
       }
+      for (const itemName of temporarilyEnchantedInventoryItems(member)) {
+        actions.push({
+          label: `Let Gremlins take ${itemName}`,
+          kind: "advance",
+          advanceAction: "offer_gremlin_temporary_weapon",
+          payload: { character_id: member.character_id, item_name: itemName },
+          tooltip: `TAG p.65, Temporary Weapon Enchantment: you decide whether this temporarily magical weapon is stolen. Offering it uses one of the ${pending.theft_count} remaining theft slots; otherwise ordinary resolution keeps it.`,
+        });
+      }
     }
     actions.push({
       label: `Resolve ${pending.theft_count} theft${pending.theft_count === 1 ? "" : "s"}`,
@@ -19955,9 +20022,36 @@ function currentObjectiveForSession(session) {
     return {
       title: "Current objective: resolve Invisible Gremlins",
       body:
-        `The event has ${pending.theft_count} theft slot(s). Choose Disbelief if available, voluntarily offer a temple tag, or resolve the printed theft priority. Invisible Gremlins count toward the Major Foe tally but cannot become the Final Boss.`,
+        `The event has ${pending.theft_count} theft slot(s). Choose Disbelief if available, voluntarily offer a temple tag or temporarily enchanted weapon, or resolve the printed theft priority. Temporarily enchanted weapons are kept unless you offer them (TAG p.65). Invisible Gremlins count toward the Major Foe tally but cannot become the Final Boss.`,
       tone: "warn",
       actions,
+    };
+  }
+  const temporaryWeaponLoss = pendingTemporaryWeaponLossChoice(session, tile);
+  if (temporaryWeaponLoss) {
+    const lossLabel = temporaryWeaponLoss.lossKind === "stolen" ? "theft" : "destruction";
+    return {
+      title: "Current objective: decide the temporary enchantment",
+      body:
+        `${temporaryWeaponLoss.characterName}'s ${temporaryWeaponLoss.itemName} only looks and counts as magical temporarily. ` +
+        `TAG p.65 lets you decide whether ${temporaryWeaponLoss.sourceName} may treat it as eligible for ${lossLabel}.`,
+      tone: "warn",
+      actions: [
+        {
+          label: `Keep ${temporaryWeaponLoss.itemName}`,
+          kind: "advance",
+          advanceAction: "resolve_temporary_weapon_loss_choice",
+          payload: { temporary_weapon_choice: "keep" },
+          tooltip: `TAG p.65, Temporary Weapon Enchantment: keep this weapon ineligible for ${lossLabel} during this encounter.`,
+        },
+        {
+          label: `Allow ${lossLabel}`,
+          kind: "advance",
+          advanceAction: "resolve_temporary_weapon_loss_choice",
+          payload: { temporary_weapon_choice: "allow" },
+          tooltip: `TAG p.65, Temporary Weapon Enchantment: let ${temporaryWeaponLoss.sourceName} treat this weapon as a magic item eligible for ${lossLabel}. It is lost only if that foe's effect reaches it.`,
+        },
+      ],
     };
   }
   if (session.tag_star_object_assignment_pending) {

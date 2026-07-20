@@ -224,6 +224,32 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "id": "tag-temporary-weapon-loss-choice",
+        "name": "Temporary Weapon Enchantment Loss Choice",
+        "family": "encounter_procedure",
+        "scope": "party",
+        "value_type": "pending_choice",
+        "source": {
+            "supplement_id": "tag",
+            "source_pdf": "Tales_from_the_adventurers_guild.pdf",
+            "page": 65,
+            "topic": "Temporary Weapon Enchantment",
+        },
+        "legacy_mappings": {
+            "statuses": ["TAG Temporary Weapon Enchantment:"],
+            "fields": ["SessionState.temporary_weapon_loss_choices"],
+        },
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {
+            "label": "Temporary weapon loss choice",
+            "hover": (
+                "TAG p.65. Before a foe can steal or destroy a temporarily enchanted weapon, "
+                "the player decides whether that weapon is eligible for the encounter."
+            ),
+        },
+    },
+    {
         "id": "gremlin-repellant-item-protection",
         "name": "Gremlin Repellant Item Protection",
         "family": "item_protection",

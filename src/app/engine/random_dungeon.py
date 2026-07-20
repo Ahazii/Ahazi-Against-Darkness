@@ -226,6 +226,7 @@ from .gremlin_events import (
     consume_gremlin_protection,
     gremlin_protection_active,
     offer_gremlin_temple_tag,
+    offer_gremlin_temporary_weapon,
     resolve_invisible_gremlins,
     resolve_pending_gremlin_theft,
     reveal_invisible_gremlins,
@@ -239,6 +240,10 @@ from .star_object_curse import (
     spawn_star_slayer,
     star_object_carrier,
     star_slayer_final_treasure_source,
+)
+from .tag_temporary_weapon_enchantment import (
+    pending_temporary_weapon_loss_choice,
+    resolve_temporary_weapon_loss_choice,
 )
 from .special_items import (
     BERSERKER_MUSHROOM_STATUS,
@@ -924,6 +929,7 @@ class RandomDungeonEngine:
         item_name: str | None = None,
         item_container_id: str | None = None,
         target_weapon: str | None = None,
+        temporary_weapon_choice: str | None = None,
         gold_amount: int | None = None,
         weapon_kind: str | None = None,
         attack_targets: dict[str, str] | None = None,
@@ -1036,6 +1042,14 @@ class RandomDungeonEngine:
                 session.map_state.current_tile_id = entrance.id
                 session.current_tile_entry_exit_id = None
         self._queue_fallen_transfer(session)
+        pending_temporary_weapon = pending_temporary_weapon_loss_choice(session)
+        if pending_temporary_weapon is not None and action != "resolve_temporary_weapon_loss_choice":
+            session.log.append(
+                f"Choose whether {pending_temporary_weapon.character_name} keeps the temporarily enchanted "
+                f"{pending_temporary_weapon.item_name} or lets {pending_temporary_weapon.source_name} "
+                f"treat it as eligible to be {pending_temporary_weapon.loss_kind} (TAG p.65)."
+            )
+            return self._touch(session)
         if action != "resolve_star_object_gremlins" and session.tag_star_object_gremlin_choice_pending:
             session.log.append(
                 "Choose whether to let the Invisible Gremlins take the cursed star-shaped object."
@@ -1045,12 +1059,13 @@ class RandomDungeonEngine:
             "resolve_star_object_gremlins",
             "resolve_invisible_gremlin_theft",
             "offer_gremlin_temple_tag",
+            "offer_gremlin_temporary_weapon",
         }
         disbelief_action = action == "cast_spell" and str(spell_name or "").strip().lower() == "disbelief"
         if session.pending_gremlin_event is not None and action not in gremlin_actions and not disbelief_action:
             session.log.append(
-                "Resolve the Invisible Gremlins event: cast Disbelief, volunteer an eligible temple tag, "
-                "or apply the printed theft priority."
+                "Resolve the Invisible Gremlins event: cast Disbelief, volunteer an eligible temple tag "
+                "or temporarily enchanted weapon, or apply the printed theft priority."
             )
             return self._touch(session)
         if action != "assign_star_object" and session.tag_star_object_assignment_pending:
@@ -1136,6 +1151,7 @@ class RandomDungeonEngine:
             "take_item_from_container",
             "resolve_invisible_gremlin_theft",
             "offer_gremlin_temple_tag",
+            "offer_gremlin_temporary_weapon",
             "choose_treasure_outcome",
             "fd_oblivion_redeem_madness",
             "fd_spend_hallucination_revelation",
@@ -1847,6 +1863,21 @@ class RandomDungeonEngine:
                     session,
                     character_id=character_id,
                     item_name=item_name,
+                )
+            )
+        elif action == "offer_gremlin_temporary_weapon":
+            session.log.extend(
+                offer_gremlin_temporary_weapon(
+                    session,
+                    character_id=character_id,
+                    item_name=item_name,
+                )
+            )
+        elif action == "resolve_temporary_weapon_loss_choice":
+            session.log.extend(
+                resolve_temporary_weapon_loss_choice(
+                    session,
+                    temporary_weapon_choice,
                 )
             )
         elif action == "resolve_star_object_gremlins":
@@ -4511,6 +4542,7 @@ class RandomDungeonEngine:
             if weapon is not None:
                 session.wielded_melee_weapons[member.character_id] = weapon.item
         session.mode = "combat"
+        session.temporary_weapon_loss_choices = {}
         self._maybe_discover_prisoner(session, tile)
         session.firearm_fired_this_encounter = False
         session.reaction_pending = True

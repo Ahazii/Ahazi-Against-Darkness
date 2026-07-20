@@ -64,11 +64,11 @@ A prose summary is not evidence that its full rule is executed. Rows not marked 
 | Expanded Edition | Trolls | `minions` | EE core Minions table | combat_modifiers:racial_defense_bonus | pending PDF/runtime comparison |
 | Expanded Edition | Mushroom Men | `minions` | EE core Minions table | on_hit_effects:poison | pending PDF/runtime comparison |
 | Expanded Edition | Minotaur | `weird` | EE core Weird Monsters table | combat_modifiers:charge, combat_modifiers:luck_restriction | pending PDF/runtime comparison |
-| Expanded Edition | Iron Eater | `weird` | EE core Weird Monsters table | on_hit_effects:destroy_metal_items | pending PDF/runtime comparison |
+| Expanded Edition / TAG | Iron Eater | `weird` | EE p.169; TAG p.65 | on-hit armor -> shield -> main weapon -> 3d6gp destruction and the temporary-enchantment player choice are implemented; heavy-armor Defense suppression unless non-metallic remains pending | partial; destruction path focused-tested in v0.39.36 |
 | Expanded Edition | Chimera | `weird` | EE core Weird Monsters table | special_attacks:fire_breath | pending PDF/runtime comparison |
 | Expanded Edition | Catoblepas | `weird` | EE core Weird Monsters table | encounter_start_effects:death_gaze | pending PDF/runtime comparison |
 | Expanded Edition | Giant Spider | `weird` | EE core Weird Monsters table | on_hit_effects:poison | pending PDF/runtime comparison |
-| Expanded Edition | Invisible Gremlins | event / revealed `minions` | EE pp.74, 105, 107, 169 | staged d6+3 theft priority, Major tally/no Final Boss, reroll as wandering result, Disbelief d6+1 L3 Minions, steal-on-failed-Defence, Morale -1, one Treasure | implemented and focused-tested in v0.39.36 |
+| Expanded Edition / TAG | Invisible Gremlins | event / revealed `minions` | EE pp.74, 105, 107, 169; TAG pp.11, 13, 65 | staged d6+3 theft priority, voluntary temple-tag/temporary-enchantment choices, Bag contents, Major tally/no Final Boss, reroll as wandering result, Disbelief d6+1 L3 Minions, steal-on-failed-Defence, Morale -1, one Treasure | implemented and focused-tested in v0.39.36 |
 | Expanded Edition | Mummy | `boss` | EE core Boss Monsters table | vulnerabilities:fire | pending PDF/runtime comparison |
 | Expanded Edition | Orc Brute | `boss` | EE core Boss Monsters table | combat_modifiers:racial_bonus | pending PDF/runtime comparison |
 | Expanded Edition | Ogre | `boss` | EE core Boss Monsters table | summary only | pending PDF/runtime comparison |

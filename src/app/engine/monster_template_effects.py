@@ -8,6 +8,12 @@ from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
 from .class_profiles import max_life_for_level
 from .combat_modifiers import apply_poison_status, poison_save_succeeds
 from .dice import roll_d6, roll_d3, roll_exploding_for_level
+from .item_containers import remove_inventory_item_with_contents
+from .tag_temporary_weapon_enchantment import (
+    remove_temporary_weapon_enchantment_marker,
+    temporarily_enchanted_inventory_indices,
+    temporary_weapon_loss_decision,
+)
 
 if TYPE_CHECKING:
     from .combat import CombatContext
@@ -1066,27 +1072,59 @@ def _resolve_on_hit_level_drain(
     return log
 
 
-def _destroy_metal_item(member: PartyMemberState, priority: list[str]) -> str | None:
-    inventory = list(member.inventory)
+def _metal_item_candidate(member: PartyMemberState, priority: list[str]) -> tuple[int, str] | None:
     for kind in priority:
         kind_lower = kind.lower()
-        for item in inventory:
+        for index, item in enumerate(member.inventory):
             lower = item.lower()
             if kind_lower in {"armor", "shield"} and kind_lower in lower:
-                member.inventory.remove(item)
-                return item
-            if kind_lower in {"weapon", "hand weapon", "light weapon", "two-handed weapon"} and any(
+                return index, item
+            if kind_lower in {
+                "weapon",
+                "main_weapon",
+                "hand weapon",
+                "light weapon",
+                "two-handed weapon",
+            } and any(
                 token in lower for token in ("weapon", "sword", "axe", "mace", "bow", "dagger", "knife")
             ):
                 if "armor" not in lower and "shield" not in lower:
-                    member.inventory.remove(item)
-                    return item
-    for item in inventory:
+                    return index, item
+    for index, item in enumerate(member.inventory):
         lower = item.lower()
         if any(token in lower for token in ("weapon", "armor", "shield", "sword", "axe", "mace", "bow")):
-            member.inventory.remove(item)
-            return item
+            return index, item
     return None
+
+
+def _destroy_metal_item(
+    member: PartyMemberState,
+    priority: list[str],
+    *,
+    session: SessionState | None,
+) -> tuple[str | None, str]:
+    candidate = _metal_item_candidate(member, priority)
+    if candidate is not None:
+        inventory_index, item_name = candidate
+        if inventory_index in temporarily_enchanted_inventory_indices(member):
+            decision = (
+                temporary_weapon_loss_decision(session, member, item_name, "destroyed")
+                if session is not None
+                else None
+            )
+            if decision != "allow":
+                return item_name, "kept" if decision == "keep" else "pending"
+            remove_temporary_weapon_enchantment_marker(member, item_name)
+        removed, _contents = remove_inventory_item_with_contents(
+            member,
+            inventory_index=inventory_index,
+        )
+        return removed or item_name, "destroyed"
+    if any(str(kind).casefold() == "3d6gp" for kind in priority) and member.gold > 0:
+        amount = min(member.gold, sum(roll_d6() for _ in range(3)))
+        member.gold -= amount
+        return f"{amount}gp", "destroyed"
+    return None, "none"
 
 
 def _queue_disease_damage(target: PartyMemberState, damage: int, source: str) -> str:
@@ -1220,9 +1258,23 @@ def apply_on_hit_effects(
             )
         elif effect_type == "destroy_metal_items":
             priority = [str(item) for item in effect.get("priority_order", ["weapon", "armor", "shield"])]
-            destroyed = _destroy_metal_item(target, priority)
-            if destroyed:
+            destroyed, outcome = _destroy_metal_item(
+                target,
+                priority,
+                session=session,
+            )
+            if outcome == "destroyed":
                 log.append(f"Effect: {enemy.name} destroys {target.name}'s {destroyed}.")
+            elif outcome == "kept":
+                log.append(
+                    f"Effect: {target.name} keeps the temporarily enchanted {destroyed}; "
+                    f"{enemy.name} may not destroy it (TAG p.65)."
+                )
+            elif outcome == "pending":
+                log.append(
+                    f"Effect: {target.name}'s temporarily enchanted {destroyed} is retained until "
+                    "the TAG p.65 loss choice is recorded."
+                )
             else:
                 log.append(f"{enemy.name} finds no metal items on {target.name} to destroy.")
         elif effect_type == "steal_item":

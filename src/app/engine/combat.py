@@ -162,6 +162,7 @@ def clear_combat_state(session: SessionState) -> None:
     session.party_attacked_immediately = False
     session.foe_flee_strike_pending = False
     session.combat_lanterns_extinguished = False
+    session.temporary_weapon_loss_choices = {}
     session.spear_shield_readied = []
     session.monster_encounter_start_applied = False
     session.star_slayer_no_flee_character_ids = []

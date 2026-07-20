@@ -30,6 +30,12 @@ from .star_object_curse import (
     remove_star_object,
     star_object_carrier,
 )
+from .tag_temporary_weapon_enchantment import (
+    is_temporarily_enchanted_weapon,
+    remove_temporary_weapon_enchantment_marker,
+    temporarily_enchanted_inventory_indices,
+    temporary_weapon_loss_decision,
+)
 
 
 GREMLIN_REPELLANT_SOURCE = "Gremlin Repellant"
@@ -43,6 +49,7 @@ class StealableItem:
     inventory_index: int | None = None
     kukla_compartment_index: int | None = None
     theft_cost: int = 1
+    temporarily_enchanted: bool = False
 
 
 def has_gremlin_repellant(member: PartyMemberState) -> bool:
@@ -219,14 +226,30 @@ def _protected_loose_counts(session: SessionState, member: PartyMemberState) -> 
     )
 
 
-def _stealable_items(session: SessionState, member: PartyMemberState) -> list[StealableItem]:
+def _stealable_items(
+    session: SessionState,
+    member: PartyMemberState,
+    *,
+    temporary_weapon_loss_kind: str | None = None,
+) -> list[StealableItem]:
     candidates: list[StealableItem] = []
     protected_loose = _protected_loose_counts(session, member)
+    temporary_enchantments = temporarily_enchanted_inventory_indices(member)
     skipped: Counter[str] = Counter()
     for index, item in enumerate(member.inventory):
         lower = item.lower()
-        if "gremlin repellant" in lower or is_star_object_item(item) or _is_temple_tag(item):
+        if (
+            "gremlin repellant" in lower
+            or is_star_object_item(item)
+            or _is_temple_tag(item)
+        ):
             continue
+        temporarily_enchanted = index in temporary_enchantments
+        if temporarily_enchanted:
+            if temporary_weapon_loss_kind != "stolen":
+                continue
+            if temporary_weapon_loss_decision(session, member, item, "stolen") != "allow":
+                continue
         bag = bag_for_inventory_index(member, index) if is_bag_of_carrying(item) else None
         if bag is not None and any(
             protection.item_container_id == bag.id
@@ -237,7 +260,7 @@ def _stealable_items(session: SessionState, member: PartyMemberState) -> list[St
             skipped[item] += 1
             continue
         theft_cost = 2 if "clockwork armor" in lower else 1
-        bucket = _item_bucket(item)
+        bucket = "magic_items" if temporarily_enchanted else _item_bucket(item)
         if bucket == "scrolls":
             if scroll_protected_by_tube(member, item):
                 continue
@@ -250,6 +273,7 @@ def _stealable_items(session: SessionState, member: PartyMemberState) -> list[St
                 item_name=item,
                 inventory_index=index,
                 theft_cost=theft_cost,
+                temporarily_enchanted=temporarily_enchanted,
             )
         )
     if member.class_id.lower() == "kukla" and member.current_life <= 0:
@@ -293,6 +317,8 @@ def _remove_stolen_item(candidate: StealableItem) -> str:
         member,
         inventory_index=candidate.inventory_index,
     )
+    if candidate.temporarily_enchanted:
+        remove_temporary_weapon_enchantment_marker(member, candidate.item_name)
     return f"{member.name} loses {removed or candidate.item_name}{contained_loss_suffix(contents)}."
 
 
@@ -302,8 +328,8 @@ def _pending_prompt(session: SessionState) -> list[str]:
         return []
     return [
         f"Invisible Gremlins will steal {pending.theft_count} item(s). Cast Disbelief to reveal them, "
-        "volunteer an eligible temple tag, or resolve the theft in printed priority order "
-        "(EE pp.74, 169; TAG p.11)."
+        "volunteer an eligible temple tag or temporarily enchanted weapon, or resolve the theft in "
+        "printed priority order (EE pp.74, 169; TAG pp.11, 65)."
     ]
 
 
@@ -409,6 +435,48 @@ def offer_gremlin_temple_tag(
     log = [
         f"{member.name} voluntarily lets the Invisible Gremlins take {item_name}; "
         f"{pending.theft_count} theft slot(s) remain (TAG p.11)."
+    ]
+    if pending.theft_count <= 0:
+        session.pending_gremlin_event = None
+        log.append("The Invisible Gremlins event is resolved.")
+    return log
+
+
+def offer_gremlin_temporary_weapon(
+    session: SessionState,
+    *,
+    character_id: str | None,
+    item_name: str | None,
+) -> list[str]:
+    pending = session.pending_gremlin_event
+    if pending is None:
+        return ["No Invisible Gremlins event is waiting for a temporary-weapon choice."]
+    if pending.theft_count <= 0:
+        return ["The Gremlins have no theft slots left."]
+    member = next(
+        (
+            item
+            for item in session.party
+            if item.character_id == character_id and item.current_life > 0
+        ),
+        None,
+    )
+    if (
+        member is None
+        or not item_name
+        or item_name not in member.inventory
+        or not is_temporarily_enchanted_weapon(member, item_name)
+    ):
+        return ["Choose a living hero's temporarily enchanted weapon."]
+    removed, contents = remove_inventory_item_with_contents(member, item_name=item_name)
+    if removed is None:
+        return [f"{member.name} no longer carries {item_name}."]
+    remove_temporary_weapon_enchantment_marker(member, item_name)
+    pending.theft_count -= 1
+    log = [
+        f"{member.name} chooses to let the Invisible Gremlins take the temporarily enchanted "
+        f"{item_name}{contained_loss_suffix(contents)}; {pending.theft_count} theft slot(s) remain "
+        "(TAG p.65, Temporary Weapon Enchantment)."
     ]
     if pending.theft_count <= 0:
         session.pending_gremlin_event = None
@@ -523,7 +591,11 @@ def steal_one_revealed_gremlin_item(
     target: PartyMemberState,
 ) -> list[str]:
     priority = ("magic_items", "scrolls", "potions", "weapons", "gems")
-    candidates = _stealable_items(session, target)
+    candidates = _stealable_items(
+        session,
+        target,
+        temporary_weapon_loss_kind="stolen",
+    )
     chosen = next(
         (
             candidate

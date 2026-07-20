@@ -2819,6 +2819,25 @@
       "implementation_status": "implemented"
     },
     {
+      "id": "tag_temporary_weapon_enchantment",
+      "title": "Temporary Weapon Enchantment",
+      "category": "tag",
+      "source": "Tales from the Adventurers Guild",
+      "source_page": 65,
+      "keywords": [
+        "Temporary Weapon Enchantment",
+        "Guild spell",
+        "magic weapon",
+        "Invisible Gremlins",
+        "Iron Eater",
+        "steal magic item",
+        "destroy magic item"
+      ],
+      "summary": "Temporary magic-weapon status, duration, and player-controlled theft or destruction eligibility.",
+      "body": "Temporary Weapon Enchantment makes one weapon magical without granting an Attack bonus. The printed duration is one week or until the end of an encounter in which that weapon is used against a creature that can be hit only by magic weapons (TAG p.65). The current Guild marker control records and manually clears that duration; automatic elapsed-week and qualifying-use expiry remain deferred.\n\nIf Invisible Gremlins or another foe that steals or destroys magic items is encountered, the player decides whether the temporarily enchanted weapon is eligible. Ordinary Invisible Gremlin theft exposes an explicit voluntary offer. Revealed Gremlins and Iron Eaters ask once before combat actions for each affected weapon; Keep excludes it for that encounter, while Allow makes it eligible only if the foe's normal theft or destruction effect reaches it. The encounter decision persists through save/resume and clears with combat state.",
+      "implementation_status": "partial"
+    },
+    {
       "id": "invisible_gremlins_event",
       "title": "Invisible Gremlins Event",
       "category": "combat",
@@ -2831,12 +2850,13 @@
         "Miners' Ointment",
         "Resurrection tag",
         "Blessing tag",
+        "Temporary Weapon Enchantment",
         "Bag of Carrying",
         "Clockwork Armor",
         "Kukla"
       ],
       "summary": "Staged EE Invisible Gremlins theft, protection, special-property, Disbelief, Major Foe, and Clue procedure.",
-      "body": "Invisible Gremlins are an event with no stats, cannot be the Final Boss, and still count once toward the Major Foe tally (EE pp.105, 169). Roll d6+3 theft slots and take magic items, scrolls, potions, weapons, gems, then 10gp units. The app persists that count while the player chooses ordinary theft resolution, Disbelief, or a voluntary eligible temple tag.\n\nGremlin Repellant is applied before the adventure to one selected loose item or one selected Bag and expires at adventure end (EE p.87). Miners' Ointment instead ignores the whole event (EE p.160). A Bag is stolen with every contained item; Clockwork Armor counts as two stolen items; a living Kukla's secret compartment is protected; and TAG Resurrection/Blessing tags are taken only if the player volunteers one (EE pp.38, 44-46; TAG pp.11, 13). Protected eligible property remains party property and therefore prevents the all-equipment 1-Clue reward.\n\nDisbelief turns the event into d6+1 L3 Minions with -1 Morale, one attack, and one Treasure for the encounter. A failed Defense lets a revealed Gremlin steal one eligible object instead of causing Life loss (EE p.74). Invisible Gremlins are excluded from Wandering Monster selection (EE p.107).",
+      "body": "Invisible Gremlins are an event with no stats, cannot be the Final Boss, and still count once toward the Major Foe tally (EE pp.105, 169). Roll d6+3 theft slots and take magic items, scrolls, potions, weapons, gems, then 10gp units. The app persists that count while the player chooses ordinary theft resolution, Disbelief, or a voluntary eligible special item.\n\nGremlin Repellant is applied before the adventure to one selected loose item or one selected Bag and expires at adventure end (EE p.87). Miners' Ointment instead ignores the whole event (EE p.160). A Bag is stolen with every contained item; Clockwork Armor counts as two stolen items; a living Kukla's secret compartment is protected; TAG Resurrection/Blessing tags are taken only if the player volunteers one; and the player decides whether a weapon under Temporary Weapon Enchantment is stolen (EE pp.38, 44-46; TAG pp.11, 13, 65). Protected or deliberately retained eligible property remains party property and therefore prevents the all-equipment 1-Clue reward.\n\nDisbelief turns the event into d6+1 L3 Minions with -1 Morale, one attack, and one Treasure for the encounter. A failed Defense lets a revealed Gremlin steal one eligible object instead of causing Life loss (EE p.74). Invisible Gremlins are excluded from Wandering Monster selection (EE p.107).",
       "implementation_status": "implemented"
     },
     {

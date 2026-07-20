@@ -8,6 +8,7 @@ from app.engine.gremlin_events import (
     begin_invisible_gremlins,
     move_gremlin_item_protection,
     offer_gremlin_temple_tag,
+    offer_gremlin_temporary_weapon,
     resolve_pending_gremlin_theft,
     reveal_invisible_gremlins,
 )
@@ -19,8 +20,12 @@ from app.engine.item_containers import (
 )
 from app.engine.monster_template_effects import apply_on_hit_effects
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.tag_temporary_weapon_enchantment import (
+    pending_temporary_weapon_loss_choice,
+    resolve_temporary_weapon_loss_choice,
+)
 from app.rules.repository import RulesRepository
-from app.schemas import ItemContainerState, PartyMemberState, PendingGremlinEventState, SessionState, TileState
+from app.schemas import EnemyState, ItemContainerState, PartyMemberState, PendingGremlinEventState, SessionState, TileState
 
 
 def _member(character_id: str, name: str, **overrides) -> PartyMemberState:
@@ -278,6 +283,54 @@ def test_dead_kukla_secret_compartment_items_and_gold_are_exposed() -> None:
     assert sum("secret compartment loses 10gp" in line for line in log) == 2
 
 
+def test_temporary_weapon_enchantment_is_kept_unless_player_offers_it() -> None:
+    marker = "TAG Temporary Weapon Enchantment: Sword is magical, no Attack bonus"
+    member = _member(
+        "hero",
+        "Hero",
+        inventory=["Sword", "Magic Ring"],
+        statuses=[marker],
+    )
+    session = _session([member])
+    session.pending_gremlin_event = PendingGremlinEventState(tile_id="room", theft_count=1)
+
+    ordinary = resolve_pending_gremlin_theft(session, session.party)
+
+    assert "Sword" in member.inventory
+    assert "Magic Ring" not in member.inventory
+    assert marker in member.statuses
+    assert any("Magic Ring" in line for line in ordinary)
+
+    session.pending_gremlin_event = PendingGremlinEventState(tile_id="room", theft_count=1)
+    offered = offer_gremlin_temporary_weapon(
+        session,
+        character_id="hero",
+        item_name="Sword",
+    )
+
+    assert "Sword" not in member.inventory
+    assert marker not in member.statuses
+    assert session.pending_gremlin_event is None
+    assert any("chooses to let" in line and "TAG p.65" in line for line in offered)
+
+
+def test_one_temporary_enchantment_protects_only_one_identically_named_weapon() -> None:
+    marker = "TAG Temporary Weapon Enchantment: Sword is magical, no Attack bonus"
+    member = _member(
+        "hero",
+        "Hero",
+        inventory=["Sword", "Sword"],
+        statuses=[marker],
+    )
+    session = _session([member])
+    session.pending_gremlin_event = PendingGremlinEventState(tile_id="room", theft_count=1)
+
+    resolve_pending_gremlin_theft(session, session.party)
+
+    assert member.inventory == ["Sword"]
+    assert marker in member.statuses
+
+
 def test_disbelief_reveals_printed_gremlin_group_profile() -> None:
     session = _session([_member("hero", "Hero")])
     session.pending_gremlin_event = PendingGremlinEventState(tile_id="room", theft_count=7)
@@ -325,6 +378,162 @@ def test_revealed_gremlin_hit_steals_instead_of_causing_life_loss() -> None:
     assert member.current_life == 6
     assert "Magic Sword" not in member.inventory
     assert any("loses Magic Sword" in line for line in effect_log)
+
+
+def test_revealed_gremlin_respects_persisted_temporary_weapon_choice() -> None:
+    marker = "TAG Temporary Weapon Enchantment: Sword is magical, no Attack bonus"
+    member = _member(
+        "hero",
+        "Hero",
+        inventory=["Sword", "Magic Ring"],
+        statuses=[marker],
+    )
+    session = _session([member])
+    session.mode = "combat"
+    enemy = EnemyState(
+        id="gremlin",
+        name="Revealed Invisible Gremlin",
+        category="minions",
+        level=3,
+        life=1,
+        max_life=1,
+        attacks=1,
+        on_hit_effects=[{"type": "steal_item", "source": "Invisible Gremlins"}],
+    )
+    session.map_state.tiles = [
+        TileState(
+            id="room",
+            x=0,
+            y=0,
+            tile_key="11",
+            tile_type="room",
+            title="Room",
+            description="Room",
+            enemies=[enemy],
+        )
+    ]
+
+    pending = pending_temporary_weapon_loss_choice(session)
+    assert pending is not None and pending.loss_kind == "stolen"
+    resolve_temporary_weapon_loss_choice(session, "keep")
+    reloaded = SessionState.model_validate(session.model_dump())
+
+    effect_log = apply_on_hit_effects(
+        enemy,
+        reloaded.party[0],
+        context=CombatContext(session=reloaded),
+        show_rolls=False,
+    )
+
+    assert "Sword" in reloaded.party[0].inventory
+    assert "Magic Ring" not in reloaded.party[0].inventory
+    assert marker in reloaded.party[0].statuses
+    assert any("Magic Ring" in line for line in effect_log)
+
+
+def test_revealed_gremlin_can_take_temporary_weapon_when_player_allows_it() -> None:
+    marker = "TAG Temporary Weapon Enchantment: Sword is magical, no Attack bonus"
+    member = _member(
+        "hero",
+        "Hero",
+        inventory=["Sword", "Scroll of Blessing"],
+        statuses=[marker],
+    )
+    session = _session([member])
+    session.mode = "combat"
+    enemy = EnemyState(
+        id="gremlin",
+        name="Revealed Invisible Gremlin",
+        category="minions",
+        level=3,
+        life=1,
+        max_life=1,
+        attacks=1,
+        on_hit_effects=[{"type": "steal_item", "source": "Invisible Gremlins"}],
+    )
+    session.map_state.tiles = [
+        TileState(
+            id="room",
+            x=0,
+            y=0,
+            tile_key="11",
+            tile_type="room",
+            title="Room",
+            description="Room",
+            enemies=[enemy],
+        )
+    ]
+    resolve_temporary_weapon_loss_choice(session, "allow")
+
+    apply_on_hit_effects(
+        enemy,
+        member,
+        context=CombatContext(session=session),
+        show_rolls=False,
+    )
+
+    assert "Sword" not in member.inventory
+    assert "Scroll of Blessing" in member.inventory
+    assert marker not in member.statuses
+
+
+def test_iron_eater_respects_temporary_weapon_choice_and_gold_fallback(monkeypatch) -> None:
+    marker = "TAG Temporary Weapon Enchantment: Sword is magical, no Attack bonus"
+    member = _member("hero", "Hero", inventory=["Sword"], statuses=[marker], gold=20)
+    session = _session([member])
+    session.mode = "combat"
+    enemy = EnemyState(
+        id="iron-eater",
+        name="Iron Eater",
+        category="weird",
+        level=5,
+        life=4,
+        max_life=4,
+        attacks=3,
+        on_hit_effects=[
+            {
+                "type": "destroy_metal_items",
+                "priority_order": ["armor", "shield", "main_weapon", "3d6gp"],
+            }
+        ],
+    )
+    session.map_state.tiles = [
+        TileState(
+            id="room",
+            x=0,
+            y=0,
+            tile_key="11",
+            tile_type="room",
+            title="Room",
+            description="Room",
+            enemies=[enemy],
+        )
+    ]
+    pending = pending_temporary_weapon_loss_choice(session)
+    assert pending is not None and pending.loss_kind == "destroyed"
+    resolve_temporary_weapon_loss_choice(session, "keep")
+
+    kept_log = apply_on_hit_effects(
+        enemy,
+        member,
+        context=CombatContext(session=session),
+        show_rolls=False,
+    )
+
+    assert "Sword" in member.inventory
+    assert any("may not destroy it" in line for line in kept_log)
+
+    member.inventory.clear()
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_d6", lambda: 2)
+    gold_log = apply_on_hit_effects(
+        enemy,
+        member,
+        context=CombatContext(session=session),
+        show_rolls=False,
+    )
+
+    assert member.gold == 14
+    assert any("destroys Hero's 6gp" in line for line in gold_log)
 
 
 def test_casting_disbelief_during_pending_event_starts_revealed_combat() -> None:
