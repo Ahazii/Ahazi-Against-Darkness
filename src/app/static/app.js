@@ -19952,6 +19952,20 @@ function currentObjectiveForSession(session) {
   }
   const tile = currentTile(session);
   if (!tile) return null;
+  if (session.tag_generated_completion_pending) {
+    return {
+      title: session.tag_generated_completion_title || "Resolved Adventures Guild scene",
+      body:
+        session.tag_generated_completion_body ||
+        "The scene is resolved. Read the Narrative result, then continue to finish the adventure.",
+      tone: "success",
+      action: {
+        label: "Continue",
+        kind: "tag-generated-continue",
+        tooltip: "Finish this resolved Adventures Guild scene and open the normal adventure summary. The result remains in Narrative until you choose this.",
+      },
+    };
+  }
   if (session.tag_star_object_gremlin_choice_pending) {
     return {
       title: "Current objective: choose what the Invisible Gremlins take",
@@ -20401,6 +20415,10 @@ function appendCurrentObjectiveButton(parent, action) {
       btn.addEventListener("click", () =>
         signOffGeneratedTagLead("Player confirmed generated Adventures Guild lead route, reward, XP, Guild, banking/storage, and closeout checks.").catch(handleError)
       );
+      break;
+    case "tag-generated-continue":
+      setButtonTooltip(btn, action.tooltip || "Continue from the resolved scene to the adventure summary.");
+      btn.addEventListener("click", () => continueGeneratedTagLead().catch(handleError));
       break;
     case "tag-repair":
       setButtonTooltip(btn, "Refresh an older/resumed Adventures Guild module from local PDF narrative overrides, rebuild missing prompt metadata, and normalize legacy log wording.");
@@ -26281,6 +26299,21 @@ async function signOffGeneratedTagLead(note = "") {
   renderSession();
   syncSessionListFromSession(state.session);
   setStatus("Generated Adventures Guild lead signed off.");
+}
+
+async function continueGeneratedTagLead() {
+  if (!state.session?.id) return;
+  const result = await api(`/api/sessions/${encodeURIComponent(state.session.id)}/tag-generated-lead-continue`, {
+    method: "POST",
+  });
+  state.session = result;
+  syncSessionListFromSession(state.session);
+  if (state.session.mode === "complete") {
+    await finishCompletedAdventureClient(state.session);
+  } else {
+    renderSession();
+  }
+  setStatus("Adventure complete. Review the summary and campaign closeout tasks.");
 }
 
 function generatedTagPromptActionDefaults(action = {}, fallbackReference = "", tagReference = {}) {

@@ -116,6 +116,14 @@ def _compact(src: str) -> str:
     return re.sub(r"\s+", "", src)
 
 
+def test_generated_tag_result_waits_for_continue_before_closeout() -> None:
+    """Resolved scene text must remain visible until the player acknowledges it."""
+    assert "tag_generated_completion_pending" in APP_JS
+    assert "tag-generated-continue" in APP_JS
+    assert "continueGeneratedTagLead" in APP_JS
+    assert "/tag-generated-lead-continue" in APP_JS
+
+
 def test_header_feedback_does_not_share_the_action_group() -> None:
     """A long session status must wrap on the left without moving Save/Dashboard."""
     assert 'class="topbar-feedback"' in INDEX_HTML

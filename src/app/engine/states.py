@@ -39,7 +39,7 @@ LEGACY_STATE_FIELDS: list[dict[str, str]] = [
         "field": "SessionState.pending_*",
         "status": "legacy_compatibility",
         "replacement": "state_instances + procedures",
-        "notes": "Pending choice objects are state-like procedure pauses, but they are not migrated in this slice.",
+        "notes": "Pending choice objects and tag_generated_completion_* are persisted procedure pauses, but they are not migrated in this slice.",
     },
 ]
 

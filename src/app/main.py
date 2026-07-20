@@ -4307,6 +4307,11 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "where": "TAG Signoff panel and campaign route log.",
         },
         {
+            "checkpoint": "Resolved scene acknowledged",
+            "review": "Read the named-character roll outcome in Narrative. Save/resume may preserve it; Continue is the only action that opens normal adventure closeout.",
+            "where": "Exploration Current Objective and Narrative after a resolved generated Scene.",
+        },
+        {
             "checkpoint": "Closeout resolved",
             "review": "Use the five-step closeout wizard: objective, route/reward, XP, Guild/banking/guidance, then signoff. Signoff stores warnings if any remain.",
             "where": "Ongoing Quest generated closeout panel, Dashboard Guidance, Guild Management, Banking and Finance, Go Adventure Closeout Gate.",
@@ -6525,24 +6530,128 @@ def _advance_generated_tag_scene_from_branch(
     return _move_generated_tag_scene_target(session, tag_ref=tag_ref, reference=reference)
 
 
-def _mark_bofto_generated_lead_complete(session: SessionState, outcome: str) -> None:
+def _roll_result_text(rolls: list[int], modifier: int, total: int) -> str:
+    dice = " + ".join(str(value) for value in rolls) or "0"
+    if modifier > 0:
+        return f"{dice} + {modifier} = {total}"
+    if modifier < 0:
+        return f"{dice} - {abs(modifier)} = {total}"
+    return f"{dice} = {total}"
+
+
+def _bofto_scene19_result_narrative(
+    member: PartyMemberState,
+    scene_result: Any,
+    *,
+    madness_before: int,
+    theft_entry: Any | None = None,
+) -> str:
+    calculation = _roll_result_text(
+        list(getattr(scene_result, "rolls", []) or []),
+        int(getattr(scene_result, "modifier", 0) or 0),
+        int(getattr(scene_result, "total", 0) or 0),
+    )
+    rerolled = any("Halfling reroll" in line for line in list(getattr(scene_result, "log", []) or []))
+    will_action = "rerolls the Will Save" if rerolled else "makes the Will Save"
+    if bool(getattr(scene_result, "passed", False)):
+        will_result = "passes and gains no Madness"
+    else:
+        madness_gained = max(0, int(getattr(member, "madness", 0) or 0) - madness_before)
+        if madness_gained:
+            will_result = f"fails and gains {madness_gained} Madness (total {member.madness})"
+        else:
+            will_result = "fails, but a protective effect prevents the Madness gain"
+    paranoia = (
+        " The failed Save also leaves the carrier Paranoid and unable to exchange equipment."
+        if any(str(status).strip().casefold() == "paranoid" for status in member.statuses)
+        else ""
+    )
+    theft_result = ""
+    if theft_entry is not None:
+        theft_calculation = _roll_result_text(
+            [int(getattr(theft_entry, "roll", 0) or 0)],
+            int(getattr(theft_entry, "modifier", 0) or 0),
+            int(getattr(theft_entry, "total", 0) or 0),
+        )
+        theft_result = f" The thievery Save is {theft_calculation} against L6 and succeeds."
+    return (
+        f"{member.name} successfully steals Bofto's star-shaped object.{theft_result} "
+        f"{member.name} {will_action}: {calculation} against L8, {will_result}. "
+        f"The object is now carried by {member.name}, and its curse is active.{paranoia}"
+    )
+
+
+def _bofto_scene18_result_narrative(character: Character | None, entry: Any) -> str:
+    name = character.name if character is not None else "The chosen thief"
+    calculation = _roll_result_text(
+        [int(getattr(entry, "roll", 0) or 0)],
+        int(getattr(entry, "modifier", 0) or 0),
+        int(getattr(entry, "total", 0) or 0),
+    )
+    return (
+        f"{name} tries to steal Bofto's star-shaped object but the thievery Save is "
+        f"{calculation} against L6 and fails. Bofto raises the alarm, the party leaves, "
+        "and this rumor is resolved."
+    )
+
+
+def _mark_bofto_generated_lead_complete(
+    session: SessionState,
+    outcome: str,
+    narrative: str,
+) -> None:
     quest = session.active_quest
     if quest is None:
         return
     quest.completed = True
-    quest.tag_generated_lead_signoff = True
+    quest.tag_generated_lead_signoff = False
     state = dict(quest.tag_generated_lead_state or {})
     state["scene_resolved"] = True
     state["route_recorded"] = True
+    state["completion_pending"] = True
+    state["result_narrative"] = narrative
     state["closeout"] = {
-        "completed": True,
+        "completed": False,
         "result": outcome,
         "warnings": [],
         "updated_at": now_utc(),
     }
-    state["next_action"] = "Bofto's rumor is resolved; review the normal adventure summary."
+    state["next_action"] = "Read the resolved scene, then choose Continue to finish the adventure."
     quest.tag_generated_lead_state = state
-    session.log.append(f"Quest complete: Bofto's Star-Shaped Find - {outcome}")
+    session.tag_generated_completion_pending = True
+    session.tag_generated_completion_title = "Bofto's Star-Shaped Find resolved"
+    session.tag_generated_completion_body = narrative
+    session.log.append(narrative)
+    session.log.append("When you are ready, choose Continue to finish the adventure.")
+
+
+@app.post("/api/sessions/{session_id}/tag-generated-lead-continue")
+async def continue_generated_tag_lead(session_id: str) -> SessionState:
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    if not session.tag_generated_completion_pending:
+        raise HTTPException(status_code=400, detail="No resolved Adventures Guild scene is waiting to continue.")
+    quest = session.active_quest
+    if quest is None or not quest.completed:
+        raise HTTPException(status_code=400, detail="The generated Adventures Guild scene is not resolved yet.")
+    state = dict(quest.tag_generated_lead_state or {})
+    closeout = dict(state.get("closeout") or {})
+    closeout["completed"] = True
+    closeout["updated_at"] = now_utc()
+    state["completion_pending"] = False
+    state["closeout"] = closeout
+    state["next_action"] = "Review the normal adventure summary and campaign closeout tasks."
+    quest.tag_generated_lead_state = state
+    quest.tag_generated_lead_signoff = True
+    session.tag_generated_completion_pending = False
+    session.tag_generated_completion_title = None
+    session.tag_generated_completion_body = None
+    random_engine._complete_dungeon(session)
+    if session.mode == "complete":
+        _persist_completed_session(session)
+    store.save("sessions", session)
+    return enrich_session(session)
 
 
 def _persist_completed_session(session: SessionState) -> list[str]:
@@ -6730,8 +6839,13 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         )
         if member is None or member.current_life <= 0:
             raise HTTPException(status_code=400, detail="Choose a living party member as the Scene 19 carrier.")
+        madness_before = int(getattr(member, "madness", 0) or 0)
         scene_result = resolve_scene19_pickup(session, member, show_rolls=True)
-        session.log.extend(scene_result.log)
+        narrative = _bofto_scene19_result_narrative(
+            member,
+            scene_result,
+            madness_before=madness_before,
+        )
         entry = append_tag_log(
             campaign,
             action="star_object_will_save",
@@ -6739,15 +6853,16 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
             roll=scene_result.roll,
             modifier=scene_result.modifier,
             total=scene_result.total,
-            result_text=scene_result.result_text,
+            result_text=narrative,
         )
-        _mark_bofto_generated_lead_complete(session, "Scene 19 resolved; the cursed object remains in the campaign.")
+        _mark_bofto_generated_lead_complete(
+            session,
+            "Scene 19 resolved; the cursed object remains in the campaign.",
+            narrative,
+        )
         record_session_tag_rumor_state(campaign, session, status="resolved")
-        random_engine._complete_dungeon(session)
         campaign = save_campaign(store, campaign)
         campaign = sync_star_object_campaign_from_session(store, session)
-        if session.mode == "complete":
-            _persist_completed_session(session)
         store.save("sessions", session)
         refreshed_character = (
             store.get("characters", character.id, Character.model_validate)
@@ -6797,7 +6912,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
             _sync_character_to_session_party(session, character)
     _update_session_tag_procedure_state(session, branch_action, entry)
     _update_generated_tag_procedure_state(session, branch_action, entry)
-    if entry.result_text and entry.result_text not in session.log:
+    if branch_action != "bofto_theft_save" and entry.result_text and entry.result_text not in session.log:
         session.log.append(f"Adventures Guild procedure: {entry.result_text}")
     _advance_generated_tag_scene_from_branch(
         session,
@@ -6826,9 +6941,15 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         if succeeded:
             if member is None or member.current_life <= 0:
                 raise HTTPException(status_code=400, detail="The selected Scene 14 thief is not a living party member.")
+            madness_before = int(getattr(member, "madness", 0) or 0)
             scene_result = resolve_scene19_pickup(session, member, show_rolls=True)
-            session.log.extend(scene_result.log)
-            entry.result_text = f"{entry.result_text} {scene_result.result_text}"
+            narrative = _bofto_scene19_result_narrative(
+                member,
+                scene_result,
+                madness_before=madness_before,
+                theft_entry=entry,
+            )
+            entry.result_text = narrative
             append_tag_log(
                 campaign,
                 action="star_object_will_save",
@@ -6836,19 +6957,22 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
                 roll=scene_result.roll,
                 modifier=scene_result.modifier,
                 total=scene_result.total,
-                result_text=scene_result.result_text,
+                result_text=narrative,
             )
             _mark_bofto_generated_lead_complete(
                 session,
                 "The theft succeeded; Scene 19 and its Will Save were resolved automatically.",
+                narrative,
             )
         else:
+            narrative = _bofto_scene18_result_narrative(character, entry)
+            entry.result_text = narrative
             _mark_bofto_generated_lead_complete(
                 session,
                 "The theft failed; Scene 18 ended the rumor.",
+                narrative,
             )
         record_session_tag_rumor_state(campaign, session, status="resolved")
-        random_engine._complete_dungeon(session)
     if branch_action == "map_cave_room_count":
         next_action = (
             session.active_quest.tag_generated_lead_state.get("next_action")

@@ -1042,6 +1042,11 @@ class RandomDungeonEngine:
                 session.map_state.current_tile_id = entrance.id
                 session.current_tile_entry_exit_id = None
         self._queue_fallen_transfer(session)
+        if session.tag_generated_completion_pending:
+            message = "Read the resolved Adventures Guild scene, then choose Continue to finish the adventure."
+            if not session.log or session.log[-1] != message:
+                session.log.append(message)
+            return self._touch(session)
         pending_temporary_weapon = pending_temporary_weapon_loss_choice(session)
         if pending_temporary_weapon is not None and action != "resolve_temporary_weapon_loss_choice":
             session.log.append(

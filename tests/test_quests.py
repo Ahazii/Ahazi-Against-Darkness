@@ -342,16 +342,54 @@ def test_generated_bofto_theft_roll_moves_to_result_scene(client, monkeypatch, t
     payload = response.json()["session"]
     current_tile = next(tile for tile in payload["map_state"]["tiles"] if tile["id"] == payload["map_state"]["current_tile_id"])
     assert current_tile["content_key"] == "imported:tag-scene-19"
-    assert payload["mode"] == "complete"
+    assert payload["mode"] == "exploration"
     assert payload["active_quest"]["completed"] is True
-    assert payload["summary"]
+    assert payload["tag_generated_completion_pending"] is True
+    assert payload["summary"] == []
+    assert "successfully steals" in payload["tag_generated_completion_body"]
+    assert "against L8" in payload["tag_generated_completion_body"]
+    assert "choose Continue" in payload["log"][-1]
     assert "Bofto's Star-Shaped Cursed Object" in payload["party"][0]["inventory"]
     assert "Bofto's Star-Shaped Object Curse" in payload["party"][0]["statuses"]
     log_text = "\n".join(payload["log"])
-    assert "Scene 14 thievery Save 6+1=7 vs L6: success" in log_text
-    assert "Scene 19 Will Save" in log_text
+    assert "thievery Save is 6 + 1 = 7 against L6 and succeeds" in log_text
+    assert "Scene 19 Will Save:" not in log_text
     assert "The theft succeeds." in log_text
     assert "If you succeed" not in log_text
+    assert "Adventures Guild procedure:" not in log_text
+
+    stored_pending = main.store.get("sessions", "bofto-theft-session", SessionState.model_validate)
+    assert stored_pending is not None
+    reloaded_pending = SessionState.model_validate(stored_pending.model_dump())
+    assert reloaded_pending.tag_generated_completion_pending is True
+    assert reloaded_pending.tag_generated_completion_body == payload["tag_generated_completion_body"]
+
+    continued = client.post("/api/sessions/bofto-theft-session/tag-generated-lead-continue")
+
+    assert continued.status_code == 200
+    completed = continued.json()
+    assert completed["mode"] == "complete"
+    assert completed["tag_generated_completion_pending"] is False
+    assert completed["tag_generated_completion_body"] is None
+    assert completed["active_quest"]["tag_generated_lead_signoff"] is True
+    assert completed["summary"]
+
+
+def test_generated_tag_result_pause_blocks_dungeon_actions() -> None:
+    session = base_session()
+    session.tag_generated_completion_pending = True
+    session.tag_generated_completion_title = "Bofto's Star-Shaped Find resolved"
+    session.tag_generated_completion_body = "The resolved scene remains available until Continue is chosen."
+    current_tile_id = session.map_state.current_tile_id
+
+    updated = engine().advance(session, "search_room")
+
+    assert updated.mode == "exploration"
+    assert updated.map_state.current_tile_id == current_tile_id
+    assert updated.tag_generated_completion_pending is True
+    assert updated.log[-1] == (
+        "Read the resolved Adventures Guild scene, then choose Continue to finish the adventure."
+    )
 
 
 def test_legacy_leprechaun_manifest_upgrades_to_vendor_finale() -> None:

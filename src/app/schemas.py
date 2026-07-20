@@ -1044,6 +1044,9 @@ class SessionState(BaseModel):
     lady_in_gray_refused: bool = False
     active_quest: ActiveQuestState | None = None
     fd_secondary_quest: ActiveQuestState | None = None
+    tag_generated_completion_pending: bool = False
+    tag_generated_completion_title: str | None = None
+    tag_generated_completion_body: str | None = None
     potion_used_character_ids: list[str] = Field(default_factory=list)
     bandage_used_character_ids: list[str] = Field(default_factory=list)
     map_fragment_used: bool = False

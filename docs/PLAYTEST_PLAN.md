@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-20. Target build: v0.39.36 campaign-scoped TAG state, explicit Bags of Carrying, and Invisible Gremlins.
+Last updated: 2026-07-20. Target build: v0.39.37 TAG resolved-scene acknowledgement, campaign-scoped TAG state, explicit Bags of Carrying, and Invisible Gremlins.
 
 This file contains only the remaining player checks. Earlier EE, Abyss, Forsaken Depths, Citadel, and Bofto Scene 9/14/17/19 passes are recorded in `docs/STATUS.md` and must not be repeated unless one of the checks below finds a regression.
 
@@ -8,8 +8,8 @@ This file contains only the remaining player checks. Earlier EE, Abyss, Forsaken
 
 ### 1. Deploy And Refresh
 
-1. Deploy `v0.39.36` from `main` to Unraid at `http://192.168.1.55:8001`.
-2. Force-refresh until the app header reports `v0.39.36`.
+1. Deploy `v0.39.37` from `main` to Unraid at `http://192.168.1.55:8001`.
+2. Force-refresh until the app header reports `v0.39.37`.
 3. Use a disposable party for the Gremlin checks. Enable Developer Playtest Controls and the fixed Adventures Guild lead selector only for these checks.
 
 ### 2. Campaign And Rumor Continuity
@@ -17,9 +17,11 @@ This file contains only the remaining player checks. Earlier EE, Abyss, Forsaken
 Rules source: `Tales_from_the_adventurers_guild.pdf`, Rumors Table and Rumor 1, printed pp.22 and 29-31.
 
 1. In a campaign, generate fixed Rumor 1, **Bofto's Star-Shaped Find**. Confirm the Adventures Guild Workflow Summary records the rumor as heard, then investigating after the adventure starts.
-2. Confirm Scene 14 still requires a named living thief, rolls that character's Save vs L6, and chooses Scene 18 or Scene 19 automatically. There must be no player-facing success/failure choice.
-3. Finish either branch. Confirm the campaign records Rumor 1 as resolved only after its Scene has played, and the session closes normally.
-4. Generate a random Rumor in that same campaign. It must reroll a resolved rumor instead of silently replaying it. The fixed developer selector may still replay an exact rumor for testing.
+2. Reach Scene 14, choose a named living thief, and roll. The app must use that character's Save vs L6 and route automatically to Scene 18 or Scene 19; there must be no player-facing success/failure choice.
+3. After the result resolves, confirm the app remains on Scene 18 or Scene 19 instead of opening Adventure Complete. Narrative must show one readable outcome with the thief's L6 roll and, on success, the L8 Will Save, Madness/protection result, Paranoid restriction when applicable, and curse carrier. The only result action should be **Continue**.
+4. Before choosing **Continue**, save, return to the Dashboard, and resume. Confirm the same Scene, result text, and **Continue** action remain. Exploration, search, and exits must not bypass this acknowledgement.
+5. Choose **Continue**. Confirm the normal Adventure Complete summary now opens and the campaign records Rumor 1 as resolved.
+6. Generate a random Rumor in that same campaign. It must reroll a resolved rumor instead of silently replaying it. The fixed developer selector may still replay an exact rumor for testing.
 
 Campaign isolation and legacy-record migration are covered automatically; do not create or damage a second live campaign solely to test them.
 
