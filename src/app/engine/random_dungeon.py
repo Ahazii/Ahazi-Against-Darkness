@@ -18794,21 +18794,11 @@ class RandomDungeonEngine:
         from .item_containers import put_item_in_bag, take_item_from_bag
 
         mover = take_item_from_bag if take_out else put_item_in_bag
-        _ok, message = mover(
+        _moved, message = mover(
             member,
             container_id=item_container_id,
             item_name=item_name,
         )
-        if moved:
-            from .gremlin_events import move_gremlin_item_protection
-
-            move_gremlin_item_protection(
-                session,
-                from_character_id=from_character_id,
-                to_character_id=to_character_id,
-                item_name=item_name or "",
-                item_container_id=item_container_id,
-            )
         session.log.append(message)
 
     def _use_berserkers_mushroom(

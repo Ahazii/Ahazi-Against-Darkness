@@ -19,7 +19,7 @@ Status: foundation implemented; low-priority feature growth.
 
 Status: active priority.
 
-- Release gate: Campaign/Rumor Continuity passed. Deploy and complete the short `v0.39.40` developer-grant / two-Bag / ordinary Invisible Gremlins checklist in `docs/PLAYTEST_PLAN.md`. Once it passes, stop broad adventure regression testing; reopen only the exact failed workflow if a defect is found.
+- Release gate: Campaign/Rumor Continuity passed. Deploy and complete the short `v0.39.41` developer-grant / two-Bag / ordinary Invisible Gremlins checklist in `docs/PLAYTEST_PLAN.md`. Once it passes, stop broad adventure regression testing; reopen only the exact failed workflow if a defect is found.
 - First modularisation slice after that gate: finish extracting the repeated item-disposition eligibility checks (transfer, drop, storage, sale, sacrifice, confiscation, and random destruction) behind one reusable policy boundary. Preserve the TAG star-object prohibition, explicit Bag-container identity, and container-aware loss behavior with focused tests; do not combine this with a wider `random_dungeon.py` reorganization.
 - Next TAG conversion slice: reuse `tag_scene_actions.py` for one PDF-backed scene procedure at a time, including required actor, modifiers, target, attempts, outcomes, and rewards. Bofto Scene 14 is the reference implementation. Do not build a generic prose interpreter or expose printed success/failure outcomes as player choices.
 - Bounded TAG spell follow-up: replace Temporary Weapon Enchantment's manual Guild-marker expiry with the printed one-week / qualifying magic-only encounter timing from TAG p.65. The theft/destruction decision is already automated and should remain a shared encounter policy.

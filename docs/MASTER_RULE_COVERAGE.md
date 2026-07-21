@@ -106,7 +106,7 @@ Implemented first slice:
 
 Next slices:
 
-- complete the short v0.39.40 developer-grant / explicit Bag / Invisible Gremlins live check (Campaign/Rumor Continuity is passed), then stop broad adventure testing and resume one bounded modularisation slice at a time.
+- complete the short v0.39.41 developer-grant / explicit Bag / Invisible Gremlins live check (Campaign/Rumor Continuity is passed), then stop broad adventure testing and resume one bounded modularisation slice at a time.
 
 Later slices can deepen exact branch-specific item handling, robbery recovery,
 and Guild spell math if playtesting shows those surfaces are needed.

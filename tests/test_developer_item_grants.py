@@ -104,6 +104,13 @@ def test_developer_grant_enforces_class_restrictions_and_syncs_real_bag(client: 
     assert "Session-only treasure" in bag_grant.json()["character"]["inventory"]
     assert len(bag_grant.json()["character"]["item_containers"]) == 1
 
+    second_bag_grant = client.post(
+        "/api/developer/item-grants",
+        json={"character_id": wizard["id"], "item_id": bag["id"]},
+    )
+    assert second_bag_grant.status_code == 200
+    assert len(second_bag_grant.json()["character"]["item_containers"]) == 2
+
     repellant_grant = client.post(
         "/api/developer/item-grants",
         json={"character_id": wizard["id"], "item_id": repellant["id"]},
@@ -114,6 +121,22 @@ def test_developer_grant_enforces_class_restrictions_and_syncs_real_bag(client: 
     assert "Gremlin repellant" in synced.party[0].inventory
     assert synced.party[0].item_containers
     assert any("Developer override: granted Bag of Carrying" in line for line in synced.log)
+
+    packed = client.post(
+        f"/api/sessions/{session.id}/advance",
+        json={
+            "action": "put_item_in_container",
+            "character_id": wizard["id"],
+            "item_name": "Session-only treasure",
+            "item_container_id": synced.party[0].item_containers[1].id,
+        },
+    )
+    assert packed.status_code == 200
+    packed_session = packed.json()
+    assert "Session-only treasure" not in packed_session["party"][0]["inventory"]
+    assert packed_session["party"][0]["item_containers"][0]["contents"] == []
+    assert packed_session["party"][0]["item_containers"][1]["contents"] == ["Session-only treasure"]
+    assert any("puts Session-only treasure in Bag of Carrying" in line for line in packed_session["log"])
 
     applied = client.post(
         f"/api/sessions/{session.id}/advance",
