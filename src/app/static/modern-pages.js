@@ -12,6 +12,7 @@ const modernState = {
   artwork: [],
   tables: {},
   preferences: {},
+  developerItemGrantCatalog: null,
   supplements: { supplements: [], legacy_fields: [] },
   states: { states: [], legacy_fields: [] },
   terrain: { terrain: [], legacy_fields: [] },
@@ -9731,7 +9732,79 @@ async function renderRulePdfManager() {
   return panel;
 }
 
-function renderDeveloperPreferences() {
+async function renderDeveloperItemGrants(mount) {
+  mount.replaceChildren(el("p", "muted", "Loading enabled-supplement inventory catalog..."));
+  const catalog = await api("/api/developer/item-grants");
+  modernState.developerItemGrantCatalog = catalog;
+  const panel = card(
+    "Developer Item Grant",
+    "Testing only. Grants one ordinary inventory item without payment or acquisition rolls. Class restrictions and carrying limits still apply, and active sessions receive a Narrative override entry."
+  );
+  const character = select(
+    "modern-dev-item-character",
+    "Choose the roster character who receives the item. Class restrictions are evaluated for this character.",
+    (catalog.characters || []).map((entry) => [entry.id, `${entry.name} · ${entry.class_name}`])
+  );
+  const category = select("modern-dev-item-category", "Filter grantable items by their rules category.", [["", "All item categories"]]);
+  const categories = [...new Set((catalog.items || []).map((item) => item.category).filter(Boolean))].sort();
+  categories.forEach((value) => category.appendChild(new Option(value.replaceAll("_", " "), value)));
+  const search = input("search", "modern-dev-item-search", "Search enabled-supplement inventory items by name, supplement, category, or source topic.");
+  search.placeholder = "Search items";
+  const item = select("modern-dev-item-select", "Choose one rules-valid inventory item from the enabled supplements.");
+  const detail = el("p", "muted", "");
+  const result = el("p", "muted", "");
+
+  const refreshItems = () => {
+    const query = search.value.trim().toLowerCase();
+    const selectedCategory = category.value;
+    const characterId = character.value;
+    const matches = (catalog.items || []).filter((entry) => {
+      if (selectedCategory && entry.category !== selectedCategory) return false;
+      const source = entry.source || {};
+      const haystack = `${entry.name} ${entry.category} ${entry.supplement_title} ${source.table_id || ""}`.toLowerCase();
+      return !query || haystack.includes(query);
+    });
+    const allowed = matches.filter((entry) => entry.eligibility?.[characterId]?.allowed);
+    item.replaceChildren();
+    for (const entry of allowed) {
+      const source = entry.source || {};
+      const page = source.source_page ? ` p.${source.source_page}` : "";
+      const option = new Option(`${entry.name} · ${entry.supplement_title}${page}`, entry.id);
+      option.title = `${entry.name}. ${entry.summary || "Inventory-grantable structured item."} Source: ${entry.supplement_title}${page}, ${source.table_id || "item catalog"}.`;
+      item.appendChild(option);
+    }
+    item.disabled = !allowed.length;
+    detail.textContent = `${allowed.length} rules-valid item(s) shown; ${matches.length - allowed.length} matching item(s) excluded by this character's class restrictions.`;
+    const selected = allowed.find((entry) => entry.id === item.value);
+    item.title = selected?.summary || "Choose one rules-valid inventory item from the enabled supplements.";
+  };
+  character.addEventListener("change", refreshItems);
+  category.addEventListener("change", refreshItems);
+  search.addEventListener("input", refreshItems);
+  item.addEventListener("change", refreshItems);
+  refreshItems();
+
+  const grant = button("Grant item", "Grant the selected item as a logged developer override. Acquisition/payment is bypassed; class and carrying rules are enforced.", async (btn) => {
+    if (!character.value || !item.value) throw new Error("Choose a character and an eligible item.");
+    await runWithButtonProgress(btn, "Granting item...", async () => {
+      const response = await api("/api/developer/item-grants", {
+        method: "POST",
+        body: JSON.stringify({ character_id: character.value, item_id: item.value }),
+      });
+      const index = modernState.characters.findIndex((entry) => entry.id === response.character.id);
+      if (index >= 0) modernState.characters[index] = response.character;
+      result.textContent = `${response.message}${response.updated_session_ids?.length ? " Active saved session synchronized." : ""}`;
+      setStatus(result.textContent);
+    });
+  }, "primary");
+  const grid = el("div", "modern-source-import-grid");
+  grid.append(field("Character", character), field("Category", category), field("Search", search), field("Item", item));
+  panel.append(grid, actions(), detail, result);
+  panel.querySelector(".modern-actions")?.appendChild(grant);
+  mount.replaceChildren(panel);
+}
+
+function renderDeveloperPreferences(itemGrantMount) {
   const panel = card("Developer Playtest Preferences", "Developer-only switches for diagnostics and repeatable playtesting. Normal Adventures Guild play should leave fixed result selection off so the app rolls from the printed tables.");
   const fixed = input("checkbox", "modern-dev-tag-fixed-result-selector", "Show fixed Adventures Guild result selectors in module generators. Use only for repeatable playtests; normal play should roll from the printed tables.");
   fixed.checked = Boolean(modernState.preferences?.show_tag_fixed_result_selector);
@@ -9769,6 +9842,31 @@ function renderDeveloperPreferences() {
     setStatus("Developer preference saved.");
   });
   panel.append(dungeonRow, dungeonStatus);
+  const itemGrants = input("checkbox", "modern-dev-item-grants", "Show the developer-only item grant panel. Grants are limited to inventory-safe items from enabled supplements and enforce class and carrying restrictions.");
+  itemGrants.checked = Boolean(modernState.preferences?.show_developer_item_grants);
+  const itemGrantRow = el("label", "modern-check-row");
+  itemGrantRow.title = itemGrants.title;
+  itemGrantRow.append(itemGrants, el("span", "", "Show developer item grant controls"));
+  const itemGrantStatus = el("p", "muted", itemGrants.checked
+    ? "Rules-valid item grant controls are available below."
+    : "Developer item grants are disabled.");
+  itemGrants.addEventListener("change", async () => {
+    modernState.preferences = await api("/api/preferences", {
+      method: "PUT",
+      body: JSON.stringify({ show_developer_item_grants: itemGrants.checked }),
+    });
+    itemGrantStatus.textContent = itemGrants.checked
+      ? "Rules-valid item grant controls are available below."
+      : "Developer item grants are disabled.";
+    itemGrantMount.classList.toggle("hidden", !itemGrants.checked);
+    if (itemGrants.checked) await renderDeveloperItemGrants(itemGrantMount);
+    else {
+      itemGrantMount.replaceChildren();
+      modernState.developerItemGrantCatalog = null;
+    }
+    setStatus("Developer preference saved.");
+  });
+  panel.append(itemGrantRow, itemGrantStatus);
   return panel;
 }
 
@@ -9794,6 +9892,7 @@ async function renderDeveloper() {
   const tools = el("div", "modern-dev-tools hidden");
   const artworkMount = el("div", "modern-dev-artwork-manager hidden");
   const rulePdfMount = el("div", "modern-dev-rule-pdf-manager hidden");
+  const itemGrantMount = el("div", "modern-dev-item-grants hidden");
   const row = actions();
   row.append(
     link("Adventure PDF Import", "/modern/developer", "Placeholder for future PDF adventure module import."),
@@ -9811,7 +9910,12 @@ async function renderDeveloper() {
     })
   );
   tools.appendChild(row);
-  tools.appendChild(renderDeveloperPreferences());
+  tools.appendChild(renderDeveloperPreferences(itemGrantMount));
+  tools.appendChild(itemGrantMount);
+  if (modernState.preferences?.show_developer_item_grants) {
+    itemGrantMount.classList.remove("hidden");
+    await renderDeveloperItemGrants(itemGrantMount);
+  }
   tools.appendChild(renderSupplementRegistryPanel());
   tools.appendChild(rulePdfMount);
   tools.appendChild(artworkMount);

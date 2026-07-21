@@ -1448,6 +1448,8 @@ async def update_preferences(payload: dict[str, Any]) -> AppPreferences:
         prefs.show_tag_fixed_result_selector = _parse_bool(payload.get("show_tag_fixed_result_selector"))
     if "show_dungeon_playtest_controls" in payload:
         prefs.show_dungeon_playtest_controls = _parse_bool(payload.get("show_dungeon_playtest_controls"))
+    if "show_developer_item_grants" in payload:
+        prefs.show_developer_item_grants = _parse_bool(payload.get("show_developer_item_grants"))
     if "enabled_supplement_ids" in payload:
         raw_ids = payload.get("enabled_supplement_ids")
         if not isinstance(raw_ids, list):
@@ -1458,6 +1460,93 @@ async def update_preferences(payload: dict[str, Any]) -> AppPreferences:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     store.save("preferences", prefs)
     return prefs
+
+
+@app.get("/api/developer/item-grants")
+async def developer_item_grant_catalog() -> dict[str, Any]:
+    from .engine.developer_item_grants import developer_grantable_items, item_grant_eligibility
+    from .engine.supplements import supplement_registry
+
+    prefs = _load_app_preferences()
+    if not prefs.show_developer_item_grants:
+        raise HTTPException(status_code=403, detail="Enable developer item grants in Developer Playtest Preferences first.")
+    supplements = supplement_registry(settings.root_dir, settings.data_dir)
+    supplement_titles = {str(entry["id"]): str(entry.get("title") or entry["id"]) for entry in supplements}
+    characters = sorted(store.list("characters", Character.model_validate), key=lambda item: item.name.casefold())
+    items = developer_grantable_items(settings.root_dir, prefs.enabled_supplement_ids)
+    for item in items:
+        item["supplement_title"] = supplement_titles.get(item["source"]["supplement_id"], item["source"]["supplement_id"])
+        item["eligibility"] = {
+            character.id: {"allowed": allowed, "reason": reason}
+            for character in characters
+            for allowed, reason in [item_grant_eligibility(character, item)]
+        }
+    return {
+        "enabled_supplement_ids": prefs.enabled_supplement_ids,
+        "characters": [
+            {"id": character.id, "name": character.name, "class_id": character.class_id, "class_name": character.class_name}
+            for character in characters
+        ],
+        "items": items,
+    }
+
+
+@app.post("/api/developer/item-grants")
+async def developer_grant_item(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.developer_item_grants import developer_grantable_items, grant_inventory_item
+
+    prefs = _load_app_preferences()
+    if not prefs.show_developer_item_grants:
+        raise HTTPException(status_code=403, detail="Enable developer item grants in Developer Playtest Preferences first.")
+    character_id = str(payload.get("character_id") or "").strip()
+    item_id = str(payload.get("item_id") or "").strip()
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    items = developer_grantable_items(settings.root_dir, prefs.enabled_supplement_ids)
+    item = next((record for record in items if record["id"] == item_id), None)
+    if item is None:
+        raise HTTPException(status_code=400, detail="Choose an inventory item from the enabled supplement catalog.")
+    active_sessions = sorted(
+        [
+            session
+            for session in store.list("sessions", SessionState.model_validate)
+            if session.mode != "complete" and any(member.character_id == character.id for member in session.party)
+        ],
+        key=lambda session: session.updated_at,
+        reverse=True,
+    )
+    prepared_members: list[tuple[SessionState, PartyMemberState]] = []
+    message = ""
+    for session in active_sessions:
+        current_member = next(member for member in session.party if member.character_id == character.id)
+        prepared_member = current_member.model_copy(deep=True)
+        granted, message = grant_inventory_item(prepared_member, item)
+        if not granted:
+            raise HTTPException(status_code=400, detail=message)
+        prepared_members.append((session, prepared_member))
+    if prepared_members:
+        roster_source = prepared_members[0][1]
+        character.inventory = list(roster_source.inventory)
+        character.item_containers = [container.model_copy(deep=True) for container in roster_source.item_containers]
+    else:
+        granted, message = grant_inventory_item(character, item)
+        if not granted:
+            raise HTTPException(status_code=400, detail=message)
+    character.updated_at = now_utc()
+    store.save("characters", character)
+    changed_sessions: list[str] = []
+    source = item["source"]
+    source_note = f"{source['supplement_id']} p.{source['source_page']}" if source.get("source_page") else source["supplement_id"]
+    for session, prepared_member in prepared_members:
+        member = next(member for member in session.party if member.character_id == character.id)
+        member.inventory = list(prepared_member.inventory)
+        member.item_containers = [container.model_copy(deep=True) for container in prepared_member.item_containers]
+        session.log.append(f"{message} Source: {source_note}. This bypasses acquisition and payment only; class and carrying rules still apply.")
+        session.updated_at = now_utc()
+        store.save("sessions", session)
+        changed_sessions.append(session.id)
+    return {"character": character, "item": item, "message": message, "updated_session_ids": changed_sessions}
 
 
 @app.put("/api/campaign")
@@ -3582,6 +3671,14 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "developer_ui": "Developer Playtest Preferences",
             "effect": "Shows developer-only controls during eligible Expanded Edition, Abyss, and Forsaken Depths exploration sessions. A selected named EE foe, EE Quest result, Final Boss, Abyss foe/event row, or Citadel result enters the existing live engine path and is marked in the Narrative as an override.",
             "rules_boundary": "Testing-only. Normal play leaves it off and rolls from the printed tables; the override does not invent outcomes or bypass encounter, event, reaction, state, or Citadel logic.",
+        },
+        {
+            "preference": "show_developer_item_grants",
+            "default": "false",
+            "stored_in": "game.db records/preferences/ui",
+            "developer_ui": "Developer Playtest Preferences",
+            "effect": "Shows a searchable character/item grant panel built from enabled-supplement inventory catalogs. Grants synchronize active saved sessions and leave a Narrative override entry.",
+            "rules_boundary": "Testing-only. It bypasses acquisition rolls, availability, price, and payment, but still enforces class-specific item use and ordinary weapon/shield carrying limits. Services, plot objects, curses, state markers, and unresolved random/choice placeholders are excluded.",
         },
         {
             "preference": "enabled_supplement_ids",

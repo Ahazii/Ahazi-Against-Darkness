@@ -451,19 +451,22 @@ def test_app_preferences_persist_developer_fixed_result_selector(client: TestCli
     response = client.get("/api/preferences")
     assert response.status_code == 200
     assert response.json()["show_tag_fixed_result_selector"] is False
+    assert response.json()["show_developer_item_grants"] is False
     assert response.json()["enabled_supplement_ids"] == [LOCKED_CORE_SUPPLEMENT_ID]
 
     saved = client.put(
         "/api/preferences",
-        json={"show_tag_fixed_result_selector": True, "enabled_supplement_ids": ["forsaken-depths", "tag"]},
+        json={"show_tag_fixed_result_selector": True, "show_developer_item_grants": True, "enabled_supplement_ids": ["forsaken-depths", "tag"]},
     )
     assert saved.status_code == 200
     assert saved.json()["show_tag_fixed_result_selector"] is True
+    assert saved.json()["show_developer_item_grants"] is True
     assert saved.json()["enabled_supplement_ids"] == [LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths", "tag"]
 
     reloaded = client.get("/api/preferences")
     assert reloaded.status_code == 200
     assert reloaded.json()["show_tag_fixed_result_selector"] is True
+    assert reloaded.json()["show_developer_item_grants"] is True
     assert reloaded.json()["enabled_supplement_ids"] == [LOCKED_CORE_SUPPLEMENT_ID, "forsaken-depths", "tag"]
 
     rejected = client.put("/api/preferences", json={"enabled_supplement_ids": ["made-up-book"]})

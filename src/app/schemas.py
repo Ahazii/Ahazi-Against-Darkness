@@ -106,6 +106,7 @@ class AppPreferences(BaseModel):
     id: str = "ui"
     show_tag_fixed_result_selector: bool = False
     show_dungeon_playtest_controls: bool = False
+    show_developer_item_grants: bool = False
     enabled_supplement_ids: list[str] = Field(default_factory=lambda: ["expanded-edition-core"])
 
 

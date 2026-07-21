@@ -2917,6 +2917,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "TAG_ADVENTURE_FIXED_RESULTS" in MODERN_PAGES_JS
     assert "show_tag_fixed_result_selector" in MODERN_PAGES_JS
     assert "Developer Playtest Preferences" in MODERN_PAGES_JS
+    assert "show_developer_item_grants" in MODERN_PAGES_JS
+    assert "Developer Item Grant" in MODERN_PAGES_JS
+    assert 'api("/api/developer/item-grants"' in MODERN_PAGES_JS
     assert "leadTypes[Math.floor(Math.random() * leadTypes.length)]" in MODERN_PAGES_JS
     assert "detail: selectedDetail" in MODERN_PAGES_JS
     assert "go_adventure_tabbed_workflow_table" in MAIN_PY

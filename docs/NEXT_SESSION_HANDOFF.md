@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-20. Repository branch: `main`. Latest release: `v0.39.37`.
+Last updated: 2026-07-21. Repository branch: `main`. Latest release: `v0.39.38`.
 
 ## Start Here
 
@@ -11,19 +11,21 @@ Last updated: 2026-07-20. Repository branch: `main`. Latest release: `v0.39.37`.
 
 ## Current Priority
 
-Ask the user to deploy `v0.39.37`, force-refresh, and run only the short checks at the top of `docs/PLAYTEST_PLAN.md`:
+Ask the user to deploy `v0.39.38`, force-refresh, and run only the short checks at the top of `docs/PLAYTEST_PLAN.md`:
 
-1. One Bofto route showing the persisted Scene 18/19 result and **Continue** before Adventure Complete, then campaign-owned Rumor state from heard to investigating to resolved.
+1. Use the new developer grant panel for two Bags of Carrying and Gremlin Repellant; confirm Barbarian Bag rejection.
 2. Two Bags of Carrying retaining separate contents through save/resume and a specific-Bag transfer.
 3. One ordinary Invisible Gremlins event with item-level Repellant and save/resume while the theft count is pending.
 4. A Disbelief reveal only if a disposable caster is available.
 
 Do not reopen the broad EE, Abyss, Forsaken Depths, Citadel, or earlier Bofto/Star-Slayer suites. When the first three checks pass, stop adventure testing and resume modularisation in one small tested slice.
 
-## Implemented In v0.39.37
+## Implemented In v0.39.38
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 105, 107, 160, and 169; TAG pp.11, 13, 22, 29-31, and 65.
 
+- Developer Playtest Preferences can expose a password-gated item grant panel sourced from enabled supplements. It grants only inventory-safe concrete items, enforces class/carry restrictions, creates real Bag identities, synchronizes active sessions, and logs the override.
+- Campaign and Rumor Continuity passed on v0.39.37 and is removed from the remaining live plan.
 - Bofto Scene 18/19 no longer disappears behind an immediate generic completion summary. Its named-character roll outcome remains in Narrative with a persisted **Continue** action; save/dashboard/resume preserves the acknowledgement state and only Continue opens normal closeout.
 - `SessionState.campaign_id` pins a session to its campaign. Star-object recovery/effects and Rumor lifecycle records are stored in that `CampaignState`, so switching the active dashboard campaign cannot redirect an existing session's state.
 - Rumors progress through heard, investigating, and resolved. Random Rumor generation rerolls resolved results within the same campaign; the fixed developer selector deliberately permits exact replay.
@@ -42,12 +44,13 @@ Campaign and saved game remain separate records in the same user-facing `DATA_DI
 
 Automated tests own campaign isolation and legacy migration, all twelve Rumors exhausted, exact Gremlin priority/Clue/Kukla/Clockwork Armor edges, Star-Slayer replacement, carrier death, total-party-kill recovery, and mixed-result split fleeing. Do not risk a valuable live party to force those dice.
 
-After the `v0.39.37` gate, resume the item-disposition policy modularisation slice. Keep it narrow: consolidate eligibility and container-aware removal behavior without reorganising `random_dungeon.py`. Then migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time.
+After the `v0.39.38` gate, resume the item-disposition policy modularisation slice. Keep it narrow: consolidate eligibility and container-aware removal behavior without reorganising `random_dungeon.py`. Then migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time.
 
 Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its one-week or qualifying-use expiry remains on the existing manual **Guild marker** clear control and is a bounded later TAG spell task, not part of the release gate.
 
 ## Recent Releases
 
+- `v0.39.38`: enabled-supplement developer inventory grants with class/carry enforcement and live-session synchronization.
 - `v0.39.37`: persisted readable Bofto Scene result with explicit Continue before adventure closeout.
 - `v0.39.36`: campaign-scoped TAG effects/Rumors, typed Bofto action, explicit multi-Bag contents, and complete Invisible Gremlins procedure.
 - `v0.39.35`: Bofto Scene 19 extraction/automation and persistent star-object curse lifecycle.
