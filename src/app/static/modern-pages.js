@@ -9738,7 +9738,7 @@ async function renderDeveloperItemGrants(mount) {
   modernState.developerItemGrantCatalog = catalog;
   const panel = card(
     "Developer Item Grant",
-    "Testing only. Grants one ordinary inventory item without payment or acquisition rolls. Class restrictions and carrying limits still apply, and active sessions receive a Narrative override entry."
+    "Testing only. Grants one ordinary inventory item from saved defaults or the character's active-session supplements without payment or acquisition rolls. Class restrictions and carrying limits still apply, and active sessions receive a Narrative override entry."
   );
   const character = select(
     "modern-dev-item-character",

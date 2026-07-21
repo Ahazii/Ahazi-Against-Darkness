@@ -131,6 +131,53 @@ def test_developer_grant_enforces_class_restrictions_and_syncs_real_bag(client: 
     assert applied_session["gremlin_protected_items"][0]["item_container_id"] == synced.party[0].item_containers[0].id
 
 
+def test_active_session_supplements_extend_grant_catalog_for_that_character(client: TestClient) -> None:
+    wizard = _create_character(client, "Merlin", "wizard")
+    client.put(
+        "/api/preferences",
+        json={"show_developer_item_grants": True, "enabled_supplement_ids": []},
+    )
+    member = PartyMemberState(
+        character_id=wizard["id"],
+        name=wizard["name"],
+        class_id=wizard["class_id"],
+        class_name=wizard["class_name"],
+        level=wizard["level"],
+        xp=wizard["xp"],
+        gold=wizard["gold"],
+        current_life=wizard["current_life"],
+        max_life=wizard["max_life"],
+        attack_bonus=wizard["attack_bonus"],
+        defense_bonus=wizard["defense_bonus"],
+        save_bonus=wizard["save_bonus"],
+    )
+    tile = TileState(id="entrance", x=0, y=0, tile_key="11", tile_type="room", title="Entrance", description="Entrance")
+    main.store.save(
+        "sessions",
+        SessionState(
+            id="tag-session",
+            party_id="party",
+            adventure_id="random",
+            adventure_type="random",
+            party=[member],
+            active_supplement_ids=["expanded-edition-core", "tag"],
+            map_state=MapState(tiles=[tile], current_tile_id=tile.id),
+            created_at="2026-07-21T00:00:00Z",
+            updated_at="2026-07-21T00:00:00Z",
+        ),
+    )
+
+    catalog = client.get("/api/developer/item-grants").json()
+    bag = _item(catalog, "Bag of Carrying")
+    assert bag["eligibility"][wizard["id"]]["allowed"] is True
+    granted = client.post(
+        "/api/developer/item-grants",
+        json={"character_id": wizard["id"], "item_id": bag["id"]},
+    )
+    assert granted.status_code == 200
+    assert granted.json()["updated_session_ids"] == ["tag-session"]
+
+
 def test_developer_grant_keeps_multiple_active_session_inventories_isolated(client: TestClient) -> None:
     wizard = _create_character(client, "Merlin", "wizard")
     client.put(
@@ -197,4 +244,4 @@ def test_developer_item_grant_rejects_disabled_supplement_item(client: TestClien
         json={"character_id": wizard["id"], "item_id": "forsaken-depths:fd_heroic_magic_item_table:lucky_boat:lucky-boat"},
     )
     assert rejected.status_code == 400
-    assert "enabled supplement catalog" in rejected.json()["detail"]
+    assert "enabled default or active-session supplement catalog" in rejected.json()["detail"]

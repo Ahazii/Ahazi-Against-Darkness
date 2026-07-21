@@ -1473,14 +1473,35 @@ async def developer_item_grant_catalog() -> dict[str, Any]:
     supplements = supplement_registry(settings.root_dir, settings.data_dir)
     supplement_titles = {str(entry["id"]): str(entry.get("title") or entry["id"]) for entry in supplements}
     characters = sorted(store.list("characters", Character.model_validate), key=lambda item: item.name.casefold())
-    items = developer_grantable_items(settings.root_dir, prefs.enabled_supplement_ids)
+    active_sessions = [
+        session
+        for session in store.list("sessions", SessionState.model_validate)
+        if session.mode != "complete"
+    ]
+    catalog_supplement_ids = list(dict.fromkeys([
+        *prefs.enabled_supplement_ids,
+        *(supplement_id for session in active_sessions for supplement_id in session.active_supplement_ids),
+    ]))
+    items = developer_grantable_items(settings.root_dir, catalog_supplement_ids)
     for item in items:
         item["supplement_title"] = supplement_titles.get(item["source"]["supplement_id"], item["source"]["supplement_id"])
-        item["eligibility"] = {
-            character.id: {"allowed": allowed, "reason": reason}
-            for character in characters
-            for allowed, reason in [item_grant_eligibility(character, item)]
-        }
+        item["eligibility"] = {}
+        for character in characters:
+            character_supplement_ids = {
+                *prefs.enabled_supplement_ids,
+                *(
+                    supplement_id
+                    for session in active_sessions
+                    if any(member.character_id == character.id for member in session.party)
+                    for supplement_id in session.active_supplement_ids
+                ),
+            }
+            if item["source"]["supplement_id"] not in character_supplement_ids:
+                allowed = False
+                reason = "This supplement is not enabled by default or in this character's active session."
+            else:
+                allowed, reason = item_grant_eligibility(character, item)
+            item["eligibility"][character.id] = {"allowed": allowed, "reason": reason}
     return {
         "enabled_supplement_ids": prefs.enabled_supplement_ids,
         "characters": [
@@ -1503,10 +1524,6 @@ async def developer_grant_item(payload: dict[str, Any]) -> dict[str, Any]:
     character = store.get("characters", character_id, Character.model_validate)
     if character is None:
         raise HTTPException(status_code=404, detail="Character not found.")
-    items = developer_grantable_items(settings.root_dir, prefs.enabled_supplement_ids)
-    item = next((record for record in items if record["id"] == item_id), None)
-    if item is None:
-        raise HTTPException(status_code=400, detail="Choose an inventory item from the enabled supplement catalog.")
     active_sessions = sorted(
         [
             session
@@ -1516,6 +1533,14 @@ async def developer_grant_item(payload: dict[str, Any]) -> dict[str, Any]:
         key=lambda session: session.updated_at,
         reverse=True,
     )
+    enabled_supplement_ids = list(dict.fromkeys([
+        *prefs.enabled_supplement_ids,
+        *(supplement_id for session in active_sessions for supplement_id in session.active_supplement_ids),
+    ]))
+    items = developer_grantable_items(settings.root_dir, enabled_supplement_ids)
+    item = next((record for record in items if record["id"] == item_id), None)
+    if item is None:
+        raise HTTPException(status_code=400, detail="Choose an inventory item from the enabled default or active-session supplement catalog.")
     prepared_members: list[tuple[SessionState, PartyMemberState]] = []
     message = ""
     for session in active_sessions:
@@ -3677,7 +3702,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "default": "false",
             "stored_in": "game.db records/preferences/ui",
             "developer_ui": "Developer Playtest Preferences",
-            "effect": "Shows a searchable character/item grant panel built from enabled-supplement inventory catalogs. Grants synchronize active saved sessions and leave a Narrative override entry.",
+            "effect": "Shows a searchable character/item grant panel built from saved default supplements plus each character's unfinished-session supplement snapshot. Grants synchronize active saved sessions and leave a Narrative override entry.",
             "rules_boundary": "Testing-only. It bypasses acquisition rolls, availability, price, and payment, but still enforces class-specific item use and ordinary weapon/shield carrying limits. Services, plot objects, curses, state markers, and unresolved random/choice placeholders are excluded.",
         },
         {
