@@ -2921,6 +2921,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Developer Item Grant" in MODERN_PAGES_JS
     assert 'api("/api/developer/item-grants"' in MODERN_PAGES_JS
     assert "active-session supplements" in MODERN_PAGES_JS
+    assert 'item.addEventListener("change", updateItemDetail)' in MODERN_PAGES_JS
+    assert 'item.addEventListener("change", refreshItems)' not in MODERN_PAGES_JS
     assert "leadTypes[Math.floor(Math.random() * leadTypes.length)]" in MODERN_PAGES_JS
     assert "detail: selectedDetail" in MODERN_PAGES_JS
     assert "go_adventure_tabbed_workflow_table" in MAIN_PY

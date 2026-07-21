@@ -9754,7 +9754,12 @@ async function renderDeveloperItemGrants(mount) {
   const detail = el("p", "muted", "");
   const result = el("p", "muted", "");
 
+  const updateItemDetail = () => {
+    const selected = (catalog.items || []).find((entry) => entry.id === item.value);
+    item.title = selected?.summary || "Choose one rules-valid inventory item from the enabled supplements.";
+  };
   const refreshItems = () => {
+    const previousItemId = item.value;
     const query = search.value.trim().toLowerCase();
     const selectedCategory = category.value;
     const characterId = character.value;
@@ -9773,15 +9778,15 @@ async function renderDeveloperItemGrants(mount) {
       option.title = `${entry.name}. ${entry.summary || "Inventory-grantable structured item."} Source: ${entry.supplement_title}${page}, ${source.table_id || "item catalog"}.`;
       item.appendChild(option);
     }
+    if (allowed.some((entry) => entry.id === previousItemId)) item.value = previousItemId;
     item.disabled = !allowed.length;
     detail.textContent = `${allowed.length} rules-valid item(s) shown; ${matches.length - allowed.length} matching item(s) excluded by this character's class restrictions.`;
-    const selected = allowed.find((entry) => entry.id === item.value);
-    item.title = selected?.summary || "Choose one rules-valid inventory item from the enabled supplements.";
+    updateItemDetail();
   };
   character.addEventListener("change", refreshItems);
   category.addEventListener("change", refreshItems);
   search.addEventListener("input", refreshItems);
-  item.addEventListener("change", refreshItems);
+  item.addEventListener("change", updateItemDetail);
   refreshItems();
 
   const grant = button("Grant item", "Grant the selected item as a logged developer override. Acquisition/payment is bypassed; class and carrying rules are enforced.", async (btn) => {

@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-21. Target build: v0.39.39 active-session-aware developer inventory grants, explicit Bags of Carrying, and Invisible Gremlins.
+Last updated: 2026-07-21. Target build: v0.39.40 stable developer item selection, explicit Bags of Carrying, and Invisible Gremlins.
 
 This file contains only the remaining player checks. Earlier EE, Abyss, Forsaken Depths, Citadel, and Bofto Scene 9/14/17/19 passes are recorded in `docs/STATUS.md` and must not be repeated unless one of the checks below finds a regression.
 
@@ -8,8 +8,8 @@ This file contains only the remaining player checks. Earlier EE, Abyss, Forsaken
 
 ### 1. Deploy And Refresh
 
-1. Deploy `v0.39.39` from `main` to Unraid at `http://192.168.1.55:8001`.
-2. Force-refresh until the app header reports `v0.39.39`.
+1. Deploy `v0.39.40` from `main` to Unraid at `http://192.168.1.55:8001`.
+2. Force-refresh until the app header reports `v0.39.40`.
 3. Use a disposable party for the Gremlin checks. In the password-gated Developer Section, enable **Show developer item grant controls**. Enable dungeon playtest controls only when forcing the Gremlin event.
 
 Campaign and Rumor Continuity passed on v0.39.37 and has been removed. Do not repeat it.
