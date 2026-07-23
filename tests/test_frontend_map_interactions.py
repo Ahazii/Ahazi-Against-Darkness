@@ -2717,6 +2717,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "tag_star_slayer" in APP_JS
     assert "tag_invisible_gremlins" in APP_JS
     assert "resolve_star_object_gremlins" in APP_JS
+    assert "Keep it and resolve theft" in APP_JS
+    assert 'advance(mode === "scroll" ? "burn_scroll" : "cast_spell"' in APP_JS
+    assert 'id="session-major-foes"' in INDEX_HTML
+    assert "Major Foes encountered this adventure" in APP_JS
     assert "assign_star_object" in APP_JS
     assert "Minotaur Maze Special Event Table" in INDEX_HTML
     assert "Fiendish Abyss Prisoner Table" in INDEX_HTML

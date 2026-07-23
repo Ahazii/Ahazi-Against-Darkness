@@ -3839,6 +3839,13 @@ button.modern-dashboard-status-icon {
   color: var(--text);
 }
 
+.session-major-foes {
+  border: 1px solid color-mix(in srgb, var(--danger) 48%, var(--border));
+  background: color-mix(in srgb, var(--danger) 13%, var(--surface));
+  color: var(--text);
+  white-space: nowrap;
+}
+
 .session-list-supplements {
   color: var(--text-soft);
   display: grid;

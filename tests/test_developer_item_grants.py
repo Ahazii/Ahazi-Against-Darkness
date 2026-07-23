@@ -36,6 +36,8 @@ def test_developer_item_catalog_requires_toggle_and_filters_supplements(client: 
     assert "Gremlin repellant" in names
     assert "Bag of Carrying" in names
     assert "Ring of Three Wishes" in names
+    assert "Scroll of Disbelief" in names
+    assert "Small gemstone (25gp)" in names
     assert "Lucky Boat" not in names
     assert "Resurrection ritual" not in names
     assert "Magic Weapon (+1 Attack)" not in names

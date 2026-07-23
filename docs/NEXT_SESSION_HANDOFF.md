@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-23. Repository branch: `main`. Latest release: `v0.39.42`.
+Last updated: 2026-07-23. Repository branch: `main`. Latest release: `v0.39.43`.
 
 ## Start Here
 
@@ -11,19 +11,22 @@ Last updated: 2026-07-23. Repository branch: `main`. Latest release: `v0.39.42`.
 
 ## Current Priority
 
-Ask the user to deploy `v0.39.42`, force-refresh, and run only the short checks at the top of `docs/PLAYTEST_PLAN.md`:
+Ask the user to deploy `v0.39.43`, force-refresh, and run only the short checks at the top of `docs/PLAYTEST_PLAN.md`:
 
-1. At camp, use **Apply** beside Sir Benedict's Gremlin Repellant and protect one specific loose item or Bag.
-2. Run one ordinary Invisible Gremlins event with save/resume while the theft count is pending.
-3. Run a Disbelief reveal only if a disposable caster is available.
+1. Resume session `1996ab8f2fc940cc9605f82c88798d26` and confirm **Major Foes: 1** is visible in Adventure View.
+2. Force one Invisible Gremlins event and cast Disbelief from one of the restored scrolls before resolving the cursed-object choice.
+3. Confirm the revealed group profile; do not repeat ordinary nine-item theft.
 
-Campaign/Rumor Continuity and all Developer Grant/Two Bags checks are passed. Do not repeat them or reopen the broad EE, Abyss, Forsaken Depths, Citadel, or earlier Bofto/Star-Slayer suites. When the ordinary Gremlin check passes, stop adventure testing and resume modularisation in one small tested slice.
+Campaign/Rumor Continuity, Developer Grant/Two Bags, Repellant, and ordinary Gremlin theft are passed. Do not repeat them or reopen the broad EE, Abyss, Forsaken Depths, Citadel, or earlier Bofto/Star-Slayer suites. When the Disbelief reveal passes, stop adventure testing and resume modularisation in one small tested slice.
 
-## Implemented In v0.39.42
+## Implemented In v0.39.43
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 105, 107, 160, and 169; TAG pp.11, 13, 22, 29-31, and 65.
 
 - Party Sheets place **Apply** beside each carried Gremlin Repellant. At camp it opens the printed p.87 item/Bag protection picker; when unavailable the button remains visible but disabled with the exact timing or eligibility reason.
+- Adventure View keeps the current Major Foe tally visible. Invisible Gremlins still increment it exactly once and cannot become the Final Boss.
+- The cursed-object Gremlin decision now offers Disbelief and eligible voluntary TAG items before the choice; **Keep it and resolve theft** immediately applies ordinary theft without a second Resolve button.
+- Developer grants include a concrete Scroll of Disbelief and Small gemstone (25gp). The Gremlin control can burn a carried Disbelief scroll or use a prepared spell.
 - The generic character Actions copy of Repellant application is removed. Potions and scrolls remain unchanged pending a later reusable item-action slice.
 - Party Sheets Bag packing no longer raises on stale transfer-only variables. The selected loose item is persisted in the selected Bag's stable container.
 - The developer item dropdown no longer rebuilds and resets to the first search result when the player chooses another item. Filter rebuilds preserve the current selection when possible.
@@ -48,12 +51,13 @@ Campaign and saved game remain separate records in the same user-facing `DATA_DI
 
 Automated tests own campaign isolation and legacy migration, all twelve Rumors exhausted, exact Gremlin priority/Clue/Kukla/Clockwork Armor edges, Star-Slayer replacement, carrier death, total-party-kill recovery, and mixed-result split fleeing. Do not risk a valuable live party to force those dice.
 
-After the `v0.39.42` gate, resume the item-disposition policy modularisation slice. Keep it narrow: consolidate eligibility and container-aware removal behavior without reorganising `random_dungeon.py`. Then migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time.
+After the `v0.39.43` Disbelief gate, resume the item-disposition policy modularisation slice. Keep it narrow: consolidate eligibility and container-aware removal behavior without reorganising `random_dungeon.py`. Then migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time.
 
 Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its one-week or qualifying-use expiry remains on the existing manual **Guild marker** clear control and is a bounded later TAG spell task, not part of the release gate.
 
 ## Recent Releases
 
+- `v0.39.43`: automatic post-Keep Gremlin theft, visible Major Foe tally, and Scroll of Disbelief test support.
 - `v0.39.42`: contextual Party Sheets Apply action for Gremlin Repellant; all Bag tests recorded passed.
 - `v0.39.41`: Party Sheets persists item packing into the selected Bag of Carrying.
 - `v0.39.40`: stable developer item dropdown selection after filtering.

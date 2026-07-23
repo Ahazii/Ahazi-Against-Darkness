@@ -436,7 +436,7 @@ def offer_gremlin_temple_tag(
         f"{member.name} voluntarily lets the Invisible Gremlins take {item_name}; "
         f"{pending.theft_count} theft slot(s) remain (TAG p.11)."
     ]
-    if pending.theft_count <= 0:
+    if pending.theft_count <= 0 and not session.tag_star_object_gremlin_choice_pending:
         session.pending_gremlin_event = None
         log.append("The Invisible Gremlins event is resolved.")
     return log
@@ -478,7 +478,7 @@ def offer_gremlin_temporary_weapon(
         f"{item_name}{contained_loss_suffix(contents)}; {pending.theft_count} theft slot(s) remain "
         "(TAG p.65, Temporary Weapon Enchantment)."
     ]
-    if pending.theft_count <= 0:
+    if pending.theft_count <= 0 and not session.tag_star_object_gremlin_choice_pending:
         session.pending_gremlin_event = None
         log.append("The Invisible Gremlins event is resolved.")
     return log

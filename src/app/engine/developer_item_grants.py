@@ -64,6 +64,8 @@ MANUAL_ITEMS: dict[str, tuple[dict[str, Any], ...]] = {
         {"id": "basic-scroll-fireball", "name": "Fireball spell scroll", "category": "magic_scroll", "magic": True, "page": 69, "topic": "Basic spells"},
         {"id": "basic-scroll-protection", "name": "Protection spell scroll", "category": "magic_scroll", "magic": True, "page": 69, "topic": "Basic spells"},
         {"id": "basic-scroll-sleep", "name": "Sleep spell scroll", "category": "magic_scroll", "magic": True, "page": 69, "topic": "Basic spells"},
+        {"id": "illusionist-scroll-disbelief", "name": "Scroll of Disbelief", "category": "magic_scroll", "magic": True, "page": 74, "topic": "Disbelief"},
+        {"id": "small-gemstone-25gp", "name": "Small gemstone (25gp)", "category": "gem", "magic": False, "page": 157, "topic": "Treasure"},
         {"id": "magic-club-plus-1", "name": "Magic Club (Light weapon, +1 Attack)", "category": "light_weapon", "magic": True, "page": 158, "topic": "Magic Treasure"},
         {"id": "magic-dagger-plus-1", "name": "Magic Dagger (Light weapon, +1 Attack)", "category": "light_weapon", "magic": True, "page": 158, "topic": "Magic Treasure"},
         {"id": "magic-mace-plus-1", "name": "Magic Mace (Hand weapon, +1 Attack)", "category": "hand_weapon", "magic": True, "page": 158, "topic": "Magic Treasure"},

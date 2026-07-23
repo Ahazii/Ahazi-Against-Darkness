@@ -1891,7 +1891,7 @@ class RandomDungeonEngine:
                     session,
                     session.party,
                     star_object_choice=star_object_choice,
-                    defer_theft=True,
+                    defer_theft=False,
                 )
             )
         elif action == "assign_star_object":

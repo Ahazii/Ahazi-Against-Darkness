@@ -37,6 +37,7 @@ from app.schemas import (
     ExitState,
     MapState,
     PartyMemberState,
+    PendingGremlinEventState,
     SessionState,
     TileState,
 )
@@ -232,6 +233,30 @@ def test_keeping_star_object_uses_normal_gremlin_protection() -> None:
     assert "Magic Sword" in carrier.inventory
     assert any("protected" in line.lower() for line in applied)
     assert any("normal Gremlin event continues" in line for line in log)
+
+
+def test_keep_star_object_action_immediately_resolves_ordinary_theft() -> None:
+    carrier = _hero("carrier", "Carrier", inventory=["Magic Sword"])
+    session = _session([carrier])
+    give_star_object(session, carrier)
+    session.pending_gremlin_event = PendingGremlinEventState(
+        tile_id="room",
+        theft_count=1,
+        major_tally_counted=True,
+    )
+    session.tag_star_object_gremlin_choice_pending = True
+
+    _engine().advance(
+        session,
+        "resolve_star_object_gremlins",
+        star_object_choice="keep",
+    )
+
+    assert session.pending_gremlin_event is None
+    assert session.tag_star_object_gremlin_choice_pending is False
+    assert "Magic Sword" not in carrier.inventory
+    assert star_object_carrier(session) is carrier
+    assert any("steal up to 1 item" in line for line in session.log)
 
 
 def test_star_object_campaign_effect_is_scoped_to_assigned_campaign(tmp_path) -> None:

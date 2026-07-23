@@ -4320,13 +4320,13 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "step": "Event and tally",
             "rule": "Invisible Gremlins are an event with no stats and cannot be the Final Boss; the encounter still counts toward the Major Foe tally.",
-            "automation": "The pending event records its own exactly-once tally marker and never invokes Final Boss replacement.",
+            "automation": "The pending event records its own exactly-once tally marker, never invokes Final Boss replacement, and the Adventure View header keeps the current tally visible.",
             "source": "EE pp.105, 169, Major Foes / Invisible Gremlins",
         },
         {
             "step": "Theft roll and order",
             "rule": "Roll d6+3 items, then take magic items, scrolls, potions, weapons, gems, and 10gp units in that order.",
-            "automation": "The rolled count is persisted before the player chooses Disbelief, an eligible temple tag, or ordinary theft resolution.",
+            "automation": "The rolled count persists while the player chooses Disbelief or an eligible voluntary TAG item. After a cursed-object carrier chooses Keep, ordinary theft resolves immediately without a second confirmation.",
             "source": "EE p.169, Invisible Gremlins",
         },
         {
@@ -4344,7 +4344,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "step": "Disbelief",
             "rule": "Disbelief reveals d6+1 L3 Minions with -1 Morale, one attack, and one Treasure. They steal only after a failed Defense roll.",
-            "automation": "Casting Disbelief consumes the spell, starts combat, makes failed Defense steal instead of lose Life, and awards one encounter Treasure roll.",
+            "automation": "Casting Disbelief from a prepared spell or carried Scroll of Disbelief consumes that source, starts combat, makes failed Defense steal instead of lose Life, and awards one encounter Treasure roll.",
             "source": "EE p.74, Disbelief",
         },
         {

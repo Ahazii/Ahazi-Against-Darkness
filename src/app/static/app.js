@@ -406,6 +406,7 @@ const showSetupBtn = document.getElementById("show-setup");
 const sessionMode = document.getElementById("session-mode");
 const sessionAdventureTitle = document.getElementById("session-adventure-title");
 const sessionSupplements = document.getElementById("session-supplements");
+const sessionMajorFoes = document.getElementById("session-major-foes");
 const fdMapMode = document.getElementById("fd-map-mode");
 const fdRiverType = document.getElementById("fd-river-type");
 const fdBoatStatus = document.getElementById("fd-boat-status");
@@ -2968,6 +2969,15 @@ function renderSessionSupplementChip(session) {
   }
   sessionSupplements.textContent = titles.length === 1 ? "Supplements: 1" : `Supplements: ${titles.length}`;
   sessionSupplements.title = `Locked supplements for this session:\n${sessionSupplementTitleList(session)}\nSettings changes affect future sessions only.`;
+}
+
+function renderSessionMajorFoeChip(session) {
+  if (!sessionMajorFoes) return;
+  const count = Math.max(0, Number(session?.major_foes_encountered) || 0);
+  sessionMajorFoes.textContent = `Major Foes: ${count}`;
+  sessionMajorFoes.title =
+    `Major Foes encountered this adventure: ${count}. ` +
+    "The Final Boss check adds this tally to d6 and succeeds on 6 or more. Invisible Gremlins count once but cannot be the Final Boss (EE pp.105, 169).";
 }
 
 function sessionSupplementDebugLine(session) {
@@ -9356,6 +9366,7 @@ function setButtonTooltip(button, text) {
 
 const ITEM_TOOLTIP_RULES = [
   [/bofto.*star-shaped cursed object|star-shaped object/i, "Bofto's Star-Shaped Cursed Object (TAG pp.30-31): it cannot be sold, dropped, or voluntarily transferred. No magic or Blessing removes it. The curse ends only when its carrier explicitly lets Invisible Gremlins take it."],
+  [/scroll of disbelief/i, "Scroll of Disbelief (EE p.74): burn it when Invisible Gremlins are pending to reveal d6+1 L3 Minions with Morale -1, one attack, and one group Treasure roll. Their failed Defense hits steal instead of causing Life loss."],
   [/shoes of fast walk/i, "Shoes of Fast Walk: 200 gp per pair from the leprechaun bargain. The wearer adds +Tier to Defense when withdrawing or fleeing melee."],
   [/potion of healing/i, "Potion of Healing: drink when allowed to recover Life. Barbarians cannot use magic potions; transfer it to an eligible ally."],
   [/food ration/i, "Food ration: eaten to reset a hero's hunger timer. Track carried rations against food limits where those rules are active."],
@@ -18934,6 +18945,7 @@ function renderSession() {
   applyCampScreenLayout(session);
   sessionMode.textContent = session.camped_outside ? "camp" : session.mode;
   renderSessionSupplementChip(session);
+  renderSessionMajorFoeChip(session);
   if (sessionAdventureTitle) {
     const title = sessionAdventureTitleText(session);
     sessionAdventureTitle.textContent = title ? `- ${title}` : "";
@@ -19933,6 +19945,61 @@ function pendingTemporaryWeaponLossChoice(session, tile) {
   return null;
 }
 
+function gremlinPendingChoiceActions(session, { includeResolve = true } = {}) {
+  const pending = session.pending_gremlin_event;
+  if (!pending) return [];
+  const actions = [];
+  const disbeliefCasters = (session.party || []).filter(
+    (member) =>
+      member.current_life > 0 &&
+      (member.spells || []).some((spell) => String(spell).trim().toLowerCase() === "disbelief")
+  );
+  const disbeliefScrollReaders = (session.party || []).filter(
+    (member) =>
+      member.current_life > 0 &&
+      String(member.class_id || "").toLowerCase() !== "barbarian" &&
+      (member.inventory || []).some((item) => /^scroll\s+of\s+disbelief$/i.test(String(item).trim()))
+  );
+  if (disbeliefCasters.length || disbeliefScrollReaders.length) {
+    actions.push({
+      label: "Cast Disbelief",
+      kind: "gremlin-disbelief",
+      tooltip: "EE p.74: choose a hero who knows Disbelief or carries its scroll. The event becomes d6+1 L3 Minions with -1 Morale, one attack, and one Treasure roll; failed Defense lets them steal instead of dealing Life damage.",
+    });
+  }
+  for (const member of session.party || []) {
+    if (member.current_life <= 0) continue;
+    for (const itemName of member.inventory || []) {
+      if (!/^tag (resurrection|blessing) tag$/i.test(itemName)) continue;
+      actions.push({
+        label: `Offer ${itemName}`,
+        kind: "advance",
+        advanceAction: "offer_gremlin_temple_tag",
+        payload: { character_id: member.character_id, item_name: itemName },
+        tooltip: `TAG p.11: ${itemName} is not stolen unless you voluntarily let the Invisible Gremlins take it. Offering it uses one of the ${pending.theft_count} remaining theft slots.`,
+      });
+    }
+    for (const itemName of temporarilyEnchantedInventoryItems(member)) {
+      actions.push({
+        label: `Let Gremlins take ${itemName}`,
+        kind: "advance",
+        advanceAction: "offer_gremlin_temporary_weapon",
+        payload: { character_id: member.character_id, item_name: itemName },
+        tooltip: `TAG p.65, Temporary Weapon Enchantment: you decide whether this temporarily magical weapon is stolen. Offering it uses one of the ${pending.theft_count} remaining theft slots; otherwise ordinary resolution keeps it.`,
+      });
+    }
+  }
+  if (includeResolve) {
+    actions.push({
+      label: `Resolve ${pending.theft_count} theft${pending.theft_count === 1 ? "" : "s"}`,
+      kind: "advance",
+      advanceAction: "resolve_invisible_gremlin_theft",
+      tooltip: "EE p.169: steal in order from magic items, scrolls, potions, weapons, gems, then 10gp at a time. Repellant protects only its selected item.",
+    });
+  }
+  return actions;
+}
+
 function currentObjectiveForSession(session) {
   if (session.mode === "complete") {
     return {
@@ -19958,12 +20025,14 @@ function currentObjectiveForSession(session) {
     };
   }
   if (session.tag_star_object_gremlin_choice_pending) {
+    const pendingActions = gremlinPendingChoiceActions(session, { includeResolve: false });
     return {
       title: "Current objective: choose what the Invisible Gremlins take",
       body:
-        "The cursed carrier has met Invisible Gremlins. Letting them take Bofto's star-shaped object bypasses Gremlin protection and permanently breaks the curse; keeping it resolves the encounter under the ordinary protection and theft rules.",
+        "The cursed carrier has met Invisible Gremlins. Cast Disbelief or make any voluntary TAG offer before deciding. Letting them take Bofto's star-shaped object bypasses Gremlin protection and permanently breaks the curse; keeping it immediately applies the ordinary protection and theft rules.",
       tone: "warn",
       actions: [
+        ...pendingActions,
         {
           label: "Let them take the cursed object",
           kind: "advance",
@@ -19972,58 +20041,18 @@ function currentObjectiveForSession(session) {
           tooltip: "TAG pp.30-31: explicitly surrender the cursed object to the Invisible Gremlins. This bypasses all Gremlin protection and is the only way to break the curse.",
         },
         {
-          label: "Keep the cursed object",
+          label: "Keep it and resolve theft",
           kind: "advance",
           advanceAction: "resolve_star_object_gremlins",
           payload: { star_object_choice: "keep" },
-          tooltip: "Keep Bofto's cursed object. Resolve Invisible Gremlins normally, including any active protection; the object and its curse remain.",
+          tooltip: "Keep Bofto's cursed object. The app immediately applies Invisible Gremlins in printed priority order, including item-specific Repellant protection; the object and its curse remain.",
         },
       ],
     };
   }
   if (session.pending_gremlin_event) {
     const pending = session.pending_gremlin_event;
-    const actions = [];
-    const disbeliefCasters = (session.party || []).filter(
-      (member) =>
-        member.current_life > 0 &&
-        (member.spells || []).some((spell) => String(spell).trim().toLowerCase() === "disbelief")
-    );
-    if (disbeliefCasters.length) {
-      actions.push({
-        label: "Cast Disbelief",
-        kind: "gremlin-disbelief",
-        tooltip: "EE p.74: choose a hero with Disbelief. The event becomes d6+1 L3 Minions with -1 Morale, one attack, and one Treasure roll; failed Defense lets them steal instead of dealing Life damage.",
-      });
-    }
-    for (const member of session.party || []) {
-      if (member.current_life <= 0) continue;
-      for (const itemName of member.inventory || []) {
-        if (!/^tag (resurrection|blessing) tag$/i.test(itemName)) continue;
-        actions.push({
-          label: `Offer ${itemName}`,
-          kind: "advance",
-          advanceAction: "offer_gremlin_temple_tag",
-          payload: { character_id: member.character_id, item_name: itemName },
-          tooltip: `TAG p.11: ${itemName} is not stolen unless you voluntarily let the Invisible Gremlins take it. Offering it uses one of the ${pending.theft_count} remaining theft slots.`,
-        });
-      }
-      for (const itemName of temporarilyEnchantedInventoryItems(member)) {
-        actions.push({
-          label: `Let Gremlins take ${itemName}`,
-          kind: "advance",
-          advanceAction: "offer_gremlin_temporary_weapon",
-          payload: { character_id: member.character_id, item_name: itemName },
-          tooltip: `TAG p.65, Temporary Weapon Enchantment: you decide whether this temporarily magical weapon is stolen. Offering it uses one of the ${pending.theft_count} remaining theft slots; otherwise ordinary resolution keeps it.`,
-        });
-      }
-    }
-    actions.push({
-      label: `Resolve ${pending.theft_count} theft${pending.theft_count === 1 ? "" : "s"}`,
-      kind: "advance",
-      advanceAction: "resolve_invisible_gremlin_theft",
-      tooltip: "EE p.169: steal in order from magic items, scrolls, potions, weapons, gems, then 10gp at a time. Repellant protects only its selected item.",
-    });
+    const actions = gremlinPendingChoiceActions(session);
     return {
       title: "Current objective: resolve Invisible Gremlins",
       body:
@@ -20423,24 +20452,42 @@ function appendCurrentObjectiveButton(parent, action) {
 
 function appendGremlinDisbeliefAction(parent, action) {
   const session = state.session;
-  const casters = (session?.party || []).filter(
-    (member) =>
-      member.current_life > 0 &&
-      (member.spells || []).some((spell) => String(spell).trim().toLowerCase() === "disbelief")
-  );
-  if (!casters.length) return;
+  const sources = [];
+  for (const member of session?.party || []) {
+    if (member.current_life <= 0) continue;
+    if ((member.spells || []).some((spell) => String(spell).trim().toLowerCase() === "disbelief")) {
+      sources.push({ member, mode: "spell" });
+    }
+    if (
+      String(member.class_id || "").toLowerCase() !== "barbarian" &&
+      (member.inventory || []).some((item) => /^scroll\s+of\s+disbelief$/i.test(String(item).trim()))
+    ) {
+      sources.push({ member, mode: "scroll" });
+    }
+  }
+  if (!sources.length) return;
   const row = node("div", "combat-target-row");
   const select = document.createElement("select");
   select.setAttribute("aria-label", "Disbelief caster");
-  for (const caster of casters) {
-    select.appendChild(new Option(caster.name, caster.character_id));
+  for (const source of sources) {
+    const option = new Option(
+      `${source.member.name} (${source.mode})`,
+      `${source.member.character_id}:${source.mode}`
+    );
+    select.appendChild(option);
   }
   const button = node("button", "primary", action.label || "Cast Disbelief");
   button.type = "button";
   setButtonTooltip(button, action.tooltip || "Cast Disbelief on the Invisible Gremlins event.");
-  button.addEventListener("click", () =>
-    advance("cast_spell", { character_id: select.value, spell_name: "Disbelief" })
-  );
+  button.addEventListener("click", () => {
+    const separator = select.value.lastIndexOf(":");
+    const characterId = select.value.slice(0, separator);
+    const mode = select.value.slice(separator + 1);
+    return advance(mode === "scroll" ? "burn_scroll" : "cast_spell", {
+      character_id: characterId,
+      spell_name: "Disbelief",
+    });
+  });
   row.append(select, button);
   parent.appendChild(row);
 }
