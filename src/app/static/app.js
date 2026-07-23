@@ -10733,15 +10733,6 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
     hasActions = true;
   }
 
-  if (inExploration && session.camped_outside && (member.inventory || []).some((item) => /gremlin repellant/i.test(item))) {
-    const repBtn = node("button", "secondary", "Apply gremlin repellant");
-    repBtn.type = "button";
-    setButtonTooltip(repBtn, "EE p.87: before the adventure, consume one dose and select one item to protect from Invisible Gremlins until the adventure ends.");
-    repBtn.addEventListener("click", () => openGremlinRepellantPicker(session, member));
-    actions.appendChild(repBtn);
-    hasActions = true;
-  }
-
   if (hasActions) {
     item.appendChild(node("div", "combat-section-label", "Actions"));
     item.appendChild(actions);
@@ -31424,6 +31415,26 @@ function buildMemberInventoryPanel(member, session = null) {
       label.textContent = `${itemName} (transfer to ally)`;
     }
     entry.appendChild(label);
+    if (/gremlin repellant/i.test(itemName)) {
+      const atCamp = Boolean(session && session.mode === "exploration" && session.camped_outside);
+      const livingOwner = member.current_life > 0;
+      const hasTarget = Boolean(session && gremlinRepellantTargetOptions(session).length);
+      const applyBtn = node("button", "secondary", "Apply");
+      applyBtn.type = "button";
+      applyBtn.disabled = !atCamp || !livingOwner || !hasTarget;
+      const applyHint = !session
+        ? "Open this character in Party Sheets at camp to apply Gremlin Repellant."
+        : !livingOwner
+          ? "Only a living hero can apply Gremlin Repellant."
+          : !atCamp
+            ? "EE p.87: apply Gremlin Repellant at camp before beginning the adventure."
+            : !hasTarget
+              ? "No eligible unprotected item is available. Gremlin Repellant cannot protect itself or Bofto's cursed star-shaped object."
+              : "EE p.87: consume one dose and choose one loose item or specific Bag of Carrying to protect from Invisible Gremlins until the adventure ends.";
+      setButtonTooltip(applyBtn, applyHint);
+      applyBtn.addEventListener("click", () => openGremlinRepellantPicker(session, member));
+      entry.appendChild(applyBtn);
+    }
     if (bag && canRepack) {
       const eligible = items.filter(
         (candidate) =>

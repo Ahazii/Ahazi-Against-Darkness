@@ -1,9 +1,10 @@
 # Current Status
 
-Last updated: 2026-07-21
+Last updated: 2026-07-23
 
 ## Summary
 
+- **Contextual Gremlin Repellant action and completed Bag gate (v0.39.42):** Live v0.39.41 testing passed every Developer Grant and Two Bags of Carrying check, so that section is removed from the active plan. The remaining Gremlin test was blocked because Repellant application lived in the generic character Actions area. Party Sheets now place **Apply** directly beside every carried Gremlin Repellant. At camp it opens the existing eligible loose-item/specific-Bag picker; outside camp, for a dead carrier, or without an eligible target it remains visible but disabled with a detailed EE p.87 explanation. The duplicate generic action is removed. Rules Reference, Tables List wording, UI hover text, release docs, and focused frontend coverage were updated.
 - **Bag packing request fix (v0.39.41):** Live v0.39.40 testing reached the Party Sheets Bag picker but packing an item returned to the sheet unchanged. The backend container action used one discarded result name and then referenced three undefined transfer-only variables, raising before the changed session could be saved. The stray transfer block is removed and the ordinary container result is now logged and persisted. API coverage grants two Bags, targets the second stable container ID, and proves the first remains empty while the selected loose item enters the second.
 - **Stable developer item selection (v0.39.40):** Live v0.39.39 testing exposed that choosing the second of multiple filtered item options rebuilt the dropdown and reset it to the first option. The item selector now updates hover/detail state without rebuilding itself; character, category, and search changes still rebuild the list and preserve the current item whenever it remains eligible.
 - **Active-session supplement grants (v0.39.39):** Live v0.39.38 testing found that the Developer Item Grant catalog used only saved default supplements, so a Bag of Carrying was absent even though the current unfinished session had TAG enabled. Catalog display and POST validation now combine saved defaults with each character's unfinished-session supplement snapshot. Items remain unavailable to roster characters that have neither the corresponding default nor an active session with that supplement. The regression test reproduces the live core-only-default plus TAG-session state.
@@ -74,7 +75,7 @@ Last updated: 2026-07-21
 ## Next Manual Playtest
 
 
-The active player checklist is [PLAYTEST_PLAN.md](PLAYTEST_PLAN.md). Campaign and Rumor Continuity is passed and removed. Remaining manual coverage is limited to `v0.39.41`: use the developer grant tool to create two distinct Bag contents across save/resume/transfer, then one persisted ordinary Invisible Gremlins theft. A Disbelief reveal is conditional on a disposable caster. Earlier Bofto, Star-Slayer, EE, Abyss, Forsaken Depths, Citadel, treasure, spider, troll, goblin, Soulbinding, and Warlock checks already have live evidence and should not be repeated. Campaign isolation, curse recovery, exact Gremlin edge cases, and all-rumors-exhausted behavior have automated coverage. Once the short v0.39.41 checklist passes, stop adventure regression testing and resume modularisation in small tested slices.
+The active player checklist is [PLAYTEST_PLAN.md](PLAYTEST_PLAN.md). Campaign/Rumor Continuity and every Developer Grant/Two Bags of Carrying check are passed and removed. Remaining manual coverage is limited to `v0.39.42`: apply Repellant from its inventory row and complete one persisted ordinary Invisible Gremlins theft. A Disbelief reveal is conditional on a disposable caster. Earlier Bofto, Star-Slayer, EE, Abyss, Forsaken Depths, Citadel, treasure, spider, troll, goblin, Soulbinding, Warlock, and Bag checks already have live evidence and should not be repeated. Once the ordinary Gremlin workflow passes, stop adventure regression testing and resume modularisation in small tested slices.
 
 ### Historical Manual Test Records
 

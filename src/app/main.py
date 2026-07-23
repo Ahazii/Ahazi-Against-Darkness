@@ -4332,7 +4332,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "step": "Protection",
             "rule": "A Gremlin Repellant dose is applied before the adventure to one named item and expires at adventure end. Miners' Ointment instead ignores the whole event.",
-            "automation": "Camp exposes an item/Bag picker; protected items are skipped without being consumed during the event.",
+            "automation": "Each carried Repellant has a contextual Apply button in Party Sheets. At camp it opens the item/Bag picker; outside camp it remains disabled with the p.87 timing explanation. Protected items are skipped without being consumed during the event.",
             "source": "EE pp.87, 160, Gremlin Repellant / Miners' Ointment",
         },
         {

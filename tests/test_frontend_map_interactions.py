@@ -2939,6 +2939,18 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert ".troupe-member-browser" in STYLES_CSS
 
 
+def test_gremlin_repellant_action_lives_on_the_inventory_item_row() -> None:
+    inventory_panel = _function_body("buildMemberInventoryPanel", APP_JS)
+    exploration_actions = _function_body("appendMemberExplorationActions", APP_JS)
+
+    assert 'if (/gremlin repellant/i.test(itemName))' in inventory_panel
+    assert 'node("button", "secondary", "Apply")' in inventory_panel
+    assert 'applyBtn.disabled = !atCamp || !livingOwner || !hasTarget' in inventory_panel
+    assert "EE p.87: apply Gremlin Repellant at camp before beginning the adventure." in inventory_panel
+    assert "openGremlinRepellantPicker(session, member)" in inventory_panel
+    assert "Apply gremlin repellant" not in exploration_actions
+
+
 def test_modern_home_routes_and_pages_are_standalone() -> None:
     main_py = Path("src/app/main.py").read_text(encoding="utf-8")
     assert '@app.get("/modern"' in main_py
