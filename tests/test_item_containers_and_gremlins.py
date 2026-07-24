@@ -572,3 +572,44 @@ def test_casting_disbelief_during_pending_event_starts_revealed_combat() -> None
     assert 2 <= len(session.map_state.tiles[0].enemies) <= 7
     assert "Disbelief" in session.expended_spells["illusionist"]
     assert any("reveals" in line and "Invisible Gremlin" in line for line in session.log)
+
+
+def test_disbelief_scroll_bypasses_star_object_choice_guard_and_starts_combat() -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
+    reader = _member(
+        "paladin",
+        "Paladin",
+        class_id="paladin",
+        class_name="Paladin",
+        inventory=["Scroll of Disbelief"],
+    )
+    session = _session([reader])
+    session.map_state.tiles = [
+        TileState(
+            id="room",
+            x=0,
+            y=0,
+            tile_key="11",
+            tile_type="room",
+            title="Room",
+            description="Room",
+        )
+    ]
+    session.pending_gremlin_event = PendingGremlinEventState(tile_id="room", theft_count=7)
+    session.tag_star_object_gremlin_choice_pending = True
+
+    engine.advance(
+        session,
+        "burn_scroll",
+        character_id="paladin",
+        spell_name="Disbelief",
+    )
+
+    assert session.mode == "combat"
+    assert session.pending_gremlin_event is None
+    assert session.tag_star_object_gremlin_choice_pending is False
+    assert "Scroll of Disbelief" not in reader.inventory
+    assert 2 <= len(session.map_state.tiles[0].enemies) <= 7
+    assert not any("Choose whether to let" in line for line in session.log)
+    assert any("reveals" in line and "Invisible Gremlin" in line for line in session.log)

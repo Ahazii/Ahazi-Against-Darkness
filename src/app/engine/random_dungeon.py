@@ -1055,7 +1055,15 @@ class RandomDungeonEngine:
                 f"treat it as eligible to be {pending_temporary_weapon.loss_kind} (TAG p.65)."
             )
             return self._touch(session)
-        if action != "resolve_star_object_gremlins" and session.tag_star_object_gremlin_choice_pending:
+        disbelief_action = (
+            action in {"cast_spell", "burn_scroll", "surgeon_burn_scroll"}
+            and str(spell_name or "").strip().lower() == "disbelief"
+        )
+        if (
+            action != "resolve_star_object_gremlins"
+            and not disbelief_action
+            and session.tag_star_object_gremlin_choice_pending
+        ):
             session.log.append(
                 "Choose whether to let the Invisible Gremlins take the cursed star-shaped object."
             )
@@ -1066,7 +1074,6 @@ class RandomDungeonEngine:
             "offer_gremlin_temple_tag",
             "offer_gremlin_temporary_weapon",
         }
-        disbelief_action = action == "cast_spell" and str(spell_name or "").strip().lower() == "disbelief"
         if session.pending_gremlin_event is not None and action not in gremlin_actions and not disbelief_action:
             session.log.append(
                 "Resolve the Invisible Gremlins event: cast Disbelief, volunteer an eligible temple tag "
