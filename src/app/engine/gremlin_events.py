@@ -572,7 +572,13 @@ def reveal_invisible_gremlins(
             life=1,
             max_life=1,
             attacks=1,
-            tags=["gremlin", "revealed_by_disbelief", "damage_per_hit:0", "morale_modifier:-1"],
+            tags=[
+                "gremlin",
+                "revealed_by_disbelief",
+                "minor_group:revealed_invisible_gremlins",
+                "damage_per_hit:0",
+                "morale_modifier:-1",
+            ],
             on_hit_effects=[{"type": "steal_item", "source": "Invisible Gremlins"}],
         )
         for _ in range(count)

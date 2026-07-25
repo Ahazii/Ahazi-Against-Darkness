@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.engine.combat import CombatContext, _foe_hit_damage
+from app.engine.combat import CombatContext, _apply_pc_hit, _foe_hit_damage
 from app.engine.gremlin_events import (
     apply_gremlin_repellant,
     begin_invisible_gremlins,
@@ -340,10 +340,34 @@ def test_disbelief_reveals_printed_gremlin_group_profile() -> None:
     assert len(enemies) == 5
     assert session.pending_gremlin_event is None
     assert all(enemy.level == 3 and enemy.life == 1 and enemy.attacks == 1 for enemy in enemies)
+    assert all("minor_group:revealed_invisible_gremlins" in enemy.tags for enemy in enemies)
     assert all("damage_per_hit:0" in enemy.tags for enemy in enemies)
     assert all("morale_modifier:-1" in enemy.tags for enemy in enemies)
     assert all(enemy.on_hit_effects == [{"type": "steal_item", "source": "Invisible Gremlins"}] for enemy in enemies)
     assert any("one Treasure roll" in line for line in log)
+
+
+def test_revealed_gremlin_minor_damage_slays_remaining_group_members() -> None:
+    hero = _member("hero", "Sir Benedict")
+    session = _session([hero])
+    session.pending_gremlin_event = PendingGremlinEventState(tile_id="room", theft_count=7)
+    enemies, _log = reveal_invisible_gremlins(session, roll_fn=lambda: 1)
+    combat_log: list[str] = []
+
+    remaining = _apply_pc_hit(
+        hero,
+        enemies[0],
+        final_total=11,
+        foe_level=3,
+        living_enemies=enemies,
+        log=combat_log,
+        subdual=False,
+        attack_label="Sword",
+    )
+
+    assert remaining == []
+    assert all(enemy.life == 0 for enemy in enemies)
+    assert combat_log == ["Sir Benedict slays 2 Revealed Invisible Gremlins with Sword."]
 
 
 def test_pending_gremlin_event_counts_once_toward_major_foes() -> None:

@@ -4343,9 +4343,9 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "step": "Disbelief",
-            "rule": "Disbelief reveals d6+1 L3 Minions with -1 Morale, one attack, and one Treasure. They steal only after a failed Defense roll.",
-            "automation": "Casting Disbelief from a prepared spell or carried Scroll of Disbelief consumes that source, starts combat, makes failed Defense steal instead of lose Life, and awards one encounter Treasure roll.",
-            "source": "EE p.74, Disbelief",
+            "rule": "Disbelief reveals d6+1 L3 Minions with -1 Morale, one attack, and one Treasure. They steal only after a failed Defense roll. A successful attack slays attack total divided by L, rounded down, from the group.",
+            "automation": "Casting Disbelief from a prepared spell or carried Scroll of Disbelief consumes that source, starts combat, applies Minor Foe damage across the remaining revealed group, makes failed Defense steal instead of lose Life, and awards one encounter Treasure roll.",
+            "source": "EE pp.74, 94, Disbelief / Damage and Foes",
         },
         {
             "step": "Thank-you Clue",

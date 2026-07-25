@@ -1186,9 +1186,26 @@ def _apply_pc_hit(
                 context.on_assassin_strike_used()
         if session is not None:
             kills *= dragonslayer_damage_multiplier(pc, session, target)
+        minor_group_tag = next(
+            (tag for tag in target.tags if tag.startswith("minor_group:")),
+            None,
+        )
+        if minor_group_tag:
+            group_members = [target] + [
+                enemy
+                for enemy in living_enemies
+                if enemy.life > 0
+                and enemy.id != target.id
+                and enemy.category == target.category
+                and minor_group_tag in enemy.tags
+            ]
+            kills = min(kills, len(group_members))
+            for enemy in group_members[:kills]:
+                enemy.life = 0
         if kills > 0 and target.category in {"vermin", "minions"}:
             context.minion_kill_character_ids.add(pc.character_id)
-        target.life -= kills
+        if not minor_group_tag:
+            target.life -= kills
         log.append(f"{pc.name} slays {kills} {target.name} with {attack_label}.")
         if target.life <= 0:
             if context.lookup_monster_template:
