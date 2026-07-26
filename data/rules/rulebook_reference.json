@@ -3000,6 +3000,23 @@
       "implementation_status": "implemented"
     },
     {
+      "id": "tag_medusa_scene10_procedure",
+      "title": "TAG Rumor 2: Hunter's Cabin Approach",
+      "category": "campaign",
+      "source_page": 28,
+      "keywords": [
+        "TAG",
+        "Medusa",
+        "Scene 10",
+        "Stealth",
+        "Streetwise",
+        "assassins"
+      ],
+      "summary": "Typed Scene 10 group Stealth, assassin parley/combat, initiative, and treasure procedure.",
+      "body": "TAG pp.6-8 and p.28: as the party approaches the hunter's cabin, the app makes one exploding L6 group Stealth Save using the living character with the worst modifier. Rogues and assassins add Level; halflings add half Level; rangers and wilderness scouts add half Level outdoors; elves add +1; a carried Shield and Heavy Armor each impose -1. A natural 1 fails. On failure, the app rolls and persists d3+2 HCL+2 dagger minions. The player then chooses either a character to attempt the L5 Streetwise Save or immediate combat. Successful Streetwise returns the party to town; failed Streetwise starts combat with the agents acting first; choosing combat starts with the party acting first. The agents' total 4d6 gp is staged for claim after victory. The rolled result and pending choice survive save/resume.",
+      "implementation_status": "implemented"
+    },
+    {
       "id": "tag_generated_prompt_playtest_table",
       "title": "Adventures Guild Generated Prompt Playtest Table",
       "category": "campaign",

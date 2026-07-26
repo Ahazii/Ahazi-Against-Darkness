@@ -2688,6 +2688,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "bofto_scene_choice",
         "tag_ambush_chance",
         "medusa_assassin_ambush",
+        "medusa_group_stealth",
+        "medusa_assassin_parley",
+        "medusa_assassin_fight",
         "medusa_stealth_approach",
         "medusa_reaction",
         "leprechaun_shoes",
@@ -2740,6 +2743,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "mutant fish hypnosis" in INDEX_HTML
     assert "white gargoyle count" in INDEX_HTML
     assert "medusa_assassin_ambush" in APP_JS
+    assert "appendMedusaScene10GuidedAction" in APP_JS
+    assert "Roll group Stealth Save" in APP_JS
+    assert "Try to convince them" in APP_JS
+    assert "Fight the assassins" in APP_JS
     assert "gargoyle_skin" in APP_JS
     assert "star-shaped object curse" in APP_JS.lower()
     assert "Following Treasure Map table" in INDEX_HTML

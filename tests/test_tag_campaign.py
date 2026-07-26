@@ -57,9 +57,11 @@ from app.engine.dice import AdvancementRollResult
 from app.engine.tag_compat import upgrade_tag_manifest
 from app.engine.equipment_shop import buy_equipment
 from app.engine.tag_scene_actions import (
+    tag_group_stealth_member,
     tag_scene_action_definition,
     tag_scene_action_modifier,
     tag_scene_action_succeeded,
+    tag_stealth_modifier,
 )
 from app.rules.repository import RulesRepository
 from app.schemas import Character, SessionState, TagXpMarkerState
@@ -86,6 +88,24 @@ def _character(**overrides) -> Character:
 
 def test_tag_settlement_size_table() -> None:
     assert [settlement_size_from_roll(roll) for roll in range(1, 7)] == [-2, -1, 0, 1, 2, 3]
+
+
+def test_tag_group_stealth_uses_worst_modifier_with_equipment_penalties() -> None:
+    rogue = _character(level=3, inventory=[])
+    warrior = _character(
+        id="hero-2",
+        name="Shielded warrior",
+        class_id="warrior",
+        class_name="Warrior",
+        level=4,
+        inventory=["Shield", "Heavy Armor"],
+    )
+
+    assert tag_stealth_modifier(rogue, outdoors=True) == 3
+    assert tag_stealth_modifier(warrior, outdoors=True) == -2
+    worst, modifier = tag_group_stealth_member([rogue, warrior], outdoors=True)
+    assert worst.id == "hero-2"
+    assert modifier == -2
 
 
 def test_bag_purchase_creates_multiple_containers_and_rejects_barbarian() -> None:
@@ -612,16 +632,25 @@ def test_tag_rumor_manifest_carries_pdf_rule_profile() -> None:
     reference = manifest["source"]["parameters"]["tag_reference"]
     assert manifest["title"] == "The Adventures Guild Rumor 2: Medusa in the Hunter's Cabin"
     assert reference["scene"] == "Scene 10 leading to Scene 1"
-    assert reference["pdf_pages"] == "TAG pp.22, 25-26"
+    assert reference["pdf_pages"] == "TAG pp.6-8, 22, 25-26, 28"
     assert reference["final_foe_proxy"] == "Medusa"
     assert "Pendant worth 260 gp" in reference["rewards"]
     assert reference["finale_mode"] == "choice"
     assert reference["final_foes"] == [{"name": "Medusa", "count": 1}]
     assert "room_prompts" in reference
-    assert reference["room_prompts"]["tag-complication"]["actions"][0]["action_value"] == "parley_success"
+    assert reference["room_prompts"]["tag-complication"]["actions"] == [
+        {
+            "label": "Approach the cabin",
+            "tooltip": "Roll the printed group Stealth Save vs L6 once using the living party member with the worst TAG Stealth modifier. The app handles any assassin ambush automatically.",
+            "action_type": "branch",
+            "action_value": "medusa_group_stealth",
+            "reference": "TAG p.28, Scene 10 cabin approach",
+            "amount": 0,
+        }
+    ]
     assert not any(action["action_value"] == "claim_reward" for action in reference["room_prompts"]["tag-final-scene"]["actions"])
     assert any(
-        action["action_value"] == "medusa_assassin_ambush"
+        action["action_value"] == "medusa_group_stealth"
         for action in reference["room_prompts"]["tag-complication"]["actions"]
     )
     assert any(
@@ -2042,6 +2071,18 @@ def test_tag_rumor_branch_actions_roll_scene_procedures(monkeypatch) -> None:
     assert assassins.roll == 2
     assert assassins.total == 4
     assert "4 assassin agents" in assassins.result_text
+
+    monkeypatch.setattr(tag_campaign, "roll_exploding_d6", lambda: (3, [3]))
+    group_stealth = resolve_tag_branch_action(
+        campaign,
+        None,
+        branch_action="medusa_group_stealth",
+        reference="Scene 10 mod=-2",
+    )
+    assert group_stealth.roll == 3
+    assert group_stealth.modifier == -2
+    assert group_stealth.total == 1
+    assert "d3=2+2=4" in group_stealth.result_text
 
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 5)
     stealth = resolve_tag_branch_action(campaign, hero, branch_action="medusa_stealth_approach", reference="mod=1")

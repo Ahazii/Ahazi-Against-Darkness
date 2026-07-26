@@ -9168,6 +9168,9 @@ const TAG_BRANCH_ACTION_HINTS = {
   bofto_scene_choice: "Reference: steal object, talk to family, or leave. Amount ignored. Logs which Scene 9 path you chose.",
   tag_ambush_chance: "Reference: table to roll on if triggered. Amount: target-in-6 chance, default 2.",
   medusa_assassin_ambush: "Reference optional. Amount: 1 if any party L6 Stealth Save failed, 0 if all passed.",
+  medusa_group_stealth: "Run from Scene 10. The app derives the worst live-party Stealth modifier; Reference and Amount are ignored for the roll.",
+  medusa_assassin_parley: "Choose the Streetwise character. Available only after Scene 10's group Stealth Save produces assassin agents.",
+  medusa_assassin_fight: "Available only after Scene 10's group Stealth Save produces assassin agents. The stored group fights and the party acts first.",
   medusa_stealth_approach: "Reference: use mod=1 or mod=-1 for Stealth modifiers. Amount: positive modifier if any.",
   medusa_reaction: "Reference optional. Amount ignored. Rolls Xasartha's reaction table.",
   leprechaun_shoes: "Reference optional. Amount: number of shoe pairs; selected character pays 200 gp each.",
@@ -11688,6 +11691,9 @@ const DIRECT_TAG_BRANCH_ACTIONS = new Set([
   "tag_ambush_chance",
   "temple_dungeon_handoff",
   "medusa_assassin_ambush",
+  "medusa_group_stealth",
+  "medusa_assassin_parley",
+  "medusa_assassin_fight",
   "medusa_stealth_approach",
   "medusa_reaction",
   "gargoyle_count",
@@ -11847,6 +11853,20 @@ function boftoTheftSaveModifier(member) {
   if (text.includes("swashbuckler") || text.includes("assassin")) return Math.floor(level / 2);
   if (text.includes("elf")) return 1;
   return 0;
+}
+
+function tagOutdoorStealthModifier(member) {
+  const text = `${member?.class_id || ""} ${member?.class_name || ""}`.toLowerCase();
+  const level = Math.max(1, Number(member?.level || 1));
+  let modifier = 0;
+  if (text.includes("rogue") || text.includes("assassin")) modifier = level;
+  else if (text.includes("halfling")) modifier = Math.floor(level / 2);
+  else if (text.includes("ranger") || text.includes("wilderness scout")) modifier = Math.floor(level / 2);
+  else if (text.includes("elf")) modifier = 1;
+  const inventory = (member?.inventory || []).join(" ").toLowerCase();
+  if (inventory.includes("shield")) modifier -= 1;
+  if (inventory.includes("heavy armor")) modifier -= 1;
+  return modifier;
 }
 
 function openLeprechaunSpellDialog(defaults = {}) {
@@ -25836,6 +25856,101 @@ function appendBoftoTheftGuidedAction(parent, action, fallbackReference) {
   return true;
 }
 
+function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  if (defaults.branchAction !== "medusa_group_stealth") return false;
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  const sceneState = state.session?.active_quest?.tag_procedure_state?.medusa_scene10 || {};
+  const wrap = node("div", "tag-context-guided-action");
+  setTooltip(
+    wrap,
+    "TAG p.28, Scene 10 and TAG pp.6-8, Stealth Rolls: the whole living party rolls once against L6 using its worst modifier. Shields and heavy armor each impose -1."
+  );
+  wrap.appendChild(node("strong", "", "Scene 10 cabin approach"));
+  if (!sceneState.completed) {
+    const modifiers = living
+      .map((member) => ({ member, modifier: tagOutdoorStealthModifier(member) }))
+      .sort((left, right) => left.modifier - right.modifier);
+    const worst = modifiers[0];
+    wrap.appendChild(
+      subline(
+        worst
+          ? `Worst modifier: ${worst.member.name} (${worst.modifier >= 0 ? "+" : ""}${worst.modifier}). One group roll decides whether the assassins notice the party.`
+          : "No living character can make the approach."
+      )
+    );
+    const btn = node("button", "primary", "Roll group Stealth Save");
+    btn.type = "button";
+    btn.disabled = !living.length;
+    setButtonTooltip(
+      btn,
+      "Roll one exploding Stealth Save vs L6 with the living party's worst TAG modifier. A natural 1 always fails. The app rolls d3+2 agents only if the Save fails."
+    );
+    btn.addEventListener("click", () => {
+      btn.disabled = true;
+      runTagBranchActionWithDefaults(defaults).catch(handleError);
+    });
+    wrap.appendChild(btn);
+  } else if (sceneState.phase === "assassin_choice") {
+    wrap.appendChild(
+      subline(
+        `${sceneState.assassin_count || 0} assassin agents ambush the party. Choose the printed response; do not choose the outcome.`
+      )
+    );
+    const select = document.createElement("select");
+    setTooltip(select, "Choose the character attempting the L5 Streetwise Save to convince the agents.");
+    for (const member of living) {
+      const option = document.createElement("option");
+      option.value = member.character_id;
+      option.textContent = `${member.name} (L${member.level})`;
+      select.appendChild(option);
+    }
+    wrap.appendChild(select);
+    const parley = node("button", "primary", "Try to convince them");
+    parley.type = "button";
+    parley.disabled = !living.length;
+    setButtonTooltip(
+      parley,
+      "The selected character makes the printed L5 Streetwise Save. Success sends the party back to town; failure starts combat with the assassin agents acting first."
+    );
+    parley.addEventListener("click", () =>
+      runTagBranchActionWithDefaults({
+        branchAction: "medusa_assassin_parley",
+        characterId: select.value,
+        reference: "TAG p.28, Scene 10 Streetwise parley",
+        amount: 0,
+      }).catch(handleError)
+    );
+    wrap.appendChild(parley);
+    const fight = node("button", "secondary", "Fight the assassins");
+    fight.type = "button";
+    setButtonTooltip(
+      fight,
+      "Fight the printed d3+2 HCL+2 dagger minions now. Because the party chooses immediate combat, the party acts first; victory leaves their total 4d6 gp treasure to claim."
+    );
+    fight.addEventListener("click", () =>
+      runTagBranchActionWithDefaults({
+        branchAction: "medusa_assassin_fight",
+        reference: "TAG p.28, Scene 10 immediate fight",
+        amount: 0,
+      }).catch(handleError)
+    );
+    wrap.appendChild(fight);
+  } else {
+    wrap.appendChild(
+      subline(
+        sceneState.phase === "cabin_choice"
+          ? "The party reached the cabin undisturbed. Continue to Scene 1 or return to town."
+          : sceneState.phase === "returned_to_town"
+            ? "The agents believed the party and sent them back to town."
+            : "The Scene 10 assassin combat is in progress or has been staged."
+      )
+    );
+  }
+  parent.appendChild(wrap);
+  return true;
+}
+
 function appendBoftoScene19GuidedAction(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
   if (defaults.branchAction !== "star_object_will_save") return false;
@@ -26427,6 +26542,7 @@ function renderTagRelevantActions(session = state.session) {
   for (const action of displayActions) {
     if (appendLeprechaunGuidedAction(row, action, fallback)) continue;
     if (appendBoftoTheftGuidedAction(row, action, fallback)) continue;
+    if (appendMedusaScene10GuidedAction(row, action, fallback)) continue;
     if (appendBoftoScene19GuidedAction(row, action, fallback)) continue;
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
@@ -26474,6 +26590,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
     if (!action?.label) continue;
     if (appendLeprechaunGuidedAction(row, action, fallbackReference)) continue;
     if (appendBoftoTheftGuidedAction(row, action, fallbackReference)) continue;
+    if (appendMedusaScene10GuidedAction(row, action, fallbackReference)) continue;
     if (appendBoftoScene19GuidedAction(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     const defaults = tagPromptDefaultsFromAction(action, fallbackReference);

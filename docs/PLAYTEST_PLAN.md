@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-26. Target build: v0.39.46.
+Last updated: 2026-07-26. Target build: v0.39.47.
 
 ## Adventure Test Gate: Passed
 
@@ -24,8 +24,28 @@ regression.
 
 ## Do Next
 
-The item-disposition policy slice is complete in v0.39.46 with focused parity
-coverage; it needs no manual adventure test.
+### TAG Rumor 2: Scene 10 Cabin Approach
+
+This is the only newly opened manual check. Generate fixed **Rumor 2: Medusa
+in the Hunter's Cabin**, begin it, and reach Scene 10.
+
+1. Confirm the current-room action says **Approach the cabin** and shows one
+   group Stealth Save using the living party member with the worst modifier.
+   It must include TAG pp.6-8 class bonuses and the -1 Shield / -1 Heavy Armor
+   penalties; there must be no manual Amount or success/failure choice.
+2. Click **Roll group Stealth Save**. Save, return to the dashboard, and resume.
+   The result and exact Scene 10 stage must still be present; the Save must not
+   reroll.
+3. If the Save succeeded, confirm the party can continue to Scene 1 or return
+   to town. If it failed, confirm the rolled d3+2 agent count remains visible
+   and the only responses are **Try to convince them** or **Fight the
+   assassins**.
+4. On **Try to convince them**, choose the acting character. The app must roll
+   the L5 Streetwise Save. Success returns the party to town; failure starts
+   HCL+2 dagger-minion combat with the agents acting first.
+5. On **Fight the assassins**, combat must start with the party acting first.
+   After victory, exactly the staged total 4d6 gp must be claimable. This route
+   counts as one minion encounter for XP purposes.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

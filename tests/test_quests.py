@@ -888,6 +888,183 @@ def test_medusa_generated_scene_spawns_after_printed_approach_choice(client, mon
     assert not any("Final Boss check" in line for line in payload["session"]["log"])
 
 
+def test_medusa_scene10_group_stealth_persists_choice_and_stages_immediate_fight(client, monkeypatch) -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="2")
+    tile = TileState(
+        id="approach",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Approach to the Hunter's Cabin",
+        description="The party approaches the cabin.",
+        content_key="imported:tag-complication",
+    )
+    party = [
+        PartyMemberState(
+            character_id="rogue",
+            name="Rogue",
+            class_id="rogue",
+            class_name="Rogue",
+            level=3,
+            xp=0,
+            gold=0,
+            current_life=6,
+            max_life=6,
+            attack_bonus=2,
+            defense_bonus=1,
+            save_bonus=0,
+            inventory=[],
+        ),
+        PartyMemberState(
+            character_id="warrior",
+            name="Shielded Warrior",
+            class_id="warrior",
+            class_name="Warrior",
+            level=4,
+            xp=0,
+            gold=0,
+            current_life=9,
+            max_life=9,
+            attack_bonus=4,
+            defense_bonus=2,
+            save_bonus=0,
+            inventory=["Shield", "Heavy Armor"],
+        ),
+    ]
+    session = base_session(
+        id="medusa-scene10-fight",
+        adventure_id=manifest["id"],
+        adventure_type="imported",
+        imported_manifest=manifest,
+        map_state=MapState(tiles=[tile], current_tile_id=tile.id),
+        active_quest=ActiveQuestState(
+            tile_id=tile.id,
+            key="tag_lead",
+            description="Reach Xasartha's cabin.",
+        ),
+        party=party,
+    )
+    main.store.save("sessions", session)
+    monkeypatch.setattr("app.engine.tag_campaign.roll_exploding_d6", lambda: (3, [3]))
+    monkeypatch.setattr("app.engine.tag_campaign.roll_d3", lambda: 2)
+
+    approach = client.post(
+        "/api/sessions/medusa-scene10-fight/tag-branch-action",
+        json={"branch_action": "medusa_group_stealth", "reference": "Scene 10"},
+    )
+
+    assert approach.status_code == 200
+    approach_session = approach.json()["session"]
+    scene_state = approach_session["active_quest"]["tag_procedure_state"]["medusa_scene10"]
+    assert scene_state["phase"] == "assassin_choice"
+    assert scene_state["assassin_count"] == 4
+    assert scene_state["modifier"] == -2
+    assert approach_session["mode"] == "exploration"
+
+    monkeypatch.setattr("app.main.roll_formula", lambda _formula: 2)
+    fight = client.post(
+        "/api/sessions/medusa-scene10-fight/tag-branch-action",
+        json={"branch_action": "medusa_assassin_fight", "reference": "Scene 10 immediate fight"},
+    )
+
+    assert fight.status_code == 200
+    fight_session = fight.json()["session"]
+    assert fight_session["mode"] == "combat"
+    assert fight_session["party_attacked_immediately"] is True
+    enemy = fight_session["map_state"]["tiles"][0]["enemies"][0]
+    assert enemy["name"] == "Assassin agents"
+    assert enemy["level"] == 6
+    assert enemy["life"] == 4
+    assert fight_session["map_state"]["tiles"][0]["treasure_gold"] == 8
+
+
+def test_medusa_scene10_failed_parley_gives_assassins_first_action(client, monkeypatch) -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="2")
+    tile = TileState(
+        id="approach",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Approach",
+        description="Approach",
+        content_key="imported:tag-complication",
+    )
+    character = Character(
+        id="speaker",
+        name="Speaker",
+        class_id="warrior",
+        class_name="Warrior",
+        level=2,
+        xp=0,
+        gold=0,
+        max_life=6,
+        current_life=6,
+        attack_bonus=1,
+        defense_bonus=1,
+        save_bonus=0,
+        inventory=[],
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    session = base_session(
+        id="medusa-scene10-parley",
+        adventure_id=manifest["id"],
+        adventure_type="imported",
+        imported_manifest=manifest,
+        map_state=MapState(tiles=[tile], current_tile_id=tile.id),
+        active_quest=ActiveQuestState(
+            tile_id=tile.id,
+            key="tag_lead",
+            description="Reach Xasartha's cabin.",
+            tag_procedure_state={
+                "medusa_scene10": {
+                    "completed": True,
+                    "phase": "assassin_choice",
+                    "assassin_count": 3,
+                }
+            },
+        ),
+        party=[
+            PartyMemberState(
+                character_id="speaker",
+                name="Speaker",
+                class_id="warrior",
+                class_name="Warrior",
+                level=2,
+                xp=0,
+                gold=0,
+                current_life=6,
+                max_life=6,
+                attack_bonus=1,
+                defense_bonus=1,
+                save_bonus=0,
+                inventory=[],
+            )
+        ],
+    )
+    main.store.save("characters", character)
+    main.store.save("sessions", session)
+    monkeypatch.setattr("app.engine.tag_campaign.roll_exploding_for_level", lambda _level: (2, [2]))
+    monkeypatch.setattr("app.main.roll_formula", lambda _formula: 1)
+
+    response = client.post(
+        "/api/sessions/medusa-scene10-parley/tag-branch-action",
+        json={
+            "character_id": "speaker",
+            "branch_action": "medusa_assassin_parley",
+            "reference": "Scene 10 parley",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["session"]
+    assert payload["mode"] == "combat"
+    assert payload["party_surprised"] is True
+    assert payload["map_state"]["tiles"][0]["enemies"][0]["life"] == 3
+
+
 def test_enchanted_weapon_reward_marks_adventure_status(monkeypatch) -> None:
     eng = engine()
     session = base_session()

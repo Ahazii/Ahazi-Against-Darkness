@@ -161,6 +161,7 @@ from .schemas import (
     CharacterTransferResult,
     CharacterWeaponDefaults,
     EquipmentTransactionResult,
+    EnemyState,
     IconDefinition,
     MapState,
     Party,
@@ -4509,6 +4510,12 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
         },
         {
+            "surface": "Typed printed scene procedures",
+            "shown_in": "Generated Adventures Guild Current Objective and Relevant Now actions.",
+            "player_use": "Runs supported printed checks from live character/session state and persists the stage across save/resume. Rumor 1 chooses Bofto's thief and resolves the printed Saves. Rumor 2 Scene 10 now calculates the party's worst Stealth modifier, rolls one L6 group Save, stores d3+2 assassin agents on failure, offers the L5 Streetwise or immediate-fight choice, applies the printed initiative, and stages the agents' total 4d6 gp.",
+            "pdf_boundary": "Only explicitly encoded PDF procedures run automatically. The app never asks the player to choose a dice outcome; unsupported scene text remains a player/PDF decision.",
+        },
+        {
             "surface": "Fixed-result playtest selector",
             "shown_in": "The Adventures Guild Maps and Adventure Leads generator.",
             "player_use": "Result defaults to Random for normal rules play. During playtesting, choose a specific Rumor 1-12, Treasure Map 1-6, Thematic Dungeon 1-6, or Guild Job 1-6 to regenerate the exact PDF branch being checked.",
@@ -6426,6 +6433,109 @@ def _is_bofto_generated_session(session: SessionState) -> bool:
     )
 
 
+def _is_medusa_generated_session(session: SessionState) -> bool:
+    params = ((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}
+    tag_ref = params.get("tag_reference") if isinstance(params, dict) else None
+    if not isinstance(tag_ref, dict):
+        return False
+    try:
+        rumor_number = int(tag_ref.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    return str(tag_ref.get("lead_type") or "").lower() == "rumor" and rumor_number == 2
+
+
+def _medusa_scene10_state(session: SessionState) -> dict[str, Any]:
+    quest = session.active_quest
+    if quest is None:
+        return {}
+    return dict((quest.tag_procedure_state or {}).get("medusa_scene10") or {})
+
+
+def _update_medusa_scene10_state(session: SessionState, branch_action: str, entry: Any) -> None:
+    if not _is_medusa_generated_session(session) or session.active_quest is None:
+        return
+    if branch_action not in {
+        "medusa_group_stealth",
+        "medusa_assassin_parley",
+        "medusa_assassin_fight",
+    }:
+        return
+    quest_state = dict(session.active_quest.tag_procedure_state or {})
+    state = dict(quest_state.get("medusa_scene10") or {})
+    result = str(getattr(entry, "result_text", "") or "")
+    if branch_action == "medusa_group_stealth":
+        match = re.search(r"Assassin agents d3=\d+\+2=(\d+)", result)
+        state = {
+            "completed": True,
+            "phase": "assassin_choice" if match else "cabin_choice",
+            "assassin_count": int(match.group(1)) if match else 0,
+            "result": result,
+            "roll": getattr(entry, "roll", None),
+            "modifier": getattr(entry, "modifier", 0),
+            "total": getattr(entry, "total", None),
+            "updated_at": now_utc(),
+        }
+    elif branch_action == "medusa_assassin_parley":
+        succeeded = "vs L5 succeeds" in result
+        state["phase"] = "returned_to_town" if succeeded else "assassin_combat"
+        state["parley_result"] = result
+        state["parley_character_id"] = getattr(entry, "character_id", None)
+        state["updated_at"] = now_utc()
+    else:
+        state["phase"] = "assassin_combat"
+        state["fight_result"] = result
+        state["updated_at"] = now_utc()
+    quest_state["medusa_scene10"] = state
+    session.active_quest.tag_procedure_state = quest_state
+
+
+def _spawn_medusa_scene10_assassins(session: SessionState, *, foes_strike_first: bool) -> bool:
+    state = _medusa_scene10_state(session)
+    count = max(0, int(state.get("assassin_count") or 0))
+    if not count or state.get("combat_spawned"):
+        return False
+    tile = random_engine._current_tile(session)
+    if _imported_room_id_for_tile(session, tile) != "tag-complication":
+        return False
+    if any(enemy.life > 0 for enemy in tile.enemies):
+        return False
+    level = random_engine._highest_character_level(session.party) + 2
+    enemy = EnemyState(
+        id=new_id(),
+        name="Assassin agents",
+        category="minions",
+        level=level,
+        life=count,
+        max_life=count,
+        attacks=1,
+        initial_count=count,
+        tags=["daggers", "tag_scene_10_agents"],
+    )
+    tile.enemies.append(enemy)
+    tile.initial_enemy_count = count
+    treasure = sum(roll_formula("d6") for _ in range(4))
+    tile.treasure_gold = treasure
+    tile.treasure_summary = f"Assassin agents' total treasure: {treasure}gp."
+    tile.treasure_claimed = False
+    state["combat_spawned"] = True
+    state["treasure_gp"] = treasure
+    quest_state = dict(session.active_quest.tag_procedure_state or {}) if session.active_quest else {}
+    quest_state["medusa_scene10"] = state
+    if session.active_quest is not None:
+        session.active_quest.tag_procedure_state = quest_state
+    random_engine._begin_combat(
+        session,
+        "Scene 10 assassin combat begins. The agents are HCL+2 dagger minions; their total 4d6 gp treasure is staged for claim after victory.",
+        tile=tile,
+        show_rolls=True,
+        allow_final_boss_check=False,
+        party_strikes_first=not foes_strike_first,
+        foes_strike_first=foes_strike_first,
+    )
+    return True
+
+
 def _is_bofto_scene19_active(session: SessionState) -> bool:
     if (
         not _is_bofto_generated_session(session)
@@ -6717,8 +6827,10 @@ def _bofto_scene18_result_narrative(character: Character | None, entry: Any) -> 
     )
 
 
-def _mark_bofto_generated_lead_complete(
+def _mark_generated_tag_lead_complete(
     session: SessionState,
+    *,
+    title: str,
     outcome: str,
     narrative: str,
 ) -> None:
@@ -6741,10 +6853,23 @@ def _mark_bofto_generated_lead_complete(
     state["next_action"] = "Read the resolved scene, then choose Continue to finish the adventure."
     quest.tag_generated_lead_state = state
     session.tag_generated_completion_pending = True
-    session.tag_generated_completion_title = "Bofto's Star-Shaped Find resolved"
+    session.tag_generated_completion_title = title
     session.tag_generated_completion_body = narrative
     session.log.append(narrative)
     session.log.append("When you are ready, choose Continue to finish the adventure.")
+
+
+def _mark_bofto_generated_lead_complete(
+    session: SessionState,
+    outcome: str,
+    narrative: str,
+) -> None:
+    _mark_generated_tag_lead_complete(
+        session,
+        title="Bofto's Star-Shaped Find resolved",
+        outcome=outcome,
+        narrative=narrative,
+    )
 
 
 @app.post("/api/sessions/{session_id}/tag-generated-lead-continue")
@@ -6945,6 +7070,26 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
     branch_action = str(payload.get("branch_action") or "social_choice")
+    action_reference = str(payload.get("reference") or "")
+    if branch_action == "medusa_group_stealth":
+        from .engine.tag_scene_actions import tag_group_stealth_member
+
+        if not _is_medusa_generated_session(session):
+            raise HTTPException(status_code=400, detail="Scene 10 is not active in this generated adventure.")
+        if _medusa_scene10_state(session).get("completed"):
+            raise HTTPException(status_code=400, detail="Scene 10's group Stealth Save has already been resolved.")
+        living = [member for member in session.party if member.current_life > 0]
+        if not living:
+            raise HTTPException(status_code=400, detail="No living party member can approach the hunter's cabin.")
+        worst_member, modifier = tag_group_stealth_member(living, outdoors=True)
+        action_reference = (
+            f"{action_reference} mod={modifier} worst={worst_member.name}".strip()
+        )
+    if branch_action in {"medusa_assassin_parley", "medusa_assassin_fight"}:
+        if _medusa_scene10_state(session).get("phase") != "assassin_choice":
+            raise HTTPException(status_code=400, detail="Resolve Scene 10's group Stealth Save before choosing how to handle the assassin agents.")
+    if branch_action == "medusa_assassin_parley" and character is None:
+        raise HTTPException(status_code=400, detail="Choose the character attempting the Scene 10 Streetwise Save.")
     if branch_action in {"bofto_theft_save", "star_object_will_save"} and character is None:
         raise HTTPException(status_code=400, detail="Choose the character named by the Bofto scene before rolling.")
     if branch_action == "star_slayer_check":
@@ -7022,7 +7167,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         campaign,
         character,
         branch_action=branch_action,
-        reference=str(payload.get("reference") or ""),
+        reference=action_reference,
         clue_cost=int(payload.get("clue_cost") or 0),
         reward_gp=int(payload.get("reward_gp") or 0),
     )
@@ -7034,8 +7179,24 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
             _sync_character_to_session_party(session, character)
     _update_session_tag_procedure_state(session, branch_action, entry)
     _update_generated_tag_procedure_state(session, branch_action, entry)
-    if branch_action != "bofto_theft_save" and entry.result_text and entry.result_text not in session.log:
-        session.log.append(f"Adventures Guild procedure: {entry.result_text}")
+    _update_medusa_scene10_state(session, branch_action, entry)
+    typed_medusa_action = branch_action in {
+        "medusa_group_stealth",
+        "medusa_assassin_parley",
+        "medusa_assassin_fight",
+    }
+    medusa_parley_success = (
+        branch_action == "medusa_assassin_parley"
+        and "vs L5 succeeds" in str(entry.result_text)
+    )
+    if (
+        branch_action != "bofto_theft_save"
+        and not medusa_parley_success
+        and entry.result_text
+        and entry.result_text not in session.log
+    ):
+        prefix = "" if typed_medusa_action else "Adventures Guild procedure: "
+        session.log.append(f"{prefix}{entry.result_text}")
     _advance_generated_tag_scene_from_branch(
         session,
         campaign,
@@ -7044,6 +7205,18 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         entry=entry,
     )
     _spawn_generated_tag_foes_from_choice(session, branch_action, entry)
+    if branch_action == "medusa_assassin_fight":
+        _spawn_medusa_scene10_assassins(session, foes_strike_first=False)
+    elif branch_action == "medusa_assassin_parley" and "vs L5 fails" in str(entry.result_text):
+        _spawn_medusa_scene10_assassins(session, foes_strike_first=True)
+    elif branch_action == "medusa_assassin_parley" and "vs L5 succeeds" in str(entry.result_text):
+        _mark_generated_tag_lead_complete(
+            session,
+            title="Medusa in the Hunter's Cabin resolved",
+            outcome="The party convinced the assassin agents and was sent back to town.",
+            narrative=str(entry.result_text),
+        )
+        record_session_tag_rumor_state(campaign, session, status="resolved")
     if branch_action == "bofto_theft_save":
         from .engine.tag_scene_actions import tag_scene_action_definition, tag_scene_action_succeeded
 

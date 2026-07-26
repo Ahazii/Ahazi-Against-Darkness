@@ -8,6 +8,7 @@ class TagSceneActor(Protocol):
     class_id: str
     class_name: str
     level: int
+    inventory: list[str]
 
 
 @dataclass(frozen=True)
@@ -91,6 +92,62 @@ def tag_scene_action_modifier(definition: TagSceneActionDefinition, actor: TagSc
             return level // 2
         return int(rule.fixed_value)
     return 0
+
+
+def tag_stealth_modifier(
+    actor: TagSceneActor,
+    *,
+    outdoors: bool = False,
+    forest_or_jungle: bool = False,
+    setting_modifier: int = 0,
+) -> int:
+    """TAG pp.6-8 Stealth modifier, including carried shield/heavy armor."""
+    class_text = f"{actor.class_id} {actor.class_name}".casefold()
+    level = max(1, int(actor.level or 1))
+    if "rogue" in class_text or "assassin" in class_text:
+        modifier = level
+    elif "halfling" in class_text:
+        modifier = level // 2
+    elif ("ranger" in class_text or "wilderness scout" in class_text) and outdoors:
+        modifier = level // 2
+    elif "wood elf" in class_text:
+        modifier = 1 + (level // 2 if forest_or_jungle else 0)
+    elif "elf" in class_text:
+        modifier = 1
+    else:
+        modifier = 0
+    inventory = " ".join(str(item).casefold() for item in actor.inventory)
+    if "shield" in inventory:
+        modifier -= 1
+    if "heavy armor" in inventory:
+        modifier -= 1
+    return modifier + int(setting_modifier)
+
+
+def tag_group_stealth_member(
+    actors: list[TagSceneActor],
+    *,
+    outdoors: bool = False,
+    forest_or_jungle: bool = False,
+    setting_modifier: int = 0,
+) -> tuple[TagSceneActor, int]:
+    if not actors:
+        raise ValueError("A TAG group Stealth Save requires at least one character.")
+    return min(
+        (
+            (
+                actor,
+                tag_stealth_modifier(
+                    actor,
+                    outdoors=outdoors,
+                    forest_or_jungle=forest_or_jungle,
+                    setting_modifier=setting_modifier,
+                ),
+            )
+            for actor in actors
+        ),
+        key=lambda item: item[1],
+    )
 
 
 def tag_scene_action_succeeded(

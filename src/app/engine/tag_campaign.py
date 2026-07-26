@@ -43,7 +43,7 @@ from ..schemas import (
     WorldTroupeRecord,
 )
 from .abyss_tables import is_abyss_profile
-from .dice import roll_advancement, roll_d6, roll_exploding_for_level
+from .dice import roll_advancement, roll_d6, roll_exploding_d6, roll_exploding_for_level
 from .experience import advancement_succeeds
 from .magic_weapons import can_member_wield_weapon
 from .tier_advancement import level_tier_band
@@ -1251,6 +1251,9 @@ TAG_BRANCH_ACTIONS: dict[str, str] = {
     "tag_ambush_chance": "TAG ambush chance",
     "temple_dungeon_handoff": "Tamas Zeya temple dungeon handoff",
     "medusa_assassin_ambush": "Medusa assassin ambush",
+    "medusa_group_stealth": "Medusa group Stealth Save",
+    "medusa_assassin_parley": "Convince the assassin agents",
+    "medusa_assassin_fight": "Fight the assassin agents",
     "medusa_stealth_approach": "Medusa stealth approach",
     "medusa_reaction": "Medusa reaction roll",
     "leprechaun_shoes": "Leprechaun shoes purchase",
@@ -1526,7 +1529,7 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
     2: {
         "title": "Medusa in the Hunter's Cabin",
         "scene": "Scene 10 leading to Scene 1",
-        "pdf_pages": "TAG pp.22, 25-26",
+        "pdf_pages": "TAG pp.6-8, 22, 25-26, 28",
         "objective": "Survive or talk down the assassins, then resolve the medusa Xasartha.",
         "entry": "A hunter's cabin hides more than a monster story.",
         "side": "Streetwise or roleplay may reveal why the assassins want the medusa dead.",
@@ -1538,14 +1541,15 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "rewards": "Pendant worth 260 gp and necros; trying it can grant Luck as described in Scene 1.",
         "finale_mode": "choice",
         "defer_final_encounter": True,
+        "replace_complication_prompt_actions": True,
         "finale_instruction": "Choose the printed Scene 1 approach before combat: sneak in to surprise Xasartha, or shout from outside and roll her reactions. If that result leads to combat, fight Xasartha using the Medusa profile.",
         "complication_prompt_actions": [
             {
-                "label": "Resolve assassin approach",
-                "tooltip": "Prefill Scene 10 assassin approach; set Amount 1 if any L6 Stealth Save failed.",
+                "label": "Approach the cabin",
+                "tooltip": "Roll the printed group Stealth Save vs L6 once using the living party member with the worst TAG Stealth modifier. The app handles any assassin ambush automatically.",
                 "action_type": "branch",
-                "action_value": "medusa_assassin_ambush",
-                "reference": "Scene 10 assassin approach",
+                "action_value": "medusa_group_stealth",
+                "reference": "TAG p.28, Scene 10 cabin approach",
             }
         ],
         "final_prompt_actions": [
@@ -4728,6 +4732,45 @@ def resolve_tag_branch_action(
             )
         else:
             parts.append("All characters passed L6 Stealth on the way to the hunter's cabin; the party reaches the cabin undisturbed.")
+    elif clean_action == "medusa_group_stealth":
+        modifier = _tag_reference_int(reference, "mod", 0)
+        rolled_total, rolls = roll_exploding_d6()
+        roll = rolls[0]
+        total = rolled_total + modifier
+        roll_text = " + ".join(str(value) for value in rolls)
+        if roll == 1 or total < 6:
+            count_roll = roll_d3()
+            count = count_roll + 2
+            parts.append(
+                f"Scene 10 group Stealth Save {roll_text}{modifier:+d}={total} vs L6: failed. "
+                f"Assassin agents d3={count_roll}+2={count} ambush the party. Choose whether to attempt the L5 Streetwise Save or fight immediately."
+            )
+        else:
+            parts.append(
+                f"Scene 10 group Stealth Save {roll_text}{modifier:+d}={total} vs L6: success. "
+                "The party reaches the hunter's cabin undisturbed and may continue to Scene 1 or return to town."
+            )
+    elif clean_action == "medusa_assassin_parley":
+        if character is None:
+            parts.append("Choose a character to attempt the L5 Streetwise Save.")
+        else:
+            modifier = streetwise_modifier(character, action="interrogation")
+            rolled_total, rolls = roll_exploding_for_level(max(1, int(character.level or 1)))
+            roll = rolls[0]
+            total = rolled_total + modifier
+            roll_text = " + ".join(str(value) for value in rolls)
+            if roll != 1 and total >= 5:
+                parts.append(
+                    f"{character.name}'s Streetwise Save {roll_text}{modifier:+d}={total} vs L5 succeeds. "
+                    "The agents believe the party and let them go back to town."
+                )
+            else:
+                parts.append(
+                    f"{character.name}'s Streetwise Save {roll_text}{modifier:+d}={total} vs L5 fails. "
+                    "The assassin agents attack and act first."
+                )
+    elif clean_action == "medusa_assassin_fight":
+        parts.append("The party chooses to fight the assassin agents immediately and acts first.")
     elif clean_action == "medusa_stealth_approach":
         modifier = _tag_reference_int(reference, "mod", cost)
         roll = roll_d6()
@@ -6861,6 +6904,8 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
                     tag_reference_stub,
                 )
     _extend_prompt_actions(prompts["tag-lead-entry"], profile.get("entry_prompt_actions"))
+    if profile.get("replace_complication_prompt_actions"):
+        prompts["tag-complication"]["actions"] = []
     _extend_prompt_actions(prompts["tag-complication"], profile.get("complication_prompt_actions"))
     return prompts
 

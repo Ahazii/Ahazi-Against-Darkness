@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-26. Repository branch: `main`. Latest release: `v0.39.46`.
+Last updated: 2026-07-26. Repository branch: `main`. Latest release: `v0.39.47`.
 
 ## Start Here
 
@@ -16,16 +16,18 @@ Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken Depths,
 Citadel, Bofto, Star-Slayer, Bag, Repellant, treasure, trap, entrance, or
 closeout suites.
 
-The item-disposition policy slice is complete. Continue with one PDF-backed
-TAG scene conversion using `tag_scene_actions.py`: inspect the exact owned-PDF
-scene first, encode required actor/modifiers/target/attempts/outcomes/rewards,
-and keep its branch results automatic. Do not build a prose interpreter or
-combine the work with broader `random_dungeon.py` reorganisation.
+Rumor 2 Scene 10 is the current narrow manual gate. Run only the checklist in
+`PLAYTEST_PLAN.md`: verify its one worst-modifier group Stealth roll, save/resume
+stage persistence, printed assassin choice, initiative, and staged 4d6 gp.
+After that passes, continue with one PDF-backed TAG scene conversion using
+`tag_scene_actions.py`. Do not build a prose interpreter or combine the work
+with broader `random_dungeon.py` reorganisation.
 
-## Implemented Through v0.39.46
+## Implemented Through v0.39.47
 
-Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 105, 107, 160, and 169; TAG pp.11, 13, 22, 29-31, and 65.
+Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 105, 107, 160, and 169; TAG pp.6-8, 11, 13, 22, 28-31, and 65.
 
+- Rumor 2 Scene 10 calculates the living party's worst TAG Stealth modifier, rolls one exploding L6 group Save, persists d3+2 agents on failure, and offers only actor-selected L5 Streetwise or immediate combat. Failed parley gives the HCL+2 dagger agents first action; immediate combat gives the party first action; their total 4d6 gp is staged for claim.
 - Party Sheets place **Apply** beside each carried Gremlin Repellant. At camp it opens the printed p.87 item/Bag protection picker; when unavailable the button remains visible but disabled with the exact timing or eligibility reason.
 - Adventure View keeps the current Major Foe tally visible. Invisible Gremlins still increment it exactly once and cannot become the Final Boss.
 - The cursed-object Gremlin decision now offers Disbelief and eligible voluntary TAG items before the choice; **Keep it and resolve theft** immediately applies ordinary theft without a second Resolve button.
@@ -63,6 +65,7 @@ Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its
 
 ## Recent Releases
 
+- `v0.39.47`: automate and persist TAG Rumor 2 Scene 10's group Stealth, assassin response, initiative, and treasure procedure.
 - `v0.39.46`: extract shared item-disposition eligibility and Bag-aware removal policy with behavior-parity coverage.
 - `v0.39.45`: close the adventure-test gate and apply p.94 Minor Foe quotient damage across the remaining revealed-Gremlin group.
 - `v0.39.44`: allow Disbelief scroll use through the pending cursed-object and Gremlin guards.
