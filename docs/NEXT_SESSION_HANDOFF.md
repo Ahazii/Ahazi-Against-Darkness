@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-26. Repository branch: `main`. Latest release: `v0.39.45`.
+Last updated: 2026-07-26. Repository branch: `main`. Latest release: `v0.39.46`.
 
 ## Start Here
 
@@ -16,13 +16,13 @@ Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken Depths,
 Citadel, Bofto, Star-Slayer, Bag, Repellant, treasure, trap, entrance, or
 closeout suites.
 
-Resume modularisation with one small tested slice: consolidate repeated
-item-disposition eligibility and container-aware removal behavior behind a
-reusable policy boundary. Preserve the TAG star-object prohibition, stable
-Bag identity and contents, class restrictions, and current messages. Do not
-combine this with a broader `random_dungeon.py` reorganisation.
+The item-disposition policy slice is complete. Continue with one PDF-backed
+TAG scene conversion using `tag_scene_actions.py`: inspect the exact owned-PDF
+scene first, encode required actor/modifiers/target/attempts/outcomes/rewards,
+and keep its branch results automatic. Do not build a prose interpreter or
+combine the work with broader `random_dungeon.py` reorganisation.
 
-## Implemented Through v0.39.45
+## Implemented Through v0.39.46
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 105, 107, 160, and 169; TAG pp.11, 13, 22, 29-31, and 65.
 
@@ -46,6 +46,7 @@ Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 105, 107, 160, and
 - Gremlin Repellant protects one selected item for one adventure. Miners' Ointment remains the separate ignore-next-Wandering-Monsters/Gremlins effect. TAG Resurrection/Blessing tags and weapons under Temporary Weapon Enchantment are offered only as explicit voluntary choices during the ordinary event. Revealed Gremlins and Iron Eaters ask whether each temporarily enchanted weapon is eligible for their normal loss effect; the encounter choice persists through save/resume (TAG pp.11, 65).
 - Disbelief reveals `d6+1` L3 Minions with Morale -1, one attack, and one group Treasure roll. A failed Defence steals an eligible item instead of causing Life loss.
 - Revealed Gremlins are explicitly tracked as one Minor Foe damage group. Expanded Edition p.94 quotient damage is capped to the number remaining and removes that many tracked members; the exact live `11 / 3` against two remaining L3 Gremlins is covered.
+- Item transfer, storage, sale, ordinary loss, destruction, sacrifice, confiscation, and theft share a typed item-disposition policy. Bag-aware removals still preserve exact container identity and report discarded contents; the Bofto object remains bound through ordinary paths.
 - Rules Reference, Tables List, State Registry, Party Sheets, developer controls, modern campaign workflow summary, hover text, docs, and focused tests cover the new state.
 
 ## Persistence Model
@@ -56,12 +57,13 @@ Campaign and saved game remain separate records in the same user-facing `DATA_DI
 
 Automated tests own campaign isolation and legacy migration, all twelve Rumors exhausted, exact Gremlin priority/Clue/Kukla/Clockwork Armor edges, Star-Slayer replacement, carrier death, total-party-kill recovery, and mixed-result split fleeing. Do not risk a valuable live party to force those dice.
 
-Resume the item-disposition policy modularisation slice. Keep it narrow: consolidate eligibility and container-aware removal behavior without reorganising `random_dungeon.py`. Then migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time.
+Migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time. Select and inspect one exact scene before coding; keep the slice narrow.
 
 Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its one-week or qualifying-use expiry remains on the existing manual **Guild marker** clear control and is a bounded later TAG spell task, not part of the release gate.
 
 ## Recent Releases
 
+- `v0.39.46`: extract shared item-disposition eligibility and Bag-aware removal policy with behavior-parity coverage.
 - `v0.39.45`: close the adventure-test gate and apply p.94 Minor Foe quotient damage across the remaining revealed-Gremlin group.
 - `v0.39.44`: allow Disbelief scroll use through the pending cursed-object and Gremlin guards.
 - `v0.39.43`: automatic post-Keep Gremlin theft, visible Major Foe tally, and Scroll of Disbelief test support.

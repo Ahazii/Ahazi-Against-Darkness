@@ -375,12 +375,27 @@ def steal_from_unattended_bodies(
             if show_rolls:
                 session.log.append(f"No theft from {member.name}'s body (d6 = {roll}).")
             continue
-        from .item_containers import contained_loss_suffix, remove_inventory_item_with_contents
+        from .item_containers import contained_loss_suffix
+        from .item_disposition import (
+            ItemDisposition,
+            eligible_inventory_items,
+            remove_item_for_disposition,
+        )
 
-        stolen, contents = remove_inventory_item_with_contents(member, inventory_index=0)
-        if stolen is None:
+        eligible = eligible_inventory_items(member.inventory, ItemDisposition.THEFT)
+        if not eligible:
             continue
-        stolen_label = f"{stolen}{contained_loss_suffix(contents)}"
+        result = remove_item_for_disposition(
+            member,
+            disposition=ItemDisposition.THEFT,
+            item_name=eligible[0],
+        )
+        if not result.removed:
+            continue
+        stolen_label = (
+            f"{result.removed_item}"
+            f"{contained_loss_suffix(list(result.contained_items))}"
+        )
         if show_rolls:
             session.log.append(
                 f"Loot stolen from {member.name}'s unattended body: {stolen_label} "

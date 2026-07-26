@@ -71,7 +71,9 @@ def is_star_object_status(status: str) -> bool:
 
 def removable_inventory_items(items: list[str]) -> list[str]:
     """Return items eligible for ordinary loss, destruction, storage, or sacrifice."""
-    return [item for item in items if not is_star_object_item(item)]
+    from .item_disposition import ItemDisposition, eligible_inventory_items
+
+    return eligible_inventory_items(items, ItemDisposition.ORDINARY_LOSS)
 
 
 def _ordered_members(session: SessionState) -> list[PartyMemberState]:

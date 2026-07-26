@@ -958,19 +958,26 @@ def apply_courtship_encounter(
                 session.log.append(f"{member.name} suffers {damage} wounds from the fall.")
         return
     if effect == "rockslide":
-        from .star_object_curse import removable_inventory_items
+        from .item_disposition import (
+            ItemDisposition,
+            eligible_inventory_items,
+            remove_item_for_disposition,
+        )
 
         save_level = _parse_save_level(str(row.get("save_level", "HCL+2")), hcl)
         for member in _living_party(session):
             failed, logs = _fd_style_save(member, save_level, label="Rockslide Defense", show_rolls=show_rolls, bonus=0)
             session.log.extend(logs)
-            eligible = removable_inventory_items(member.inventory)
+            eligible = eligible_inventory_items(member.inventory, ItemDisposition.ORDINARY_LOSS)
             if failed and eligible:
                 lost = min(len(eligible), roll_d3())
-                from .item_containers import remove_inventory_item_with_contents
 
                 for item in random.sample(eligible, k=lost):
-                    remove_inventory_item_with_contents(member, item_name=item)
+                    remove_item_for_disposition(
+                        member,
+                        disposition=ItemDisposition.ORDINARY_LOSS,
+                        item_name=item,
+                    )
                 session.log.append(f"{member.name} loses {lost} item(s) dodging the rockslide.")
         return
     if effect == "acid_spring":

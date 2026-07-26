@@ -1860,7 +1860,11 @@ class DungeonTableRoller:
         return is_fungal_spore_immune(member)
 
     def _lose_held_object(self, member: PartyMemberState) -> str:
-        from .star_object_curse import removable_inventory_items
+        from .item_disposition import (
+            ItemDisposition,
+            eligible_inventory_items,
+            remove_item_for_disposition,
+        )
 
         for attr in ("default_melee_weapon", "default_missile_weapon", "default_melee_weapon_secondary"):
             item = getattr(member, attr, None)
@@ -1871,12 +1875,14 @@ class DungeonTableRoller:
                 except ValueError:
                     pass
                 return item
-        eligible = removable_inventory_items(member.inventory)
+        eligible = eligible_inventory_items(member.inventory, ItemDisposition.ORDINARY_LOSS)
         if eligible:
             lost = eligible[0]
-            from .item_containers import remove_inventory_item_with_contents
-
-            remove_inventory_item_with_contents(member, item_name=lost)
+            remove_item_for_disposition(
+                member,
+                disposition=ItemDisposition.ORDINARY_LOSS,
+                item_name=lost,
+            )
             return lost
         return "held object"
 

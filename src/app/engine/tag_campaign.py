@@ -3949,9 +3949,10 @@ def store_tag_treasure(
     qty = max(1, int(quantity))
     clean_item = item_name.strip()[:100]
     if clean_item:
-        from .star_object_curse import is_star_object_item
+        from .item_disposition import ItemDisposition, item_disposition_decision
 
-        if is_star_object_item(clean_item):
+        disposition = item_disposition_decision(clean_item, ItemDisposition.STORAGE)
+        if not disposition.allowed:
             return append_tag_log(
                 campaign,
                 action="store_treasure",

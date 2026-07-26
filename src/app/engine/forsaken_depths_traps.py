@@ -98,6 +98,8 @@ def _random_living(session: SessionState) -> PartyMemberState | None:
 
 
 def _permanent_magic_items(member: PartyMemberState) -> list[str]:
+    from .item_disposition import ItemDisposition, eligible_inventory_items
+
     disposable = ("potion", "scroll", "food", "ration", "wine", "arrow", "bolt", "gem", "jewelry", "silk")
     magic_markers = (
         "magic",
@@ -121,7 +123,7 @@ def _permanent_magic_items(member: PartyMemberState) -> list[str]:
             continue
         if any(token in lower for token in magic_markers):
             items.append(item)
-    return items
+    return eligible_inventory_items(items, ItemDisposition.SACRIFICE)
 
 
 def _add_status(member: PartyMemberState, status: str) -> None:
@@ -306,7 +308,16 @@ def resolve_fd_disintegration_choice(
         if not item_name or item_name not in choices or item_name not in member.inventory:
             session.log.append(f"Choose a permanent magic item to sacrifice: {', '.join(choices)}.")
             return
-        member.inventory.remove(item_name)
+        from .item_disposition import ItemDisposition, remove_item_for_disposition
+
+        removed = remove_item_for_disposition(
+            member,
+            disposition=ItemDisposition.SACRIFICE,
+            item_name=item_name,
+        )
+        if not removed.removed:
+            session.log.append(removed.blocked_reason or f"{member.name} no longer carries {item_name}.")
+            return
         damage = tier_for_level(member.level) + 1
         applied = apply_party_life_loss(session, member, damage, log=session.log)
         session.fd_disintegration_pending = {}

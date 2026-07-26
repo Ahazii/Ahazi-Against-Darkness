@@ -544,12 +544,19 @@ def _destroy_belongings_and_summon(
     show_rolls: bool,
     log: list[str],
 ) -> None:
-    from .star_object_curse import removable_inventory_items
-    from .item_containers import remove_inventory_item_with_contents
+    from .item_disposition import (
+        ItemDisposition,
+        eligible_inventory_items,
+        remove_item_for_disposition,
+    )
 
-    destroyed = removable_inventory_items(member.inventory)
+    destroyed = eligible_inventory_items(member.inventory, ItemDisposition.DESTRUCTION)
     for item in destroyed:
-        remove_inventory_item_with_contents(member, item_name=item)
+        remove_item_for_disposition(
+            member,
+            disposition=ItemDisposition.DESTRUCTION,
+            item_name=item,
+        )
     member.gold = 0
     if destroyed:
         log.append(f"{member.name}'s belongings are destroyed in the blaze ({len(destroyed)} item(s), TCOTFD p.27).")

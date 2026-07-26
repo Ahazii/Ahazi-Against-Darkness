@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-26. Target build: v0.39.45.
+Last updated: 2026-07-26. Target build: v0.39.46.
 
 ## Adventure Test Gate: Passed
 
@@ -24,15 +24,12 @@ regression.
 
 ## Do Next
 
-Resume modularisation in small tested slices. First consolidate repeated
-item-disposition eligibility and container-aware removal behavior without
-reorganising `random_dungeon.py`. Preserve cursed-item restrictions, stable
-Bag identity and contents, class restrictions, and current player-facing
-messages with focused parity tests.
+The item-disposition policy slice is complete in v0.39.46 with focused parity
+coverage; it needs no manual adventure test.
 
-After that slice, convert generated TAG scenes onto typed action definitions
-one PDF-backed scene at a time. Do not infer procedures from prose or ask the
-player to choose a dice outcome.
+Convert generated TAG scenes onto typed action definitions one PDF-backed
+scene at a time. Inspect and cite the owned PDF scene before coding. Do not
+infer procedures from prose or ask the player to choose a dice outcome.
 
 ## Automated Coverage Only
 

@@ -43,6 +43,7 @@ Key files:
 - `src/app/engine/magic_items.py` - charged wand/staff parsing, `use_magic_item` cast, charge consumption
 - `src/app/engine/inventory.py` - item and gold transfer between heroes (session and roster)
 - `src/app/engine/item_containers.py` - stable Bag of Carrying identity, explicit contents, exact-Bag transfer/removal, and container-safe loss helpers
+- `src/app/engine/item_disposition.py` - shared transfer/storage/sale/loss/destruction/sacrifice/confiscation/theft eligibility plus Bag-aware removal results
 - `src/app/engine/developer_item_grants.py` - developer-only enabled-supplement inventory catalog, class/carry eligibility, and rules-valid item grants
 - `src/app/engine/gremlin_events.py` - staged Invisible Gremlins event, item-level protection, printed theft priority, and Disbelief conversion
 - `src/app/engine/tag_temporary_weapon_enchantment.py` - shared TAG p.65 weapon marker and encounter theft/destruction decision policy
@@ -439,6 +440,12 @@ Home screen character UI:
   Bag. Contained items are not loose inventory; the selected Bag and its contents
   move together. Save/resume, capture, death, theft, and roster sync preserve the
   exact container. Losing the Bag discards its contents as required by TAG p.13.
+- **Item disposition:** `src/app/engine/item_disposition.py` owns the reusable
+  eligibility decision for transfer, storage, sale, ordinary loss, destruction,
+  sacrifice, confiscation, and theft. Its removal result delegates exact Bag
+  identity/content removal to `item_containers.py`. Bound-item rules remain
+  sourced by their owning feature module; the Bofto object compatibility helpers
+  in `star_object_curse.py` delegate ordinary eligibility to this policy.
 
 ## Session roster sync
 

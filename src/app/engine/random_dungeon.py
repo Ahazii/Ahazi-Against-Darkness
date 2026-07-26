@@ -6539,13 +6539,16 @@ class RandomDungeonEngine:
 
     def _strip_captive(self, session: SessionState, member: "PartyMemberState") -> dict:
         """Remove a captured hero's gold and portable items; return stripped values."""
-        from .star_object_curse import removable_inventory_items
+        from .item_disposition import ItemDisposition, eligible_inventory_items
 
         stripped: dict = {}
         if member.gold > 0:
             stripped["gold"] = member.gold
             member.gold = 0
-        portable_inventory = removable_inventory_items(member.inventory)
+        portable_inventory = eligible_inventory_items(
+            member.inventory,
+            ItemDisposition.CONFISCATION,
+        )
         has_equipment = bool(
             portable_inventory
             or member.default_melee_weapon

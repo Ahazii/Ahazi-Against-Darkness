@@ -8,7 +8,6 @@ from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
 from .class_profiles import max_life_for_level
 from .combat_modifiers import apply_poison_status, poison_save_succeeds
 from .dice import roll_d6, roll_d3, roll_exploding_for_level
-from .item_containers import remove_inventory_item_with_contents
 from .tag_temporary_weapon_enchantment import (
     remove_temporary_weapon_enchantment_marker,
     temporarily_enchanted_inventory_indices,
@@ -1115,11 +1114,16 @@ def _destroy_metal_item(
             if decision != "allow":
                 return item_name, "kept" if decision == "keep" else "pending"
             remove_temporary_weapon_enchantment_marker(member, item_name)
-        removed, _contents = remove_inventory_item_with_contents(
+        from .item_disposition import ItemDisposition, remove_item_for_disposition
+
+        removed = remove_item_for_disposition(
             member,
+            disposition=ItemDisposition.DESTRUCTION,
             inventory_index=inventory_index,
         )
-        return removed or item_name, "destroyed"
+        if removed.blocked_reason:
+            return item_name, "kept"
+        return removed.removed_item or item_name, "destroyed"
     if any(str(kind).casefold() == "3d6gp" for kind in priority) and member.gold > 0:
         amount = min(member.gold, sum(roll_d6() for _ in range(3)))
         member.gold -= amount

@@ -414,13 +414,11 @@ def sell_item(
     trimmed = item_name.strip()
     if not trimmed:
         return False, "Choose an item to sell.", 0
-    from .star_object_curse import is_star_object_item
+    from .item_disposition import ItemDisposition, item_disposition_decision
 
-    if is_star_object_item(trimmed):
-        return False, (
-            "Bofto's cursed star-shaped object cannot be sold or discarded. "
-            "Only Invisible Gremlins can break its curse (TAG p.30)."
-        ), 0
+    disposition = item_disposition_decision(trimmed, ItemDisposition.SALE)
+    if not disposition.allowed:
+        return False, disposition.reason, 0
     try:
         index = character.inventory.index(trimmed)
     except ValueError:
@@ -440,9 +438,13 @@ def sell_item(
         payout *= 3
         note = f"{note}; Big Money Buyer Secret x3"
         _consume_secret(character, "big_money_buyer")
-    from .item_containers import remove_inventory_item_with_contents
+    from .item_disposition import remove_item_for_disposition
 
-    remove_inventory_item_with_contents(character, inventory_index=index)
+    remove_item_for_disposition(
+        character,
+        disposition=ItemDisposition.SALE,
+        inventory_index=index,
+    )
     character.gold += payout
     prune_weapon_defaults(character)
     return True, f"{character.name} sells {trimmed} for {payout}gp ({note}).", payout
@@ -457,9 +459,10 @@ def sell_quote(
     trimmed = item_name.strip()
     if not trimmed:
         return {"item_name": "", "quote_gp": None, "kind": "none", "note": ""}
-    from .star_object_curse import is_star_object_item
+    from .item_disposition import ItemDisposition, item_disposition_decision
 
-    if is_star_object_item(trimmed):
+    disposition = item_disposition_decision(trimmed, ItemDisposition.SALE)
+    if not disposition.allowed:
         return {
             "item_name": trimmed,
             "quote_gp": None,

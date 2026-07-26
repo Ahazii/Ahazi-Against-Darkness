@@ -304,13 +304,11 @@ def transfer_item_between(
 ) -> tuple[bool, str]:
     if not item_name or not item_name.strip():
         return False, "Choose an item to transfer."
-    from .star_object_curse import is_star_object_item
+    from .item_disposition import ItemDisposition, item_disposition_decision
 
-    if is_star_object_item(item_name):
-        return False, (
-            "Bofto's cursed star-shaped object cannot be transferred, dropped, or given away. "
-            "Only a carrier's death or Invisible Gremlins can move or remove it (TAG pp.30-31)."
-        )
+    disposition = item_disposition_decision(item_name, ItemDisposition.TRANSFER)
+    if not disposition.allowed:
+        return False, disposition.reason
     from .item_containers import bag_for_inventory_index, bag_inventory_index, is_bag_of_carrying
 
     if is_bag_of_carrying(item_name):

@@ -102,7 +102,7 @@ def put_item_in_bag(
     container_id: str | None,
     item_name: str | None,
 ) -> tuple[bool, str]:
-    from .star_object_curse import is_star_object_item
+    from .item_disposition import ItemDisposition, item_disposition_decision
     from .weapons import prune_weapon_defaults
 
     bag = item_container(holder, container_id)
@@ -110,7 +110,8 @@ def put_item_in_bag(
         return False, "Choose a Bag of Carrying."
     if not item_name:
         return False, "Choose a loose item to put in the Bag of Carrying."
-    if is_star_object_item(item_name):
+    disposition = item_disposition_decision(item_name, ItemDisposition.STORAGE)
+    if not disposition.allowed:
         return False, (
             "Bofto's cursed star-shaped object cannot be stored. Only a carrier's death or "
             "Invisible Gremlins can move or remove it (TAG pp.30-31)."

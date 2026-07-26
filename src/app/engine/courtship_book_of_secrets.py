@@ -431,16 +431,25 @@ def apply_book_of_secrets_entry(
         if victim is None:
             return log
         if roll <= 3:
-            from .star_object_curse import removable_inventory_items
+            from .item_disposition import (
+                ItemDisposition,
+                eligible_inventory_items,
+                remove_item_for_disposition,
+            )
 
-            eligible = removable_inventory_items(victim.inventory)
+            eligible = eligible_inventory_items(victim.inventory, ItemDisposition.ORDINARY_LOSS)
             if eligible:
                 lost = random.choice(eligible)
-                from .item_containers import contained_loss_suffix, remove_inventory_item_with_contents
+                from .item_containers import contained_loss_suffix
 
-                _removed, contents = remove_inventory_item_with_contents(victim, item_name=lost)
+                removed = remove_item_for_disposition(
+                    victim,
+                    disposition=ItemDisposition.ORDINARY_LOSS,
+                    item_name=lost,
+                )
                 log.append(
-                    f"{victim.name} loses {lost}{contained_loss_suffix(contents)} to the mirror (TCOTFD)."
+                    f"{victim.name} loses {lost}"
+                    f"{contained_loss_suffix(list(removed.contained_items))} to the mirror (TCOTFD)."
                 )
         else:
             from .courtship_demesne import _grant_party_clues

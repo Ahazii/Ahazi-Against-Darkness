@@ -221,3 +221,17 @@ def test_unattended_body_theft_removes_one_item_on_a_failed_check(monkeypatch) -
 
     assert fallen.inventory == ["Shield"]
     assert any("Loot stolen from Fallen's unattended body: Sword (d6 = 3" in entry for entry in session.log)
+
+
+def test_unattended_body_theft_skips_bound_star_object(monkeypatch) -> None:
+    from app.engine.star_object_curse import STAR_OBJECT_ITEM
+
+    session = session_with_fallen()
+    fallen = session.party[1]
+    fallen.inventory = [STAR_OBJECT_ITEM, "Sword"]
+    monkeypatch.setattr("app.engine.death_recovery.roll_d6", lambda: 3)
+
+    steal_from_unattended_bodies(session, [fallen.character_id], show_rolls=False)
+
+    assert fallen.inventory == [STAR_OBJECT_ITEM]
+    assert any("Loot stolen from Fallen's unattended body: Sword." in entry for entry in session.log)

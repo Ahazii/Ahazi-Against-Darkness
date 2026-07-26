@@ -153,7 +153,16 @@ def resolve_fd_idol_choice(
             if matched is None:
                 session.log.append(f"{member.name} does not carry a Heroic magic item matching {item_name}.")
                 return False
-            member.inventory.remove(matched)
+            from .item_disposition import ItemDisposition, remove_item_for_disposition
+
+            removed = remove_item_for_disposition(
+                member,
+                disposition=ItemDisposition.SACRIFICE,
+                item_name=matched,
+            )
+            if not removed.removed:
+                session.log.append(removed.blocked_reason or f"{member.name} no longer carries {matched}.")
+                return False
             session.fd_idol_pending_choice = None
             if tile is not None:
                 engine._grant_clue(session, tile, character_id=member.character_id)

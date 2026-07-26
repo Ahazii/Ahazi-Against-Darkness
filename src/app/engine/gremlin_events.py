@@ -19,7 +19,6 @@ from .item_containers import (
     contained_loss_suffix,
     is_bag_of_carrying,
     item_container,
-    remove_inventory_item_with_contents,
 )
 from .magic_armor import is_magic_armor
 from .magic_items import is_charged_magic_item
@@ -313,13 +312,19 @@ def _remove_stolen_item(candidate: StealableItem) -> str:
         return f"{member.name}'s exposed secret compartment loses {candidate.item_name}."
     if candidate.inventory_index is None:
         return f"{member.name} loses {candidate.item_name}."
-    removed, contents = remove_inventory_item_with_contents(
+    from .item_disposition import ItemDisposition, remove_item_for_disposition
+
+    removed = remove_item_for_disposition(
         member,
+        disposition=ItemDisposition.THEFT,
         inventory_index=candidate.inventory_index,
     )
     if candidate.temporarily_enchanted:
         remove_temporary_weapon_enchantment_marker(member, candidate.item_name)
-    return f"{member.name} loses {removed or candidate.item_name}{contained_loss_suffix(contents)}."
+    return (
+        f"{member.name} loses {removed.removed_item or candidate.item_name}"
+        f"{contained_loss_suffix(list(removed.contained_items))}."
+    )
 
 
 def _pending_prompt(session: SessionState) -> list[str]:
@@ -468,14 +473,21 @@ def offer_gremlin_temporary_weapon(
         or not is_temporarily_enchanted_weapon(member, item_name)
     ):
         return ["Choose a living hero's temporarily enchanted weapon."]
-    removed, contents = remove_inventory_item_with_contents(member, item_name=item_name)
-    if removed is None:
+    from .item_disposition import ItemDisposition, remove_item_for_disposition
+
+    removed = remove_item_for_disposition(
+        member,
+        disposition=ItemDisposition.THEFT,
+        item_name=item_name,
+    )
+    if not removed.removed:
         return [f"{member.name} no longer carries {item_name}."]
     remove_temporary_weapon_enchantment_marker(member, item_name)
     pending.theft_count -= 1
     log = [
         f"{member.name} chooses to let the Invisible Gremlins take the temporarily enchanted "
-        f"{item_name}{contained_loss_suffix(contents)}; {pending.theft_count} theft slot(s) remain "
+        f"{item_name}{contained_loss_suffix(list(removed.contained_items))}; "
+        f"{pending.theft_count} theft slot(s) remain "
         "(TAG p.65, Temporary Weapon Enchantment)."
     ]
     if pending.theft_count <= 0 and not session.tag_star_object_gremlin_choice_pending:
