@@ -12411,7 +12411,7 @@ function _diagnosticPromptActionLabel(action) {
 }
 
 function narrativeReportLines(session = state.session) {
-  return (session?.log || []).map((entry) => formatNarrativeReportLine(normalizeLogEntryForDisplay(entry), session));
+  return (session?.log || []).map((entry) => formatNarrativeReportLine(normalizeLogEntryForDisplay(entry, session), session));
 }
 
 function currentRoomDebugSummary(session = state.session) {
@@ -17563,6 +17563,7 @@ const ENVIRONMENT_TABLE_HINTS = {
   tag_star_object_curse_table: "Bofto's Star-Shaped Object curse procedure (TAG pp.30-31): pickup Save, persistent curse, Star-Slayer, Gremlin cure, carrier death, and campaign recovery.",
   invisible_gremlins_procedure_table: "Invisible Gremlins procedure (EE pp.74, 87, 105, 160, 169; TAG pp.11, 13, 65): staged theft, protection, Disbelief, special property, temporary-enchantment choice, and Clue handling.",
   tag_bag_of_carrying_table: "Bag of Carrying procedure (TAG p.13): purchase, explicit multi-bag contents, transfer, theft/loss, and magic-user restriction.",
+  tag_medusa_scene10_procedure_table: "Hunter's Cabin approach (TAG pp.6-8, p.28): one party Stealth roll using the lowest modifier, then labelled Streetwise or immediate-fight choices.",
   tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG p.22): heard, investigating, then resolved only after the paragraph and corresponding Scene are played.",
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
   caverns_special_features_table: "Caverns Special Features (d6), EE p.112. Roll on room content 5 in caverns.",
@@ -17669,6 +17670,7 @@ const RULES_TABLE_ORDER = [
   "tag_star_object_curse_table",
   "invisible_gremlins_procedure_table",
   "tag_bag_of_carrying_table",
+  "tag_medusa_scene10_procedure_table",
   "tag_rumor_lifecycle_table",
   "courtship_seaside_encounter_table",
   "courtship_riverside_encounter_table",
@@ -25870,11 +25872,20 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
   const living = (state.session?.party || []).filter((member) => member.current_life > 0);
   const sceneState = state.session?.active_quest?.tag_procedure_state?.medusa_scene10 || {};
   const wrap = node("div", "tag-context-guided-action");
+  wrap.classList.add("medusa-scene10-guided");
+  const modifierSummary = living
+    .map((member) => `${member.name} ${formatSigned(tagOutdoorStealthModifier(member))}`)
+    .join("; ");
   setTooltip(
     wrap,
-    "TAG p.28, Scene 10 and TAG pp.6-8, Stealth Rolls: the whole living party rolls once against L6 using its worst modifier. Shields and heavy armor each impose -1."
+    "TAG p.28, Scene 10 and TAG pp.6-8, Stealth Rolls: the whole living party rolls once against L6 using its lowest modifier. Shields and heavy armor each impose -1."
   );
   wrap.appendChild(node("strong", "", "Scene 10 cabin approach"));
+  wrap.appendChild(
+    subline(
+      `TAG pp.6-8 use one roll for the whole party, not one roll per hero. Party modifiers: ${modifierSummary || "no living heroes"}.`
+    )
+  );
   if (!sceneState.completed) {
     const modifiers = living
       .map((member) => ({ member, modifier: tagOutdoorStealthModifier(member) }))
@@ -25900,12 +25911,23 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
     });
     wrap.appendChild(btn);
   } else if (sceneState.phase === "assassin_choice") {
+    wrap.classList.add("medusa-scene10-choice");
     wrap.appendChild(
       subline(
-        `${sceneState.assassin_count || 0} assassin agents ambush the party. Choose the printed response; do not choose the outcome.`
+        `${sceneState.assassin_count || 0} assassin agents ambush the party. Choose how the party responds.`
       )
     );
+    const options = node("div", "medusa-scene10-options");
+    const parleyOption = node("div", "medusa-scene10-option");
+    parleyOption.appendChild(node("strong", "", "Try to convince the assassins"));
+    parleyOption.appendChild(
+      subline("Choose the hero who will make the L5 Streetwise Save. The app rolls the Save and applies success or failure.")
+    );
+    const field = document.createElement("label");
+    field.className = "medusa-scene10-field";
+    field.appendChild(node("span", "", "Who attempts the Streetwise Save?"));
     const select = document.createElement("select");
+    select.setAttribute("aria-label", "Character attempting the L5 Streetwise Save");
     setTooltip(select, "Choose the character attempting the L5 Streetwise Save to convince the agents.");
     for (const member of living) {
       const option = document.createElement("option");
@@ -25913,8 +25935,9 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
       option.textContent = `${member.name} (L${member.level})`;
       select.appendChild(option);
     }
-    wrap.appendChild(select);
-    const parley = node("button", "primary", "Try to convince them");
+    field.appendChild(select);
+    parleyOption.appendChild(field);
+    const parley = node("button", "primary", "Roll Streetwise Save");
     parley.type = "button";
     parley.disabled = !living.length;
     setButtonTooltip(
@@ -25929,7 +25952,13 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
         amount: 0,
       }).catch(handleError)
     );
-    wrap.appendChild(parley);
+    parleyOption.appendChild(parley);
+    options.appendChild(parleyOption);
+    const fightOption = node("div", "medusa-scene10-option");
+    fightOption.appendChild(node("strong", "", "Fight immediately"));
+    fightOption.appendChild(
+      subline("Skip the Streetwise attempt and attack the assassin agents. The party acts first.")
+    );
     const fight = node("button", "secondary", "Fight the assassins");
     fight.type = "button";
     setButtonTooltip(
@@ -25943,7 +25972,9 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
         amount: 0,
       }).catch(handleError)
     );
-    wrap.appendChild(fight);
+    fightOption.appendChild(fight);
+    options.appendChild(fightOption);
+    wrap.appendChild(options);
   } else {
     const assassinVictory = (
       sceneState.phase === "assassin_combat"
@@ -33609,7 +33640,7 @@ function buildLogColourKey() {
 }
 
 function buildLogEntryLine(entry, session, baseClass = "") {
-  const displayEntry = normalizeLogEntryForDisplay(entry);
+  const displayEntry = normalizeLogEntryForDisplay(entry, session);
   const classes = [
     "log-line",
     baseClass,
@@ -33628,8 +33659,39 @@ function logEntryLayoutClass(entry) {
   return "";
 }
 
-function normalizeLogEntryForDisplay(entry) {
+function medusaScene10LegacyNarrative(entry, session = state.session) {
   const line = String(entry || "");
+  if (!line.startsWith("Medusa group Stealth Save:")) return line;
+  const sceneState = session?.active_quest?.tag_procedure_state?.medusa_scene10 || {};
+  const living = (session?.party || []).filter((member) => member.current_life > 0);
+  const modifiers = living
+    .map((member) => `${member.name} ${formatSigned(tagOutdoorStealthModifier(member))}`)
+    .join("; ");
+  const worst = living
+    .map((member) => ({ member, modifier: tagOutdoorStealthModifier(member) }))
+    .sort((left, right) => left.modifier - right.modifier)[0];
+  const roll = Number(sceneState.roll);
+  const modifier = Number(sceneState.modifier);
+  const total = Number(sceneState.total);
+  const count = Number(sceneState.assassin_count);
+  const result = sceneState.phase === "cabin_choice" ? "succeeds" : "fails";
+  const next = count > 0 && sceneState.phase === "assassin_choice"
+    ? `${count} assassin agents ambush the party. Choose one hero to attempt the L5 Streetwise Save, or fight immediately.`
+    : count > 0
+      ? `${count} assassin agents ambushed the party; the selected response is now being resolved.`
+    : "The party reaches the cabin undisturbed and may approach it or return to town.";
+  return (
+    `Scene 10 approach: TAG pp.6-8 require one Stealth Save for the whole party, using the lowest modifier. ` +
+    `Party modifiers: ${modifiers}. ${worst?.member?.name || "The least stealthy hero"}'s ${formatSigned(modifier)} applies. ` +
+    `The party rolls ${roll}; with ${formatSigned(modifier)}, the total is ${total} against L6, so the Save ${result}. ${next}`
+  );
+}
+
+function normalizeLogEntryForDisplay(entry, session = state.session) {
+  const line = String(entry || "");
+  if (line.startsWith("Medusa group Stealth Save:")) {
+    return medusaScene10LegacyNarrative(line, session);
+  }
   if (line.includes("They sell Shoes of Fast Walk") && line.includes("The lead stops behaving")) {
     return "Tiny footprints loop around the stones in impossible circles. A laugh skips from one side of the hill to the other. The bargain is ahead; no purchase or spell choice is due in this room.";
   }

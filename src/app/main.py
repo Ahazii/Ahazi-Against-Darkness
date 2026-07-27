@@ -4815,6 +4815,32 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         for row in rows
         if isinstance(row, dict)
     ] if isinstance(reaction_tables, dict) else []
+    data["tag_medusa_scene10_procedure_table"] = [
+        {
+            "step": "Party approach",
+            "rule": "Roll one exploding Stealth Save vs L6 for the whole party using the lowest modifier.",
+            "player_ui": "Show every living hero's modifier and identify which modifier controls the roll.",
+            "source": "TAG pp.6-8, p.28",
+        },
+        {
+            "step": "Failed approach",
+            "rule": "Roll d3+2 assassin agents.",
+            "player_ui": "Choose either one hero for the L5 Streetwise Save or immediate combat.",
+            "source": "TAG p.28",
+        },
+        {
+            "step": "Streetwise",
+            "rule": "Success returns the party to town; failure starts combat with the agents acting first.",
+            "player_ui": "Label the character selector as the hero attempting the Streetwise Save.",
+            "source": "TAG p.28",
+        },
+        {
+            "step": "Immediate fight",
+            "rule": "The party acts first against the HCL+2 dagger minions.",
+            "player_ui": "Keep this choice visually separate from the Streetwise selector.",
+            "source": "TAG p.28",
+        },
+    ]
     data["map_elements_table"] = [
         {
             "catalog": catalog,
@@ -6465,7 +6491,7 @@ def _update_medusa_scene10_state(session: SessionState, branch_action: str, entr
     state = dict(quest_state.get("medusa_scene10") or {})
     result = str(getattr(entry, "result_text", "") or "")
     if branch_action == "medusa_group_stealth":
-        match = re.search(r"Assassin agents d3=\d+\+2=(\d+)", result)
+        match = re.search(r"d3=\d+\+2=(\d+)", result)
         state = {
             "completed": True,
             "phase": "assassin_choice" if match else "cabin_choice",
@@ -7103,8 +7129,9 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     character = _optional_campaign_character(payload)
     branch_action = str(payload.get("branch_action") or "social_choice")
     action_reference = str(payload.get("reference") or "")
+    medusa_stealth_breakdown: list[dict[str, Any]] = []
     if branch_action == "medusa_group_stealth":
-        from .engine.tag_scene_actions import tag_group_stealth_member
+        from .engine.tag_scene_actions import tag_group_stealth_member, tag_stealth_modifier
 
         if not _is_medusa_generated_session(session):
             raise HTTPException(status_code=400, detail="Scene 10 is not active in this generated adventure.")
@@ -7114,8 +7141,20 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         if not living:
             raise HTTPException(status_code=400, detail="No living party member can approach the hunter's cabin.")
         worst_member, modifier = tag_group_stealth_member(living, outdoors=True)
+        medusa_stealth_breakdown = [
+            {
+                "character_id": member.character_id,
+                "name": member.name,
+                "modifier": tag_stealth_modifier(member, outdoors=True),
+            }
+            for member in living
+        ]
+        modifier_summary = ", ".join(
+            f"{item['name']} {int(item['modifier']):+d}" for item in medusa_stealth_breakdown
+        )
         action_reference = (
-            f"{action_reference} mod={modifier} worst={worst_member.name}".strip()
+            f"{action_reference}; mod={modifier}; worst={worst_member.name}; "
+            f"modifiers=[{modifier_summary}]"
         )
     if branch_action in {"medusa_assassin_parley", "medusa_assassin_fight"}:
         if _medusa_scene10_state(session).get("phase") != "assassin_choice":
@@ -7214,6 +7253,12 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     _update_session_tag_procedure_state(session, branch_action, entry)
     _update_generated_tag_procedure_state(session, branch_action, entry)
     _update_medusa_scene10_state(session, branch_action, entry)
+    if branch_action == "medusa_group_stealth" and session.active_quest is not None:
+        quest_state = dict(session.active_quest.tag_procedure_state or {})
+        scene_state = dict(quest_state.get("medusa_scene10") or {})
+        scene_state["party_modifiers"] = medusa_stealth_breakdown
+        quest_state["medusa_scene10"] = scene_state
+        session.active_quest.tag_procedure_state = quest_state
     typed_medusa_action = branch_action in {
         "medusa_group_stealth",
         "medusa_assassin_parley",

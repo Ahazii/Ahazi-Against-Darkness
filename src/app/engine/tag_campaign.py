@@ -4735,20 +4735,33 @@ def resolve_tag_branch_action(
             parts.append("All characters passed L6 Stealth on the way to the hunter's cabin; the party reaches the cabin undisturbed.")
     elif clean_action == "medusa_group_stealth":
         modifier = _tag_reference_int(reference, "mod", 0)
+        worst_match = re.search(r"(?:^|;\s*)worst=([^;]+)", reference)
+        modifiers_match = re.search(r"(?:^|;\s*)modifiers=\[([^\]]+)\]", reference)
+        worst_name = worst_match.group(1).strip() if worst_match else "The least stealthy character"
+        modifier_summary = modifiers_match.group(1).strip() if modifiers_match else ""
         rolled_total, rolls = roll_exploding_d6()
         roll = rolls[0]
         total = rolled_total + modifier
         roll_text = " + ".join(str(value) for value in rolls)
+        parts.clear()
+        parts.append(
+            "Scene 10 approach: TAG pp.6-8 require one Stealth Save for the whole party, "
+            "using the lowest character modifier."
+        )
+        if modifier_summary:
+            parts.append(f"Party modifiers: {modifier_summary}.")
+        parts.append(f"{worst_name}'s {modifier:+d} modifier applies to the group roll.")
         if roll == 1 or total < 6:
             count_roll = roll_d3()
             count = count_roll + 2
             parts.append(
-                f"Scene 10 group Stealth Save {roll_text}{modifier:+d}={total} vs L6: failed. "
-                f"Assassin agents d3={count_roll}+2={count} ambush the party. Choose whether to attempt the L5 Streetwise Save or fight immediately."
+                f"The party rolls {roll_text}; with {modifier:+d}, the total is {total} against L6, so the Save fails. "
+                f"The assassin count is d3={count_roll}+2={count}: {count} agents ambush the party. "
+                "Choose one hero to attempt the L5 Streetwise Save, or fight immediately."
             )
         else:
             parts.append(
-                f"Scene 10 group Stealth Save {roll_text}{modifier:+d}={total} vs L6: success. "
+                f"The party rolls {roll_text}; with {modifier:+d}, the total is {total} against L6, so the Save succeeds. "
                 "The party reaches the hunter's cabin undisturbed and may continue to Scene 1 or return to town."
             )
     elif clean_action == "medusa_assassin_parley":

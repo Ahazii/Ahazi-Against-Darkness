@@ -974,6 +974,12 @@ def test_medusa_scene10_group_stealth_persists_choice_and_stages_immediate_fight
     assert scene_state["phase"] == "assassin_choice"
     assert scene_state["assassin_count"] == 4
     assert scene_state["modifier"] == -2
+    assert scene_state["party_modifiers"] == [
+        {"character_id": "rogue", "name": "Rogue", "modifier": 3},
+        {"character_id": "warrior", "name": "Shielded Warrior", "modifier": -2},
+    ]
+    assert "one Stealth Save for the whole party" in scene_state["result"]
+    assert "Party modifiers: Rogue +3, Shielded Warrior -2" in scene_state["result"]
     assert approach_session["mode"] == "exploration"
 
     monkeypatch.setattr("app.main.roll_formula", lambda _formula: 2)

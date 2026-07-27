@@ -2571,6 +2571,49 @@ button.is-working::after {
   grid-column: 1 / -1;
 }
 
+.tag-context-guided-action.medusa-scene10-guided {
+  grid-template-columns: 1fr;
+  max-width: 920px;
+  gap: 8px;
+}
+
+.medusa-scene10-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.medusa-scene10-option {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 4px 0 4px 10px;
+  border-left: 3px solid rgba(184, 138, 58, 0.62);
+}
+
+.medusa-scene10-option .subline {
+  grid-column: auto;
+}
+
+.medusa-scene10-field {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.medusa-scene10-option button {
+  justify-self: start;
+  white-space: normal;
+}
+
+@media (max-width: 760px) {
+  .medusa-scene10-options {
+    grid-template-columns: 1fr;
+  }
+}
+
 .tag-director-panel {
   display: grid;
   gap: 4px;

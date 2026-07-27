@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-27. Target build: v0.39.49.
+Last updated: 2026-07-27. Target build: v0.39.50.
 
 ## Adventure Test Gate: Passed
 
@@ -26,13 +26,18 @@ regression.
 
 ### TAG Rumor 2: Resume The Stored Assassin Choice
 
-This is the only open manual check. Deploy v0.39.49, force-refresh, and resume
+This is the only open manual check. Deploy v0.39.50, force-refresh, and resume
 session `de586c99ab51416197f543fead8614b9`; do not generate a new adventure or
 repeat the group Stealth Save.
 
-1. Confirm the stored result still says four assassin agents ambushed the
-   party and has not rerolled. Current Objective must show a living-character
-   dropdown plus **Try to convince them** and **Fight the assassins**.
+1. Confirm the stored result has been rewritten into plain language without
+   rerolling. It must explain that TAG pp.6-8 use one party roll, list all four
+   character modifiers, identify Sir Benedict's `-2` as the controlling
+   modifier, show the stored `2 - 2 = 0` failure, and retain four agents.
+   Current Objective must show two visually separate choices. The first is
+   labelled **Who attempts the Streetwise Save?** with a character dropdown
+   and **Roll Streetwise Save**. The second is **Fight the assassins** and
+   states that the party acts first.
 2. Choose **Fight the assassins**. Combat must start with the party acting
    first against four HCL+2 dagger minions. The alternate Streetwise route and
    agents-first failure path remain covered by focused automated tests.

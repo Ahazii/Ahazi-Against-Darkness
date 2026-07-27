@@ -2077,12 +2077,16 @@ def test_tag_rumor_branch_actions_roll_scene_procedures(monkeypatch) -> None:
         campaign,
         None,
         branch_action="medusa_group_stealth",
-        reference="Scene 10 mod=-2",
+        reference="Scene 10; mod=-2; worst=Bran; modifiers=[Bran -2, Nia +3]",
     )
     assert group_stealth.roll == 3
     assert group_stealth.modifier == -2
     assert group_stealth.total == 1
     assert "d3=2+2=4" in group_stealth.result_text
+    assert "one Stealth Save for the whole party" in group_stealth.result_text
+    assert "Party modifiers: Bran -2, Nia +3" in group_stealth.result_text
+    assert "Bran's -2 modifier applies" in group_stealth.result_text
+    assert "Choose one hero to attempt the L5 Streetwise Save" in group_stealth.result_text
 
     hero.class_id = "warrior"
     hero.class_name = "Warrior"

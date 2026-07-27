@@ -1301,7 +1301,7 @@ def test_log_colour_key_and_semantic_classes_are_present() -> None:
     assert "buildLogEntryLine(entry, session" in APP_JS
     assert "logEntryLayoutClass(displayEntry)" in APP_JS
     assert "function logEntryLayoutClass(entry)" in APP_JS
-    assert "function normalizeLogEntryForDisplay(entry)" in APP_JS
+    assert "function normalizeLogEntryForDisplay(entry, session = state.session)" in APP_JS
     assert "If this room has no scene-specific action, keep moving" in APP_JS
     assert "buildLogColourKey()" in _function_body("renderCombatRailLog", APP_JS)
     assert "regenerates?" in APP_JS
@@ -2754,8 +2754,12 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "appendMedusaScene10GuidedAction" in APP_JS
     assert "appendMedusaScene1GuidedAction" in APP_JS
     assert "Roll group Stealth Save" in APP_JS
-    assert "Try to convince them" in APP_JS
+    assert "Who attempts the Streetwise Save?" in APP_JS
+    assert "Roll Streetwise Save" in APP_JS
     assert "Fight the assassins" in APP_JS
+    assert "one roll for the whole party, not one roll per hero" in APP_JS
+    assert "medusaScene10LegacyNarrative" in APP_JS
+    assert "medusa-scene10-options" in STYLES_CSS
     assert "The assassin agents are defeated." in APP_JS
     assert '"Approach the cabin"' in APP_JS
     assert '"Return to town"' in APP_JS
