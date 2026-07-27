@@ -2084,8 +2084,20 @@ def test_tag_rumor_branch_actions_roll_scene_procedures(monkeypatch) -> None:
     assert group_stealth.total == 1
     assert "d3=2+2=4" in group_stealth.result_text
 
-    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 5)
+    hero.class_id = "warrior"
+    hero.class_name = "Warrior"
+    monkeypatch.setattr(tag_campaign, "roll_exploding_d6", lambda: (5, [5]))
     stealth = resolve_tag_branch_action(campaign, hero, branch_action="medusa_stealth_approach", reference="mod=1")
+    assert stealth.total == 5
+    assert stealth.modifier == 0
+    assert "fails" in stealth.result_text
+    assert "Petrified" in hero.statuses
+
+    hero.statuses.remove("Petrified")
+    hero.class_id = "rogue"
+    hero.class_name = "Rogue"
+    monkeypatch.setattr(tag_campaign, "roll_exploding_d6", lambda: (3, [3]))
+    stealth = resolve_tag_branch_action(campaign, hero, branch_action="medusa_stealth_approach")
     assert stealth.total == 6
     assert "attacks once before Xasartha" in stealth.result_text
 
@@ -2307,6 +2319,67 @@ def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
     assert diagnostics["current_prompt_found"] is True
     assert diagnostics["manual_fallback_needed"] is False
     assert diagnostics["prompt_count"] >= 4
+
+
+def test_resumed_medusa_manifest_replaces_extracted_sentence_fragments_with_typed_choices() -> None:
+    scene10 = (
+        "As you come closer to the hunter's cabin, have all the characters perform a Stealth Save vs. L6. "
+        "If at least one character fails, d3+2 agents of the guild of assassins will ambush the party."
+    )
+    scene1 = (
+        "You reach the hunter's cabin. Perform a L6 Stealth roll with a character of your choice. "
+        "You may also shout to Xasartha the medusa from outside the hunter's cabin."
+    )
+    manifest = {
+        "title": "The Adventures Guild Rumor 2: Medusa in the Hunter's Cabin",
+        "source": {
+            "parameters": {
+                "tag_reference": {
+                    "lead_type": "rumor",
+                    "rumor_number": 2,
+                    "title": "Medusa in the Hunter's Cabin",
+                    "room_prompts": {
+                        "tag-final-scene": {
+                            "title": "Scene choices",
+                            "body": scene10,
+                            "actions": [
+                                {"label": "Once this encounter is over, you may reach the cabin by"},
+                                {"label": "decide to go back to town"},
+                            ],
+                        },
+                        "tag-scene-1": {
+                            "title": "Scene 1",
+                            "body": scene1,
+                            "actions": [{"label": "If you want to try on the pendant"}],
+                        },
+                    },
+                }
+            }
+        },
+        "rooms": [
+            {"id": "tag-final-scene", "title": "Xasartha's Cabin", "triggers": []},
+            {"id": "tag-scene-1", "title": "Scene 1", "triggers": []},
+        ],
+    }
+
+    upgraded = upgrade_tag_manifest(manifest)
+    reference = upgraded["source"]["parameters"]["tag_reference"]
+    scene10_prompt = reference["room_prompts"]["tag-final-scene"]
+    scene1_prompt = reference["room_prompts"]["tag-scene-1"]
+
+    assert scene10_prompt["title"] == "Approach to the Hunter's Cabin"
+    assert [action["label"] for action in scene10_prompt["actions"]] == ["Approach the cabin"]
+    assert scene10_prompt["actions"][0]["action_value"] == "medusa_group_stealth"
+    assert [action["label"] for action in scene1_prompt["actions"]] == [
+        "Approach the cabin",
+        "Shout out to the Medusa",
+    ]
+    assert [action["action_value"] for action in scene1_prompt["actions"]] == [
+        "medusa_stealth_approach",
+        "medusa_reaction",
+    ]
+    assert upgraded["rooms"][0]["title"] == "Approach to the Hunter's Cabin"
+    assert upgraded["rooms"][1]["title"] == "Xasartha's Cabin"
 
 
 def test_generated_tag_diagnostics_flags_missing_current_prompt_and_scene_target() -> None:

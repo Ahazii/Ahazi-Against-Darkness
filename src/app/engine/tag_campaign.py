@@ -17,6 +17,7 @@ from .tag_scene_actions import (
     tag_scene_action_manifest,
     tag_scene_action_modifier,
     tag_scene_action_succeeded,
+    tag_stealth_modifier,
 )
 from ..schemas import (
     CampaignEffectState,
@@ -3292,7 +3293,7 @@ def roll_3d6() -> tuple[int, list[int]]:
     return sum(rolls), rolls
 
 
-def roll_exploding_d6(count: int) -> tuple[int, list[int]]:
+def roll_multiple_exploding_d6(count: int) -> tuple[int, list[int]]:
     rolls: list[int] = []
     total = 0
     for _ in range(count):
@@ -3472,7 +3473,7 @@ def recover_hidden_treasure_trove(campaign: CampaignState, character: Character)
 
 
 def roll_treasure_map_price(campaign: CampaignState) -> TagDowntimeLogEntry:
-    total, rolls = roll_exploding_d6(5)
+    total, rolls = roll_multiple_exploding_d6(5)
     result = f"Treasure map price roll: {'+'.join(str(roll) for roll in rolls)} = {total} gp."
     entry = TagDowntimeLogEntry(
         action="treasure_map_price",
@@ -4772,15 +4773,27 @@ def resolve_tag_branch_action(
     elif clean_action == "medusa_assassin_fight":
         parts.append("The party chooses to fight the assassin agents immediately and acts first.")
     elif clean_action == "medusa_stealth_approach":
-        modifier = _tag_reference_int(reference, "mod", cost)
-        roll = roll_d6()
-        total = roll + modifier
-        if total >= 6:
-            parts.append(f"Medusa cabin stealth d6={roll}+{modifier}={total} vs L6: success. Party attacks once before Xasartha uses her gaze.")
+        if character is None:
+            parts.append("Choose the character who approaches Xasartha's cabin.")
         else:
-            parts.append(
-                f"Medusa cabin stealth d6={roll}+{modifier}={total} vs L6: failed. The scouting character is turned to stone with no Save; remaining party fights normally and must Save vs gaze."
-            )
+            modifier = tag_stealth_modifier(character, outdoors=True)
+            rolled_total, rolls = roll_exploding_d6()
+            roll = rolls[0]
+            total = rolled_total + modifier
+            roll_text = " + ".join(str(value) for value in rolls)
+            if roll != 1 and total >= 6:
+                parts.append(
+                    f"{character.name}'s Medusa cabin Stealth Save {roll_text}{modifier:+d}={total} vs L6 succeeds. "
+                    "The party attacks once before Xasartha uses her gaze."
+                )
+            else:
+                if "Petrified" not in character.statuses:
+                    character.statuses.append("Petrified")
+                character.updated_at = now_utc()
+                parts.append(
+                    f"{character.name}'s Medusa cabin Stealth Save {roll_text}{modifier:+d}={total} vs L6 fails. "
+                    f"{character.name} is turned to stone with no Save; the remaining party fights normally and must Save vs gaze."
+                )
     elif clean_action == "medusa_reaction":
         roll = roll_d6()
         if roll == 1:
@@ -5221,6 +5234,40 @@ def _tag_unlocked_scene_prompt(
         or "bofto" in lead_detail.lower()
         or "bofto" in adventure_title.lower()
     )
+    is_medusa = lead_type == "rumor" and (
+        rumor_number == 2
+        or lead_detail == "2"
+        or "medusa" in lead_detail.lower()
+        or "medusa" in adventure_title.lower()
+    )
+    if is_medusa and scene_key.strip().lower() == "scene 1":
+        return {
+            "title": "Xasartha's Cabin",
+            "body": _tag_player_scene_body(
+                str(scene_node.get("description") or "Resolve the approach to Xasartha's cabin.")
+            ),
+            "checklist": [
+                "Choose whether the party approaches quietly or calls out from outside.",
+                "For a quiet approach, choose the character making the printed L6 Stealth Save.",
+                "The app rolls Xasartha's reaction when the party calls out; do not choose the reaction result.",
+            ],
+            "actions": [
+                _tag_prompt_action(
+                    "Approach the cabin",
+                    "Choose one living character to make Scene 1's L6 Stealth Save. The app resolves success or failure and starts Xasartha's encounter.",
+                    action_type="branch",
+                    action_value="medusa_stealth_approach",
+                    reference="TAG p.25, Scene 1 quiet cabin approach",
+                ),
+                _tag_prompt_action(
+                    "Shout out to the Medusa",
+                    "Call to Xasartha from outside and let the app roll her printed reaction table.",
+                    action_type="branch",
+                    action_value="medusa_reaction",
+                    reference="TAG p.25, Scene 1 Xasartha reaction",
+                ),
+            ],
+        }
     if is_bofto and scene_key.strip().lower() == "scene 19":
         return {
             "title": scene_key,
@@ -6646,6 +6693,10 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
     graph_actions = _tag_scene_graph_actions(profile)
     profile_final_actions = _tag_profile_actions(profile, "final_prompt_actions")
     final_actions = graph_actions or profile_final_actions
+    is_medusa_rumor = (
+        lead_type == "rumor"
+        and int(profile.get("rumor_number") or 0) == 2
+    )
     start_scene_body = ""
     entry_actions = [
         _tag_prompt_action("Adventures Guild Actions", "Open the full Adventures Guild Actions dialog without changing any values."),
@@ -6681,6 +6732,8 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
                 reference=f"{start_scene or base_ref}: resolved",
             ),
         ]
+        if is_medusa_rumor and start_scene.strip().lower() == "scene 10":
+            final_actions = _tag_profile_actions(profile, "complication_prompt_actions")
         if lead_type == "rumor":
             entry_actions = [
                 _tag_prompt_action(

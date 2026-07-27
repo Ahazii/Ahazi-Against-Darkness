@@ -868,7 +868,7 @@ def test_medusa_generated_scene_spawns_after_printed_approach_choice(client, mon
     )
     main.store.save("characters", character)
     main.store.save("sessions", session)
-    monkeypatch.setattr("app.engine.tag_campaign.roll_d6", lambda: 6)
+    monkeypatch.setattr("app.engine.tag_campaign.roll_exploding_d6", lambda: (6, [6]))
 
     response = client.post(
         "/api/sessions/medusa-choice-session/tag-branch-action",
@@ -884,12 +884,26 @@ def test_medusa_generated_scene_spawns_after_printed_approach_choice(client, mon
     assert payload["session"]["mode"] == "combat"
     final_room = payload["session"]["map_state"]["tiles"][0]
     assert [enemy["name"] for enemy in final_room["enemies"]] == ["Medusa"]
+    assert final_room["enemies"][0]["level"] == 4
+    assert final_room["enemies"][0]["life"] == 4
     assert any("printed Scene 1 result" in line for line in payload["session"]["log"])
     assert not any("Final Boss check" in line for line in payload["session"]["log"])
 
 
 def test_medusa_scene10_group_stealth_persists_choice_and_stages_immediate_fight(client, monkeypatch) -> None:
     manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="2")
+    tag_reference = manifest["source"]["parameters"]["tag_reference"]
+    tag_reference["room_prompts"]["tag-final-scene"] = {
+        "title": "Scene choices",
+        "body": (
+            "As you come closer to the hunter's cabin, have all the characters perform a Stealth Save vs. L6. "
+            "If at least one character fails, d3+2 agents of the guild of assassins will ambush the party."
+        ),
+        "actions": [
+            {"label": "Once this encounter is over, you may reach the cabin by"},
+            {"label": "decide to go back to town"},
+        ],
+    }
     tile = TileState(
         id="approach",
         x=0,
@@ -898,7 +912,7 @@ def test_medusa_scene10_group_stealth_persists_choice_and_stages_immediate_fight
         tile_type="room",
         title="Approach to the Hunter's Cabin",
         description="The party approaches the cabin.",
-        content_key="imported:tag-complication",
+        content_key="imported:tag-final-scene",
     )
     party = [
         PartyMemberState(

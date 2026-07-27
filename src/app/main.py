@@ -6496,7 +6496,22 @@ def _spawn_medusa_scene10_assassins(session: SessionState, *, foes_strike_first:
     if not count or state.get("combat_spawned"):
         return False
     tile = random_engine._current_tile(session)
-    if _imported_room_id_for_tile(session, tile) != "tag-complication":
+    room_id = _imported_room_id_for_tile(session, tile)
+    params = ((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}
+    tag_ref = params.get("tag_reference") if isinstance(params, dict) else None
+    prompts = tag_ref.get("room_prompts") if isinstance(tag_ref, dict) else None
+    prompt = prompts.get(room_id) if isinstance(prompts, dict) else None
+    prompt_actions = prompt.get("actions") if isinstance(prompt, dict) else None
+    prompt_body = str(prompt.get("body") or "") if isinstance(prompt, dict) else ""
+    is_scene10_room = (
+        "as you come closer to the hunter" in prompt_body.lower()
+        and "assassins" in prompt_body.lower()
+    ) or any(
+        isinstance(action, dict)
+        and str(action.get("action_value") or "") == "medusa_group_stealth"
+        for action in prompt_actions or []
+    )
+    if not is_scene10_room:
         return False
     if any(enemy.life > 0 for enemy in tile.enemies):
         return False
@@ -6669,10 +6684,22 @@ def _spawn_generated_tag_foes_from_choice(session: SessionState, branch_action: 
         return False
     tile = random_engine._current_tile(session)
     room_id = _imported_room_id_for_tile(session, tile)
-    if room_id != "tag-final-scene" or any(enemy.life > 0 for enemy in tile.enemies):
-        return False
     tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference") or {}
     if not isinstance(tag_ref, dict) or int(tag_ref.get("rumor_number") or 0) != 2:
+        return False
+    prompts = tag_ref.get("room_prompts")
+    prompt = prompts.get(room_id) if isinstance(prompts, dict) else None
+    prompt_body = str(prompt.get("body") or "") if isinstance(prompt, dict) else ""
+    prompt_actions = prompt.get("actions") if isinstance(prompt, dict) else None
+    is_scene1_room = (
+        "you reach the hunter" in prompt_body.lower()
+        and "xasartha" in prompt_body.lower()
+    ) or any(
+        isinstance(action, dict)
+        and str(action.get("action_value") or "") in {"medusa_stealth_approach", "medusa_reaction"}
+        for action in prompt_actions or []
+    )
+    if not is_scene1_room or any(enemy.life > 0 for enemy in tile.enemies):
         return False
     should_fight = branch_action == "medusa_stealth_approach" or int(getattr(entry, "roll", 0) or 0) >= 3
     if not should_fight:
@@ -6681,6 +6708,11 @@ def _spawn_generated_tag_foes_from_choice(session: SessionState, branch_action: 
     spawned = spawn_manifest_foes(random_engine.rules.monsters(), foes, random_engine._highest_character_level(session.party))
     if not spawned:
         return False
+    for foe in spawned:
+        if foe.name == "Medusa":
+            foe.level = 4
+            foe.life = 4
+            foe.max_life = 4
     tile.enemies.extend(spawned)
     tile.initial_enemy_count = len(tile.enemies)
     session.log.append("Scene 1: Xasartha enters the fight after the printed approach/reaction result.")
@@ -7090,6 +7122,8 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
             raise HTTPException(status_code=400, detail="Resolve Scene 10's group Stealth Save before choosing how to handle the assassin agents.")
     if branch_action == "medusa_assassin_parley" and character is None:
         raise HTTPException(status_code=400, detail="Choose the character attempting the Scene 10 Streetwise Save.")
+    if branch_action == "medusa_stealth_approach" and character is None:
+        raise HTTPException(status_code=400, detail="Choose the character approaching Xasartha's cabin.")
     if branch_action in {"bofto_theft_save", "star_object_will_save"} and character is None:
         raise HTTPException(status_code=400, detail="Choose the character named by the Bofto scene before rolling.")
     if branch_action == "star_slayer_check":

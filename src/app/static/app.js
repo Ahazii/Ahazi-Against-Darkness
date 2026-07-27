@@ -25937,19 +25937,114 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
     );
     wrap.appendChild(fight);
   } else {
+    const assassinVictory = (
+      sceneState.phase === "assassin_combat"
+      && sceneState.combat_spawned
+      && state.session?.mode === "exploration"
+    );
     wrap.appendChild(
       subline(
         sceneState.phase === "cabin_choice"
           ? "The party reached the cabin undisturbed. Continue to Scene 1 or return to town."
-          : sceneState.phase === "returned_to_town"
-            ? "The agents believed the party and sent them back to town."
-            : "The Scene 10 assassin combat is in progress or has been staged."
+        : sceneState.phase === "returned_to_town"
+          ? "The agents believed the party and sent them back to town."
+        : assassinVictory
+          ? "The assassin agents are defeated. Claim their staged 4d6 gp, then choose whether to approach the cabin or return to town."
+          : "The Scene 10 assassin combat is in progress or has been staged."
       )
     );
+    if (sceneState.phase === "cabin_choice" || assassinVictory) {
+      const approach = node("button", "primary", "Approach the cabin");
+      approach.type = "button";
+      setButtonTooltip(
+        approach,
+        "Continue from TAG p.28 Scene 10 to the hunter's cabin in Scene 1. The next screen presents the quiet approach or call-out choice."
+      );
+      approach.addEventListener("click", () =>
+        runTagRouteActionWithDefaults({
+          routeAction: "unlock_scene",
+          reference: "Scene 10 -> Scene 1: approach the cabin",
+          amount: 0,
+        }).catch(handleError)
+      );
+      wrap.appendChild(approach);
+      const leave = node("button", "secondary", "Return to town");
+      leave.type = "button";
+      setButtonTooltip(
+        leave,
+        "End this rumor investigation and return to town, as allowed at the end of TAG p.28 Scene 10."
+      );
+      leave.addEventListener("click", () =>
+        runTagRouteActionWithDefaults({
+          routeAction: "final_route",
+          reference: "Scene 10: return to town",
+          amount: 0,
+        }).catch(handleError)
+      );
+      wrap.appendChild(leave);
+    }
   }
   parent.appendChild(wrap);
   return true;
 }
+
+function appendMedusaScene1GuidedAction(parent, action, fallbackReference) {
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  if (!["medusa_stealth_approach", "medusa_reaction"].includes(defaults.branchAction)) return false;
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  const wrap = node("div", "tag-context-guided-action");
+  if (defaults.branchAction === "medusa_reaction") {
+    setTooltip(
+      wrap,
+      "TAG p.25, Scene 1: call to Xasartha from outside and roll her printed bribe, quest, fight, or fight-to-the-death reaction."
+    );
+    const shout = node("button", "secondary", "Shout out to the Medusa");
+    shout.type = "button";
+    setButtonTooltip(
+      shout,
+      "Roll Xasartha's printed reaction automatically. The player does not choose whether she is peaceful or hostile."
+    );
+    shout.addEventListener("click", () => {
+      shout.disabled = true;
+      runTagBranchActionWithDefaults(defaults).catch(handleError);
+    });
+    wrap.appendChild(shout);
+    parent.appendChild(wrap);
+    return true;
+  }
+  setTooltip(
+    wrap,
+    "TAG p.25, Scene 1: choose the character making the L6 Stealth Save. Class, shield, and heavy-armor modifiers are derived from that character."
+  );
+  const select = document.createElement("select");
+  setTooltip(select, "Choose the living character who quietly approaches Xasartha's cabin.");
+  for (const member of living) {
+    const option = document.createElement("option");
+    const modifier = tagOutdoorStealthModifier(member);
+    option.value = member.character_id;
+    option.textContent = `${member.name} (L${member.level}, ${modifier >= 0 ? "+" : ""}${modifier})`;
+    select.appendChild(option);
+  }
+  wrap.appendChild(select);
+  const approach = node("button", "primary", "Approach the cabin");
+  approach.type = "button";
+  approach.disabled = !living.length;
+  setButtonTooltip(
+    approach,
+    "Roll the selected character's exploding Stealth Save vs L6. A natural 1 fails. The app applies the printed success or petrification result."
+  );
+  approach.addEventListener("click", () => {
+    approach.disabled = true;
+    runTagBranchActionWithDefaults({
+      ...defaults,
+      characterId: select.value,
+    }).catch(handleError);
+  });
+  wrap.appendChild(approach);
+  parent.appendChild(wrap);
+  return true;
+}
+
 
 function appendBoftoScene19GuidedAction(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
@@ -26591,6 +26686,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
     if (appendLeprechaunGuidedAction(row, action, fallbackReference)) continue;
     if (appendBoftoTheftGuidedAction(row, action, fallbackReference)) continue;
     if (appendMedusaScene10GuidedAction(row, action, fallbackReference)) continue;
+    if (appendMedusaScene1GuidedAction(row, action, fallbackReference)) continue;
     if (appendBoftoScene19GuidedAction(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     const defaults = tagPromptDefaultsFromAction(action, fallbackReference);

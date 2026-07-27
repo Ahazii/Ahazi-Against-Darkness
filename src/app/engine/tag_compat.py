@@ -676,6 +676,120 @@ def _repaired_room_prompts(tag_reference: dict[str, Any], manifest: dict[str, An
     }
 
 
+def _medusa_prompt_action(
+    label: str,
+    tooltip: str,
+    *,
+    action_value: str,
+    reference: str,
+) -> dict[str, Any]:
+    return {
+        "label": label,
+        "tooltip": tooltip,
+        "action_type": "branch",
+        "action_value": action_value,
+        "reference": reference,
+        "amount": 0,
+    }
+
+
+def _upgrade_medusa_manifest(manifest: dict[str, Any], tag_reference: dict[str, Any]) -> bool:
+    try:
+        rumor_number = int(tag_reference.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    title = str(tag_reference.get("title") or manifest.get("title") or "")
+    if (
+        str(tag_reference.get("lead_type") or "").lower() != "rumor"
+        or (rumor_number != 2 and "medusa" not in title.lower())
+    ):
+        return False
+
+    prompts = tag_reference.get("room_prompts")
+    if not isinstance(prompts, dict):
+        return False
+    rooms_by_id = {
+        str(room.get("id")): room
+        for room in manifest.get("rooms") or []
+        if isinstance(room, dict) and room.get("id")
+    }
+    changed = False
+    for room_id, prompt in list(prompts.items()):
+        if not isinstance(prompt, dict):
+            continue
+        body = str(prompt.get("body") or "")
+        lower = body.lower()
+        replacement: dict[str, Any] | None = None
+        room_title = ""
+        if "as you come closer to the hunter" in lower and "assassins" in lower:
+            room_title = "Approach to the Hunter's Cabin"
+            replacement = {
+                "title": room_title,
+                "body": body,
+                "checklist": [
+                    "Roll the one printed group Stealth Save using the living party member with the worst modifier.",
+                    "On failure, choose whether to convince the assassin agents or fight them.",
+                    "After a successful approach or a victory over the agents, choose whether to approach the cabin or return to town.",
+                ],
+                "actions": [
+                    _medusa_prompt_action(
+                        "Approach the cabin",
+                        "Run TAG Scene 10's group Stealth Save vs L6. The app persists the result and handles any d3+2 assassin ambush.",
+                        action_value="medusa_group_stealth",
+                        reference="TAG p.28, Scene 10 cabin approach",
+                    )
+                ],
+            }
+        elif "you reach the hunter" in lower and "xasartha" in lower:
+            room_title = "Xasartha's Cabin"
+            replacement = {
+                "title": room_title,
+                "body": body,
+                "checklist": [
+                    "Choose whether the party approaches quietly or calls out from outside.",
+                    "For a quiet approach, choose the character making the printed L6 Stealth Save.",
+                    "The app rolls Xasartha's reaction when the party calls out; do not choose the reaction result.",
+                ],
+                "actions": [
+                    _medusa_prompt_action(
+                        "Approach the cabin",
+                        "Choose one living character to make Scene 1's L6 Stealth Save before Xasartha's encounter.",
+                        action_value="medusa_stealth_approach",
+                        reference="TAG p.25, Scene 1 quiet cabin approach",
+                    ),
+                    _medusa_prompt_action(
+                        "Shout out to the Medusa",
+                        "Call to Xasartha from outside and let the app roll her printed reaction table.",
+                        action_value="medusa_reaction",
+                        reference="TAG p.25, Scene 1 Xasartha reaction",
+                    ),
+                ],
+            }
+        elif "pendant is magical" in lower and "luck point" in lower:
+            room_title = "Xasartha's Emerald Pendant"
+            replacement = {
+                "title": room_title,
+                "body": body,
+                "checklist": [
+                    "Assign the magical pendant only to the character who tried it on.",
+                    "Its Luck allowance recharges at the beginning of each adventure.",
+                ],
+                "actions": [],
+            }
+        if replacement is None:
+            continue
+        if prompt != replacement:
+            prompts[room_id] = replacement
+            changed = True
+        room = rooms_by_id.get(str(room_id))
+        if isinstance(room, dict) and room_title and room.get("title") != room_title:
+            room["title"] = room_title
+            changed = True
+    if changed:
+        tag_reference["medusa_scene_prompt_upgrade"] = "TAG pp.25-28 typed Scene 10 and Scene 1 choices"
+    return changed
+
+
 def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     parameters = manifest.get("source", {}).get("parameters", {})
     tag_reference = parameters.get("tag_reference") if isinstance(parameters, dict) else None
@@ -704,6 +818,7 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
             prompts = tag_reference["room_prompts"]
         _apply_local_tag_narrative_override(manifest, tag_reference)
         _upgrade_bofto_manifest(manifest, tag_reference)
+        _upgrade_medusa_manifest(manifest, tag_reference)
         if is_treasure_map:
             if isinstance(prompts, dict):
                 for prompt in prompts.values():

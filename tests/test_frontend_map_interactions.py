@@ -2744,9 +2744,13 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "white gargoyle count" in INDEX_HTML
     assert "medusa_assassin_ambush" in APP_JS
     assert "appendMedusaScene10GuidedAction" in APP_JS
+    assert "appendMedusaScene1GuidedAction" in APP_JS
     assert "Roll group Stealth Save" in APP_JS
     assert "Try to convince them" in APP_JS
     assert "Fight the assassins" in APP_JS
+    assert "The assassin agents are defeated." in APP_JS
+    assert '"Approach the cabin"' in APP_JS
+    assert '"Return to town"' in APP_JS
     assert "gargoyle_skin" in APP_JS
     assert "star-shaped object curse" in APP_JS.lower()
     assert "Following Treasure Map table" in INDEX_HTML
