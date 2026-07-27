@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-27. Target build: v0.39.48.
+Last updated: 2026-07-27. Target build: v0.39.49.
 
 ## Adventure Test Gate: Passed
 
@@ -24,30 +24,22 @@ regression.
 
 ## Do Next
 
-### TAG Rumor 2: Repaired Scene 10 Cabin Approach
+### TAG Rumor 2: Resume The Stored Assassin Choice
 
-This is the only open manual check. Deploy v0.39.48, force-refresh, and resume
-session `de586c99ab51416197f543fead8614b9`; no new adventure is needed.
+This is the only open manual check. Deploy v0.39.49, force-refresh, and resume
+session `de586c99ab51416197f543fead8614b9`; do not generate a new adventure or
+repeat the group Stealth Save.
 
-1. Confirm the Scene 10 Narrative no longer offers the sentence fragments
-   **Once this encounter is over...** or **decide to go back to town**.
-   The room must be titled **Approach to the Hunter's Cabin** and show the
-   guided **Roll group Stealth Save** control.
-2. Click **Roll group Stealth Save**. Save, return to the dashboard, and resume.
-   The result and exact Scene 10 stage must still be present; the Save must not
-   reroll.
-3. If the Save succeeded, confirm the party can continue to Scene 1 or return
-   to town. If it failed, confirm the rolled d3+2 agent count remains visible
-   and the only responses are **Try to convince them** or **Fight the
-   assassins**.
-4. On **Try to convince them**, choose the acting character. The app must roll
-   the L5 Streetwise Save. Success returns the party to town; failure starts
-   HCL+2 dagger-minion combat with the agents acting first.
-5. On **Fight the assassins**, combat must start with the party acting first.
-   After victory, exactly the staged total 4d6 gp must be claimable, followed
+1. Confirm the stored result still says four assassin agents ambushed the
+   party and has not rerolled. Current Objective must show a living-character
+   dropdown plus **Try to convince them** and **Fight the assassins**.
+2. Choose **Fight the assassins**. Combat must start with the party acting
+   first against four HCL+2 dagger minions. The alternate Streetwise route and
+   agents-first failure path remain covered by focused automated tests.
+3. After victory, exactly the staged total 4d6 gp must be claimable, followed
    by **Approach the cabin** and **Return to town**. This route counts as one
    minion encounter for XP purposes.
-6. Choose **Approach the cabin**. Confirm the app moves to Scene 1 and shows
+4. Choose **Approach the cabin**. Confirm the app moves to Scene 1 and shows
    only **Approach the cabin** with a character dropdown and **Shout out to the
    Medusa**. Stop there; Scene 1 combat, reaction, pendant, necros, and Luck
    handling are the next PDF-backed conversion slice and are not part of this

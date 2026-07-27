@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-27. Repository branch: `main`. Latest release: `v0.39.48`.
+Last updated: 2026-07-27. Repository branch: `main`. Latest release: `v0.39.49`.
 
 ## Start Here
 
@@ -16,19 +16,22 @@ Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken Depths,
 Citadel, Bofto, Star-Slayer, Bag, Repellant, treasure, trap, entrance, or
 closeout suites.
 
-Rumor 2 Scene 10 is the current narrow manual gate. Deploy v0.39.48,
+Rumor 2 Scene 10 is the current narrow manual gate. Deploy v0.39.49,
 force-refresh, and resume session `de586c99ab51416197f543fead8614b9`.
-Run only `PLAYTEST_PLAN.md`: confirm the extracted sentence-fragment buttons
-are gone, the typed group Stealth stage persists, assassin initiative/treasure
-remain correct, and **Approach the cabin** reaches Scene 1's two meaningful
-choices. Stop at Scene 1. Its exact surprise/gaze, reaction, loot, pendant,
-necros, and Luck procedure is the next typed PDF-backed slice.
+Do not repeat the already persisted group Stealth Save. Run only
+`PLAYTEST_PLAN.md`: confirm the stored four-agent `assassin_choice` stage now
+shows **Try to convince them** and **Fight the assassins** in Current Objective,
+then use the immediate-fight route to check initiative, treasure, and
+**Approach the cabin** routing. Stop at Scene 1. Its exact surprise/gaze,
+reaction, loot, pendant, necros, and Luck procedure is the next typed
+PDF-backed slice.
 
-## Implemented Through v0.39.48
+## Implemented Through v0.39.49
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 105, 107, 160, and 169; TAG pp.6-8, 11, 13, 22, 28-31, and 65.
 
 - Rumor 2 Scene 10 calculates the living party's worst TAG Stealth modifier, rolls one exploding L6 group Save, persists d3+2 agents on failure, and offers only actor-selected L5 Streetwise or immediate combat. Failed parley gives the HCL+2 dagger agents first action; immediate combat gives the party first action; their total 4d6 gp is staged for claim.
+- Current Objective delegates Medusa Scene 10 and Scene 1 actions to their typed guided controls. Resuming the stored four-agent ambush exposes the actor selector and both printed responses instead of an inert generic prompt button.
 - Resumed/new Rumor 2 manifests identify extracted Scene 10 and Scene 1 by scene text rather than generic generated-room role. Scene 10 repairs to its typed procedure and post-result route choices; Scene 1 repairs to a character-selected quiet approach or automatic reaction entry choice.
 - Party Sheets place **Apply** beside each carried Gremlin Repellant. At camp it opens the printed p.87 item/Bag protection picker; when unavailable the button remains visible but disabled with the exact timing or eligibility reason.
 - Adventure View keeps the current Major Foe tally visible. Invisible Gremlins still increment it exactly once and cannot become the Final Boss.
@@ -67,6 +70,7 @@ Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its
 
 ## Recent Releases
 
+- `v0.39.49`: make Current Objective render the persisted Medusa Scene 10/1 typed controls, including the post-Stealth assassin decision.
 - `v0.39.48`: repair Rumor 2 Scene 10/1 identity, replace extracted sentence-fragment buttons, restore post-encounter routing, and remove the exploding-d6 helper collision.
 - `v0.39.47`: automate and persist TAG Rumor 2 Scene 10's group Stealth, assassin response, initiative, and treasure procedure.
 - `v0.39.46`: extract shared item-disposition eligibility and Bag-aware removal policy with behavior-parity coverage.

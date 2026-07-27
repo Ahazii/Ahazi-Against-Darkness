@@ -20408,6 +20408,14 @@ function appendCurrentObjectiveButton(parent, action) {
           appendBoftoScene19GuidedAction(parent, action.promptAction, action.fallbackReference);
           return;
         }
+        if (defaults.branchAction === "medusa_group_stealth") {
+          appendMedusaScene10GuidedAction(parent, action.promptAction, action.fallbackReference);
+          return;
+        }
+        if (["medusa_stealth_approach", "medusa_reaction"].includes(defaults.branchAction)) {
+          appendMedusaScene1GuidedAction(parent, action.promptAction, action.fallbackReference);
+          return;
+        }
         const directBranch = directTagBranchAllowed(defaults);
         const directRoute = directTagRouteAllowed(defaults);
         const directScene = directTagSceneAllowed(defaults);

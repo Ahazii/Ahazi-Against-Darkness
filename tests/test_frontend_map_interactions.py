@@ -2321,6 +2321,14 @@ def test_current_objective_surfaces_treasure_choice_buttons() -> None:
     assert "hasTrap || pendingTreasureChoice" in session_body
 
 
+def test_current_objective_uses_typed_medusa_scene_controls() -> None:
+    append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
+    assert 'defaults.branchAction === "medusa_group_stealth"' in append_body
+    assert "appendMedusaScene10GuidedAction(parent, action.promptAction, action.fallbackReference)" in append_body
+    assert '["medusa_stealth_approach", "medusa_reaction"].includes(defaults.branchAction)' in append_body
+    assert "appendMedusaScene1GuidedAction(parent, action.promptAction, action.fallbackReference)" in append_body
+
+
 def test_treasure_choice_buttons_include_concrete_weapon_picks() -> None:
     body = _function_body("treasureOutcomeChoices", APP_JS)
     assert 'choiceKey === "fd_masterwork_edged_weapon"' in body
