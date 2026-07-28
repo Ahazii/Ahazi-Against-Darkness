@@ -16,12 +16,15 @@ Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken Depths,
 Citadel, Bofto, Star-Slayer, Bag, Repellant, treasure, trap, entrance, or
 closeout suites.
 
-Rumor 2 Scene 1's completed Bring Gold Quest closeout is the current narrow manual gate. Deploy v0.39.53,
-force-refresh, and resume session `1b417a50983c4329b4f2b1aead6cf76d`.
-Do not repeat Scene 10, its combat, the Xasartha reaction, Quest acceptance,
-payment, or Epic Reward. Run only `PLAYTEST_PLAN.md`: confirm the saved reward
-repairs to a peaceful resolved-lead message, then use Return to town and finish.
-Stop there.
+The v0.39.53 Rumor 2 Quest closeout gate passed. Session
+`1b417a50983c4329b4f2b1aead6cf76d` is complete with `9gp`, no active Quest,
+no pending generated closeout, and the roster saved. Do not repeat Scene 10,
+the Xasartha Quest reaction, payment, Epic Reward, or closeout.
+
+Resume modularisation with the bounded TAG pp.25-26 Xasartha Scene 1/6 slice:
+bribe payment, fight/fight-to-the-death routing, defeated-Xasartha pendant and
+necros, try-on versus sell choice, and rechargeable pendant Luck. Establish
+the exact procedures in focused automation before opening another manual gate.
 
 ## Implemented Through v0.39.53
 

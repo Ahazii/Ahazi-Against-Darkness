@@ -22,27 +22,28 @@ Citadel, Bofto, Bag, Repellant, treasure, foe, trap, entrance, or closeout
 test. Reopen only an exact workflow if a later change produces a confirmed
 regression.
 
+## Completed: TAG Rumor 2 Quest Closeout
+
+Live v0.39.53 verification passed in session
+`1b417a50983c4329b4f2b1aead6cf76d`:
+
+- the existing Book of Skalitos reward and `9gp` remained unchanged on resume;
+- generic Generated lead guidance was replaced by the peaceful Quest result;
+- **Return to town and finish** completed the adventure;
+- the saved session is `complete`, with no active Quest or pending generated
+  closeout, and the roster save completed.
+
+Do not repeat Scene 10, Xasartha's Quest reaction, the 200gp payment, or the
+Epic Reward/closeout path.
+
 ## Do Next
 
-### TAG Rumor 2: Close The Already-Completed Quest
-
-This is the only open adventure check. Deploy v0.39.53, force-refresh, and resume
-session `1b417a50983c4329b4f2b1aead6cf76d`; do not generate a new adventure or
-repeat Scene 10, its combat, Xasartha's reaction roll, Quest acceptance, the
-200gp payment, or the Epic Reward roll.
-
-1. Confirm the already-awarded Book of Skalitos remains in Sir Benedict's
-   inventory and the party still has `9gp`; no reward or Quest roll repeats.
-2. The useless **Generated lead** / Rumor playbook text must be gone. In its
-   place, the objective must say that the Quest is complete, the Quest-giver
-   accepts the result, the encounter remains peaceful, combat treasure is not
-   awarded, and the Epic Reward in Narrative is the Quest reward.
-3. Confirm the only relevant action is **Return to town and finish**. Use it
-   and confirm the ordinary Adventure Complete summary opens.
-
-The completed-Quest resume repair and Continue path are covered by focused
-automation. Xasartha's bribe, fight/fight-to-the-death, pendant, necros, and
-Luck procedures remain the next bounded TAG p.25-26 slice.
+Resume modularisation with one bounded PDF-backed slice: TAG pp.25-26,
+Xasartha's remaining Scene 1/6 paths. Implement and automate the bribe payment,
+fight/fight-to-the-death routing, 260gp pendant plus 2d6 necros after defeat,
+the explicit try-on versus sell choice, and the rechargeable pendant Luck
+effect. Add only narrow automated coverage first; open a new manual adventure
+check only for behavior that cannot be established safely in automation.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

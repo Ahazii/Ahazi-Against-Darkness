@@ -86,7 +86,7 @@ Last updated: 2026-07-28
 ## Playtest Status
 
 
-The active player checklist is [PLAYTEST_PLAN.md](PLAYTEST_PLAN.md). All earlier adventure gates are passed. v0.39.53 opens only the already-awarded Xasartha Quest closeout repair; do not repeat payment, reward, Scene 10, the reaction roll, or any earlier broad adventure test. After this exact workflow passes, continue with the remaining typed Scene 1 bribe/combat, loot, pendant, and Luck handling.
+The active player checklist is [PLAYTEST_PLAN.md](PLAYTEST_PLAN.md). All adventure gates through the v0.39.53 Xasartha Quest closeout are passed. The verified session is complete with `9gp`, no active Quest, no pending generated closeout, and a saved roster. Do not repeat payment, reward, Scene 10, the reaction roll, or any earlier broad adventure test. Resume modularisation with the remaining typed TAG pp.25-26 Scene 1/6 bribe/combat, loot, pendant, and Luck handling.
 
 ### Historical Manual Test Records
 
