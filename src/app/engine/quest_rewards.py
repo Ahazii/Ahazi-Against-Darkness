@@ -34,7 +34,7 @@ def claim_quest_reward(session: SessionState, tile: TileState, *, show_rolls: bo
     if quest is None:
         session.log.append("No active Quest.")
         return
-    if callbacks.generated_tag_session(session):
+    if callbacks.generated_tag_session(session) and str(quest.key).startswith("tag_"):
         session.log.append("Quest reward blocked: generated Adventures Guild scenes use their printed scene rewards and TAG Action buttons, not the core Epic Rewards table.")
         session.log.append("Use the current room prompt or Adventures Guild Actions for purchases, services, bounties, route rewards, XP markers, Guild share, banking, and closeout signoff.")
         return

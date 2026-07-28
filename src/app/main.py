@@ -3687,7 +3687,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "default": "false",
             "stored_in": "game.db records/preferences/ui",
             "developer_ui": "Developer Playtest Preferences",
-            "effect": "Shows the fixed Adventures Guild result selector in module generators for repeatable playtests.",
+            "effect": "Shows the fixed Adventures Guild result selector in module generators for repeatable playtests. While any developer preference is enabled, Adventure View also keeps the movable, non-closable Developer Options window visible.",
             "rules_boundary": "Normal play should leave this off so generated Adventures Guild modules roll from the printed tables.",
         },
         {
@@ -3695,7 +3695,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "default": "false",
             "stored_in": "game.db records/preferences/ui",
             "developer_ui": "Developer Playtest Preferences",
-            "effect": "Shows developer-only controls during eligible Expanded Edition, Abyss, and Forsaken Depths exploration sessions. A selected named EE foe, EE Quest result, Final Boss, Abyss foe/event row, or Citadel result enters the existing live engine path and is marked in the Narrative as an override.",
+            "effect": "Shows the movable, non-closable Developer Options window during Adventure View. Eligible Expanded Edition, Abyss, and Forsaken Depths exploration sessions can force a named EE foe, EE Quest result, Final Boss, Abyss foe/event row, or Citadel result through the existing live engine path; every override is marked in Narrative.",
             "rules_boundary": "Testing-only. Normal play leaves it off and rolls from the printed tables; the override does not invent outcomes or bypass encounter, event, reaction, state, or Citadel logic.",
         },
         {
@@ -3703,7 +3703,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "default": "false",
             "stored_in": "game.db records/preferences/ui",
             "developer_ui": "Developer Playtest Preferences",
-            "effect": "Shows a searchable character/item grant panel built from saved default supplements plus each character's unfinished-session supplement snapshot. Grants synchronize active saved sessions and leave a Narrative override entry.",
+            "effect": "Shows a searchable character/item grant panel built from saved default supplements plus each character's unfinished-session supplement snapshot. Grants synchronize active saved sessions and leave a Narrative override entry. While any developer preference is enabled, Adventure View also keeps the movable, non-closable Developer Options window visible.",
             "rules_boundary": "Testing-only. It bypasses acquisition rolls, availability, price, and payment, but still enforces class-specific item use and ordinary weapon/shield carrying limits. Services, plot objects, curses, state markers, and unresolved random/choice placeholders are excluded.",
         },
         {
@@ -4850,8 +4850,8 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "result": "2 - Quest",
-            "rule": "Accept and roll on the Quest Table, or refuse and Xasartha leaves.",
-            "player_ui": "Show explicit Accept Quest and Refuse choices; never leave a technical result without an action.",
+            "rule": "Accept and roll on the Quest Table, or refuse and Xasartha leaves. A Bring Gold result stores its rolled amount, doubles it when the party already has enough, deducts the exact requirement at the Quest-giver's tile, and awards one Epic Reward.",
+            "player_ui": "Show explicit Accept Quest and Refuse choices. After acceptance, show the concrete requirement, party total, turn-in location, and a direct claim action; core Quest rewards must not be replaced by generated-adventure closeout controls.",
             "source": "TAG p.25, Scene 1; EE p.101; EE p.162",
         },
         {

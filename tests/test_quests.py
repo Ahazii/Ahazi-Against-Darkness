@@ -670,7 +670,7 @@ def test_generated_tag_imports_do_not_claim_core_epic_rewards(monkeypatch) -> No
             },
         },
     )
-    session.active_quest = ActiveQuestState(tile_id="t", key="imported_room", description="Find the leprechauns.", completed=True)
+    session.active_quest = ActiveQuestState(tile_id="t", key="tag_generated_scene", description="Find the leprechauns.", completed=True)
     hero = session.party[0]
     hero.clues = 1
     session.clues_found = 1
@@ -683,6 +683,40 @@ def test_generated_tag_imports_do_not_claim_core_epic_rewards(monkeypatch) -> No
     assert "Kerrak Dar Hoard" not in hero.statuses
     assert any("generated Adventures Guild scenes" in entry for entry in session.log)
     assert not any("Quest complete! Epic reward" in entry for entry in session.log)
+
+
+def test_core_gold_quest_from_generated_tag_session_can_be_turned_in(monkeypatch) -> None:
+    eng = engine()
+    session = base_session(
+        adventure_type="imported",
+        imported_manifest={
+            "title": "TAG Rumor 2: Medusa in the Hunter's Cabin",
+            "source": {
+                "parameters": {
+                    "tag_reference": {
+                        "lead_type": "rumor",
+                        "rumor_number": 2,
+                        "title": "Medusa in the Hunter's Cabin",
+                    }
+                }
+            },
+        },
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="bring_gold",
+            description="Bring 200gp to the Quest-giver's tile.",
+            gold_required=200,
+        ),
+    )
+    session.party[0].gold = 209
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    eng.advance(session, "claim_quest_reward", show_rolls=False)
+
+    assert session.active_quest is None
+    assert session.party[0].gold == 9
+    assert any("Quest complete! Epic reward" in entry for entry in session.log)
+    assert not any("generated Adventures Guild scenes" in entry for entry in session.log)
 
 
 def test_session_tag_branch_action_syncs_live_party_character(client) -> None:

@@ -17,7 +17,7 @@ def quest_from_row(
         return ActiveQuestState(
             tile_id=tile_id,
             key=key,
-            description=row["result"],
+            description=f"Bring {amount}gp to the Quest-giver's tile.",
             gold_required=amount,
         )
     if key == "bring_head":

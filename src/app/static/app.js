@@ -4530,9 +4530,13 @@ function canClaimQuestReward(session, quest) {
   return questClaimStatus(session, quest).ok;
 }
 
-function isGeneratedTagQuest(session) {
+function isGeneratedTagQuest(session, quest = session?.active_quest) {
   const tagReference = session?.imported_manifest?.source?.parameters?.tag_reference;
-  return Boolean(tagReference && typeof tagReference === "object");
+  return Boolean(
+    tagReference &&
+    typeof tagReference === "object" &&
+    String(quest?.key || "").startsWith("tag_")
+  );
 }
 
 function questClaimStatus(session, quest) {
@@ -4540,7 +4544,7 @@ function questClaimStatus(session, quest) {
   const tile = currentTile(session);
   const onQuestTile = tile?.id === quest.tile_id;
   const partyGold = partyGoldTotal(session);
-  if (isGeneratedTagQuest(session)) {
+  if (isGeneratedTagQuest(session, quest)) {
     return {
       ok: false,
       reason:
@@ -18748,6 +18752,11 @@ function applyCampScreenLayout(session) {
 
 function renderDeveloperPlaytestControls(session) {
   if (!developerPlaytestControls) return;
+  const enabledPreferences = [
+    state.preferences?.show_tag_fixed_result_selector ? "TAG fixed results" : "",
+    state.preferences?.show_dungeon_playtest_controls ? "Dungeon overrides" : "",
+    state.preferences?.show_developer_item_grants ? "Item grants" : "",
+  ].filter(Boolean);
   const enabled = Boolean(state.preferences?.show_dungeon_playtest_controls);
   const isAbyss = session.ruleset_profile_id === "abyss";
   const isForsakenDepths = sessionIsForsakenDepths(session);
@@ -18755,10 +18764,39 @@ function renderDeveloperPlaytestControls(session) {
   const hasTag = sessionHasSupplement(session, "tag") || Boolean(
     session.tag_star_object_curse_active || session.tag_star_object_recovery_pending
   );
+  const anyEnabled = enabledPreferences.length > 0;
   const available = enabled && session.mode === "exploration" && !session.camped_outside && (isAbyss || isForsakenDepths || isExpandedEdition);
-  developerPlaytestControls.classList.toggle("hidden", !available);
-  if (!available) {
+  developerPlaytestControls.classList.toggle("hidden", !anyEnabled);
+  if (!anyEnabled) {
     developerPlaytestControls.replaceChildren();
+    return;
+  }
+  const header = node("div", "transfer-dialog-header developer-playtest-header");
+  header.appendChild(node("strong", "", "Developer Options"));
+  header.appendChild(node("span", "muted", "Drag this title bar to move the window."));
+  const preferenceSummary = node(
+    "div",
+    "developer-preference-summary",
+    `Enabled: ${enabledPreferences.join(", ")}`
+  );
+  setTooltip(
+    preferenceSummary,
+    "Developer preferences are managed from Settings. This non-closable window remains visible while at least one developer preference is enabled."
+  );
+  const finishWindow = (...children) => {
+    developerPlaytestControls.replaceChildren(header, preferenceSummary, ...children);
+    developerPlaytestControls.dataset.dragBound = "0";
+    enableDialogDrag(developerPlaytestControls);
+  };
+  if (!available) {
+    const unavailable = node(
+      "div",
+      "developer-window-note muted",
+      enabled
+        ? "Dungeon overrides are available during quiet EE, Abyss, or Forsaken Depths exploration."
+        : "No in-adventure dungeon override is enabled. Other developer controls remain available on their relevant dashboard pages."
+    );
+    finishWindow(unavailable);
     return;
   }
 
@@ -18966,7 +19004,7 @@ function renderDeveloperPlaytestControls(session) {
     "Developer override: selected result only; normal encounters still roll."
   );
   note.title = "This control is shown because the Developer Playtest Preference is enabled. It leaves a clear override entry in the narrative for every test.";
-  developerPlaytestControls.replaceChildren(note, kind, table, eeFoe, fdFoe, roll, forceLeader, run);
+  finishWindow(note, kind, table, eeFoe, fdFoe, roll, forceLeader, run);
 }
 
 function renderSession() {
@@ -20357,6 +20395,28 @@ function currentObjectiveForSession(session) {
   }
   if (quest) {
     const claimStatus = questClaimStatus(session, quest);
+    const giverName = questTile(session, quest)?.title || "the Quest-giver's tile";
+    const partyGold = partyGoldTotal(session);
+    if (quest.key === "bring_gold") {
+      const required = Number(quest.gold_required || 0);
+      return {
+        title: claimStatus.ok
+          ? `Give ${required}gp and claim the Epic Reward`
+          : `Bring ${required}gp to ${giverName}`,
+        body: claimStatus.ok
+          ? `The party has ${partyGold}gp and is at ${giverName}. Giving ${required}gp completes the Quest and rolls once on the Epic Rewards table.`
+          : questGuidance(session, quest),
+        tone: claimStatus.ok ? "success" : "quest",
+        action: claimStatus.ok
+          ? {
+              label: `Give ${required}gp and claim Epic Reward`,
+              kind: "advance",
+              advanceAction: "claim_quest_reward",
+              tooltip: `Give ${required}gp from the living party, complete this Quest, and roll once on the Epic Rewards table.`,
+            }
+          : null,
+      };
+    }
     return {
       title: claimStatus.ok ? "Current objective: claim quest reward" : "Current objective: quest progress",
       body: claimStatus.ok ? claimStatus.reason : questGuidance(session, quest),
@@ -20548,6 +20608,7 @@ function renderCurrentObjectiveBanner(session) {
   setTooltip(currentObjectiveBanner, objective.body || objective.title || "Current objective.");
   const copy = node("div", "current-objective-copy current-objective-compact");
   copy.appendChild(node("strong", "", objective.title.replace(/^Current objective:\s*/i, "")));
+  if (objective.body) copy.appendChild(node("span", "current-objective-detail", objective.body));
   currentObjectiveBanner.appendChild(copy);
   const actions = node("div", "current-objective-actions");
   for (const action of objective.actions || []) appendCurrentObjectiveButton(actions, action);
@@ -20634,7 +20695,12 @@ function questObjectiveRows(session, quest) {
   const giverName = giver?.title || "Quest-giver tile";
   const partyGold = partyGoldTotal(session);
   const rows = [
-    { label: "Objective", value: quest.description },
+    {
+      label: "Objective",
+      value: quest.key === "bring_gold"
+        ? `Bring ${quest.gold_required || 0}gp to ${giverName}.`
+        : quest.description,
+    },
     { label: "Turn-in", value: quest.key === "peaceful_way" || quest.key === "slay_all" ? "Claim when complete" : giverName },
     { label: "Reward", value: "Epic Reward roll on claim" },
   ];
@@ -20767,7 +20833,7 @@ function questMapMarkerLabel(session, quest) {
 
 function appendGeneratedTagCloseoutPanel(parent, session, quest) {
   const tagReference = tagReferenceForGeneratedAdventure(session);
-  if (!tagReference || !quest) return;
+  if (!tagReference || !quest || !isGeneratedTagQuest(session, quest)) return;
   const status = generatedTagCloseoutStatus(session);
   const director = generatedTagDirectorStep(session);
   const panel = node("div", "tag-generated-closeout-panel");
@@ -21399,7 +21465,7 @@ function renderOngoingQuests(session) {
       card.appendChild(node("div", "ongoing-quest-guidance", `Quest-giver tile: ${giverTile.title}`));
     }
     if (quest.completed) {
-      const completeText = isGeneratedTagQuest(session)
+      const completeText = isGeneratedTagQuest(session, quest)
         ? "Objective complete - report the lead outcome, resolve any scene procedure, and sign off this Adventures Guild lead."
         : quest.key === "bring_alive" && quest.captured_boss_name
           ? `Objective complete - ${quest.captured_boss_name} was subdued. Claim your Epic reward.`
@@ -21456,7 +21522,7 @@ function renderOngoingQuests(session) {
         advance("claim_fd_quest_reward", { fd_quest_id: quest.quest_id })
       );
       actions.appendChild(claim);
-    } else if (!isGeneratedTagQuest(session)) {
+    } else if (!isGeneratedTagQuest(session, quest)) {
       const claim = document.createElement("button");
       claim.type = "button";
       claim.className = "secondary";

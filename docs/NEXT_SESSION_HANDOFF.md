@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-28. Repository branch: `main`. Latest release: `v0.39.51`.
+Last updated: 2026-07-28. Repository branch: `main`. Latest release: `v0.39.52`.
 
 ## Start Here
 
@@ -16,18 +16,19 @@ Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken Depths,
 Citadel, Bofto, Star-Slayer, Bag, Repellant, treasure, trap, entrance, or
 closeout suites.
 
-Rumor 2 Scene 1 is the current narrow manual gate. Deploy v0.39.51,
+Rumor 2 Scene 1's accepted Bring Gold Quest is the current narrow manual gate. Deploy v0.39.52,
 force-refresh, and resume session `1b417a50983c4329b4f2b1aead6cf76d`.
-Do not repeat Scene 10, its combat, or the already persisted Xasartha reaction
-`d6=2 quest`. Run only `PLAYTEST_PLAN.md`: confirm the compact Accept/Refuse
-choice appears directly under Narrative without the old objective frame, then
-accept and verify that one real Expanded Edition p.162 Quest Table result
-persists through save/resume. Stop there.
+Do not repeat Scene 10, its combat, the Xasartha reaction, or Quest acceptance.
+Run only `PLAYTEST_PLAN.md`: confirm the explicit 200gp turn-in, claim it once,
+and verify the automatic movable/non-closable Developer Options window. Stop
+there.
 
-## Implemented Through v0.39.51
+## Implemented Through v0.39.52
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25, 28-31, and 65.
 
+- Accepted Xasartha Bring Gold Quests expose the stored requirement, party total, Quest-giver location, and direct turn-in. Core Quest rewards are no longer mistaken for generated TAG closeout; exact payment produces exactly one Epic Reward.
+- Adventure View automatically shows one movable, non-closable Developer Options window whenever any developer preference is active. With all developer preferences off, it is absent.
 - Xasartha's persisted TAG p.25 reaction `2 quest` is repaired on resume without rerolling. The player can accept the Expanded Edition p.101 Quest reaction, which rolls a concrete p.162 Quest Table result, or refuse and let Xasartha leave peacefully.
 - Typed TAG choices render directly below Narrative in a compact row. The generic objective frame, duplicated prompt explanation, and lifecycle strip are hidden while a typed Medusa action owns the decision.
 - Rumor 2 Scene 10 calculates the living party's worst TAG Stealth modifier, rolls one exploding L6 group Save, persists d3+2 agents on failure, and offers only actor-selected L5 Streetwise or immediate combat. Failed parley gives the HCL+2 dagger agents first action; immediate combat gives the party first action; their total 4d6 gp is staged for claim.
@@ -71,6 +72,7 @@ Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its
 
 ## Recent Releases
 
+- `v0.39.52`: restore concrete Xasartha core-Quest turn-in and move enabled developer controls into an automatic non-closable floating window.
 - `v0.39.51`: persist and resolve Xasartha's Quest reaction, and compact the typed Current Objective UI beneath Narrative.
 - `v0.39.50`: clarify Scene 10's one-roll modifier breakdown and separate the labelled Streetwise and immediate-fight choices.
 - `v0.39.49`: make Current Objective render the persisted Medusa Scene 10/1 typed controls, including the post-Stealth assassin decision.

@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-28. Target build: v0.39.51.
+Last updated: 2026-07-28. Target build: v0.39.52.
 
 ## Adventure Test Gate: Passed
 
@@ -24,32 +24,30 @@ regression.
 
 ## Do Next
 
-### TAG Rumor 2: Resume Xasartha's Stored Quest Choice
+### TAG Rumor 2: Complete Xasartha's Stored Gold Quest
 
-This is the only open manual check. Deploy v0.39.51, force-refresh, and resume
+This is the only open adventure check. Deploy v0.39.52, force-refresh, and resume
 session `1b417a50983c4329b4f2b1aead6cf76d`; do not generate a new adventure or
-repeat Scene 10, its combat, or Xasartha's reaction roll.
+repeat Scene 10, its combat, Xasartha's reaction roll, or Quest acceptance.
 
-1. Confirm resume does not reroll the stored TAG p.25 result `d6=2 quest`.
-   Narrative must say that Xasartha offers a Quest and the compact action row
-   directly below it must show only **Accept Xasartha's quest** and
-   **Refuse and let Xasartha leave**.
-2. Confirm the old generated-objective box, repeated objective explanation,
-   lifecycle badges, and internal `Adventures Guild procedure:` wording are
-   absent. Narrative must retain a useful readable area and its own scrollbar.
-3. Choose **Accept Xasartha's quest**. The app must roll once on the Expanded
-   Edition p.162 Quest Table, show the concrete new core Quest, let Xasartha
-   leave peacefully, and award no pendant, necros, or immediate Epic Reward.
-   The Epic Reward belongs only to successful completion of that new Quest
-   (Expanded Edition p.101).
-4. Save, return to the dashboard, and resume once. Confirm the generated core
-   Quest and its exact rolled requirement persist. Stop there; do not complete
-   or deliberately fail the new Quest in this gate.
+1. Confirm the compact objective states **Give 200gp and claim the Epic
+   Reward**, says that the party has `209gp`, and identifies Xasartha's Cabin
+   as the turn-in location. The generic **Generated Adventures Guild
+   closeout** panel must not appear.
+2. Open Quest Details. Confirm progress is `209/200gp` and there is a direct
+   **Give 200gp and claim Epic Reward** action.
+3. Use the action. Exactly `200gp` must be deducted, leaving `9gp` total; the
+   Quest must clear and exactly one Expanded Edition p.101 Epic Reward must be
+   awarded and described in Narrative.
+4. With any Developer Playtest Preference enabled in Settings, confirm a
+   **Developer Options** window appears automatically in Adventure View. It
+   must be movable by its title bar, have no close button, and no longer consume
+   Action Rail height. Disable every developer preference and confirm the
+   window disappears.
 
-The refusal path is covered by focused automation: it lets Xasartha leave,
-resolves the Rumor module, and creates no core Quest. Xasartha's bribe,
-fight/fight-to-the-death, pendant, necros, and Luck procedures remain the next
-bounded TAG p.25-26 slice.
+The acceptance/refusal and save/resume paths are covered by focused automation.
+Xasartha's bribe, fight/fight-to-the-death, pendant, necros, and Luck
+procedures remain the next bounded TAG p.25-26 slice.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

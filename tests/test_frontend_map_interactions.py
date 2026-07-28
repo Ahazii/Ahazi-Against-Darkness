@@ -2279,12 +2279,33 @@ def test_session_header_shows_locked_supplement_snapshot() -> None:
 def test_fd_playtest_controls_follow_locked_supplement_snapshot() -> None:
     body = _function_body("renderDeveloperPlaytestControls", APP_JS)
     assert "const isForsakenDepths = sessionIsForsakenDepths(session);" in body
+    assert '"Developer Options"' in body
+    assert "enabledPreferences.length > 0" in body
+    assert "finishWindow" in body
+    assert "enableDialogDrag(developerPlaytestControls)" in body
     assert 'new Option("FD foe encounter", "fd_foe")' in body
     assert 'new Option("Forsaken Depths Event", "fd_event")' in body
     assert 'new Option("Forsaken Depths Citadel", "fd_citadel")' in body
     assert 'new Option("Forsaken Depths Treasure row", "fd_treasure")' in body
     assert 'kind.value === "fd_treasure" ? "row" : "d6"' in body
     assert 'const previousKind = developerPlaytestControls.dataset.kind || (isAbyss ? "abyss_foe" : isForsakenDepths ? "fd_foe" : "ee_foe");' in body
+    assert ".developer-playtest-controls" in STYLES_CSS
+    assert "position: fixed" in STYLES_CSS
+    assert ".developer-playtest-header" in STYLES_CSS
+
+
+def test_core_quest_replaces_generated_tag_closeout_and_exposes_gold_turn_in() -> None:
+    generated_body = _function_body("isGeneratedTagQuest", APP_JS)
+    objective_body = _function_body("currentObjectiveForSession", APP_JS)
+    closeout_body = _function_body("appendGeneratedTagCloseoutPanel", APP_JS)
+    quest_rows_body = _function_body("questObjectiveRows", APP_JS)
+    assert 'String(quest?.key || "").startsWith("tag_")' in generated_body
+    assert "Give ${required}gp and claim Epic Reward" in objective_body
+    assert "Giving ${required}gp completes the Quest" in objective_body
+    assert "!isGeneratedTagQuest(session, quest)" in closeout_body
+    assert "Bring ${quest.gold_required || 0}gp to ${giverName}." in quest_rows_body
+    assert "current-objective-detail" in APP_JS
+    assert ".current-objective-detail" in STYLES_CSS
 
 
 def test_fd_debug_context_follows_locked_supplement_snapshot() -> None:
