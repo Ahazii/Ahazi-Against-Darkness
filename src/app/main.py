@@ -4841,6 +4841,32 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "source": "TAG p.28",
         },
     ]
+    data["tag_medusa_scene1_reaction_table"] = [
+        {
+            "result": "1 - Bribe",
+            "rule": "Pay 6d6 gp or one jewel/gem worth at least 15 gp; otherwise Xasartha fights.",
+            "player_ui": "Show the rolled gp amount and eligible payment choices.",
+            "source": "TAG p.25, Scene 1; EE p.101, Bribe",
+        },
+        {
+            "result": "2 - Quest",
+            "rule": "Accept and roll on the Quest Table, or refuse and Xasartha leaves.",
+            "player_ui": "Show explicit Accept Quest and Refuse choices; never leave a technical result without an action.",
+            "source": "TAG p.25, Scene 1; EE p.101; EE p.162",
+        },
+        {
+            "result": "3-5 - Fight",
+            "rule": "Xasartha fights using the printed L4 Boss, 4 Life profile.",
+            "player_ui": "Start combat automatically from the rolled reaction.",
+            "source": "TAG p.25, Scene 1",
+        },
+        {
+            "result": "6 - Fight to the death",
+            "rule": "Xasartha fights and does not test Morale.",
+            "player_ui": "Start combat automatically and retain the fight-to-the-death state.",
+            "source": "TAG p.25, Scene 1; EE p.101",
+        },
+    ]
     data["map_elements_table"] = [
         {
             "catalog": catalog,
@@ -6311,6 +6337,8 @@ async def get_session(session_id: str) -> SessionState:
         changed = True
     if _refresh_generated_tag_manifest_on_resume(session):
         changed = True
+    if _repair_medusa_scene1_state(session):
+        changed = True
     if session.mode != "complete":
         lock_characters_for_session(session, store)
     if changed:
@@ -6476,6 +6504,70 @@ def _medusa_scene10_state(session: SessionState) -> dict[str, Any]:
     if quest is None:
         return {}
     return dict((quest.tag_procedure_state or {}).get("medusa_scene10") or {})
+
+
+def _medusa_scene1_state(session: SessionState) -> dict[str, Any]:
+    quest = session.active_quest
+    if quest is None:
+        return {}
+    return dict((quest.tag_procedure_state or {}).get("medusa_scene1") or {})
+
+
+def _repair_medusa_scene1_state(session: SessionState) -> bool:
+    if not _is_medusa_generated_session(session) or session.active_quest is None:
+        return False
+    scene_state = _medusa_scene1_state(session)
+    reaction_roll = scene_state.get("reaction_roll")
+    for line in reversed(session.log):
+        match = re.search(r"Xasartha reaction d6=(\d)", str(line), flags=re.IGNORECASE)
+        if match:
+            reaction_roll = int(match.group(1))
+            break
+    if reaction_roll != 2:
+        return False
+    changed = False
+    if scene_state.get("phase") != "quest_choice":
+        quest_state = dict(session.active_quest.tag_procedure_state or {})
+        quest_state["medusa_scene1"] = {
+            "phase": "quest_choice",
+            "reaction_roll": 2,
+            "updated_at": now_utc(),
+        }
+        session.active_quest.tag_procedure_state = quest_state
+        changed = True
+    cleaned_log = [
+        line
+        for line in session.log
+        if not str(line).startswith("Adventures Guild procedure: Medusa reaction roll:")
+    ]
+    if cleaned_log != session.log:
+        session.log = cleaned_log
+        changed = True
+    guidance = (
+        "Xasartha offers the party a Quest. Accept it and roll on the Quest Table, "
+        "or refuse and let her leave."
+    )
+    if guidance not in session.log:
+        session.log.append(guidance)
+        changed = True
+    return changed
+
+
+def _update_medusa_scene1_state(session: SessionState, branch_action: str, entry: Any) -> None:
+    if (
+        branch_action != "medusa_reaction"
+        or not _is_medusa_generated_session(session)
+        or session.active_quest is None
+    ):
+        return
+    roll = int(getattr(entry, "roll", 0) or 0)
+    quest_state = dict(session.active_quest.tag_procedure_state or {})
+    quest_state["medusa_scene1"] = {
+        "phase": "quest_choice" if roll == 2 else ("bribe_choice" if roll == 1 else "combat"),
+        "reaction_roll": roll,
+        "updated_at": now_utc(),
+    }
+    session.active_quest.tag_procedure_state = quest_state
 
 
 def _update_medusa_scene10_state(session: SessionState, branch_action: str, entry: Any) -> None:
@@ -7163,6 +7255,42 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         raise HTTPException(status_code=400, detail="Choose the character attempting the Scene 10 Streetwise Save.")
     if branch_action == "medusa_stealth_approach" and character is None:
         raise HTTPException(status_code=400, detail="Choose the character approaching Xasartha's cabin.")
+    if branch_action in {"medusa_quest_accept", "medusa_quest_refuse"}:
+        scene_state = _medusa_scene1_state(session)
+        if scene_state.get("phase") != "quest_choice":
+            raise HTTPException(status_code=400, detail="Xasartha has not offered the party a Quest.")
+        tile = random_engine._current_tile(session)
+        if branch_action == "medusa_quest_accept":
+            session.active_quest = None
+            random_engine._accept_reaction_quest(session, tile, show_rolls=True)
+            if session.active_quest is None:
+                raise HTTPException(status_code=400, detail="The Quest Table could not create Xasartha's Quest.")
+            result_text = (
+                f"The party accepts Xasartha's Quest: {session.active_quest.description} "
+                "Complete it to claim the Epic Reward."
+            )
+            session.log.append(result_text)
+        else:
+            result_text = (
+                "The party refuses Xasartha's Quest. She leaves peacefully; "
+                "the party receives neither her pendant nor the crate of necros."
+            )
+            random_engine._end_peaceful_encounter(session, tile)
+            _mark_generated_tag_lead_complete(
+                session,
+                title="Medusa in the Hunter's Cabin resolved",
+                outcome="The party refused Xasartha's Quest and she left.",
+                narrative=result_text,
+            )
+        record_session_tag_rumor_state(campaign, session, status="resolved")
+        campaign = save_campaign(store, campaign)
+        store.save("sessions", session)
+        return {
+            "campaign": campaign,
+            "character": None,
+            "entry": {"action": branch_action, "result_text": result_text},
+            "session": enrich_session(session),
+        }
     if branch_action in {"bofto_theft_save", "star_object_will_save"} and character is None:
         raise HTTPException(status_code=400, detail="Choose the character named by the Bofto scene before rolling.")
     if branch_action == "star_slayer_check":
@@ -7253,6 +7381,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     _update_session_tag_procedure_state(session, branch_action, entry)
     _update_generated_tag_procedure_state(session, branch_action, entry)
     _update_medusa_scene10_state(session, branch_action, entry)
+    _update_medusa_scene1_state(session, branch_action, entry)
     if branch_action == "medusa_group_stealth" and session.active_quest is not None:
         quest_state = dict(session.active_quest.tag_procedure_state or {})
         scene_state = dict(quest_state.get("medusa_scene10") or {})
@@ -7263,6 +7392,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         "medusa_group_stealth",
         "medusa_assassin_parley",
         "medusa_assassin_fight",
+        "medusa_reaction",
     }
     medusa_parley_success = (
         branch_action == "medusa_assassin_parley"

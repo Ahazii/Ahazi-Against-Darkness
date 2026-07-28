@@ -890,6 +890,136 @@ def test_medusa_generated_scene_spawns_after_printed_approach_choice(client, mon
     assert not any("Final Boss check" in line for line in payload["session"]["log"])
 
 
+def test_medusa_quest_reaction_persists_choice_and_accepts_core_quest(client, monkeypatch) -> None:
+    character = Character(
+        id="quest-hero",
+        name="Quest Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=0,
+        gold=0,
+        max_life=8,
+        current_life=8,
+        attack_bonus=3,
+        defense_bonus=1,
+        save_bonus=0,
+        inventory=[],
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="2")
+    final_tile = TileState(
+        id="quest-cabin",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Xasartha's Cabin",
+        description="Xasartha waits.",
+        content_key="imported:tag-final-scene",
+    )
+    session = base_session(
+        id="medusa-quest-session",
+        adventure_id=manifest["id"],
+        adventure_type="imported",
+        imported_manifest=manifest,
+        map_state=MapState(tiles=[final_tile], current_tile_id="quest-cabin"),
+        active_quest=ActiveQuestState(
+            tile_id="quest-cabin",
+            key="tag_generated_scene",
+            description="Resolve Xasartha.",
+            boss_target_name="Medusa",
+        ),
+        party=[
+            PartyMemberState(
+                character_id="quest-hero",
+                name="Quest Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=3,
+                xp=0,
+                gold=0,
+                current_life=8,
+                max_life=8,
+                attack_bonus=3,
+                defense_bonus=1,
+                save_bonus=0,
+                inventory=[],
+            )
+        ],
+    )
+    main.store.save("characters", character)
+    main.store.save("sessions", session)
+    monkeypatch.setattr("app.engine.tag_campaign.roll_d6", lambda: 2)
+
+    offered = client.post(
+        "/api/sessions/medusa-quest-session/tag-branch-action",
+        json={
+            "branch_action": "medusa_reaction",
+            "reference": "TAG p.25, Scene 1 Xasartha reaction",
+        },
+    )
+
+    assert offered.status_code == 200
+    offered_session = offered.json()["session"]
+    assert offered_session["mode"] == "exploration"
+    assert offered_session["active_quest"]["tag_procedure_state"]["medusa_scene1"]["phase"] == "quest_choice"
+    assert any("Accept it and roll on the Quest Table" in line for line in offered_session["log"])
+    assert not any(
+        line.startswith("Adventures Guild procedure: Medusa reaction roll:")
+        for line in offered_session["log"]
+    )
+    offered_model = main.store.get("sessions", "medusa-quest-session", SessionState.model_validate)
+    assert offered_model is not None
+    offered_model.log.append(
+        "Adventures Guild procedure: Medusa reaction roll: TAG p.25. "
+        "Xasartha reaction d6=2: quest branch."
+    )
+    main.store.save("sessions", offered_model)
+    repaired = client.get("/api/sessions/medusa-quest-session")
+    assert repaired.status_code == 200
+    assert not any(
+        line.startswith("Adventures Guild procedure: Medusa reaction roll:")
+        for line in repaired.json()["log"]
+    )
+    offered_model = main.store.get("sessions", "medusa-quest-session", SessionState.model_validate)
+    assert offered_model is not None
+    refusal_model = offered_model.model_copy(deep=True)
+    refusal_model.id = "medusa-quest-refusal-session"
+    main.store.save("sessions", refusal_model)
+
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    accepted = client.post(
+        "/api/sessions/medusa-quest-session/tag-branch-action",
+        json={
+            "branch_action": "medusa_quest_accept",
+            "reference": "TAG p.25 Scene 1; EE p.101 Quest reaction",
+        },
+    )
+
+    assert accepted.status_code == 200
+    accepted_session = accepted.json()["session"]
+    assert accepted_session["mode"] == "exploration"
+    assert accepted_session["active_quest"]["key"] == "bring_head"
+    assert any("Complete it to claim the Epic Reward" in line for line in accepted_session["log"])
+    assert accepted_session["map_state"]["tiles"][0]["enemies"] == []
+
+    refused = client.post(
+        "/api/sessions/medusa-quest-refusal-session/tag-branch-action",
+        json={
+            "branch_action": "medusa_quest_refuse",
+            "reference": "TAG p.25 Scene 1; EE p.101 Quest reaction refused",
+        },
+    )
+
+    assert refused.status_code == 200
+    refused_session = refused.json()["session"]
+    assert refused_session["tag_generated_completion_pending"] is True
+    assert refused_session["active_quest"]["completed"] is True
+    assert any("refuses Xasartha's Quest" in line for line in refused_session["log"])
+
+
 def test_medusa_scene10_group_stealth_persists_choice_and_stages_immediate_fight(client, monkeypatch) -> None:
     manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="2")
     tag_reference = manifest["source"]["parameters"]["tag_reference"]

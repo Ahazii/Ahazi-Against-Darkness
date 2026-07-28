@@ -4812,7 +4812,10 @@ def resolve_tag_branch_action(
         if roll == 1:
             parts.append("Xasartha reaction d6=1: bribe, 6d6 gp or one jewel/gem worth at least 15 gp.")
         elif roll == 2:
-            parts.append("Xasartha reaction d6=2: quest branch. Resolve the printed medusa quest text before deciding combat/reward.")
+            parts.append(
+                "Xasartha offers the party a Quest. Accept it and roll on the Quest Table, "
+                "or refuse and let her leave."
+            )
         elif roll <= 5:
             parts.append(f"Xasartha reaction d6={roll}: fight.")
         else:

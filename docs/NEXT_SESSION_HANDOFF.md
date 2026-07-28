@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-27. Repository branch: `main`. Latest release: `v0.39.50`.
+Last updated: 2026-07-28. Repository branch: `main`. Latest release: `v0.39.51`.
 
 ## Start Here
 
@@ -16,21 +16,20 @@ Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken Depths,
 Citadel, Bofto, Star-Slayer, Bag, Repellant, treasure, trap, entrance, or
 closeout suites.
 
-Rumor 2 Scene 10 is the current narrow manual gate. Deploy v0.39.50,
-force-refresh, and resume session `de586c99ab51416197f543fead8614b9`.
-Do not repeat the already persisted group Stealth Save. Run only
-`PLAYTEST_PLAN.md`: confirm the stored result clearly explains the one-roll
-lowest-modifier rule and that the four-agent `assassin_choice` stage separates
-the labelled Streetwise actor/roll from **Fight the assassins**. Then use the
-immediate-fight route to check initiative, treasure, and
-**Approach the cabin** routing. Stop at Scene 1. Its exact surprise/gaze,
-reaction, loot, pendant, necros, and Luck procedure is the next typed
-PDF-backed slice.
+Rumor 2 Scene 1 is the current narrow manual gate. Deploy v0.39.51,
+force-refresh, and resume session `1b417a50983c4329b4f2b1aead6cf76d`.
+Do not repeat Scene 10, its combat, or the already persisted Xasartha reaction
+`d6=2 quest`. Run only `PLAYTEST_PLAN.md`: confirm the compact Accept/Refuse
+choice appears directly under Narrative without the old objective frame, then
+accept and verify that one real Expanded Edition p.162 Quest Table result
+persists through save/resume. Stop there.
 
-## Implemented Through v0.39.50
+## Implemented Through v0.39.51
 
-Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 105, 107, 160, and 169; TAG pp.6-8, 11, 13, 22, 28-31, and 65.
+Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25, 28-31, and 65.
 
+- Xasartha's persisted TAG p.25 reaction `2 quest` is repaired on resume without rerolling. The player can accept the Expanded Edition p.101 Quest reaction, which rolls a concrete p.162 Quest Table result, or refuse and let Xasartha leave peacefully.
+- Typed TAG choices render directly below Narrative in a compact row. The generic objective frame, duplicated prompt explanation, and lifecycle strip are hidden while a typed Medusa action owns the decision.
 - Rumor 2 Scene 10 calculates the living party's worst TAG Stealth modifier, rolls one exploding L6 group Save, persists d3+2 agents on failure, and offers only actor-selected L5 Streetwise or immediate combat. Failed parley gives the HCL+2 dagger agents first action; immediate combat gives the party first action; their total 4d6 gp is staged for claim.
 - Scene 10 Narrative/UI list every living hero's Stealth modifier, explain that TAG pp.6-8 use one party roll with the lowest modifier, and identify the controlling hero. The assassin response uses a labelled Streetwise actor selector and separate fight option; legacy saved result text is clarified without rerolling.
 - Current Objective delegates Medusa Scene 10 and Scene 1 actions to their typed guided controls. Resuming the stored four-agent ambush exposes the actor selector and both printed responses instead of an inert generic prompt button.
@@ -72,6 +71,7 @@ Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its
 
 ## Recent Releases
 
+- `v0.39.51`: persist and resolve Xasartha's Quest reaction, and compact the typed Current Objective UI beneath Narrative.
 - `v0.39.50`: clarify Scene 10's one-roll modifier breakdown and separate the labelled Streetwise and immediate-fight choices.
 - `v0.39.49`: make Current Objective render the persisted Medusa Scene 10/1 typed controls, including the post-Stealth assassin decision.
 - `v0.39.48`: repair Rumor 2 Scene 10/1 identity, replace extracted sentence-fragment buttons, restore post-encounter routing, and remove the exploding-d6 helper collision.

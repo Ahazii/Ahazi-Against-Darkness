@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-27. Target build: v0.39.50.
+Last updated: 2026-07-28. Target build: v0.39.51.
 
 ## Adventure Test Gate: Passed
 
@@ -24,31 +24,32 @@ regression.
 
 ## Do Next
 
-### TAG Rumor 2: Resume The Stored Assassin Choice
+### TAG Rumor 2: Resume Xasartha's Stored Quest Choice
 
-This is the only open manual check. Deploy v0.39.50, force-refresh, and resume
-session `de586c99ab51416197f543fead8614b9`; do not generate a new adventure or
-repeat the group Stealth Save.
+This is the only open manual check. Deploy v0.39.51, force-refresh, and resume
+session `1b417a50983c4329b4f2b1aead6cf76d`; do not generate a new adventure or
+repeat Scene 10, its combat, or Xasartha's reaction roll.
 
-1. Confirm the stored result has been rewritten into plain language without
-   rerolling. It must explain that TAG pp.6-8 use one party roll, list all four
-   character modifiers, identify Sir Benedict's `-2` as the controlling
-   modifier, show the stored `2 - 2 = 0` failure, and retain four agents.
-   Current Objective must show two visually separate choices. The first is
-   labelled **Who attempts the Streetwise Save?** with a character dropdown
-   and **Roll Streetwise Save**. The second is **Fight the assassins** and
-   states that the party acts first.
-2. Choose **Fight the assassins**. Combat must start with the party acting
-   first against four HCL+2 dagger minions. The alternate Streetwise route and
-   agents-first failure path remain covered by focused automated tests.
-3. After victory, exactly the staged total 4d6 gp must be claimable, followed
-   by **Approach the cabin** and **Return to town**. This route counts as one
-   minion encounter for XP purposes.
-4. Choose **Approach the cabin**. Confirm the app moves to Scene 1 and shows
-   only **Approach the cabin** with a character dropdown and **Shout out to the
-   Medusa**. Stop there; Scene 1 combat, reaction, pendant, necros, and Luck
-   handling are the next PDF-backed conversion slice and are not part of this
-   release gate.
+1. Confirm resume does not reroll the stored TAG p.25 result `d6=2 quest`.
+   Narrative must say that Xasartha offers a Quest and the compact action row
+   directly below it must show only **Accept Xasartha's quest** and
+   **Refuse and let Xasartha leave**.
+2. Confirm the old generated-objective box, repeated objective explanation,
+   lifecycle badges, and internal `Adventures Guild procedure:` wording are
+   absent. Narrative must retain a useful readable area and its own scrollbar.
+3. Choose **Accept Xasartha's quest**. The app must roll once on the Expanded
+   Edition p.162 Quest Table, show the concrete new core Quest, let Xasartha
+   leave peacefully, and award no pendant, necros, or immediate Epic Reward.
+   The Epic Reward belongs only to successful completion of that new Quest
+   (Expanded Edition p.101).
+4. Save, return to the dashboard, and resume once. Confirm the generated core
+   Quest and its exact rolled requirement persist. Stop there; do not complete
+   or deliberately fail the new Quest in this gate.
+
+The refusal path is covered by focused automation: it lets Xasartha leave,
+resolves the Rumor module, and creates no core Quest. Xasartha's bribe,
+fight/fight-to-the-death, pendant, necros, and Luck procedures remain the next
+bounded TAG p.25-26 slice.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

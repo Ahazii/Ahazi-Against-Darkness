@@ -2574,20 +2574,41 @@ button.is-working::after {
 .tag-context-guided-action.medusa-scene10-guided {
   grid-template-columns: 1fr;
   max-width: 920px;
-  gap: 8px;
+  gap: 5px;
+}
+
+.map-log-row:has(.medusa-scene10-choice) {
+  height: min(max(var(--log-panel-height, 240px), 300px), 58vh);
+}
+
+.current-objective-banner:has(.medusa-scene10-choice) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  width: 100%;
+}
+
+.current-objective-banner:has(.medusa-scene10-choice) > .current-objective-copy,
+.current-objective-banner:has(.medusa-scene10-choice) > .tag-lifecycle-strip {
+  display: none;
+}
+
+.current-objective-banner:has(.medusa-scene10-choice) .current-objective-actions {
+  display: block;
+  min-width: 0;
 }
 
 .medusa-scene10-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .medusa-scene10-option {
   display: grid;
   align-content: start;
-  gap: 7px;
-  padding: 4px 0 4px 10px;
+  gap: 5px;
+  padding: 3px 0 3px 9px;
   border-left: 3px solid rgba(184, 138, 58, 0.62);
 }
 
@@ -2608,8 +2629,14 @@ button.is-working::after {
   white-space: normal;
 }
 
+.medusa-scene1-guided {
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  max-width: none;
+}
+
 @media (max-width: 760px) {
-  .medusa-scene10-options {
+  .medusa-scene10-options,
+  .medusa-scene1-guided {
     grid-template-columns: 1fr;
   }
 }
@@ -5343,6 +5370,33 @@ button.modern-dashboard-status-icon {
   padding: 5px 9px;
   white-space: nowrap;
   text-align: center;
+}
+
+.current-objective-banner:has(.tag-context-guided-action) {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.current-objective-banner:has(.tag-context-guided-action) > .current-objective-copy,
+.current-objective-banner:has(.tag-context-guided-action) > .tag-lifecycle-strip {
+  display: none;
+}
+
+.current-objective-banner:has(.tag-context-guided-action) .current-objective-actions {
+  display: block;
+  min-width: 0;
+}
+
+.current-objective-banner:has(.tag-context-guided-action) .tag-context-guided-action {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .tag-lifecycle-strip {

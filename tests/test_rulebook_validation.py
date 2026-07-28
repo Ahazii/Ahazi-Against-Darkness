@@ -218,6 +218,7 @@ API_MERGED_TABLE_KEYS = {
     "invisible_gremlins_procedure_table",
     "tag_bag_of_carrying_table",
     "tag_medusa_scene10_procedure_table",
+    "tag_medusa_scene1_reaction_table",
     "tag_rumor_lifecycle_table",
 }
 
@@ -331,6 +332,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "invisible_gremlins_procedure_table",
     "tag_bag_of_carrying_table",
     "tag_medusa_scene10_procedure_table",
+    "tag_medusa_scene1_reaction_table",
     "tag_rumor_lifecycle_table",
     "tier_training_costs_table",
     "trap_table",

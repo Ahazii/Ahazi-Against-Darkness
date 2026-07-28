@@ -11696,6 +11696,8 @@ const DIRECT_TAG_BRANCH_ACTIONS = new Set([
   "medusa_assassin_fight",
   "medusa_stealth_approach",
   "medusa_reaction",
+  "medusa_quest_accept",
+  "medusa_quest_refuse",
   "gargoyle_count",
   "gargoyle_surprise",
   "gargoyle_skin",
@@ -12047,7 +12049,13 @@ function tagDirectSceneCost(defaults = {}, member = null) {
 
 function chooseTagDirectBranchCharacter(defaults = {}) {
   if (defaults.characterId) return defaults.characterId;
-  if (defaults.branchAction === "bofto_theft_save") return "";
+  if (
+    [
+      "bofto_theft_save",
+      "medusa_quest_accept",
+      "medusa_quest_refuse",
+    ].includes(defaults.branchAction)
+  ) return "";
   const living = (state.session?.party || []).filter((member) => member.current_life > 0);
   if (!living.length) return "";
   const cost = tagDirectBranchCost(defaults);
@@ -17564,6 +17572,7 @@ const ENVIRONMENT_TABLE_HINTS = {
   invisible_gremlins_procedure_table: "Invisible Gremlins procedure (EE pp.74, 87, 105, 160, 169; TAG pp.11, 13, 65): staged theft, protection, Disbelief, special property, temporary-enchantment choice, and Clue handling.",
   tag_bag_of_carrying_table: "Bag of Carrying procedure (TAG p.13): purchase, explicit multi-bag contents, transfer, theft/loss, and magic-user restriction.",
   tag_medusa_scene10_procedure_table: "Hunter's Cabin approach (TAG pp.6-8, p.28): one party Stealth roll using the lowest modifier, then labelled Streetwise or immediate-fight choices.",
+  tag_medusa_scene1_reaction_table: "Xasartha's reaction procedure (TAG p.25, Scene 1; EE pp.101, 162): bribe, Quest acceptance/refusal, fight, and fight-to-the-death outcomes.",
   tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG p.22): heard, investigating, then resolved only after the paragraph and corresponding Scene are played.",
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
   caverns_special_features_table: "Caverns Special Features (d6), EE p.112. Roll on room content 5 in caverns.",
@@ -17671,6 +17680,7 @@ const RULES_TABLE_ORDER = [
   "invisible_gremlins_procedure_table",
   "tag_bag_of_carrying_table",
   "tag_medusa_scene10_procedure_table",
+  "tag_medusa_scene1_reaction_table",
   "tag_rumor_lifecycle_table",
   "courtship_seaside_encounter_table",
   "courtship_riverside_encounter_table",
@@ -20287,7 +20297,7 @@ function currentObjectiveForSession(session) {
   }
   const quest = session.active_quest && !session.active_quest.reward_claimed ? session.active_quest : null;
   const generated = tagCurrentPromptData(session);
-  if (generated.tagReference) {
+  if (generated.tagReference && (!quest || quest.key === "tag_generated_scene")) {
     const leadLabel = tagLeadLabel(generated.tagReference);
     const director = generatedTagDirectorStep(session);
     const actions = Array.isArray(generated.promptData?.actions)
@@ -20544,7 +20554,9 @@ function renderCurrentObjectiveBanner(session) {
   appendCurrentObjectiveButton(actions, objective.action);
   appendCurrentObjectiveButton(actions, objective.secondaryAction);
   if (actions.childElementCount) currentObjectiveBanner.appendChild(actions);
-  const lifecycle = renderGeneratedTagLifecycleStrip(session);
+  const lifecycle = session.active_quest?.key === "tag_generated_scene"
+    ? renderGeneratedTagLifecycleStrip(session)
+    : null;
   if (lifecycle) currentObjectiveBanner.appendChild(lifecycle);
   appendTagCaveProgressPanel(currentObjectiveBanner, session);
 }
@@ -25873,20 +25885,20 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
   const sceneState = state.session?.active_quest?.tag_procedure_state?.medusa_scene10 || {};
   const wrap = node("div", "tag-context-guided-action");
   wrap.classList.add("medusa-scene10-guided");
-  const modifierSummary = living
-    .map((member) => `${member.name} ${formatSigned(tagOutdoorStealthModifier(member))}`)
-    .join("; ");
   setTooltip(
     wrap,
     "TAG p.28, Scene 10 and TAG pp.6-8, Stealth Rolls: the whole living party rolls once against L6 using its lowest modifier. Shields and heavy armor each impose -1."
   );
-  wrap.appendChild(node("strong", "", "Scene 10 cabin approach"));
-  wrap.appendChild(
-    subline(
-      `TAG pp.6-8 use one roll for the whole party, not one roll per hero. Party modifiers: ${modifierSummary || "no living heroes"}.`
-    )
-  );
   if (!sceneState.completed) {
+    const modifierSummary = living
+      .map((member) => `${member.name} ${formatSigned(tagOutdoorStealthModifier(member))}`)
+      .join("; ");
+    wrap.appendChild(node("strong", "", "Approach the cabin"));
+    wrap.appendChild(
+      subline(
+        `The party makes one Stealth Save. Modifiers: ${modifierSummary || "no living heroes"}.`
+      )
+    );
     const modifiers = living
       .map((member) => ({ member, modifier: tagOutdoorStealthModifier(member) }))
       .sort((left, right) => left.modifier - right.modifier);
@@ -25913,19 +25925,15 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
   } else if (sceneState.phase === "assassin_choice") {
     wrap.classList.add("medusa-scene10-choice");
     wrap.appendChild(
-      subline(
-        `${sceneState.assassin_count || 0} assassin agents ambush the party. Choose how the party responds.`
-      )
+      node("strong", "", `${sceneState.assassin_count || 0} assassin agents ambush the party`)
     );
+    wrap.appendChild(subline("Choose one response."));
     const options = node("div", "medusa-scene10-options");
     const parleyOption = node("div", "medusa-scene10-option");
-    parleyOption.appendChild(node("strong", "", "Try to convince the assassins"));
-    parleyOption.appendChild(
-      subline("Choose the hero who will make the L5 Streetwise Save. The app rolls the Save and applies success or failure.")
-    );
+    parleyOption.appendChild(node("strong", "", "Try to convince them"));
     const field = document.createElement("label");
     field.className = "medusa-scene10-field";
-    field.appendChild(node("span", "", "Who attempts the Streetwise Save?"));
+    field.appendChild(node("span", "", "Choose a hero for the L5 Streetwise Save"));
     const select = document.createElement("select");
     select.setAttribute("aria-label", "Character attempting the L5 Streetwise Save");
     setTooltip(select, "Choose the character attempting the L5 Streetwise Save to convince the agents.");
@@ -25955,10 +25963,8 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
     parleyOption.appendChild(parley);
     options.appendChild(parleyOption);
     const fightOption = node("div", "medusa-scene10-option");
-    fightOption.appendChild(node("strong", "", "Fight immediately"));
-    fightOption.appendChild(
-      subline("Skip the Streetwise attempt and attack the assassin agents. The party acts first.")
-    );
+    fightOption.appendChild(node("strong", "", "Fight them"));
+    fightOption.appendChild(subline("The party acts first."));
     const fight = node("button", "secondary", "Fight the assassins");
     fight.type = "button";
     setButtonTooltip(
@@ -26030,24 +26036,46 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
 function appendMedusaScene1GuidedAction(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
   if (!["medusa_stealth_approach", "medusa_reaction"].includes(defaults.branchAction)) return false;
+  if (parent.querySelector(".medusa-scene1-guided")) return true;
+  if (state.session?.active_quest?.key !== "tag_generated_scene") return true;
   const living = (state.session?.party || []).filter((member) => member.current_life > 0);
   const wrap = node("div", "tag-context-guided-action");
-  if (defaults.branchAction === "medusa_reaction") {
+  wrap.classList.add("medusa-scene1-guided");
+  const sceneState = state.session?.active_quest?.tag_procedure_state?.medusa_scene1 || {};
+  if (sceneState.phase === "quest_choice") {
     setTooltip(
       wrap,
-      "TAG p.25, Scene 1: call to Xasartha from outside and roll her printed bribe, quest, fight, or fight-to-the-death reaction."
+      "TAG p.25, Scene 1 and Expanded Edition p.101, Quest reaction: accept and roll on the Quest Table, or refuse and Xasartha leaves."
     );
-    const shout = node("button", "secondary", "Shout out to the Medusa");
-    shout.type = "button";
+    const accept = node("button", "primary", "Accept Xasartha's quest");
+    accept.type = "button";
     setButtonTooltip(
-      shout,
-      "Roll Xasartha's printed reaction automatically. The player does not choose whether she is peaceful or hostile."
+      accept,
+      "Accept the Quest reaction. The app rolls once on the Expanded Edition p.162 Quest Table and records the resulting mission."
     );
-    shout.addEventListener("click", () => {
-      shout.disabled = true;
-      runTagBranchActionWithDefaults(defaults).catch(handleError);
+    accept.addEventListener("click", () => {
+      accept.disabled = true;
+      runTagBranchActionWithDefaults({
+        branchAction: "medusa_quest_accept",
+        reference: "TAG p.25 Scene 1; EE p.101 Quest reaction",
+        amount: 0,
+      }).catch(handleError);
     });
-    wrap.appendChild(shout);
+    const refuse = node("button", "secondary", "Refuse and let Xasartha leave");
+    refuse.type = "button";
+    setButtonTooltip(
+      refuse,
+      "Refuse the Quest reaction. Expanded Edition p.101 says the foe leaves; no combat or Xasartha treasure follows."
+    );
+    refuse.addEventListener("click", () => {
+      refuse.disabled = true;
+      runTagBranchActionWithDefaults({
+        branchAction: "medusa_quest_refuse",
+        reference: "TAG p.25 Scene 1; EE p.101 Quest reaction refused",
+        amount: 0,
+      }).catch(handleError);
+    });
+    wrap.append(accept, refuse);
     parent.appendChild(wrap);
     return true;
   }
@@ -26080,6 +26108,21 @@ function appendMedusaScene1GuidedAction(parent, action, fallbackReference) {
     }).catch(handleError);
   });
   wrap.appendChild(approach);
+  const shout = node("button", "secondary", "Shout out to Xasartha");
+  shout.type = "button";
+  setButtonTooltip(
+    shout,
+    "Call from outside and roll Xasartha's TAG p.25 bribe, Quest, fight, or fight-to-the-death reaction."
+  );
+  shout.addEventListener("click", () => {
+    shout.disabled = true;
+    runTagBranchActionWithDefaults({
+      branchAction: "medusa_reaction",
+      reference: "TAG p.25, Scene 1 Xasartha reaction",
+      amount: 0,
+    }).catch(handleError);
+  });
+  wrap.appendChild(shout);
   parent.appendChild(wrap);
   return true;
 }

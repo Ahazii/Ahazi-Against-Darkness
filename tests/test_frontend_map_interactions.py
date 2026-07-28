@@ -2753,13 +2753,31 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "medusa_assassin_ambush" in APP_JS
     assert "appendMedusaScene10GuidedAction" in APP_JS
     assert "appendMedusaScene1GuidedAction" in APP_JS
+    assert "Accept Xasartha's quest" in APP_JS
+    assert "Refuse and let Xasartha leave" in APP_JS
+    assert "medusa_quest_accept" in APP_JS
+    assert "medusa_quest_refuse" in APP_JS
+    direct_actions = APP_JS.split("const DIRECT_TAG_BRANCH_ACTIONS", 1)[1].split("]);", 1)[0]
+    assert '"medusa_quest_accept"' in direct_actions
+    assert '"medusa_quest_refuse"' in direct_actions
+    character_choice = APP_JS.split("function chooseTagDirectBranchCharacter", 1)[1].split(
+        "function chooseTagDirectSceneCharacter", 1
+    )[0]
+    assert '"medusa_quest_accept"' in character_choice
+    assert '"medusa_quest_refuse"' in character_choice
+    assert 'generated.tagReference && (!quest || quest.key === "tag_generated_scene")' in APP_JS
+    assert 'session.active_quest?.key === "tag_generated_scene"' in APP_JS
     assert "Roll group Stealth Save" in APP_JS
-    assert "Who attempts the Streetwise Save?" in APP_JS
+    assert "Choose a hero for the L5 Streetwise Save" in APP_JS
     assert "Roll Streetwise Save" in APP_JS
     assert "Fight the assassins" in APP_JS
-    assert "one roll for the whole party, not one roll per hero" in APP_JS
+    assert "The party makes one Stealth Save." in APP_JS
     assert "medusaScene10LegacyNarrative" in APP_JS
     assert "medusa-scene10-options" in STYLES_CSS
+    assert ".map-log-row:has(.medusa-scene10-choice)" in STYLES_CSS
+    assert ".current-objective-banner:has(.medusa-scene10-choice)" in STYLES_CSS
+    assert ".current-objective-banner:has(.tag-context-guided-action)" in STYLES_CSS
+    assert ".medusa-scene1-guided" in STYLES_CSS
     assert "The assassin agents are defeated." in APP_JS
     assert '"Approach the cabin"' in APP_JS
     assert '"Return to town"' in APP_JS
