@@ -3032,7 +3032,7 @@
         "Epic Reward"
       ],
       "summary": "Typed Xasartha reaction choices and concrete Expanded Edition Quest turn-in.",
-      "body": "TAG p.25, Scene 1 supplies Xasartha's reaction table. A Quest result presents the printed accept/refuse decision without rerolling: refusal lets Xasartha leave, while acceptance follows Expanded Edition p.101 and rolls once on the p.162 Quest Table. The accepted Quest remains a core Quest even though it began inside an imported TAG adventure. For Bring Gold, the app stores and displays the concrete rolled amount, doubles it when the party already has enough as printed, shows the party total and Quest-giver tile, deducts the exact requirement there, clears the Quest, and awards exactly one Epic Reward. Generated Adventures Guild closeout controls do not replace this core Quest turn-in.",
+      "body": "TAG p.25, Scene 1 supplies Xasartha's reaction table. A Quest result presents the printed accept/refuse decision without rerolling: refusal lets Xasartha leave, while acceptance follows Expanded Edition p.101 and rolls once on the p.162 Quest Table. The accepted Quest remains a core Quest even though it began inside an imported TAG adventure. For Bring Gold, the app stores and displays the concrete rolled amount, doubles it when the party already has enough as printed, shows the party total and Quest-giver tile, deducts the exact requirement there, clears the Quest, and awards exactly one Epic Reward. Quest completion remains peaceful: it does not restart combat or award the Quest-giver's combat treasure. The generated TAG lead then presents a readable resolved result and Return to town and finish rather than generic generated-prompt guidance.",
       "implementation_status": "implemented"
     },
     {

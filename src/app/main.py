@@ -111,7 +111,12 @@ from .engine.supplement_sources import (
     upsert_supplement_source_profile,
     upsert_supplement_source_table,
 )
-from .engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_lines, upgrade_tag_manifest
+from .engine.tag_compat import (
+    generated_tag_manifest_diagnostics,
+    normalize_tag_log_lines,
+    repair_generated_tag_core_quest_completion,
+    upgrade_tag_manifest,
+)
 from .engine.tag_campaign import merge_tag_pdf_narrative_overrides, tag_narrative_overrides_path
 from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import (
@@ -4850,8 +4855,8 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "result": "2 - Quest",
-            "rule": "Accept and roll on the Quest Table, or refuse and Xasartha leaves. A Bring Gold result stores its rolled amount, doubles it when the party already has enough, deducts the exact requirement at the Quest-giver's tile, and awards one Epic Reward.",
-            "player_ui": "Show explicit Accept Quest and Refuse choices. After acceptance, show the concrete requirement, party total, turn-in location, and a direct claim action; core Quest rewards must not be replaced by generated-adventure closeout controls.",
+            "rule": "Accept and roll on the Quest Table, or refuse and Xasartha leaves. A Bring Gold result stores its rolled amount, doubles it when the party already has enough, deducts the exact requirement at the Quest-giver's tile, and awards one Epic Reward. Completion remains peaceful and does not restart combat or award the Quest-giver's combat treasure.",
+            "player_ui": "Show explicit Accept Quest and Refuse choices. After acceptance, show the concrete requirement, party total, turn-in location, and a direct claim action. After the Epic Reward, replace generated guidance with a resolved-lead message and Return to town and finish; core Quest rewards must not be replaced by generated-adventure closeout controls.",
             "source": "TAG p.25, Scene 1; EE p.101; EE p.162",
         },
         {
@@ -6339,6 +6344,8 @@ async def get_session(session_id: str) -> SessionState:
         changed = True
     if _repair_medusa_scene1_state(session):
         changed = True
+    if repair_generated_tag_core_quest_completion(session):
+        changed = True
     if session.mode != "complete":
         lock_characters_for_session(session, store)
     if changed:
@@ -7030,17 +7037,18 @@ async def continue_generated_tag_lead(session_id: str) -> SessionState:
     if not session.tag_generated_completion_pending:
         raise HTTPException(status_code=400, detail="No resolved Adventures Guild scene is waiting to continue.")
     quest = session.active_quest
-    if quest is None or not quest.completed:
+    if quest is not None and not quest.completed:
         raise HTTPException(status_code=400, detail="The generated Adventures Guild scene is not resolved yet.")
-    state = dict(quest.tag_generated_lead_state or {})
-    closeout = dict(state.get("closeout") or {})
-    closeout["completed"] = True
-    closeout["updated_at"] = now_utc()
-    state["completion_pending"] = False
-    state["closeout"] = closeout
-    state["next_action"] = "Review the normal adventure summary and campaign closeout tasks."
-    quest.tag_generated_lead_state = state
-    quest.tag_generated_lead_signoff = True
+    if quest is not None:
+        state = dict(quest.tag_generated_lead_state or {})
+        closeout = dict(state.get("closeout") or {})
+        closeout["completed"] = True
+        closeout["updated_at"] = now_utc()
+        state["completion_pending"] = False
+        state["closeout"] = closeout
+        state["next_action"] = "Review the normal adventure summary and campaign closeout tasks."
+        quest.tag_generated_lead_state = state
+        quest.tag_generated_lead_signoff = True
     session.tag_generated_completion_pending = False
     session.tag_generated_completion_title = None
     session.tag_generated_completion_body = None

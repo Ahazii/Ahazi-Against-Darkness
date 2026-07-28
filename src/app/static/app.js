@@ -20088,9 +20088,9 @@ function currentObjectiveForSession(session) {
         "The scene is resolved. Read the Narrative result, then continue to finish the adventure.",
       tone: "success",
       action: {
-        label: "Continue",
+        label: "Return to town and finish",
         kind: "tag-generated-continue",
-        tooltip: "Finish this resolved Adventures Guild scene and open the normal adventure summary. The result remains in Narrative until you choose this.",
+        tooltip: "Finish this resolved Adventures Guild scene, return the party to town, and open the normal adventure summary. The result remains in Narrative until you choose this.",
       },
     };
   }
@@ -20664,10 +20664,27 @@ function renderNarrativeObjectiveChips(session) {
   }
   const objective = currentObjectiveForSession(session);
   if (objective) {
-    const chip = node("button", `narrative-objective-chip ${objective.tone || "neutral"}`, objective.title.replace(/^Current objective:\s*/i, ""));
+    const completionAction = session.tag_generated_completion_pending
+      && objective.action?.kind === "tag-generated-continue"
+      ? objective.action
+      : null;
+    const chip = node(
+      "button",
+      `narrative-objective-chip ${objective.tone || "neutral"}`,
+      completionAction?.label || objective.title.replace(/^Current objective:\s*/i, "")
+    );
     chip.type = "button";
-    setButtonTooltip(chip, `${objective.title}: ${objective.body}`);
-    chip.addEventListener("click", () => setExplorationPanelVisibility("objective", !(state.explorationPanels?.objective === true)));
+    setButtonTooltip(
+      chip,
+      completionAction?.tooltip || `${objective.title}: ${objective.body}`
+    );
+    chip.addEventListener("click", () => {
+      if (completionAction) {
+        continueGeneratedTagLead().catch(handleError);
+        return;
+      }
+      setExplorationPanelVisibility("objective", !(state.explorationPanels?.objective === true));
+    });
     narrativeObjectiveChips.appendChild(chip);
   }
   const fdQuests = session.ruleset === "forsaken_depths" ? fdActiveQuests(session) : [];

@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-28. Target build: v0.39.52.
+Last updated: 2026-07-28. Target build: v0.39.53.
 
 ## Adventure Test Gate: Passed
 
@@ -24,30 +24,25 @@ regression.
 
 ## Do Next
 
-### TAG Rumor 2: Complete Xasartha's Stored Gold Quest
+### TAG Rumor 2: Close The Already-Completed Quest
 
-This is the only open adventure check. Deploy v0.39.52, force-refresh, and resume
+This is the only open adventure check. Deploy v0.39.53, force-refresh, and resume
 session `1b417a50983c4329b4f2b1aead6cf76d`; do not generate a new adventure or
-repeat Scene 10, its combat, Xasartha's reaction roll, or Quest acceptance.
+repeat Scene 10, its combat, Xasartha's reaction roll, Quest acceptance, the
+200gp payment, or the Epic Reward roll.
 
-1. Confirm the compact objective states **Give 200gp and claim the Epic
-   Reward**, says that the party has `209gp`, and identifies Xasartha's Cabin
-   as the turn-in location. The generic **Generated Adventures Guild
-   closeout** panel must not appear.
-2. Open Quest Details. Confirm progress is `209/200gp` and there is a direct
-   **Give 200gp and claim Epic Reward** action.
-3. Use the action. Exactly `200gp` must be deducted, leaving `9gp` total; the
-   Quest must clear and exactly one Expanded Edition p.101 Epic Reward must be
-   awarded and described in Narrative.
-4. With any Developer Playtest Preference enabled in Settings, confirm a
-   **Developer Options** window appears automatically in Adventure View. It
-   must be movable by its title bar, have no close button, and no longer consume
-   Action Rail height. Disable every developer preference and confirm the
-   window disappears.
+1. Confirm the already-awarded Book of Skalitos remains in Sir Benedict's
+   inventory and the party still has `9gp`; no reward or Quest roll repeats.
+2. The useless **Generated lead** / Rumor playbook text must be gone. In its
+   place, the objective must say that the Quest is complete, the Quest-giver
+   accepts the result, the encounter remains peaceful, combat treasure is not
+   awarded, and the Epic Reward in Narrative is the Quest reward.
+3. Confirm the only relevant action is **Return to town and finish**. Use it
+   and confirm the ordinary Adventure Complete summary opens.
 
-The acceptance/refusal and save/resume paths are covered by focused automation.
-Xasartha's bribe, fight/fight-to-the-death, pendant, necros, and Luck
-procedures remain the next bounded TAG p.25-26 slice.
+The completed-Quest resume repair and Continue path are covered by focused
+automation. Xasartha's bribe, fight/fight-to-the-death, pendant, necros, and
+Luck procedures remain the next bounded TAG p.25-26 slice.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

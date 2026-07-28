@@ -120,6 +120,10 @@ def test_generated_tag_result_waits_for_continue_before_closeout() -> None:
     """Resolved scene text must remain visible until the player acknowledges it."""
     assert "tag_generated_completion_pending" in APP_JS
     assert "tag-generated-continue" in APP_JS
+    assert "Return to town and finish" in APP_JS
+    objective_chips = _function_body("renderNarrativeObjectiveChips", APP_JS)
+    assert 'objective.action?.kind === "tag-generated-continue"' in objective_chips
+    assert "continueGeneratedTagLead().catch(handleError)" in objective_chips
     assert "continueGeneratedTagLead" in APP_JS
     assert "/tag-generated-lead-continue" in APP_JS
 

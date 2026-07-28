@@ -141,7 +141,7 @@ from .map_connections import (
     sync_linked_door,
     sync_connection_state,
 )
-from .tag_compat import is_generated_tag_manifest
+from .tag_compat import is_generated_tag_manifest, repair_generated_tag_core_quest_completion
 from .split_party import (
     active_tile_id,
     apply_scout_lag_on_move,
@@ -19859,6 +19859,8 @@ class RandomDungeonEngine:
                 generated_tag_session=lambda current: current.adventure_type == "imported" and is_generated_tag_manifest(current.imported_manifest),
             ),
         )
+        repair_generated_tag_core_quest_completion(session)
+
     def _record_peaceful_quest_progress(self, session: SessionState) -> None:
         record_peaceful_quest_progress(session)
 

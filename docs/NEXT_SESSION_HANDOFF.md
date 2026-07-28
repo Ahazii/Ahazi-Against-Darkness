@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-28. Repository branch: `main`. Latest release: `v0.39.52`.
+Last updated: 2026-07-28. Repository branch: `main`. Latest release: `v0.39.53`.
 
 ## Start Here
 
@@ -16,17 +16,18 @@ Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken Depths,
 Citadel, Bofto, Star-Slayer, Bag, Repellant, treasure, trap, entrance, or
 closeout suites.
 
-Rumor 2 Scene 1's accepted Bring Gold Quest is the current narrow manual gate. Deploy v0.39.52,
+Rumor 2 Scene 1's completed Bring Gold Quest closeout is the current narrow manual gate. Deploy v0.39.53,
 force-refresh, and resume session `1b417a50983c4329b4f2b1aead6cf76d`.
-Do not repeat Scene 10, its combat, the Xasartha reaction, or Quest acceptance.
-Run only `PLAYTEST_PLAN.md`: confirm the explicit 200gp turn-in, claim it once,
-and verify the automatic movable/non-closable Developer Options window. Stop
-there.
+Do not repeat Scene 10, its combat, the Xasartha reaction, Quest acceptance,
+payment, or Epic Reward. Run only `PLAYTEST_PLAN.md`: confirm the saved reward
+repairs to a peaceful resolved-lead message, then use Return to town and finish.
+Stop there.
 
-## Implemented Through v0.39.52
+## Implemented Through v0.39.53
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25, 28-31, and 65.
 
+- Any normal core Quest completed inside a generated TAG adventure now resolves that lead through the existing readable Continue pause. It explains that the Quest-giver encounter remains peaceful and combat treasure is unavailable, then offers **Return to town and finish**. Resume repairs already-completed rewards without rerolling or duplicating them.
 - Accepted Xasartha Bring Gold Quests expose the stored requirement, party total, Quest-giver location, and direct turn-in. Core Quest rewards are no longer mistaken for generated TAG closeout; exact payment produces exactly one Epic Reward.
 - Adventure View automatically shows one movable, non-closable Developer Options window whenever any developer preference is active. With all developer preferences off, it is absent.
 - Xasartha's persisted TAG p.25 reaction `2 quest` is repaired on resume without rerolling. The player can accept the Expanded Edition p.101 Quest reaction, which rolls a concrete p.162 Quest Table result, or refuse and let Xasartha leave peacefully.
@@ -72,6 +73,7 @@ Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its
 
 ## Recent Releases
 
+- `v0.39.53`: turn a completed generated-TAG core Quest into a readable peaceful closeout, including resume repair for already-awarded saves.
 - `v0.39.52`: restore concrete Xasartha core-Quest turn-in and move enabled developer controls into an automatic non-closable floating window.
 - `v0.39.51`: persist and resolve Xasartha's Quest reaction, and compact the typed Current Objective UI beneath Narrative.
 - `v0.39.50`: clarify Scene 10's one-roll modifier breakdown and separate the labelled Streetwise and immediate-fight choices.

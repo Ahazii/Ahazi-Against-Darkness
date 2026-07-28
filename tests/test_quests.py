@@ -717,6 +717,51 @@ def test_core_gold_quest_from_generated_tag_session_can_be_turned_in(monkeypatch
     assert session.party[0].gold == 9
     assert any("Quest complete! Epic reward" in entry for entry in session.log)
     assert not any("generated Adventures Guild scenes" in entry for entry in session.log)
+    assert session.tag_generated_completion_pending is True
+    assert "encounter remains peaceful and does not restart" in (session.tag_generated_completion_body or "")
+    assert "combat treasure is not awarded" in (session.tag_generated_completion_body or "")
+    assert "Return to town and finish" in (session.tag_generated_completion_body or "")
+
+
+def test_resumed_generated_tag_core_quest_reward_repairs_to_clean_closeout(client) -> None:
+    manifest, _entry = build_tag_adventure_manifest(
+        default_campaign(),
+        lead_type="rumor",
+        detail="2",
+    )
+    session = base_session(
+        id="completed-tag-core-quest",
+        adventure_id=manifest["id"],
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=None,
+        log=[
+            "The encounter ends peacefully.",
+            "Quest complete! Epic reward: The Book of Skalitos.",
+            "Book of Skalitos (6 pages) added to Quest Hero's inventory.",
+        ],
+    )
+    session.party[0].inventory.append("Book of Skalitos (6 pages)")
+    main.store.save("sessions", session)
+
+    resumed = client.get("/api/sessions/completed-tag-core-quest")
+
+    assert resumed.status_code == 200
+    payload = resumed.json()
+    assert payload["tag_generated_completion_pending"] is True
+    assert "encounter remains peaceful and does not restart" in payload["tag_generated_completion_body"]
+    assert "combat treasure is not awarded" in payload["tag_generated_completion_body"]
+    assert "Return to town and finish" in payload["tag_generated_completion_body"]
+    assert payload["active_quest"] is None
+    assert sum("Book of Skalitos" in line for line in payload["log"]) == 2
+    assert payload["party"][0]["inventory"].count("Book of Skalitos (6 pages)") == 1
+
+    continued = client.post("/api/sessions/completed-tag-core-quest/tag-generated-lead-continue")
+
+    assert continued.status_code == 200
+    completed = continued.json()
+    assert completed["mode"] == "complete"
+    assert completed["tag_generated_completion_pending"] is False
 
 
 def test_session_tag_branch_action_syncs_live_party_character(client) -> None:

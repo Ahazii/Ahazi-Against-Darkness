@@ -243,6 +243,35 @@ def is_generated_tag_manifest(manifest: dict[str, Any] | None) -> bool:
     return bool(tag_reference_from_manifest(manifest))
 
 
+def repair_generated_tag_core_quest_completion(session: Any) -> bool:
+    """Restore the closeout pause after a normal Quest resolves a generated TAG lead."""
+    if (
+        getattr(session, "mode", "") == "complete"
+        or getattr(session, "active_quest", None) is not None
+        or getattr(session, "tag_generated_completion_pending", False)
+        or not is_generated_tag_manifest(getattr(session, "imported_manifest", None))
+    ):
+        return False
+    log = list(getattr(session, "log", []) or [])
+    if not any(str(line).startswith("Quest complete! Epic reward:") for line in log):
+        return False
+    manifest = getattr(session, "imported_manifest", None) or {}
+    lead_title = str(manifest.get("title") or "Adventures Guild lead").strip()
+    title = f"{lead_title} resolved"
+    body = (
+        "The Quest is complete and the Quest-giver accepts the result. "
+        "The encounter remains peaceful and does not restart; combat treasure is not awarded. "
+        "The Epic Reward shown in Narrative is the Quest reward. "
+        "Choose Return to town and finish to close this Adventures Guild lead."
+    )
+    session.tag_generated_completion_pending = True
+    session.tag_generated_completion_title = title
+    session.tag_generated_completion_body = body
+    if body not in log:
+        session.log.append(body)
+    return True
+
+
 def _diagnostic_action_label(action: Any) -> str:
     if not isinstance(action, dict):
         return ""
