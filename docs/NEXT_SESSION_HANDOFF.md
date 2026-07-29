@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-29. Repository branch: `main`. Latest release: `v0.39.54`.
+Last updated: 2026-07-29. Repository branch: `main`. Latest release: `v0.39.55`.
 
 ## Start Here
 
@@ -22,15 +22,15 @@ no pending generated closeout, and the roster saved. Do not repeat Scene 10,
 the Xasartha Quest reaction, payment, Epic Reward, or closeout.
 
 v0.39.54 completes the bounded TAG pp.25-27 Xasartha Scene 1/6 slice in
-focused automation: persisted bribe, combat routing, defeated-Xasartha pendant
-and necros, wear versus sell, and rechargeable Luck. Do not repeat the whole
-Rumor 2 module. The next bounded candidate is TAG p.65 Temporary Weapon
-Enchantment expiry.
+focused automation. v0.39.55 completes TAG p.65 Temporary Weapon Enchantment
+timing without reopening the passed Gremlin/Iron Eater decisions. Do not repeat
+the whole Rumor 2 module or any Gremlin fight.
 
-## Implemented Through v0.39.54
+## Implemented Through v0.39.55
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25-31, and 65.
 
+- Temporary Weapon Enchantment records its cast and day-seven campaign expiry, functions as magic without an Attack bonus, and expires at encounter end after an attack against a strictly magic-only foe. The attack may hit or miss. Adventure completion and settlement travel advance the clock; legacy markers receive a full week from first advancement. Manual early clear is removed while the existing Gremlin/Iron Eater loss choice remains unchanged (TAG p.65).
 - Xasartha reaction `1` persists its `6d6` demand and offers exact carried-gold, eligible 15gp+ gem/jewel, or refusal choices. Defeat persists `2d6` necros and a wear-or-sell pendant choice. The pendant is not consumed when Luck is spent; its separate counter survives camp/re-entry and recharges only with a new adventure. It grants one point, or two additional points to a halfling. Barbarians cannot wear it.
 - Any normal core Quest completed inside a generated TAG adventure now resolves that lead through the existing readable Continue pause. It explains that the Quest-giver encounter remains peaceful and combat treasure is unavailable, then offers **Return to town and finish**. Resume repairs already-completed rewards without rerolling or duplicating them.
 - Accepted Xasartha Bring Gold Quests expose the stored requirement, party total, Quest-giver location, and direct turn-in. Core Quest rewards are no longer mistaken for generated TAG closeout; exact payment produces exactly one Epic Reward.
@@ -74,10 +74,11 @@ Automated tests own campaign isolation and legacy migration, all twelve Rumors e
 
 Migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time. Select and inspect one exact scene before coding; keep the slice narrow.
 
-Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its one-week or qualifying-use expiry remains on the existing manual **Guild marker** clear control and is a bounded later TAG spell task, not part of the release gate.
+Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat its Gremlin/Iron Eater loss tests; focused coverage owns day timing, magic-only use, encounter-end expiry, and legacy markers.
 
 ## Recent Releases
 
+- `v0.39.55`: automate Temporary Weapon Enchantment's seven-day and qualifying magic-only encounter expiry.
 - `v0.39.54`: complete typed Xasartha bribe, combat treasure, wear/sell pendant, necros, and rechargeable Luck paths.
 - `v0.39.53`: turn a completed generated-TAG core Quest into a readable peaceful closeout, including resume repair for already-awarded saves.
 - `v0.39.52`: restore concrete Xasartha core-Quest turn-in and move enabled developer controls into an automatic non-closable floating window.

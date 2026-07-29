@@ -2319,15 +2319,28 @@ async def campaign_tag_aspergillum_break() -> dict[str, Any]:
 
 @app.post("/api/campaign/tag/travel-settlement")
 async def campaign_tag_travel_settlement(payload: dict[str, Any]) -> dict[str, Any]:
-    from .engine.tag_campaign import load_campaign, save_campaign, travel_to_new_settlement
+    from .engine.tag_campaign import (
+        advance_temporary_weapon_enchantment_clock,
+        load_campaign,
+        save_campaign,
+        travel_to_new_settlement,
+    )
 
     campaign = load_campaign(store)
+    previous_day = campaign.days_passed
     entry = travel_to_new_settlement(
         campaign,
         destination_name=str(payload.get("destination_name") or ""),
         use_hex_map=_parse_bool(payload.get("use_hex_map")),
         pay_road_tithe=_parse_bool(payload.get("pay_road_tithe")),
     )
+    expiry_log = advance_temporary_weapon_enchantment_clock(
+        store,
+        campaign,
+        previous_day=previous_day,
+    )
+    if expiry_log:
+        entry.result_text = f"{entry.result_text} {' '.join(expiry_log)}"
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign, "entry": entry}
 
@@ -2626,6 +2639,34 @@ def _sync_character_to_session_party(session: SessionState, character: Character
         break
 
 
+def _sync_guild_spell_state_to_active_session(character: Character) -> SessionState | None:
+    if not character.active_session_id:
+        return None
+    active_session = store.get(
+        "sessions",
+        character.active_session_id,
+        SessionState.model_validate,
+    )
+    if active_session is None or active_session.mode == "complete":
+        return None
+    member = next(
+        (
+            item
+            for item in active_session.party
+            if item.character_id == character.id
+        ),
+        None,
+    )
+    if member is None:
+        return None
+    member.inventory = list(character.inventory)
+    member.spells = list(character.spells)
+    member.statuses = list(character.statuses)
+    active_session.updated_at = now_utc()
+    store.save("sessions", active_session)
+    return active_session
+
+
 TAG_SESSION_PAYMENT_BRANCHES = {"leprechaun_shoes", "leprechaun_illusion_spell"}
 TAG_SESSION_PAYMENT_SCENE_ACTIONS = {"deoldyn_training"}
 
@@ -2824,8 +2865,10 @@ async def campaign_tag_guild_spell(payload: dict[str, Any]) -> dict[str, Any]:
         target_weapon=str(payload.get("target_weapon") or ""),
     )
     store.save("characters", character)
+    _sync_guild_spell_state_to_active_session(character)
     if target_character is not None:
         store.save("characters", target_character)
+        _sync_guild_spell_state_to_active_session(target_character)
     campaign = save_campaign(store, campaign)
     return {"campaign": campaign, "character": character, "target_character": target_character, "entry": entry}
 
@@ -4385,6 +4428,32 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "rule": "The Bag is a magic item, so characters who cannot use magic will not carry one.",
             "automation": "Purchase and transfer reject an ineligible recipient with a source-linked explanation.",
             "source": "TAG p.13, Bag of Carrying",
+        },
+    ]
+    data["tag_temporary_weapon_enchantment_table"] = [
+        {
+            "step": "Cast",
+            "rule": "Enchant one selected weapon for one week; it is magical but gains no Attack bonus.",
+            "automation": "The marker stores its cast day and day-seven expiry against the existing TAG campaign clock.",
+            "source": "TAG p.65, Temporary Weapon Enchantment",
+        },
+        {
+            "step": "Magic-only encounter",
+            "rule": "The spell ends after an encounter in which the party uses that weapon against a creature hit only by magic weapons.",
+            "automation": "An actual attack attempt marks encounter-end expiry whether it hits or misses; the weapon remains magical throughout that encounter.",
+            "source": "TAG p.65, Temporary Weapon Enchantment",
+        },
+        {
+            "step": "Elapsed week",
+            "rule": "The spell also ends after one week.",
+            "automation": "Adventure completion and settlement travel advance campaign days and remove the marker at the exact day-seven boundary.",
+            "source": "TAG p.65, Temporary Weapon Enchantment",
+        },
+        {
+            "step": "Magic-item loss",
+            "rule": "The player decides whether a foe that steals or destroys magic items may affect the temporarily enchanted weapon.",
+            "automation": "The existing persisted Keep/Allow choice remains shared by Invisible Gremlins, revealed Gremlins, and Iron Eaters.",
+            "source": "TAG p.65, Temporary Weapon Enchantment",
         },
     ]
     data["tag_rumor_lifecycle_table"] = [

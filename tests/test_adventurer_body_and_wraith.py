@@ -3,15 +3,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.adventurer_body import resolve_adventurer_body_loot
-from app.engine.combat import _apply_pc_hit
+from app.engine.combat import CombatContext, _apply_pc_hit, _resolve_pc_attack, clear_combat_state
 from app.engine.dungeon_table_roller import DungeonTableRoller
 from app.engine.foe_weapon_restrictions import (
     template_weapon_allow_tags,
     weapon_hit_blocked_by_restriction,
 )
 from app.engine.weapons import weapon_profile
+from app.engine.tag_temporary_weapon_enchantment import temporary_weapon_enchantment_marker
 from app.rules.repository import RulesRepository
-from app.schemas import EnemyState, PartyMemberState
+from app.schemas import EnemyState, PartyMemberState, SessionState
 
 
 def _member(**overrides) -> PartyMemberState:
@@ -109,6 +110,97 @@ def test_apply_pc_hit_logs_blocked_weapon_vs_wraith():
     assert wraith.life == 6
     assert living == [wraith]
     assert any("no effect" in line.lower() for line in log)
+
+
+def test_temporary_enchantment_hits_magic_only_foe_and_expires_after_attack() -> None:
+    marker = temporary_weapon_enchantment_marker("Hand weapon", cast_day=3)
+    member = _member(
+        inventory=["Hand weapon"],
+        statuses=[marker],
+        default_melee_weapon="Hand weapon",
+    )
+    foe = EnemyState(
+        id="spirit",
+        name="Bound Spirit",
+        category="boss",
+        level=6,
+        life=4,
+        max_life=4,
+        tags=["weapon_allow:magic_weapons"],
+    )
+    session = SessionState(
+        id="temporary-enchantment",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[member],
+        map_state={"current_tile_id": "room", "tiles": []},
+        created_at="2026-07-29T00:00:00Z",
+        updated_at="2026-07-29T00:00:00Z",
+    )
+    blocked, _reason = weapon_hit_blocked_by_restriction(
+        member,
+        foe,
+        weapon_profile("Hand weapon"),
+        pending_damage=1,
+    )
+    assert blocked is False
+
+    _resolve_pc_attack(
+        member,
+        foe,
+        show_rolls=False,
+        explain_math=False,
+        party_attack_bonus=0,
+        subdual=False,
+        missile=False,
+        living_enemies=[foe],
+        log=[],
+        context=CombatContext(session=session),
+    )
+
+    assert session.temporary_weapon_enchantment_qualifying_uses
+    assert marker in member.statuses
+    clear_combat_state(session)
+    assert marker not in member.statuses
+    assert any("expires at encounter end" in line for line in session.log)
+
+
+def test_temporary_enchantment_does_not_expire_against_foe_with_other_weaknesses() -> None:
+    marker = temporary_weapon_enchantment_marker("Hand weapon", cast_day=3)
+    member = _member(
+        inventory=["Hand weapon"],
+        statuses=[marker],
+        default_melee_weapon="Hand weapon",
+    )
+    foe = _wraith()
+    session = SessionState(
+        id="temporary-enchantment-mixed",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[member],
+        map_state={"current_tile_id": "room", "tiles": []},
+        created_at="2026-07-29T00:00:00Z",
+        updated_at="2026-07-29T00:00:00Z",
+    )
+
+    _resolve_pc_attack(
+        member,
+        foe,
+        show_rolls=False,
+        explain_math=False,
+        party_attack_bonus=0,
+        subdual=False,
+        missile=False,
+        living_enemies=[foe],
+        log=[],
+        context=CombatContext(session=session),
+    )
+    clear_combat_state(session)
+
+    assert marker in member.statuses
+    assert session.temporary_weapon_enchantment_qualifying_uses == {}
 
 
 def test_fungal_adventurer_body_choice():

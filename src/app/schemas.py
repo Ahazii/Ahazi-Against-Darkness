@@ -1059,6 +1059,7 @@ class SessionState(BaseModel):
     gremlin_protected_items: list[GremlinProtectedItemState] = Field(default_factory=list)
     pending_gremlin_event: PendingGremlinEventState | None = None
     temporary_weapon_loss_choices: dict[str, Literal["keep", "allow"]] = Field(default_factory=dict)
+    temporary_weapon_enchantment_qualifying_uses: dict[str, str] = Field(default_factory=dict)
     tag_star_object_curse_active: bool = False
     tag_star_object_curse_cleared: bool = False
     tag_star_object_recovery_pending: bool = False

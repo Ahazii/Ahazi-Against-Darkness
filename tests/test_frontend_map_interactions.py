@@ -745,6 +745,8 @@ def test_epic_reward_statuses_have_ui_actions_and_hints() -> None:
     assert "Dark Plague: roll d8 each room" in tooltip
     assert "Abyss Lycanthropy: Blessing and Healing do not cure it" in tooltip
     assert "Slain by vampire level drain" in tooltip
+    assert "tag temporary weapon enchantment:" in tooltip
+    assert "expires on campaign day" in tooltip
     status = _function_body("heroStatusChips", APP_JS)
     assert "enchanted weapon" in status
     assert "kerrak dar hoard" in status
@@ -2636,6 +2638,7 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-adventure-actions-dialog",
     ]:
         assert f'id="{element_id}"' in INDEX_HTML
+    assert '<option value="temporary_weapon_enchantment" title="Clear' not in INDEX_HTML
     assert INDEX_HTML.index('id="tag-open-adventure-actions"') > INDEX_HTML.index('id="session-panel"')
     assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html"' in INDEX_HTML
     assert 'href="/docs/Checking/TAG_SECTION_GUIDE.html#manual-test-generated-tag-adventures"' in INDEX_HTML

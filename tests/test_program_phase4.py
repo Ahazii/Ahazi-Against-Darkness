@@ -28,7 +28,7 @@ from app.engine.supplements import (
     validate_supplement_manifest,
 )
 from app.engine.terrain_registry import terrain_payload, terrain_registry_diagnostics
-from app.schemas import SessionState
+from app.schemas import Character, SessionState
 
 
 def test_ruleset_profiles_resolve_legacy_ruleset_fields() -> None:
@@ -489,6 +489,51 @@ def test_campaign_api_travels_to_new_tag_settlement(client: TestClient, monkeypa
     assert payload["campaign"]["settlement_size"] == 3
     assert payload["campaign"]["days_passed"] == 12
     assert payload["entry"]["days"] == 12
+
+
+def test_campaign_guild_spell_sync_preserves_active_session_gold_split(client: TestClient) -> None:
+    response = client.post(
+        "/api/characters",
+        json={"name": "Timed Enchanter", "class_id": "wizard"},
+    )
+    assert response.status_code == 200
+    character = Character.model_validate(response.json())
+    character.gold = 500
+    character.inventory = ["Hand weapon", "Scroll of Temporary Weapon Enchantment"]
+    character.active_session_id = "guild-spell-session"
+    main.store.save("characters", character)
+    member = main._member_state(character)
+    member.gold = 25
+    member.bank_gold = 475
+    session = SessionState(
+        id="guild-spell-session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[member],
+        camped_outside=True,
+        map_state={"current_tile_id": "room", "tiles": []},
+        created_at="2026-07-29T00:00:00Z",
+        updated_at="2026-07-29T00:00:00Z",
+    )
+    main.store.save("sessions", session)
+
+    cast = client.post(
+        "/api/campaign/tag/guild-spell",
+        json={
+            "character_id": character.id,
+            "spell_key": "temporary_weapon_enchantment",
+            "target_weapon": "Hand weapon",
+        },
+    )
+
+    assert cast.status_code == 200
+    saved = main.store.get("sessions", session.id, SessionState.model_validate)
+    assert saved is not None
+    assert saved.party[0].gold == 25
+    assert saved.party[0].bank_gold == 475
+    assert "Scroll of Temporary Weapon Enchantment" not in saved.party[0].inventory
+    assert any("expires day 7" in status for status in saved.party[0].statuses)
 
 
 def test_campaign_api_creates_selects_and_deletes_tag_settlements(client: TestClient) -> None:

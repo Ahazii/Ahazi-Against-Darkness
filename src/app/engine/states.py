@@ -237,15 +237,19 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         },
         "legacy_mappings": {
             "statuses": ["TAG Temporary Weapon Enchantment:"],
-            "fields": ["SessionState.temporary_weapon_loss_choices"],
+            "fields": [
+                "SessionState.temporary_weapon_loss_choices",
+                "SessionState.temporary_weapon_enchantment_qualifying_uses",
+            ],
         },
         "implemented": True,
         "review_status": "source_backed",
         "ui": {
             "label": "Temporary weapon loss choice",
             "hover": (
-                "TAG p.65. Before a foe can steal or destroy a temporarily enchanted weapon, "
-                "the player decides whether that weapon is eligible for the encounter."
+                "TAG p.65. The marker stores its seven-day campaign expiry and clears at encounter "
+                "end after use against a magic-only foe. Before a foe can steal or destroy the "
+                "weapon, the player decides whether it is eligible for that encounter."
             ),
         },
     },

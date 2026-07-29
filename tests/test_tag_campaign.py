@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.db import now_utc
+from app.db import Store, init_db, now_utc
 from app.engine import tag_campaign
 from app.engine.adventure_import import ADVENTURE_MANIFEST_FILENAME, installed_adventure_dir
 from app.engine.tag_campaign import (
@@ -19,6 +19,7 @@ from app.engine.tag_campaign import (
     look_for_clues,
     purchase_tag_service,
     record_tag_rumor_state,
+    record_adventure_complete,
     record_session_tag_rumor_state,
     recover_hidden_treasure_trove,
     reroll_guild_availability,
@@ -63,8 +64,12 @@ from app.engine.tag_scene_actions import (
     tag_scene_action_succeeded,
     tag_stealth_modifier,
 )
+from app.engine.tag_temporary_weapon_enchantment import (
+    advance_temporary_weapon_enchantments,
+    parse_temporary_weapon_enchantment,
+)
 from app.rules.repository import RulesRepository
-from app.schemas import Character, SessionState, TagXpMarkerState
+from app.schemas import Character, PartyMemberState, SessionState, TagXpMarkerState
 
 
 def _character(**overrides) -> Character:
@@ -1860,7 +1865,15 @@ def test_tag_guild_spell_target_workflows() -> None:
         target_weapon="Hand weapon",
     )
     assert "Scroll of Temporary Weapon Enchantment" not in caster.inventory
-    assert any(status == "TAG Temporary Weapon Enchantment: Hand weapon is magical, no Attack bonus" for status in caster.statuses)
+    marker = next(
+        status
+        for status in caster.statuses
+        if status.startswith("TAG Temporary Weapon Enchantment: Hand weapon")
+    )
+    parsed = parse_temporary_weapon_enchantment(marker)
+    assert parsed is not None
+    assert parsed.cast_day == 0
+    assert parsed.expires_day == 7
     assert "Target weapon: Hand weapon" in weapon.result_text
 
     troupe = cast_tag_guild_spell(campaign, caster, spell_key="troupe_switch", target_character=target)
@@ -1874,12 +1887,116 @@ def test_tag_guild_spell_target_workflows() -> None:
     assert "Paired character: Dargo" in silence.result_text
 
     clear_weapon = consume_tag_guild_marker(campaign, caster, marker_key="temporary_weapon_enchantment")
-    assert not any(status.startswith("TAG Temporary Weapon Enchantment:") for status in caster.statuses)
-    assert "Hand weapon is magical" in clear_weapon.result_text
+    assert any(status.startswith("TAG Temporary Weapon Enchantment:") for status in caster.statuses)
+    assert "cannot be cleared manually" in clear_weapon.result_text
 
     clear_silence = consume_tag_guild_marker(campaign, target, marker_key="silence_of_the_mouse")
     assert not any(status.startswith("TAG Silence of the Mouse:") for status in target.statuses)
     assert "clears TAG Guild marker" in clear_silence.result_text
+
+
+def test_temporary_weapon_enchantment_expires_at_exact_seven_day_boundary() -> None:
+    campaign = default_campaign()
+    campaign.days_passed = 4
+    caster = _character(
+        inventory=["Hand weapon", "Scroll of Temporary Weapon Enchantment"],
+        statuses=[],
+    )
+    cast_tag_guild_spell(
+        campaign,
+        caster,
+        spell_key="temporary_weapon_enchantment",
+        target_weapon="Hand weapon",
+    )
+
+    before_expiry = advance_temporary_weapon_enchantments(
+        caster,
+        previous_day=4,
+        current_day=10,
+    )
+    assert before_expiry == []
+    assert any("expires day 11" in status for status in caster.statuses)
+
+    at_expiry = advance_temporary_weapon_enchantments(
+        caster,
+        previous_day=10,
+        current_day=11,
+    )
+    assert not any(status.startswith("TAG Temporary Weapon Enchantment:") for status in caster.statuses)
+    assert len(at_expiry) == 1
+    assert "expires after one week" in at_expiry[0]
+
+
+def test_legacy_temporary_weapon_marker_gets_full_week_from_first_clock_advance() -> None:
+    caster = _character(
+        inventory=["Hand weapon"],
+        statuses=["TAG Temporary Weapon Enchantment: Hand weapon is magical, no Attack bonus"],
+    )
+
+    log = advance_temporary_weapon_enchantments(
+        caster,
+        previous_day=20,
+        current_day=21,
+    )
+
+    assert log == []
+    assert any("cast day 20; expires day 27" in status for status in caster.statuses)
+
+
+def test_adventure_closeout_expires_week_old_enchantment_in_session_and_roster(tmp_path) -> None:
+    db_path = tmp_path / "game.db"
+    init_db(db_path)
+    store = Store(db_path)
+    campaign = default_campaign()
+    campaign.days_passed = 6
+    tag_campaign.save_campaign(store, campaign)
+    marker = (
+        "TAG Temporary Weapon Enchantment: Hand weapon is magical, no Attack bonus; "
+        "cast day 0; expires day 7"
+    )
+    character = _character(
+        inventory=["Hand weapon"],
+        statuses=[marker],
+        active_session_id="session-1",
+    )
+    store.save("characters", character)
+    member = PartyMemberState(
+        character_id=character.id,
+        name=character.name,
+        class_id=character.class_id,
+        class_name=character.class_name,
+        level=character.level,
+        xp=character.xp,
+        gold=character.gold,
+        current_life=character.current_life,
+        max_life=character.max_life,
+        attack_bonus=character.attack_bonus,
+        defense_bonus=character.defense_bonus,
+        save_bonus=character.save_bonus,
+        inventory=list(character.inventory),
+        statuses=list(character.statuses),
+    )
+    session = SessionState(
+        id="session-1",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        campaign_id=campaign.active_world_campaign_id,
+        party=[member],
+        mode="complete",
+        map_state={"current_tile_id": "room", "tiles": []},
+        created_at=now_utc(),
+        updated_at=now_utc(),
+    )
+
+    updated_campaign = record_adventure_complete(store, session)
+
+    saved_character = store.get("characters", character.id, Character.model_validate)
+    assert updated_campaign.days_passed == 7
+    assert saved_character is not None
+    assert not any(status.startswith("TAG Temporary Weapon Enchantment:") for status in saved_character.statuses)
+    assert not any(status.startswith("TAG Temporary Weapon Enchantment:") for status in session.party[0].statuses)
+    assert any("expires after one week" in line for line in session.log)
 
 
 def test_tag_route_and_xp_actions_persist_structured_signoff_state() -> None:

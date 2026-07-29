@@ -4555,6 +4555,7 @@ class RandomDungeonEngine:
                 session.wielded_melee_weapons[member.character_id] = weapon.item
         session.mode = "combat"
         session.temporary_weapon_loss_choices = {}
+        session.temporary_weapon_enchantment_qualifying_uses = {}
         self._maybe_discover_prisoner(session, tile)
         session.firearm_fired_this_encounter = False
         session.reaction_pending = True

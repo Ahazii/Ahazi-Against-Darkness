@@ -7937,6 +7937,15 @@ function foeChipTitle(displayName, typeLabel, foe) {
 
 function statusChipTooltip(label) {
   const lower = String(label || "").toLowerCase();
+  if (lower.startsWith("tag temporary weapon enchantment:")) {
+    const expiry = lower.match(/expires day\s+(\d+)/)?.[1];
+    return (
+      "TAG p.65, Temporary Weapon Enchantment: this weapon is magical with no Attack bonus. " +
+      (expiry ? `It expires on campaign day ${expiry}, ` : "It lasts for one week, ") +
+      "or at the end of an encounter where it is used against a foe hit only by magic weapons. " +
+      "The player decides whether foes that steal or destroy magic items may affect it."
+    );
+  }
   if (lower === "shield") {
     return "Shield bonus applies unless a rule blocks shields, such as a corridor wandering ambush hitting the rear rank.";
   }
@@ -17706,6 +17715,7 @@ const RULES_TABLE_ORDER = [
   "tag_star_object_curse_table",
   "invisible_gremlins_procedure_table",
   "tag_bag_of_carrying_table",
+  "tag_temporary_weapon_enchantment_table",
   "tag_medusa_scene10_procedure_table",
   "tag_medusa_scene1_reaction_table",
   "tag_rumor_lifecycle_table",
@@ -19982,12 +19992,11 @@ function appendTagCaveProgressPanel(parent, session) {
 
 function temporarilyEnchantedInventoryItems(member) {
   const enchantments = new Map();
-  const markerPrefix = "tag temporary weapon enchantment:";
-  const markerSuffix = " is magical, no attack bonus";
+  const markerPattern =
+    /^tag temporary weapon enchantment:\s*(.+?) is magical, no attack bonus(?:;\s*cast day\s+\d+;\s*expires day\s+\d+)?$/i;
   for (const status of member?.statuses || []) {
-    const marker = String(status).trim().toLowerCase();
-    if (!marker.startsWith(markerPrefix) || !marker.endsWith(markerSuffix)) continue;
-    const weaponName = marker.slice(markerPrefix.length, -markerSuffix.length).trim();
+    const match = String(status).trim().match(markerPattern);
+    const weaponName = match?.[1]?.trim().toLowerCase() || "";
     if (weaponName) enchantments.set(weaponName, (enchantments.get(weaponName) || 0) + 1);
   }
   const items = [];

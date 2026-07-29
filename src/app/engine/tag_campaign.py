@@ -5888,13 +5888,23 @@ def cast_tag_guild_spell(
     status = effect.get("status")
     result_extra = ""
     if spell_key == "temporary_weapon_enchantment":
+        from .tag_temporary_weapon_enchantment import replace_temporary_weapon_enchantment
+
         weapon = target_weapon.strip()
         if not weapon:
             candidates = _weapon_candidates(character)
             weapon = candidates[0] if candidates else ""
         if weapon and weapon in character.inventory:
-            status = f"TAG Temporary Weapon Enchantment: {weapon} is magical, no Attack bonus"
-            result_extra = f" Target weapon: {weapon}."
+            status = None
+            replace_temporary_weapon_enchantment(
+                character,
+                weapon,
+                cast_day=campaign.days_passed,
+            )
+            result_extra = (
+                f" Target weapon: {weapon}. The enchantment expires on campaign day "
+                f"{campaign.days_passed + 7}, or at the end of a qualifying magic-only encounter."
+            )
         elif weapon:
             status = str(status)
             result_extra = f" Target weapon '{weapon}' is not in {character.name}'s inventory; choose the weapon manually."
@@ -5965,6 +5975,17 @@ def _remove_tag_guild_markers(character: Character, marker_key: str, marker: str
 
 def consume_tag_guild_marker(campaign: CampaignState, character: Character, *, marker_key: str) -> TagDowntimeLogEntry:
     marker = TAG_GUILD_MARKERS.get(marker_key, marker_key)
+    if marker_key == "temporary_weapon_enchantment":
+        return append_tag_log(
+            campaign,
+            action="guild_marker_clear",
+            character=character,
+            result_text=(
+                "Temporary Weapon Enchantment cannot be cleared manually. It expires after seven "
+                "campaign days or at the end of an encounter where the weapon is used against a foe "
+                "hit only by magic weapons (TAG p.65)."
+            ),
+        )
     removed = _remove_tag_guild_markers(character, marker_key, marker)
     if removed:
         if marker_key == "look_tough" and character.id in campaign.tag_look_tough_character_ids:
@@ -5974,6 +5995,76 @@ def consume_tag_guild_marker(campaign: CampaignState, character: Character, *, m
         result = f"{character.name} does not currently have TAG Guild marker: {marker}."
     character.updated_at = now_utc()
     return append_tag_log(campaign, action="guild_marker_clear", character=character, result_text=result)
+
+
+def advance_temporary_weapon_enchantment_clock(
+    store: Store,
+    campaign: CampaignState,
+    *,
+    previous_day: int,
+    session_override: SessionState | None = None,
+) -> list[str]:
+    from .tag_temporary_weapon_enchantment import advance_temporary_weapon_enchantments
+
+    current_day = campaign.days_passed
+    active_campaign_id = campaign.active_world_campaign_id
+    processed_character_ids: set[str] = set()
+    log: list[str] = []
+    sessions = [
+        item
+        for item in store.list("sessions", SessionState.model_validate)
+        if item.mode != "complete"
+        and item.campaign_id in {None, active_campaign_id}
+        and (session_override is None or item.id != session_override.id)
+    ]
+    if session_override is not None:
+        sessions.append(session_override)
+    for session in sessions:
+        changed = False
+        for member in session.party:
+            before = list(member.statuses)
+            member_log = advance_temporary_weapon_enchantments(
+                member,
+                previous_day=previous_day,
+                current_day=current_day,
+            )
+            if member.statuses != before:
+                changed = True
+            if member_log:
+                session.log.extend(member_log)
+                log.extend(member_log)
+            character = store.get("characters", member.character_id, Character.model_validate)
+            if character is not None:
+                character.statuses = list(member.statuses)
+                character.updated_at = now_utc()
+                store.save("characters", character)
+                processed_character_ids.add(character.id)
+        if changed:
+            session.updated_at = now_utc()
+            store.save("sessions", session)
+    for character in store.list("characters", Character.model_validate):
+        if (
+            character.id in processed_character_ids
+            or character.campaign_id not in {None, active_campaign_id}
+        ):
+            continue
+        before = list(character.statuses)
+        character_log = advance_temporary_weapon_enchantments(
+            character,
+            previous_day=previous_day,
+            current_day=current_day,
+        )
+        if character.statuses != before:
+            character.updated_at = now_utc()
+            store.save("characters", character)
+        log.extend(character_log)
+    if log:
+        append_tag_log(
+            campaign,
+            action="temporary_weapon_enchantment_expiry",
+            result_text=" ".join(log),
+        )
+    return log
 
 
 def resolve_tag_finance_action(
@@ -7957,8 +8048,15 @@ def add_adventure_closeout_tasks(campaign: CampaignState, session: SessionState 
 
 def record_adventure_complete(store: Store, session: SessionState | None = None) -> CampaignState:
     campaign = load_campaign(store)
+    previous_day = campaign.days_passed
     campaign.adventures_completed += 1
     campaign.days_passed += 1
+    advance_temporary_weapon_enchantment_clock(
+        store,
+        campaign,
+        previous_day=previous_day,
+        session_override=session,
+    )
     party_name = None
     party_id = None
     if session is not None:

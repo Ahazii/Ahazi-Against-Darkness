@@ -143,6 +143,9 @@ def end_bear_form(session: SessionState) -> None:
 
 def clear_combat_state(session: SessionState) -> None:
     """Clear encounter-only state and resolve effects which expire at encounter end."""
+    from .tag_temporary_weapon_enchantment import expire_qualifying_temporary_weapon_enchantments
+
+    session.log.extend(expire_qualifying_temporary_weapon_enchantments(session))
     session.reaction_pending = False
     session.reaction_checked = False
     session.reaction_nudge_pending = False
@@ -1667,6 +1670,16 @@ def _resolve_pc_attack(
         daring_bonus = daring_escape_attack_bonus(context.session, pc, target)
         if daring_bonus:
             log.append(f"{pc.name} adds +{daring_bonus} from an ally's Daring Escape.")
+
+    if context.session is not None and weapon is not None:
+        from .tag_temporary_weapon_enchantment import note_temporary_weapon_qualifying_use
+
+        note_temporary_weapon_qualifying_use(
+            context.session,
+            pc,
+            weapon.item,
+            target,
+        )
 
     auto_hit_fd_hallucination = False
     if context.session is not None:

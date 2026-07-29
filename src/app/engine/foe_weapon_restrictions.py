@@ -45,8 +45,11 @@ def weapon_hit_blocked_by_restriction(
 
         if has_skill(member, "vampire_hunter"):
             return False, ""
-    if "magic_weapons" in allowed and weapon is not None and is_magic_weapon(weapon.item):
-        return False, ""
+    if "magic_weapons" in allowed and weapon is not None:
+        from .tag_temporary_weapon_enchantment import is_temporarily_enchanted_weapon
+
+        if is_magic_weapon(weapon.item) or is_temporarily_enchanted_weapon(member, weapon.item):
+            return False, ""
     if "silvered_weapons" in allowed and member_wields_silvered_weapon(member, weapon.item if weapon else None):
         return False, ""
     if "two_plus_damage_single_blow" in allowed and pending_damage >= 2:

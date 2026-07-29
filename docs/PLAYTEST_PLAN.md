@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-29. Target build: v0.39.54.
+Last updated: 2026-07-29. Target build: v0.39.55.
 
 ## Adventure Test Gate: Passed
 
@@ -62,10 +62,18 @@ the needed reaction.
 
 ## Do Next
 
-Continue typed TAG conversion one PDF-backed scene at a time. The next bounded
-candidate is TAG p.65 Temporary Weapon Enchantment expiry: replace the manual
-Guild-marker clear with the printed one-week or qualifying magic-only encounter
-timing while preserving the already-tested theft/destruction decision.
+v0.39.55 completes TAG p.65 Temporary Weapon Enchantment timing. The spell now
+stores its cast/day-seven expiry, functions as a magic weapon with no Attack
+bonus, and expires at encounter end after an attack against a strictly
+magic-only foe. Adventure completion and settlement travel advance the existing
+campaign clock. The manual early-clear option is removed. Focused automation
+owns exact timing, attack-hit/miss independence, legacy migration, roster/session
+sync, and all previously passed Gremlin/Iron Eater decisions.
+
+No live adventure replay is required. If a disposable character naturally has
+the scroll, an optional UI-only check may confirm that the status hover names
+the expiry campaign day and the Guild marker menu no longer offers Weapon
+enchantment.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

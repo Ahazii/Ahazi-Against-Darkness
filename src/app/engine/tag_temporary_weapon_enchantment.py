@@ -2,14 +2,22 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+import re
 from typing import Literal
 
-from ..schemas import PartyMemberState, SessionState
+from ..schemas import Character, EnemyState, PartyMemberState, SessionState
 
 
 TEMPORARY_WEAPON_ENCHANTMENT_PREFIX = "TAG Temporary Weapon Enchantment:"
 TEMPORARY_WEAPON_ENCHANTMENT_SUFFIX = " is magical, no Attack bonus"
+TEMPORARY_WEAPON_ENCHANTMENT_DURATION_DAYS = 7
 TemporaryWeaponLossKind = Literal["stolen", "destroyed"]
+_TIMED_MARKER_PATTERN = re.compile(
+    rf"^{re.escape(TEMPORARY_WEAPON_ENCHANTMENT_PREFIX)}\s*"
+    rf"(?P<weapon>.+?){re.escape(TEMPORARY_WEAPON_ENCHANTMENT_SUFFIX)}"
+    r"(?:;\s*cast day\s+(?P<cast_day>\d+);\s*expires day\s+(?P<expires_day>\d+))?$",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -22,20 +30,42 @@ class TemporaryWeaponLossChoice:
     key: str
 
 
+@dataclass(frozen=True)
+class TemporaryWeaponEnchantment:
+    item_name: str
+    cast_day: int | None
+    expires_day: int | None
+
+
+def temporary_weapon_enchantment_marker(item_name: str, *, cast_day: int) -> str:
+    expires_day = cast_day + TEMPORARY_WEAPON_ENCHANTMENT_DURATION_DAYS
+    return (
+        f"{TEMPORARY_WEAPON_ENCHANTMENT_PREFIX} {item_name}"
+        f"{TEMPORARY_WEAPON_ENCHANTMENT_SUFFIX}; "
+        f"cast day {cast_day}; expires day {expires_day}"
+    )
+
+
+def parse_temporary_weapon_enchantment(status: str) -> TemporaryWeaponEnchantment | None:
+    match = _TIMED_MARKER_PATTERN.fullmatch(str(status).strip())
+    if match is None:
+        return None
+    cast_day = match.group("cast_day")
+    expires_day = match.group("expires_day")
+    return TemporaryWeaponEnchantment(
+        item_name=match.group("weapon").strip(),
+        cast_day=int(cast_day) if cast_day is not None else None,
+        expires_day=int(expires_day) if expires_day is not None else None,
+    )
+
+
 def temporary_weapon_enchantment_counts(member: PartyMemberState) -> Counter[str]:
     counts: Counter[str] = Counter()
-    prefix = TEMPORARY_WEAPON_ENCHANTMENT_PREFIX.casefold()
-    suffix = TEMPORARY_WEAPON_ENCHANTMENT_SUFFIX.casefold()
     for status in member.statuses:
-        raw = str(status).strip()
-        folded = raw.casefold()
-        if not folded.startswith(prefix) or not folded.endswith(suffix):
+        enchantment = parse_temporary_weapon_enchantment(status)
+        if enchantment is None:
             continue
-        weapon_name = raw[
-            len(TEMPORARY_WEAPON_ENCHANTMENT_PREFIX) : -len(TEMPORARY_WEAPON_ENCHANTMENT_SUFFIX)
-        ].strip()
-        if weapon_name:
-            counts[weapon_name.casefold()] += 1
+        counts[enchantment.item_name.casefold()] += 1
     return counts
 
 
@@ -59,19 +89,109 @@ def remove_temporary_weapon_enchantment_marker(
     member: PartyMemberState,
     item_name: str,
 ) -> bool:
-    expected = (
-        f"{TEMPORARY_WEAPON_ENCHANTMENT_PREFIX} {item_name}"
-        f"{TEMPORARY_WEAPON_ENCHANTMENT_SUFFIX}"
-    ).casefold()
     removed = False
     kept: list[str] = []
     for status in member.statuses:
-        if not removed and str(status).strip().casefold() == expected:
+        enchantment = parse_temporary_weapon_enchantment(status)
+        if (
+            not removed
+            and enchantment is not None
+            and enchantment.item_name.casefold() == item_name.casefold()
+        ):
             removed = True
             continue
         kept.append(status)
     member.statuses = kept
     return removed
+
+
+def replace_temporary_weapon_enchantment(
+    member: Character | PartyMemberState,
+    item_name: str,
+    *,
+    cast_day: int,
+) -> None:
+    while remove_temporary_weapon_enchantment_marker(member, item_name):
+        pass
+    member.statuses.append(temporary_weapon_enchantment_marker(item_name, cast_day=cast_day))
+
+
+def advance_temporary_weapon_enchantments(
+    member: Character | PartyMemberState,
+    *,
+    previous_day: int,
+    current_day: int,
+) -> list[str]:
+    updated: list[str] = []
+    expired: list[str] = []
+    for status in member.statuses:
+        enchantment = parse_temporary_weapon_enchantment(status)
+        if enchantment is None:
+            updated.append(status)
+            continue
+        cast_day = enchantment.cast_day
+        expires_day = enchantment.expires_day
+        if cast_day is None or expires_day is None:
+            cast_day = previous_day
+            expires_day = previous_day + TEMPORARY_WEAPON_ENCHANTMENT_DURATION_DAYS
+        if current_day >= expires_day:
+            expired.append(enchantment.item_name)
+            continue
+        updated.append(
+            temporary_weapon_enchantment_marker(
+                enchantment.item_name,
+                cast_day=cast_day,
+            )
+        )
+    member.statuses = updated
+    return [
+        f"{member.name}'s Temporary Weapon Enchantment on {item_name} expires after one week "
+        f"(campaign day {current_day}; TAG p.65)."
+        for item_name in expired
+    ]
+
+
+def _qualifying_magic_only_foe(enemy: EnemyState) -> bool:
+    allowed = {
+        tag.casefold().removeprefix("weapon_allow:")
+        for tag in enemy.tags
+        if tag.casefold().startswith("weapon_allow:")
+    }
+    return allowed == {"magic_weapons"}
+
+
+def note_temporary_weapon_qualifying_use(
+    session: SessionState,
+    member: PartyMemberState,
+    item_name: str,
+    enemy: EnemyState,
+) -> bool:
+    if (
+        not is_temporarily_enchanted_weapon(member, item_name)
+        or not _qualifying_magic_only_foe(enemy)
+    ):
+        return False
+    key = f"{member.character_id}|{item_name.casefold()}"
+    session.temporary_weapon_enchantment_qualifying_uses[key] = item_name
+    return True
+
+
+def expire_qualifying_temporary_weapon_enchantments(session: SessionState) -> list[str]:
+    log: list[str] = []
+    for key, item_name in dict(session.temporary_weapon_enchantment_qualifying_uses).items():
+        character_id = key.split("|", 1)[0]
+        member = next(
+            (item for item in session.party if item.character_id == character_id),
+            None,
+        )
+        if member is None or not remove_temporary_weapon_enchantment_marker(member, item_name):
+            continue
+        log.append(
+            f"{member.name}'s Temporary Weapon Enchantment on {item_name} expires at encounter end "
+            "after use against a foe hit only by magic weapons (TAG p.65)."
+        )
+    session.temporary_weapon_enchantment_qualifying_uses = {}
+    return log
 
 
 def temporary_weapon_loss_choice_key(
