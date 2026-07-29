@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-28. Repository branch: `main`. Latest release: `v0.39.53`.
+Last updated: 2026-07-29. Repository branch: `main`. Latest release: `v0.39.54`.
 
 ## Start Here
 
@@ -21,15 +21,17 @@ The v0.39.53 Rumor 2 Quest closeout gate passed. Session
 no pending generated closeout, and the roster saved. Do not repeat Scene 10,
 the Xasartha Quest reaction, payment, Epic Reward, or closeout.
 
-Resume modularisation with the bounded TAG pp.25-26 Xasartha Scene 1/6 slice:
-bribe payment, fight/fight-to-the-death routing, defeated-Xasartha pendant and
-necros, try-on versus sell choice, and rechargeable pendant Luck. Establish
-the exact procedures in focused automation before opening another manual gate.
+v0.39.54 completes the bounded TAG pp.25-27 Xasartha Scene 1/6 slice in
+focused automation: persisted bribe, combat routing, defeated-Xasartha pendant
+and necros, wear versus sell, and rechargeable Luck. Do not repeat the whole
+Rumor 2 module. The next bounded candidate is TAG p.65 Temporary Weapon
+Enchantment expiry.
 
-## Implemented Through v0.39.53
+## Implemented Through v0.39.54
 
-Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25, 28-31, and 65.
+Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25-31, and 65.
 
+- Xasartha reaction `1` persists its `6d6` demand and offers exact carried-gold, eligible 15gp+ gem/jewel, or refusal choices. Defeat persists `2d6` necros and a wear-or-sell pendant choice. The pendant is not consumed when Luck is spent; its separate counter survives camp/re-entry and recharges only with a new adventure. It grants one point, or two additional points to a halfling. Barbarians cannot wear it.
 - Any normal core Quest completed inside a generated TAG adventure now resolves that lead through the existing readable Continue pause. It explains that the Quest-giver encounter remains peaceful and combat treasure is unavailable, then offers **Return to town and finish**. Resume repairs already-completed rewards without rerolling or duplicating them.
 - Accepted Xasartha Bring Gold Quests expose the stored requirement, party total, Quest-giver location, and direct turn-in. Core Quest rewards are no longer mistaken for generated TAG closeout; exact payment produces exactly one Epic Reward.
 - Adventure View automatically shows one movable, non-closable Developer Options window whenever any developer preference is active. With all developer preferences off, it is absent.
@@ -76,6 +78,7 @@ Temporary Weapon Enchantment's p.65 theft/destruction decision is automated. Its
 
 ## Recent Releases
 
+- `v0.39.54`: complete typed Xasartha bribe, combat treasure, wear/sell pendant, necros, and rechargeable Luck paths.
 - `v0.39.53`: turn a completed generated-TAG core Quest into a readable peaceful closeout, including resume repair for already-awarded saves.
 - `v0.39.52`: restore concrete Xasartha core-Quest turn-in and move enabled developer controls into an automatic non-closable floating window.
 - `v0.39.51`: persist and resolve Xasartha's Quest reaction, and compact the typed Current Objective UI beneath Narrative.

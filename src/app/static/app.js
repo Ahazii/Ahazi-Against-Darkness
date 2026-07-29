@@ -6528,12 +6528,23 @@ function memberHasAmuletLuck(member) {
   return (member.statuses || []).includes("Amulet luck available");
 }
 
+function xasarthaPendantLuckMaximum(member) {
+  const hasPendant = (member.inventory || []).includes("Xasartha's Emerald Pendant (260gp)");
+  if (!hasPendant) return 0;
+  return member.class_id === "halfling" ? 2 : 1;
+}
+
 function luckPointsRemaining(session, member) {
   let total = 0;
   if (member.class_id === "halfling") {
     const maximum = member.level + 1;
     total += Math.max(0, maximum - (session.luck_points_spent?.[member.character_id] || 0));
   }
+  total += Math.max(
+    0,
+    xasarthaPendantLuckMaximum(member) -
+      (session.xasartha_pendant_luck_spent?.[member.character_id] || 0)
+  );
   if (memberHasAmuletLuck(member)) total += 1;
   return total;
 }
@@ -6746,21 +6757,26 @@ function abilityStatusLine(session, member) {
     const remaining = rageUsesRemaining(session, member);
     if (remaining) return `Rage: ${remaining}/${1 + Math.floor(member.level / 2)}`;
   }
-  if (member.class_id === "halfling") {
-    const remaining = luckPointsRemaining(session, member);
-    const halflingPool = Math.max(
-      0,
-      member.level + 1 - (session.luck_points_spent?.[member.character_id] || 0)
-    );
-    if (remaining) {
-      if (memberHasAmuletLuck(member) && halflingPool > 0) {
-        return `Luck: ${remaining} (${halflingPool} halfling + amulet)`;
-      }
-      if (memberHasAmuletLuck(member)) return "Luck: amulet available";
-      return `Luck: ${halflingPool}/${member.level + 1}`;
+  const remainingLuck = luckPointsRemaining(session, member);
+  if (remainingLuck) {
+    const sources = [];
+    if (member.class_id === "halfling") {
+      const halflingRemaining = Math.max(
+        0,
+        member.level + 1 - (session.luck_points_spent?.[member.character_id] || 0)
+      );
+      if (halflingRemaining) sources.push(`${halflingRemaining} halfling`);
     }
-  } else if (memberHasAmuletLuck(member)) {
-    return "Luck: amulet available";
+    const pendantRemaining = Math.max(
+      0,
+      xasarthaPendantLuckMaximum(member) -
+        (session.xasartha_pendant_luck_spent?.[member.character_id] || 0)
+    );
+    if (pendantRemaining) sources.push(`${pendantRemaining} pendant`);
+    if (memberHasAmuletLuck(member)) sources.push("amulet");
+    if (sources.length) {
+      return `Luck: ${remainingLuck} total (${sources.join(" + ")})`;
+    }
   }
   const reloadTurns = session.firearm_reload_turns?.[member.character_id];
   if (reloadTurns) return `Reloading firearm (${reloadTurns} round(s))`;
@@ -9387,6 +9403,8 @@ const ITEM_TOOLTIP_RULES = [
   [/10'? foot pole|ten foot pole|10' pole/i, "10' pole: utility gear for probing, traps, and settlement-service/tag prompts where a pole is checked."],
   [/good lock-?picks/i, "Good lock-picks: +1 style lockpicking aid where the app offers a lockpick/door interaction that checks them."],
   [/\bcrowbar\b/i, "Crowbar: lets eligible heroes bash stuck/locked doors and can improve door-forcing prompts."],
+  [/xasartha.*emerald pendant/i, "Xasartha's Emerald Pendant (TAG pp.25-27, Scenes 1 and 6): worth 260gp. At the beginning of each adventure it recharges; the wearer may spend 1 Luck point during that adventure, or 2 if the wearer is a halfling."],
+  [/crate of necros/i, "Crate of necros (TAG p.25, Scene 1): contains the displayed 2d6 roll of necros, the currency of the Netherworld."],
   [/agaratha/i, "Agaratha: masterwork magical edged hand weapon. Grants +1 Attack, +1 Defense, improves Attack explosion chance by +1, and grants 1 Luck point when it deals the final blow to a major foe. Cannot be wielded by chaos-tainted, demon, or undead characters; sale value 450 gp."],
   [/\bshield\b/i, "Shield: defensive gear. Counts against shield carrying limits and may be blocked by class/equipment rules."],
   [/light armor|hide armor/i, "Light armor: improves protection for classes allowed to wear it; lower burden than heavy armor."],
@@ -11700,6 +11718,11 @@ const DIRECT_TAG_BRANCH_ACTIONS = new Set([
   "medusa_assassin_fight",
   "medusa_stealth_approach",
   "medusa_reaction",
+  "medusa_bribe_gold",
+  "medusa_bribe_gem",
+  "medusa_bribe_refuse",
+  "medusa_pendant_wear",
+  "medusa_pendant_sell",
   "medusa_quest_accept",
   "medusa_quest_refuse",
   "gargoyle_count",
@@ -26125,6 +26148,7 @@ function appendMedusaScene1GuidedAction(parent, action, fallbackReference) {
   const wrap = node("div", "tag-context-guided-action");
   wrap.classList.add("medusa-scene1-guided");
   const sceneState = state.session?.active_quest?.tag_procedure_state?.medusa_scene1 || {};
+  if (sceneState.phase === "combat" || sceneState.phase === "resolved") return true;
   if (sceneState.phase === "quest_choice") {
     setTooltip(
       wrap,
@@ -26159,6 +26183,162 @@ function appendMedusaScene1GuidedAction(parent, action, fallbackReference) {
       }).catch(handleError);
     });
     wrap.append(accept, refuse);
+    parent.appendChild(wrap);
+    return true;
+  }
+  if (sceneState.phase === "bribe_choice") {
+    const amount = Number(sceneState.bribe_gold || 0);
+    const carriedGold = living.reduce((total, member) => total + Number(member.gold || 0), 0);
+    wrap.appendChild(node("strong", "subline", `Xasartha demands ${amount}gp`));
+    wrap.appendChild(
+      node(
+        "p",
+        "subline muted",
+        `The living party carries ${carriedGold}gp. Pay the exact rolled bribe, offer one carried gem or jewel worth at least 15gp, or refuse and fight.`
+      )
+    );
+    const payGold = node("button", "primary", `Pay ${amount}gp`);
+    payGold.type = "button";
+    payGold.disabled = carriedGold < amount;
+    setButtonTooltip(
+      payGold,
+      "TAG p.25, Scene 1: pay the persisted 6d6 gp bribe from living heroes' carried gold in marching order. Home-bank gold is not available inside the adventure."
+    );
+    payGold.addEventListener("click", () => {
+      payGold.disabled = true;
+      runTagBranchActionWithDefaults({
+        branchAction: "medusa_bribe_gold",
+        reference: "TAG p.25 Scene 1 gold bribe",
+      }).catch(handleError);
+    });
+    wrap.appendChild(payGold);
+
+    const eligibleItems = [];
+    for (const member of living) {
+      for (const item of member.inventory || []) {
+        const match = String(item).match(/(\d+)\s*gp/i);
+        const isGem = /(gem|jewel|jewelry|jewellery|ruby|sapphire|emerald|diamond|pearl)/i.test(String(item));
+        if (isGem && match && Number(match[1]) >= 15) {
+          eligibleItems.push({ member, item, value: Number(match[1]) });
+        }
+      }
+    }
+    if (eligibleItems.length) {
+      const gemSelect = document.createElement("select");
+      setTooltip(gemSelect, "Choose one carried jewel, gem, or jewelry item worth at least 15gp.");
+      eligibleItems.forEach(({ member, item, value }, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = `${member.name}: ${item} (${value}gp counted)`;
+        gemSelect.appendChild(option);
+      });
+      const offer = node("button", "secondary", "Offer selected gem");
+      offer.type = "button";
+      setButtonTooltip(
+        offer,
+        "TAG p.25, Scene 1: surrender the selected carried jewel or gem worth at least 15gp instead of paying the gold bribe."
+      );
+      offer.addEventListener("click", () => {
+        const selected = eligibleItems[Number(gemSelect.value || 0)];
+        if (!selected) return;
+        offer.disabled = true;
+        runTagBranchActionWithDefaults({
+          branchAction: "medusa_bribe_gem",
+          characterId: selected.member.character_id,
+          reference: selected.item,
+        }).catch(handleError);
+      });
+      wrap.append(gemSelect, offer);
+    }
+    const refuse = node("button", "danger", "Refuse and fight");
+    refuse.type = "button";
+    setButtonTooltip(
+      refuse,
+      "Refuse Xasartha's TAG p.25 bribe. Combat begins and every character must face her L4 gaze before attacking."
+    );
+    refuse.addEventListener("click", () => {
+      refuse.disabled = true;
+      runTagBranchActionWithDefaults({
+        branchAction: "medusa_bribe_refuse",
+        reference: "TAG p.25 Scene 1 bribe refused",
+      }).catch(handleError);
+    });
+    wrap.appendChild(refuse);
+    parent.appendChild(wrap);
+    return true;
+  }
+  if (sceneState.phase === "reward_choice") {
+    const necros = Number(sceneState.necros || 0);
+    wrap.appendChild(node("strong", "subline", "Xasartha's treasure"));
+    wrap.appendChild(
+      node(
+        "p",
+        "subline muted",
+        `The party found an emerald pendant worth 260gp and a crate containing ${necros} necros. Choose who carries the reward, then wear the pendant or sell it without trying it on.`
+      )
+    );
+    const carrier = document.createElement("select");
+    setTooltip(carrier, "Choose the living character who will carry the pendant and crate of necros, or receive the pendant's sale proceeds.");
+    for (const member of living) {
+      const option = document.createElement("option");
+      option.value = member.character_id;
+      option.textContent = `${member.name}${
+        member.class_id === "halfling"
+          ? " (pendant grants 2 Luck)"
+          : member.class_id === "barbarian"
+            ? " (sell only; cannot use magic items)"
+            : ""
+      }`;
+      carrier.appendChild(option);
+    }
+    wrap.appendChild(carrier);
+    const wear = node("button", "primary", "Wear the pendant");
+    wear.type = "button";
+    wear.disabled = !living.length;
+    const wearTooltip =
+      "TAG pp.25-27, Scenes 1 and 6: keep the emerald pendant. It recharges each adventure and grants 1 Luck point, or 2 to a halfling wearer.";
+    setButtonTooltip(
+      wear,
+      wearTooltip
+    );
+    wear.addEventListener("click", () => {
+      wear.disabled = true;
+      runTagBranchActionWithDefaults({
+        branchAction: "medusa_pendant_wear",
+        characterId: carrier.value,
+        reference: "TAG pp.25-27 Scenes 1 and 6 pendant worn",
+      }).catch(handleError);
+    });
+    const sell = node("button", "secondary", "Sell without trying it on");
+    sell.type = "button";
+    sell.disabled = !living.length;
+    setButtonTooltip(
+      sell,
+      "TAG p.25, Scene 1: sell the emerald pendant for its stated 260gp value without receiving its Scene 6 Luck ability."
+    );
+    sell.addEventListener("click", () => {
+      sell.disabled = true;
+      runTagBranchActionWithDefaults({
+        branchAction: "medusa_pendant_sell",
+        characterId: carrier.value,
+        reference: "TAG p.25 Scene 1 pendant sold untried",
+      }).catch(handleError);
+    });
+    const syncWearEligibility = () => {
+      const selected = living.find((member) => member.character_id === carrier.value);
+      wear.disabled = !selected || selected.class_id === "barbarian";
+      if (selected?.class_id === "barbarian") {
+        setButtonTooltip(
+          wear,
+          "Barbarians may not use magic items. Choose another wearer, or sell Xasartha's pendant untried for 260gp."
+        );
+      } else {
+        setButtonTooltip(wear, wearTooltip);
+      }
+    };
+    carrier.addEventListener("change", syncWearEligibility);
+    syncWearEligibility();
+    wrap.append(wear, sell);
     parent.appendChild(wrap);
     return true;
   }

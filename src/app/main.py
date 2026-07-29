@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import re
+from types import SimpleNamespace
 import shutil
 import subprocess
 from typing import Any
@@ -4871,6 +4872,12 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "player_ui": "Start combat automatically and retain the fight-to-the-death state.",
             "source": "TAG p.25, Scene 1; EE p.101",
         },
+        {
+            "result": "Defeat - Treasure and Scene 6",
+            "rule": "Award one XP roll for the major foe, roll 2d6 necros once, then choose to sell the emerald pendant untried for 260 gp or assign it to a wearer. It recharges each adventure and grants 1 Luck point, or 2 Luck points to a halfling wearer.",
+            "player_ui": "Persist the necros roll and show a carrier selector with separate Wear and Sell untried choices.",
+            "source": "TAG pp.25-27, Scenes 1 and 6",
+        },
     ]
     data["map_elements_table"] = [
         {
@@ -6514,10 +6521,9 @@ def _medusa_scene10_state(session: SessionState) -> dict[str, Any]:
 
 
 def _medusa_scene1_state(session: SessionState) -> dict[str, Any]:
-    quest = session.active_quest
-    if quest is None:
-        return {}
-    return dict((quest.tag_procedure_state or {}).get("medusa_scene1") or {})
+    from .engine.tag_medusa import medusa_scene1_state
+
+    return medusa_scene1_state(session)
 
 
 def _repair_medusa_scene1_state(session: SessionState) -> bool:
@@ -6568,13 +6574,14 @@ def _update_medusa_scene1_state(session: SessionState, branch_action: str, entry
     ):
         return
     roll = int(getattr(entry, "roll", 0) or 0)
-    quest_state = dict(session.active_quest.tag_procedure_state or {})
-    quest_state["medusa_scene1"] = {
-        "phase": "quest_choice" if roll == 2 else ("bribe_choice" if roll == 1 else "combat"),
-        "reaction_roll": roll,
-        "updated_at": now_utc(),
-    }
-    session.active_quest.tag_procedure_state = quest_state
+    from .engine.tag_medusa import initialize_medusa_reaction_state
+
+    state = initialize_medusa_reaction_state(session, roll)
+    if roll == 1:
+        entry.result_text = (
+            f"Xasartha demands {int(state.get('bribe_gold') or 0)}gp, "
+            "or one carried jewel or gem worth at least 15gp. Pay, offer an eligible item, or refuse and fight."
+        )
 
 
 def _update_medusa_scene10_state(session: SessionState, branch_action: str, entry: Any) -> None:
@@ -6805,7 +6812,7 @@ def _update_generated_tag_procedure_state(session: SessionState, branch_action: 
 def _spawn_generated_tag_foes_from_choice(session: SessionState, branch_action: str, entry: Any) -> bool:
     if not _is_generated_tag_session(session):
         return False
-    if branch_action not in {"medusa_stealth_approach", "medusa_reaction"}:
+    if branch_action not in {"medusa_stealth_approach", "medusa_reaction", "medusa_bribe_refuse"}:
         return False
     tile = random_engine._current_tile(session)
     room_id = _imported_room_id_for_tile(session, tile)
@@ -6826,7 +6833,10 @@ def _spawn_generated_tag_foes_from_choice(session: SessionState, branch_action: 
     )
     if not is_scene1_room or any(enemy.life > 0 for enemy in tile.enemies):
         return False
-    should_fight = branch_action == "medusa_stealth_approach" or int(getattr(entry, "roll", 0) or 0) >= 3
+    should_fight = (
+        branch_action in {"medusa_stealth_approach", "medusa_bribe_refuse"}
+        or int(getattr(entry, "roll", 0) or 0) >= 3
+    )
     if not should_fight:
         return False
     foes = tag_ref.get("final_foes") or [{"name": "Medusa", "count": 1}]
@@ -7263,6 +7273,97 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         raise HTTPException(status_code=400, detail="Choose the character attempting the Scene 10 Streetwise Save.")
     if branch_action == "medusa_stealth_approach" and character is None:
         raise HTTPException(status_code=400, detail="Choose the character approaching Xasartha's cabin.")
+    if branch_action in {
+        "medusa_bribe_gold",
+        "medusa_bribe_gem",
+        "medusa_bribe_refuse",
+        "medusa_pendant_wear",
+        "medusa_pendant_sell",
+    }:
+        from .engine.tag_medusa import (
+            medusa_scene1_state,
+            pay_xasartha_gem_bribe,
+            pay_xasartha_gold_bribe,
+            resolve_xasartha_reward,
+            set_medusa_scene1_state,
+        )
+        from .engine.tag_campaign import append_tag_log
+
+        scene_state = medusa_scene1_state(session)
+        tile = random_engine._current_tile(session)
+        try:
+            if branch_action == "medusa_bribe_gold":
+                result_text = pay_xasartha_gold_bribe(session)
+            elif branch_action == "medusa_bribe_gem":
+                if character is None:
+                    raise ValueError("Choose the character carrying the offered gem or jewel.")
+                result_text = pay_xasartha_gem_bribe(
+                    session,
+                    character_id=character.id,
+                    item_name=action_reference,
+                )
+            elif branch_action == "medusa_bribe_refuse":
+                if scene_state.get("phase") != "bribe_choice":
+                    raise ValueError("Xasartha is not waiting for a bribe decision.")
+                scene_state["phase"] = "combat"
+                scene_state["resolution"] = "bribe_refused"
+                scene_state["updated_at"] = now_utc()
+                set_medusa_scene1_state(session, scene_state)
+                result_text = "The party refuses Xasartha's bribe. She attacks."
+                session.log.append(result_text)
+                _spawn_generated_tag_foes_from_choice(
+                    session,
+                    branch_action,
+                    SimpleNamespace(roll=3, result_text=result_text),
+                )
+            else:
+                if character is None:
+                    raise ValueError("Choose a living character to carry Xasartha's reward.")
+                result_text = resolve_xasartha_reward(
+                    session,
+                    character_id=character.id,
+                    wear_pendant=branch_action == "medusa_pendant_wear",
+                )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        peaceful_resolution = branch_action in {"medusa_bribe_gold", "medusa_bribe_gem"}
+        reward_resolution = branch_action in {"medusa_pendant_wear", "medusa_pendant_sell"}
+        if peaceful_resolution:
+            random_engine._end_peaceful_encounter(session, tile)
+        if peaceful_resolution or reward_resolution:
+            _mark_generated_tag_lead_complete(
+                session,
+                title="Medusa in the Hunter's Cabin resolved",
+                outcome=result_text,
+                narrative=result_text,
+            )
+            record_session_tag_rumor_state(campaign, session, status="resolved")
+        entry = append_tag_log(
+            campaign,
+            action=branch_action,
+            character=character,
+            result_text=result_text,
+        )
+        campaign = save_campaign(store, campaign)
+        changed_ids = {
+            member.character_id
+            for member in session.party
+            if branch_action != "medusa_bribe_refuse"
+        }
+        sync_party_members_to_roster(session, store, changed_ids)
+        store.save("sessions", session)
+        refreshed_character = (
+            store.get("characters", character.id, Character.model_validate)
+            if character is not None
+            else None
+        )
+        return {
+            "campaign": campaign,
+            "character": refreshed_character,
+            "entry": entry,
+            "session": enrich_session(session),
+        }
     if branch_action in {"medusa_quest_accept", "medusa_quest_refuse"}:
         scene_state = _medusa_scene1_state(session)
         if scene_state.get("phase") != "quest_choice":

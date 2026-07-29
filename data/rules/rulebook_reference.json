@@ -3018,7 +3018,7 @@
     },
     {
       "id": "tag_medusa_scene1_reaction",
-      "title": "TAG Rumor 2: Xasartha Reactions And Quest",
+      "title": "TAG Rumor 2: Xasartha Reactions, Quest, And Treasure",
       "category": "campaign",
       "source_page": 25,
       "keywords": [
@@ -3029,10 +3029,13 @@
         "reaction",
         "Quest",
         "Bring Gold",
-        "Epic Reward"
+        "Epic Reward",
+        "emerald pendant",
+        "necros",
+        "Luck"
       ],
-      "summary": "Typed Xasartha reaction choices and concrete Expanded Edition Quest turn-in.",
-      "body": "TAG p.25, Scene 1 supplies Xasartha's reaction table. A Quest result presents the printed accept/refuse decision without rerolling: refusal lets Xasartha leave, while acceptance follows Expanded Edition p.101 and rolls once on the p.162 Quest Table. The accepted Quest remains a core Quest even though it began inside an imported TAG adventure. For Bring Gold, the app stores and displays the concrete rolled amount, doubles it when the party already has enough as printed, shows the party total and Quest-giver tile, deducts the exact requirement there, clears the Quest, and awards exactly one Epic Reward. Quest completion remains peaceful: it does not restart combat or award the Quest-giver's combat treasure. The generated TAG lead then presents a readable resolved result and Return to town and finish rather than generic generated-prompt guidance.",
+      "summary": "Typed Xasartha reaction choices, concrete Expanded Edition Quest turn-in, combat treasure, and rechargeable pendant Luck.",
+      "body": "TAG p.25, Scene 1 supplies Xasartha's reaction table. A bribe result rolls and persists 6d6 gp, then offers the exact carried-gold payment, one carried jewel/gem worth at least 15gp, or refusal and combat. A Quest result presents the printed accept/refuse decision without rerolling: refusal lets Xasartha leave, while acceptance follows Expanded Edition p.101 and rolls once on the p.162 Quest Table. The accepted Quest remains a core Quest even though it began inside an imported TAG adventure. For Bring Gold, the app stores and displays the concrete rolled amount, doubles it when the party already has enough as printed, shows the party total and Quest-giver tile, deducts the exact requirement there, clears the Quest, and awards exactly one Epic Reward. Quest completion remains peaceful: it does not restart combat or award the Quest-giver's combat treasure. Reaction results 3-5 begin the printed L4, 4 Life Boss fight; result 6 also suppresses Morale. Defeating Xasartha grants the normal one major-foe XP roll, persists one 2d6 necros roll, and presents the printed choice to sell the emerald pendant untried for 260gp or assign it to a wearer. TAG pp.26-27, Scene 6 makes the pendant persistent and rechargeable at the beginning of each adventure: it grants 1 Luck point, or 2 to a halfling wearer. The existing Luck controls spend this allowance without consuming the pendant, and its separate session counter prevents camp/re-entry from recharging it.",
       "implementation_status": "implemented"
     },
     {

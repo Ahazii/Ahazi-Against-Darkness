@@ -1288,6 +1288,7 @@ class SessionState(BaseModel):
     party_editable: bool = False
     rage_uses_spent: dict[str, int] = Field(default_factory=dict)
     luck_points_spent: dict[str, int] = Field(default_factory=dict)
+    xasartha_pendant_luck_spent: dict[str, int] = Field(default_factory=dict)
     panache_points: dict[str, int] = Field(default_factory=dict)
     paladin_prayer_spent: dict[str, int] = Field(default_factory=dict)
     nourishing_meal_used: bool = False

@@ -5732,8 +5732,17 @@ def resolve_tag_scene_action(
     total: int | None = None
     result = ""
     if action == "medusa_pendant":
-        character.inventory.append("Medusa pendant (260 gp, necros)")
-        result = f"{character.name} receives the Medusa pendant item note (260 gp and necros value; Luck test remains per scene text)."
+        from .tag_medusa import XASARTHA_NECROS_ITEM_PREFIX, XASARTHA_PENDANT_ITEM
+
+        character.inventory.append(XASARTHA_PENDANT_ITEM)
+        if value:
+            character.inventory.append(f"{XASARTHA_NECROS_ITEM_PREFIX} ({value})")
+        result = (
+            f"{character.name} receives {XASARTHA_PENDANT_ITEM}. "
+            "It grants 1 rechargeable Luck point per adventure, or 2 to a halfling wearer."
+        )
+        if value:
+            result += f" The character also carries a crate of {value} necros."
     elif action == "gargoyle_bounty":
         count = value or 1
         reward = 15 * count

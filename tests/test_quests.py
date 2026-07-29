@@ -1099,6 +1099,326 @@ def test_medusa_quest_reaction_persists_choice_and_accepts_core_quest(client, mo
     assert any("refuses Xasartha's Quest" in line for line in refused_session["log"])
 
 
+def test_xasartha_bribe_amount_persists_and_accepts_exact_carried_gold(monkeypatch) -> None:
+    from app.engine.tag_medusa import (
+        initialize_medusa_reaction_state,
+        medusa_scene1_state,
+        pay_xasartha_gold_bribe,
+    )
+
+    session = base_session(
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_generated_scene",
+            description="Resolve Xasartha.",
+        )
+    )
+    session.party[0].gold = 30
+    rolls = iter([1, 2, 3, 4, 5, 6])
+    monkeypatch.setattr("app.engine.tag_medusa.roll_d6", lambda: next(rolls))
+
+    state = initialize_medusa_reaction_state(session, 1)
+
+    assert state["bribe_gold"] == 21
+    assert medusa_scene1_state(session)["bribe_gold"] == 21
+    assert "21gp bribe" in pay_xasartha_gold_bribe(session)
+    assert session.party[0].gold == 9
+    assert medusa_scene1_state(session)["resolution"] == "gold_bribe"
+
+
+def test_xasartha_gold_bribe_endpoint_closes_generated_rumor_and_syncs_roster(client) -> None:
+    character = Character(
+        id="bribe-hero",
+        name="Bribe Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=0,
+        gold=30,
+        max_life=8,
+        current_life=8,
+        attack_bonus=3,
+        defense_bonus=1,
+        save_bonus=0,
+        inventory=[],
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="2")
+    session = base_session(
+        id="medusa-bribe-session",
+        adventure_id=manifest["id"],
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_generated_scene",
+            description="Resolve Xasartha.",
+            tag_procedure_state={
+                "medusa_scene1": {
+                    "phase": "bribe_choice",
+                    "reaction_roll": 1,
+                    "bribe_gold": 21,
+                }
+            },
+        ),
+        party=[
+            PartyMemberState(
+                character_id="bribe-hero",
+                name="Bribe Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=3,
+                xp=0,
+                gold=30,
+                current_life=8,
+                max_life=8,
+                attack_bonus=3,
+                defense_bonus=1,
+                save_bonus=0,
+                inventory=[],
+            )
+        ],
+    )
+    main.store.save("characters", character)
+    main.store.save("sessions", session)
+
+    response = client.post(
+        "/api/sessions/medusa-bribe-session/tag-branch-action",
+        json={
+            "branch_action": "medusa_bribe_gold",
+            "reference": "TAG p.25 Scene 1 gold bribe",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["session"]["party"][0]["gold"] == 9
+    assert payload["session"]["active_quest"]["completed"] is True
+    assert payload["session"]["tag_generated_completion_pending"] is True
+    roster = main.store.get("characters", "bribe-hero", Character.model_validate)
+    assert roster is not None and roster.gold == 9
+
+
+def test_xasartha_accepts_only_a_carried_gem_worth_at_least_fifteen_gp() -> None:
+    from app.engine.tag_medusa import (
+        initialize_medusa_reaction_state,
+        pay_xasartha_gem_bribe,
+    )
+
+    session = base_session(
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_generated_scene",
+            description="Resolve Xasartha.",
+        )
+    )
+    session.party[0].inventory = ["Gem (10gp)", "Small gemstone (25gp)"]
+    initialize_medusa_reaction_state(session, 1)
+
+    try:
+        pay_xasartha_gem_bribe(
+            session,
+            character_id="h",
+            item_name="Gem (10gp)",
+        )
+    except ValueError as exc:
+        assert "at least 15gp" in str(exc)
+    else:
+        raise AssertionError("Xasartha accepted an ineligible gem.")
+
+    result = pay_xasartha_gem_bribe(
+        session,
+        character_id="h",
+        item_name="Small gemstone (25gp)",
+    )
+
+    assert "Small gemstone (25gp)" in result
+    assert session.party[0].inventory == ["Gem (10gp)"]
+
+
+def test_xasartha_defeat_stages_reward_once_and_pendant_recharges_luck(monkeypatch) -> None:
+    from app.engine.class_abilities import luck_points_remaining, spend_luck_point
+    from app.engine.rest import reset_between_foray_resources
+    from app.engine.tag_medusa import (
+        XASARTHA_PENDANT_ITEM,
+        initialize_medusa_reaction_state,
+        medusa_scene1_state,
+        resolve_xasartha_reward,
+        stage_xasartha_defeat_reward,
+    )
+
+    session = base_session(
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_generated_scene",
+            description="Resolve Xasartha.",
+        )
+    )
+    initialize_medusa_reaction_state(session, 3)
+    rolls = iter([4, 3])
+    monkeypatch.setattr("app.engine.tag_medusa.roll_d6", lambda: next(rolls))
+    defeated = [
+        EnemyState(
+            id="medusa",
+            name="Medusa",
+            category="boss",
+            level=4,
+            life=0,
+            max_life=4,
+            attacks=1,
+        )
+    ]
+
+    narrative = stage_xasartha_defeat_reward(session, defeated)
+
+    assert narrative is not None and "7 necros" in narrative
+    assert stage_xasartha_defeat_reward(session, defeated) is None
+    assert medusa_scene1_state(session)["phase"] == "reward_choice"
+    result = resolve_xasartha_reward(session, character_id="h", wear_pendant=True)
+    assert "1 rechargeable Luck point" in result
+    assert XASARTHA_PENDANT_ITEM in session.party[0].inventory
+    assert "Crate of necros (7)" in session.party[0].inventory
+    assert luck_points_remaining(session, session.party[0]) == 1
+    assert spend_luck_point(session, session.party[0]) is True
+    assert luck_points_remaining(session, session.party[0]) == 0
+    assert XASARTHA_PENDANT_ITEM in session.party[0].inventory
+    reset_between_foray_resources(session)
+    assert luck_points_remaining(session, session.party[0]) == 0
+    next_adventure = base_session(
+        party=[session.party[0].model_copy(deep=True)],
+    )
+    assert luck_points_remaining(next_adventure, next_adventure.party[0]) == 1
+
+
+def test_xasartha_combat_completion_stages_persisted_reward_choice(monkeypatch) -> None:
+    from app.engine.adventure_runtime import update_imported_quest_on_combat_end
+    from app.engine.tag_medusa import initialize_medusa_reaction_state, medusa_scene1_state
+
+    session = base_session(
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_generated_scene",
+            description="Resolve Xasartha.",
+        )
+    )
+    initialize_medusa_reaction_state(session, 4)
+    monkeypatch.setattr("app.engine.tag_medusa.roll_d6", lambda: 3)
+    defeated = [
+        EnemyState(
+            id="medusa",
+            name="Xasartha",
+            category="boss",
+            level=4,
+            life=0,
+            max_life=4,
+            attacks=1,
+        )
+    ]
+
+    update_imported_quest_on_combat_end(session, defeated, session.map_state.tiles[0])
+    update_imported_quest_on_combat_end(session, defeated, session.map_state.tiles[0])
+
+    assert medusa_scene1_state(session)["phase"] == "reward_choice"
+    assert medusa_scene1_state(session)["necros"] == 6
+    assert sum("Xasartha is defeated" in line for line in session.log) == 1
+
+
+def test_xasartha_pendant_grants_two_extra_luck_points_to_halfling() -> None:
+    from app.engine.class_abilities import luck_points_remaining
+    from app.engine.tag_medusa import XASARTHA_PENDANT_ITEM
+
+    session = base_session()
+    member = session.party[0]
+    member.class_id = "halfling"
+    member.class_name = "Halfling"
+    base_luck = luck_points_remaining(session, member)
+    member.inventory.append(XASARTHA_PENDANT_ITEM)
+
+    assert luck_points_remaining(session, member) == base_luck + 2
+
+
+def test_xasartha_pendant_can_be_sold_untried_for_260gp(monkeypatch) -> None:
+    from app.engine.tag_medusa import (
+        initialize_medusa_reaction_state,
+        resolve_xasartha_reward,
+        stage_xasartha_defeat_reward,
+    )
+
+    session = base_session(
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_generated_scene",
+            description="Resolve Xasartha.",
+        )
+    )
+    session.party[0].gold = 0
+    initialize_medusa_reaction_state(session, 6)
+    monkeypatch.setattr("app.engine.tag_medusa.roll_d6", lambda: 2)
+    stage_xasartha_defeat_reward(
+        session,
+        [
+            EnemyState(
+                id="medusa",
+                name="Medusa",
+                category="boss",
+                level=4,
+                life=0,
+                max_life=4,
+                attacks=1,
+            )
+        ],
+    )
+
+    result = resolve_xasartha_reward(session, character_id="h", wear_pendant=False)
+
+    assert "sells Xasartha's emerald pendant" in result
+    assert session.party[0].gold == 260
+    assert "Crate of necros (4)" in session.party[0].inventory
+
+
+def test_xasartha_pendant_respects_barbarian_magic_item_restriction(monkeypatch) -> None:
+    from app.engine.tag_medusa import (
+        initialize_medusa_reaction_state,
+        resolve_xasartha_reward,
+        stage_xasartha_defeat_reward,
+    )
+
+    session = base_session(
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_generated_scene",
+            description="Resolve Xasartha.",
+        )
+    )
+    session.party[0].class_id = "barbarian"
+    session.party[0].class_name = "Barbarian"
+    initialize_medusa_reaction_state(session, 3)
+    monkeypatch.setattr("app.engine.tag_medusa.roll_d6", lambda: 2)
+    stage_xasartha_defeat_reward(
+        session,
+        [
+            EnemyState(
+                id="medusa",
+                name="Medusa",
+                category="boss",
+                level=4,
+                life=0,
+                max_life=4,
+                attacks=1,
+            )
+        ],
+    )
+
+    try:
+        resolve_xasartha_reward(session, character_id="h", wear_pendant=True)
+    except ValueError as exc:
+        assert "cannot use magic items" in str(exc)
+    else:
+        raise AssertionError("A barbarian wore Xasartha's magic pendant.")
+    assert session.party[0].inventory == ["Potion of Healing"]
+
+
 def test_medusa_scene10_group_stealth_persists_choice_and_stages_immediate_fight(client, monkeypatch) -> None:
     manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="2")
     tag_reference = manifest["source"]["parameters"]["tag_reference"]

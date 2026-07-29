@@ -9,6 +9,7 @@ from .dice import roll_d6, roll_exploding_for_level, tier_die_label
 from .equipment_effects import AMULET_LUCK_STATUS
 from .experience import tier_for_level
 from .expert_skill_effects import effective_barbarian_rage_uses
+from .tag_medusa import xasartha_pendant_luck_points
 from .weapons import mushroom_monk_flurry_eligible
 
 CombatAbilityChoice = Literal[
@@ -87,7 +88,16 @@ def amulet_luck_available(member: PartyMemberState) -> bool:
 def luck_points_remaining(session: SessionState, member: PartyMemberState) -> int:
     total = 0
     if member.class_id.lower() == "halfling":
-        total += max(0, halfling_luck_points(member.level) - _spent(session, "luck_points_spent", member.character_id))
+        total += max(
+            0,
+            halfling_luck_points(member.level)
+            - _spent(session, "luck_points_spent", member.character_id),
+        )
+    total += max(
+        0,
+        xasartha_pendant_luck_points(member)
+        - _spent(session, "xasartha_pendant_luck_spent", member.character_id),
+    )
     if amulet_luck_available(member):
         total += 1
     return total
@@ -117,10 +127,24 @@ def spend_rage_use(session: SessionState, member: PartyMemberState) -> bool:
 
 def spend_luck_point(session: SessionState, member: PartyMemberState) -> bool:
     if member.class_id.lower() == "halfling":
-        remaining = max(0, halfling_luck_points(member.level) - _spent(session, "luck_points_spent", member.character_id))
-        if remaining > 0:
-            session.luck_points_spent[member.character_id] = _spent(session, "luck_points_spent", member.character_id) + 1
+        halfling_remaining = (
+            halfling_luck_points(member.level)
+            - _spent(session, "luck_points_spent", member.character_id)
+        )
+        if halfling_remaining > 0:
+            session.luck_points_spent[member.character_id] = (
+                _spent(session, "luck_points_spent", member.character_id) + 1
+            )
             return True
+    pendant_remaining = (
+        xasartha_pendant_luck_points(member)
+        - _spent(session, "xasartha_pendant_luck_spent", member.character_id)
+    )
+    if pendant_remaining > 0:
+        session.xasartha_pendant_luck_spent[member.character_id] = (
+            _spent(session, "xasartha_pendant_luck_spent", member.character_id) + 1
+        )
+        return True
     if amulet_luck_available(member):
         member.statuses = [status for status in member.statuses if status != AMULET_LUCK_STATUS]
         for index, item in enumerate(list(member.inventory)):

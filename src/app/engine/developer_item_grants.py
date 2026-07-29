@@ -98,6 +98,7 @@ MANUAL_ITEMS: dict[str, tuple[dict[str, Any], ...]] = {
     ),
     "tag": (
         {"id": "bag-of-carrying", "name": BAG_OF_CARRYING, "category": "magic_item", "magic": True, "page": 13, "topic": "Bag of Carrying"},
+        {"id": "xasartha-emerald-pendant", "name": "Xasartha's Emerald Pendant (260gp)", "category": "magic_item", "magic": True, "page": 26, "topic": "Scene 6"},
         {"id": "resurrection-tag", "name": "TAG Resurrection tag", "category": "magic_item", "magic": True, "page": 11, "topic": "Temple tags"},
         {"id": "blessing-tag", "name": "TAG Blessing tag", "category": "magic_item", "magic": True, "page": 11, "topic": "Temple tags"},
     ),

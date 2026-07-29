@@ -226,6 +226,13 @@ def update_imported_quest_on_combat_end(session: SessionState, defeated: list, t
     quest = session.active_quest
     if quest is None or quest.completed:
         return
+    if quest.key == "tag_generated_scene":
+        from .tag_medusa import stage_xasartha_defeat_reward
+
+        reward_narrative = stage_xasartha_defeat_reward(session, defeated)
+        if reward_narrative:
+            session.log.append(reward_narrative)
+        return
     room_id = manifest_room_id(tile, session.imported_manifest)
     complete_when = session.imported_quest_complete_when or {}
     if quest.key == "imported_boss":

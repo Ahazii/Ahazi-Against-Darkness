@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-28. Target build: v0.39.53.
+Last updated: 2026-07-29. Target build: v0.39.54.
 
 ## Adventure Test Gate: Passed
 
@@ -36,14 +36,36 @@ Live v0.39.53 verification passed in session
 Do not repeat Scene 10, Xasartha's Quest reaction, the 200gp payment, or the
 Epic Reward/closeout path.
 
+## New Slice: TAG Xasartha Scene 1/6
+
+v0.39.54 implements the remaining TAG pp.25-27 Xasartha paths:
+
+- reaction `1` persists its `6d6` bribe and offers exact carried-gold, eligible
+  15gp+ gem/jewel, or refuse-and-fight choices;
+- reactions `3-5` fight normally and `6` suppresses Morale;
+- defeating Xasartha awards the normal major-foe XP roll, persists one `2d6`
+  necros roll, and offers **Wear the pendant** or **Sell without trying it on**;
+- the pendant persists and uses the existing Luck controls, but its separate
+  counter recharges only in a new adventure, not after camp/re-entry; it grants
+  one point, or two additional points to a halfling;
+- Barbarians may carry/sell the treasure but cannot wear the magic pendant.
+
+Focused backend, endpoint, roster-sync, Luck/recharge, class-restriction, and
+frontend-contract coverage owns the dice and state transitions. Do not replay
+Scene 10, the Quest route, or another full Rumor 2 adventure.
+
+After deploying v0.39.54 and force-refreshing, perform only a short visual check
+if a new/generated test session naturally reaches one of the new pending
+panels: confirm the bribe or reward choice is readable and survives one
+save/dashboard/resume. Do not risk or modify the completed live party to force
+the needed reaction.
+
 ## Do Next
 
-Resume modularisation with one bounded PDF-backed slice: TAG pp.25-26,
-Xasartha's remaining Scene 1/6 paths. Implement and automate the bribe payment,
-fight/fight-to-the-death routing, 260gp pendant plus 2d6 necros after defeat,
-the explicit try-on versus sell choice, and the rechargeable pendant Luck
-effect. Add only narrow automated coverage first; open a new manual adventure
-check only for behavior that cannot be established safely in automation.
+Continue typed TAG conversion one PDF-backed scene at a time. The next bounded
+candidate is TAG p.65 Temporary Weapon Enchantment expiry: replace the manual
+Guild-marker clear with the printed one-week or qualifying magic-only encounter
+timing while preserving the already-tested theft/destruction decision.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

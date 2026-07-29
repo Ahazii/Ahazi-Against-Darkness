@@ -2785,6 +2785,11 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     direct_actions = APP_JS.split("const DIRECT_TAG_BRANCH_ACTIONS", 1)[1].split("]);", 1)[0]
     assert '"medusa_quest_accept"' in direct_actions
     assert '"medusa_quest_refuse"' in direct_actions
+    assert '"medusa_bribe_gold"' in direct_actions
+    assert '"medusa_bribe_gem"' in direct_actions
+    assert '"medusa_bribe_refuse"' in direct_actions
+    assert '"medusa_pendant_wear"' in direct_actions
+    assert '"medusa_pendant_sell"' in direct_actions
     character_choice = APP_JS.split("function chooseTagDirectBranchCharacter", 1)[1].split(
         "function chooseTagDirectSceneCharacter", 1
     )[0]
@@ -2805,6 +2810,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert ".medusa-scene1-guided" in STYLES_CSS
     assert "The assassin agents are defeated." in APP_JS
     assert '"Approach the cabin"' in APP_JS
+    assert '"Offer selected gem"' in APP_JS
+    assert '"Sell without trying it on"' in APP_JS
     assert '"Return to town"' in APP_JS
     assert "gargoyle_skin" in APP_JS
     assert "star-shaped object curse" in APP_JS.lower()
