@@ -2362,6 +2362,21 @@ def test_current_objective_uses_typed_medusa_scene_controls() -> None:
     assert "appendMedusaScene1GuidedAction(parent, action.promptAction, action.fallbackReference)" in append_body
 
 
+def test_generated_rumor_entry_choices_stay_beneath_narrative_without_internal_objective_copy() -> None:
+    objective_body = _function_body("currentObjectiveForSession", APP_JS)
+    render_body = _function_body("renderCurrentObjectiveBanner", APP_JS)
+    append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
+    assert 'generated.room?.id === "tag-lead-entry"' in objective_body
+    assert 'String(generated.tagReference.lead_type || "").toLowerCase() === "rumor"' in objective_body
+    assert "body: narrativeChoices" in objective_body
+    assert "primary: narrativeChoices && index === 0" in objective_body
+    assert 'objective.narrativeChoices ? " narrative-choices" : ""' in render_body
+    assert "if (!objective.narrativeChoices)" in render_body
+    assert "const lifecycle = !objective.narrativeChoices" in render_body
+    assert "action.primary || action.kind" in append_body
+    assert ".current-objective-banner.narrative-choices.panel-user-hidden" in STYLES_CSS
+
+
 def test_treasure_choice_buttons_include_concrete_weapon_picks() -> None:
     body = _function_body("treasureOutcomeChoices", APP_JS)
     assert 'choiceKey === "fd_masterwork_edged_weapon"' in body

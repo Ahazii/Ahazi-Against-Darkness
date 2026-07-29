@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-29. Target build: v0.39.56.
+Last updated: 2026-07-29. Target build: v0.39.57.
 
 ## Adventure Test Gate: Passed
 
@@ -62,29 +62,26 @@ the needed reaction.
 
 ## Do Next
 
-v0.39.56 completes Daroc's Lost Familiar (TAG p.27, Scene 5). Focused
-automation owns town-Streetwise Clue provenance, the normal two-Clue cost,
-the one-Clue Druid/Beastmaster/cat eligibility, exact Clue spending, selected
-100gp recipient, one pending XP roll, roster sync, persistence, and duplicate
-claim prevention.
+v0.39.57 fixes the reported generated Rumor entry regression. After deploying
+and force-refreshing, resume session `9268a7158f41482d90d16f4ec3946f46` and
+confirm:
 
-No live adventure replay is required. After deploying and force-refreshing,
-an optional disposable-party check may:
+1. **Choose to investigate** and **Don't investigate** are immediately beneath
+   Narrative, not inside a prose-heavy Current Objective box.
+2. No visible player text contains `Entry`, `Rumor playbook`, `record the
+   approach`, or other Director/workflow instructions.
+3. The two choices remain visible with Objective Details hidden.
 
-1. Generate fixed Rumor 9 and use settlement **Look for Clues** until enough
-   new town Streetwise Clues exist.
-2. Confirm Scene 5 shows `2` required, or `1` with an eligible Druid or
-   existing cat companion, and names the eligible Clue holders.
-3. Choose a living reward recipient and select **Spend Clues and find the
-   cat**.
-4. Confirm the exact marked Clues disappear, that hero receives 100gp, one
-   pending XP roll appears, and save/dashboard/resume does not offer the
-   reward again.
+The disposable local clone already confirmed that **Choose to investigate**
+advances to the exact Scene 10 Narrative and typed **Roll group Stealth Save**
+control. Do not click through or replay Scene 10 merely to repeat that automated
+check; the live check is placement/copy only.
 
-Do not use an existing unmarked Clue to test this rule: TAG p.27 expressly
-requires Clues generated in town, and pre-v0.39.56 Clues have no trustworthy
-source provenance. Full Beastmaster and animal-companion mechanics remain
-deferred to Crucible of Classic Critters pp.11-15.
+After this narrow UI gate passes, return to the planned TAG p.29 Scene 12
+Mutant Fish slice. Two source interpretations remain awaiting player ruling:
+whether a failed rescuer Save still rescues the original hero while dragging
+the rescuer into the water, and whether friendly chaos-cultist terms should be
+a logged sale declaration or persistent campaign faction state.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

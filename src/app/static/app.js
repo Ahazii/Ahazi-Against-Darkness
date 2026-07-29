@@ -20413,14 +20413,22 @@ function currentObjectiveForSession(session) {
       const orderedActions = director?.recommended
         ? [director.recommended, ...actions.filter((action) => action !== director.recommended)]
         : actions;
+      const narrativeChoices =
+        generated.room?.id === "tag-lead-entry" &&
+        String(generated.tagReference.lead_type || "").toLowerCase() === "rumor";
       return {
-        title: `Current objective: ${director?.phase || generated.promptData.title || "Adventures Guild room prompt"}`,
-        body:
-          `${director?.instruction || `${leadLabel}. ${generated.promptData.body || "Use the current generated Adventures Guild room prompt to decide which branch, route, reward, XP, or closeout marker applies."}`} ${director?.playbook || ""}`,
+        title: narrativeChoices
+          ? generated.promptData.title || "Choose how the party responds"
+          : `Current objective: ${director?.phase || generated.promptData.title || "Adventures Guild room prompt"}`,
+        body: narrativeChoices
+          ? ""
+          : `${director?.instruction || `${leadLabel}. ${generated.promptData.body || "Use the current generated Adventures Guild room prompt to decide which branch, route, reward, XP, or closeout marker applies."}`} ${director?.playbook || ""}`,
         tone: "tag",
-        actions: orderedActions.slice(0, 5).map((promptAction) => ({
+        narrativeChoices,
+        actions: orderedActions.slice(0, 5).map((promptAction, index) => ({
           label: String(promptAction.label || "Open Adventures Guild Actions"),
           kind: "tag-prompt-action",
+          primary: narrativeChoices && index === 0,
           promptAction,
           fallbackReference: `${generated.tagReference.title || "Adventures Guild lead"}: ${generated.promptData.title || generated.room?.id || "room prompt"}`,
           tagReference: generated.tagReference,
@@ -20471,7 +20479,11 @@ function currentObjectiveForSession(session) {
 
 function appendCurrentObjectiveButton(parent, action) {
   if (!action) return;
-  const btn = node("button", action.kind === "tag-run" || action.kind === "advance" ? "primary" : "secondary", action.label);
+  const btn = node(
+    "button",
+    action.primary || action.kind === "tag-run" || action.kind === "advance" ? "primary" : "secondary",
+    action.label
+  );
   btn.type = "button";
   switch (action.kind) {
     case "advance":
@@ -20644,18 +20656,24 @@ function renderCurrentObjectiveBanner(session) {
     currentObjectiveBanner.classList.add("hidden");
     return;
   }
-  currentObjectiveBanner.className = `current-objective-banner ${objective.tone || "neutral"}`;
+  currentObjectiveBanner.className =
+    `current-objective-banner ${objective.tone || "neutral"}` +
+    (objective.narrativeChoices ? " narrative-choices" : "");
   setTooltip(currentObjectiveBanner, objective.body || objective.title || "Current objective.");
-  const copy = node("div", "current-objective-copy current-objective-compact");
-  copy.appendChild(node("strong", "", objective.title.replace(/^Current objective:\s*/i, "")));
-  if (objective.body) copy.appendChild(node("span", "current-objective-detail", objective.body));
-  currentObjectiveBanner.appendChild(copy);
+  if (!objective.narrativeChoices) {
+    const copy = node("div", "current-objective-copy current-objective-compact");
+    copy.appendChild(node("strong", "", objective.title.replace(/^Current objective:\s*/i, "")));
+    if (objective.body) copy.appendChild(node("span", "current-objective-detail", objective.body));
+    currentObjectiveBanner.appendChild(copy);
+  } else {
+    currentObjectiveBanner.setAttribute("aria-label", objective.title || "Choose how the party responds");
+  }
   const actions = node("div", "current-objective-actions");
   for (const action of objective.actions || []) appendCurrentObjectiveButton(actions, action);
   appendCurrentObjectiveButton(actions, objective.action);
   appendCurrentObjectiveButton(actions, objective.secondaryAction);
   if (actions.childElementCount) currentObjectiveBanner.appendChild(actions);
-  const lifecycle = session.active_quest?.key === "tag_generated_scene"
+  const lifecycle = !objective.narrativeChoices && session.active_quest?.key === "tag_generated_scene"
     ? renderGeneratedTagLifecycleStrip(session)
     : null;
   if (lifecycle) currentObjectiveBanner.appendChild(lifecycle);

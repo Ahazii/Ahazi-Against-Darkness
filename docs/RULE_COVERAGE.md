@@ -78,6 +78,8 @@ Status labels:
 
 **TAG v0.39.56 addendum:** Daroc's Lost Familiar now follows TAG p.27, Scene 5 as a typed generated-adventure procedure. Successful Streetwise Look for Clues actions persist a town-source marker; older or dungeon-generated Clues do not satisfy this scene. The app applies the two-Clue base cost or one-Clue discount for a Druid, Beastmaster, cat-like hero, or cat animal companion, spends only marked Clues, awards 100gp to the selected living hero, and adds exactly one pending XP roll. Full Beastmaster and animal-companion behavior is deferred to Crucible of Classic Critters pp.11-15; the eligibility resolver consumes class, trait, and companion metadata ready for that later rules slice. Tests: `tests/test_tag_campaign.py`, `tests/test_program_phase4.py`, `tests/test_frontend_map_interactions.py`, and `tests/test_rulebook_validation.py`.
 
+**TAG v0.39.57 UI addendum:** Generated Rumor entry branch choices now render immediately beneath the player-facing Narrative prompt. Internal Director phase, lifecycle, and lead-family playbook prose are excluded from this decision strip, which remains visible when Objective Details is hidden. Rumor 2 still routes the investigate choice into its typed TAG p.28 Scene 10 procedure. Tests: `tests/test_frontend_map_interactions.py`, plus a disposable visual/click-through clone of reported session `9268a7158f41482d90d16f4ec3946f46`.
+
 ## Indexed-but-not-playable audit
 
 | Indexed rule | Source | Status | Notes |

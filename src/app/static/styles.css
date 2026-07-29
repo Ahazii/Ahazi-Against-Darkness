@@ -5408,6 +5408,26 @@ button.modern-dashboard-status-icon {
   background: transparent;
 }
 
+.current-objective-banner.narrative-choices,
+.current-objective-banner.narrative-choices.panel-user-hidden {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.current-objective-banner.narrative-choices .current-objective-actions {
+  display: flex;
+  gap: 7px;
+  min-width: 0;
+}
+
+.current-objective-banner.narrative-choices .current-objective-actions button {
+  min-height: 32px;
+}
+
 .tag-lifecycle-strip {
   grid-column: 1 / -1;
   display: flex;
