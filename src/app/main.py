@@ -4498,6 +4498,32 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "source": "TAG p.27, Scene 5",
         },
     ]
+    data["tag_mutant_fish_scene12_procedure_table"] = [
+        {
+            "step": "Initial hypnosis",
+            "rule": "Every living hero Saves vs L5; chaos-tainted heroes fail automatically. If everyone fails, the party is destroyed.",
+            "automation": "One action rolls and persists every current Save result. The app never asks the player to choose who succeeded.",
+            "source": "TAG p.29, Scene 12",
+        },
+        {
+            "step": "Rescue turn",
+            "rule": "A safe hero spends one turn moving one victim out. Every trapped hero loses 1 Life, then the rescuer Saves again.",
+            "automation": "The player chooses the rescuer and victim. The victim leaves the water; a failed rescuer enters it. The sequence persists through save/resume.",
+            "source": "TAG p.29, Scene 12; player-confirmed timing interpretation",
+        },
+        {
+            "step": "Survival reward",
+            "rule": "If everyone passes or is rescued, roll d6+3 Food rations and count the Scene as two minion encounters for XP.",
+            "automation": "The app rolls once, records both minor encounters immediately, and offers Keep or Sell without separate manual XP controls.",
+            "source": "TAG p.29, Scene 12",
+        },
+        {
+            "step": "Keep or sell",
+            "rule": "Keep the rations or sell each for 2 gp; friendly chaos-cultist terms raise the price to 5 gp each.",
+            "automation": "Kept rations obey the ten-ration carrying limit and may spread across living heroes. Sale uses the persisted campaign friendship state and gives the proceeds to the selected hero.",
+            "source": "TAG p.29, Scene 12",
+        },
+    ]
     data["tag_rumor_lifecycle_table"] = [
         {
             "state": "heard",
@@ -6636,6 +6662,18 @@ def _is_daroc_generated_session(session: SessionState) -> bool:
     return str(tag_ref.get("lead_type") or "").lower() == "rumor" and rumor_number == 9
 
 
+def _is_mutant_fish_generated_session(session: SessionState) -> bool:
+    params = ((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}
+    tag_ref = params.get("tag_reference") if isinstance(params, dict) else None
+    if not isinstance(tag_ref, dict):
+        return False
+    try:
+        rumor_number = int(tag_ref.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    return str(tag_ref.get("lead_type") or "").lower() == "rumor" and rumor_number == 4
+
+
 def _medusa_scene10_state(session: SessionState) -> dict[str, Any]:
     quest = session.active_quest
     if quest is None:
@@ -7145,7 +7183,8 @@ def _mark_generated_tag_lead_complete(
     session.tag_generated_completion_pending = True
     session.tag_generated_completion_title = title
     session.tag_generated_completion_body = narrative
-    session.log.append(narrative)
+    if not session.log or session.log[-1] != narrative:
+        session.log.append(narrative)
     session.log.append("When you are ready, choose Continue to finish the adventure.")
 
 
@@ -7572,6 +7611,76 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         return {
             "campaign": campaign,
             "character": refreshed_character,
+            "entry": entry,
+            "session": enrich_session(session),
+        }
+    if branch_action in {"mutant_fish_scene12", "mutant_fish_hypnosis"}:
+        from .engine.tag_campaign import append_tag_log
+        from .engine.tag_mutant_fish import (
+            begin_mutant_fish_scene,
+            mutant_fish_state,
+            rescue_mutant_fish_victim,
+            resolve_mutant_fish_reward,
+        )
+
+        if not _is_mutant_fish_generated_session(session):
+            raise HTTPException(status_code=400, detail="TAG p.29, Scene 12 is not active in this adventure.")
+        if session.active_quest is None:
+            raise HTTPException(status_code=400, detail="The Mutant Fish generated quest state is missing.")
+        step = str(payload.get("step") or "start").strip().casefold()
+        try:
+            if step == "start":
+                result_text = begin_mutant_fish_scene(session)
+            elif step == "rescue":
+                result_text = rescue_mutant_fish_victim(
+                    session,
+                    rescuer_id=str(payload.get("character_id") or ""),
+                    victim_id=str(payload.get("target_character_id") or ""),
+                )
+            elif step in {"keep", "sell"}:
+                result_text = resolve_mutant_fish_reward(
+                    session,
+                    campaign,
+                    choice=step,
+                    recipient_id=str(payload.get("character_id") or ""),
+                )
+            else:
+                raise ValueError("Choose a valid Mutant Fish scene action.")
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        scene_state = mutant_fish_state(session)
+        if scene_state.get("phase") == "resolved":
+            _mark_generated_tag_lead_complete(
+                session,
+                title="Mutant Fish Under the Bridge resolved",
+                outcome=result_text,
+                narrative=result_text,
+            )
+            record_session_tag_rumor_state(campaign, session, status="resolved")
+        entry = append_tag_log(
+            campaign,
+            action=f"mutant_fish_{step}",
+            character=character,
+            result_text=result_text,
+        )
+        campaign = save_campaign(store, campaign)
+        changed_ids = {member.character_id for member in session.party}
+        if scene_state.get("phase") == "destroyed":
+            persist_session_to_roster(session, store)
+        else:
+            sync_party_members_to_roster(session, store, changed_ids)
+            sync_party_states_to_roster(session, store)
+            sync_minor_encounters_to_roster(session, store)
+        session.updated_at = now_utc()
+        store.save("sessions", session)
+        return {
+            "campaign": campaign,
+            "character": (
+                store.get("characters", character.id, Character.model_validate)
+                if character is not None
+                else None
+            ),
             "entry": entry,
             "session": enrich_session(session),
         }

@@ -8,7 +8,7 @@ from app import main
 from app.engine.adventure_allowlists import major_foe_table_keys
 from app.engine.adventure_session import create_session_from_manifest
 from app.engine.random_dungeon import RandomDungeonEngine
-from app.engine.tag_campaign import build_tag_adventure_manifest, default_campaign
+from app.engine.tag_campaign import build_tag_adventure_manifest, default_campaign, save_campaign
 from app.engine.tag_compat import upgrade_tag_manifest
 from app.rules.repository import RulesRepository
 from app.schemas import ActiveQuestState, Character, EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
@@ -967,6 +967,104 @@ def test_medusa_generated_scene_spawns_after_printed_approach_choice(client, mon
     assert final_room["enemies"][0]["life"] == 4
     assert any("printed Scene 1 result" in line for line in payload["session"]["log"])
     assert not any("Final Boss check" in line for line in payload["session"]["log"])
+
+
+def test_mutant_fish_api_runs_party_saves_and_campaign_rate_reward(client, monkeypatch) -> None:
+    character = Character(
+        id="fish-hero",
+        name="Fish Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=0,
+        gold=0,
+        max_life=8,
+        current_life=8,
+        attack_bonus=3,
+        defense_bonus=1,
+        save_bonus=0,
+        inventory=[],
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    campaign = default_campaign()
+    campaign.tag_friendly_chaos_cultists = True
+    save_campaign(main.store, campaign)
+    manifest, _entry = build_tag_adventure_manifest(campaign, lead_type="rumor", detail="4")
+    final_tile = TileState(
+        id="bridge-pool",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="The Bridge Pool",
+        description="Mutant fish chant beneath the bridge.",
+        content_key="imported:tag-final-scene",
+    )
+    session = base_session(
+        id="mutant-fish-api-session",
+        adventure_id=manifest["id"],
+        adventure_type="imported",
+        imported_manifest=manifest,
+        map_state=MapState(tiles=[final_tile], current_tile_id=final_tile.id),
+        active_quest=ActiveQuestState(
+            tile_id=final_tile.id,
+            key="tag_generated_scene",
+            description="Resolve the Mutant Fish scene.",
+        ),
+        party=[
+            PartyMemberState(
+                character_id="fish-hero",
+                name="Fish Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=3,
+                xp=0,
+                gold=0,
+                current_life=8,
+                max_life=8,
+                attack_bonus=3,
+                defense_bonus=1,
+                save_bonus=0,
+                inventory=[],
+            )
+        ],
+    )
+    main.store.save("characters", character)
+    main.store.save("sessions", session)
+    monkeypatch.setattr(
+        "app.engine.tag_mutant_fish.roll_exploding_for_level",
+        lambda _member, session=None: (5, [5]),
+    )
+    monkeypatch.setattr("app.engine.tag_mutant_fish.roll_d6", lambda: 2)
+
+    started = client.post(
+        "/api/sessions/mutant-fish-api-session/tag-branch-action",
+        json={"branch_action": "mutant_fish_scene12", "step": "start"},
+    )
+
+    assert started.status_code == 200
+    started_session = started.json()["session"]
+    fish_state = started_session["active_quest"]["tag_procedure_state"]["mutant_fish_scene12"]
+    assert fish_state["phase"] == "reward"
+    assert fish_state["ration_count"] == 5
+    assert started_session["minor_encounters_defeated"] == 2
+
+    sold = client.post(
+        "/api/sessions/mutant-fish-api-session/tag-branch-action",
+        json={
+            "branch_action": "mutant_fish_scene12",
+            "step": "sell",
+            "character_id": "fish-hero",
+        },
+    )
+
+    assert sold.status_code == 200
+    payload = sold.json()
+    assert payload["session"]["party"][0]["gold"] == 25
+    assert payload["session"]["tag_generated_completion_pending"] is True
+    assert payload["campaign"]["tag_friendly_chaos_cultists"] is True
+    assert "5gp each" in payload["entry"]["result_text"]
 
 
 def test_medusa_quest_reaction_persists_choice_and_accepts_core_quest(client, monkeypatch) -> None:

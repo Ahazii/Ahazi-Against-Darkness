@@ -922,6 +922,7 @@ class CampaignState(BaseModel):
     tag_look_tough_character_ids: list[str] = Field(default_factory=list)
     tag_used_rumor_numbers: list[int] = Field(default_factory=list)
     tag_rumor_states: list[TagRumorState] = Field(default_factory=list)
+    tag_friendly_chaos_cultists: bool = False
     tag_generated_adventure_ids: list[str] = Field(default_factory=list)
     tag_stored_items: list[TagStoredItemState] = Field(default_factory=list)
     tag_hidden_trove_robbed: bool = False

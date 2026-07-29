@@ -2383,6 +2383,24 @@ def test_generated_rumor_entry_choices_stay_beneath_narrative_without_internal_o
     assert "flex-wrap: wrap;" in STYLES_CSS.split("@media (max-width: 520px)", 1)[1]
 
 
+def test_mutant_fish_scene_12_uses_one_typed_guided_workflow() -> None:
+    objective_body = _function_body("currentObjectiveForSession", APP_JS)
+    append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
+    guided_body = _function_body("appendMutantFishGuidedAction", APP_JS)
+    run_body = _function_body("runMutantFishStep", APP_JS)
+    assert '"mutant_fish_scene12"' in objective_body
+    assert "const actions = mutantFishAction ? [mutantFishAction] : promptActions;" in objective_body
+    assert "appendMutantFishGuidedAction" in append_body
+    assert "Roll party hypnosis Saves" in guided_body
+    assert "Who performs the rescue?" in guided_body
+    assert "Who is pulled from the water?" in guided_body
+    assert "Keep ${rationCount}" in guided_body
+    assert "Sell for ${rationCount * unitPrice}gp" in guided_body
+    assert 'branch_action: "mutant_fish_scene12"' in run_body
+    assert ".mutant-fish-rescue-grid" in STYLES_CSS
+    assert ".mutant-fish-reward-actions" in STYLES_CSS
+
+
 def test_treasure_choice_buttons_include_concrete_weapon_picks() -> None:
     body = _function_body("treasureOutcomeChoices", APP_JS)
     assert 'choiceKey === "fd_masterwork_edged_weapon"' in body

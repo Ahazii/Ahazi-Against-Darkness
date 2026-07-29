@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-29. Target build: v0.39.58.
+Last updated: 2026-07-29. Target build: v0.39.59.
 
 ## Adventure Test Gate: Passed
 
@@ -79,11 +79,41 @@ advances to the exact Scene 10 Narrative and typed **Roll group Stealth Save**
 control. Do not click through or replay Scene 10 merely to repeat that automated
 check; the live check is placement/copy only.
 
-After this narrow UI gate passes, return to the planned TAG p.29 Scene 12
-Mutant Fish slice. Two source interpretations remain awaiting player ruling:
-whether a failed rescuer Save still rescues the original hero while dragging
-the rescuer into the water, and whether friendly chaos-cultist terms should be
-a logged sale declaration or persistent campaign faction state.
+## Next Narrow Test: TAG Rumor 4 Scene 12
+
+v0.39.59 implements the player-confirmed TAG p.29 interpretation:
+
+- a rescued victim leaves the water even when the rescuer fails and becomes
+  the new trapped hero;
+- friendly terms with chaos cultists are persistent campaign state.
+
+After deploying and force-refreshing, generate fixed **Rumor 4: Mutant Fish
+Under the Bridge** and check only this new typed slice:
+
+1. Reach **The Bridge Pool**. There must be one
+   **Roll party hypnosis Saves** action, not separate manual hypnosis,
+   ration, and XP buttons.
+2. Confirm Narrative lists every living hero's L5 result. A chaos-tainted hero,
+   if one is naturally present, must fail automatically; do not alter the live
+   party merely to force this edge.
+3. If anyone enters the water, confirm the panel clearly names trapped heroes
+   and asks both **Who performs the rescue?** and
+   **Who is pulled from the water?**
+4. Resolve one rescue turn. Every hero who was in the water at the start of
+   that turn loses 1 Life. The victim comes out; a failed rescuer enters the
+   water. Save/dashboard/resume once during this sequence if rescue is needed.
+5. On survival, confirm one persisted `d6+3` result and side-by-side
+   **Keep** / **Sell** choices. Keeping adds exactly that many Food rations
+   within carrying limits; selling pays 2gp each unless this campaign has
+   already earned friendly chaos-cultist terms.
+6. Confirm the session's minor-encounter progress increases by exactly two and
+   the generated lead offers its normal readable Continue closeout.
+
+Do not force an all-party failure on the valuable live party; automated tests
+own total-party destruction, failed-rescuer role swaps, the 5gp friendship
+rate, carrying-limit distribution, duplicate prevention, and XP rollover.
+
+After this narrow gate passes, select the next exact PDF-backed TAG scene.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

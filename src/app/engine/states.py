@@ -347,6 +347,50 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "id": "tag-mutant-fish-scene12",
+        "name": "TAG Mutant Fish Scene 12",
+        "family": "campaign_progress",
+        "scope": "session",
+        "value_type": "procedure",
+        "source": {
+            "supplement_id": "tag",
+            "source_pdf": "Tales_from_the_adventurers_guild.pdf",
+            "page": 29,
+            "topic": "Scene 12 - Mutant Fish Under the Bridge",
+        },
+        "legacy_mappings": {
+            "fields": ["ActiveQuestState.tag_procedure_state[mutant_fish_scene12]"],
+        },
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {
+            "label": "Mutant Fish rescue",
+            "hover": "TAG p.29, Scene 12. Persists party hypnosis Saves, trapped heroes, rescue turns, ration roll, reward choice, and XP accounting.",
+        },
+    },
+    {
+        "id": "tag-chaos-cultist-friendship",
+        "name": "TAG Friendly Chaos Cultists",
+        "family": "campaign_progress",
+        "scope": "campaign",
+        "value_type": "flag",
+        "source": {
+            "supplement_id": "tag",
+            "source_pdf": "Tales_from_the_adventurers_guild.pdf",
+            "page": 29,
+            "topic": "Scene 12 - friendly chaos-cultist sale price",
+        },
+        "legacy_mappings": {
+            "fields": ["CampaignState.tag_friendly_chaos_cultists"],
+        },
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {
+            "label": "Friendly with chaos cultists",
+            "hover": "TAG p.29, Scene 12. Persistent campaign relationship; dried mutant-fish rations sell for 5 gp each instead of 2 gp while active.",
+        },
+    },
+    {
         "id": "blessed-temple-bonus",
         "name": "Blessed Temple Bonus",
         "family": "blessings_and_buffs",

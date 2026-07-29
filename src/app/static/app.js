@@ -17610,6 +17610,7 @@ const ENVIRONMENT_TABLE_HINTS = {
   tag_star_object_curse_table: "Bofto's Star-Shaped Object curse procedure (TAG pp.30-31): pickup Save, persistent curse, Star-Slayer, Gremlin cure, carrier death, and campaign recovery.",
   invisible_gremlins_procedure_table: "Invisible Gremlins procedure (EE pp.74, 87, 105, 160, 169; TAG pp.11, 13, 65): staged theft, protection, Disbelief, special property, temporary-enchantment choice, and Clue handling.",
   tag_bag_of_carrying_table: "Bag of Carrying procedure (TAG p.13): purchase, explicit multi-bag contents, transfer, theft/loss, and magic-user restriction.",
+  tag_mutant_fish_scene12_procedure_table: "Mutant Fish Under the Bridge (TAG p.29, Scene 12): party hypnosis Saves, rescue turns, ration disposition, campaign sale rate, and two-minion XP progress.",
   tag_medusa_scene10_procedure_table: "Hunter's Cabin approach (TAG pp.6-8, p.28): one party Stealth roll using the lowest modifier, then labelled Streetwise or immediate-fight choices.",
   tag_medusa_scene1_reaction_table: "Xasartha's reaction procedure (TAG p.25, Scene 1; EE pp.101, 162): bribe, Quest acceptance/refusal, fight, and fight-to-the-death outcomes.",
   tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG p.22): heard, investigating, then resolved only after the paragraph and corresponding Scene are played.",
@@ -17720,6 +17721,7 @@ const RULES_TABLE_ORDER = [
   "tag_bag_of_carrying_table",
   "tag_temporary_weapon_enchantment_table",
   "tag_daroc_scene5_procedure_table",
+  "tag_mutant_fish_scene12_procedure_table",
   "tag_medusa_scene10_procedure_table",
   "tag_medusa_scene1_reaction_table",
   "tag_rumor_lifecycle_table",
@@ -20374,9 +20376,15 @@ function currentObjectiveForSession(session) {
   if (generated.tagReference && (!quest || quest.key === "tag_generated_scene")) {
     const leadLabel = tagLeadLabel(generated.tagReference);
     const director = generatedTagDirectorStep(session);
-    const actions = Array.isArray(generated.promptData?.actions)
+    const promptActions = Array.isArray(generated.promptData?.actions)
       ? generated.promptData.actions.filter((action) => action?.label && action.action_type)
       : [];
+    const mutantFishAction = promptActions.find((action) =>
+      ["mutant_fish_scene12", "mutant_fish_hypnosis", "mutant_fish_rations", "mark_minor_encounters"].includes(
+        String(action.action_value || action.value || "")
+      )
+    );
+    const actions = mutantFishAction ? [mutantFishAction] : promptActions;
     const complicationNext = generated.room?.id === "tag-complication"
       ? generatedTagComplicationNextStep(generated.tagReference, generated.promptData || {})
       : null;
@@ -20530,6 +20538,9 @@ function appendCurrentObjectiveButton(parent, action) {
         }
         if (defaults.branchAction === "medusa_group_stealth") {
           appendMedusaScene10GuidedAction(parent, action.promptAction, action.fallbackReference);
+          return;
+        }
+        if (appendMutantFishGuidedAction(parent, action.promptAction, action.fallbackReference)) {
           return;
         }
         if (["medusa_stealth_approach", "medusa_reaction"].includes(defaults.branchAction)) {
@@ -26095,6 +26106,202 @@ function appendDarocGuidedAction(parent, action, fallbackReference) {
   return true;
 }
 
+async function runMutantFishStep(step, payload = {}) {
+  const result = await api(
+    `/api/sessions/${encodeURIComponent(state.session.id)}/tag-branch-action`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        branch_action: "mutant_fish_scene12",
+        step,
+        character_id: payload.characterId || "",
+        target_character_id: payload.targetCharacterId || "",
+        reference: "TAG p.29, Scene 12",
+      }),
+    }
+  );
+  state.campaign = result.campaign;
+  if (result.character) {
+    const index = state.characters.findIndex((character) => character.id === result.character.id);
+    if (index >= 0) state.characters[index] = result.character;
+    else state.characters.push(result.character);
+  }
+  state.session = result.session;
+  syncSessionListFromSession(state.session);
+  if (state.session.mode === "complete") {
+    await finishCompletedAdventureClient(state.session);
+  } else {
+    renderSession();
+  }
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "Mutant Fish scene updated.");
+}
+
+function appendMutantFishGuidedAction(parent, action, fallbackReference) {
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  const actionValues = new Set([
+    defaults.branchAction,
+    defaults.sceneAction,
+    defaults.xpAction,
+    String(action?.action_value || action?.value || ""),
+  ]);
+  if (
+    ![...actionValues].some((value) =>
+      ["mutant_fish_scene12", "mutant_fish_hypnosis", "mutant_fish_rations", "mark_minor_encounters"].includes(value)
+    )
+  ) {
+    return false;
+  }
+  if (parent.querySelector(".mutant-fish-scene12-guided")) return true;
+  const session = state.session;
+  const sceneState = session?.active_quest?.tag_procedure_state?.mutant_fish_scene12 || {};
+  const living = (session?.party || []).filter((member) => member.current_life > 0);
+  const inWaterIds = new Set(sceneState.in_water_character_ids || []);
+  const trapped = living.filter((member) => inWaterIds.has(member.character_id));
+  const safe = living.filter((member) => !inWaterIds.has(member.character_id));
+  const wrap = node("div", "tag-context-guided-action mutant-fish-scene12-guided");
+  setTooltip(
+    wrap,
+    "TAG p.29, Scene 12: all living heroes Save vs L5 hypnosis. Chaos-tainted heroes fail automatically. Each rescue turn damages every trapped hero for 1 Life, moves one victim out, then makes the rescuer Save again."
+  );
+  wrap.appendChild(node("strong", "", "Mutant Fish Under the Bridge"));
+
+  if (!sceneState.phase) {
+    wrap.appendChild(
+      subline(
+        "The app rolls one current Save for every living hero. If anyone is hypnotized, rescue choices appear here. If everyone fails, the party is destroyed."
+      )
+    );
+    const party = node("div", "mutant-fish-party-preview");
+    for (const member of living) {
+      const chaosText = `${member.class_id || ""} ${member.class_name || ""} ${(member.class_traits || []).join(" ")} ${(member.statuses || []).join(" ")}`;
+      const chaosTainted = /\bchaos[-_ ]tainted\b/i.test(chaosText);
+      party.appendChild(
+        node(
+          "span",
+          chaosTainted ? "danger-text" : "",
+          chaosTainted
+            ? `${member.name}: automatic failure (chaos-tainted)`
+            : `${member.name}: current Save modifier applies`
+        )
+      );
+    }
+    wrap.appendChild(party);
+    const start = node("button", "primary", "Roll party hypnosis Saves");
+    start.type = "button";
+    start.disabled = !living.length;
+    setButtonTooltip(
+      start,
+      "Roll each living hero's exploding Save vs L5 once using current Save modifiers. A natural 1 or total below 5 fails; chaos-tainted heroes fail without rolling."
+    );
+    start.addEventListener("click", () => {
+      start.disabled = true;
+      runMutantFishStep("start").catch(handleError);
+    });
+    wrap.appendChild(start);
+  } else if (sceneState.phase === "rescue") {
+    wrap.appendChild(
+      subline(
+        `In the water: ${trapped.map((member) => `${member.name} ${member.current_life}/${member.max_life} Life`).join("; ")}. ` +
+        "One rescue turn deals 1 Life to every trapped hero before the chosen victim is moved out."
+      )
+    );
+    const rescueGrid = node("div", "mutant-fish-rescue-grid");
+    const rescuerField = document.createElement("label");
+    rescuerField.appendChild(node("span", "", "Who performs the rescue?"));
+    const rescuerSelect = document.createElement("select");
+    rescuerSelect.setAttribute("aria-label", "Mutant Fish rescuer");
+    for (const member of safe) {
+      const option = document.createElement("option");
+      option.value = member.character_id;
+      option.textContent = `${member.name} (${member.current_life}/${member.max_life} Life)`;
+      rescuerSelect.appendChild(option);
+    }
+    rescuerField.appendChild(rescuerSelect);
+    const victimField = document.createElement("label");
+    victimField.appendChild(node("span", "", "Who is pulled from the water?"));
+    const victimSelect = document.createElement("select");
+    victimSelect.setAttribute("aria-label", "Mutant Fish rescue target");
+    for (const member of trapped) {
+      const option = document.createElement("option");
+      option.value = member.character_id;
+      option.textContent = `${member.name} (${member.current_life}/${member.max_life} Life)`;
+      victimSelect.appendChild(option);
+    }
+    victimField.appendChild(victimSelect);
+    rescueGrid.append(rescuerField, victimField);
+    wrap.appendChild(rescueGrid);
+    const rescue = node("button", "primary", "Spend one turn and rescue");
+    rescue.type = "button";
+    rescue.disabled = !safe.length || !trapped.length;
+    setButtonTooltip(
+      rescue,
+      "TAG p.29, Scene 12: all heroes currently in the water lose 1 Life. The selected victim is moved out if alive, then the rescuer makes another L5 hypnosis Save. On failure, the rescuer enters the water."
+    );
+    rescue.addEventListener("click", () => {
+      rescue.disabled = true;
+      runMutantFishStep("rescue", {
+        characterId: rescuerSelect.value,
+        targetCharacterId: victimSelect.value,
+      }).catch(handleError);
+    });
+    wrap.appendChild(rescue);
+  } else if (sceneState.phase === "reward") {
+    const rationCount = Number(sceneState.ration_count || 0);
+    const friendly = Boolean(state.campaign?.tag_friendly_chaos_cultists);
+    const unitPrice = friendly ? 5 : 2;
+    wrap.appendChild(
+      subline(
+        `The rescued party dries ${rationCount} Food ration(s). Keep them as party supplies or sell them for ${unitPrice}gp each` +
+        (friendly ? " because this campaign is on friendly terms with chaos cultists." : ".")
+      )
+    );
+    const recipientField = document.createElement("label");
+    recipientField.appendChild(node("span", "", "Who carries them first or receives the sale proceeds?"));
+    const recipient = document.createElement("select");
+    recipient.setAttribute("aria-label", "Mutant Fish reward recipient");
+    for (const member of living) {
+      const option = document.createElement("option");
+      option.value = member.character_id;
+      option.textContent = member.name;
+      recipient.appendChild(option);
+    }
+    recipientField.appendChild(recipient);
+    wrap.appendChild(recipientField);
+    const choices = node("div", "mutant-fish-reward-actions");
+    const keep = node("button", "primary", `Keep ${rationCount} ration${rationCount === 1 ? "" : "s"}`);
+    keep.type = "button";
+    keep.disabled = !living.length;
+    setButtonTooltip(
+      keep,
+      "Keep the fish as Food rations. The selected hero carries as many as possible up to the normal 10-ration limit; any remainder is distributed among other living heroes with capacity."
+    );
+    keep.addEventListener("click", () => {
+      keep.disabled = true;
+      runMutantFishStep("keep", { characterId: recipient.value }).catch(handleError);
+    });
+    const sell = node("button", "secondary", `Sell for ${rationCount * unitPrice}gp`);
+    sell.type = "button";
+    sell.disabled = !living.length;
+    setButtonTooltip(
+      sell,
+      friendly
+        ? "TAG p.29, Scene 12: friendly chaos-cultist terms raise the sale price to 5gp per ration. Give all proceeds to the selected hero."
+        : "TAG p.29, Scene 12: sell each dried mutant-fish ration for 2gp. Give all proceeds to the selected hero."
+    );
+    sell.addEventListener("click", () => {
+      sell.disabled = true;
+      runMutantFishStep("sell", { characterId: recipient.value }).catch(handleError);
+    });
+    choices.append(keep, sell);
+    wrap.appendChild(choices);
+  } else {
+    wrap.appendChild(subline(sceneState.result_text || "The Mutant Fish scene has been resolved."));
+  }
+  parent.appendChild(wrap);
+  return true;
+}
+
 function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
   if (defaults.branchAction !== "medusa_group_stealth") return false;
@@ -27096,6 +27303,7 @@ function renderTagRelevantActions(session = state.session) {
     if (appendMedusaScene10GuidedAction(row, action, fallback)) continue;
     if (appendBoftoScene19GuidedAction(row, action, fallback)) continue;
     if (appendDarocGuidedAction(row, action, fallback)) continue;
+    if (appendMutantFishGuidedAction(row, action, fallback)) continue;
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
     const tooltip = String(action.tooltip || "Prefill Adventures Guild Actions from the current generated-room prompt.");
@@ -27146,6 +27354,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
     if (appendMedusaScene1GuidedAction(row, action, fallbackReference)) continue;
     if (appendBoftoScene19GuidedAction(row, action, fallbackReference)) continue;
     if (appendDarocGuidedAction(row, action, fallbackReference)) continue;
+    if (appendMutantFishGuidedAction(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
     if (defaults.sceneAction === "deoldyn_training") {

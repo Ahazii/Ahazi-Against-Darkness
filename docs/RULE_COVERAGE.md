@@ -82,6 +82,8 @@ Status labels:
 
 **TAG v0.39.58 UI addendum:** Multiple generated Rumor entry choices remain side by side at normal app widths and wrap only on narrow mobile layouts. This changes presentation only; branch routing and typed scene procedures are unchanged. Tests: `tests/test_frontend_map_interactions.py`.
 
+**TAG v0.39.59 Scene 12 addendum:** Mutant Fish Under the Bridge now follows TAG p.29 as one typed persisted procedure. Every living hero makes the L5 hypnosis Save; chaos-tainted heroes fail automatically and an all-party failure destroys the party. Each rescue turn costs every trapped hero 1 Life, moves the selected living victim out, and rerolls the selected rescuer; a failed rescuer replaces the rescued victim in the water. Survival rolls `d6+3` Food rations once, records exactly two minor encounters in the active XP system, and offers a carrying-limit-aware Keep choice or sale at 2gp each, raised to 5gp by persistent campaign friendship with chaos cultists. Tests: `tests/test_tag_mutant_fish.py`, `tests/test_quests.py`, `tests/test_tag_campaign.py`, `tests/test_economy.py`, and `tests/test_frontend_map_interactions.py`.
+
 ## Indexed-but-not-playable audit
 
 | Indexed rule | Source | Status | Notes |

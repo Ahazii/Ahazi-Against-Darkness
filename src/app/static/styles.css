@@ -2577,8 +2577,9 @@ button.is-working::after {
   gap: 5px;
 }
 
-.map-log-row:has(.medusa-scene10-choice) {
-  height: min(max(var(--log-panel-height, 240px), 300px), 58vh);
+.map-log-row:has(.medusa-scene10-choice),
+.map-log-row:has(.mutant-fish-scene12-guided) {
+  height: max(var(--log-panel-height, 240px), 300px);
 }
 
 .current-objective-banner:has(.medusa-scene10-choice) {
@@ -5430,8 +5431,62 @@ button.modern-dashboard-status-icon {
   min-height: 32px;
 }
 
+.mutant-fish-scene12-guided {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.mutant-fish-party-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mutant-fish-rescue-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mutant-fish-rescue-grid label,
+.mutant-fish-scene12-guided > label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mutant-fish-rescue-grid select,
+.mutant-fish-scene12-guided > label select {
+  width: 100%;
+  min-width: 0;
+}
+
+.mutant-fish-reward-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 7px;
+}
+
 @media (max-width: 520px) {
+  .map-log-row:has(.mutant-fish-scene12-guided) {
+    height: 440px;
+    max-height: 72vh;
+  }
+
   .current-objective-banner.narrative-choices .current-objective-actions {
+    flex-wrap: wrap;
+  }
+
+  .mutant-fish-rescue-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mutant-fish-reward-actions {
     flex-wrap: wrap;
   }
 }

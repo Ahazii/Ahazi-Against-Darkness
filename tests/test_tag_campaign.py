@@ -1499,7 +1499,7 @@ def test_tag_rumor_manifests_include_contextual_scene_procedure_prompts() -> Non
     expected_actions = {
         "1": {"bofto_theft_save"},
         "3": {"tag_ambush_chance"},
-        "4": {"mutant_fish_hypnosis", "mutant_fish_rations", "mark_minor_encounters"},
+        "4": {"mutant_fish_scene12"},
         "5": {"dragon_type_reveal"},
         "6": {"leprechaun_shoes", "leprechaun_illusion_spell"},
         "7": {"temple_dungeon_handoff"},
@@ -1536,6 +1536,8 @@ def test_mutant_fish_rumor_is_hypnosis_procedure_not_proxy_boss() -> None:
     assert "encounter" not in final_room["triggers"][0]
     assert "no combat stats" in final_room["description"]
     assert "bridge pool scene is active" in final_room["triggers"][0]["log"].lower()
+    actions = reference["room_prompts"]["tag-final-scene"]["actions"]
+    assert [action["action_value"] for action in actions] == ["mutant_fish_scene12"]
 
 
 def test_all_tag_rumor_manifests_include_playthrough_audit_guidance() -> None:
@@ -1781,7 +1783,7 @@ def test_generated_tag_reward_policy_boundaries_are_explicit() -> None:
     rumor4, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
     fish_policy = rumor4["source"]["parameters"]["tag_reference"]["reward_policy"]
     assert fish_policy["class"] == "scene_reward_button"
-    assert "Fish rations" in fish_policy["actions"]
+    assert "Resolve mutant fish rescue and reward" in fish_policy["actions"]
     assert "ordinary" not in fish_policy["expectation"].lower()
 
     rumor11, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="11")

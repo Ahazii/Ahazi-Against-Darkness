@@ -241,6 +241,32 @@ def grant_xp_credit(session: SessionState, amount: int, reason: str) -> None:
     session.log.append(f"{reason} Earned {amount} XP roll(s). Assign from party sheets.")
 
 
+def record_minor_encounter_progress(
+    session: SessionState,
+    count: int,
+    *,
+    reason: str = "Minor encounter",
+    show_rolls: bool = True,
+) -> None:
+    """Record non-combat procedures that explicitly count as minor encounters."""
+    if count <= 0 or session.xp_system in {"slow_and_sure", "old_school"}:
+        return
+    for _ in range(count):
+        session.minor_encounters_defeated += 1
+        progress = session.minor_encounters_defeated
+        if show_rolls:
+            session.log.append(
+                f"{reason}: minor encounter progress {progress}/{MINOR_ENCOUNTERS_FOR_XP}."
+            )
+        if progress >= MINOR_ENCOUNTERS_FOR_XP:
+            session.minor_encounters_defeated -= MINOR_ENCOUNTERS_FOR_XP
+            grant_xp_credit(
+                session,
+                1,
+                f"{MINOR_ENCOUNTERS_FOR_XP} minor encounters:",
+            )
+
+
 def award_encounter_xp(session: SessionState, defeated: list[EnemyState], *, show_rolls: bool) -> None:
     """Award encounter XP according to the active campaign mode and foe mix."""
     if not defeated:
@@ -292,10 +318,13 @@ def award_encounter_xp(session: SessionState, defeated: list[EnemyState], *, sho
         target = ABYSS_MINION_ENCOUNTERS_FOR_XP
         label = "Abyss minion"
     else:
-        session.minor_encounters_defeated += 1
-        progress = session.minor_encounters_defeated
-        target = MINOR_ENCOUNTERS_FOR_XP
-        label = "minor"
+        record_minor_encounter_progress(
+            session,
+            1,
+            reason="Minor encounter cleared",
+            show_rolls=show_rolls,
+        )
+        return
     if show_rolls:
         session.log.append(
             f"{label.title()} encounter cleared ({progress}/{target} toward next XP credit)."
