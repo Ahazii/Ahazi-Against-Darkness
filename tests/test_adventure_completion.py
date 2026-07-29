@@ -1,5 +1,5 @@
 from app.engine.adventure_completion import AdventureCompletionCallbacks, complete_adventure
-from app.schemas import MapState, PartyMemberState, SessionState, TileState
+from app.schemas import AlchemistOrderState, MapState, PartyMemberState, SessionState, TileState
 
 
 def _session(*, xp_system: str = "classical") -> SessionState:
@@ -70,3 +70,19 @@ def test_complete_adventure_applies_standard_exit_sequence() -> None:
     assert session.party[0].current_life == session.party[0].max_life
     assert session.summary[0] == "Explored 1 map element."
     assert any("Slow and Sure" in line for line in session.log)
+
+
+def test_complete_adventure_puts_commission_delivery_in_summary() -> None:
+    session = _session()
+    session.alchemist_order = AlchemistOrderState(
+        potion_id="potion_of_healing",
+        potion_name="Potion of Healing",
+        character_id="hero",
+        difficulty=0,
+        material_gp=10,
+    )
+
+    assert complete_adventure(session, callbacks=_callbacks([]))
+
+    assert "Potion of Healing" in session.party[0].inventory
+    assert "Town return: Hero receives Potion of Healing." in session.summary

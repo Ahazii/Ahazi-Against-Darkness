@@ -1536,20 +1536,25 @@ def return_porter_cargo(session: SessionState) -> list[str]:
     return log
 
 
-def clear_hirelings_on_dungeon_exit(session: SessionState) -> None:
+def clear_hirelings_on_dungeon_exit(session: SessionState) -> list[str]:
     from .alchemist_potions import resolve_alchemist_on_dungeon_exit
 
-    session.log.extend(resolve_alchemist_on_dungeon_exit(session))
+    homecoming_log = resolve_alchemist_on_dungeon_exit(session)
+    session.log.extend(homecoming_log)
     cargo_log = return_porter_cargo(session)
     session.log.extend(cargo_log)
+    homecoming_log.extend(cargo_log)
     if session.hirelings:
-        session.log.append("Retainers return home when the party leaves the dungeon.")
+        retainer_log = "Retainers return home when the party leaves the dungeon."
+        session.log.append(retainer_log)
+        homecoming_log.append(retainer_log)
     session.hirelings = []
     session.professional_buffs = {}
     session.professional_services_used = 0
     from .courtship_professional_skills import clear_professional_skill_uses
 
     clear_professional_skill_uses(session)
+    return homecoming_log
 
 
 def hirelings_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:

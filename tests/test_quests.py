@@ -392,6 +392,34 @@ def test_generated_tag_result_pause_blocks_dungeon_actions() -> None:
     )
 
 
+def test_generated_tag_continue_keeps_closeout_pending_when_xp_blocks_completion(client) -> None:
+    session = base_session(
+        id="tag-closeout-xp-blocked",
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="tag_generated_scene",
+            description="Resolved scene.",
+            completed=True,
+        ),
+        tag_generated_completion_pending=True,
+        tag_generated_completion_title="Resolved scene",
+        tag_generated_completion_body="Return to town when ready.",
+        xp_rolls_pending=1,
+    )
+    main.store.save("sessions", session)
+
+    response = client.post(
+        "/api/sessions/tag-closeout-xp-blocked/tag-generated-lead-continue"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "exploration"
+    assert payload["tag_generated_completion_pending"] is True
+    assert payload["tag_generated_completion_title"] == "Resolved scene"
+    assert any("XP roll" in line and "before completing" in line for line in payload["log"])
+
+
 def test_legacy_leprechaun_manifest_upgrades_to_vendor_finale() -> None:
     manifest = {
         "title": "TAG Guild Job 4: Leprechauns at Blackbird Hill",
@@ -1624,6 +1652,65 @@ def test_medusa_scene10_group_stealth_persists_choice_and_stages_immediate_fight
     assert enemy["level"] == 6
     assert enemy["life"] == 4
     assert fight_session["map_state"]["tiles"][0]["treasure_gold"] == 8
+
+
+def test_medusa_scene10_return_to_town_repairs_completed_route_and_opens_closeout(client) -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="2")
+    tile = TileState(
+        id="approach",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Approach to the Hunter's Cabin",
+        description="The party reaches the cabin.",
+        content_key="imported:tag-final-scene",
+    )
+    session = base_session(
+        id="medusa-scene10-town-return",
+        adventure_id=manifest["id"],
+        adventure_type="imported",
+        imported_manifest=manifest,
+        map_state=MapState(tiles=[tile], current_tile_id=tile.id),
+        active_quest=ActiveQuestState(
+            tile_id=tile.id,
+            key="tag_generated_scene",
+            description="Reach Xasartha's cabin.",
+            completed=True,
+            tag_procedure_state={
+                "medusa_scene10": {
+                    "completed": True,
+                    "phase": "cabin_choice",
+                }
+            },
+        ),
+    )
+    main.store.save("sessions", session)
+
+    returned = client.post(
+        "/api/sessions/medusa-scene10-town-return/tag-route-action",
+        json={
+            "route_action": "final_route",
+            "reference": "Scene 10: return to town",
+        },
+    )
+
+    assert returned.status_code == 200
+    returned_session = returned.json()["session"]
+    assert returned_session["mode"] == "exploration"
+    assert returned_session["tag_generated_completion_pending"] is True
+    assert returned_session["active_quest"]["tag_procedure_state"]["medusa_scene10"]["phase"] == "returned_to_town"
+    assert "returns to town" in returned_session["tag_generated_completion_body"]
+
+    completed = client.post(
+        "/api/sessions/medusa-scene10-town-return/tag-generated-lead-continue"
+    )
+
+    assert completed.status_code == 200
+    completed_session = completed.json()
+    assert completed_session["mode"] == "complete"
+    assert completed_session["tag_generated_completion_pending"] is False
+    assert "Quest objective complete." in completed_session["summary"]
 
 
 def test_medusa_scene10_failed_parley_gives_assassins_first_action(client, monkeypatch) -> None:

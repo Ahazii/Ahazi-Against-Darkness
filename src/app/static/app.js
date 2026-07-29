@@ -26423,6 +26423,7 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
       )
     );
     if (sceneState.phase === "cabin_choice" || assassinVictory) {
+      const routeChoices = node("div", "medusa-scene10-route-choices");
       const approach = node("button", "primary", "Approach the cabin");
       approach.type = "button";
       setButtonTooltip(
@@ -26436,21 +26437,31 @@ function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
           amount: 0,
         }).catch(handleError)
       );
-      wrap.appendChild(approach);
+      routeChoices.appendChild(approach);
       const leave = node("button", "secondary", "Return to town");
       leave.type = "button";
       setButtonTooltip(
         leave,
-        "End this rumor investigation and return to town, as allowed at the end of TAG p.28 Scene 10."
+        "TAG p.28 Scene 10: end this rumor investigation and return to town. The app completes the adventure, resolves homecoming deliveries, and opens the adventure summary."
       );
-      leave.addEventListener("click", () =>
-        runTagRouteActionWithDefaults({
+      leave.addEventListener("click", async () => {
+        leave.disabled = true;
+        try {
+          await runTagRouteActionWithDefaults({
           routeAction: "final_route",
           reference: "Scene 10: return to town",
           amount: 0,
-        }).catch(handleError)
-      );
-      wrap.appendChild(leave);
+          });
+          if (state.session?.tag_generated_completion_pending) {
+            await continueGeneratedTagLead();
+          }
+        } catch (error) {
+          leave.disabled = false;
+          handleError(error);
+        }
+      });
+      routeChoices.appendChild(leave);
+      wrap.appendChild(routeChoices);
     }
   }
   parent.appendChild(wrap);
@@ -27221,10 +27232,14 @@ async function continueGeneratedTagLead() {
   syncSessionListFromSession(state.session);
   if (state.session.mode === "complete") {
     await finishCompletedAdventureClient(state.session);
+    setStatus("Adventure complete. Review the summary and campaign closeout tasks.");
   } else {
     renderSession();
+    setStatus(
+      state.session.log?.[state.session.log.length - 1]
+      || "Resolve the remaining closeout requirement before returning to town."
+    );
   }
-  setStatus("Adventure complete. Review the summary and campaign closeout tasks.");
 }
 
 function generatedTagPromptActionDefaults(action = {}, fallbackReference = "", tagReference = {}) {

@@ -2861,6 +2861,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert '"Offer selected gem"' in APP_JS
     assert '"Sell without trying it on"' in APP_JS
     assert '"Return to town"' in APP_JS
+    assert "medusa-scene10-route-choices" in APP_JS
+    assert ".medusa-scene10-route-choices" in STYLES_CSS
+    assert "await continueGeneratedTagLead();" in APP_JS
     assert "gargoyle_skin" in APP_JS
     assert "star-shaped object curse" in APP_JS.lower()
     assert "Following Treasure Map table" in INDEX_HTML

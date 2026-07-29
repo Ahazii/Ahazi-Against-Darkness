@@ -65,7 +65,7 @@ def complete_adventure(
         callbacks.complete_level_up(session, target)
         session.log.append(f"Slow and Sure: {target.name} gains 1 Level for completing the adventure.")
     callbacks.reset_between_foray_resources(session)
-    clear_hirelings_on_dungeon_exit(session)
+    homecoming_log = clear_hirelings_on_dungeon_exit(session)
     for member in survivors:
         member.current_life = member.max_life
     for member in session.party:
@@ -77,6 +77,7 @@ def complete_adventure(
         f"{len(survivors)} of {len(session.party)} party members left the dungeon.",
         "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
     ]
+    session.summary.extend(f"Town return: {line}" for line in homecoming_log)
     if session.adventure_type == "imported":
         quest = session.active_quest
         if quest and not quest.completed:

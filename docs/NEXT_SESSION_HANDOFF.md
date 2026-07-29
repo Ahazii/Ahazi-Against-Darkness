@@ -1,5 +1,13 @@
 # Next Session Handoff
 
+Current release is **v0.39.60**. Live session
+`9268a7158f41482d90d16f4ec3946f46` is a completed-but-not-closed Rumor 2
+Scene 10 cabin choice. Deploy and force-refresh, resume it, and click the
+horizontal **Return to town** action once. It must complete the adventure,
+open the summary, and return to the dashboard; any alchemist delivery or
+porter cargo would be resolved automatically and listed in the summary.
+After that narrow repair passes, begin the v0.39.59 Rumor 4 Scene 12 checklist.
+
 Last updated: 2026-07-29. Repository branch: `main`. Latest release: `v0.39.59`.
 
 ## Start Here

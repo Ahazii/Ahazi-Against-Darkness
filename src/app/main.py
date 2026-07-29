@@ -4983,6 +4983,12 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "player_ui": "Keep this choice visually separate from the Streetwise selector.",
             "source": "TAG p.28",
         },
+        {
+            "step": "Cabin choice",
+            "rule": "Approach the cabin or return to town after a successful approach or victory over the agents.",
+            "player_ui": "Show both choices in one row. Return to town completes the adventure and exposes homecoming deliveries in its summary.",
+            "source": "TAG p.28; app adventure-closeout workflow",
+        },
     ]
     data["tag_medusa_scene1_reaction_table"] = [
         {
@@ -7211,6 +7217,10 @@ async def continue_generated_tag_lead(session_id: str) -> SessionState:
     quest = session.active_quest
     if quest is not None and not quest.completed:
         raise HTTPException(status_code=400, detail="The generated Adventures Guild scene is not resolved yet.")
+    random_engine._complete_dungeon(session)
+    if session.mode != "complete":
+        store.save("sessions", session)
+        return enrich_session(session)
     if quest is not None:
         state = dict(quest.tag_generated_lead_state or {})
         closeout = dict(state.get("closeout") or {})
@@ -7224,9 +7234,7 @@ async def continue_generated_tag_lead(session_id: str) -> SessionState:
     session.tag_generated_completion_pending = False
     session.tag_generated_completion_title = None
     session.tag_generated_completion_body = None
-    random_engine._complete_dungeon(session)
-    if session.mode == "complete":
-        _persist_completed_session(session)
+    _persist_completed_session(session)
     store.save("sessions", session)
     return enrich_session(session)
 
@@ -7871,15 +7879,21 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
         rewrite_result = f"Applied route marker to active session: {changed_detail}."
     tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference")
     route_action = str(payload.get("route_action") or "parley_success")
+    route_reference = str(payload.get("reference") or "")
+    medusa_scene10_town_return = (
+        route_action == "final_route"
+        and _is_medusa_generated_session(session)
+        and "scene 10" in route_reference.casefold()
+        and "return to town" in route_reference.casefold()
+    )
     if route_action == "unlock_scene" and isinstance(tag_ref, dict):
         record_session_tag_rumor_state(campaign, session, status="investigating")
-        _move_generated_tag_scene_target(session, tag_ref=tag_ref, reference=str(payload.get("reference") or ""))
+        _move_generated_tag_scene_target(session, tag_ref=tag_ref, reference=route_reference)
     if route_action == "final_route" and session.active_quest is not None and not session.active_quest.completed:
-        reference = str(payload.get("reference") or "")
         record_session_tag_rumor_state(
             campaign,
             session,
-            status="heard" if "do not investigate" in reference.lower() else "resolved",
+            status="heard" if "do not investigate" in route_reference.lower() else "resolved",
         )
         session.active_quest.completed = True
         state = dict(session.active_quest.tag_generated_lead_state or {})
@@ -7888,6 +7902,23 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
         state["next_action"] = "Generated Adventures Guild scene resolved. Review reward, XP, Guild share, banking/storage, and closeout signoff."
         session.active_quest.tag_generated_lead_state = state
         session.log.append("Quest complete: generated Adventures Guild scene resolved.")
+    if medusa_scene10_town_return and session.active_quest is not None:
+        procedure_state = dict(session.active_quest.tag_procedure_state or {})
+        medusa_state = dict(procedure_state.get("medusa_scene10") or {})
+        medusa_state["phase"] = "returned_to_town"
+        medusa_state["updated_at"] = now_utc()
+        procedure_state["medusa_scene10"] = medusa_state
+        session.active_quest.tag_procedure_state = procedure_state
+        record_session_tag_rumor_state(campaign, session, status="resolved")
+        _mark_generated_tag_lead_complete(
+            session,
+            title="Medusa in the Hunter's Cabin resolved",
+            outcome="The party chose not to approach Xasartha's cabin and returned safely to town.",
+            narrative=(
+                "The party leaves the hunter's cabin undisturbed and returns to town. "
+                "The rumor investigation ends without confronting Xasartha."
+            ),
+        )
     if character is not None:
         store.save("characters", character)
         _sync_character_to_session_party(session, character)
