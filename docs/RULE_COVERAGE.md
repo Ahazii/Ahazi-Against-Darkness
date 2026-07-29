@@ -80,6 +80,8 @@ Status labels:
 
 **TAG v0.39.57 UI addendum:** Generated Rumor entry branch choices now render immediately beneath the player-facing Narrative prompt. Internal Director phase, lifecycle, and lead-family playbook prose are excluded from this decision strip, which remains visible when Objective Details is hidden. Rumor 2 still routes the investigate choice into its typed TAG p.28 Scene 10 procedure. Tests: `tests/test_frontend_map_interactions.py`, plus a disposable visual/click-through clone of reported session `9268a7158f41482d90d16f4ec3946f46`.
 
+**TAG v0.39.58 UI addendum:** Multiple generated Rumor entry choices remain side by side at normal app widths and wrap only on narrow mobile layouts. This changes presentation only; branch routing and typed scene procedures are unchanged. Tests: `tests/test_frontend_map_interactions.py`.
+
 ## Indexed-but-not-playable audit
 
 | Indexed rule | Source | Status | Notes |

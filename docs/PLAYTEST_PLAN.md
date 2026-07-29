@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-29. Target build: v0.39.57.
+Last updated: 2026-07-29. Target build: v0.39.58.
 
 ## Adventure Test Gate: Passed
 
@@ -62,7 +62,8 @@ the needed reaction.
 
 ## Do Next
 
-v0.39.57 fixes the reported generated Rumor entry regression. After deploying
+v0.39.58 fixes the reported generated Rumor entry regression and keeps its
+multiple choices in one row at normal app widths. After deploying
 and force-refreshing, resume session `9268a7158f41482d90d16f4ec3946f46` and
 confirm:
 
@@ -71,6 +72,7 @@ confirm:
 2. No visible player text contains `Entry`, `Rumor playbook`, `record the
    approach`, or other Director/workflow instructions.
 3. The two choices remain visible with Objective Details hidden.
+4. The two choices are side by side rather than stacked vertically.
 
 The disposable local clone already confirmed that **Choose to investigate**
 advances to the exact Scene 10 Narrative and typed **Roll group Stealth Save**

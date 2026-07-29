@@ -3584,8 +3584,8 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "control": "Narrative",
             "affects": "The live adventure text stream formerly labelled Log.",
-            "player_use": "Read room prose, procedure results, combat summaries, treasure notices, and closeout guidance. Generated Rumor entry decisions appear directly beneath this stream.",
-            "automation": "Summary/Verbose changes how much roll and lookup detail is visible. Rumor entry choices remain visible even when Objective Details is hidden.",
+            "player_use": "Read room prose, procedure results, combat summaries, treasure notices, and closeout guidance. Generated Rumor entry decisions appear directly beneath this stream, side by side when more than one choice is available.",
+            "automation": "Summary/Verbose changes how much roll and lookup detail is visible. Rumor entry choices remain visible even when Objective Details is hidden and wrap only on narrow mobile layouts.",
         },
         {
             "control": "Current Objective",

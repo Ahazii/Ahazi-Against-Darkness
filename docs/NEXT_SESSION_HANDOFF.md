@@ -1,6 +1,6 @@
 # Next Session Handoff
 
-Last updated: 2026-07-29. Repository branch: `main`. Latest release: `v0.39.57`.
+Last updated: 2026-07-29. Repository branch: `main`. Latest release: `v0.39.58`.
 
 ## Start Here
 
@@ -26,14 +26,15 @@ focused automation. v0.39.55 completes TAG p.65 Temporary Weapon Enchantment
 timing without reopening the passed Gremlin/Iron Eater decisions. v0.39.56
 implements Daroc's Lost Familiar (TAG p.27, Scene 5) as a typed town-Clue
 procedure. v0.39.57 restores generated Rumor entry choices to the bottom of
-Narrative without internal Director/playbook prose. Do not repeat the whole
+Narrative without internal Director/playbook prose. v0.39.58 keeps multiple
+Rumor entry choices side by side at normal app widths. Do not repeat the whole
 Rumor 2 module or any Gremlin fight.
 
-## Implemented Through v0.39.57
+## Implemented Through v0.39.58
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25-31, and 65.
 
-- Generated Rumor entry branch buttons render immediately beneath Narrative, remain visible when Objective Details is hidden, and exclude internal Director phase, lifecycle, and lead-family playbook prose. A disposable clone of reported session `9268a7158f41482d90d16f4ec3946f46` confirmed **Choose to investigate** still reaches the typed Scene 10 group-Stealth control.
+- Generated Rumor entry branch buttons render immediately beneath Narrative, remain visible when Objective Details is hidden, and exclude internal Director phase, lifecycle, and lead-family playbook prose. Multiple choices remain side by side at normal app widths and wrap only on narrow mobile layouts. A disposable clone of reported session `9268a7158f41482d90d16f4ec3946f46` confirmed **Choose to investigate** still reaches the typed Scene 10 group-Stealth control.
 - Daroc's Lost Familiar counts only Clues generated in town with Streetwise, marks that provenance when Look for Clues succeeds, and spends two eligible Clues. The cost is one when the party includes a Druid, Beastmaster, cat-like hero, or cat animal companion. The selected living hero receives 100gp and the party receives exactly one pending XP roll (TAG p.27, Scene 5). Crucible of Classic Critters pp.11-15 remains the future source for full Beastmaster and animal-companion implementation; Scene 5 reads shared metadata so that later work can connect without a second rule path.
 - Temporary Weapon Enchantment records its cast and day-seven campaign expiry, functions as magic without an Attack bonus, and expires at encounter end after an attack against a strictly magic-only foe. The attack may hit or miss. Adventure completion and settlement travel advance the clock; legacy markers receive a full week from first advancement. Manual early clear is removed while the existing Gremlin/Iron Eater loss choice remains unchanged (TAG p.65).
 - Xasartha reaction `1` persists its `6d6` demand and offers exact carried-gold, eligible 15gp+ gem/jewel, or refusal choices. Defeat persists `2d6` necros and a wear-or-sell pendant choice. The pendant is not consumed when Luck is spent; its separate counter survives camp/re-entry and recharges only with a new adventure. It grants one point, or two additional points to a halfling. Barbarians cannot wear it.
@@ -83,6 +84,7 @@ Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat i
 
 ## Recent Releases
 
+- `v0.39.58`: keep multiple generated Rumor entry choices side by side at normal app widths.
 - `v0.39.57`: restore generated Rumor entry decisions beneath Narrative and suppress internal objective prose.
 - `v0.39.56`: automate Daroc's Lost Familiar town-Clue cost, selected 100gp recipient, and one pending XP roll.
 - `v0.39.55`: automate Temporary Weapon Enchantment's seven-day and qualifying magic-only encounter expiry.

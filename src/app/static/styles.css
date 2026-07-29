@@ -5420,12 +5420,20 @@ button.modern-dashboard-status-icon {
 
 .current-objective-banner.narrative-choices .current-objective-actions {
   display: flex;
+  flex-wrap: nowrap;
   gap: 7px;
   min-width: 0;
 }
 
 .current-objective-banner.narrative-choices .current-objective-actions button {
+  flex: 0 1 auto;
   min-height: 32px;
+}
+
+@media (max-width: 520px) {
+  .current-objective-banner.narrative-choices .current-objective-actions {
+    flex-wrap: wrap;
+  }
 }
 
 .tag-lifecycle-strip {

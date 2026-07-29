@@ -2375,6 +2375,12 @@ def test_generated_rumor_entry_choices_stay_beneath_narrative_without_internal_o
     assert "const lifecycle = !objective.narrativeChoices" in render_body
     assert "action.primary || action.kind" in append_body
     assert ".current-objective-banner.narrative-choices.panel-user-hidden" in STYLES_CSS
+    narrative_choice_styles = STYLES_CSS.split(
+        ".current-objective-banner.narrative-choices .current-objective-actions {", 1
+    )[1].split("}", 1)[0]
+    assert "flex-wrap: nowrap;" in narrative_choice_styles
+    assert "@media (max-width: 520px)" in STYLES_CSS
+    assert "flex-wrap: wrap;" in STYLES_CSS.split("@media (max-width: 520px)", 1)[1]
 
 
 def test_treasure_choice_buttons_include_concrete_weapon_picks() -> None:
