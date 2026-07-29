@@ -7937,6 +7937,9 @@ function foeChipTitle(displayName, typeLabel, foe) {
 
 function statusChipTooltip(label) {
   const lower = String(label || "").toLowerCase();
+  if (lower === "tag town streetwise clue") {
+    return "TAG p.27, Scene 5: this Clue was generated in town by Look for Clues, so it may be spent to find Daroc's lost familiar. Older and dungeon Clues do not qualify.";
+  }
   if (lower.startsWith("tag temporary weapon enchantment:")) {
     const expiry = lower.match(/expires day\s+(\d+)/)?.[1];
     return (
@@ -17716,6 +17719,7 @@ const RULES_TABLE_ORDER = [
   "invisible_gremlins_procedure_table",
   "tag_bag_of_carrying_table",
   "tag_temporary_weapon_enchantment_table",
+  "tag_daroc_scene5_procedure_table",
   "tag_medusa_scene10_procedure_table",
   "tag_medusa_scene1_reaction_table",
   "tag_rumor_lifecycle_table",
@@ -20518,6 +20522,10 @@ function appendCurrentObjectiveButton(parent, action) {
         }
         if (["medusa_stealth_approach", "medusa_reaction"].includes(defaults.branchAction)) {
           appendMedusaScene1GuidedAction(parent, action.promptAction, action.fallbackReference);
+          return;
+        }
+        if (defaults.sceneAction === "daroc_cat") {
+          appendDarocGuidedAction(parent, action.promptAction, action.fallbackReference);
           return;
         }
         const directBranch = directTagBranchAllowed(defaults);
@@ -25993,6 +26001,82 @@ function appendBoftoTheftGuidedAction(parent, action, fallbackReference) {
   return true;
 }
 
+function appendDarocGuidedAction(parent, action, fallbackReference) {
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  if (defaults.sceneAction !== "daroc_cat") return false;
+  const stateView = state.session?.tag_daroc_familiar_state || {};
+  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+  const required = Math.max(1, Number(stateView.required_clues || 2));
+  const available = Math.max(0, Number(stateView.available_clues || 0));
+  const holders = Array.isArray(stateView.holders) ? stateView.holders : [];
+  const wrap = node("div", "tag-context-guided-action");
+  setTooltip(
+    wrap,
+    "TAG p.27, Scene 5: only Clues generated in town with Streetwise count. The normal cost is two Clues, reduced to one if the party has a Beastmaster, Druid, cat-like character, or cat animal companion."
+  );
+  wrap.appendChild(node("strong", "", "Find Daroc's lost cat"));
+  if (stateView.resolved) {
+    wrap.appendChild(subline("Daroc's cat has been found. The 100 gp and one pending XP roll were already awarded."));
+    parent.appendChild(wrap);
+    return true;
+  }
+  const discount = String(stateView.discount_reason || "");
+  wrap.appendChild(
+    subline(
+      `Town Streetwise Clues: ${available}/${required}.` +
+        (discount ? ` One-Clue exception: ${discount}.` : " No one-Clue exception currently applies.")
+    )
+  );
+  wrap.appendChild(
+    subline(
+      holders.length
+        ? `Eligible holders: ${holders.map((holder) => `${holder.name} ${holder.clues}`).join("; ")}.`
+        : "No eligible town Streetwise Clues are recorded. Use Look for Clues in the settlement; older or dungeon Clues do not count."
+    )
+  );
+  const field = document.createElement("label");
+  field.className = "medusa-scene10-field";
+  field.appendChild(node("span", "", "Who receives Daroc's 100 gp?"));
+  const select = document.createElement("select");
+  setTooltip(select, "Choose the living party member who receives the 100 gp reward. The XP roll is added to the party's normal pending XP pool.");
+  for (const member of living) {
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = `${member.name} (${member.class_name || titleCase(member.class_id || "hero")})`;
+    select.appendChild(option);
+  }
+  field.appendChild(select);
+  wrap.appendChild(field);
+  const btn = node("button", "primary", "Spend Clues and find the cat");
+  btn.type = "button";
+  btn.disabled = !living.length || available < required;
+  setButtonTooltip(
+    btn,
+    available < required
+      ? `The party needs ${required - available} more town Streetwise Clue(s).`
+      : "Consume the required marked town Clues across the living party, give the selected hero 100 gp, add one pending XP roll, and resolve Rumor 9."
+  );
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Finding...";
+    try {
+      await runTagSceneActionWithDefaults({
+        ...defaults,
+        characterId: select.value,
+      });
+    } catch (error) {
+      handleError(error);
+      btn.disabled = !living.length || available < required;
+    } finally {
+      btn.textContent = originalText;
+    }
+  });
+  wrap.appendChild(btn);
+  parent.appendChild(wrap);
+  return true;
+}
+
 function appendMedusaScene10GuidedAction(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
   if (defaults.branchAction !== "medusa_group_stealth") return false;
@@ -26993,6 +27077,7 @@ function renderTagRelevantActions(session = state.session) {
     if (appendBoftoTheftGuidedAction(row, action, fallback)) continue;
     if (appendMedusaScene10GuidedAction(row, action, fallback)) continue;
     if (appendBoftoScene19GuidedAction(row, action, fallback)) continue;
+    if (appendDarocGuidedAction(row, action, fallback)) continue;
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
     const tooltip = String(action.tooltip || "Prefill Adventures Guild Actions from the current generated-room prompt.");
@@ -27042,6 +27127,7 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
     if (appendMedusaScene10GuidedAction(row, action, fallbackReference)) continue;
     if (appendMedusaScene1GuidedAction(row, action, fallbackReference)) continue;
     if (appendBoftoScene19GuidedAction(row, action, fallbackReference)) continue;
+    if (appendDarocGuidedAction(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
     if (defaults.sceneAction === "deoldyn_training") {

@@ -339,6 +339,7 @@ def _icons_payload() -> list[IconDefinition]:
 
 
 def enrich_session(session: SessionState) -> SessionState:
+    from .engine.tag_daroc import daroc_familiar_view
     from .engine.terrain import resolve_play_context
     from .schemas import PlayContextView
 
@@ -356,6 +357,21 @@ def enrich_session(session: SessionState) -> SessionState:
         session.imported_manifest,
         current_room_id=_imported_room_id_for_tile(session, tile),
         active_quest_state=active_tag_state,
+    )
+    daroc_state = (
+        dict((session.active_quest.tag_procedure_state or {}).get("daroc_familiar") or {})
+        if session.active_quest is not None
+        else {}
+    )
+    session.tag_daroc_familiar_state = (
+        daroc_familiar_view(
+            session.party,
+            active_companion_kind=session.druid_companion_kind,
+            active_companion_life=session.druid_companion_life,
+            resolved=bool(daroc_state.get("resolved")),
+        )
+        if _is_daroc_generated_session(session)
+        else {}
     )
     ok, reason = rest_eligibility(session, tile)
     session.rest_available = ok
@@ -4456,6 +4472,32 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "source": "TAG p.65, Temporary Weapon Enchantment",
         },
     ]
+    data["tag_daroc_scene5_procedure_table"] = [
+        {
+            "step": "Generate Clues",
+            "rule": "Only Clues generated in town with Streetwise rolls count; Clues from previous adventures do not.",
+            "automation": "A successful settlement Look for Clues action records one provenance marker on the receiving character.",
+            "source": "TAG p.27, Scene 5",
+        },
+        {
+            "step": "Determine cost",
+            "rule": "Spend two eligible Clues, reduced to one with a Beastmaster, Druid, cat-like character, or cat animal companion.",
+            "automation": "The app checks the living party and active companion, including metadata identities reserved for later Crucible promotion.",
+            "source": "TAG p.27, Scene 5; Crucible pp.11-15 future identity source",
+        },
+        {
+            "step": "Find the familiar",
+            "rule": "Once enough eligible Clues are generated, the party finds Daroc's cat.",
+            "automation": "The guided Scene 5 panel consumes marked Clues across the living party and prevents duplicate resolution.",
+            "source": "TAG p.27, Scene 5",
+        },
+        {
+            "step": "Reward",
+            "rule": "Receive 100 gp and one XP roll.",
+            "automation": "The selected living hero receives 100 gp and the session gains one normal pending XP roll.",
+            "source": "TAG p.27, Scene 5",
+        },
+    ]
     data["tag_rumor_lifecycle_table"] = [
         {
             "state": "heard",
@@ -4599,7 +4641,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "surface": "Finale mode profiles",
             "shown_in": "Generated Rumor and Guild Job modules.",
-            "player_use": "Marks choice, procedure, service, and vendor finales so Bofto's star object, the false paladin-sword trail, Mutant Fish Under the Bridge, Daroc's familiar, Deoldyn's training, the leprechaun bargain, and A Portrait in Red resolve through scene-specific buttons instead of proxy foes. Sewer Search now uses the named thief final boss instead of a sewer-danger proxy. Generated Adventures Guild imports block the core Epic Rewards table; use the scene reward/action buttons and closeout signoff instead.",
+            "player_use": "Marks choice, procedure, service, and vendor finales so Bofto's star object, the false paladin-sword trail, Mutant Fish Under the Bridge, Deoldyn's training, the leprechaun bargain, and A Portrait in Red resolve through scene-specific buttons instead of proxy foes. Daroc's familiar now uses its dedicated TAG p.27 Scene 5 town-Clue procedure. Sewer Search uses the named thief final boss instead of a sewer-danger proxy. Generated Adventures Guild imports block the core Epic Rewards table; use the scene reward/action buttons and closeout signoff instead.",
             "pdf_boundary": "The app may name supported choices and checked costs from indexed scene metadata, but the player still confirms receiver, spell, eligibility, exact optional ambush/hostile turns, and any printed consequence before applying it. Do not add a core Epic Reward unless a non-TAG quest source explicitly grants one.",
         },
         {
@@ -6582,6 +6624,18 @@ def _is_medusa_generated_session(session: SessionState) -> bool:
     return str(tag_ref.get("lead_type") or "").lower() == "rumor" and rumor_number == 2
 
 
+def _is_daroc_generated_session(session: SessionState) -> bool:
+    params = ((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}
+    tag_ref = params.get("tag_reference") if isinstance(params, dict) else None
+    if not isinstance(tag_ref, dict):
+        return False
+    try:
+        rumor_number = int(tag_ref.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    return str(tag_ref.get("lead_type") or "").lower() == "rumor" and rumor_number == 9
+
+
 def _medusa_scene10_state(session: SessionState) -> dict[str, Any]:
     quest = session.active_quest
     if quest is None:
@@ -7741,7 +7795,15 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
 
 @app.post("/api/sessions/{session_id}/tag-scene-action")
 async def session_tag_scene_action(session_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    from .engine.tag_campaign import load_campaign, resolve_tag_scene_action, save_campaign
+    from .engine.tag_campaign import (
+        append_tag_log,
+        load_campaign,
+        record_session_tag_rumor_state,
+        resolve_tag_scene_action,
+        save_campaign,
+    )
+    from .engine.clues import sync_clue_total
+    from .engine.tag_daroc import resolve_daroc_familiar
 
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
@@ -7750,6 +7812,67 @@ async def session_tag_scene_action(session_id: str, payload: dict[str, Any]) -> 
     if character is None:
         raise HTTPException(status_code=400, detail="Character is required.")
     scene_action = str(payload.get("scene_action") or "")
+    if scene_action == "daroc_cat":
+        if not _is_daroc_generated_session(session):
+            raise HTTPException(status_code=400, detail="Daroc's TAG p.27 Scene 5 is not active in this adventure.")
+        if session.active_quest is None:
+            raise HTTPException(status_code=400, detail="Daroc's generated quest state is missing.")
+        procedure_state = dict(session.active_quest.tag_procedure_state or {})
+        daroc_state = dict(procedure_state.get("daroc_familiar") or {})
+        if daroc_state.get("resolved"):
+            raise HTTPException(status_code=400, detail="Daroc's lost familiar has already been found.")
+        result = resolve_daroc_familiar(
+            session.party,
+            recipient_id=character.id,
+            active_companion_kind=session.druid_companion_kind,
+            active_companion_life=session.druid_companion_life,
+        )
+        sync_clue_total(session)
+        campaign = load_campaign(store)
+        entry = append_tag_log(
+            campaign,
+            action="daroc_cat",
+            character=character,
+            result_text=result.result_text,
+        )
+        if result.success:
+            session.xp_rolls_pending += 1
+            procedure_state["daroc_familiar"] = {
+                "resolved": True,
+                "required_clues": result.required_clues,
+                "discount_reason": result.discount_reason,
+                "recipient_id": result.recipient_id,
+                "result_text": result.result_text,
+            }
+            session.active_quest.tag_procedure_state = procedure_state
+            _mark_generated_tag_lead_complete(
+                session,
+                title="Daroc's lost familiar found",
+                outcome=result.result_text,
+                narrative=result.result_text,
+            )
+            record_session_tag_rumor_state(campaign, session, status="resolved")
+        session.log.append(f"Adventures Guild scene: {result.result_text}")
+        session.updated_at = now_utc()
+        campaign = save_campaign(store, campaign)
+        changed_ids = {member.character_id for member in session.party}
+        sync_party_members_to_roster(session, store, changed_ids)
+        sync_party_states_to_roster(session, store)
+        for member in session.party:
+            roster_character = store.get("characters", member.character_id, Character.model_validate)
+            if roster_character is None:
+                continue
+            roster_character.clues = member.clues
+            roster_character.updated_at = now_utc()
+            store.save("characters", roster_character)
+        store.save("sessions", session)
+        refreshed_character = store.get("characters", character.id, Character.model_validate)
+        return {
+            "campaign": campaign,
+            "character": refreshed_character,
+            "entry": entry,
+            "session": enrich_session(session),
+        }
     payment_member, carried_gold_before = _prepare_session_tag_payment_character(session, character, scene_action)
     campaign = load_campaign(store)
     entry = resolve_tag_scene_action(

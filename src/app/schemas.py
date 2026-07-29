@@ -1421,6 +1421,7 @@ class SessionState(BaseModel):
     imported_manifest: dict | None = None
     imported_quest_complete_when: dict | None = None
     generated_tag_diagnostics: dict[str, object] = Field(default_factory=dict)
+    tag_daroc_familiar_state: dict[str, object] = Field(default_factory=dict)
     play_context: PlayContextView | None = Field(default=None, exclude=True)
 
     @model_validator(mode="before")

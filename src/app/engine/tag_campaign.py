@@ -19,6 +19,7 @@ from .tag_scene_actions import (
     tag_scene_action_succeeded,
     tag_stealth_modifier,
 )
+from .tag_daroc import normalize_town_streetwise_clues, record_town_streetwise_clue
 from ..schemas import (
     CampaignEffectState,
     CampaignState,
@@ -1794,21 +1795,26 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_title": "The Familiar's Hiding Place",
         "final_description": "The familiar is found after the party pays the required Clue cost or qualifies for the reduced cat/beast route.",
         "finale_mode": "procedure",
-        "finale_instruction": "Confirm the Clue spend or reduced-Clue exception, then apply Daroc's reward. No fight is required by this scene unless your table adds one.",
-        "rewards": "100 gp and 1 XP.",
+        "finale_instruction": "Spend only Clues generated in town with Streetwise. The app derives the one-Clue party exception, consumes the eligible Clues, awards 100 gp, and adds one pending XP roll.",
+        "rewards": "100 gp and 1 XP roll.",
         "clue_gate_cost": 2,
         "clue_gate_label": "Spend town Clues for Daroc's familiar",
+        "replace_complication_prompt_actions": True,
         "final_prompt_actions": [
             {
-                "label": "Apply Daroc reward",
-                "tooltip": "Prefill Daroc's cat reward and pending XP marker.",
+                "label": "Find Daroc's cat",
+                "tooltip": "TAG p.27: spend two town Streetwise Clues, or one with a Beastmaster, Druid, cat-like character, or cat animal companion. Then choose who receives 100 gp; the party gains one pending XP roll.",
                 "action_type": "scene",
                 "action_value": "daroc_cat",
-                "reference": "Scene 5 Daroc cat reward",
+                "reference": "TAG p.27, Scene 5 Daroc's lost cat",
                 "amount": 100,
             }
         ],
-        "rules": ["This is a Clue-and-reward procedure; no mandatory proxy combat is installed."],
+        "rules": [
+            "Only Clues generated in town with Streetwise count.",
+            "The cost is one instead of two with a Beastmaster, Druid, cat-like character, or cat animal companion.",
+            "This is a Clue-and-reward procedure; no mandatory proxy combat is installed.",
+        ],
     },
     10: {
         "title": "Winged Things Over the Burgomaster's House",
@@ -3438,6 +3444,7 @@ def recover_hidden_treasure_trove(campaign: CampaignState, character: Character)
             result_text=f"{character.name} needs 4 Clues to recover the hidden treasure trove; current Clues {character.clues}.",
         )
     character.clues -= 4
+    normalize_town_streetwise_clues(character)
     roll = roll_d6()
     modifier = streetwise_modifier(character, action="interrogation")
     total = roll + modifier
@@ -3854,6 +3861,7 @@ def look_for_clues(
     if roll == 1:
         if character.clues > 0:
             character.clues -= 1
+            normalize_town_streetwise_clues(character)
             result = f"{character.name} rolled a natural 1 and lost 1 Clue."
         elif natural_one_consequence == "life":
             character.current_life = max(0, character.current_life - 1)
@@ -3864,7 +3872,8 @@ def look_for_clues(
             result = f"{character.name} rolled a natural 1 and lost {extra_loss} gp."
     elif total >= 6:
         character.clues += 1
-        result = f"{character.name} gained 1 Clue."
+        record_town_streetwise_clue(character)
+        result = f"{character.name} gained 1 town Streetwise Clue."
     else:
         result = f"{character.name} found no useful clue."
     result = f"{result}{spell_note}"
@@ -4453,6 +4462,7 @@ def resolve_tag_branch_action(
             parts.append(f"{character.name} needs {cost} Clue(s) but has {character.clues}.")
         else:
             character.clues -= cost
+            normalize_town_streetwise_clues(character)
             character.updated_at = now_utc()
             parts.append(f"{character.name} spends {cost} Clue(s); remaining Clues {character.clues}.")
     elif clean_action == "roll_variable_count":
@@ -5039,6 +5049,7 @@ def resolve_tag_route_action(
             parts.append(f"{character.name} needs {cost} Clue(s) but has {character.clues}; route remains blocked.")
         else:
             character.clues -= cost
+            normalize_town_streetwise_clues(character)
             character.updated_at = now_utc()
             parts.append(f"{character.name} spends {cost} Clue(s); route is unlocked and remaining Clues are {character.clues}.")
     elif action == "clue_gate_blocked":
@@ -5768,9 +5779,11 @@ def resolve_tag_scene_action(
         character.gold += 150
         result = f"{character.name} claims the Shaura cult reward: 150 gp. Record XP from the final fight normally."
     elif action == "daroc_cat":
-        character.gold += 100
-        character.statuses.append("TAG Daroc cat XP pending")
-        result = f"{character.name} receives Daroc's 100 gp reward and an XP-pending marker."
+        result = (
+            "Daroc's TAG p.27 Scene 5 procedure must be resolved in its active generated adventure. "
+            "The app checks town Streetwise Clue provenance, the one-Clue party exception, and the "
+            "session's pending XP-roll pool there."
+        )
     elif action == "mutant_fish_rations":
         roll = roll_d6()
         total = roll + 3
@@ -5795,6 +5808,7 @@ def resolve_tag_scene_action(
             result = f"{character.name} needs 2 Clues to reveal the TAG Dragon's Lair type."
         else:
             character.clues -= 2
+            normalize_town_streetwise_clues(character)
             roll = roll_d6()
             if roll <= 3:
                 dragon_key = "small_dragon"
@@ -6172,6 +6186,7 @@ def resolve_tag_finance_action(
         cost_clues = 3
         if character is not None and character.clues >= cost_clues:
             character.clues -= cost_clues
+            normalize_town_streetwise_clues(character)
             account = _tag_bank_account(campaign, character)
             account.robbed = False
             character.updated_at = now_utc()

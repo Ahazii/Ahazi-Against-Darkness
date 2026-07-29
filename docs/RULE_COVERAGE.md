@@ -76,6 +76,8 @@ Status labels:
 
 **TAG v0.39.55 addendum:** Temporary Weapon Enchantment now stores its campaign cast/expiry day, functions as a no-bonus magic weapon, expires at the exact seven-day campaign boundary, and expires at encounter end after an attack against a strictly magic-only foe. The attack may hit or miss because TAG p.65 says the weapon is used, not that it must wound. Legacy markers receive a full week from their first clock advance. The arbitrary manual-clear option is removed; the existing player-directed Gremlin/Iron Eater loss decision remains unchanged. Tests: `tests/test_tag_campaign.py`, `tests/test_adventurer_body_and_wraith.py`, `tests/test_item_containers_and_gremlins.py`, and `tests/test_frontend_map_interactions.py`.
 
+**TAG v0.39.56 addendum:** Daroc's Lost Familiar now follows TAG p.27, Scene 5 as a typed generated-adventure procedure. Successful Streetwise Look for Clues actions persist a town-source marker; older or dungeon-generated Clues do not satisfy this scene. The app applies the two-Clue base cost or one-Clue discount for a Druid, Beastmaster, cat-like hero, or cat animal companion, spends only marked Clues, awards 100gp to the selected living hero, and adds exactly one pending XP roll. Full Beastmaster and animal-companion behavior is deferred to Crucible of Classic Critters pp.11-15; the eligibility resolver consumes class, trait, and companion metadata ready for that later rules slice. Tests: `tests/test_tag_campaign.py`, `tests/test_program_phase4.py`, `tests/test_frontend_map_interactions.py`, and `tests/test_rulebook_validation.py`.
+
 ## Indexed-but-not-playable audit
 
 | Indexed rule | Source | Status | Notes |

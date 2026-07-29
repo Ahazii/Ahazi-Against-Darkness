@@ -319,6 +319,34 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "id": "tag-town-streetwise-clue",
+        "name": "TAG Town Streetwise Clue",
+        "family": "campaign_progress",
+        "scope": "character",
+        "value_type": "stack",
+        "source": {
+            "supplement_id": "tag",
+            "source_pdf": "Tales_from_the_adventurers_guild.pdf",
+            "page": 27,
+            "topic": "Scene 5 - Daroc's lost familiar",
+        },
+        "legacy_mappings": {
+            "statuses": ["TAG Town Streetwise Clue"],
+            "fields": [
+                "Character.clues",
+                "PartyMemberState.clues",
+                "ActiveQuestState.tag_procedure_state[daroc_familiar]",
+                "SessionState.tag_daroc_familiar_state",
+            ],
+        },
+        "implemented": True,
+        "review_status": "source_backed",
+        "ui": {
+            "label": "Town Streetwise Clue",
+            "hover": "TAG p.27, Scene 5. Only Clues generated in town by Look for Clues count toward finding Daroc's familiar.",
+        },
+    },
+    {
         "id": "blessed-temple-bonus",
         "name": "Blessed Temple Bonus",
         "family": "blessings_and_buffs",

@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-29. Target build: v0.39.55.
+Last updated: 2026-07-29. Target build: v0.39.56.
 
 ## Adventure Test Gate: Passed
 
@@ -62,18 +62,29 @@ the needed reaction.
 
 ## Do Next
 
-v0.39.55 completes TAG p.65 Temporary Weapon Enchantment timing. The spell now
-stores its cast/day-seven expiry, functions as a magic weapon with no Attack
-bonus, and expires at encounter end after an attack against a strictly
-magic-only foe. Adventure completion and settlement travel advance the existing
-campaign clock. The manual early-clear option is removed. Focused automation
-owns exact timing, attack-hit/miss independence, legacy migration, roster/session
-sync, and all previously passed Gremlin/Iron Eater decisions.
+v0.39.56 completes Daroc's Lost Familiar (TAG p.27, Scene 5). Focused
+automation owns town-Streetwise Clue provenance, the normal two-Clue cost,
+the one-Clue Druid/Beastmaster/cat eligibility, exact Clue spending, selected
+100gp recipient, one pending XP roll, roster sync, persistence, and duplicate
+claim prevention.
 
-No live adventure replay is required. If a disposable character naturally has
-the scroll, an optional UI-only check may confirm that the status hover names
-the expiry campaign day and the Guild marker menu no longer offers Weapon
-enchantment.
+No live adventure replay is required. After deploying and force-refreshing,
+an optional disposable-party check may:
+
+1. Generate fixed Rumor 9 and use settlement **Look for Clues** until enough
+   new town Streetwise Clues exist.
+2. Confirm Scene 5 shows `2` required, or `1` with an eligible Druid or
+   existing cat companion, and names the eligible Clue holders.
+3. Choose a living reward recipient and select **Spend Clues and find the
+   cat**.
+4. Confirm the exact marked Clues disappear, that hero receives 100gp, one
+   pending XP roll appears, and save/dashboard/resume does not offer the
+   reward again.
+
+Do not use an existing unmarked Clue to test this rule: TAG p.27 expressly
+requires Clues generated in town, and pre-v0.39.56 Clues have no trustworthy
+source provenance. Full Beastmaster and animal-companion mechanics remain
+deferred to Crucible of Classic Critters pp.11-15.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

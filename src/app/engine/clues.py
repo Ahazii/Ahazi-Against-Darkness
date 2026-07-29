@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ..schemas import PartyMemberState, SessionState, TileState
 from .experience import CLUES_FOR_SECRET_XP
+from .tag_daroc import normalize_town_streetwise_clues
 
 
 def sync_clue_total(session: SessionState) -> bool:
@@ -101,6 +102,7 @@ def spend_living_party_clues(session: SessionState, amount: int) -> tuple[bool, 
         take = min(member.clues, remaining)
         if take:
             member.clues -= take
+            normalize_town_streetwise_clues(member)
             remaining -= take
             log.append(f"{member.name} spends {take} Clue(s).")
         if remaining <= 0:
@@ -137,6 +139,7 @@ def spend_preferred_clues(
             continue
         spent = min(held, remaining)
         member.clues -= spent
+        normalize_town_streetwise_clues(member)
         remaining -= spent
     sync_clue_total(session)
     return remaining == 0

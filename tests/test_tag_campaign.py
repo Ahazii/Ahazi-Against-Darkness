@@ -56,6 +56,12 @@ from app.engine.tag_campaign import (
 from app.engine.adventure_manifest import validate_adventure_manifest
 from app.engine.dice import AdvancementRollResult
 from app.engine.tag_compat import upgrade_tag_manifest
+from app.engine.tag_daroc import (
+    TAG_TOWN_STREETWISE_CLUE,
+    daroc_discount_reason,
+    resolve_daroc_familiar,
+    town_streetwise_clue_count,
+)
 from app.engine.equipment_shop import buy_equipment
 from app.engine.tag_scene_actions import (
     tag_group_stealth_member,
@@ -91,8 +97,102 @@ def _character(**overrides) -> Character:
     return Character(**data)
 
 
+def _party_member(**overrides) -> PartyMemberState:
+    character = _character(**overrides)
+    return PartyMemberState(
+        character_id=character.id,
+        name=character.name,
+        gender=character.gender,
+        class_id=character.class_id,
+        class_name=character.class_name,
+        level=character.level,
+        xp=character.xp,
+        gold=character.gold,
+        clues=character.clues,
+        current_life=character.current_life,
+        max_life=character.max_life,
+        attack_bonus=character.attack_bonus,
+        defense_bonus=character.defense_bonus,
+        save_bonus=character.save_bonus,
+        inventory=list(character.inventory),
+        statuses=list(character.statuses),
+        abilities=list(character.abilities),
+        class_traits=list(character.class_traits),
+        companion_kind=character.companion_kind,
+    )
+
+
 def test_tag_settlement_size_table() -> None:
     assert [settlement_size_from_roll(roll) for roll in range(1, 7)] == [-2, -1, 0, 1, 2, 3]
+
+
+def test_daroc_scene_uses_only_marked_town_clues_and_awards_selected_receiver() -> None:
+    first = _party_member(
+        id="first",
+        name="First",
+        clues=2,
+        statuses=[TAG_TOWN_STREETWISE_CLUE],
+    )
+    second = _party_member(
+        id="second",
+        name="Second",
+        clues=1,
+        statuses=[TAG_TOWN_STREETWISE_CLUE],
+    )
+
+    result = resolve_daroc_familiar([first, second], recipient_id="second")
+
+    assert result.success is True
+    assert result.required_clues == 2
+    assert first.clues == 1
+    assert second.clues == 0
+    assert town_streetwise_clue_count(first) == 0
+    assert town_streetwise_clue_count(second) == 0
+    assert second.gold == 120
+    assert "pending XP roll" in result.result_text
+
+
+def test_other_tag_clue_spending_does_not_leave_stale_daroc_provenance() -> None:
+    campaign = default_campaign()
+    hero = _character(
+        clues=1,
+        statuses=[TAG_TOWN_STREETWISE_CLUE],
+    )
+
+    entry = resolve_tag_branch_action(
+        campaign,
+        hero,
+        branch_action="spend_clues",
+        clue_cost=1,
+    )
+
+    assert hero.clues == 0
+    assert town_streetwise_clue_count(hero) == 0
+    assert TAG_TOWN_STREETWISE_CLUE not in hero.statuses
+    assert "spends 1 Clue" in entry.result_text
+
+
+@pytest.mark.parametrize(
+    ("member", "companion_kind", "companion_life", "expected"),
+    [
+        (_party_member(class_id="druid", class_name="Druid"), None, 0, "Druid"),
+        (_party_member(class_id="beastmaster", class_name="Beastmaster"), None, 0, "Beastmaster"),
+        (_party_member(class_id="catfolk", class_name="Feline Wanderer"), None, 0, "cat-like"),
+        (_party_member(), "wildcat", 2, "Wildcat"),
+    ],
+)
+def test_daroc_discount_supports_tag_and_future_crucible_identities(
+    member: PartyMemberState,
+    companion_kind: str | None,
+    companion_life: int,
+    expected: str,
+) -> None:
+    reason = daroc_discount_reason(
+        [member],
+        active_companion_kind=companion_kind,
+        active_companion_life=companion_life,
+    )
+    assert expected.lower() in reason.lower()
 
 
 def test_tag_group_stealth_uses_worst_modifier_with_equipment_penalties() -> None:
@@ -283,9 +383,11 @@ def test_tag_look_for_clues_spends_bribe_and_uses_rogue_level(monkeypatch) -> No
 
     assert hero.gold == 16
     assert hero.clues == 1
+    assert town_streetwise_clue_count(hero) == 1
     assert entry.roll == 3
     assert entry.modifier == 3
     assert entry.total == 6
+    assert "town Streetwise Clue" in entry.result_text
 
 
 def test_tag_look_for_clues_natural_one_loses_existing_clue(monkeypatch) -> None:

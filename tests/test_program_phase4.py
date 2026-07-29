@@ -536,6 +536,101 @@ def test_campaign_guild_spell_sync_preserves_active_session_gold_split(client: T
     assert any("expires day 7" in status for status in saved.party[0].statuses)
 
 
+def test_daroc_scene5_consumes_town_clues_and_awards_real_pending_xp(client: TestClient) -> None:
+    from app.engine.tag_daroc import TAG_TOWN_STREETWISE_CLUE
+
+    characters: list[Character] = []
+    for name in ("Clue Holder", "Reward Receiver"):
+        response = client.post(
+            "/api/characters",
+            json={"name": name, "class_id": "warrior"},
+        )
+        assert response.status_code == 200
+        character = Character.model_validate(response.json())
+        character.clues = 1
+        character.statuses.append(TAG_TOWN_STREETWISE_CLUE)
+        character.active_session_id = "daroc-scene5-session"
+        main.store.save("characters", character)
+        characters.append(character)
+
+    members = [main._member_state(character) for character in characters]
+    session = SessionState(
+        id="daroc-scene5-session",
+        party_id="party",
+        adventure_id="tag-rumor-9",
+        adventure_type="imported",
+        party=members,
+        active_quest={
+            "tile_id": "room",
+            "key": "tag_generated_scene",
+            "description": "Find Daroc's lost familiar.",
+        },
+        imported_title="The Adventures Guild Rumor 9: Daroc's Lost Familiar",
+        imported_manifest={
+            "source": {
+                "parameters": {
+                    "tag_reference": {
+                        "lead_type": "rumor",
+                        "lead_detail": "9",
+                        "rumor_number": 9,
+                        "title": "Daroc's Lost Familiar",
+                    }
+                }
+            }
+        },
+        map_state={
+            "current_tile_id": "room",
+            "tiles": [
+                {
+                    "id": "room",
+                    "x": 0,
+                    "y": 0,
+                    "tile_key": "1",
+                    "tile_type": "room",
+                    "title": "Daroc's familiar",
+                    "description": "The town search ends here.",
+                }
+            ],
+        },
+        created_at="2026-07-29T00:00:00Z",
+        updated_at="2026-07-29T00:00:00Z",
+    )
+    main.store.save("sessions", session)
+
+    resolved = client.post(
+        f"/api/sessions/{session.id}/tag-scene-action",
+        json={
+            "character_id": characters[1].id,
+            "scene_action": "daroc_cat",
+            "reference": "TAG p.27, Scene 5",
+        },
+    )
+
+    assert resolved.status_code == 200, resolved.text
+    payload = resolved.json()
+    assert payload["session"]["xp_rolls_pending"] == 1
+    assert payload["session"]["tag_daroc_familiar_state"]["resolved"] is True
+    assert payload["session"]["tag_daroc_familiar_state"]["available_clues"] == 0
+    assert payload["session"]["tag_generated_completion_pending"] is True
+    saved = main.store.get("sessions", session.id, SessionState.model_validate)
+    assert saved is not None
+    assert [member.clues for member in saved.party] == [0, 0]
+    assert saved.clues_found == 0
+    assert saved.party[1].gold == members[1].gold + 100
+    saved_receiver = main.store.get("characters", characters[1].id, Character.model_validate)
+    assert saved_receiver is not None
+    assert saved_receiver.gold == saved.party[1].gold
+    assert saved_receiver.clues == 0
+    assert TAG_TOWN_STREETWISE_CLUE not in saved_receiver.statuses
+
+    duplicate = client.post(
+        f"/api/sessions/{session.id}/tag-scene-action",
+        json={"character_id": characters[1].id, "scene_action": "daroc_cat"},
+    )
+    assert duplicate.status_code == 400
+    assert "already been found" in duplicate.json()["detail"]
+
+
 def test_campaign_api_creates_selects_and_deletes_tag_settlements(client: TestClient) -> None:
     created = client.post(
         "/api/campaign/tag/settlement",

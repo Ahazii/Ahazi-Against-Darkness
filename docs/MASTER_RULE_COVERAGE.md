@@ -94,6 +94,7 @@ Implemented first slice:
 - moving to a different settlement by simple 3d6-3 travel days or optional hex-map route logging;
 - special-item availability with settlement-size modifier and fail-by-1 surcharge;
 - Streetwise Look for Clues with character choice, bribe cost, class modifier and natural-1 consequence;
+- Daroc's Lost Familiar (TAG p.27, Scene 5) with persisted town-Streetwise Clue provenance, two-Clue cost, printed one-Clue Druid/Beastmaster/cat eligibility, selected 100gp recipient, and one pending XP roll. Full Beastmaster and companion behavior remains deferred to Crucible of Classic Critters pp.11-15;
 - first twenty-eight TAG treasure/service/procedure rows (through Streetwise Rules plus Adventurers Guild jobs, Trinkets, Guild spells, and TAG special foes), with hidden-trove risk roll, treasure-map price, moneylender pursuit, horn attraction, flammable-oil throw, aspergillum break, and row-level availability checks;
 - TAG settlement Apothecary hook when TCOTFD is also in use;
 - troupe name/active party/guild coffer state, settlement storage, fixed service purchases, magic lockers, Gambling House gp outcomes, Streetwise Listen to Rumors/Interrogate/Look Tough, and Following the Treasure Map / Map Leads To roll summaries;
@@ -106,7 +107,7 @@ Implemented first slice:
 
 Next slices:
 
-- complete the short v0.39.42 ordinary Invisible Gremlins live check (Campaign/Rumor and Developer Grant/Bag checks are passed), then stop broad adventure testing and resume one bounded modularisation slice at a time.
+- continue one bounded, PDF-backed generated TAG scene at a time. Do not reopen passed broad adventure tests. Rumor 3 Scene 11 is not a small next slice because it enters the complete TAG pp.34-35 Riff-Raff and Outside of Town Ambush encounter tables.
 
 Later slices can deepen exact branch-specific item handling, robbery recovery,
 and Guild spell math if playtesting shows those surfaces are needed.

@@ -747,6 +747,8 @@ def test_epic_reward_statuses_have_ui_actions_and_hints() -> None:
     assert "Slain by vampire level drain" in tooltip
     assert "tag temporary weapon enchantment:" in tooltip
     assert "expires on campaign day" in tooltip
+    assert "tag town streetwise clue" in tooltip
+    assert "Clue was generated in town by Look for Clues" in tooltip
     status = _function_body("heroStatusChips", APP_JS)
     assert "enchanted weapon" in status
     assert "kerrak dar hoard" in status
@@ -2136,6 +2138,10 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "function appendLeprechaunGuidedAction" in APP_JS
     assert "function openLeprechaunSpellDialog" in APP_JS
     assert "function openDeoldynTrainingDialog" in APP_JS
+    assert "function appendDarocGuidedAction" in APP_JS
+    assert "Town Streetwise Clues:" in APP_JS
+    assert "Who receives Daroc's 100 gp?" in APP_JS
+    assert "Spend Clues and find the cat" in APP_JS
     assert 'id="tag-deoldyn-training-dialog"' in INDEX_HTML
     assert 'id="tag-deoldyn-training-skill"' in INDEX_HTML
     assert "Scene 3 Deoldyn training" in APP_JS
