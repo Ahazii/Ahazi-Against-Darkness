@@ -6496,6 +6496,10 @@ async def get_session(session_id: str) -> SessionState:
         changed = True
     if repair_generated_tag_core_quest_completion(session):
         changed = True
+    from .engine.adventure_completion import repair_completed_explored_summary
+
+    if repair_completed_explored_summary(session):
+        changed = True
     if session.mode != "complete":
         lock_characters_for_session(session, store)
     if changed:

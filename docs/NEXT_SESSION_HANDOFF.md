@@ -1,14 +1,16 @@
 # Next Session Handoff
 
-Current release is **v0.39.60**. Live session
-`9268a7158f41482d90d16f4ec3946f46` is a completed-but-not-closed Rumor 2
-Scene 10 cabin choice. Deploy and force-refresh, resume it, and click the
-horizontal **Return to town** action once. It must complete the adventure,
-open the summary, and return to the dashboard; any alchemist delivery or
-porter cargo would be resolved automatically and listed in the summary.
-After that narrow repair passes, begin the v0.39.59 Rumor 4 Scene 12 checklist.
+Current release is **v0.39.61**. Live Rumor 2 testing passed the horizontal
+Scene 10 choices and one-click return-to-town closeout in session
+`9268a7158f41482d90d16f4ec3946f46`. Its summary incorrectly counted seven
+prebuilt module rooms as explored, although persisted visit tracking shows only
+the rumor entry and Scene 10 were visited. v0.39.61 reports those two visited
+map elements, repairs the stored summary when that completed session is next
+opened, and keeps a map-size fallback for legacy sessions without visit
+tracking. Do not replay Rumor 2. Deploy/force-refresh and proceed directly to
+the TAG Rumor 4 Scene 12 checklist in `docs/PLAYTEST_PLAN.md`.
 
-Last updated: 2026-07-29. Repository branch: `main`. Latest release: `v0.39.59`.
+Last updated: 2026-07-30. Repository branch: `main`. Latest release: `v0.39.61`.
 
 ## Start Here
 

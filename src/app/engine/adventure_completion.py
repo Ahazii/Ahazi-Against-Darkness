@@ -23,6 +23,34 @@ class AdventureCompletionCallbacks:
     reset_between_foray_resources: Callable[[SessionState], None]
 
 
+def _explored_map_element_count(session: SessionState) -> int:
+    if session.visited_tile_ids:
+        visited = set(session.visited_tile_ids)
+        if session.map_state.current_tile_id:
+            visited.add(session.map_state.current_tile_id)
+        return max(1, len(visited))
+    return max(1, len(session.map_state.tiles))
+
+
+def _explored_summary_line(session: SessionState) -> str:
+    explored = _explored_map_element_count(session)
+    boss_note = " Final Boss slain." if session.final_boss_defeated else ""
+    return f"Explored {explored} map element{'s' if explored != 1 else ''}.{boss_note}"
+
+
+def repair_completed_explored_summary(session: SessionState) -> bool:
+    if session.mode != "complete" or not session.visited_tile_ids:
+        return False
+    expected = _explored_summary_line(session)
+    for index, line in enumerate(session.summary):
+        if line.startswith("Explored ") and " map element" in line:
+            if line == expected:
+                return False
+            session.summary[index] = expected
+            return True
+    return False
+
+
 def complete_adventure(
     session: SessionState,
     *,
@@ -58,7 +86,6 @@ def complete_adventure(
 
     session.mode = "complete"
     session.camped_outside = False
-    explored = len(session.map_state.tiles)
     survivors = [member for member in session.party if member.current_life > 0]
     if session.xp_system == "slow_and_sure" and survivors:
         target = survivors[0]
@@ -71,9 +98,8 @@ def complete_adventure(
     for member in session.party:
         clear_dark_plague_immunity(member)
 
-    boss_note = " Final Boss slain." if session.final_boss_defeated else ""
     session.summary = [
-        f"Explored {explored} map element{'s' if explored != 1 else ''}.{boss_note}",
+        _explored_summary_line(session),
         f"{len(survivors)} of {len(session.party)} party members left the dungeon.",
         "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
     ]

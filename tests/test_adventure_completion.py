@@ -1,4 +1,8 @@
-from app.engine.adventure_completion import AdventureCompletionCallbacks, complete_adventure
+from app.engine.adventure_completion import (
+    AdventureCompletionCallbacks,
+    complete_adventure,
+    repair_completed_explored_summary,
+)
 from app.schemas import AlchemistOrderState, MapState, PartyMemberState, SessionState, TileState
 
 
@@ -86,3 +90,41 @@ def test_complete_adventure_puts_commission_delivery_in_summary() -> None:
 
     assert "Potion of Healing" in session.party[0].inventory
     assert "Town return: Hero receives Potion of Healing." in session.summary
+
+
+def test_complete_adventure_counts_visited_imported_elements_not_prebuilt_manifest() -> None:
+    session = _session()
+    session.adventure_type = "imported"
+    session.map_state.tiles.extend(
+        [
+            TileState(
+                id=f"prebuilt-{index}",
+                x=index,
+                y=0,
+                tile_key="01",
+                tile_type="room",
+                title=f"Prebuilt {index}",
+                description="Not visited.",
+                content_key=f"imported:prebuilt-{index}",
+            )
+            for index in range(1, 7)
+        ]
+    )
+    session.visited_tile_ids = ["entrance", "prebuilt-1"]
+    session.map_state.current_tile_id = "prebuilt-1"
+
+    assert complete_adventure(session, callbacks=_callbacks([]))
+
+    assert "Explored 2 map elements." in session.summary
+
+
+def test_completed_session_repairs_stored_prebuilt_manifest_count() -> None:
+    session = _session()
+    session.mode = "complete"
+    session.visited_tile_ids = ["entrance", "visited-room"]
+    session.map_state.current_tile_id = "visited-room"
+    session.summary = ["Quest objective complete.", "Explored 7 map elements."]
+
+    assert repair_completed_explored_summary(session)
+    assert session.summary == ["Quest objective complete.", "Explored 2 map elements."]
+    assert not repair_completed_explored_summary(session)

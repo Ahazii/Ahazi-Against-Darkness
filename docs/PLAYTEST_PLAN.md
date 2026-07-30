@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-29. Target build: v0.39.60.
+Last updated: 2026-07-30. Target build: v0.39.61.
 
 ## Adventure Test Gate: Passed
 
@@ -60,20 +60,24 @@ panels: confirm the bribe or reward choice is readable and survives one
 save/dashboard/resume. Do not risk or modify the completed live party to force
 the needed reaction.
 
-## Do Next
+## Completed: TAG Rumor 2 Scene 10 Return
 
-v0.39.60 repairs the current Rumor 2 Scene 10 return route. After deploying and
-force-refreshing, resume session `9268a7158f41482d90d16f4ec3946f46`:
+Live v0.39.60 verification passed in session
+`9268a7158f41482d90d16f4ec3946f46`:
 
-1. Confirm **Approach the cabin** and **Return to town** are side by side.
-2. Click **Return to town** once. It must complete the adventure and open the
-   normal adventure summary; it must not leave the session in exploration.
-3. Confirm the summary includes any town-return delivery or returned-cargo
-   lines if this party had a pending alchemist order or porter cargo. The
-   current live session has neither, so no such line is expected in this run.
-4. Return to the dashboard. Do not regenerate or replay Rumor 2.
+- **Approach the cabin** and **Return to town** appeared side by side;
+- **Return to town** completed the adventure and opened the normal summary;
+- no town-return delivery or returned-cargo line appeared because the party had
+  no pending alchemist order or porter cargo.
 
-## Next Narrow Test: TAG Rumor 4 Scene 12
+The summary incorrectly described all seven prebuilt module rooms as explored,
+although persisted visit tracking records only the rumor entry and Scene 10.
+v0.39.61 reports the two visited map elements, repairs the stored summary when
+the completed session is next opened, and retains the old map-size fallback
+only for legacy sessions without visit tracking. This reporting fix is covered
+automatically; do not replay Rumor 2.
+
+## Do Next: TAG Rumor 4 Scene 12
 
 v0.39.59 implements the player-confirmed TAG p.29 interpretation:
 
