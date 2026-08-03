@@ -7940,7 +7940,7 @@ function foeChipTitle(displayName, typeLabel, foe) {
 function statusChipTooltip(label) {
   const lower = String(label || "").toLowerCase();
   if (lower === "tag town streetwise clue") {
-    return "TAG p.27, Scene 5: this Clue was generated in town by Look for Clues, so it may be spent to find Daroc's lost familiar. Older and dungeon Clues do not qualify.";
+    return "TAG pp.20 and 26: this Clue was generated in town by Look for Clues, so it may be spent to find Daroc's lost familiar. Older and dungeon Clues do not qualify.";
   }
   if (lower.startsWith("tag temporary weapon enchantment:")) {
     const expiry = lower.match(/expires day\s+(\d+)/)?.[1];
@@ -12785,6 +12785,38 @@ async function runTagSceneActionWithDefaults(defaults = {}) {
   }
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "Adventures Guild scene result applied.");
+}
+
+async function runDarocAction(action, payload = {}) {
+  if (!state.session?.id) throw new Error("Daroc's search requires an active Rumor 9 adventure.");
+  const result = await api(
+    `/api/sessions/${encodeURIComponent(state.session.id)}/tag-daroc-action`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        action,
+        character_id: payload.characterId || "",
+        reward_recipient_id: payload.rewardRecipientId || "",
+        natural_one_consequence: payload.naturalOneConsequence || "gold",
+        use_luck: Boolean(payload.useLuck),
+      }),
+    }
+  );
+  state.campaign = result.campaign;
+  for (const character of result.characters || (result.character ? [result.character] : [])) {
+    const index = state.characters.findIndex((item) => item.id === character.id);
+    if (index >= 0) state.characters[index] = character;
+    else state.characters.push(character);
+  }
+  state.session = result.session;
+  syncSessionListFromSession(state.session);
+  if (state.session.mode === "complete") {
+    await finishCompletedAdventureClient(state.session);
+  } else {
+    renderSession();
+  }
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "Daroc's familiar search updated.");
 }
 
 async function runTagRouteActionWithDefaults(defaults = {}) {
@@ -17633,6 +17665,7 @@ const ENVIRONMENT_TABLE_HINTS = {
   tag_mutant_fish_scene12_procedure_table: "Mutant Fish Under the Bridge (TAG p.29, Scene 12): automatic per-character hypnosis Saves on entry, rescue turns, ration disposition, campaign sale rate, and two-minion XP progress.",
   tag_medusa_scene10_procedure_table: "Hunter's Cabin approach (TAG pp.6-8, p.28): one party Stealth roll using the lowest modifier, then labelled Streetwise or immediate-fight choices.",
   tag_medusa_scene1_reaction_table: "Xasartha's reaction procedure (TAG p.25, Scene 1; EE pp.101, 162): bribe, Quest acceptance/refusal, fight, and fight-to-the-death outcomes.",
+  tag_daroc_scene5_procedure_table: "Daroc's Lost Familiar (TAG pp.20, 24, 26): selected-character Streetwise searches, persistent eligible Clues, non-permanent Give up, 200 gp ruling, XP, and required closeout lifecycle.",
   tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG p.22): heard, investigating, then resolved only after the paragraph and corresponding Scene are played.",
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
   caverns_special_features_table: "Caverns Special Features (d6), EE p.112. Roll on room content 5 in caverns.",
@@ -26039,20 +26072,33 @@ function appendBoftoTheftGuidedAction(parent, action, fallbackReference) {
 
 function appendDarocGuidedAction(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
-  if (defaults.sceneAction !== "daroc_cat") return false;
+  if (!["daroc_cat", "daroc_give_up"].includes(defaults.sceneAction)) return false;
+  if (parent.querySelector(".daroc-scene5-guided")) return true;
   const stateView = state.session?.tag_daroc_familiar_state || {};
   const living = (state.session?.party || []).filter((member) => member.current_life > 0);
   const required = Math.max(1, Number(stateView.required_clues || 2));
   const available = Math.max(0, Number(stateView.available_clues || 0));
+  const rewardGp = Math.max(0, Number(stateView.reward_gp || 200));
   const holders = Array.isArray(stateView.holders) ? stateView.holders : [];
-  const wrap = node("div", "tag-context-guided-action");
+  const searchers = new Map(
+    (Array.isArray(stateView.searchers) ? stateView.searchers : []).map((searcher) => [
+      searcher.character_id,
+      searcher,
+    ])
+  );
+  const wrap = node("div", "tag-context-guided-action daroc-scene5-guided");
   setTooltip(
     wrap,
-    "TAG p.27, Scene 5: only Clues generated in town with Streetwise count. The normal cost is two Clues, reduced to one if the party has a Beastmaster, Druid, cat-like character, or cat animal companion."
+    "TAG pp.20, 24, 26: choose the character for each L6 Streetwise search, pay that attempt's d6 gp bribe, and retain progress between attempts. Two eligible Clues find the familiar, reduced to one with the printed beast/cat exception. Rumor 9's p.24 offer supplies the player-confirmed 200 gp reward."
   );
   wrap.appendChild(node("strong", "", "Find Daroc's lost cat"));
-  if (stateView.resolved) {
-    wrap.appendChild(subline("Daroc's cat has been found. The 100 gp and one pending XP roll were already awarded."));
+  if (stateView.resolved || stateView.phase === "resolved") {
+    wrap.appendChild(subline(`Daroc's cat has been found. The ${rewardGp} gp and one pending XP roll were already awarded.`));
+    parent.appendChild(wrap);
+    return true;
+  }
+  if (stateView.phase === "deferred") {
+    wrap.appendChild(subline("The party gave up this attempt. Rumor 9 remains heard for later, and eligible town Streetwise Clues were retained."));
     parent.appendChild(wrap);
     return true;
   }
@@ -26067,48 +26113,138 @@ function appendDarocGuidedAction(parent, action, fallbackReference) {
     subline(
       holders.length
         ? `Eligible holders: ${holders.map((holder) => `${holder.name} ${holder.clues}`).join("; ")}.`
-        : "No eligible town Streetwise Clues are recorded. Use Look for Clues in the settlement; older or dungeon Clues do not count."
+        : "No eligible town Streetwise Clues are recorded. Search from this scene; older or dungeon Clues do not count."
     )
   );
-  const field = document.createElement("label");
-  field.className = "medusa-scene10-field";
-  field.appendChild(node("span", "", "Who receives Daroc's 100 gp?"));
-  const select = document.createElement("select");
-  setTooltip(select, "Choose the living party member who receives the 100 gp reward. The XP roll is added to the party's normal pending XP pool.");
+  const searcherField = document.createElement("label");
+  searcherField.className = "medusa-scene10-field";
+  searcherField.appendChild(node("span", "", "Who searches for Clues?"));
+  const searcherSelect = document.createElement("select");
+  searcherSelect.setAttribute("aria-label", "Who searches for Clues?");
+  setTooltip(
+    searcherSelect,
+    "TAG p.20: choose any living character for this attempt. Rogues and similar classes add +Level; qualifying fighting classes add +1; large creatures add +2; halflings apply -1 before an optional Luck reroll."
+  );
+  for (const member of living) {
+    const searcher = searchers.get(member.character_id) || {};
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    const modifier = Number(searcher.streetwise_modifier || 0);
+    const gold = Math.max(0, Number(searcher.available_gold ?? tagMemberSpendableGold(member)));
+    option.textContent = `${member.name} (${modifier >= 0 ? "+" : ""}${modifier}, ${gold} gp)`;
+    option.title = `${member.name}: Streetwise modifier ${modifier >= 0 ? "+" : ""}${modifier}; ${gold} gp available for the d6 bribe.`;
+    searcherSelect.appendChild(option);
+  }
+  searcherField.appendChild(searcherSelect);
+  wrap.appendChild(searcherField);
+
+  const consequenceField = document.createElement("label");
+  consequenceField.className = "medusa-scene10-field";
+  consequenceField.appendChild(node("span", "", "If a natural 1 is rolled with no Clue"));
+  const consequenceSelect = document.createElement("select");
+  consequenceSelect.setAttribute("aria-label", "Natural 1 consequence");
+  consequenceSelect.append(new Option("Lose 3d6 gp", "gold"), new Option("Lose d3 Life", "life"));
+  setTooltip(
+    consequenceSelect,
+    "TAG p.20: a natural 1 first removes one existing Clue. With no Clue, choose either 3d6 gp or d3 Life; d3 Life is automatic if the character has no coins or other valuables."
+  );
+  consequenceField.appendChild(consequenceSelect);
+  wrap.appendChild(consequenceField);
+
+  const luckField = document.createElement("label");
+  luckField.className = "medusa-scene10-field";
+  const luckCheckbox = document.createElement("input");
+  luckCheckbox.type = "checkbox";
+  luckCheckbox.setAttribute("aria-label", "Use Halfling Luck on a failed Streetwise roll");
+  const luckLabel = node("span", "", "Use Halfling Luck if the first roll fails");
+  luckField.append(luckCheckbox, luckLabel);
+  setTooltip(luckField, "TAG p.20: a halfling may spend 1 Luck point to reroll; the halfling -1 does not apply to the reroll. The d6 gp bribe is paid only once.");
+  wrap.appendChild(luckField);
+
+  const recipientField = document.createElement("label");
+  recipientField.className = "medusa-scene10-field";
+  recipientField.appendChild(node("span", "", "Who receives Daroc's 200 gp?"));
+  const recipientSelect = document.createElement("select");
+  recipientSelect.setAttribute("aria-label", "Who receives Daroc's 200 gp?");
+  setTooltip(recipientSelect, `Choose the living party member who receives the ${rewardGp} gp reward. This may be different from the searcher. The XP roll is added to the party's pending XP pool.`);
   for (const member of living) {
     const option = document.createElement("option");
     option.value = member.character_id;
     option.textContent = `${member.name} (${member.class_name || titleCase(member.class_id || "hero")})`;
-    select.appendChild(option);
+    recipientSelect.appendChild(option);
   }
-  field.appendChild(select);
-  wrap.appendChild(field);
-  const btn = node("button", "primary", "Spend Clues and find the cat");
-  btn.type = "button";
-  btn.disabled = !living.length || available < required;
-  setButtonTooltip(
-    btn,
-    available < required
-      ? `The party needs ${required - available} more town Streetwise Clue(s).`
-      : "Consume the required marked town Clues across the living party, give the selected hero 100 gp, add one pending XP roll, and resolve Rumor 9."
+  recipientField.appendChild(recipientSelect);
+  wrap.appendChild(recipientField);
+
+  const updateLuckChoice = () => {
+    const member = living.find((item) => item.character_id === searcherSelect.value);
+    const searcher = searchers.get(searcherSelect.value) || {};
+    const isHalfling = /halfling/i.test(`${member?.class_id || ""} ${member?.class_name || ""}`);
+    const remaining = Math.max(0, Number(searcher.luck_points_remaining || 0));
+    luckCheckbox.disabled = !isHalfling || remaining <= 0;
+    if (luckCheckbox.disabled) luckCheckbox.checked = false;
+    luckLabel.textContent = isHalfling
+      ? `Use Halfling Luck if the first roll fails (${remaining} remaining)`
+      : "Use Halfling Luck if the first roll fails (halflings only)";
+  };
+  searcherSelect.addEventListener("change", updateLuckChoice);
+  updateLuckChoice();
+
+  const searchBtn = node(
+    "button",
+    "primary",
+    available >= required ? "Find the cat and claim reward" : "Search for Clues"
   );
-  btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = "Finding...";
+  searchBtn.type = "button";
+  searchBtn.disabled = !living.length;
+  setButtonTooltip(
+    searchBtn,
+    available >= required
+      ? `Consume ${required} eligible marked Clue(s), give the selected recipient ${rewardGp} gp, add one pending XP roll, and resolve Rumor 9.`
+      : `TAG p.20: run this selected character's exploding Streetwise Save vs L6 after automatically paying the attempt's d6 gp bribe. Progress is saved; reaching ${required} eligible Clue(s) automatically finds the cat and awards the selected recipient.`
+  );
+  searchBtn.addEventListener("click", async () => {
+    searchBtn.disabled = true;
+    const originalText = searchBtn.textContent;
+    searchBtn.textContent = available >= required ? "Claiming..." : "Searching...";
     try {
-      await runTagSceneActionWithDefaults({
-        ...defaults,
-        characterId: select.value,
+      await runDarocAction(available >= required ? "claim" : "search", {
+        characterId: searcherSelect.value,
+        rewardRecipientId: recipientSelect.value,
+        naturalOneConsequence: consequenceSelect.value,
+        useLuck: luckCheckbox.checked,
       });
     } catch (error) {
       handleError(error);
-      btn.disabled = !living.length || available < required;
+      searchBtn.disabled = !living.length;
     } finally {
-      btn.textContent = originalText;
+      searchBtn.textContent = originalText;
     }
   });
-  wrap.appendChild(btn);
+  wrap.appendChild(searchBtn);
+
+  const giveUpBtn = node("button", "secondary", "Give up — return to town");
+  giveUpBtn.type = "button";
+  setButtonTooltip(
+    giveUpBtn,
+    "End this attempt and return to town. Rumor 9 remains heard and can be investigated later; giving up retains every eligible town Streetwise Clue already found and awards no gold or XP."
+  );
+  giveUpBtn.addEventListener("click", async () => {
+    giveUpBtn.disabled = true;
+    try {
+      await runDarocAction("give_up", {
+        characterId: searcherSelect.value,
+        rewardRecipientId: recipientSelect.value,
+      });
+    } catch (error) {
+      giveUpBtn.disabled = false;
+      handleError(error);
+    }
+  });
+  wrap.appendChild(giveUpBtn);
+  if (stateView.last_search?.result_text) {
+    wrap.appendChild(subline(`Last attempt: ${stateView.last_search.result_text}`));
+  }
   parent.appendChild(wrap);
   return true;
 }

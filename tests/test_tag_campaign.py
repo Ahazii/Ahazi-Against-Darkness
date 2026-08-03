@@ -57,6 +57,7 @@ from app.engine.adventure_manifest import validate_adventure_manifest
 from app.engine.dice import AdvancementRollResult
 from app.engine.tag_compat import upgrade_tag_manifest
 from app.engine.tag_daroc import (
+    DAROC_FAMILIAR_REWARD_GP,
     TAG_TOWN_STREETWISE_CLUE,
     daroc_discount_reason,
     resolve_daroc_familiar,
@@ -148,7 +149,8 @@ def test_daroc_scene_uses_only_marked_town_clues_and_awards_selected_receiver() 
     assert second.clues == 0
     assert town_streetwise_clue_count(first) == 0
     assert town_streetwise_clue_count(second) == 0
-    assert second.gold == 120
+    assert second.gold == 20 + DAROC_FAMILIAR_REWARD_GP
+    assert f"{DAROC_FAMILIAR_REWARD_GP} gp" in result.result_text
     assert "pending XP roll" in result.result_text
 
 
@@ -376,8 +378,8 @@ def test_tag_availability_success_surcharge_and_unavailable(monkeypatch) -> None
 def test_tag_look_for_clues_spends_bribe_and_uses_rogue_level(monkeypatch) -> None:
     campaign = default_campaign()
     hero = _character()
-    rolls = iter([4, 3])
-    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+    monkeypatch.setattr(tag_campaign, "roll_exploding_for_level", lambda _character: (3, [3]))
 
     entry = look_for_clues(campaign, hero)
 
@@ -393,14 +395,147 @@ def test_tag_look_for_clues_spends_bribe_and_uses_rogue_level(monkeypatch) -> No
 def test_tag_look_for_clues_natural_one_loses_existing_clue(monkeypatch) -> None:
     campaign = default_campaign()
     hero = _character(clues=1)
-    rolls = iter([2, 1])
-    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    monkeypatch.setattr(tag_campaign, "roll_exploding_for_level", lambda _character: (1, [1]))
 
     entry = look_for_clues(campaign, hero)
 
     assert hero.gold == 18
     assert hero.clues == 0
     assert "lost 1 Clue" in entry.result_text
+
+
+def test_tag_look_for_clues_insufficient_persisted_bribe_does_not_mutate_character_or_consume_spell(
+    monkeypatch,
+) -> None:
+    campaign = default_campaign()
+    hero = _character(
+        gold=5,
+        clues=1,
+        statuses=[TAG_TOWN_STREETWISE_CLUE, tag_campaign.TAG_LOOK_TOUGH_MARKER],
+    )
+    before = hero.model_dump(mode="python")
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: pytest.fail("persisted bribe must not be rerolled"))
+    monkeypatch.setattr(
+        tag_campaign,
+        "roll_exploding_for_level",
+        lambda _character: pytest.fail("insufficient funds must not roll Streetwise"),
+    )
+
+    entry = look_for_clues(campaign, hero, bribe_cost=6)
+
+    assert entry.roll is None
+    assert entry.total is None
+    assert entry.cost_gp == 0
+    assert hero.model_dump(mode="python") == before
+    assert tag_campaign.TAG_LOOK_TOUGH_MARKER in hero.statuses
+    assert "No bribe is paid" in entry.result_text
+
+
+@pytest.mark.parametrize(
+    ("class_id", "class_name"),
+    [("bulwark", "Bulwark"), ("kukla", "Kukla")],
+)
+def test_tag_look_for_clues_does_not_treat_positive_attack_bonus_as_fighting_class_bonus(
+    monkeypatch,
+    class_id: str,
+    class_name: str,
+) -> None:
+    campaign = default_campaign()
+    hero = _character(class_id=class_id, class_name=class_name, attack_bonus=4)
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
+    monkeypatch.setattr(tag_campaign, "roll_exploding_for_level", lambda _character: (5, [5]))
+
+    entry = look_for_clues(campaign, hero)
+
+    assert entry.modifier == 0
+    assert entry.total == 5
+    assert hero.clues == 0
+    assert "found no useful clue" in entry.result_text
+
+
+@pytest.mark.parametrize(
+    "identity",
+    [
+        {"class_id": "half_giant", "class_name": "Half-Giant"},
+        {"class_id": "bulwark", "class_name": "Bulwark", "class_traits": ["Size: Large"]},
+    ],
+)
+def test_tag_look_for_clues_explicit_large_identity_or_metadata_adds_two(
+    monkeypatch,
+    identity: dict[str, object],
+) -> None:
+    campaign = default_campaign()
+    hero = _character(**identity)
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
+    monkeypatch.setattr(tag_campaign, "roll_exploding_for_level", lambda _character: (4, [4]))
+
+    entry = look_for_clues(campaign, hero)
+
+    assert entry.modifier == 2
+    assert entry.total == 6
+    assert hero.clues == 1
+    assert town_streetwise_clue_count(hero) == 1
+
+
+def test_tag_look_for_clues_halfling_luck_rerolls_once_and_only_final_roll_has_consequences(
+    monkeypatch,
+) -> None:
+    campaign = default_campaign()
+    hero = _character(
+        class_id="halfling",
+        class_name="Halfling",
+        gold=10,
+        clues=1,
+        statuses=[TAG_TOWN_STREETWISE_CLUE],
+    )
+    bribe_rolls = 0
+    luck_calls = 0
+    streetwise_rolls = iter([(1, [1]), (5, [5])])
+
+    def roll_bribe() -> int:
+        nonlocal bribe_rolls
+        bribe_rolls += 1
+        return 2
+
+    def authorize_luck() -> bool:
+        nonlocal luck_calls
+        luck_calls += 1
+        return True
+
+    monkeypatch.setattr(tag_campaign, "roll_d6", roll_bribe)
+    monkeypatch.setattr(tag_campaign, "roll_exploding_for_level", lambda _character: next(streetwise_rolls))
+    monkeypatch.setattr(tag_campaign, "roll_d3", lambda: pytest.fail("the discarded natural 1 has no consequence"))
+
+    entry = look_for_clues(campaign, hero, try_halfling_luck=authorize_luck)
+
+    assert bribe_rolls == 1
+    assert luck_calls == 1
+    assert hero.gold == 8
+    assert hero.clues == 1
+    assert town_streetwise_clue_count(hero) == 1
+    assert entry.roll == 5
+    assert entry.modifier == 0
+    assert entry.total == 5
+    assert "spends 1 Luck point to reroll" in entry.result_text
+    assert "halfling -1 is removed" in entry.result_text
+    assert "found no useful clue" in entry.result_text
+
+
+def test_tag_look_for_clues_natural_one_life_choice_rolls_d3(monkeypatch) -> None:
+    campaign = default_campaign()
+    hero = _character(class_id="wizard", class_name="Wizard", current_life=4, gold=20)
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 2)
+    monkeypatch.setattr(tag_campaign, "roll_exploding_for_level", lambda _character: (1, [1]))
+    monkeypatch.setattr(tag_campaign, "roll_d3", lambda: 3)
+
+    entry = look_for_clues(campaign, hero, natural_one_consequence="life")
+
+    assert hero.gold == 18
+    assert hero.current_life == 1
+    assert entry.roll == 1
+    assert entry.cost_gp == 2
+    assert "lost 3 Life in a street brawl" in entry.result_text
 
 
 def test_tag_simple_travel_rolls_days_and_new_size(monkeypatch) -> None:
@@ -1369,7 +1504,7 @@ def test_tag_generated_noncombat_finales_do_not_install_proxy_fights(monkeypatch
     expected = {
         ("rumor", "1"): ("choice", "Scene choices", {"bofto_scene_choice", "bofto_theft_save"}),
         ("rumor", "3"): ("procedure", "Scene procedure", {"tag_ambush_chance"}),
-        ("rumor", "9"): ("procedure", "Scene procedure", {"daroc_cat"}),
+        ("rumor", "9"): ("procedure", "Scene procedure", {"daroc_cat", "daroc_give_up"}),
         ("rumor", "11"): ("service", "Service choices", {"deoldyn_training", "mark_training_xp_roll"}),
     }
 
@@ -1382,7 +1517,11 @@ def test_tag_generated_noncombat_finales_do_not_install_proxy_fights(monkeypatch
         assert reference["finale_mode"] == mode
         assert reference["final_foes"] == []
         assert reference["final_foe_proxy"] == ""
-        assert manifest["quest"]["complete_when"] == {"type": "room_reached", "room_id": "tag-final-scene"}
+        expected_completion_type = "tag_scene_resolved" if (lead_type, detail) == ("rumor", "9") else "room_reached"
+        assert manifest["quest"]["complete_when"] == {
+            "type": expected_completion_type,
+            "room_id": "tag-final-scene",
+        }
         final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
         assert "encounter" not in final_room["triggers"][0]
         final_prompt = reference["room_prompts"]["tag-final-scene"]
@@ -1508,7 +1647,7 @@ def test_tag_rumor_manifests_include_contextual_scene_procedure_prompts() -> Non
         "5": {"dragon_type_reveal"},
         "6": {"leprechaun_shoes", "leprechaun_illusion_spell"},
         "7": {"temple_dungeon_handoff"},
-        "9": {"daroc_cat"},
+        "9": {"daroc_cat", "daroc_give_up"},
         "10": {"gargoyle_count", "gargoyle_surprise", "gargoyle_skin", "gargoyle_bounty"},
         "11": {"deoldyn_training", "mark_training_xp_roll"},
         "12": {"solo_restriction", "agaratha"},
@@ -1646,6 +1785,40 @@ def test_rumor_manifest_upgrade_restores_missing_entry_prompt() -> None:
         "Investigate",
         "Not now — return to town",
     ]
+
+
+def test_legacy_daroc_manifest_upgrade_normalizes_reward_actions_reference_and_lifecycle() -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="9")
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    reference["pdf_pages"] = "TAG pp.24 and 27"
+    reference["rewards"] = "Daroc pays 100 gp and grants one XP roll."
+    reference["room_prompts"]["tag-final-scene"]["actions"] = [
+        {
+            "label": "Pay Daroc's cat reward",
+            "tooltip": "Legacy Scene 5 closeout awards 100 gp.",
+            "action_type": "scene",
+            "action_value": "daroc_cat",
+            "reference": "TAG p.27: Daroc's lost cat",
+            "amount": 100,
+        }
+    ]
+    manifest["quest"]["complete_when"] = {"type": "room_reached", "room_id": "tag-final-scene"}
+
+    upgraded = upgrade_tag_manifest(manifest)
+    upgraded_reference = upgraded["source"]["parameters"]["tag_reference"]
+    actions = upgraded_reference["room_prompts"]["tag-final-scene"]["actions"]
+    actions_by_value = {action["action_value"]: action for action in actions}
+
+    assert set(actions_by_value) == {"daroc_cat", "daroc_give_up"}
+    assert actions_by_value["daroc_cat"]["amount"] == DAROC_FAMILIAR_REWARD_GP
+    assert "p.26" in actions_by_value["daroc_cat"]["reference"]
+    assert "p.27" not in actions_by_value["daroc_cat"]["reference"]
+    assert upgraded["quest"]["complete_when"] == {
+        "type": "tag_scene_resolved",
+        "room_id": "tag-final-scene",
+    }
+    assert "200 gp" in upgraded_reference["rewards"]
+    assert upgraded_reference["daroc_scene5_rules_upgrade"].startswith("TAG pp.20, 24, 26")
 
 
 def test_legacy_bofto_rumor_without_scene_graph_starts_at_scene_9() -> None:
@@ -2040,8 +2213,8 @@ def test_tag_look_tough_spell_bonus_is_consumed_on_next_streetwise(monkeypatch) 
     hero = _character(class_id="rogue", class_name="Rogue", level=5, clues=0, statuses=[])
     cast_tag_guild_spell(campaign, hero, spell_key="look_tough")
 
-    rolls = iter([1, 3])
-    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 1)
+    monkeypatch.setattr(tag_campaign, "roll_exploding_for_level", lambda _character: (3, [3]))
     entry = look_for_clues(campaign, hero)
 
     assert "TAG Look Tough next Streetwise bonus" not in hero.statuses

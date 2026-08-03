@@ -94,7 +94,7 @@ Implemented first slice:
 - moving to a different settlement by simple 3d6-3 travel days or optional hex-map route logging;
 - special-item availability with settlement-size modifier and fail-by-1 surcharge;
 - Streetwise Look for Clues with character choice, bribe cost, class modifier and natural-1 consequence;
-- Daroc's Lost Familiar (TAG p.27, Scene 5) with persisted town-Streetwise Clue provenance, two-Clue cost, printed one-Clue Druid/Beastmaster/cat eligibility, selected 100gp recipient, and one pending XP roll. Full Beastmaster and companion behavior remains deferred to Crucible of Classic Critters pp.11-15;
+- Daroc's Lost Familiar (TAG pp.20, 24, and 26) with actor-selected repeatable L6 Streetwise searches and `d6` bribes, persisted Town Streetwise Clue provenance/progress, two-Clue cost, one-Clue Druid/Beastmaster/cat eligibility, a separate selected living 200gp recipient, and one pending XP roll. The 200gp amount follows the Rumor offer on p.24 by player ruling over Scene 5's known erroneous 100gp line on p.26. Give up returns Rumor 9 to `heard` and preserves eligible Clues; required scene completion prevents arrival or duplicate rewards. Full Beastmaster and companion behavior remains deferred to Crucible of Classic Critters pp.11-15;
 - first twenty-eight TAG treasure/service/procedure rows (through Streetwise Rules plus Adventurers Guild jobs, Trinkets, Guild spells, and TAG special foes), with hidden-trove risk roll, treasure-map price, moneylender pursuit, horn attraction, flammable-oil throw, aspergillum break, and row-level availability checks;
 - TAG settlement Apothecary hook when TCOTFD is also in use;
 - troupe name/active party/guild coffer state, settlement storage, fixed service purchases, magic lockers, Gambling House gp outcomes, Streetwise Listen to Rumors/Interrogate/Look Tough, and Following the Treasure Map / Map Leads To roll summaries;
@@ -109,7 +109,7 @@ Implemented first slice:
 
 Next slices:
 
-- Continue one bounded, PDF-backed generated TAG terminal at a time. The pp.22-31 audit confirms none of the twelve Rumours is arrival-complete. Rumor 9 is the next safe lifecycle migration because its typed resolver already exists. Do not reopen passed broad adventure tests. Rumor 3 Scene 11 is not a small next slice because its mandatory roll can enter the complete TAG pp.34-35 Riff-Raff and Outside of Town Ambush encounter tables.
+- Continue one bounded, PDF-backed generated TAG terminal at a time. The pp.22-31 audit confirms none of the twelve Rumours is arrival-complete; Rumors 4 and 9 now use the required scene lifecycle. Rumors 6/11 are next after a shared repeatable vendor/service host and explicit Done action. Do not reopen passed broad adventure tests. Rumor 3 Scene 11 is not a small next slice because its mandatory roll can enter the complete TAG pp.34-35 Riff-Raff and Outside of Town Ambush encounter tables.
 
 Later slices can deepen exact branch-specific item handling, robbery recovery,
 and Guild spell math if playtesting shows those surfaces are needed.

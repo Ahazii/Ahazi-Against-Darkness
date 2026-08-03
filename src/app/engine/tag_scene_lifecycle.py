@@ -27,6 +27,7 @@ class TagActionLifecycle:
     starter: TagAutoStarter | None = None
     state_key: str = ""
     terminal_phases: frozenset[str] = frozenset()
+    terminal_flags: frozenset[str] = frozenset()
     terminal_failure_phases: frozenset[str] = frozenset()
 
     def state(self, session: SessionState) -> dict[str, Any]:
@@ -37,9 +38,13 @@ class TagActionLifecycle:
         return dict(value) if isinstance(value, dict) else {}
 
     def is_terminal(self, session: SessionState) -> bool:
-        if not self.terminal_phases:
-            return False
-        return str(self.state(session).get("phase") or "") in self.terminal_phases
+        state = self.state(session)
+        phase_terminal = (
+            bool(self.terminal_phases)
+            and str(state.get("phase") or "") in self.terminal_phases
+        )
+        flag_terminal = any(bool(state.get(flag)) for flag in self.terminal_flags)
+        return phase_terminal or flag_terminal
 
     def is_terminal_failure(self, session: SessionState) -> bool:
         if not self.terminal_failure_phases:
@@ -57,6 +62,12 @@ def _start_mutant_fish_scene12(session: SessionState) -> bool:
 
 
 TAG_ACTION_LIFECYCLES: dict[str, TagActionLifecycle] = {
+    "daroc_cat": TagActionLifecycle(
+        required_for_completion=True,
+        state_key="daroc_familiar",
+        terminal_phases=frozenset({"resolved", "deferred"}),
+        terminal_flags=frozenset({"resolved"}),
+    ),
     "mutant_fish_scene12": TagActionLifecycle(
         auto_start=True,
         required_for_completion=True,

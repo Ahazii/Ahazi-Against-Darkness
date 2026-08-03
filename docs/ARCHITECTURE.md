@@ -47,7 +47,7 @@ Key files:
 - `src/app/engine/developer_item_grants.py` - developer-only enabled-supplement inventory catalog, class/carry eligibility, and rules-valid item grants
 - `src/app/engine/gremlin_events.py` - staged Invisible Gremlins event, item-level protection, printed theft priority, and Disbelief conversion
 - `src/app/engine/tag_temporary_weapon_enchantment.py` - shared TAG p.65 weapon marker and encounter theft/destruction decision policy
-- `src/app/engine/tag_daroc.py` - typed TAG p.27 Scene 5 town-Clue provenance, familiar-search eligibility, Clue spending, and reward resolution
+- `src/app/engine/tag_daroc.py` - typed TAG pp.20, 24, and 26 Daroc procedure: selected-searcher Streetwise progress, town-Clue provenance/eligibility, exact Clue spending, selected reward recipient, and 200gp plus XP resolution
 - `src/app/engine/tag_mutant_fish.py` - typed TAG p.29 Scene 12 party hypnosis, rescue turns, ration disposition, and campaign-aware sale pricing
 - `src/app/engine/tag_scene_lifecycle.py` - declarative generated-TAG room action lifecycle registry for idempotent automatic entry procedures, required-resolution metadata, and canonical shared terminal-closeout guidance
 - `src/app/engine/tag_campaign.py` - TAG campaign services, generated leads, campaign-scoped Rumor lifecycle, and campaign-effect persistence

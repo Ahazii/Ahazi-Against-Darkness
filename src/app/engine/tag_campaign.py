@@ -7,7 +7,7 @@ import os
 import re
 from math import ceil
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 from uuid import uuid4
 
 from ..db import now_utc
@@ -45,7 +45,7 @@ from ..schemas import (
     WorldTroupeRecord,
 )
 from .abyss_tables import is_abyss_profile
-from .dice import roll_advancement, roll_d6, roll_exploding_d6, roll_exploding_for_level
+from .dice import roll_advancement, roll_d3, roll_d6, roll_exploding_d6, roll_exploding_for_level
 from .experience import advancement_succeeds
 from .magic_weapons import can_member_wield_weapon
 from .tier_advancement import level_tier_band
@@ -1056,6 +1056,7 @@ FIGHTING_CLASS_IDS = {
 }
 ROGUE_SAVE_CLASS_IDS = {"assassin", "rogue", "swashbuckler"}
 INTERROGATION_CLASS_IDS = {"atrocity", "cambion", "inquisitor", "investigator", "sleuth", "witch_hunter"}
+_LARGE_STREETWISE_CLASS_PATTERN = re.compile(r"\b(?:troll|ogre|minotaur|half[-_ ]?giant)\b", re.IGNORECASE)
 
 TAG_PURCHASABLE_SERVICES: dict[str, dict[str, object]] = {
     "resurrection_tag": {
@@ -1794,28 +1795,36 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
     9: {
         "title": "Daroc's Lost Familiar",
         "scene": "Scene 5",
-        "pdf_pages": "TAG pp.24, 27",
+        "pdf_pages": "TAG pp.20, 24, 26",
         "objective": "Use town Clues to find Daroc's lost cat familiar.",
         "entry": "Daroc's familiar has vanished into the settlement alleys.",
         "side": "Beastmasters, druids, cat-like characters, or cat companions reduce the Clue burden.",
-        "complication": "Scene 5 requires 2 Clues from town Streetwise, reduced to 1 with the listed cat/beast help.",
+        "complication": "Scene 5 requires 2 Clues generated with town Streetwise rolls, reduced to 1 with the listed cat/beast help. Choose the searching character for every attempt.",
         "final_title": "The Familiar's Hiding Place",
         "final_description": "The familiar is found after the party pays the required Clue cost or qualifies for the reduced cat/beast route.",
         "finale_mode": "procedure",
-        "finale_instruction": "Spend only Clues generated in town with Streetwise. The app derives the one-Clue party exception, consumes the eligible Clues, awards 100 gp, and adds one pending XP roll.",
-        "rewards": "100 gp and 1 XP roll.",
+        "finale_instruction": "Choose a character for each L6 town Streetwise search. The app charges the d6 bribe, records progress and printed natural-1 consequences, derives the one-Clue party exception, consumes the eligible Clues, awards the player-confirmed 200 gp reward, and adds one pending XP roll. Give up returns the Rumor to the heard list without losing accumulated eligible Clues.",
+        "rewards": "200 gp and 1 XP roll. Campaign ruling: Rumor 9's printed p.24 offer controls the known 100 gp discrepancy in Scene 5 on p.26.",
         "clue_gate_cost": 2,
         "clue_gate_label": "Spend town Clues for Daroc's familiar",
         "replace_complication_prompt_actions": True,
         "final_prompt_actions": [
             {
-                "label": "Find Daroc's cat",
-                "tooltip": "TAG p.27: spend two town Streetwise Clues, or one with a Beastmaster, Druid, cat-like character, or cat animal companion. Then choose who receives 100 gp; the party gains one pending XP roll.",
+                "label": "Search for Clues and find Daroc's cat",
+                "tooltip": "TAG pp.20, 24, 26: choose the Streetwise character for each L6 search and pay its d6 gp bribe. Find two eligible town Clues, or one with a Beastmaster, Druid, cat-like character, or cat animal companion. Then choose who receives the player-confirmed 200 gp reward; the party gains one pending XP roll and opens shared closeout. Arrival alone does not complete this Scene.",
                 "action_type": "scene",
                 "action_value": "daroc_cat",
-                "reference": "TAG p.27, Scene 5 Daroc's lost cat",
-                "amount": 100,
-            }
+                "reference": "TAG p.20 Streetwise; p.24 Rumor 9 offer; p.26 Scene 5 Daroc's lost cat",
+                "amount": 200,
+                "required_for_completion": True,
+            },
+            {
+                "label": "Give up — return to town",
+                "tooltip": "End this search without resolving Rumor 9. The Rumor returns to the heard list for later, and any eligible town Streetwise Clues already found remain on their characters.",
+                "action_type": "scene",
+                "action_value": "daroc_give_up",
+                "reference": "TAG p.22 Rumor retained for later; Scene 5 search deferred",
+            },
         ],
         "rules": [
             "Only Clues generated in town with Streetwise count.",
@@ -2808,6 +2817,7 @@ def record_tag_rumor_state(
     status: str,
     source: str = "rumor",
     adventure_id: str | None = None,
+    allow_status_reset: bool = False,
 ) -> TagRumorState:
     timestamp = now_utc()
     state = tag_rumor_state(
@@ -2828,7 +2838,7 @@ def record_tag_rumor_state(
         )
         campaign.tag_rumor_states.append(state)
     else:
-        if rank.get(status, 0) >= rank.get(state.status, 0):
+        if allow_status_reset or rank.get(status, 0) >= rank.get(state.status, 0):
             state.status = status  # type: ignore[assignment]
         state.source = source  # type: ignore[assignment]
         if adventure_id:
@@ -2880,6 +2890,7 @@ def record_session_tag_rumor_state(
     session: SessionState,
     *,
     status: str,
+    allow_status_reset: bool = False,
 ) -> TagRumorState | None:
     rumor_number = _session_tag_rumor_number(session)
     if rumor_number is None:
@@ -2895,6 +2906,7 @@ def record_session_tag_rumor_state(
         status=status,
         source=source,
         adventure_id=session.adventure_id,
+        allow_status_reset=allow_status_reset,
     )
 
 
@@ -3823,6 +3835,25 @@ def reset_guild_availability_reroll(campaign: CampaignState) -> TagDowntimeLogEn
     )
 
 
+def _is_halfling_streetwise_character(character: Character) -> bool:
+    class_id = (character.class_id or "").strip().lower().replace("-", "_").replace(" ", "_")
+    return class_id == "halfling" or "halfling" in (character.class_name or "").lower()
+
+
+def _is_large_streetwise_character(character: Character) -> bool:
+    class_identity = " ".join(
+        str(value or "")
+        for value in (character.class_id, character.class_name)
+    )
+    if _LARGE_STREETWISE_CLASS_PATTERN.search(class_identity):
+        return True
+    size_markers = {
+        str(value or "").strip().casefold()
+        for value in [*(character.abilities or []), *(character.class_traits or [])]
+    }
+    return bool(size_markers & {"large", "large creature", "size: large"})
+
+
 def streetwise_modifier(character: Character, *, action: str = "look_for_clues") -> int:
     class_id = (character.class_id or character.class_name or "").lower().replace(" ", "_").replace("-", "_")
     class_name = (character.class_name or "").lower()
@@ -3833,9 +3864,11 @@ def streetwise_modifier(character: Character, *, action: str = "look_for_clues")
         or any(name in class_name for name in ("witch", "cambion", "atrocity", "sleuth", "investigator", "inquisitor"))
     ):
         return character.level
-    if class_id == "halfling" or "halfling" in class_name:
+    if _is_halfling_streetwise_character(character):
         return -1
-    if class_id in FIGHTING_CLASS_IDS or character.attack_bonus > 0:
+    if _is_large_streetwise_character(character):
+        return 2
+    if class_id in FIGHTING_CLASS_IDS:
         return 1
     return 0
 
@@ -3857,42 +3890,90 @@ def look_for_clues(
     character: Character,
     *,
     natural_one_consequence: str = "gold",
+    bribe_cost: int | None = None,
+    try_halfling_luck: Callable[[], bool] | None = None,
 ) -> TagDowntimeLogEntry:
-    bribe_cost = roll_d6()
-    character.gold = max(0, character.gold - bribe_cost)
-    roll = roll_d6()
-    modifier = streetwise_modifier(character, action="look_for_clues")
-    spell_bonus, spell_note = _tag_look_tough_bonus(character, modifier)
-    modifier += spell_bonus
-    total = roll + modifier
-    if roll == 1:
+    resolved_bribe_cost = max(1, min(6, int(bribe_cost if bribe_cost is not None else roll_d6())))
+    if character.gold < resolved_bribe_cost:
+        entry = TagDowntimeLogEntry(
+            action="look_for_clues",
+            character_id=character.id,
+            character_name=character.name,
+            roll=None,
+            modifier=streetwise_modifier(character, action="look_for_clues"),
+            total=None,
+            cost_gp=0,
+            result_text=(
+                f"The Streetwise bribe costs {resolved_bribe_cost} gp, but {character.name} has only "
+                f"{character.gold} gp. No bribe is paid and no Streetwise Save is rolled."
+            ),
+            created_at=now_utc(),
+        )
+        campaign.tag_downtime_log.append(entry)
+        trim_tag_logs(campaign)
+        return entry
+
+    character.gold -= resolved_bribe_cost
+    rolled_total, rolls = roll_exploding_for_level(max(1, int(character.level or 1)))
+    base_modifier = streetwise_modifier(character, action="look_for_clues")
+    spell_bonus, spell_note = _tag_look_tough_bonus(character, base_modifier)
+    modifier = base_modifier + spell_bonus
+    total = rolled_total + modifier
+    natural_one = rolls == [1]
+    luck_note = ""
+    if (
+        _is_halfling_streetwise_character(character)
+        and (natural_one or total < 6)
+        and try_halfling_luck is not None
+        and try_halfling_luck()
+    ):
+        first_rolls = list(rolls)
+        rolled_total, rolls = roll_exploding_for_level(max(1, int(character.level or 1)))
+        modifier += 1  # TAG p.20: the halfling -1 does not apply to the Luck reroll.
+        total = rolled_total + modifier
+        natural_one = rolls == [1]
+        luck_note = (
+            f" {character.name} spends 1 Luck point to reroll "
+            f"({' + '.join(str(value) for value in first_rolls)}) as "
+            f"({' + '.join(str(value) for value in rolls)}); the halfling -1 is removed."
+        )
+    roll_text = " + ".join(str(value) for value in rolls)
+    if natural_one:
         if character.clues > 0:
             character.clues -= 1
             normalize_town_streetwise_clues(character)
             result = f"{character.name} rolled a natural 1 and lost 1 Clue."
-        elif natural_one_consequence == "life":
-            character.current_life = max(0, character.current_life - 1)
-            result = f"{character.name} rolled a natural 1 and lost 1 Life."
+        elif natural_one_consequence == "life" or character.gold <= 0:
+            life_loss = roll_d3()
+            character.current_life = max(0, character.current_life - life_loss)
+            result = f"{character.name} rolled a natural 1 and lost {life_loss} Life in a street brawl."
         else:
             extra_loss = roll_d6() + roll_d6() + roll_d6()
-            character.gold = max(0, character.gold - extra_loss)
-            result = f"{character.name} rolled a natural 1 and lost {extra_loss} gp."
+            actual_loss = min(character.gold, extra_loss)
+            character.gold -= actual_loss
+            result = f"{character.name} rolled a natural 1 and lost {actual_loss} gp"
+            if actual_loss < extra_loss:
+                result += f" of the {extra_loss} gp consequence available in coins"
+            result += "."
     elif total >= 6:
         character.clues += 1
         record_town_streetwise_clue(character)
         result = f"{character.name} gained 1 town Streetwise Clue."
     else:
         result = f"{character.name} found no useful clue."
-    result = f"{result}{spell_note}"
+    result = (
+        f"{result} Streetwise Save: {roll_text} {modifier:+d} = {total} vs L6; "
+        f"{resolved_bribe_cost} gp bribe paid.{spell_note}{luck_note}"
+    )
     character.updated_at = now_utc()
     entry = TagDowntimeLogEntry(
         action="look_for_clues",
         character_id=character.id,
         character_name=character.name,
-        roll=roll,
+        roll=rolled_total,
         modifier=modifier,
         total=total,
-        cost_gp=bribe_cost,
+        cost_gp=resolved_bribe_cost,
         result_text=result,
         created_at=now_utc(),
     )
@@ -5798,9 +5879,9 @@ def resolve_tag_scene_action(
         result = f"{character.name} claims the Shaura cult reward: 150 gp. Record XP from the final fight normally."
     elif action == "daroc_cat":
         result = (
-            "Daroc's TAG p.27 Scene 5 procedure must be resolved in its active generated adventure. "
-            "The app checks town Streetwise Clue provenance, the one-Clue party exception, and the "
-            "session's pending XP-roll pool there."
+            "Daroc's TAG pp.20 and 26 Scene 5 procedure must be resolved in its active generated adventure. "
+            "The guided scene chooses each Streetwise searcher, persists eligible Clue progress, handles "
+            "Give up, and applies the player-confirmed TAG p.24 200 gp reward plus one pending XP roll."
         )
     elif action == "mutant_fish_rations":
         roll = roll_d6()

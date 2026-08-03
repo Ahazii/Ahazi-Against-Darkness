@@ -537,7 +537,7 @@ def test_campaign_guild_spell_sync_preserves_active_session_gold_split(client: T
 
 
 def test_daroc_scene5_consumes_town_clues_and_awards_real_pending_xp(client: TestClient) -> None:
-    from app.engine.tag_daroc import TAG_TOWN_STREETWISE_CLUE
+    from app.engine.tag_daroc import DAROC_FAMILIAR_REWARD_GP, TAG_TOWN_STREETWISE_CLUE
 
     characters: list[Character] = []
     for name in ("Clue Holder", "Reward Receiver"):
@@ -589,6 +589,7 @@ def test_daroc_scene5_consumes_town_clues_and_awards_real_pending_xp(client: Tes
                     "tile_type": "room",
                     "title": "Daroc's familiar",
                     "description": "The town search ends here.",
+                    "content_key": "imported:tag-final-scene",
                 }
             ],
         },
@@ -602,7 +603,7 @@ def test_daroc_scene5_consumes_town_clues_and_awards_real_pending_xp(client: Tes
         json={
             "character_id": characters[1].id,
             "scene_action": "daroc_cat",
-            "reference": "TAG p.27, Scene 5",
+            "reference": "TAG p.26, Scene 5",
         },
     )
 
@@ -616,7 +617,7 @@ def test_daroc_scene5_consumes_town_clues_and_awards_real_pending_xp(client: Tes
     assert saved is not None
     assert [member.clues for member in saved.party] == [0, 0]
     assert saved.clues_found == 0
-    assert saved.party[1].gold == members[1].gold + 100
+    assert saved.party[1].gold == members[1].gold + DAROC_FAMILIAR_REWARD_GP
     saved_receiver = main.store.get("characters", characters[1].id, Character.model_validate)
     assert saved_receiver is not None
     assert saved_receiver.gold == saved.party[1].gold
@@ -628,7 +629,7 @@ def test_daroc_scene5_consumes_town_clues_and_awards_real_pending_xp(client: Tes
         json={"character_id": characters[1].id, "scene_action": "daroc_cat"},
     )
     assert duplicate.status_code == 400
-    assert "already been found" in duplicate.json()["detail"]
+    assert "already" in duplicate.json()["detail"].lower()
 
 
 def test_campaign_api_creates_selects_and_deletes_tag_settlements(client: TestClient) -> None:

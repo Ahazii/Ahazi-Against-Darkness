@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-03. Target build: v0.39.65.
+Last updated: 2026-08-03. Target build: v0.39.66.
 
 ## Adventure Test Gate: Passed
 
@@ -77,7 +77,7 @@ the completed session is next opened, and retains the old map-size fallback
 only for legacy sessions without visit tracking. This reporting fix is covered
 automatically; do not replay Rumor 2.
 
-## Do Next: TAG Rumor 4 Closeout Only
+## Completed: TAG Rumor 4 Closeout
 
 Live v0.39.64 evidence in session `cee90d971b804c2f9c32d54caac040ab`
 passes the Rumor opening and the full TAG p.29 Scene 12 procedure. Do not repeat
@@ -86,24 +86,63 @@ Keep choice, or two-minion progress. The remaining defect was presentation:
 Narrative said **Continue**, while the enabled closeout was a small differently
 labelled chip and its full action panel was hidden with Objective Details.
 
-After deploying v0.39.65 and force-refreshing, resume that same session; do not
-generate another Rumor 4. Confirm only that:
+The v0.39.65 force-refresh/resume check passed. In that same session:
 
-1. the prominent **Continue — return to town and finish** action is visible
-   beneath Narrative even while Objective Details is otherwise collapsed;
-2. the compact Narrative-header action uses the same wording;
-3. Copy Narrative Report names that pending closeout action; and
-4. choosing the prominent action opens the normal Adventure Complete summary.
+1. the prominent **Continue — return to town and finish** action was visible
+   beneath Narrative while Objective Details remained collapsed; and
+2. choosing it opened the normal Adventure Complete summary.
 
-Do not force an all-party failure on the valuable live party. Automated tests
-own total-party destruction, failed-rescuer role swaps, the 5gp friendship
-rate, carrying-limit distribution, duplicate prevention, XP rollover, saved
-collapsed-panel preferences, and the shared closeout endpoint.
+Do not regenerate or replay Rumor 4. Automated tests own its remaining
+diagnostic wording, total-party destruction, failed-rescuer role swaps, the 5gp
+friendship rate, carrying-limit distribution, duplicate prevention, XP
+rollover, saved collapsed-panel preferences, and shared closeout endpoint.
 
-After this narrow gate passes, migrate Rumor 9's already-typed Daroc terminal
-onto the same required-resolution metadata. Do not mass-enable the gate: the
-pp.22-31 audit found that every Rumor needs a terminal result, but several still
-need vendor/service Done actions or child-dungeon return wiring first.
+## Do Next: TAG Rumor 9 Daroc Lifecycle
+
+After deploying v0.39.66 and force-refreshing, generate a targeted Rumor 9 test
+module. This is a narrow test of the shared scene host and typed Daroc plug-in,
+not a broad adventure regression.
+
+1. Start the module and confirm **Investigate** and **Not now — return to town**
+   appear directly beneath Narrative. Choose **Investigate**.
+2. At Scene 5, confirm the narrative remains open and the panel shows current
+   Town Streetwise Clue progress, **Who searches for Clues?**, a separate living
+   reward-recipient selector, **Search for Clues**, and **Give up — return to
+   town**.
+3. Select the searcher and press **Search for Clues**. The roll is automatic:
+   TAG p.20 spends that hero's `d6` bribe and rolls Streetwise against L6. Check
+   that the Narrative names the selected hero, bribe, roll/modifier/total, and
+   current progress. Repeat as needed; changing the selected hero must change
+   who pays and rolls.
+4. After at least one attempt, save/dashboard/resume once. The existing Clue
+   progress and prior result must remain; resuming must not roll, spend gp, or
+   duplicate a Clue.
+5. Before completing the reward path, use one targeted run to choose **Give up
+   — return to town**. Confirm it opens the shared closeout, returns Rumor 9 to
+   `heard` rather than resolving it permanently, and preserves eligible Town
+   Streetwise Clues for a later Rumor 9 attempt. Choose **Continue — return to
+   town and finish** to complete that deferred session.
+6. Generate/select Rumor 9 again and investigate. Search until the displayed
+   requirement is met: normally two eligible Clues, or one when the party has
+   the TAG p.26 Druid/Beastmaster/cat exception. If preserved Clues already meet
+   the requirement, use the displayed claim control instead of making an
+   unnecessary roll. Confirm the selected living recipient receives exactly
+   **200gp** and the session receives exactly one pending XP roll. The 200gp
+   amount follows the Rumor offer on TAG p.24; Scene 5's 100gp line on p.26 is
+   the known source error.
+7. Assign or bank the XP roll, then choose **Continue — return to town and
+   finish**. The normal Adventure Complete summary should open. Resume must not
+   repeat the reward, spend additional Clues, or create another XP roll.
+
+Do not force a natural 1 or manipulate a valuable party to obtain particular
+dice. Focused tests own TAG p.20 natural-1 Clue loss/fallback consequences,
+insufficient-gold handling, the one-Clue eligibility variants, exact Clue
+spending order, duplicate prevention, legacy save repair, and XP gating.
+
+After this gate, implement the shared repeatable vendor/service host and an
+explicit Done action for Rumors 6 and 11. Do not mass-enable required scene
+completion: the remaining profiles still need their own printed terminal
+routes.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

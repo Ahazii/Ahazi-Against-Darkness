@@ -10,6 +10,7 @@ from app.engine.adventure_session import create_session_from_manifest
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.tag_campaign import build_tag_adventure_manifest, default_campaign, load_campaign, save_campaign
 from app.engine.tag_compat import upgrade_tag_manifest
+from app.engine.tag_daroc import DAROC_FAMILIAR_REWARD_GP, TAG_TOWN_STREETWISE_CLUE
 from app.engine.tag_scene_lifecycle import (
     TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
     TAG_GENERATED_CLOSEOUT_LOG_MESSAGE,
@@ -63,6 +64,66 @@ def base_session(**kwargs) -> SessionState:
     )
     defaults.update(kwargs)
     return SessionState(**defaults)
+
+
+def _save_daroc_generated_session(
+    session_id: str,
+) -> tuple[dict, Character, Character]:
+    campaign = default_campaign()
+    manifest, _entry = build_tag_adventure_manifest(
+        campaign,
+        lead_type="rumor",
+        detail="9",
+    )
+    searcher = Character(
+        id=f"{session_id}-searcher",
+        name="Daroc Searcher",
+        class_id="rogue",
+        class_name="Rogue",
+        level=3,
+        xp=0,
+        gold=50,
+        max_life=8,
+        current_life=8,
+        attack_bonus=1,
+        defense_bonus=1,
+        save_bonus=0,
+        inventory=[],
+        active_session_id=session_id,
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    recipient = Character(
+        id=f"{session_id}-recipient",
+        name="Daroc Reward Recipient",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=0,
+        gold=10,
+        max_life=8,
+        current_life=8,
+        attack_bonus=1,
+        defense_bonus=1,
+        save_bonus=0,
+        inventory=[],
+        active_session_id=session_id,
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    for character in (searcher, recipient):
+        main.store.save("characters", character)
+    session = create_session_from_manifest(
+        main.random_engine,
+        session_id,
+        "daroc-party",
+        [main._member_state(searcher), main._member_state(recipient)],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    save_campaign(main.store, campaign)
+    main.store.save("sessions", session)
+    return manifest, searcher, recipient
 
 
 def test_refuse_quest_blocks_lady() -> None:
@@ -1665,6 +1726,245 @@ def test_shared_rumor_entry_return_to_town_keeps_rumor_for_later(client) -> None
 
     assert completed.status_code == 200
     assert completed.json()["mode"] == "complete"
+
+
+def test_daroc_search_progress_persists_resolves_once_and_uses_shared_closeout(
+    client,
+    monkeypatch,
+) -> None:
+    session_id = "daroc-search-flow"
+    manifest, searcher, recipient = _save_daroc_generated_session(session_id)
+    entry_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"][
+        "tag-lead-entry"
+    ]["actions"]
+    investigate = next(action for action in entry_actions if action["label"] == "Investigate")
+
+    entered = client.post(
+        f"/api/sessions/{session_id}/tag-route-action",
+        json={"route_action": "unlock_scene", "reference": investigate["reference"]},
+    )
+
+    assert entered.status_code == 200, entered.text
+    entered_payload = entered.json()
+    entered_session = entered_payload["session"]
+    current_id = entered_session["map_state"]["current_tile_id"]
+    current = next(tile for tile in entered_session["map_state"]["tiles"] if tile["id"] == current_id)
+    assert current["content_key"] == "imported:tag-final-scene"
+    assert entered_session["active_quest"]["completed"] is False
+    assert entered_session["tag_generated_completion_pending"] is False
+    assert entered_session["tag_daroc_familiar_state"]["available_clues"] == 0
+    assert entered_session["tag_daroc_familiar_state"]["required_clues"] == 2
+    assert not any(line == "Quest complete: objective location reached." for line in entered_session["log"])
+    entered_rumor = next(
+        state for state in entered_payload["campaign"]["tag_rumor_states"] if state["rumor_number"] == 9
+    )
+    assert entered_rumor["status"] == "investigating"
+
+    bribes: list[int] = []
+    bribe_values = iter([2, 4])
+    streetwise_checks: list[tuple[int, list[int]]] = []
+    check_values = iter([(3, [3]), (3, [3])])
+
+    def roll_d6() -> int:
+        value = next(bribe_values)
+        bribes.append(value)
+        return value
+
+    def roll_streetwise(_level: int) -> tuple[int, list[int]]:
+        result = next(check_values)
+        streetwise_checks.append(result)
+        return result
+
+    monkeypatch.setattr("app.engine.tag_campaign.roll_d6", roll_d6)
+    monkeypatch.setattr("app.engine.tag_campaign.roll_exploding_for_level", roll_streetwise)
+    search_payload = {
+        "action": "search",
+        "character_id": searcher.id,
+        "reward_recipient_id": recipient.id,
+        "natural_one_consequence": "gold",
+        "use_luck": False,
+    }
+
+    first_search = client.post(
+        f"/api/sessions/{session_id}/tag-daroc-action",
+        json=search_payload,
+    )
+
+    assert first_search.status_code == 200, first_search.text
+    first_session = first_search.json()["session"]
+    first_searcher = next(member for member in first_session["party"] if member["character_id"] == searcher.id)
+    first_recipient = next(member for member in first_session["party"] if member["character_id"] == recipient.id)
+    assert bribes == [2]
+    assert streetwise_checks == [(3, [3])]
+    assert first_searcher["gold"] == 48
+    assert first_searcher["clues"] == 1
+    assert TAG_TOWN_STREETWISE_CLUE in first_searcher["statuses"]
+    assert first_recipient["gold"] == 10
+    assert first_session["tag_daroc_familiar_state"]["available_clues"] == 1
+    assert first_session["tag_daroc_familiar_state"]["resolved"] is False
+    assert first_session["active_quest"]["completed"] is False
+    assert first_session["tag_generated_completion_pending"] is False
+
+    for _ in range(2):
+        resumed = client.get(f"/api/sessions/{session_id}")
+        assert resumed.status_code == 200
+        resumed_session = resumed.json()
+        assert resumed_session["tag_daroc_familiar_state"]["available_clues"] == 1
+        assert resumed_session["active_quest"]["completed"] is False
+    assert bribes == [2]
+    assert streetwise_checks == [(3, [3])]
+
+    resolved = client.post(
+        f"/api/sessions/{session_id}/tag-daroc-action",
+        json=search_payload,
+    )
+
+    assert resolved.status_code == 200, resolved.text
+    resolved_payload = resolved.json()
+    resolved_session = resolved_payload["session"]
+    resolved_searcher = next(member for member in resolved_session["party"] if member["character_id"] == searcher.id)
+    resolved_recipient = next(member for member in resolved_session["party"] if member["character_id"] == recipient.id)
+    assert bribes == [2, 4]
+    assert streetwise_checks == [(3, [3]), (3, [3])]
+    assert resolved_searcher["gold"] == 44
+    assert resolved_recipient["gold"] == 10 + DAROC_FAMILIAR_REWARD_GP
+    assert resolved_session["xp_rolls_pending"] == 1
+    assert resolved_session["active_quest"]["completed"] is True
+    assert resolved_session["active_quest"]["tag_procedure_state"]["daroc_familiar"]["resolved"] is True
+    assert resolved_session["tag_generated_completion_pending"] is True
+    assert resolved_session["mode"] == "exploration"
+    assert TAG_GENERATED_CLOSEOUT_ACTION_LABEL in "\n".join(resolved_session["log"])
+    resolved_rumor = next(
+        state for state in resolved_payload["campaign"]["tag_rumor_states"] if state["rumor_number"] == 9
+    )
+    assert resolved_rumor["status"] == "resolved"
+
+    duplicate = client.post(
+        f"/api/sessions/{session_id}/tag-daroc-action",
+        json=search_payload,
+    )
+
+    assert duplicate.status_code == 400
+    assert "already" in duplicate.json()["detail"].lower()
+    assert bribes == [2, 4]
+    assert streetwise_checks == [(3, [3]), (3, [3])]
+    stored_after_duplicate = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert stored_after_duplicate is not None
+    assert stored_after_duplicate.xp_rolls_pending == 1
+    assert next(member for member in stored_after_duplicate.party if member.character_id == recipient.id).gold == (
+        10 + DAROC_FAMILIAR_REWARD_GP
+    )
+
+    blocked_continue = client.post(f"/api/sessions/{session_id}/tag-generated-lead-continue")
+    assert blocked_continue.status_code == 200
+    assert blocked_continue.json()["mode"] == "exploration"
+    assert blocked_continue.json()["tag_generated_completion_pending"] is True
+
+    banked = client.post(
+        f"/api/sessions/{session_id}/advance",
+        json={"action": "bank_xp_roll", "character_id": recipient.id, "show_rolls": False},
+    )
+    assert banked.status_code == 200, banked.text
+    banked_session = banked.json()
+    banked_recipient = next(member for member in banked_session["party"] if member["character_id"] == recipient.id)
+    assert banked_session["xp_rolls_pending"] == 0
+    assert banked_recipient["xp"] == 1
+    assert banked_session["tag_generated_completion_pending"] is True
+
+    completed = client.post(f"/api/sessions/{session_id}/tag-generated-lead-continue")
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["mode"] == "complete"
+    assert completed.json()["tag_generated_completion_pending"] is False
+    assert completed.json()["active_quest"]["tag_generated_lead_signoff"] is True
+    completed_campaign = load_campaign(main.store)
+    completed_rumor = next(state for state in completed_campaign.tag_rumor_states if state.rumor_number == 9)
+    assert completed_rumor.status == "resolved"
+    assert completed_campaign.adventures_completed == 1
+
+
+def test_daroc_give_up_returns_rumor_to_heard_without_losing_found_clues(
+    client,
+    monkeypatch,
+) -> None:
+    session_id = "daroc-give-up"
+    manifest, searcher, recipient = _save_daroc_generated_session(session_id)
+    entry_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"][
+        "tag-lead-entry"
+    ]["actions"]
+    investigate = next(action for action in entry_actions if action["label"] == "Investigate")
+    entered = client.post(
+        f"/api/sessions/{session_id}/tag-route-action",
+        json={"route_action": "unlock_scene", "reference": investigate["reference"]},
+    )
+    assert entered.status_code == 200, entered.text
+
+    bribes = iter([2])
+    monkeypatch.setattr("app.engine.tag_campaign.roll_d6", lambda: next(bribes))
+    monkeypatch.setattr(
+        "app.engine.tag_campaign.roll_exploding_for_level",
+        lambda _level: (3, [3]),
+    )
+    searched = client.post(
+        f"/api/sessions/{session_id}/tag-daroc-action",
+        json={
+            "action": "search",
+            "character_id": searcher.id,
+            "reward_recipient_id": recipient.id,
+            "natural_one_consequence": "gold",
+            "use_luck": False,
+        },
+    )
+    assert searched.status_code == 200, searched.text
+    assert searched.json()["session"]["tag_daroc_familiar_state"]["available_clues"] == 1
+
+    gave_up = client.post(
+        f"/api/sessions/{session_id}/tag-daroc-action",
+        json={
+            "action": "give_up",
+            "character_id": searcher.id,
+            "reward_recipient_id": recipient.id,
+        },
+    )
+
+    assert gave_up.status_code == 200, gave_up.text
+    payload = gave_up.json()
+    session = payload["session"]
+    saved_searcher = next(member for member in session["party"] if member["character_id"] == searcher.id)
+    saved_recipient = next(member for member in session["party"] if member["character_id"] == recipient.id)
+    assert session["active_quest"]["completed"] is True
+    assert session["active_quest"]["tag_procedure_state"]["daroc_familiar"]["phase"] == "deferred"
+    assert session["active_quest"]["tag_procedure_state"]["daroc_familiar"]["resolved"] is False
+    assert session["tag_generated_completion_pending"] is True
+    assert session["xp_rolls_pending"] == 0
+    assert session["tag_daroc_familiar_state"]["available_clues"] == 1
+    assert saved_searcher["gold"] == 48
+    assert saved_searcher["clues"] == 1
+    assert TAG_TOWN_STREETWISE_CLUE in saved_searcher["statuses"]
+    assert saved_recipient["gold"] == 10
+    assert TAG_GENERATED_CLOSEOUT_ACTION_LABEL in "\n".join(session["log"])
+    rumor = next(state for state in payload["campaign"]["tag_rumor_states"] if state["rumor_number"] == 9)
+    assert rumor["status"] == "heard"
+
+    resumed = client.get(f"/api/sessions/{session_id}")
+    assert resumed.status_code == 200
+    resumed_searcher = next(
+        member for member in resumed.json()["party"] if member["character_id"] == searcher.id
+    )
+    assert resumed.json()["tag_daroc_familiar_state"]["available_clues"] == 1
+    assert resumed_searcher["clues"] == 1
+    assert TAG_TOWN_STREETWISE_CLUE in resumed_searcher["statuses"]
+
+    completed = client.post(f"/api/sessions/{session_id}/tag-generated-lead-continue")
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["mode"] == "complete"
+    roster_searcher = main.store.get("characters", searcher.id, Character.model_validate)
+    assert roster_searcher is not None
+    assert roster_searcher.clues == 1
+    assert TAG_TOWN_STREETWISE_CLUE in roster_searcher.statuses
+    assert roster_searcher.active_session_id is None
+    completed_campaign = load_campaign(main.store)
+    completed_rumor = next(state for state in completed_campaign.tag_rumor_states if state.rumor_number == 9)
+    assert completed_rumor.status == "heard"
 
 
 def test_medusa_quest_reaction_persists_choice_and_accepts_core_quest(client, monkeypatch) -> None:

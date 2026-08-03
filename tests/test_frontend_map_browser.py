@@ -194,6 +194,82 @@ def test_generated_rumor_4_entry_choices_are_visible_beneath_narrative(live_app)
             browser.close()
 
 
+def test_generated_rumor_9_scene5_shows_searcher_reward_and_give_up_controls(live_app) -> None:
+    playwright_api = pytest.importorskip("playwright.sync_api")
+    generated = _json_request(
+        live_app.base_url,
+        "/api/campaign/tag/create-adventure",
+        {"lead_type": "rumor", "detail": "9"},
+    )
+    session_id = _create_session(
+        live_app.base_url,
+        adventure_id=generated["adventure_id"],
+    )
+    session = _json_get(live_app.base_url, f"/api/sessions/{session_id}")
+    entry_actions = session["imported_manifest"]["source"]["parameters"]["tag_reference"][
+        "room_prompts"
+    ]["tag-lead-entry"]["actions"]
+    investigate = next(action for action in entry_actions if action["label"] == "Investigate")
+    moved = _json_request(
+        live_app.base_url,
+        f"/api/sessions/{session_id}/tag-route-action",
+        {"route_action": "unlock_scene", "reference": investigate["reference"]},
+    )["session"]
+    assert moved["active_quest"]["completed"] is False
+    searcher_id = next(member["character_id"] for member in moved["party"] if member["class_id"] == "rogue")
+    recipient_id = next(
+        member["character_id"] for member in moved["party"] if member["class_id"] == "warrior"
+    )
+
+    with playwright_api.sync_playwright() as playwright:
+        try:
+            browser = playwright.chromium.launch(headless=True)
+        except Exception as error:  # pragma: no cover - depends on local browser install
+            pytest.skip(f"Playwright Chromium is not installed: {error}")
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 720})
+            page.add_init_script(
+                f"""
+                localStorage.setItem("ahazi-against-darkness.active-session-id", {json.dumps(session_id)});
+                localStorage.setItem("ahazi-against-darkness.active-view", "game");
+                localStorage.setItem("ahazi-against-darkness.layout", JSON.stringify({{
+                  explorationPanels: {{ objective: false, quests: false, commands: false, exits: false, sheets: false }}
+                }}));
+                """
+            )
+            page.goto(f"{live_app}/?view=game")
+            banner = page.locator("#current-objective-banner")
+            playwright_api.expect(banner).to_be_visible(timeout=10_000)
+            guided = banner.locator(".tag-context-guided-action").filter(has_text="Daroc")
+            playwright_api.expect(guided).to_be_visible()
+            playwright_api.expect(guided).to_contain_text("Town Streetwise Clues: 0/2")
+            searcher = guided.get_by_label("Who searches for Clues?", exact=True)
+            recipient = guided.get_by_label("Who receives Daroc's 200 gp?", exact=True)
+            playwright_api.expect(searcher).to_be_visible()
+            playwright_api.expect(recipient).to_be_visible()
+            searcher.select_option(searcher_id)
+            recipient.select_option(recipient_id)
+            search = guided.get_by_role("button", name="Search for Clues", exact=True)
+            give_up = guided.get_by_role("button", name="Give up — return to town", exact=True)
+            playwright_api.expect(search).to_be_visible()
+            playwright_api.expect(search).to_be_enabled()
+            playwright_api.expect(search).to_have_attribute("title", re.compile(r"L6.*d6 gp", re.IGNORECASE))
+            playwright_api.expect(give_up).to_be_visible()
+            playwright_api.expect(give_up).to_have_attribute("title", re.compile(r"retains?.*Clue", re.IGNORECASE))
+
+            with page.expect_request(
+                lambda request: request.method == "POST"
+                and request.url.endswith(f"/api/sessions/{session_id}/tag-daroc-action")
+            ) as request_info:
+                search.click()
+            request_payload = request_info.value.post_data_json
+            assert request_payload["action"] == "search"
+            assert request_payload["character_id"] == searcher_id
+            assert request_payload["reward_recipient_id"] == recipient_id
+        finally:
+            browser.close()
+
+
 def test_resolved_generated_rumor_closeout_remains_visible_when_objective_details_are_closed(live_app) -> None:
     playwright_api = pytest.importorskip("playwright.sync_api")
     generated = _json_request(

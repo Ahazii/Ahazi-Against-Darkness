@@ -946,6 +946,68 @@ def _upgrade_rumor_entry_manifest(tag_reference: dict[str, Any]) -> bool:
     return changed
 
 
+def _upgrade_daroc_manifest(manifest: dict[str, Any], tag_reference: dict[str, Any]) -> bool:
+    """Normalize legacy Rumor 9 metadata to the typed repeat-search lifecycle."""
+    try:
+        rumor_number = int(tag_reference.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    title = str(tag_reference.get("title") or manifest.get("title") or "")
+    if (
+        str(tag_reference.get("lead_type") or "").strip().lower() != "rumor"
+        or (rumor_number != 9 and "daroc" not in title.casefold())
+    ):
+        return False
+
+    from .tag_campaign import TAG_RUMOR_PROFILES
+
+    profile = TAG_RUMOR_PROFILES[9]
+    changed = False
+    for key in ("pdf_pages", "finale_instruction", "rewards"):
+        expected = profile.get(key)
+        if expected is not None and tag_reference.get(key) != expected:
+            tag_reference[key] = expected
+            changed = True
+    prompts = tag_reference.get("room_prompts")
+    if isinstance(prompts, dict):
+        final_prompt = prompts.get("tag-final-scene")
+        if not isinstance(final_prompt, dict):
+            final_prompt = {
+                "title": "Scene procedure",
+                "body": str(profile.get("finale_instruction") or ""),
+                "checklist": [],
+                "actions": [],
+            }
+            prompts["tag-final-scene"] = final_prompt
+            changed = True
+        expected_actions = [
+            dict(action)
+            for action in profile.get("final_prompt_actions") or []
+            if isinstance(action, dict)
+        ]
+        if final_prompt.get("actions") != expected_actions:
+            final_prompt["actions"] = expected_actions
+            changed = True
+        expected_body = str(profile.get("finale_instruction") or "")
+        if expected_body and final_prompt.get("body") != expected_body:
+            final_prompt["body"] = expected_body
+            changed = True
+    expected_terminal = [
+        dict(action)
+        for action in profile.get("final_prompt_actions") or []
+        if isinstance(action, dict)
+    ]
+    if tag_reference.get("scene_graph_terminal_actions") and tag_reference.get("scene_graph_terminal_actions") != expected_terminal:
+        tag_reference["scene_graph_terminal_actions"] = expected_terminal
+        changed = True
+    if changed:
+        tag_reference["daroc_scene5_rules_upgrade"] = (
+            "TAG pp.20, 24, 26 selected-character Streetwise search, retained progress, "
+            "non-permanent Give up, and player-confirmed 200 gp reward"
+        )
+    return changed
+
+
 def _upgrade_required_tag_scene_lifecycle(
     manifest: dict[str, Any],
     tag_reference: dict[str, Any],
@@ -1015,6 +1077,7 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
             prompts = tag_reference["room_prompts"]
         _apply_local_tag_narrative_override(manifest, tag_reference)
         _upgrade_rumor_entry_manifest(tag_reference)
+        _upgrade_daroc_manifest(manifest, tag_reference)
         _upgrade_bofto_manifest(manifest, tag_reference)
         _upgrade_medusa_manifest(manifest, tag_reference)
         _upgrade_required_tag_scene_lifecycle(manifest, tag_reference)

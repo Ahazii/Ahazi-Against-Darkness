@@ -327,8 +327,8 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         "source": {
             "supplement_id": "tag",
             "source_pdf": "Tales_from_the_adventurers_guild.pdf",
-            "page": 27,
-            "topic": "Scene 5 - Daroc's lost familiar",
+            "page": 26,
+            "topic": "Streetwise and Scene 5 - Daroc's lost familiar",
         },
         "legacy_mappings": {
             "statuses": ["TAG Town Streetwise Clue"],
@@ -343,7 +343,7 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         "review_status": "source_backed",
         "ui": {
             "label": "Town Streetwise Clue",
-            "hover": "TAG p.27, Scene 5. Only Clues generated in town by Look for Clues count toward finding Daroc's familiar.",
+            "hover": "TAG pp.20 and 26. Only Clues generated in town by Look for Clues count toward finding Daroc's familiar; the in-scene search records this provenance automatically.",
         },
     },
     {

@@ -2144,8 +2144,12 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "function openDeoldynTrainingDialog" in APP_JS
     assert "function appendDarocGuidedAction" in APP_JS
     assert "Town Streetwise Clues:" in APP_JS
-    assert "Who receives Daroc's 100 gp?" in APP_JS
-    assert "Spend Clues and find the cat" in APP_JS
+    assert "Who searches for Clues?" in APP_JS
+    assert "Who receives Daroc's 200 gp?" in APP_JS
+    assert "Search for Clues" in APP_JS
+    assert "Give up — return to town" in APP_JS
+    assert "/tag-daroc-action" in APP_JS
+    assert "reward_recipient_id" in APP_JS
     assert 'id="tag-deoldyn-training-dialog"' in INDEX_HTML
     assert 'id="tag-deoldyn-training-skill"' in INDEX_HTML
     assert "Scene 3 Deoldyn training" in APP_JS

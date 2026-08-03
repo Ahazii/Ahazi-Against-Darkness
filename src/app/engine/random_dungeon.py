@@ -1043,7 +1043,11 @@ class RandomDungeonEngine:
                 session.map_state.current_tile_id = entrance.id
                 session.current_tile_entry_exit_id = None
         self._queue_fallen_transfer(session)
-        if session.tag_generated_completion_pending:
+        generated_closeout_xp_actions = {"xp_roll", "bank_xp_roll"}
+        if (
+            session.tag_generated_completion_pending
+            and action not in generated_closeout_xp_actions
+        ):
             message = TAG_GENERATED_CLOSEOUT_REMINDER
             if not session.log or session.log[-1] != message:
                 session.log.append(message)

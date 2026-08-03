@@ -8,6 +8,7 @@ from typing import Protocol
 
 
 TAG_TOWN_STREETWISE_CLUE = "TAG Town Streetwise Clue"
+DAROC_FAMILIAR_REWARD_GP = 200
 _CAT_LIKE_CLASS_PATTERN = re.compile(r"\b(cat-like|catlike|catfolk|cat folk|feline|felid)\b", re.IGNORECASE)
 _CAT_COMPANION_PATTERN = re.compile(
     r"\b(cat|wildcat|panther|tiger|giant cat|giant feline)\b",
@@ -128,6 +129,7 @@ def daroc_familiar_view(
         "available_clues": sum(int(holder["clues"]) for holder in holders),
         "discount_reason": reason,
         "holders": holders,
+        "reward_gp": DAROC_FAMILIAR_REWARD_GP,
         "resolved": resolved,
     }
 
@@ -156,7 +158,7 @@ def resolve_daroc_familiar(
             available_clues=available,
             discount_reason=reason,
             recipient_id=None,
-            result_text="Choose a living party member to receive Daroc's 100 gp reward.",
+            result_text=f"Choose a living party member to receive Daroc's {DAROC_FAMILIAR_REWARD_GP} gp reward.",
         )
     if available < required:
         reduction = f" The cost is reduced because {reason}." if reason else ""
@@ -186,7 +188,7 @@ def resolve_daroc_familiar(
         remaining -= count
         spent.append(f"{member.name} {count}")
 
-    recipient.gold += 100
+    recipient.gold += DAROC_FAMILIAR_REWARD_GP
     reduction = f" The cost was reduced to 1 because {reason}." if reason else ""
     return DarocFamiliarResult(
         success=True,
@@ -196,6 +198,6 @@ def resolve_daroc_familiar(
         recipient_id=recipient.character_id,
         result_text=(
             f"The party spends {required} town Streetwise Clue(s) ({', '.join(spent)}) and finds Daroc's "
-            f"lost cat.{reduction} {recipient.name} receives 100 gp, and the party gains 1 pending XP roll."
+            f"lost cat.{reduction} {recipient.name} receives {DAROC_FAMILIAR_REWARD_GP} gp, and the party gains 1 pending XP roll."
         ),
     )
