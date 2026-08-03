@@ -12557,6 +12557,16 @@ function registryDebugSummary(session = state.session) {
   return lines;
 }
 
+function narrativeDebugPartyGold(member) {
+  const carried = Math.max(0, Number(member?.gold) || 0);
+  const banked = Math.max(0, Number(member?.bank_gold) || 0);
+  return `${carried}gp carried + ${banked}gp banked = ${carried + banked}gp total`;
+}
+
+function narrativeDebugPartyMemberLine(member) {
+  return `${member.name} L${member.level} ${member.current_life}/${member.max_life} Life ${narrativeDebugPartyGold(member)}`;
+}
+
 function buildNarrativeDebugReport(session = state.session) {
   const { room, promptData, tagReference } = tagCurrentPromptData(session);
   const diagnostics = generatedTagDiagnostics(session);
@@ -12581,7 +12591,7 @@ function buildNarrativeDebugReport(session = state.session) {
     `Session mode: ${session?.mode || "unknown"}`,
     `Ruleset: ${session?.ruleset || "ee"} / XP: ${session?.xp_system || "unknown"}`,
     sessionSupplementDebugBlock(session),
-    `Party: ${(session?.party || []).map((member) => `${member.name} L${member.level} ${member.current_life}/${member.max_life} Life ${member.gold || 0}gp`).join("; ") || "none"}`,
+    `Party: ${(session?.party || []).map(narrativeDebugPartyMemberLine).join("; ") || "none"}`,
     "",
     "### Current Room",
     currentRoomDebugSummary(session).map((line) => `- ${line}`).join("\n"),
@@ -19138,7 +19148,7 @@ function renderSession() {
     copyNarrativeDebugReportBtn.classList.toggle("hidden", !session);
     setButtonTooltip(
       copyNarrativeDebugReportBtn,
-      "Copy a Markdown report. The Actual Narrative section is exactly what the player saw; Debug Context is extra state for diagnosing playtest issues."
+      "Copy a Markdown report. The Actual Narrative section is exactly what the player saw; Debug Context includes diagnostic state and each hero's carried, banked, and total gold."
     );
   }
   if (tagOpenAdventureActions || tagSessionDiagnosticsBtn) {

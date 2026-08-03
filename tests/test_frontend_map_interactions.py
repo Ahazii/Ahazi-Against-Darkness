@@ -3094,6 +3094,23 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert ".troupe-member-browser" in STYLES_CSS
 
 
+def test_narrative_debug_report_distinguishes_carried_banked_and_total_gold() -> None:
+    party_gold = _function_body("narrativeDebugPartyGold", APP_JS)
+    assert "member?.gold" in party_gold
+    assert "member?.bank_gold" in party_gold
+    assert "banked <= 0" not in party_gold
+    assert "gp carried" in party_gold
+    assert "gp banked" in party_gold
+    assert "gp total" in party_gold
+
+    party_member = _function_body("narrativeDebugPartyMemberLine", APP_JS)
+    assert "narrativeDebugPartyGold(member)" in party_member
+
+    report = _function_body("buildNarrativeDebugReport", APP_JS)
+    assert ".map(narrativeDebugPartyMemberLine)" in report
+    assert "each hero's carried, banked, and total gold" in APP_JS
+
+
 def test_gremlin_repellant_action_lives_on_the_inventory_item_row() -> None:
     inventory_panel = _function_body("buildMemberInventoryPanel", APP_JS)
     exploration_actions = _function_body("appendMemberExplorationActions", APP_JS)

@@ -1882,6 +1882,50 @@ def test_daroc_search_progress_persists_resolves_once_and_uses_shared_closeout(
     assert completed_campaign.adventures_completed == 1
 
 
+def test_daroc_resume_corrects_stale_scene5_reward_log_without_touching_other_100gp_text(client) -> None:
+    session_id = "daroc-narrative-resume"
+    _manifest, _searcher, _recipient = _save_daroc_generated_session(session_id)
+    session = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert session is not None
+    stale_scene = (
+        "To find the lost cat, you must find 2 Clues. "
+        "Once you generate enough Clues, you find the cat and receive a reward of 100 gp and 1 XP roll."
+    )
+    unrelated_text = "An unrelated merchant offers a service for 100 gp."
+    session.log.extend([stale_scene, unrelated_text])
+    final_tile = next(
+        tile
+        for tile in session.map_state.tiles
+        if str(tile.content_key or "").removeprefix("imported:") == "tag-final-scene"
+    )
+    final_tile.description = stale_scene
+    main.store.save("sessions", session)
+
+    resumed = client.get(f"/api/sessions/{session_id}")
+
+    assert resumed.status_code == 200, resumed.text
+    log = resumed.json()["log"]
+    assert any("reward of 200 gp and 1 XP roll" in line for line in log)
+    assert not any("reward of 100 gp and 1 XP roll" in line for line in log)
+    assert unrelated_text in log
+    resumed_final_tile = next(
+        tile
+        for tile in resumed.json()["map_state"]["tiles"]
+        if str(tile.get("content_key") or "").removeprefix("imported:") == "tag-final-scene"
+    )
+    assert "reward of 200 gp and 1 XP roll" in resumed_final_tile["description"]
+    assert "reward of 100 gp" not in resumed_final_tile["description"]
+    persisted = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert persisted is not None
+    assert persisted.log == log
+    persisted_final_tile = next(
+        tile
+        for tile in persisted.map_state.tiles
+        if str(tile.content_key or "").removeprefix("imported:") == "tag-final-scene"
+    )
+    assert persisted_final_tile.description == resumed_final_tile["description"]
+
+
 def test_daroc_give_up_returns_rumor_to_heard_without_losing_found_clues(
     client,
     monkeypatch,

@@ -1,17 +1,15 @@
 # Next Session Handoff
 
-Current release is **v0.39.66**. The v0.39.65 Rumor 4 closeout check passed;
-do not regenerate or replay it. v0.39.66 migrates Rumor 9 into the same shared
-required-scene lifecycle and adds Daroc's repeatable in-scene Streetwise search.
-The player chooses the searcher for each automatic TAG p.20 L6 check and a
-separate living reward recipient. Search progress survives save/resume; **Give
-up — return to town** returns the Rumor to `heard` without discarding eligible
-Town Streetwise Clues. Success awards the player-confirmed TAG p.24 offer of
-200gp plus one XP roll; the conflicting 100gp line in Scene 5 on p.26 is the
-known source error. Deploy, force-refresh, and perform only the bounded Rumor 9
-check in `docs/PLAYTEST_PLAN.md`.
+Current release is **v0.39.67**. The v0.39.66 Rumor 9 Streetwise, defer, reward,
+XP, and closeout procedure passed; do not regenerate or replay it. v0.39.67 is a
+bounded presentation correction: new and resumed Scene 5 narrative consistently
+states the player-confirmed 200gp TAG p.24 offer, while copied Narrative Reports
+label carried, banked, and total gold separately. The conflicting 100gp line in
+Scene 5 on p.26 remains documented as the known source error. Deploy,
+force-refresh, and perform only the non-mutating presentation check in
+`docs/PLAYTEST_PLAN.md`.
 
-Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.66`.
+Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.67`.
 
 ## Start Here
 
@@ -22,8 +20,9 @@ Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.66`.
 
 ## Current Priority
 
-All earlier broad adventure test gates are passed. The only open live check is
-the bounded v0.39.66 Rumor 9 procedure below. Do not ask the user to repeat the
+All earlier broad adventure test gates, including the v0.39.66 Rumor 9
+procedure, are passed. The only open live check is v0.39.67's non-mutating
+Scene 5/report presentation check. Do not ask the user to repeat the
 Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken Depths,
 Citadel, Bofto, Star-Slayer, Bag, Repellant, treasure, trap, entrance, or
 closeout suites.
@@ -44,7 +43,7 @@ Rumor entry choices side by side at normal app widths. v0.39.59 converts TAG
 p.29 Scene 12 into one typed Mutant Fish hypnosis, rescue, ration, sale, and XP
 procedure. Do not repeat the whole Rumor 2 module or any Gremlin fight.
 
-## Implemented Through v0.39.66
+## Implemented Through v0.39.67
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 20, 22, 24-31, and 65.
 
@@ -55,6 +54,7 @@ Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160
 - Generated Rumor entry buttons render immediately beneath Narrative for both `tag_*` and manifest-owned `imported_*` quest records, remain visible when Objective Details is hidden, and exclude internal Director phase, lifecycle, and lead-family playbook prose. TAG pp.22-24 shares **Investigate** / **Not now — return to town** across all twelve Rumors; choices remain side by side at normal app widths and wrap only on narrow mobile layouts.
 - Narrative objective, Relevant Now, and room metadata share one special-action dispatcher. Rumor-specific typed controls stay separate plug-ins inside the common scene host. Explicit `entry_scene` metadata prevents composite descriptions from misrouting older Rumor 1 modules past Scene 9.
 - Daroc's Lost Familiar keeps the player in Scene 5 until a typed terminal result. **Search for Clues** lets the player select the acting character for each automatic TAG p.20 L6 Streetwise check, charges that searcher's `d6` bribe, and persists eligible Town Streetwise Clues and progress across repeat attempts and save/resume. The cost is two or one when the living party includes a Druid, Beastmaster, cat-like hero, or cat animal companion (TAG p.26). **Give up — return to town** is non-permanent: it preserves eligible Clues and returns Rumor 9 to `heard`. Success spends the eligible Clues, gives the separately selected living recipient 200gp, and creates exactly one pending XP roll. The amount follows the TAG p.24 Rumor offer by player ruling; Scene 5's 100gp line on p.26 is a known error. The XP can be assigned or banked during the shared closeout gate. Crucible of Classic Critters pp.11-15 remains the future source for full Beastmaster and animal-companion implementation.
+- New and resumed Daroc Scene 5 narrative now states that same 200gp ruling consistently. Narrative Debug Reports list carried, banked, and total gold for every hero, so diagnostics expose bribe deductions even when the hero remains at the 200gp dungeon carry cap. This does not change finance or reward state.
 - Temporary Weapon Enchantment records its cast and day-seven campaign expiry, functions as magic without an Attack bonus, and expires at encounter end after an attack against a strictly magic-only foe. The attack may hit or miss. Adventure completion and settlement travel advance the clock; legacy markers receive a full week from first advancement. Manual early clear is removed while the existing Gremlin/Iron Eater loss choice remains unchanged (TAG p.65).
 - Xasartha reaction `1` persists its `6d6` demand and offers exact carried-gold, eligible 15gp+ gem/jewel, or refusal choices. Defeat persists `2d6` necros and a wear-or-sell pendant choice. The pendant is not consumed when Luck is spent; its separate counter survives camp/re-entry and recharges only with a new adventure. It grants one point, or two additional points to a halfling. Barbarians cannot wear it.
 - Any normal core Quest completed inside a generated TAG adventure now resolves that lead through the existing readable terminal pause. It explains that the Quest-giver encounter remains peaceful and combat treasure is unavailable, then offers **Continue — return to town and finish**. Resume repairs already-completed rewards without rerolling or duplicating them.
@@ -103,6 +103,7 @@ Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat i
 
 ## Recent Releases
 
+- `v0.39.67`: normalize new/resumed Daroc Scene 5 narrative to 200gp and distinguish carried, banked, and total gold in Narrative Debug Reports.
 - `v0.39.66`: complete Rumor 9's selected-searcher Streetwise loop, persisted Town Clue progress, non-permanent Give up route, required lifecycle, 200gp reward, and one-XP closeout.
 - `v0.39.65`: keep required generated-TAG closeout visible with Objective Details collapsed and align Narrative/UI/diagnostics on **Continue — return to town and finish**.
 - `v0.39.64`: add the shared required-scene lifecycle and automatically start/persist every Rumor 4 Scene 12 hypnosis Save.

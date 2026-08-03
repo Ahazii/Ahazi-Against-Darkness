@@ -436,6 +436,18 @@ def _refresh_generated_tag_manifest_on_resume(session: SessionState) -> bool:
     changed = repr(session.imported_manifest) != before
     log_changed = normalize_tag_log_lines(session.log)
     changed = changed or log_changed
+    if _is_daroc_generated_session(session):
+        from .engine.tag_daroc import normalize_daroc_scene5_reward_narrative
+
+        if normalize_daroc_scene5_reward_narrative(session.log):
+            changed = True
+        for tile in session.map_state.tiles:
+            if _imported_room_id_for_tile(session, tile) != "tag-final-scene":
+                continue
+            description = [tile.description]
+            if normalize_daroc_scene5_reward_narrative(description):
+                tile.description = description[0]
+                changed = True
     if session.tag_generated_completion_pending and session.tag_generated_completion_body:
         normalized_body = normalize_tag_closeout_text(session.tag_generated_completion_body)
         if normalized_body != session.tag_generated_completion_body:
@@ -4093,6 +4105,11 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "field": "What happened / Expected / Steps",
             "purpose": "Produces a copyable Markdown report while the session/module context is fresh.",
             "rules_boundary": "The report captures observations; it does not assert printed rule text.",
+        },
+        {
+            "field": "Party carried / banked / total gold",
+            "purpose": "Copy Narrative Report separates each hero's carried gold from banked gold and shows their combined total so transaction reports can be reconciled without guessing from the 200gp carrying limit.",
+            "rules_boundary": "This is diagnostic presentation only; it does not move coins, pay a cost, or alter either stored balance.",
         },
     ]
     data["exploration_objective_clarity_table"] = [

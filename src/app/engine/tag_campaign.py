@@ -19,7 +19,11 @@ from .tag_scene_actions import (
     tag_scene_action_succeeded,
     tag_stealth_modifier,
 )
-from .tag_daroc import normalize_town_streetwise_clues, record_town_streetwise_clue
+from .tag_daroc import (
+    normalize_daroc_scene5_reward_narrative,
+    normalize_town_streetwise_clues,
+    record_town_streetwise_clue,
+)
 from ..schemas import (
     CampaignEffectState,
     CampaignState,
@@ -187,6 +191,12 @@ def _apply_tag_narrative_override(
         merged["npc_narrative_overrides"] = override["npcs"]
     if override.get("module_title"):
         merged["module_title"] = override["module_title"]
+    try:
+        rumor_number = int(merged.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    if lead_type == "rumor" and rumor_number == 9:
+        normalize_daroc_scene5_reward_narrative(merged)
     return merged
 
 

@@ -960,6 +960,7 @@ def _upgrade_daroc_manifest(manifest: dict[str, Any], tag_reference: dict[str, A
         return False
 
     from .tag_campaign import TAG_RUMOR_PROFILES
+    from .tag_daroc import normalize_daroc_scene5_reward_narrative
 
     profile = TAG_RUMOR_PROFILES[9]
     changed = False
@@ -999,6 +1000,8 @@ def _upgrade_daroc_manifest(manifest: dict[str, Any], tag_reference: dict[str, A
     ]
     if tag_reference.get("scene_graph_terminal_actions") and tag_reference.get("scene_graph_terminal_actions") != expected_terminal:
         tag_reference["scene_graph_terminal_actions"] = expected_terminal
+        changed = True
+    if normalize_daroc_scene5_reward_narrative(manifest):
         changed = True
     if changed:
         tag_reference["daroc_scene5_rules_upgrade"] = (

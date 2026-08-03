@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-03. Target build: v0.39.66.
+Last updated: 2026-08-03. Target build: v0.39.67.
 
 ## Adventure Test Gate: Passed
 
@@ -97,47 +97,25 @@ diagnostic wording, total-party destruction, failed-rescuer role swaps, the 5gp
 friendship rate, carrying-limit distribution, duplicate prevention, XP
 rollover, saved collapsed-panel preferences, and shared closeout endpoint.
 
-## Do Next: TAG Rumor 9 Daroc Lifecycle
+## Do Next: Rumor 9 Presentation Check
 
-After deploying v0.39.66 and force-refreshing, generate a targeted Rumor 9 test
-module. This is a narrow test of the shared scene host and typed Daroc plug-in,
-not a broad adventure regression.
+The v0.39.66 live Rumor 9 procedure passed. Do not regenerate the module, repeat
+Streetwise searches, spend more Clues, or replay its reward/XP path. After
+deploying v0.39.67 and force-refreshing, perform only this presentation check:
 
-1. Start the module and confirm **Investigate** and **Not now — return to town**
-   appear directly beneath Narrative. Choose **Investigate**.
-2. At Scene 5, confirm the narrative remains open and the panel shows current
-   Town Streetwise Clue progress, **Who searches for Clues?**, a separate living
-   reward-recipient selector, **Search for Clues**, and **Give up — return to
-   town**.
-3. Select the searcher and press **Search for Clues**. The roll is automatic:
-   TAG p.20 spends that hero's `d6` bribe and rolls Streetwise against L6. Check
-   that the Narrative names the selected hero, bribe, roll/modifier/total, and
-   current progress. Repeat as needed; changing the selected hero must change
-   who pays and rolls.
-4. After at least one attempt, save/dashboard/resume once. The existing Clue
-   progress and prior result must remain; resuming must not roll, spend gp, or
-   duplicate a Clue.
-5. Before completing the reward path, use one targeted run to choose **Give up
-   — return to town**. Confirm it opens the shared closeout, returns Rumor 9 to
-   `heard` rather than resolving it permanently, and preserves eligible Town
-   Streetwise Clues for a later Rumor 9 attempt. Choose **Continue — return to
-   town and finish** to complete that deferred session.
-6. Generate/select Rumor 9 again and investigate. Search until the displayed
-   requirement is met: normally two eligible Clues, or one when the party has
-   the TAG p.26 Druid/Beastmaster/cat exception. If preserved Clues already meet
-   the requirement, use the displayed claim control instead of making an
-   unnecessary roll. Confirm the selected living recipient receives exactly
-   **200gp** and the session receives exactly one pending XP roll. The 200gp
-   amount follows the Rumor offer on TAG p.24; Scene 5's 100gp line on p.26 is
-   the known source error.
-7. Assign or bank the XP roll, then choose **Continue — return to town and
-   finish**. The normal Adventure Complete summary should open. Resume must not
-   repeat the reward, spend additional Clues, or create another XP roll.
+1. Resume the completed/recent Daroc session, or inspect its existing Narrative
+   Report surface without triggering a scene action. Confirm Scene 5 narrative
+   states **200gp**, matching the player-confirmed TAG p.24 Rumor offer; the
+   known erroneous 100gp line from p.26 must not remain in runtime narrative.
+2. Choose **Copy Narrative Report**. Under Party, confirm every hero is labelled
+   with **carried**, **banked**, and **total** gold. For Sly's tested finances,
+   the report must make the 200gp carry cap and remaining bank balance distinct,
+   rather than presenting only `200gp` and hiding the earlier bribe deductions.
+3. Confirm opening or copying the report does not alter gold, Clues, XP, Rumor
+   status, or the completed session.
 
-Do not force a natural 1 or manipulate a valuable party to obtain particular
-dice. Focused tests own TAG p.20 natural-1 Clue loss/fallback consequences,
-insufficient-gold handling, the one-Clue eligibility variants, exact Clue
-spending order, duplicate prevention, legacy save repair, and XP gating.
+This is not a rules or reward retest. Focused tests own new-save narrative,
+resume normalization, reward idempotency, finance totals, and report formatting.
 
 After this gate, implement the shared repeatable vendor/service host and an
 explicit Done action for Rumors 6 and 11. Do not mass-enable required scene

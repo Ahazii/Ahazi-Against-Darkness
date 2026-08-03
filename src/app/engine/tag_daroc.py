@@ -14,6 +14,39 @@ _CAT_COMPANION_PATTERN = re.compile(
     r"\b(cat|wildcat|panther|tiger|giant cat|giant feline)\b",
     re.IGNORECASE,
 )
+_SCENE5_REWARD_ERROR_PATTERN = re.compile(
+    r"Once you generate enough Clues,\s+you find the cat and receive a reward of "
+    r"100\s*gp and 1 XP roll\.?",
+    re.IGNORECASE,
+)
+_SCENE5_CORRECTED_REWARD_TEXT = (
+    "Once you generate enough Clues, you find the cat and receive a reward of "
+    "200 gp and 1 XP roll."
+)
+
+
+def normalize_daroc_scene5_reward_narrative(value: object) -> bool:
+    """Correct only the known Scene 5 reward sentence inside a narrative tree."""
+    changed = False
+    if isinstance(value, dict):
+        for key, item in list(value.items()):
+            if isinstance(item, str):
+                corrected = _SCENE5_REWARD_ERROR_PATTERN.sub(_SCENE5_CORRECTED_REWARD_TEXT, item)
+                if corrected != item:
+                    value[key] = corrected
+                    changed = True
+            elif normalize_daroc_scene5_reward_narrative(item):
+                changed = True
+    elif isinstance(value, list):
+        for index, item in enumerate(list(value)):
+            if isinstance(item, str):
+                corrected = _SCENE5_REWARD_ERROR_PATTERN.sub(_SCENE5_CORRECTED_REWARD_TEXT, item)
+                if corrected != item:
+                    value[index] = corrected
+                    changed = True
+            elif normalize_daroc_scene5_reward_narrative(item):
+                changed = True
+    return changed
 
 
 class DarocPartyMember(Protocol):

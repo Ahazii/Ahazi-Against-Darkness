@@ -977,6 +977,62 @@ def test_tag_manifest_uses_user_editable_narrative_overrides(tmp_path, monkeypat
     assert any(action["action_type"] == "route" and action["action_value"] == "unlock_scene" for action in final_actions)
 
 
+def test_daroc_manifest_corrects_only_known_scene5_reward_sentence(tmp_path, monkeypatch) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    stale_scene = (
+        "To find the lost cat, you must find 2 Clues. "
+        "Once you generate enough Clues, you find the cat and receive a reward of 100 gp and 1 XP roll."
+    )
+    unrelated_text = "A witness offers unrelated information for 100 gp."
+    (data_dir / "tag_scene_narrative_overrides.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "tag": {
+                    "rumor": {
+                        "9": {
+                            "rooms": {
+                                "tag-lead-entry": {"description": unrelated_text},
+                                "tag-final-scene": {
+                                    "description": stale_scene,
+                                    "log": stale_scene,
+                                },
+                            },
+                            "scene_graph": {
+                                "start_scenes": ["Scene 5"],
+                                "scenes": {
+                                    "Scene 5": {
+                                        "description": stale_scene,
+                                        "branches": [],
+                                    }
+                                },
+                            },
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="9")
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    finale = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+
+    for narrative in (
+        finale["description"],
+        finale["triggers"][0]["log"],
+        reference["room_prompts"]["tag-final-scene"]["body"],
+        reference["scene_graph"]["scenes"]["Scene 5"]["description"],
+    ):
+        assert "reward of 200 gp and 1 XP roll" in narrative
+        assert "reward of 100 gp" not in narrative
+    opening = next(room for room in manifest["rooms"] if room["id"] == "tag-lead-entry")
+    assert opening["description"] == unrelated_text
+
+
 def test_tag_manifest_upgrade_repairs_stale_prompts_from_local_narrative_overrides(tmp_path, monkeypatch) -> None:
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -1792,6 +1848,18 @@ def test_legacy_daroc_manifest_upgrade_normalizes_reward_actions_reference_and_l
     reference = manifest["source"]["parameters"]["tag_reference"]
     reference["pdf_pages"] = "TAG pp.24 and 27"
     reference["rewards"] = "Daroc pays 100 gp and grants one XP roll."
+    stale_scene = (
+        "To find the lost cat, you must find 2 Clues. "
+        "Once you generate enough Clues, you find the cat and receive a reward of 100 gp and 1 XP roll."
+    )
+    final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+    final_room["description"] = stale_scene
+    final_room["triggers"][0]["log"] = stale_scene
+    reference["room_prompts"]["tag-final-scene"]["body"] = stale_scene
+    reference["scene_graph"] = {
+        "start_scenes": ["Scene 5"],
+        "scenes": {"Scene 5": {"description": stale_scene, "branches": []}},
+    }
     reference["room_prompts"]["tag-final-scene"]["actions"] = [
         {
             "label": "Pay Daroc's cat reward",
@@ -1819,6 +1887,17 @@ def test_legacy_daroc_manifest_upgrade_normalizes_reward_actions_reference_and_l
     }
     assert "200 gp" in upgraded_reference["rewards"]
     assert upgraded_reference["daroc_scene5_rules_upgrade"].startswith("TAG pp.20, 24, 26")
+    upgraded_final_room = next(room for room in upgraded["rooms"] if room["id"] == "tag-final-scene")
+    for narrative in (
+        upgraded_final_room["description"],
+        upgraded_final_room["triggers"][0]["log"],
+        upgraded_reference["scene_graph"]["scenes"]["Scene 5"]["description"],
+    ):
+        assert "reward of 200 gp and 1 XP roll" in narrative
+        assert "reward of 100 gp" not in narrative
+    upgraded_prompt = upgraded_reference["room_prompts"]["tag-final-scene"]["body"]
+    assert "200 gp reward" in upgraded_prompt
+    assert "100 gp" not in upgraded_prompt
 
 
 def test_legacy_bofto_rumor_without_scene_graph_starts_at_scene_9() -> None:
