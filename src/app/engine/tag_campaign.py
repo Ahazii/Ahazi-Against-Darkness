@@ -5178,6 +5178,9 @@ def tag_route_target_room_id(tag_reference: dict[str, Any], reference: str) -> s
     if not scene_key:
         return ""
     start_scene_key = _tag_scene_graph_start_key(tag_reference)
+    configured_scene = str(tag_reference.get("scene") or "").strip()
+    if not start_scene_key and configured_scene.casefold() == scene_key.casefold():
+        return "tag-final-scene"
     return tag_scene_room_id(scene_key, start_scene_key=start_scene_key)
 
 
@@ -6797,6 +6800,30 @@ def _tag_final_prompt_title(profile: dict[str, object]) -> str:
     return str(profile.get("final_title") or "Final scene")
 
 
+def tag_rumor_entry_prompt_actions(source: dict[str, object], *, base_reference: str) -> list[dict[str, object]]:
+    if str(source.get("lead_type") or "").strip().lower() != "rumor":
+        return []
+    scene = _tag_scene_graph_start_key(source) or str(source.get("scene") or "").strip()
+    if not scene:
+        return []
+    return [
+        _tag_prompt_action(
+            "Investigate",
+            "TAG pp.22-24: investigate this Rumor now and enter its corresponding numbered Scene. The technical Scene number stays hidden during play.",
+            action_type="route",
+            action_value="unlock_scene",
+            reference=f"{base_reference} -> {scene}: investigate rumor",
+        ),
+        _tag_prompt_action(
+            "Return to town",
+            "TAG p.22: write down this Rumor for later, leave it unresolved, and return to town without entering its numbered Scene.",
+            action_type="route",
+            action_value="final_route",
+            reference=f"{base_reference}: return to town; retain rumor for later",
+        ),
+    ]
+
+
 def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object]) -> dict[str, object]:
     profile_title = str(profile.get("title") or lead_detail)
     base_ref = title or profile_title
@@ -6855,23 +6882,9 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         ]
         if is_medusa_rumor and start_scene.strip().lower() == "scene 10":
             final_actions = _tag_profile_actions(profile, "complication_prompt_actions")
-        if lead_type == "rumor":
-            entry_actions = [
-                _tag_prompt_action(
-                    "Choose to investigate",
-                    "Follow the rumor and open the first extracted scene without showing the technical scene number in play.",
-                    action_type="route",
-                    action_value="unlock_scene",
-                    reference=f"{base_ref} -> {start_scene}: choose to investigate",
-                ),
-                _tag_prompt_action(
-                    "Don't investigate",
-                    "Cross off or leave this rumor alone and return to normal TAG settlement activity.",
-                    action_type="route",
-                    action_value="final_route",
-                    reference=f"{base_ref}: do not investigate",
-                ),
-            ]
+    rumor_entry_actions = tag_rumor_entry_prompt_actions(profile, base_reference=base_ref)
+    if rumor_entry_actions:
+        entry_actions = rumor_entry_actions
     entry_override_body = _room_override_text(profile, "tag-lead-entry")
     side_override_body = _room_override_text(profile, "tag-side-clue")
     complication_override_body = _room_override_text(profile, "tag-complication")
@@ -7077,7 +7090,8 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
                     ),
                     tag_reference_stub,
                 )
-    _extend_prompt_actions(prompts["tag-lead-entry"], profile.get("entry_prompt_actions"))
+    if lead_type != "rumor":
+        _extend_prompt_actions(prompts["tag-lead-entry"], profile.get("entry_prompt_actions"))
     if profile.get("replace_complication_prompt_actions"):
         prompts["tag-complication"]["actions"] = []
     _extend_prompt_actions(prompts["tag-complication"], profile.get("complication_prompt_actions"))

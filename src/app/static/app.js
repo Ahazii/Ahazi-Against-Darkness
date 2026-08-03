@@ -12810,6 +12810,13 @@ async function runTagRouteActionWithDefaults(defaults = {}) {
     renderTagCampaignSettlementPanel(state.campaign);
   }
   setStatus(`${result.entry?.result_text || "Adventures Guild route action logged."} ${result.rewrite_result || ""}`.trim());
+  if (
+    defaults.routeAction === "final_route" &&
+    /return to town/i.test(String(defaults.reference || "")) &&
+    state.session?.tag_generated_completion_pending
+  ) {
+    await continueGeneratedTagLead();
+  }
 }
 
 function classImageUrl(profile) {

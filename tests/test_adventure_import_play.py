@@ -138,7 +138,7 @@ def test_tag_route_marker_rewrites_latest_generated_adventure(repo: RulesReposit
     assert not any("encounter" in trigger for trigger in complication["triggers"])
 
 
-def test_tag_clue_gate_inserts_follow_up_scene(repo: RulesRepository, tmp_path: Path) -> None:
+def test_tag_clue_gate_opens_extracted_follow_up_scene(repo: RulesRepository, tmp_path: Path) -> None:
     data_dir = tmp_path / "appdata"
     data_dir.mkdir()
     campaign = default_campaign()
@@ -154,12 +154,13 @@ def test_tag_clue_gate_inserts_follow_up_scene(repo: RulesRepository, tmp_path: 
     validation = validate_adventure_manifest(updated, rules_repo=repo)
     assert validation.valid, validation.errors
     room_ids = {room["id"] for room in updated["rooms"]}
-    complication = next(room for room in updated["rooms"] if room["id"] == "tag-complication")
+    final_scene = next(room for room in updated["rooms"] if room["id"] == "tag-final-scene")
     reference = updated["source"]["parameters"]["tag_reference"]
-    assert "follow-up scene inserted" in rewrite
-    assert "tag-unlocked-scene" in room_ids
-    assert any(exit_def["to"] == "tag-unlocked-scene" and exit_def["status"] == "open" for exit_def in complication["exits"])
-    assert reference["latest_route_rewrite"] == "follow-up scene inserted and route opened"
+    assert "extracted scene branch target ready" in rewrite
+    assert "tag-final-scene" in room_ids
+    assert "TAG route marker" in final_scene["description"]
+    assert "tag-unlocked-scene" not in room_ids
+    assert reference["latest_route_rewrite"] == "extracted scene branch target ready"
     assert reference["route_rewrites"][-1]["action"] == "clue_gate_unlocked"
 
 

@@ -1118,8 +1118,8 @@ def test_tag_scene_graph_route_rewrite_uses_unlocked_scene_text(tmp_path, monkey
     assert entry["description"].endswith("Do you investigate?")
     assert "go to Scene" not in entry["description"]
     assert [action["label"] for action in manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"]] == [
-        "Choose to investigate",
-        "Don't investigate",
+        "Investigate",
+        "Return to town",
     ]
     final_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]["actions"]
     final_prompt = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]
@@ -1395,7 +1395,9 @@ def test_tag_generated_noncombat_finales_do_not_install_proxy_fights(monkeypatch
     assert deoldyn_ref["lead_structure"] == "trainer"
     assert deoldyn_ref["module_profile"]["target_rooms"] == "trainer downtime scene"
     entry_actions = deoldyn_ref["room_prompts"]["tag-lead-entry"]["actions"]
-    assert any(action["action_value"] == "deoldyn_training" for action in entry_actions)
+    assert [action["label"] for action in entry_actions] == ["Investigate", "Return to town"]
+    final_actions = deoldyn_ref["room_prompts"]["tag-final-scene"]["actions"]
+    assert any(action["action_value"] == "deoldyn_training" for action in final_actions)
 
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
     portrait, _entry = build_tag_adventure_manifest(campaign, lead_type="guild_job", detail="1")
@@ -1559,10 +1561,41 @@ def test_all_tag_rumor_manifests_include_playthrough_audit_guidance() -> None:
         assert "you walk into a room" not in " ".join(prompt["body"].lower() for prompt in prompts.values())
         assert "Prompt checklist" not in prompts["tag-final-scene"]["body"]
         assert prompts["tag-lead-entry"]["checklist"]
+        assert [action["label"] for action in prompts["tag-lead-entry"]["actions"]] == [
+            "Investigate",
+            "Return to town",
+        ]
+        assert prompts["tag-lead-entry"]["actions"][0]["action_value"] == "unlock_scene"
+        assert reference["scene"] in prompts["tag-lead-entry"]["actions"][0]["reference"]
+        assert prompts["tag-lead-entry"]["actions"][1]["action_value"] == "final_route"
         assert prompts["tag-complication"]["checklist"]
         assert prompts["tag-final-scene"]["checklist"]
         assert any("Guild" in item or "banking" in item for item in prompts["tag-final-scene"]["checklist"])
         assert any(action["tooltip"] for prompt in prompts.values() for action in prompt.get("actions", []))
+
+
+def test_rumor_manifest_upgrade_replaces_generic_entry_actions() -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    reference["room_prompts"]["tag-lead-entry"]["actions"] = [
+        {
+            "label": "Record lead choice",
+            "tooltip": "Legacy generic action.",
+            "action_type": "branch",
+            "action_value": "social_choice",
+            "reference": "legacy lead choice",
+            "amount": 0,
+        }
+    ]
+
+    upgraded = upgrade_tag_manifest(manifest)
+    actions = upgraded["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"]
+
+    assert [action["label"] for action in actions] == ["Investigate", "Return to town"]
+    assert actions[0]["reference"].endswith("-> Scene 12: investigate rumor")
+    assert upgraded["source"]["parameters"]["tag_reference"]["rumor_entry_prompt_upgrade"] == (
+        "TAG pp.22-24 shared investigate-or-return decision"
+    )
 
 
 def test_tag_treasure_map_manifests_include_destination_procedure_prompts() -> None:

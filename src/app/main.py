@@ -4526,6 +4526,11 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
     ]
     data["tag_rumor_lifecycle_table"] = [
         {
+            "state": "opening decision",
+            "meaning": "Every generated Rumor uses the same Investigate / Return to town choice. Investigate enters that result's printed numbered Scene; Return to town retains the heard Rumor for later.",
+            "source": "TAG pp.22-24, Rumors",
+        },
+        {
             "state": "heard",
             "meaning": "The rumor was generated or saved for later; it remains available because its numbered Scene has not been played through.",
             "source": "TAG p.22, Rumors",
@@ -7884,6 +7889,13 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
     tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference")
     route_action = str(payload.get("route_action") or "parley_success")
     route_reference = str(payload.get("reference") or "")
+    rumor_entry_town_return = (
+        route_action == "final_route"
+        and isinstance(tag_ref, dict)
+        and str(tag_ref.get("lead_type") or "").casefold() == "rumor"
+        and _imported_room_id_for_tile(session, random_engine._current_tile(session)) == "tag-lead-entry"
+        and "return to town" in route_reference.casefold()
+    )
     medusa_scene10_town_return = (
         route_action == "final_route"
         and _is_medusa_generated_session(session)
@@ -7897,7 +7909,9 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
         record_session_tag_rumor_state(
             campaign,
             session,
-            status="heard" if "do not investigate" in route_reference.lower() else "resolved",
+            status="heard"
+            if "do not investigate" in route_reference.lower() or "return to town" in route_reference.lower()
+            else "resolved",
         )
         session.active_quest.completed = True
         state = dict(session.active_quest.tag_generated_lead_state or {})
@@ -7906,6 +7920,17 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
         state["next_action"] = "Generated Adventures Guild scene resolved. Review reward, XP, Guild share, banking/storage, and closeout signoff."
         session.active_quest.tag_generated_lead_state = state
         session.log.append("Quest complete: generated Adventures Guild scene resolved.")
+    if rumor_entry_town_return and session.active_quest is not None:
+        record_session_tag_rumor_state(campaign, session, status="heard")
+        _mark_generated_tag_lead_complete(
+            session,
+            title=f"{str(tag_ref.get('title') or 'Adventures Guild Rumor')} saved for later",
+            outcome="The party returned to town without investigating; the Rumor remains available later.",
+            narrative=(
+                "The party returns to town without investigating this Rumor. "
+                "It remains recorded in the campaign and may be investigated later."
+            ),
+        )
     if medusa_scene10_town_return and session.active_quest is not None:
         procedure_state = dict(session.active_quest.tag_procedure_state or {})
         medusa_state = dict(procedure_state.get("medusa_scene10") or {})

@@ -1095,6 +1095,121 @@ def test_mutant_fish_api_runs_party_saves_and_campaign_rate_reward(client, monke
     assert "5gp each" in payload["entry"]["result_text"]
 
 
+def test_mutant_fish_shared_rumor_entry_upgrades_and_routes_to_scene_12(client) -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    reference["room_prompts"]["tag-lead-entry"]["actions"] = [
+        {
+            "label": "Record lead choice",
+            "tooltip": "Legacy generic action.",
+            "action_type": "branch",
+            "action_value": "social_choice",
+            "reference": "legacy lead choice",
+            "amount": 0,
+        }
+    ]
+    session = create_session_from_manifest(
+        main.random_engine,
+        "mutant-fish-entry-route",
+        "party",
+        [
+            PartyMemberState(
+                character_id="fish-entry-hero",
+                name="Fish Entry Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=3,
+                xp=0,
+                gold=0,
+                current_life=8,
+                max_life=8,
+                attack_bonus=1,
+                defense_bonus=1,
+                save_bonus=0,
+            )
+        ],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    main.store.save("sessions", session)
+
+    resumed = client.get("/api/sessions/mutant-fish-entry-route")
+
+    assert resumed.status_code == 200
+    resumed_payload = resumed.json()
+    entry_actions = resumed_payload["imported_manifest"]["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"]
+    assert [action["label"] for action in entry_actions] == ["Investigate", "Return to town"]
+
+    investigated = client.post(
+        "/api/sessions/mutant-fish-entry-route/tag-route-action",
+        json={
+            "route_action": "unlock_scene",
+            "reference": entry_actions[0]["reference"],
+        },
+    )
+
+    assert investigated.status_code == 200
+    investigated_session = investigated.json()["session"]
+    current_id = investigated_session["map_state"]["current_tile_id"]
+    current = next(tile for tile in investigated_session["map_state"]["tiles"] if tile["id"] == current_id)
+    assert current["content_key"] == "imported:tag-final-scene"
+    assert current["title"] == "The Bridge Pool"
+    assert investigated_session["generated_tag_diagnostics"]["current_actions"] == [
+        "Resolve mutant fish rescue and reward"
+    ]
+
+
+def test_shared_rumor_entry_return_to_town_keeps_rumor_for_later(client) -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
+    session = create_session_from_manifest(
+        main.random_engine,
+        "mutant-fish-entry-return",
+        "party",
+        [
+            PartyMemberState(
+                character_id="fish-return-hero",
+                name="Fish Return Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=3,
+                xp=0,
+                gold=0,
+                current_life=8,
+                max_life=8,
+                attack_bonus=1,
+                defense_bonus=1,
+                save_bonus=0,
+            )
+        ],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    main.store.save("sessions", session)
+    return_action = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"][1]
+
+    returned = client.post(
+        "/api/sessions/mutant-fish-entry-return/tag-route-action",
+        json={
+            "route_action": "final_route",
+            "reference": return_action["reference"],
+        },
+    )
+
+    assert returned.status_code == 200
+    returned_payload = returned.json()
+    assert returned_payload["session"]["tag_generated_completion_pending"] is True
+    assert "remains recorded" in returned_payload["session"]["tag_generated_completion_body"]
+    rumor_state = next(
+        state for state in returned_payload["campaign"]["tag_rumor_states"] if state["rumor_number"] == 4
+    )
+    assert rumor_state["status"] == "heard"
+
+    completed = client.post("/api/sessions/mutant-fish-entry-return/tag-generated-lead-continue")
+
+    assert completed.status_code == 200
+    assert completed.json()["mode"] == "complete"
+
+
 def test_medusa_quest_reaction_persists_choice_and_accepts_core_quest(client, monkeypatch) -> None:
     character = Character(
         id="quest-hero",

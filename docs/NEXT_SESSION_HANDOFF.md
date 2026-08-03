@@ -1,16 +1,16 @@
 # Next Session Handoff
 
-Current release is **v0.39.61**. Live Rumor 2 testing passed the horizontal
-Scene 10 choices and one-click return-to-town closeout in session
-`9268a7158f41482d90d16f4ec3946f46`. Its summary incorrectly counted seven
-prebuilt module rooms as explored, although persisted visit tracking shows only
-the rumor entry and Scene 10 were visited. v0.39.61 reports those two visited
-map elements, repairs the stored summary when that completed session is next
-opened, and keeps a map-size fallback for legacy sessions without visit
-tracking. Do not replay Rumor 2. Deploy/force-refresh and proceed directly to
-the TAG Rumor 4 Scene 12 checklist in `docs/PLAYTEST_PLAN.md`.
+Current release is **v0.39.62**. Live Rumor 4 session
+`436591f8127741a586f4d3eae4ab264c` exposed the Rumor narrative without player
+choices because typed procedure Rumors fell through to generic internal entry
+actions. TAG pp.22-24 gives all twelve Rumors one shared opening: investigate
+the corresponding numbered Scene now, or retain the Rumor for later. v0.39.62
+adds horizontal **Investigate** / **Return to town** actions to every generated
+Rumor and upgrades existing saves on resume. Deploy/force-refresh, resume the
+same session, choose Investigate, and continue the Rumor 4 Scene 12 checklist in
+`docs/PLAYTEST_PLAN.md`. Do not regenerate Rumor 4.
 
-Last updated: 2026-07-30. Repository branch: `main`. Latest release: `v0.39.61`.
+Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.62`.
 
 ## Start Here
 
@@ -47,7 +47,7 @@ Rumor 2 module or any Gremlin fight.
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25-31, and 65.
 
 - Mutant Fish Under the Bridge runs as one persisted TAG p.29 Scene 12 procedure. It rolls every living hero's L5 hypnosis Save, automatically fails chaos-tainted heroes, owns rescue-turn Life loss and rescuer/victim role changes, destroys an all-failed party, rolls `d6+3` Food rations once, records two minor encounters, and offers carrying-aware Keep or campaign-rate Sell choices. `CampaignState.tag_friendly_chaos_cultists` persists the 5gp friendly sale rate for future applicable encounters.
-- Generated Rumor entry branch buttons render immediately beneath Narrative, remain visible when Objective Details is hidden, and exclude internal Director phase, lifecycle, and lead-family playbook prose. Multiple choices remain side by side at normal app widths and wrap only on narrow mobile layouts. A disposable clone of reported session `9268a7158f41482d90d16f4ec3946f46` confirmed **Choose to investigate** still reaches the typed Scene 10 group-Stealth control.
+- Generated Rumor entry buttons render immediately beneath Narrative, remain visible when Objective Details is hidden, and exclude internal Director phase, lifecycle, and lead-family playbook prose. TAG pp.22-24 now shares **Investigate** / **Return to town** across all twelve Rumors; choices remain side by side at normal app widths and wrap only on narrow mobile layouts.
 - Daroc's Lost Familiar counts only Clues generated in town with Streetwise, marks that provenance when Look for Clues succeeds, and spends two eligible Clues. The cost is one when the party includes a Druid, Beastmaster, cat-like hero, or cat animal companion. The selected living hero receives 100gp and the party receives exactly one pending XP roll (TAG p.27, Scene 5). Crucible of Classic Critters pp.11-15 remains the future source for full Beastmaster and animal-companion implementation; Scene 5 reads shared metadata so that later work can connect without a second rule path.
 - Temporary Weapon Enchantment records its cast and day-seven campaign expiry, functions as magic without an Attack bonus, and expires at encounter end after an attack against a strictly magic-only foe. The attack may hit or miss. Adventure completion and settlement travel advance the clock; legacy markers receive a full week from first advancement. Manual early clear is removed while the existing Gremlin/Iron Eater loss choice remains unchanged (TAG p.65).
 - Xasartha reaction `1` persists its `6d6` demand and offers exact carried-gold, eligible 15gp+ gem/jewel, or refusal choices. Defeat persists `2d6` necros and a wear-or-sell pendant choice. The pendant is not consumed when Luck is spent; its separate counter survives camp/re-entry and recharges only with a new adventure. It grants one point, or two additional points to a halfling. Barbarians cannot wear it.

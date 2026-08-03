@@ -2366,6 +2366,7 @@ def test_generated_rumor_entry_choices_stay_beneath_narrative_without_internal_o
     objective_body = _function_body("currentObjectiveForSession", APP_JS)
     render_body = _function_body("renderCurrentObjectiveBanner", APP_JS)
     append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
+    route_body = _function_body("runTagRouteActionWithDefaults", APP_JS)
     assert 'generated.room?.id === "tag-lead-entry"' in objective_body
     assert 'String(generated.tagReference.lead_type || "").toLowerCase() === "rumor"' in objective_body
     assert "body: narrativeChoices" in objective_body
@@ -2381,6 +2382,8 @@ def test_generated_rumor_entry_choices_stay_beneath_narrative_without_internal_o
     assert "flex-wrap: nowrap;" in narrative_choice_styles
     assert "@media (max-width: 520px)" in STYLES_CSS
     assert "flex-wrap: wrap;" in STYLES_CSS.split("@media (max-width: 520px)", 1)[1]
+    assert '/return to town/i.test(String(defaults.reference || ""))' in route_body
+    assert "await continueGeneratedTagLead();" in route_body
 
 
 def test_mutant_fish_scene_12_uses_one_typed_guided_workflow() -> None:

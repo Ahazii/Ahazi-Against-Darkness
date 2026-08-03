@@ -819,6 +819,26 @@ def _upgrade_medusa_manifest(manifest: dict[str, Any], tag_reference: dict[str, 
     return changed
 
 
+def _upgrade_rumor_entry_manifest(tag_reference: dict[str, Any]) -> bool:
+    if str(tag_reference.get("lead_type") or "").strip().lower() != "rumor":
+        return False
+    prompts = tag_reference.get("room_prompts")
+    if not isinstance(prompts, dict):
+        return False
+    entry_prompt = prompts.get("tag-lead-entry")
+    if not isinstance(entry_prompt, dict):
+        return False
+    from .tag_campaign import tag_rumor_entry_prompt_actions
+
+    base_reference = str(tag_reference.get("title") or "Adventures Guild Rumor")
+    actions = tag_rumor_entry_prompt_actions(tag_reference, base_reference=base_reference)
+    if not actions or entry_prompt.get("actions") == actions:
+        return False
+    entry_prompt["actions"] = actions
+    tag_reference["rumor_entry_prompt_upgrade"] = "TAG pp.22-24 shared investigate-or-return decision"
+    return True
+
+
 def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     parameters = manifest.get("source", {}).get("parameters", {})
     tag_reference = parameters.get("tag_reference") if isinstance(parameters, dict) else None
@@ -846,6 +866,7 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
             )
             prompts = tag_reference["room_prompts"]
         _apply_local_tag_narrative_override(manifest, tag_reference)
+        _upgrade_rumor_entry_manifest(tag_reference)
         _upgrade_bofto_manifest(manifest, tag_reference)
         _upgrade_medusa_manifest(manifest, tag_reference)
         if is_treasure_map:

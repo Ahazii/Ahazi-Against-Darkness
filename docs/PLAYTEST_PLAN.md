@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-07-30. Target build: v0.39.61.
+Last updated: 2026-08-03. Target build: v0.39.62.
 
 ## Adventure Test Gate: Passed
 
@@ -85,10 +85,20 @@ v0.39.59 implements the player-confirmed TAG p.29 interpretation:
   the new trapped hero;
 - friendly terms with chaos cultists are persistent campaign state.
 
-After deploying and force-refreshing, generate fixed **Rumor 4: Mutant Fish
-Under the Bridge** and check only this new typed slice:
+v0.39.62 repairs the shared TAG pp.22-24 Rumor opening in existing session
+`436591f8127741a586f4d3eae4ab264c`. After deploying and force-refreshing,
+resume that session; do not generate another Rumor 4:
 
-1. Reach **The Bridge Pool**. There must be one
+1. Confirm horizontal **Investigate** and **Return to town** buttons appear
+   immediately beneath Narrative. Their hover text must explain that Investigate
+   enters the printed Scene and Return to town retains the Rumor for later.
+2. Choose **Investigate**. The party must move directly to **The Bridge Pool**
+   (Scene 12), and the opening choice buttons must be replaced by the typed
+   Mutant Fish procedure.
+
+Then check only this typed slice:
+
+1. At **The Bridge Pool**, there must be one
    **Roll party hypnosis Saves** action, not separate manual hypnosis,
    ration, and XP buttons.
 2. Confirm Narrative lists every living hero's L5 result. A chaos-tainted hero,

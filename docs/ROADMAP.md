@@ -19,6 +19,7 @@ Status: foundation implemented; low-priority feature growth.
 
 Status: active priority.
 
+- [x] Share the TAG pp.22-24 investigate-now/retain-for-later opening across all twelve generated Rumors, including existing-save upgrades and direct printed-Scene routing (v0.39.62).
 - [x] Correct imported-adventure completion summaries to count persisted visited map elements rather than every prebuilt module room (v0.39.61).
 - Release gate: passed through v0.39.45. Campaign/Rumor Continuity, Developer Grant/Two Bags, Repellant, ordinary Invisible Gremlins theft, Disbelief reveal, group combat, and treasure all have live evidence. Stop broad adventure regression testing; reopen only an exact failed workflow if a later change produces a confirmed regression.
 - Item-disposition modularisation: completed in v0.39.46. Transfer, storage, sale, ordinary loss, destruction, sacrifice, confiscation, and theft now share one typed eligibility boundary and Bag-aware removal result. The slice preserves the TAG star-object prohibition, explicit Bag-container identity, container-aware loss, class/carry checks, and existing messages without reorganising `random_dungeon.py`.
