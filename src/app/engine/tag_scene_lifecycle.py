@@ -68,6 +68,11 @@ TAG_ACTION_LIFECYCLES: dict[str, TagActionLifecycle] = {
         terminal_phases=frozenset({"resolved", "deferred"}),
         terminal_flags=frozenset({"resolved"}),
     ),
+    "tag_repeatable_service_done": TagActionLifecycle(
+        required_for_completion=True,
+        state_key="tag_repeatable_service",
+        terminal_phases=frozenset({"resolved"}),
+    ),
     "mutant_fish_scene12": TagActionLifecycle(
         auto_start=True,
         required_for_completion=True,
@@ -116,8 +121,11 @@ def auto_start_tag_room_actions(session: SessionState, room_id: str) -> bool:
     return changed
 
 
-def required_tag_room_actions_are_terminal(session: SessionState, room_id: str) -> bool:
-    """Return whether every registered required action in this room is terminal."""
+def required_tag_room_action_lifecycles(
+    session: SessionState,
+    room_id: str,
+) -> tuple[TagActionLifecycle, ...]:
+    """Return registered lifecycle rules for required actions in one TAG room."""
     prompt = tag_room_prompt(session, room_id)
     actions = prompt.get("actions") if isinstance(prompt, dict) else None
     required: list[TagActionLifecycle] = []
@@ -127,21 +135,48 @@ def required_tag_room_actions_are_terminal(session: SessionState, room_id: str) 
         lifecycle = tag_action_lifecycle(str(action.get("action_value") or ""))
         if lifecycle is not None and lifecycle.required_for_completion:
             required.append(lifecycle)
+    return tuple(required)
+
+
+def required_tag_room_actions_are_terminal(session: SessionState, room_id: str) -> bool:
+    """Return whether every registered required action in this room is terminal."""
+    required = required_tag_room_action_lifecycles(session, room_id)
     return bool(required) and all(lifecycle.is_terminal(session) for lifecycle in required)
+
+
+def tag_room_has_required_action(session: SessionState, room_id: str) -> bool:
+    """Return whether this room declares a registered completion-gating action."""
+    return bool(required_tag_room_action_lifecycles(session, room_id))
 
 
 def required_tag_room_action_has_failed_terminal(session: SessionState, room_id: str) -> bool:
     """Return whether a registered required action ended the adventure in failure."""
-    prompt = tag_room_prompt(session, room_id)
-    actions = prompt.get("actions") if isinstance(prompt, dict) else None
-    for action in actions if isinstance(actions, list) else []:
-        if not isinstance(action, dict) or not action.get("required_for_completion"):
-            continue
-        lifecycle = tag_action_lifecycle(str(action.get("action_value") or ""))
-        if (
-            lifecycle is not None
-            and lifecycle.required_for_completion
-            and lifecycle.is_terminal_failure(session)
-        ):
+    for lifecycle in required_tag_room_action_lifecycles(session, room_id):
+        if lifecycle.is_terminal_failure(session):
             return True
     return False
+
+
+def generated_tag_rumor_entry_choice_pending(session: SessionState) -> bool:
+    """Keep every generated Rumour at its shared opening until the player chooses."""
+    if session.mode == "complete" or session.tag_generated_completion_pending:
+        return False
+    manifest = session.imported_manifest if isinstance(session.imported_manifest, dict) else {}
+    source = manifest.get("source") if isinstance(manifest.get("source"), dict) else {}
+    parameters = source.get("parameters") if isinstance(source.get("parameters"), dict) else {}
+    reference = parameters.get("tag_reference") if isinstance(parameters, dict) else {}
+    if not isinstance(reference, dict) or str(reference.get("lead_type") or "").casefold() != "rumor":
+        return False
+    current_tile_id = session.map_state.current_tile_id
+    tile = next((item for item in session.map_state.tiles if item.id == current_tile_id), None)
+    if tile is None:
+        return False
+    content_key = str(tile.content_key or "")
+    room_id = (
+        content_key.removeprefix("imported:")
+        if content_key.startswith("imported:")
+        else str(manifest.get("entrance_room_id") or "")
+        if content_key == "entrance"
+        else ""
+    )
+    return room_id == "tag-lead-entry"

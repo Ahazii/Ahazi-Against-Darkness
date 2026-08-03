@@ -1,15 +1,14 @@
 # Next Session Handoff
 
-Current release is **v0.39.67**. The v0.39.66 Rumor 9 Streetwise, defer, reward,
-XP, and closeout procedure passed; do not regenerate or replay it. v0.39.67 is a
-bounded presentation correction: new and resumed Scene 5 narrative consistently
-states the player-confirmed 200gp TAG p.24 offer, while copied Narrative Reports
-label carried, banked, and total gold separately. The conflicting 100gp line in
-Scene 5 on p.26 remains documented as the known source error. Deploy,
-force-refresh, and perform only the non-mutating presentation check in
-`docs/PLAYTEST_PLAN.md`.
+Current release is **v0.39.68**. The v0.39.66 Rumor 9 Streetwise, defer, reward,
+XP, and closeout procedure passed, and the v0.39.67 non-mutating presentation
+gate subsequently passed; do not regenerate or replay it. v0.39.68 adds one
+shared persisted repeatable-service host for Rumor 6's TAG
+p.23 / Scene 2 pp.25-26 Blackbird Hill bargain and Rumor 11's TAG p.24 / Scene 3
+p.26 Deoldyn training. Deploy, force-refresh, and perform only the bounded
+two-module check in `docs/PLAYTEST_PLAN.md`.
 
-Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.67`.
+Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.68`.
 
 ## Start Here
 
@@ -20,12 +19,12 @@ Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.67`.
 
 ## Current Priority
 
-All earlier broad adventure test gates, including the v0.39.66 Rumor 9
-procedure, are passed. The only open live check is v0.39.67's non-mutating
-Scene 5/report presentation check. Do not ask the user to repeat the
-Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken Depths,
-Citadel, Bofto, Star-Slayer, Bag, Repellant, treasure, trap, entrance, or
-closeout suites.
+All earlier broad adventure test gates, including both the procedure and
+v0.39.67 presentation checks for Rumor 9, are passed. The only open live check
+is the bounded shared-service gate for Rumors 6 and 11. Do not ask the user to
+repeat the Invisible Gremlins fight or reopen the broad EE, Abyss, Forsaken
+Depths, Citadel, Bofto, Daroc, Star-Slayer, Bag, Repellant, treasure, trap,
+entrance, or closeout suites.
 
 The v0.39.53 Rumor 2 Quest closeout gate passed. Session
 `1b417a50983c4329b4f2b1aead6cf76d` is complete with `9gp`, no active Quest,
@@ -43,18 +42,21 @@ Rumor entry choices side by side at normal app widths. v0.39.59 converts TAG
 p.29 Scene 12 into one typed Mutant Fish hypnosis, rescue, ration, sale, and XP
 procedure. Do not repeat the whole Rumor 2 module or any Gremlin fight.
 
-## Implemented Through v0.39.67
+## Implemented Through v0.39.68
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 20, 22, 24-31, and 65.
 
 - Required generated-TAG terminal actions use the canonical **Continue — return to town and finish** wording across Narrative, diagnostics, compact header chip, and primary action. The full action remains visible when the optional Objective Details preference is collapsed, while save/resume normalizes legacy wording without changing or rerolling the resolved scene.
 - Mutant Fish Under the Bridge runs as one persisted TAG p.29 Scene 12 procedure. Entering the pool automatically rolls every living hero's L5 hypnosis Save once; no player roll button remains. The required-resolution lifecycle prevents completion on arrival, automatically fails chaos-tainted heroes, owns rescue-turn Life loss and rescuer/victim role changes, destroys/persists an all-failed party, rolls `d6+3` Food rations once, records two minor encounters, and offers carrying-aware Keep or campaign-rate Sell choices. Keep/Sell opens the explicit shared closeout pause. `CampaignState.tag_friendly_chaos_cultists` persists the 5gp friendly sale rate for future applicable encounters.
 - Existing generated TAG saves synchronize manifest completion policy, duplicated session completion policy, and active quest key on resume. The reported Rumor 4 session at the pool is conservatively reopened only when its earlier completion is the stale arrival marker and the procedure is not terminal; its automatic Saves then persist and cannot reroll.
-- The TAG pp.22-31 audit confirms no Rumor is genuinely complete on arrival. Rumors 4 and 9 now use the shared required-scene lifecycle. Rumors 6/11 are next after a shared repeatable vendor/service host and explicit Done action; mandatory procedures, dynamic encounters, and child-dungeon returns must be implemented before enabling the same gate for their other profiles.
+- The TAG pp.22-31 audit confirms no Rumor is genuinely complete on arrival. Rumors 4, 6, 9, and 11 now use the shared required-scene lifecycle. Rumors 6/11 reuse one persisted `tag_repeatable_service` transaction host and explicit profile-specific Done action; mandatory procedures, dynamic encounters, and child-dungeon returns must still be implemented before enabling the same gate for their other profiles.
 - Generated Rumor entry buttons render immediately beneath Narrative for both `tag_*` and manifest-owned `imported_*` quest records, remain visible when Objective Details is hidden, and exclude internal Director phase, lifecycle, and lead-family playbook prose. TAG pp.22-24 shares **Investigate** / **Not now — return to town** across all twelve Rumors; choices remain side by side at normal app widths and wrap only on narrow mobile layouts.
 - Narrative objective, Relevant Now, and room metadata share one special-action dispatcher. Rumor-specific typed controls stay separate plug-ins inside the common scene host. Explicit `entry_scene` metadata prevents composite descriptions from misrouting older Rumor 1 modules past Scene 9.
 - Daroc's Lost Familiar keeps the player in Scene 5 until a typed terminal result. **Search for Clues** lets the player select the acting character for each automatic TAG p.20 L6 Streetwise check, charges that searcher's `d6` bribe, and persists eligible Town Streetwise Clues and progress across repeat attempts and save/resume. The cost is two or one when the living party includes a Druid, Beastmaster, cat-like hero, or cat animal companion (TAG p.26). **Give up — return to town** is non-permanent: it preserves eligible Clues and returns Rumor 9 to `heard`. Success spends the eligible Clues, gives the separately selected living recipient 200gp, and creates exactly one pending XP roll. The amount follows the TAG p.24 Rumor offer by player ruling; Scene 5's 100gp line on p.26 is a known error. The XP can be assigned or banked during the shared closeout gate. Crucible of Classic Critters pp.11-15 remains the future source for full Beastmaster and animal-companion implementation.
 - New and resumed Daroc Scene 5 narrative now states that same 200gp ruling consistently. Narrative Debug Reports list carried, banked, and total gold for every hero, so diagnostics expose bribe deductions even when the hero remains at the 200gp dungeon carry cap. This does not change finance or reward state.
+- Blackbird Hill follows the Rumor 6 lead on TAG p.23 and Scene 2 on pp.25-26. Optional 200gp Shoes purchases and the single 100gp/free-after-three-pairs illusion lesson remain available until **Done — leave Blackbird Hill**; arrival and an individual purchase do not complete the adventure. Per the player-confirmed ruling, a living magic-item-eligible hero or living hireling may wear one pair and an animal companion may not. A hireling uses the party Tier Defense bonus while withdrawing or fleeing melee; the pair remains party-owned on the paying hero and automatically returns to ordinary party ownership when that hireling leaves.
+- Deoldyn follows the Rumor 11 lead on TAG p.24 and Scene 3 on p.26. The shared host accepts one complete simultaneous batch of living bow-capable trainees, validates every trainee and `60gp × Level` balance before mutation, deducts every payment before making any automatic XP roll, and never refunds a failed result. Deadly Accuracy or Dead Shot are available to eligible trainees; only the normal/base Elf may choose ordinary level advancement. Training may be skipped, but no character may be added after the batch results are known; **Done — finish training** alone resolves the service.
+- Fresh and legacy Rumors 6/11 manifests use `tag_scene_resolved`; legacy upgrades are idempotent and preserve prior service state. Their first prompt remains only **Investigate** / **Not now — return to town**, with purchases/training appearing only in the printed final Scene. Done opens the normal **Continue — return to town and finish** pause exactly once.
 - Temporary Weapon Enchantment records its cast and day-seven campaign expiry, functions as magic without an Attack bonus, and expires at encounter end after an attack against a strictly magic-only foe. The attack may hit or miss. Adventure completion and settlement travel advance the clock; legacy markers receive a full week from first advancement. Manual early clear is removed while the existing Gremlin/Iron Eater loss choice remains unchanged (TAG p.65).
 - Xasartha reaction `1` persists its `6d6` demand and offers exact carried-gold, eligible 15gp+ gem/jewel, or refusal choices. Defeat persists `2d6` necros and a wear-or-sell pendant choice. The pendant is not consumed when Luck is spent; its separate counter survives camp/re-entry and recharges only with a new adventure. It grants one point, or two additional points to a halfling. Barbarians cannot wear it.
 - Any normal core Quest completed inside a generated TAG adventure now resolves that lead through the existing readable terminal pause. It explains that the Quest-giver encounter remains peaceful and combat treasure is unavailable, then offers **Continue — return to town and finish**. Resume repairs already-completed rewards without rerolling or duplicating them.
@@ -99,9 +101,13 @@ Automated tests own campaign isolation and legacy migration, all twelve Rumors e
 
 Migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time. Select and inspect one exact scene before coding; keep the slice narrow.
 
+Run only the bounded Rumors 6/11 service gate in `docs/PLAYTEST_PLAN.md`. Automated tests own three-pair/free-lesson arithmetic, invalid recipient and trainee matrices, all-payments-before-roll atomicity, failed-roll costs, duplicate actions, hireling departure return, combat bonus math, and legacy state retention.
+
 Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat its Gremlin/Iron Eater loss tests; focused coverage owns day timing, magic-only use, encounter-end expiry, and legacy markers.
 
 ## Recent Releases
+
+- `v0.39.68`: add the shared Rumors 6/11 repeatable-service host, guided and labelled vendor/training UI, explicit Done lifecycle, evidence-gated legacy repair, route/movement guards, count-aware assigned-Shoes storage protection, and persisted roster/combat effects.
 
 - `v0.39.67`: normalize new/resumed Daroc Scene 5 narrative to 200gp and distinguish carried, banked, and total gold in Narrative Debug Reports.
 - `v0.39.66`: complete Rumor 9's selected-searcher Streetwise loop, persisted Town Clue progress, non-permanent Give up route, required lifecycle, 200gp reward, and one-XP closeout.

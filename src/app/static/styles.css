@@ -2577,6 +2577,126 @@ button.is-working::after {
   gap: 5px;
 }
 
+.tag-context-guided-action.tag-repeatable-service-guided {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  max-width: 980px;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.tag-service-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.tag-service-section {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel-2) 82%, transparent);
+}
+
+.tag-service-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(170px, 1fr)) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.tag-service-spell-fields {
+  grid-template-columns: repeat(3, minmax(150px, 1fr)) auto;
+}
+
+.tag-service-field {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tag-service-field-label {
+  line-height: 1.25;
+}
+
+.tag-service-field select {
+  width: 100%;
+}
+
+.tag-service-fields select,
+.tag-service-fields button,
+.tag-service-trainee select,
+.tag-repeatable-service-guided > button {
+  min-height: 44px;
+  white-space: normal;
+}
+
+.tag-service-trainee-list {
+  display: grid;
+  gap: 8px;
+}
+
+.tag-service-trainee {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) minmax(190px, 1fr) minmax(170px, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 74%, transparent);
+}
+
+.tag-service-trainee.is-disabled {
+  opacity: 0.68;
+}
+
+.tag-service-trainee-choice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.tag-service-trainee-choice input {
+  width: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  accent-color: var(--accent);
+}
+
+.tag-service-trainee-name {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tag-service-trainee > .muted {
+  grid-column: 1 / -1;
+}
+
+.tag-service-done {
+  justify-self: start;
+}
+
+@media (max-width: 820px) {
+  .tag-service-fields,
+  .tag-service-spell-fields,
+  .tag-service-trainee {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .map-log-row:has(.medusa-scene10-choice),
 .map-log-row:has(.mutant-fish-scene12-guided) {
   height: max(var(--log-panel-height, 240px), 300px);

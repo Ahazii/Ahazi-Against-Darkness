@@ -7,9 +7,10 @@ from unittest.mock import patch
 from app import main
 from app.engine.adventure_allowlists import major_foe_table_keys
 from app.engine.adventure_session import create_session_from_manifest
+from app.engine.dice import AdvancementRollResult
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.tag_campaign import build_tag_adventure_manifest, default_campaign, load_campaign, save_campaign
-from app.engine.tag_compat import upgrade_tag_manifest
+from app.engine.tag_compat import repair_required_tag_scene_lifecycle, upgrade_tag_manifest
 from app.engine.tag_daroc import DAROC_FAMILIAR_REWARD_GP, TAG_TOWN_STREETWISE_CLUE
 from app.engine.tag_scene_lifecycle import (
     TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
@@ -17,7 +18,20 @@ from app.engine.tag_scene_lifecycle import (
     TAG_GENERATED_CLOSEOUT_REMINDER,
 )
 from app.rules.repository import RulesRepository
-from app.schemas import ActiveQuestState, Character, EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
+from app.schemas import (
+    ActiveQuestState,
+    Character,
+    CombatBodyguardPauseState,
+    EnemyState,
+    ExitState,
+    HirelingState,
+    MapState,
+    PartyMemberState,
+    PendingBodyguardInterceptState,
+    PendingCombatFoeAttack,
+    SessionState,
+    TileState,
+)
 
 
 def engine() -> RandomDungeonEngine:
@@ -124,6 +138,71 @@ def _save_daroc_generated_session(
     save_campaign(main.store, campaign)
     main.store.save("sessions", session)
     return manifest, searcher, recipient
+
+
+def _save_repeatable_tag_service_session(
+    session_id: str,
+    rumor_number: int,
+    character_specs: list[tuple[str, str, int, int]],
+) -> tuple[dict, list[Character]]:
+    campaign = default_campaign()
+    manifest, _entry = build_tag_adventure_manifest(
+        campaign,
+        lead_type="rumor",
+        detail=str(rumor_number),
+    )
+    characters: list[Character] = []
+    for suffix, class_id, level, gold in character_specs:
+        character = Character(
+            id=f"{session_id}-{suffix}",
+            name=f"{class_id.replace('_', ' ').title()} {suffix.title()}",
+            class_id=class_id,
+            class_name=class_id.replace("_", " ").title(),
+            level=level,
+            xp=0,
+            gold=gold,
+            max_life=10,
+            current_life=10,
+            attack_bonus=1,
+            defense_bonus=1,
+            save_bonus=0,
+            inventory=[],
+            active_session_id=session_id,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        )
+        main.store.save("characters", character)
+        characters.append(character)
+    session = create_session_from_manifest(
+        main.random_engine,
+        session_id,
+        f"{session_id}-party",
+        [main._member_state(character) for character in characters],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    save_campaign(main.store, campaign)
+    main.store.save("sessions", session)
+    return manifest, characters
+
+
+def _enter_repeatable_tag_service(client, session_id: str, manifest: dict) -> dict:
+    entry_actions = manifest["source"]["parameters"]["tag_reference"]["room_prompts"][
+        "tag-lead-entry"
+    ]["actions"]
+    investigate = next(action for action in entry_actions if action["label"] == "Investigate")
+    entered = client.post(
+        f"/api/sessions/{session_id}/tag-route-action",
+        json={"route_action": "unlock_scene", "reference": investigate["reference"]},
+    )
+    assert entered.status_code == 200, entered.text
+    payload = entered.json()
+    current_id = payload["session"]["map_state"]["current_tile_id"]
+    current = next(
+        tile for tile in payload["session"]["map_state"]["tiles"] if tile["id"] == current_id
+    )
+    assert current["content_key"] == "imported:tag-final-scene"
+    return payload
 
 
 def test_refuse_quest_blocks_lady() -> None:
@@ -515,15 +594,981 @@ def test_legacy_leprechaun_manifest_upgrades_to_vendor_finale() -> None:
     reference = upgraded["source"]["parameters"]["tag_reference"]
     final_room = upgraded["rooms"][0]
 
-    assert upgraded["quest"]["complete_when"] == {"type": "room_reached", "room_id": "tag-final-scene"}
+    assert upgraded["quest"]["complete_when"] == {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
     assert reference["finale_mode"] == "vendor"
     assert reference["final_foes"] == []
+    assert reference["legacy_service_proxy_foe_names"] == ["Goblins"]
     assert reference["room_prompts"]["tag-final-scene"]["title"] == "Bargain choices"
     assert [action["action_value"] for action in reference["room_prompts"]["tag-final-scene"]["actions"]] == [
         "leprechaun_shoes",
         "leprechaun_illusion_spell",
+        "tag_repeatable_service_done",
+    ]
+    assert reference["room_prompts"]["tag-final-scene"]["actions"][-1]["required_for_completion"] is True
+    assert "encounter" not in final_room["triggers"][0]
+    first_upgrade = json.dumps(upgraded, sort_keys=True)
+    assert json.dumps(upgrade_tag_manifest(upgraded), sort_keys=True) == first_upgrade
+
+
+def test_legacy_deoldyn_manifest_upgrades_to_repeatable_batch_service() -> None:
+    manifest = {
+        "title": "The Adventures Guild Rumor 11: Deoldyn's Archery Training",
+        "source": {
+            "parameters": {
+                "tag_reference": {
+                    "lead_type": "rumor",
+                    "rumor_number": 11,
+                    "title": "Deoldyn's Archery Training",
+                    "final_foes": [{"name": "Orcs", "count": 4}],
+                }
+            }
+        },
+        "quest": {
+            "key": "tag_lead",
+            "objective_text": "Old training objective.",
+            "complete_when": {
+                "type": "boss_defeated",
+                "boss_name": "Orcs",
+                "room_id": "tag-final-scene",
+            },
+        },
+        "rooms": [
+            {
+                "id": "tag-final-scene",
+                "title": "Old training interruption",
+                "description": "Old proxy fight.",
+                "triggers": [
+                    {
+                        "when": "on_enter",
+                        "log": "Old training encounter.",
+                        "encounter": {"foes": [{"name": "Orcs", "count": 4}]},
+                    }
+                ],
+            }
+        ],
+    }
+
+    upgraded = upgrade_tag_manifest(manifest)
+    reference = upgraded["source"]["parameters"]["tag_reference"]
+    final_prompt = reference["room_prompts"]["tag-final-scene"]
+    final_room = upgraded["rooms"][0]
+
+    assert upgraded["quest"]["complete_when"] == {
+        "type": "tag_scene_resolved",
+        "room_id": "tag-final-scene",
+    }
+    assert reference["finale_mode"] == "service"
+    assert reference["final_foes"] == []
+    assert reference["final_foe_proxy"] == ""
+    assert reference["legacy_service_proxy_foe_names"] == ["Orcs"]
+    assert final_prompt["title"] == "Service choices"
+    assert [action["action_value"] for action in final_prompt["actions"]] == [
+        "deoldyn_training",
+        "tag_repeatable_service_done",
+    ]
+    assert "required_for_completion" not in final_prompt["actions"][0]
+    assert final_prompt["actions"][1]["label"] == "Done — finish training"
+    assert final_prompt["actions"][1]["required_for_completion"] is True
+    assert "all payments" in reference["finale_instruction"]
+    assert "automatic" in reference["finale_instruction"]
+    assert "base Elf" in reference["finale_instruction"]
+    assert "mark_training_xp_roll" not in {
+        action["action_value"]
+        for prompt in reference["room_prompts"].values()
+        for action in prompt.get("actions", [])
+    }
+    assert [action["label"] for action in reference["room_prompts"]["tag-lead-entry"]["actions"]] == [
+        "Investigate",
+        "Not now — return to town",
     ]
     assert "encounter" not in final_room["triggers"][0]
+    first_upgrade = json.dumps(upgraded, sort_keys=True)
+    assert json.dumps(upgrade_tag_manifest(upgraded), sort_keys=True) == first_upgrade
+
+
+def test_repeatable_service_lifecycle_repair_retains_existing_procedure_state() -> None:
+    manifest, _entry = build_tag_adventure_manifest(
+        default_campaign(),
+        lead_type="rumor",
+        detail="11",
+    )
+    prior_procedure_state = {
+        "tag_repeatable_service": {
+            "phase": "selecting",
+            "transactions": [
+                {"character_id": "h", "cost": 180, "choice": "dead_shot"},
+            ],
+        }
+    }
+    session = base_session(
+        adventure_id="tag-rumor-11-legacy-session",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        imported_quest_complete_when={"type": "room_reached", "room_id": "tag-final-scene"},
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_room",
+            description="Train with Deoldyn.",
+            completed=True,
+            tag_procedure_state=prior_procedure_state,
+        ),
+        log=["Quest complete: objective location reached."],
+    )
+    session.map_state.tiles[0].content_key = "imported:tag-final-scene"
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert session.imported_quest_complete_when == {
+        "type": "tag_scene_resolved",
+        "room_id": "tag-final-scene",
+    }
+    assert session.active_quest is not None
+    assert session.active_quest.key == "tag_generated_scene"
+    assert session.active_quest.completed is False
+    assert session.active_quest.tag_procedure_state == prior_procedure_state
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.active_quest.tag_procedure_state == prior_procedure_state
+
+
+def _legacy_repeatable_service_manifest(
+    rumor_number: int,
+    proxy_name: str,
+) -> dict:
+    leprechaun = rumor_number == 6
+    title = (
+        "The Adventures Guild Rumor 6: Leprechauns at Blackbird Hill"
+        if leprechaun
+        else "The Adventures Guild Rumor 11: Deoldyn's Archery Training"
+    )
+    return {
+        "id": f"legacy-tag-rumor-{rumor_number}",
+        "title": title,
+        "entrance_room_id": "tag-lead-entry",
+        "source": {
+            "parameters": {
+                "tag_reference": {
+                    "lead_type": "rumor",
+                    "rumor_number": rumor_number,
+                    "title": title,
+                    "final_foe_proxy": proxy_name,
+                    "final_foes": [{"name": proxy_name, "count": 4}],
+                }
+            }
+        },
+        "quest": {
+            "key": "tag_lead",
+            "giver_room_id": "tag-lead-entry",
+            "objective_text": "Old proxy objective.",
+            "complete_when": {
+                "type": "boss_defeated",
+                "boss_name": proxy_name,
+                "room_id": "tag-final-scene",
+            },
+        },
+        "rooms": [
+            {
+                "id": "tag-lead-entry",
+                "title": "Lead entry",
+                "description": "Old lead entry.",
+                "triggers": [],
+            },
+            {
+                "id": "tag-final-scene",
+                "title": "Old proxy fight",
+                "description": "Old proxy fight.",
+                "triggers": [
+                    {
+                        "when": "on_enter",
+                        "log": "Old proxy encounter.",
+                        "encounter": {
+                            "foes": [{"name": proxy_name, "count": 4}],
+                        },
+                    }
+                ],
+            },
+        ],
+    }
+
+
+def test_repeatable_service_legacy_imported_boss_reopens_and_cleans_exact_proxy() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(11, "Orcs")
+    )
+    stale_body = "The obsolete proxy Quest is complete. Continue to finish."
+    session = base_session(
+        adventure_id="tag-rumor-11-legacy-proxy",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        imported_quest_complete_when={
+            "type": "boss_defeated",
+            "boss_name": "Orcs",
+            "room_id": "tag-final-scene",
+        },
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_boss",
+            description="Defeat the old proxy.",
+            boss_slay_pending=True,
+            boss_target_name="Orcs",
+            completed=True,
+        ),
+        mode="combat",
+        tag_generated_completion_pending=True,
+        tag_generated_completion_title="Old proxy resolved",
+        tag_generated_completion_body=stale_body,
+        log=["Quest complete: Orcs has been destroyed.", stale_body],
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "imported:tag-final-scene"
+    tile.enemies = [
+        EnemyState(
+            id="legacy-orcs",
+            name="Orcs",
+            category="minion",
+            level=4,
+            life=4,
+            max_life=4,
+            initial_count=4,
+        )
+    ]
+    tile.initial_enemy_count = 4
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert session.active_quest is not None
+    assert session.active_quest.key == "tag_generated_scene"
+    assert session.active_quest.completed is False
+    assert session.active_quest.boss_target_name is None
+    assert session.active_quest.boss_slay_pending is False
+    assert session.mode == "exploration"
+    assert tile.enemies == []
+    assert tile.initial_enemy_count == 0
+    final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
+    assert tile.title == final_room["title"]
+    assert tile.description == final_room["description"]
+    assert session.tag_generated_completion_pending is False
+    assert stale_body not in session.log
+    assert not any(line.startswith("Quest complete: Orcs") for line in session.log)
+    marker = session.active_quest.tag_procedure_state[
+        "tag_repeatable_service_legacy_migration"
+    ]
+    assert marker["proxy_cleanup"] == "cleared_exact_known_proxy"
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_repeatable_service_legacy_paused_proxy_clears_bodyguard_prompt_state() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(11, "Orcs")
+    )
+    session = base_session(
+        adventure_id="tag-rumor-11-legacy-paused-proxy",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_boss",
+            description="Defeat the old proxy.",
+            boss_target_name="Orcs",
+            completed=True,
+        ),
+        mode="combat",
+        pending_bodyguard_intercept=PendingBodyguardInterceptState(
+            protectee_id="h",
+            hireling_id="legacy-bodyguard",
+            enemy_id="legacy-orc",
+        ),
+        combat_bodyguard_pause=CombatBodyguardPauseState(
+            phase_index=0,
+            phases=["foes"],
+            remaining_attacks=[
+                PendingCombatFoeAttack(
+                    enemy_id="legacy-orc",
+                    target_character_id="h",
+                )
+            ],
+            escape_context={
+                "active_enemy_ids": ["legacy-orc"],
+                "serialized_prompt": "bodyguard intercept",
+            },
+        ),
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "imported:tag-final-scene"
+    tile.enemies = [
+        EnemyState(
+            id="legacy-orc",
+            name="Orcs",
+            category="minion",
+            level=4,
+            life=4,
+            max_life=4,
+        )
+    ]
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert tile.enemies == []
+    assert session.pending_bodyguard_intercept is None
+    assert session.combat_bodyguard_pause is None
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_repeatable_service_legacy_unknown_foe_is_preserved() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(11, "Orcs")
+    )
+    session = base_session(
+        adventure_id="tag-rumor-11-legacy-unknown-foe",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_boss",
+            description="Defeat the old proxy.",
+            boss_slay_pending=True,
+            boss_target_name="Orcs",
+            completed=True,
+        ),
+        mode="combat",
+        pending_bodyguard_intercept=PendingBodyguardInterceptState(
+            protectee_id="h",
+            hireling_id="current-bodyguard",
+            enemy_id="unexpected-dragon",
+        ),
+        combat_bodyguard_pause=CombatBodyguardPauseState(
+            phase_index=0,
+            phases=["foes"],
+            remaining_attacks=[
+                PendingCombatFoeAttack(
+                    enemy_id="unexpected-dragon",
+                    target_character_id="h",
+                )
+            ],
+            escape_context={"active_enemy_ids": ["unexpected-dragon"]},
+        ),
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "imported:tag-final-scene"
+    tile.enemies = [
+        EnemyState(
+            id="unexpected-dragon",
+            name="Dragon",
+            category="boss",
+            level=8,
+            life=8,
+            max_life=8,
+        )
+    ]
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert [enemy.name for enemy in tile.enemies] == ["Dragon"]
+    assert session.mode == "combat"
+    assert session.pending_bodyguard_intercept is not None
+    assert session.pending_bodyguard_intercept.enemy_id == "unexpected-dragon"
+    assert session.combat_bodyguard_pause is not None
+    assert session.combat_bodyguard_pause.escape_context == {
+        "active_enemy_ids": ["unexpected-dragon"]
+    }
+    assert session.active_quest is not None
+    marker = session.active_quest.tag_procedure_state[
+        "tag_repeatable_service_legacy_migration"
+    ]
+    assert marker["proxy_cleanup"] == "preserved_unknown_or_mixed_foes"
+    assert marker["preserved_unknown_foes"] == ["dragon"]
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_repeatable_service_legacy_epic_reward_is_preserved_while_service_reopens() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(6, "Goblins")
+    )
+    reward_line = "Quest complete! Epic reward: Magic shield."
+    stale_body = "The old Quest is complete. Continue to finish."
+    session = base_session(
+        adventure_id="tag-rumor-6-legacy-reward",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=None,
+        tag_generated_completion_pending=True,
+        tag_generated_completion_title="Old Quest resolved",
+        tag_generated_completion_body=stale_body,
+        log=[reward_line, stale_body],
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "imported:tag-final-scene"
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert session.active_quest is not None
+    assert session.active_quest.key == "tag_generated_scene"
+    assert session.active_quest.completed is False
+    assert session.active_quest.reward_claimed is True
+    assert session.tag_generated_completion_pending is False
+    assert reward_line in session.log
+    assert stale_body not in session.log
+    marker = session.active_quest.tag_procedure_state[
+        "tag_repeatable_service_legacy_migration"
+    ]
+    assert marker["reward_preserved"] is True
+    assert marker["preserved_reward_log"] == reward_line
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_repeatable_service_legacy_leprechaun_evidence_migrates_once() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(6, "Goblins")
+    )
+    session = base_session(
+        adventure_id="tag-rumor-6-legacy-evidence",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_boss",
+            description="Defeat the old proxy.",
+            boss_target_name="Goblins",
+            completed=True,
+        ),
+        log=[
+            "Adventures Guild procedure: Hero buys 3 pair(s) of Shoes of Fast Walk for 600 gp; add +Tier to Defense.",
+            "Adventures Guild procedure: Hero learns or records Scene 2 illusion spell - Illusionary Armor from the leprechauns for free after buying at least three pairs of magical shoes.",
+        ],
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "imported:tag-final-scene"
+    session.party[0].inventory = ["Shoes of Fast Walk"] * 3
+    session.party[0].statuses.append(
+        "TAG leprechaun illusion spell pending: Scene 2 illusion spell - Illusionary Armor"
+    )
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert session.active_quest is not None
+    state = session.active_quest.tag_procedure_state["tag_repeatable_service"]
+    assert len(state["shoe_assignments"]) == 3
+    assert state["illusion_lesson"]["spell_name"] == "Illusionary Armor"
+    assert state["illusion_lesson"]["cost_gp"] == 0
+    assert state["illusion_lesson"]["legacy_pending"] is True
+    assert len(state["transactions"]) == 2
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_repeatable_service_legacy_deoldyn_failure_closes_prior_training_batch() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(11, "Orcs")
+    )
+    session = base_session(
+        adventure_id="tag-rumor-11-legacy-evidence",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_boss",
+            description="Defeat the old proxy.",
+            boss_target_name="Orcs",
+            completed=True,
+        ),
+        log=[
+            "Adventures Guild procedure: Hero pays 60 gp to Deoldyn but fails at the Scene 3 training XP roll (d6=2 vs Level 1); Dead Shot is not learned."
+        ],
+    )
+    session.map_state.tiles[0].content_key = "imported:tag-final-scene"
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert session.active_quest is not None
+    state = session.active_quest.tag_procedure_state["tag_repeatable_service"]
+    assert state["training_batch_resolved"] is True
+    assert state["trained_character_ids"] == ["h"]
+    assert len(state["training_results"]) == 1
+    assert state["training_results"][0]["outcome"] == "dead_shot"
+    assert state["training_results"][0]["success"] is False
+    assert len(state["transactions"]) == 1
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_repeatable_service_legacy_inventory_only_shoes_are_recovered_once() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(6, "Goblins")
+    )
+    session = base_session(
+        adventure_id="tag-rumor-6-legacy-inventory-evidence",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_boss",
+            description="Defeat the old proxy.",
+            boss_target_name="Goblins",
+            completed=True,
+        ),
+        log=["Quest complete: Goblins has been destroyed."],
+    )
+    session.map_state.tiles[0].content_key = "imported:tag-final-scene"
+    session.party[0].inventory = ["Shoes of Fast Walk", "Shoes of Fast Walk"]
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert session.active_quest is not None
+    state = session.active_quest.tag_procedure_state["tag_repeatable_service"]
+    assert len(state["shoe_assignments"]) == 2
+    assert all(item["legacy_inventory_only"] for item in state["shoe_assignments"])
+    assert state["transactions"][0]["pair_count"] == 2
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_repeatable_service_fresh_visit_does_not_attribute_preowned_shoes() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(6, "Goblins")
+    )
+    session = base_session(
+        adventure_id="tag-rumor-6-fresh-preowned-shoes",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_room",
+            description="Reach Blackbird Hill.",
+            completed=True,
+        ),
+    )
+    session.map_state.tiles[0].content_key = "imported:tag-final-scene"
+    session.party[0].inventory = ["Shoes of Fast Walk", "Shoes of Fast Walk"]
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert session.active_quest is not None
+    assert session.active_quest.completed is False
+    assert "tag_repeatable_service" not in session.active_quest.tag_procedure_state
+    assert "tag_repeatable_service_legacy_migration" not in (
+        session.active_quest.tag_procedure_state
+    )
+    assert session.party[0].inventory == [
+        "Shoes of Fast Walk",
+        "Shoes of Fast Walk",
+    ]
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_repeatable_service_fresh_visit_does_not_attribute_prior_deoldyn_skill() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(11, "Orcs")
+    )
+    session = base_session(
+        adventure_id="tag-rumor-11-fresh-prior-training",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_boss",
+            description="Meet Deoldyn.",
+            boss_target_name="Orcs",
+            completed=True,
+        ),
+    )
+    session.map_state.tiles[0].content_key = "imported:tag-final-scene"
+    session.party[0].learned_expert_skills = ["dead_shot"]
+    session.party[0].expert_skill_targets = {"dead_shot": "tag_deoldyn"}
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert session.active_quest is not None
+    assert session.active_quest.completed is False
+    assert "tag_repeatable_service" not in session.active_quest.tag_procedure_state
+    assert "tag_repeatable_service_legacy_migration" not in (
+        session.active_quest.tag_procedure_state
+    )
+    assert session.party[0].learned_expert_skills == ["dead_shot"]
+    assert session.party[0].expert_skill_targets == {"dead_shot": "tag_deoldyn"}
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_repeatable_service_resolved_deoldyn_marker_synthesizes_continue() -> None:
+    manifest = upgrade_tag_manifest(
+        _legacy_repeatable_service_manifest(11, "Orcs")
+    )
+    session = base_session(
+        adventure_id="tag-rumor-11-legacy-resolved-marker",
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=ActiveQuestState(
+            tile_id="t",
+            key="imported_boss",
+            description="Defeat the old proxy.",
+            boss_target_name="Orcs",
+            completed=True,
+            tag_procedure_state={
+                "tag_repeatable_service": {
+                    "kind": "deoldyn",
+                    "phase": "resolved",
+                    "resolved": True,
+                    "transactions": [],
+                    "result_text": "The party has finished Deoldyn's training visit.",
+                }
+            },
+        ),
+    )
+    session.map_state.tiles[0].content_key = "imported:tag-final-scene"
+    session.party[0].learned_expert_skills = ["dead_shot"]
+    session.party[0].expert_skill_targets = {"dead_shot": "tag_deoldyn"}
+
+    assert repair_required_tag_scene_lifecycle(session) is True
+    assert session.active_quest is not None
+    state = session.active_quest.tag_procedure_state["tag_repeatable_service"]
+    assert state["phase"] == "resolved"
+    assert state["training_batch_resolved"] is True
+    assert state["training_results"][0]["outcome"] == "dead_shot"
+    assert state["training_results"][0]["legacy_durable_marker"] is True
+    assert session.active_quest.completed is True
+    assert session.tag_generated_completion_pending is True
+    assert session.tag_generated_completion_title == "Deoldyn's archery training resolved"
+    assert session.tag_generated_completion_body == state["result_text"]
+    assert TAG_GENERATED_CLOSEOUT_LOG_MESSAGE in session.log
+    first_state = session.model_dump(mode="json")
+    assert repair_required_tag_scene_lifecycle(session) is False
+    assert session.model_dump(mode="json") == first_state
+
+
+def test_rumor_6_repeatable_service_api_persists_purchase_lesson_done_and_closeout(client) -> None:
+    session_id = "tag-rumor-6-repeatable-api"
+    manifest, characters = _save_repeatable_tag_service_session(
+        session_id,
+        6,
+        [("learner", "illusionist", 3, 500)],
+    )
+    learner = characters[0]
+    entered = _enter_repeatable_tag_service(client, session_id, manifest)
+    service = entered["session"]["tag_repeatable_service_state"]
+    assert service["kind"] == "leprechaun"
+    assert service["phase"] == "open"
+    assert any(option["name"] == "Illusionary Armor" for option in service["spell_options"])
+
+    bought = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={
+            "action": "buy_shoes",
+            "payer_character_id": learner.id,
+            "recipient_kind": "hero",
+            "recipient_id": learner.id,
+        },
+    )
+    assert bought.status_code == 200, bought.text
+    bought_member = bought.json()["session"]["party"][0]
+    assert bought_member["gold"] + bought_member["bank_gold"] == 300
+    assert bought_member["inventory"] == ["Shoes of Fast Walk"]
+    assert bought.json()["session"]["active_quest"]["completed"] is False
+
+    learned = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={
+            "action": "learn_spell",
+            "payer_character_id": learner.id,
+            "learner_character_id": learner.id,
+            "spell_name": "Illusionary Armor",
+        },
+    )
+    assert learned.status_code == 200, learned.text
+    learned_member = learned.json()["session"]["party"][0]
+    assert learned_member["gold"] + learned_member["bank_gold"] == 200
+    assert learned_member["spells"] == ["Illusionary Armor"]
+    assert learned.json()["session"]["tag_repeatable_service_state"]["lesson_used"] is True
+
+    done = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={"action": "done"},
+    )
+    assert done.status_code == 200, done.text
+    done_session = done.json()["session"]
+    assert done_session["active_quest"]["completed"] is True
+    assert done_session["tag_generated_completion_pending"] is True
+    assert done_session["tag_repeatable_service_state"]["phase"] == "resolved"
+    rumor = next(
+        state for state in done.json()["campaign"]["tag_rumor_states"] if state["rumor_number"] == 6
+    )
+    assert rumor["status"] == "resolved"
+
+    repeated_done = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={"action": "done"},
+    )
+    assert repeated_done.status_code == 400
+    assert "Continue" in repeated_done.json()["detail"]
+    stale_purchase = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={
+            "action": "buy_shoes",
+            "payer_character_id": learner.id,
+            "recipient_kind": "hero",
+            "recipient_id": learner.id,
+        },
+    )
+    assert stale_purchase.status_code == 400
+    assert "Continue" in stale_purchase.json()["detail"]
+
+    completed = client.post(f"/api/sessions/{session_id}/tag-generated-lead-continue")
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["mode"] == "complete"
+    roster = main.store.get("characters", learner.id, Character.model_validate)
+    assert roster is not None
+    assert roster.gold == 200
+    assert roster.inventory == ["Shoes of Fast Walk"]
+    assert roster.spells == ["Illusionary Armor"]
+    assert roster.active_session_id is None
+
+
+def test_rumor_11_repeatable_service_api_batches_training_and_requires_done(
+    client,
+    monkeypatch,
+) -> None:
+    session_id = "tag-rumor-11-repeatable-api"
+    manifest, characters = _save_repeatable_tag_service_session(
+        session_id,
+        11,
+        [("archer", "warrior", 2, 500)],
+    )
+    archer = characters[0]
+    entered = _enter_repeatable_tag_service(client, session_id, manifest)
+    service = entered["session"]["tag_repeatable_service_state"]
+    assert service["kind"] == "deoldyn"
+    assert service["trainees"][0]["cost_gp"] == 120
+    assert entered["session"]["active_quest"]["completed"] is False
+
+    monkeypatch.setattr(
+        "app.engine.tag_repeatable_services.roll_advancement",
+        lambda *_args, **_kwargs: AdvancementRollResult(
+            natural=6,
+            total=6,
+            sides=6,
+            modifier=0,
+            purpose="level_up",
+        ),
+    )
+    trained = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={
+            "action": "train",
+            "trainings": [
+                {
+                    "character_id": archer.id,
+                    "outcome": "dead_shot",
+                    "new_spell": "",
+                }
+            ],
+        },
+    )
+    assert trained.status_code == 200, trained.text
+    trained_session = trained.json()["session"]
+    trained_member = trained_session["party"][0]
+    assert trained_member["gold"] + trained_member["bank_gold"] == 380
+    assert trained_member["learned_expert_skills"] == ["dead_shot"]
+    assert trained_member["expert_skill_targets"]["dead_shot"] == "tag_deoldyn"
+    assert trained_session["active_quest"]["completed"] is False
+    assert trained_session["tag_generated_completion_pending"] is False
+    assert trained_session["tag_repeatable_service_state"]["training_batch_resolved"] is True
+    assert trained_session["tag_repeatable_service_state"]["trainees"][0]["eligible"] is False
+
+    duplicate_batch = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={
+            "action": "train",
+            "trainings": [{"character_id": archer.id, "outcome": "deadly_accuracy"}],
+        },
+    )
+    assert duplicate_batch.status_code == 400
+    assert "simultaneous training batch has already" in duplicate_batch.json()["detail"]
+
+    blocked_legacy = client.post(
+        f"/api/sessions/{session_id}/tag-scene-action",
+        json={"scene_action": "deoldyn_training", "character_id": archer.id},
+    )
+    assert blocked_legacy.status_code == 400
+    assert "visible Deoldyn batch host" in blocked_legacy.json()["detail"]
+
+    done = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={"action": "done"},
+    )
+    assert done.status_code == 200, done.text
+    assert done.json()["session"]["tag_generated_completion_pending"] is True
+    assert done.json()["session"]["active_quest"]["completed"] is True
+
+    completed = client.post(f"/api/sessions/{session_id}/tag-generated-lead-continue")
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["mode"] == "complete"
+    roster = main.store.get("characters", archer.id, Character.model_validate)
+    assert roster is not None
+    assert roster.gold == 380
+    assert roster.learned_expert_skills == ["dead_shot"]
+    assert roster.expert_skill_targets["dead_shot"] == "tag_deoldyn"
+
+
+def test_repeatable_service_actions_are_blocked_during_combat(client) -> None:
+    rumor_6_id = "tag-rumor-6-combat-service-guard"
+    manifest_6, characters_6 = _save_repeatable_tag_service_session(
+        rumor_6_id,
+        6,
+        [("illusionist", "illusionist", 2, 500)],
+    )
+    hero_6 = characters_6[0]
+    _enter_repeatable_tag_service(client, rumor_6_id, manifest_6)
+    stored_6 = main.store.get("sessions", rumor_6_id, SessionState.model_validate)
+    assert stored_6 is not None
+    stored_6.mode = "combat"
+    before_6 = stored_6.model_dump(mode="json")
+    main.store.save("sessions", stored_6)
+
+    rumor_6_actions = [
+        {
+            "action": "buy_shoes",
+            "payer_character_id": hero_6.id,
+            "recipient_kind": "hero",
+            "recipient_id": hero_6.id,
+        },
+        {
+            "action": "learn_spell",
+            "payer_character_id": hero_6.id,
+            "learner_character_id": hero_6.id,
+            "spell_name": "Illusionary Armor",
+        },
+        {"action": "done"},
+    ]
+    for payload in rumor_6_actions:
+        blocked = client.post(
+            f"/api/sessions/{rumor_6_id}/tag-repeatable-service",
+            json=payload,
+        )
+        assert blocked.status_code == 400
+        assert "Resolve the current encounter" in blocked.json()["detail"]
+    after_6 = main.store.get("sessions", rumor_6_id, SessionState.model_validate)
+    assert after_6 is not None
+    assert after_6.model_dump(mode="json") == before_6
+
+    rumor_11_id = "tag-rumor-11-combat-service-guard"
+    manifest_11, characters_11 = _save_repeatable_tag_service_session(
+        rumor_11_id,
+        11,
+        [("archer", "warrior", 2, 500)],
+    )
+    hero_11 = characters_11[0]
+    _enter_repeatable_tag_service(client, rumor_11_id, manifest_11)
+    stored_11 = main.store.get("sessions", rumor_11_id, SessionState.model_validate)
+    assert stored_11 is not None
+    stored_11.mode = "combat"
+    before_11 = stored_11.model_dump(mode="json")
+    main.store.save("sessions", stored_11)
+
+    for payload in (
+        {
+            "action": "train",
+            "trainings": [{"character_id": hero_11.id, "outcome": "dead_shot"}],
+        },
+        {"action": "done"},
+    ):
+        blocked = client.post(
+            f"/api/sessions/{rumor_11_id}/tag-repeatable-service",
+            json=payload,
+        )
+        assert blocked.status_code == 400
+        assert "Resolve the current encounter" in blocked.json()["detail"]
+    after_11 = main.store.get("sessions", rumor_11_id, SessionState.model_validate)
+    assert after_11 is not None
+    assert after_11.model_dump(mode="json") == before_11
+
+
+def test_rumor_6_hireling_assigned_shoes_cannot_be_transferred_or_sold(client) -> None:
+    session_id = "tag-rumor-6-hireling-shoes-lock"
+    manifest, characters = _save_repeatable_tag_service_session(
+        session_id,
+        6,
+        [
+            ("owner", "warrior", 3, 300),
+            ("receiver", "wizard", 3, 0),
+        ],
+    )
+    owner, receiver = characters
+    stored = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert stored is not None
+    stored.hirelings.append(
+        HirelingState(
+            id="tag-shoes-hireling",
+            retainer_type="porter",
+            name="Pip",
+            life=3,
+            max_life=3,
+            marching_order=5,
+        )
+    )
+    main.store.save("sessions", stored)
+    _enter_repeatable_tag_service(client, session_id, manifest)
+
+    bought = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={
+            "action": "buy_shoes",
+            "payer_character_id": owner.id,
+            "recipient_kind": "hireling",
+            "recipient_id": "tag-shoes-hireling",
+        },
+    )
+    assert bought.status_code == 200, bought.text
+    assigned_session = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert assigned_session is not None
+    assigned_session.camped_outside = True
+    main.store.save("sessions", assigned_session)
+
+    quote = client.get(
+        f"/api/characters/{owner.id}/sell-quote",
+        params={"item_name": "Shoes of Fast Walk"},
+    )
+    assert quote.status_code == 200, quote.text
+    assert quote.json()["kind"] == "blocked"
+    assert "assigned to a living hireling" in quote.json()["note"]
+
+    sold = client.post(
+        f"/api/characters/{owner.id}/sell-item",
+        json={"item_name": "Shoes of Fast Walk"},
+    )
+    assert sold.status_code == 400
+    assert "cannot be transferred or sold" in sold.json()["detail"]
+
+    roster_transfer = client.post(
+        f"/api/characters/{owner.id}/transfer",
+        json={
+            "target_character_id": receiver.id,
+            "item_name": "Shoes of Fast Walk",
+        },
+    )
+    assert roster_transfer.status_code == 400
+    assert "cannot be transferred or sold" in roster_transfer.json()["detail"]
+
+    party_transfer = client.post(
+        f"/api/sessions/{session_id}/advance",
+        json={
+            "action": "transfer_item",
+            "character_id": owner.id,
+            "target_character_id": receiver.id,
+            "item_name": "Shoes of Fast Walk",
+            "show_rolls": False,
+        },
+    )
+    assert party_transfer.status_code == 200, party_transfer.text
+    party = party_transfer.json()["party"]
+    assert "Shoes of Fast Walk" in next(
+        member for member in party if member["character_id"] == owner.id
+    )["inventory"]
+    assert "Shoes of Fast Walk" not in next(
+        member for member in party if member["character_id"] == receiver.id
+    )["inventory"]
+    assert "cannot be transferred or sold" in party_transfer.json()["log"][-1]
 
 
 def test_generated_tag_direct_procedure_is_single_run(client, monkeypatch) -> None:
@@ -1726,6 +2771,36 @@ def test_shared_rumor_entry_return_to_town_keeps_rumor_for_later(client) -> None
 
     assert completed.status_code == 200
     assert completed.json()["mode"] == "complete"
+
+
+def test_resolved_generated_tag_scene_rejects_further_route_mutation(client) -> None:
+    session_id = "tag-rumor-route-closeout-guard"
+    manifest, _characters = _save_repeatable_tag_service_session(
+        session_id,
+        6,
+        [("visitor", "wizard", 2, 0)],
+    )
+    _enter_repeatable_tag_service(client, session_id, manifest)
+    done = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={"action": "done"},
+    )
+    assert done.status_code == 200, done.text
+    before = load_campaign(main.store)
+    before_routes = list(before.tag_adventure_routes)
+    before_tile_id = done.json()["session"]["map_state"]["current_tile_id"]
+
+    blocked = client.post(
+        f"/api/sessions/{session_id}/tag-route-action",
+        json={"route_action": "final_route", "reference": "stale final route"},
+    )
+
+    assert blocked.status_code == 400
+    assert "Continue" in blocked.json()["detail"]
+    stored = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert stored is not None
+    assert stored.map_state.current_tile_id == before_tile_id
+    assert load_campaign(main.store).tag_adventure_routes == before_routes
 
 
 def test_daroc_search_progress_persists_resolves_once_and_uses_shared_closeout(

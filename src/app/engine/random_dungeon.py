@@ -47,7 +47,10 @@ from .death_recovery import (
 )
 from .adventure_completion import AdventureCompletionCallbacks, complete_adventure
 from .combat_lifecycle import consume_sleeping_foe_attack_bonus, merge_party_outcome
-from .tag_scene_lifecycle import TAG_GENERATED_CLOSEOUT_REMINDER
+from .tag_scene_lifecycle import (
+    TAG_GENERATED_CLOSEOUT_REMINDER,
+    generated_tag_rumor_entry_choice_pending,
+)
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
 from .firearm import gnome_repair_firearm
 from .gem_items import format_gem_item, remove_inventory_item
@@ -1030,6 +1033,14 @@ class RandomDungeonEngine:
         reconcile_star_object_carrier(session)
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
+            return self._touch(session)
+
+        if generated_tag_rumor_entry_choice_pending(session):
+            message = (
+                "Choose Investigate or Not now — return to town beneath Narrative before taking any other action."
+            )
+            if not session.log or session.log[-1] != message:
+                session.log.append(message)
             return self._touch(session)
 
         self._resolve_stale_combat(session)
@@ -3867,12 +3878,16 @@ class RandomDungeonEngine:
             return
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in fighters if pc.current_life > 0}
+        combat_context = self._combat_context(session, tile)
+        # Hirelings remain with the main party; a detached scout cannot call on
+        # their bodyguard while resolving this separate encounter.
+        combat_context.bodyguard_bypass = True
         result = resolve_flee(
             fighters,
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
-            context=self._combat_context(session, tile),
+            context=combat_context,
             skip_parting_attacks=False,
         )
         self._apply_detached_combat_result(
@@ -10029,6 +10044,84 @@ class RandomDungeonEngine:
             standing_before=standing_before,
         )
 
+    def _resume_bodyguard_escape(
+        self,
+        session: SessionState,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> bool:
+        pause = session.combat_bodyguard_pause
+        if pause is None or pause.escape_kind not in {"flee", "withdraw"}:
+            return False
+        context = dict(pause.escape_context or {})
+        tile = self._current_tile(session)
+        raw_party_ids = context.get("party_character_ids")
+        party_ids = [str(value) for value in raw_party_ids] if isinstance(raw_party_ids, list) else []
+        members_by_id = {member.character_id: member for member in session.party}
+        party_here = [members_by_id[character_id] for character_id in party_ids if character_id in members_by_id]
+        raw_active_ids = context.get("active_enemy_ids")
+        active_enemy_ids = (
+            {str(value) for value in raw_active_ids}
+            if isinstance(raw_active_ids, list)
+            else {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        )
+        raw_standing = context.get("standing_before")
+        standing_before = (
+            {str(value) for value in raw_standing}
+            if isinstance(raw_standing, list)
+            else {member.character_id for member in party_here if member.current_life > 0}
+        )
+        session.log.append("Bodyguard choice resolved; continuing the same escape.")
+        if pause.escape_kind == "flee":
+            result = resolve_flee(
+                party_here,
+                tile.enemies,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                context=self._combat_context(session, tile),
+                resume_after_bodyguard=pause,
+            )
+            raw_blocked = context.get("blocked_character_ids")
+            blocked_ids = (
+                {str(value) for value in raw_blocked}
+                if isinstance(raw_blocked, list)
+                else set()
+            )
+            split_destination_id = str(context.get("split_destination_tile_id") or "")
+            self._apply_flee_escape_result(
+                session,
+                tile,
+                result,
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+                blocked_character_ids=blocked_ids,
+                split_destination=self._tile_by_id(session, split_destination_id)
+                if split_destination_id
+                else None,
+            )
+            return True
+        result = resolve_withdraw(
+            party_here,
+            tile.enemies,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            context=self._combat_context(session, tile),
+            resume_after_bodyguard=pause,
+        )
+        self._apply_withdraw_escape_result(
+            session,
+            tile,
+            result,
+            show_rolls=show_rolls,
+            active_enemy_ids=active_enemy_ids,
+            standing_before=standing_before,
+            exit_id=str(context.get("exit_id") or ""),
+            destination_tile_id=str(context.get("destination_tile_id") or ""),
+        )
+        return True
+
     def _resume_bodyguard_paused_combat(
         self,
         session: SessionState,
@@ -10039,6 +10132,12 @@ class RandomDungeonEngine:
         if session.mode != "combat" or session.combat_bodyguard_pause is None:
             return
         if session.pending_bodyguard_intercept is not None:
+            return
+        if self._resume_bodyguard_escape(
+            session,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        ):
             return
         tile = self._current_tile(session)
         if not any(enemy.life > 0 for enemy in tile.enemies):
@@ -10366,6 +10465,194 @@ class RandomDungeonEngine:
             roll_reaction=self.table_roller.roll_reaction,
         )
 
+    def _remember_bodyguard_escape(
+        self,
+        session: SessionState,
+        *,
+        kind: str,
+        party: list[PartyMemberState],
+        active_enemy_ids: set[str],
+        standing_before: set[str],
+        blocked_character_ids: set[str] | None = None,
+        split_destination_tile_id: str = "",
+        exit_id: str = "",
+        destination_tile_id: str = "",
+    ) -> None:
+        pause = session.combat_bodyguard_pause
+        if pause is None:
+            return
+        pause.escape_kind = "withdraw" if kind == "withdraw" else "flee"
+        pause.escape_context = {
+            "party_character_ids": [member.character_id for member in party],
+            "active_enemy_ids": sorted(active_enemy_ids),
+            "standing_before": sorted(standing_before),
+            "blocked_character_ids": sorted(blocked_character_ids or set()),
+            "split_destination_tile_id": split_destination_tile_id,
+            "exit_id": exit_id,
+            "destination_tile_id": destination_tile_id,
+        }
+
+    def _apply_flee_escape_result(
+        self,
+        session: SessionState,
+        tile: TileState,
+        result,
+        *,
+        show_rolls: bool,
+        active_enemy_ids: set[str],
+        standing_before: set[str],
+        blocked_character_ids: set[str] | None = None,
+        split_destination: TileState | None = None,
+    ) -> None:
+        if result.combat_paused:
+            self._apply_combat_result(
+                session,
+                tile,
+                result,
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
+            return
+        blocked_ids = set(blocked_character_ids or set())
+        if blocked_ids and split_destination is not None:
+            fleeing_names = ", ".join(member.name for member in result.party)
+            staying_names = ", ".join(
+                member.name for member in session.party if member.character_id in blocked_ids
+            )
+            if result.log:
+                result.log[0] = f"{fleeing_names} attempt to flee while {staying_names} remain with the Star-Slayer."
+            escaped_ids = [
+                member.character_id for member in result.party if member.current_life > 0
+            ]
+            result.combat_over = False
+            result.fled = False
+            self._apply_combat_result(
+                session,
+                tile,
+                result,
+                show_rolls=show_rolls,
+                fled=False,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
+            if escaped_ids:
+                escaped = set(escaped_ids)
+                for group in session.detached_groups:
+                    group.character_ids = [
+                        character_id
+                        for character_id in group.character_ids
+                        if character_id not in escaped
+                    ]
+                session.detached_groups = [
+                    group for group in session.detached_groups if group.character_ids
+                ]
+                destination_group = next(
+                    (
+                        group
+                        for group in session.detached_groups
+                        if group.tile_id == split_destination.id
+                    ),
+                    None,
+                )
+                if destination_group is None:
+                    session.detached_groups.append(
+                        DetachedGroupState(
+                            tile_id=split_destination.id,
+                            character_ids=escaped_ids,
+                            reason="star_slayer_fled",
+                        )
+                    )
+                else:
+                    destination_group.character_ids = list(
+                        dict.fromkeys([*destination_group.character_ids, *escaped_ids])
+                    )
+                escaped_names = ", ".join(
+                    member.name for member in session.party if member.character_id in escaped
+                )
+                session.log.append(
+                    f"{escaped_names} reach {split_destination.title}; combat continues for the heroes "
+                    "who failed the sight Save (TAG p.31)."
+                )
+                if show_rolls:
+                    roll = roll_d6()
+                    session.log.append(f"Split-flee wandering check: d6 = {roll}.")
+                    if roll == 1:
+                        self._spawn_wandering_monsters(
+                            session,
+                            split_destination,
+                            show_rolls=show_rolls,
+                            start_combat=False,
+                        )
+            session.skip_parting_flee = False
+            session.puffball_flee = False
+            session.gnome_smokescreen_ready = False
+            return
+        self._apply_combat_result(
+            session,
+            tile,
+            result,
+            show_rolls=show_rolls,
+            fled=result.fled,
+            active_enemy_ids=active_enemy_ids,
+            standing_before=standing_before,
+        )
+        if result.fled:
+            session.skip_parting_flee = False
+            session.puffball_flee = False
+            session.gnome_smokescreen_ready = False
+            if show_rolls:
+                roll = roll_d6()
+                session.log.append(f"Flee wandering check: d6 = {roll}.")
+                if roll == 1:
+                    session.log.append("Something pursues the fleeing party (Wandering Monsters on 1).")
+
+    def _apply_withdraw_escape_result(
+        self,
+        session: SessionState,
+        tile: TileState,
+        result,
+        *,
+        show_rolls: bool,
+        active_enemy_ids: set[str],
+        standing_before: set[str],
+        exit_id: str,
+        destination_tile_id: str,
+    ) -> None:
+        self._apply_combat_result(
+            session,
+            tile,
+            result,
+            show_rolls=show_rolls,
+            fled=result.fled,
+            active_enemy_ids=active_enemy_ids,
+            standing_before=standing_before,
+        )
+        if result.combat_paused or not result.fled:
+            return
+        exit_state = next((item for item in tile.exits if item.id == exit_id), None)
+        destination = self._tile_by_id(session, destination_tile_id)
+        if exit_state is None or destination is None:
+            session.log.append("The withdrawal route is no longer available after the bodyguard choice.")
+            return
+        exit_state.door_open = False
+        reciprocal = next(
+            (item for item in destination.exits if item.destination_tile_id == tile.id),
+            None,
+        )
+        if reciprocal is not None:
+            reciprocal.door_open = False
+            reciprocal.status = "open"
+        session.map_state.current_tile_id = destination.id
+        session.current_tile_entry_exit_id = reciprocal.id if reciprocal else None
+        self._sync_session_environment_from_tile(session, destination)
+        session.log.append(f"The party withdraws to {destination.title}. The foes remain behind.")
+        if show_rolls:
+            roll = roll_d6()
+            session.log.append(f"Withdraw wandering check: d6 = {roll}.")
+            if roll == 1:
+                self._spawn_wandering_monsters(session, destination, show_rolls=show_rolls)
+
     def _flee(
         self,
         session: SessionState,
@@ -10522,95 +10809,27 @@ class RandomDungeonEngine:
             skip_parting_attacks=skip_parting_attacks,
             parting_foe_filter=puffball_parting_foe if puffball_flee else None,
         )
-        if blocked_by_sight and split_flee_destination is not None:
-            fleeing_names = ", ".join(member.name for member in fleeing_party)
-            staying_names = ", ".join(member.name for member in blocked_by_sight)
-            if result.log:
-                result.log[0] = f"{fleeing_names} attempt to flee while {staying_names} remain with the Star-Slayer."
-            escaped_ids = [
-                member.character_id for member in result.party if member.current_life > 0
-            ]
-            result.combat_over = False
-            result.fled = False
-            self._apply_combat_result(
+        blocked_ids = {member.character_id for member in blocked_by_sight}
+        if result.combat_paused:
+            self._remember_bodyguard_escape(
                 session,
-                tile,
-                result,
-                show_rolls=show_rolls,
-                fled=False,
+                kind="flee",
+                party=fleeing_party,
                 active_enemy_ids=active_enemy_ids,
                 standing_before=standing_before,
+                blocked_character_ids=blocked_ids,
+                split_destination_tile_id=(split_flee_destination.id if split_flee_destination else ""),
             )
-            if escaped_ids:
-                escaped = set(escaped_ids)
-                for group in session.detached_groups:
-                    group.character_ids = [
-                        character_id
-                        for character_id in group.character_ids
-                        if character_id not in escaped
-                    ]
-                session.detached_groups = [
-                    group for group in session.detached_groups if group.character_ids
-                ]
-                destination_group = next(
-                    (
-                        group
-                        for group in session.detached_groups
-                        if group.tile_id == split_flee_destination.id
-                    ),
-                    None,
-                )
-                if destination_group is None:
-                    session.detached_groups.append(
-                        DetachedGroupState(
-                            tile_id=split_flee_destination.id,
-                            character_ids=escaped_ids,
-                            reason="star_slayer_fled",
-                        )
-                    )
-                else:
-                    destination_group.character_ids = list(
-                        dict.fromkeys([*destination_group.character_ids, *escaped_ids])
-                    )
-                escaped_names = ", ".join(
-                    member.name for member in session.party if member.character_id in escaped
-                )
-                session.log.append(
-                    f"{escaped_names} reach {split_flee_destination.title}; combat continues for the heroes "
-                    "who failed the sight Save (TAG p.31)."
-                )
-                if show_rolls:
-                    roll = roll_d6()
-                    session.log.append(f"Split-flee wandering check: d6 = {roll}.")
-                    if roll == 1:
-                        self._spawn_wandering_monsters(
-                            session,
-                            split_flee_destination,
-                            show_rolls=show_rolls,
-                            start_combat=False,
-                        )
-            session.skip_parting_flee = False
-            session.puffball_flee = False
-            session.gnome_smokescreen_ready = False
-            return
-        self._apply_combat_result(
+        self._apply_flee_escape_result(
             session,
             tile,
             result,
             show_rolls=show_rolls,
-            fled=result.fled,
             active_enemy_ids=active_enemy_ids,
             standing_before=standing_before,
+            blocked_character_ids=blocked_ids,
+            split_destination=split_flee_destination,
         )
-        if result.fled:
-            session.skip_parting_flee = False
-            session.puffball_flee = False
-            session.gnome_smokescreen_ready = False
-            if show_rolls:
-                roll = roll_d6()
-                session.log.append(f"Flee wandering check: d6 = {roll}.")
-                if roll == 1:
-                    session.log.append("Something pursues the fleeing party (Wandering Monsters on 1).")
 
     def _withdraw(
         self,
@@ -10651,34 +10870,26 @@ class RandomDungeonEngine:
             explain_math=explain_math,
             context=self._combat_context(session, tile),
         )
-        self._apply_combat_result(
+        if result.combat_paused:
+            self._remember_bodyguard_escape(
+                session,
+                kind="withdraw",
+                party=party_here,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+                exit_id=exit_state.id,
+                destination_tile_id=destination.id,
+            )
+        self._apply_withdraw_escape_result(
             session,
             tile,
             result,
             show_rolls=show_rolls,
-            fled=result.fled,
             active_enemy_ids=active_enemy_ids,
             standing_before=standing_before,
+            exit_id=exit_state.id,
+            destination_tile_id=destination.id,
         )
-        if not result.fled:
-            return
-        exit_state.door_open = False
-        reciprocal = next(
-            (item for item in destination.exits if item.destination_tile_id == tile.id),
-            None,
-        )
-        if reciprocal is not None:
-            reciprocal.door_open = False
-            reciprocal.status = "open"
-        session.map_state.current_tile_id = destination.id
-        session.current_tile_entry_exit_id = reciprocal.id if reciprocal else None
-        self._sync_session_environment_from_tile(session, destination)
-        session.log.append(f"The party withdraws to {destination.title}. The foes remain behind.")
-        if show_rolls:
-            roll = roll_d6()
-            session.log.append(f"Withdraw wandering check: d6 = {roll}.")
-            if roll == 1:
-                self._spawn_wandering_monsters(session, destination, show_rolls=show_rolls)
 
     def _set_marching_order(
         self,
@@ -10843,6 +11054,17 @@ class RandomDungeonEngine:
         if target and is_paranoid(target):
             session.log.append(f"{target.name} is too paranoid to exchange equipment.")
             return
+        if source:
+            from .tag_repeatable_services import (
+                SHOES_OF_FAST_WALK,
+                assigned_hireling_shoes_lock_reason,
+            )
+
+            if str(item_name or "").strip().casefold() == SHOES_OF_FAST_WALK.casefold():
+                locked = assigned_hireling_shoes_lock_reason(session, source.character_id)
+                if locked:
+                    session.log.append(locked)
+                    return
         moved, message = transfer_inventory_item(
             session.party,
             from_character_id=from_character_id,
@@ -11792,6 +12014,19 @@ class RandomDungeonEngine:
             if session.mode != "exploration":
                 session.log.append("Use the secret compartment during exploration.")
                 return
+            from .tag_repeatable_services import (
+                SHOES_OF_FAST_WALK,
+                assigned_hireling_shoes_lock_reason,
+            )
+
+            if str(item_name or "").strip().casefold() == SHOES_OF_FAST_WALK.casefold():
+                locked = assigned_hireling_shoes_lock_reason(
+                    session,
+                    actor.character_id,
+                )
+                if locked:
+                    session.log.append(locked)
+                    return
             session.log.extend(
                 kukla_compartment_stash(actor, item_name or "", gold_amount=gold_amount)
             )
@@ -18807,6 +19042,20 @@ class RandomDungeonEngine:
         if member is None:
             session.log.append("Choose a living hero with a Bag of Carrying.")
             return
+        if not take_out:
+            from .tag_repeatable_services import (
+                SHOES_OF_FAST_WALK,
+                assigned_hireling_shoes_lock_reason,
+            )
+
+            if str(item_name or "").strip().casefold() == SHOES_OF_FAST_WALK.casefold():
+                locked = assigned_hireling_shoes_lock_reason(
+                    session,
+                    member.character_id,
+                )
+                if locked:
+                    session.log.append(locked)
+                    return
         from .item_containers import put_item_in_bag, take_item_from_bag
 
         mover = take_item_from_bag if take_out else put_item_in_bag

@@ -125,6 +125,35 @@ def test_impervious_and_orcslayer_bonuses() -> None:
     assert expert_attack_bonus(elf, _orc(), session, missile=True) == 1
 
 
+def test_deoldyn_deadly_accuracy_applies_to_any_bow_wielder_without_changing_abyss_skill() -> None:
+    session = _session()
+    deoldyn_warrior = _member(
+        learned_expert_skills=["deadly_accuracy"],
+        expert_skill_targets={"deadly_accuracy": "tag_deoldyn"},
+        default_missile_weapon="Bow",
+    )
+    abyss_warrior = _member(
+        learned_expert_skills=["deadly_accuracy"],
+        default_missile_weapon="Bow",
+    )
+    deoldyn_slinger = _member(
+        learned_expert_skills=["deadly_accuracy"],
+        expert_skill_targets={"deadly_accuracy": "tag_deoldyn"},
+        default_missile_weapon="Sling",
+    )
+    abyss_halfling = _member(
+        class_id="halfling",
+        class_name="Halfling",
+        learned_expert_skills=["deadly_accuracy"],
+        default_missile_weapon="Sling",
+    )
+
+    assert expert_attack_bonus(deoldyn_warrior, _orc(), session, missile=True) == 1
+    assert expert_attack_bonus(abyss_warrior, _orc(), session, missile=True) == 0
+    assert expert_attack_bonus(deoldyn_slinger, _orc(), session, missile=True) == 0
+    assert expert_attack_bonus(abyss_halfling, _orc(), session, missile=True) == 1
+
+
 def test_impervious_defense_bonus() -> None:
     session = _session()
     warrior = _member(
@@ -286,6 +315,82 @@ def test_dead_shot_requires_declaration_and_spends_on_failed_missile(monkeypatch
     assert "dead_shot" in session.expert_encounter_spent["h"]
     assert any("uses Dead Shot to reroll" in line for line in declared.log)
     assert any("Dead Shot reroll" in line for line in declared.log)
+
+
+def test_deoldyn_dead_shot_automatically_rerolls_each_failed_ranged_attack_without_spend(monkeypatch) -> None:
+    archer = _member(
+        level=1,
+        class_id="ranger",
+        class_name="Ranger",
+        learned_expert_skills=["dead_shot"],
+        expert_skill_targets={"dead_shot": "tag_deoldyn"},
+        inventory=["Bow", "Lantern"],
+        default_missile_weapon="Bow",
+    )
+    target = EnemyState(
+        id="target",
+        name="Armored Target",
+        category="boss",
+        level=4,
+        life=10,
+        max_life=10,
+    )
+    session = _session()
+    session.party = [archer]
+    rolls = iter([1, 6, 1, 6])
+    monkeypatch.setattr(combat, "roll_die", lambda _sides: next(rolls))
+
+    result = resolve_combat_round(
+        [archer],
+        [target],
+        show_rolls=True,
+        context=CombatContext(session=session, outdoors=True),
+        party_attacked_immediately=True,
+        encounter_round=0,
+    )
+
+    automatic_lines = [
+        line
+        for line in result.log
+        if "Deoldyn-trained Dead Shot automatically rerolls" in line
+    ]
+    reroll_lines = [line for line in result.log if "Deoldyn Dead Shot reroll:" in line]
+    assert len(automatic_lines) == 2
+    assert len(reroll_lines) == 2
+    assert all("6 + 0 = 6" in line for line in reroll_lines)
+    assert "dead_shot" not in session.expert_encounter_spent.get(archer.character_id, [])
+
+
+def test_shoes_of_fast_walk_apply_only_to_withdraw_or_flee_defense() -> None:
+    wearer = _member(
+        class_id="wizard",
+        class_name="Wizard",
+        level=6,
+        inventory=["Shoes of Fast Walk"],
+    )
+    foe = _orc()
+    session = _session()
+    session.party = [wearer]
+
+    ordinary, _ = _defense_bonus(
+        wearer,
+        foe,
+        context=CombatContext(session=session),
+    )
+    fleeing, _ = _defense_bonus(
+        wearer,
+        foe,
+        context=CombatContext(session=session, withdrawing=True),
+    )
+    withdrawing, _ = _defense_bonus(
+        wearer,
+        foe,
+        context=CombatContext(session=session),
+        withdraw=True,
+    )
+
+    assert fleeing == ordinary + 2  # Level 6 wearer is Tier 2; ordinary flee has no base +1.
+    assert withdrawing == ordinary + 3  # Shoes +Tier plus the existing withdrawal +1.
 
 
 def test_learn_impervious_requires_target() -> None:

@@ -22,8 +22,8 @@ SKILL_MECHANICS: dict[str, str] = {
     "create_holy_water": "Before each adventure, create one vial of holy water for 10 gp.",
     "culling_of_the_weak": "Once per encounter, first successful minion hit slays extra minions (1 per 2 points over level).",
     "danger_sense": "Rearguard (positions 3–4): wandering monsters do not surprise the party.",
-    "deadly_accuracy": "Elf +1 with bow; halfling +1 with sling.",
-    "dead_shot": "Once per encounter, reroll one failed ranged attack.",
+    "deadly_accuracy": "Abyss: elf +1 with bow, halfling +1 with sling. TAG Deoldyn: any eligible trainee gains +1 with a bow.",
+    "dead_shot": "Abyss: once per encounter, reroll one declared failed ranged attack. TAG Deoldyn: automatically reroll every failed ranged attack once.",
     "deadly_strike": "Once per encounter, two-handed hit inflicts double wounds (declare before rolling).",
     "detective": "+1 on search rolls used to find clues only.",
     "double_attack": "Once per encounter, two melee hand-weapon attacks (same or different targets).",
@@ -191,10 +191,14 @@ def expert_attack_bonus(
     if missile and has_skill(member, "deadly_accuracy"):
         class_id = member.class_id.lower()
         weapon_name = (weapon.item if weapon else member.default_missile_weapon or "").lower()
-        if class_id == "elf" and "bow" in weapon_name:
-            bonus += 1
-        if class_id == "halfling" and "sling" in weapon_name:
-            bonus += 1
+        if skill_target(member, "deadly_accuracy") == "tag_deoldyn":
+            if "bow" in weapon_name:
+                bonus += 1
+        else:
+            if class_id == "elf" and "bow" in weapon_name:
+                bonus += 1
+            if class_id == "halfling" and "sling" in weapon_name:
+                bonus += 1
     if gladiator_match and has_skill(member, "gladiator"):
         bonus += 1
     if (

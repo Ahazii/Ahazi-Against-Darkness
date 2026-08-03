@@ -71,6 +71,7 @@ from app.engine.tag_scene_actions import (
     tag_scene_action_succeeded,
     tag_stealth_modifier,
 )
+from app.engine.tag_scene_lifecycle import tag_action_lifecycle
 from app.engine.tag_temporary_weapon_enchantment import (
     advance_temporary_weapon_enchantments,
     parse_temporary_weapon_enchantment,
@@ -1536,7 +1537,7 @@ def test_tag_leprechaun_rumor_is_vendor_scene_not_proxy_combat() -> None:
     assert reference["finale_mode"] == "vendor"
     assert "100 gp, or free if at least three pairs" in reference["rewards"]
     assert reference["final_foes"] == []
-    assert manifest["quest"]["complete_when"] == {"type": "room_reached", "room_id": "tag-final-scene"}
+    assert manifest["quest"]["complete_when"] == {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
     complication = next(room for room in manifest["rooms"] if room["id"] == "tag-complication")
     assert "Tiny footprints loop" in complication["description"]
     assert "The lead stops behaving" not in complication["description"]
@@ -1550,8 +1551,14 @@ def test_tag_leprechaun_rumor_is_vendor_scene_not_proxy_combat() -> None:
     assert [action["action_value"] for action in final_prompt["actions"]] == [
         "leprechaun_shoes",
         "leprechaun_illusion_spell",
+        "tag_repeatable_service_done",
     ]
     assert final_prompt["actions"][1]["amount"] == 100
+    assert "required_for_completion" not in final_prompt["actions"][0]
+    assert "required_for_completion" not in final_prompt["actions"][1]
+    assert final_prompt["actions"][2]["label"] == "Done — leave Blackbird Hill"
+    assert final_prompt["actions"][2]["required_for_completion"] is True
+    assert "TAG pp.25-26, Scene 2" in final_prompt["actions"][2]["tooltip"]
 
 
 def test_tag_generated_noncombat_finales_do_not_install_proxy_fights(monkeypatch) -> None:
@@ -1561,7 +1568,7 @@ def test_tag_generated_noncombat_finales_do_not_install_proxy_fights(monkeypatch
         ("rumor", "1"): ("choice", "Scene choices", {"bofto_scene_choice", "bofto_theft_save"}),
         ("rumor", "3"): ("procedure", "Scene procedure", {"tag_ambush_chance"}),
         ("rumor", "9"): ("procedure", "Scene procedure", {"daroc_cat", "daroc_give_up"}),
-        ("rumor", "11"): ("service", "Service choices", {"deoldyn_training", "mark_training_xp_roll"}),
+        ("rumor", "11"): ("service", "Service choices", {"deoldyn_training", "tag_repeatable_service_done"}),
     }
 
     for (lead_type, detail), (mode, title, actions) in expected.items():
@@ -1573,7 +1580,11 @@ def test_tag_generated_noncombat_finales_do_not_install_proxy_fights(monkeypatch
         assert reference["finale_mode"] == mode
         assert reference["final_foes"] == []
         assert reference["final_foe_proxy"] == ""
-        expected_completion_type = "tag_scene_resolved" if (lead_type, detail) == ("rumor", "9") else "room_reached"
+        expected_completion_type = "tag_scene_resolved" if (lead_type, detail) in {
+            ("rumor", "6"),
+            ("rumor", "9"),
+            ("rumor", "11"),
+        } else "room_reached"
         assert manifest["quest"]["complete_when"] == {
             "type": expected_completion_type,
             "room_id": "tag-final-scene",
@@ -1595,7 +1606,27 @@ def test_tag_generated_noncombat_finales_do_not_install_proxy_fights(monkeypatch
         "Not now — return to town",
     ]
     final_actions = deoldyn_ref["room_prompts"]["tag-final-scene"]["actions"]
-    assert any(action["action_value"] == "deoldyn_training" for action in final_actions)
+    assert [action["action_value"] for action in final_actions] == [
+        "deoldyn_training",
+        "tag_repeatable_service_done",
+    ]
+    assert "required_for_completion" not in final_actions[0]
+    assert final_actions[1]["label"] == "Done — finish training"
+    assert final_actions[1]["required_for_completion"] is True
+    assert "TAG p.26, Scene 3" in final_actions[0]["tooltip"]
+    assert "all payments" in deoldyn_ref["finale_instruction"]
+    assert "automatic" in deoldyn_ref["finale_instruction"]
+    assert "base Elf" in deoldyn_ref["finale_instruction"]
+    assert "mark_training_xp_roll" not in {
+        action["action_value"]
+        for prompt in deoldyn_ref["room_prompts"].values()
+        for action in prompt.get("actions", [])
+    }
+    lifecycle = tag_action_lifecycle("tag_repeatable_service_done")
+    assert lifecycle is not None
+    assert lifecycle.required_for_completion is True
+    assert lifecycle.state_key == "tag_repeatable_service"
+    assert lifecycle.terminal_phases == frozenset({"resolved"})
 
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
     portrait, _entry = build_tag_adventure_manifest(campaign, lead_type="guild_job", detail="1")
@@ -1701,11 +1732,11 @@ def test_tag_rumor_manifests_include_contextual_scene_procedure_prompts() -> Non
         "3": {"tag_ambush_chance"},
         "4": {"mutant_fish_scene12"},
         "5": {"dragon_type_reveal"},
-        "6": {"leprechaun_shoes", "leprechaun_illusion_spell"},
+        "6": {"leprechaun_shoes", "leprechaun_illusion_spell", "tag_repeatable_service_done"},
         "7": {"temple_dungeon_handoff"},
         "9": {"daroc_cat", "daroc_give_up"},
         "10": {"gargoyle_count", "gargoyle_surprise", "gargoyle_skin", "gargoyle_bounty"},
-        "11": {"deoldyn_training", "mark_training_xp_roll"},
+        "11": {"deoldyn_training", "tag_repeatable_service_done"},
         "12": {"solo_restriction", "agaratha"},
     }
     for detail, expected in expected_actions.items():
@@ -1826,6 +1857,22 @@ def test_rumor_manifest_upgrade_replaces_generic_entry_actions() -> None:
     )
     snapshot = json.dumps(upgraded, sort_keys=True)
     assert json.dumps(upgrade_tag_manifest(upgraded), sort_keys=True) == snapshot
+
+
+def test_fresh_rumor_manifest_entry_actions_are_upgrade_stable() -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
+    before = json.dumps(
+        manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"],
+        sort_keys=True,
+    )
+
+    upgraded = upgrade_tag_manifest(manifest)
+    after = json.dumps(
+        upgraded["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"],
+        sort_keys=True,
+    )
+
+    assert after == before
 
 
 def test_rumor_manifest_upgrade_restores_missing_entry_prompt() -> None:

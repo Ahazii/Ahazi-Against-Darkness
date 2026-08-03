@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 import os
 import re
@@ -265,6 +266,897 @@ def is_generated_tag_manifest(manifest: dict[str, Any] | None) -> bool:
     return bool(tag_reference_from_manifest(manifest))
 
 
+_TAG_REPEATABLE_SERVICE_STATE_KEY = "tag_repeatable_service"
+_TAG_REPEATABLE_SERVICE_MIGRATION_KEY = "tag_repeatable_service_legacy_migration"
+_LEGACY_SERVICE_PROXY_NAMES_KEY = "legacy_service_proxy_foe_names"
+_LEGACY_EPIC_REWARD_PREFIX = "Quest complete! Epic reward:"
+_LEGACY_SERVICE_REPAIR_LOG = (
+    "Legacy TAG service repair: the old proxy-combat completion was reopened so the printed "
+    "service choices can be resolved."
+)
+_LEGACY_REWARD_PRESERVED_LOG = (
+    "Legacy TAG service repair: the Epic Reward already granted by the obsolete proxy Quest was "
+    "preserved and marked claimed; finish the printed service choices before closing this Rumour."
+)
+
+
+def _tag_repeatable_service_kind(manifest: dict[str, Any]) -> str:
+    reference = tag_reference_from_manifest(manifest)
+    try:
+        rumor_number = int(reference.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    if rumor_number == 6:
+        return "leprechaun"
+    if rumor_number == 11:
+        return "deoldyn"
+    haystack = " ".join(
+        str(value or "")
+        for value in (
+            manifest.get("title"),
+            reference.get("title"),
+            reference.get("lead_detail"),
+            reference.get("scene"),
+        )
+    ).casefold()
+    if "leprechaun" in haystack or "blackbird hill" in haystack:
+        return "leprechaun"
+    if "deoldyn" in haystack or "archery training" in haystack:
+        return "deoldyn"
+    return ""
+
+
+def _foe_names(value: Any) -> list[str]:
+    if isinstance(value, str):
+        clean = value.strip()
+        return [clean] if clean else []
+    if isinstance(value, dict):
+        name = str(value.get("name") or value.get("foe") or "").strip()
+        return [name] if name else []
+    if not isinstance(value, list):
+        return []
+    names: list[str] = []
+    for item in value:
+        names.extend(_foe_names(item))
+    return names
+
+
+def _capture_legacy_service_proxy_names(
+    manifest: dict[str, Any],
+    tag_reference: dict[str, Any],
+) -> bool:
+    """Persist exact proxy names before a service upgrade removes their encounter."""
+    names = _foe_names(tag_reference.get(_LEGACY_SERVICE_PROXY_NAMES_KEY))
+    names.extend(_foe_names(tag_reference.get("final_foe_proxy")))
+    names.extend(_foe_names(tag_reference.get("final_foes")))
+    quest = manifest.get("quest")
+    complete_when = quest.get("complete_when") if isinstance(quest, dict) else None
+    if isinstance(complete_when, dict):
+        names.extend(_foe_names(complete_when.get("boss_name")))
+        target_room = str(complete_when.get("room_id") or "tag-final-scene")
+    else:
+        target_room = "tag-final-scene"
+    for room in manifest.get("rooms") or []:
+        if not isinstance(room, dict) or str(room.get("id") or "") != target_room:
+            continue
+        for trigger in room.get("triggers") or []:
+            encounter = trigger.get("encounter") if isinstance(trigger, dict) else None
+            if isinstance(encounter, dict):
+                names.extend(_foe_names(encounter.get("foes")))
+    unique = sorted(
+        {name.strip() for name in names if name.strip()},
+        key=str.casefold,
+    )
+    existing = tag_reference.get(_LEGACY_SERVICE_PROXY_NAMES_KEY)
+    if not unique or existing == unique:
+        return False
+    tag_reference[_LEGACY_SERVICE_PROXY_NAMES_KEY] = unique
+    return True
+
+
+def _manifest_room(manifest: dict[str, Any], room_id: str) -> dict[str, Any]:
+    return next(
+        (
+            room
+            for room in manifest.get("rooms") or []
+            if isinstance(room, dict) and str(room.get("id") or "") == room_id
+        ),
+        {},
+    )
+
+
+def _session_imported_room_tiles(session: Any, room_id: str) -> list[Any]:
+    manifest = getattr(session, "imported_manifest", None)
+    entrance_room_id = (
+        str(manifest.get("entrance_room_id") or "")
+        if isinstance(manifest, dict)
+        else ""
+    )
+    result: list[Any] = []
+    for tile in list(getattr(getattr(session, "map_state", None), "tiles", []) or []):
+        content_key = str(getattr(tile, "content_key", "") or "")
+        if content_key == f"imported:{room_id}" or (
+            content_key == "entrance" and entrance_room_id == room_id
+        ):
+            result.append(tile)
+    return result
+
+
+def _quest_giver_tile_id(session: Any, manifest: dict[str, Any]) -> str:
+    quest = manifest.get("quest") if isinstance(manifest.get("quest"), dict) else {}
+    giver_room_id = str(
+        quest.get("giver_room_id")
+        or manifest.get("entrance_room_id")
+        or ""
+    )
+    giver_tiles = _session_imported_room_tiles(session, giver_room_id) if giver_room_id else []
+    if giver_tiles:
+        return str(getattr(giver_tiles[0], "id", "") or "")
+    entrance_tile_id = str(getattr(session, "entrance_tile_id", "") or "")
+    if entrance_tile_id:
+        return entrance_tile_id
+    return str(getattr(getattr(session, "map_state", None), "current_tile_id", "") or "")
+
+
+def _cached_service_procedure_state(session: Any, kind: str) -> dict[str, Any]:
+    cached = getattr(session, "tag_repeatable_service_state", None)
+    if not isinstance(cached, dict) or str(cached.get("kind") or kind) != kind:
+        return {}
+    persisted_keys = {
+        "kind",
+        "phase",
+        "resolved",
+        "transactions",
+        "shoe_assignments",
+        "illusion_lesson",
+        "training_results",
+        "trained_character_ids",
+        "training_batch_resolved",
+        "result_text",
+        "updated_at",
+    }
+    state = {
+        key: deepcopy(value)
+        for key, value in cached.items()
+        if key in persisted_keys
+    }
+    return {_TAG_REPEATABLE_SERVICE_STATE_KEY: state} if state else {}
+
+
+def _normalize_legacy_service_quest(
+    session: Any,
+    manifest: dict[str, Any],
+    *,
+    kind: str,
+    preserve_claimed_reward: bool,
+) -> bool:
+    quest = getattr(session, "active_quest", None)
+    legacy_key = str(getattr(quest, "key", "") or "")
+    should_normalize = legacy_key in {"imported_room", "imported_boss"}
+    should_reconstruct = quest is None and preserve_claimed_reward
+    if not should_normalize and not should_reconstruct:
+        return False
+
+    from ..schemas import ActiveQuestState
+
+    manifest_quest = manifest.get("quest") if isinstance(manifest.get("quest"), dict) else {}
+    description = str(
+        manifest_quest.get("objective_text")
+        or getattr(quest, "description", "")
+        or "Resolve the Adventures Guild scene."
+    )
+    if quest is None:
+        tile_id = _quest_giver_tile_id(session, manifest)
+        procedure_state = _cached_service_procedure_state(session, kind)
+        quest_id = None
+        generated_lead_state: dict[str, Any] = {}
+        procedure_signoff = False
+        generated_lead_signoff = False
+        reward_claimed = preserve_claimed_reward
+    else:
+        tile_id = str(getattr(quest, "tile_id", "") or _quest_giver_tile_id(session, manifest))
+        procedure_state = deepcopy(dict(getattr(quest, "tag_procedure_state", {}) or {}))
+        quest_id = str(getattr(quest, "quest_id", "") or "") or None
+        generated_lead_state = deepcopy(
+            dict(getattr(quest, "tag_generated_lead_state", {}) or {})
+        )
+        procedure_signoff = bool(getattr(quest, "tag_procedure_signoff", False))
+        generated_lead_signoff = bool(
+            getattr(quest, "tag_generated_lead_signoff", False)
+        )
+        reward_claimed = bool(getattr(quest, "reward_claimed", False)) or preserve_claimed_reward
+    service_state = procedure_state.get(_TAG_REPEATABLE_SERVICE_STATE_KEY)
+    resolved = bool(
+        isinstance(service_state, dict)
+        and str(service_state.get("phase") or "") == "resolved"
+    )
+    replacement_data: dict[str, Any] = {
+        "tile_id": tile_id,
+        "key": "tag_generated_scene",
+        "description": description,
+        "completed": resolved,
+        "reward_claimed": reward_claimed,
+        "tag_procedure_state": procedure_state,
+        "tag_procedure_signoff": procedure_signoff,
+        "tag_generated_lead_state": generated_lead_state,
+        "tag_generated_lead_signoff": generated_lead_signoff,
+    }
+    if quest_id:
+        replacement_data["quest_id"] = quest_id
+    session.active_quest = ActiveQuestState(**replacement_data)
+    return True
+
+
+def _legacy_epic_reward_line(session: Any) -> str:
+    for line in reversed(list(getattr(session, "log", []) or [])):
+        text = str(line or "")
+        if text.startswith(_LEGACY_EPIC_REWARD_PREFIX):
+            return text
+    return ""
+
+
+def _legacy_service_has_completion_evidence(
+    session: Any,
+    *,
+    service_state: dict[str, Any],
+    known_proxy_names: list[str],
+) -> bool:
+    """Require persisted completion provenance before attributing durable gear or skills."""
+    if str(service_state.get("phase") or "") == "resolved":
+        return True
+    if bool(getattr(session, "tag_generated_completion_pending", False)):
+        return True
+    known = {name.strip().casefold() for name in known_proxy_names if name.strip()}
+    for line in list(getattr(session, "log", []) or []):
+        text = str(line or "").strip()
+        folded = text.casefold()
+        if text.startswith(_LEGACY_EPIC_REWARD_PREFIX):
+            return True
+        if any(
+            folded.startswith(f"quest complete: {name} has been ")
+            for name in known
+        ):
+            return True
+    return False
+
+
+def _legacy_service_state(session: Any) -> dict[str, Any]:
+    quest = getattr(session, "active_quest", None)
+    if quest is None:
+        return {}
+    procedure = dict(getattr(quest, "tag_procedure_state", {}) or {})
+    state = procedure.get(_TAG_REPEATABLE_SERVICE_STATE_KEY)
+    return deepcopy(state) if isinstance(state, dict) else {}
+
+
+def _set_legacy_service_state(session: Any, state: dict[str, Any]) -> None:
+    quest = getattr(session, "active_quest", None)
+    if quest is None:
+        return
+    procedure = deepcopy(dict(getattr(quest, "tag_procedure_state", {}) or {}))
+    procedure[_TAG_REPEATABLE_SERVICE_STATE_KEY] = deepcopy(state)
+    quest.tag_procedure_state = procedure
+
+
+def _legacy_service_migration_marker(session: Any) -> dict[str, Any]:
+    quest = getattr(session, "active_quest", None)
+    if quest is None:
+        return {}
+    procedure = dict(getattr(quest, "tag_procedure_state", {}) or {})
+    marker = procedure.get(_TAG_REPEATABLE_SERVICE_MIGRATION_KEY)
+    return deepcopy(marker) if isinstance(marker, dict) else {}
+
+
+def _set_legacy_service_migration_marker(
+    session: Any,
+    marker: dict[str, Any],
+) -> bool:
+    quest = getattr(session, "active_quest", None)
+    if quest is None:
+        return False
+    procedure = deepcopy(dict(getattr(quest, "tag_procedure_state", {}) or {}))
+    if procedure.get(_TAG_REPEATABLE_SERVICE_MIGRATION_KEY) == marker:
+        return False
+    procedure[_TAG_REPEATABLE_SERVICE_MIGRATION_KEY] = deepcopy(marker)
+    quest.tag_procedure_state = procedure
+    return True
+
+
+def _migrate_legacy_leprechaun_evidence(
+    session: Any,
+    *,
+    allow_inventory_fallback: bool,
+) -> bool:
+    marker = _legacy_service_migration_marker(session)
+    if marker.get("evidence_checked"):
+        return False
+    state = _legacy_service_state(session)
+    state.setdefault("kind", "leprechaun")
+    state.setdefault("phase", "open")
+    state.setdefault("transactions", [])
+    logs = [str(line or "") for line in list(getattr(session, "log", []) or [])]
+    assignments = [
+        deepcopy(item)
+        for item in state.get("shoe_assignments") or []
+        if isinstance(item, dict)
+    ]
+    migrated_pairs = 0
+    if not assignments:
+        for member in list(getattr(session, "party", []) or []):
+            name = str(getattr(member, "name", "") or "").strip()
+            if not name:
+                continue
+            pattern = re.compile(
+                rf"{re.escape(name)}\s+buys\s+(?P<count>\d+)\s+pair\(s\)\s+of\s+"
+                r"Shoes of Fast Walk\s+for\s+(?P<cost>\d+)\s+gp",
+                flags=re.IGNORECASE,
+            )
+            for line in logs:
+                for match in pattern.finditer(line):
+                    count = max(0, int(match.group("count")))
+                    cost = max(0, int(match.group("cost")))
+                    for pair_index in range(1, count + 1):
+                        assignments.append(
+                            {
+                                "recipient_kind": "hero",
+                                "recipient_id": str(getattr(member, "character_id", "") or ""),
+                                "recipient_name": name,
+                                "owner_character_id": str(
+                                    getattr(member, "character_id", "") or ""
+                                ),
+                                "owner_name": name,
+                                "payer_character_id": str(
+                                    getattr(member, "character_id", "") or ""
+                                ),
+                                "payer_name": name,
+                                "legacy_pair_index": pair_index,
+                                "legacy_migrated": True,
+                            }
+                        )
+                    state["transactions"].append(
+                        {
+                            "type": "shoes",
+                            "cost_gp": cost,
+                            "pair_count": count,
+                            "payer_character_id": str(
+                                getattr(member, "character_id", "") or ""
+                            ),
+                            "payer_name": name,
+                            "legacy_migrated": True,
+                        }
+                    )
+                    migrated_pairs += count
+        if not assignments and allow_inventory_fallback:
+            for member in list(getattr(session, "party", []) or []):
+                member_id = str(getattr(member, "character_id", "") or "")
+                member_name = str(getattr(member, "name", "") or "")
+                owned = sum(
+                    1
+                    for item in list(getattr(member, "inventory", []) or [])
+                    if str(item or "").strip().casefold()
+                    == "Shoes of Fast Walk".casefold()
+                )
+                for pair_index in range(1, owned + 1):
+                    assignments.append(
+                        {
+                            "recipient_kind": "hero",
+                            "recipient_id": member_id,
+                            "recipient_name": member_name,
+                            "owner_character_id": member_id,
+                            "owner_name": member_name,
+                            "payer_character_id": member_id,
+                            "payer_name": member_name,
+                            "legacy_pair_index": pair_index,
+                            "legacy_inventory_only": True,
+                            "legacy_migrated": True,
+                        }
+                    )
+                if owned:
+                    state["transactions"].append(
+                        {
+                            "type": "shoes",
+                            "cost_gp": 200 * owned,
+                            "pair_count": owned,
+                            "payer_character_id": member_id,
+                            "payer_name": member_name,
+                            "legacy_inventory_only": True,
+                            "legacy_cost_reconstructed": True,
+                            "legacy_migrated": True,
+                        }
+                    )
+                    migrated_pairs += owned
+        if assignments:
+            state["shoe_assignments"] = assignments
+
+    lesson = state.get("illusion_lesson")
+    migrated_lesson = False
+    if not (isinstance(lesson, dict) and lesson.get("spell_name")):
+        lesson_candidates: list[tuple[Any, str, str]] = []
+        status_prefix = "TAG leprechaun illusion spell pending:"
+        for member in list(getattr(session, "party", []) or []):
+            for status in list(getattr(member, "statuses", []) or []):
+                text = str(status or "").strip()
+                if text.casefold().startswith(status_prefix.casefold()):
+                    note = text.split(":", 1)[1].strip()
+                    lesson_candidates.append((member, note, text))
+        if lesson_candidates:
+            member, note, status_text = lesson_candidates[0]
+            clean_spell = re.sub(
+                r"^Scene\s*2\s+illusion\s+spell\s*[-:]?\s*",
+                "",
+                note,
+                flags=re.IGNORECASE,
+            ).strip()
+            spell_name = clean_spell or note or "Legacy illusion lesson"
+            learner_name = str(getattr(member, "name", "") or "")
+            price_text = ""
+            lesson_pattern = re.compile(
+                rf"{re.escape(learner_name)}\s+learns\s+or\s+records\s+.*?\s+from\s+the\s+"
+                r"leprechauns\s+for\s+(?P<price>[^.]+)",
+                flags=re.IGNORECASE,
+            )
+            for line in logs:
+                match = lesson_pattern.search(line)
+                if match:
+                    price_text = match.group("price").strip()
+                    break
+            free = "free" in price_text.casefold() or "free" in note.casefold()
+            member_id = str(getattr(member, "character_id", "") or "")
+            state["illusion_lesson"] = {
+                "spell_name": spell_name,
+                "learner_character_id": member_id,
+                "learner_name": learner_name,
+                "payer_character_id": member_id,
+                "payer_name": learner_name,
+                "cost_gp": 0 if free else 100,
+                "free_after_three_pairs": free,
+                "legacy_pending": True,
+                "legacy_status_marker": status_text,
+                "legacy_migrated": True,
+            }
+            state["transactions"].append(
+                {
+                    "type": "illusion_lesson",
+                    **deepcopy(state["illusion_lesson"]),
+                }
+            )
+            migrated_lesson = True
+
+    marker.update(
+        {
+            "version": 1,
+            "kind": "leprechaun",
+            "evidence_checked": True,
+            "migrated_shoe_pairs": migrated_pairs,
+            "migrated_illusion_lesson": migrated_lesson,
+        }
+    )
+    _set_legacy_service_state(session, state)
+    _set_legacy_service_migration_marker(session, marker)
+    return True
+
+
+def _migrate_legacy_deoldyn_evidence(
+    session: Any,
+    *,
+    allow_durable_fallback: bool,
+) -> bool:
+    marker = _legacy_service_migration_marker(session)
+    if marker.get("evidence_checked"):
+        return False
+    state = _legacy_service_state(session)
+    state.setdefault("kind", "deoldyn")
+    state.setdefault("phase", "open")
+    state.setdefault("transactions", [])
+    existing_results = [
+        deepcopy(item)
+        for item in state.get("training_results") or []
+        if isinstance(item, dict)
+    ]
+    results: list[dict[str, Any]] = []
+    if not existing_results and not state.get("training_batch_resolved"):
+        for member in list(getattr(session, "party", []) or []):
+            name = str(getattr(member, "name", "") or "").strip()
+            if not name:
+                continue
+            pattern = re.compile(
+                rf"{re.escape(name)}\s+pays\s+(?P<cost>\d+)\s+gp\s+to\s+Deoldyn\s+"
+                r"(?P<result>and succeeds|but fails)\s+at\s+the\s+Scene\s*3\s+training\s+"
+                r"XP\s+roll\s*\((?P<roll>[^)]*)\);\s*"
+                r"(?P<skill>Deadly Accuracy|Dead Shot)\s+"
+                r"(?P<tail>learned|is not learned)",
+                flags=re.IGNORECASE,
+            )
+            for line in list(getattr(session, "log", []) or []):
+                for match in pattern.finditer(str(line or "")):
+                    success = match.group("result").casefold() == "and succeeds"
+                    skill_name = match.group("skill")
+                    outcome = (
+                        "deadly_accuracy"
+                        if skill_name.casefold() == "deadly accuracy"
+                        else "dead_shot"
+                    )
+                    result = {
+                        "character_id": str(getattr(member, "character_id", "") or ""),
+                        "name": name,
+                        "outcome": outcome,
+                        "outcome_name": skill_name,
+                        "cost_gp": max(0, int(match.group("cost"))),
+                        "roll": {"legacy_text": match.group("roll").strip()},
+                        "success": success,
+                        "new_spell": "",
+                        "payment": [],
+                        "legacy_migrated": True,
+                    }
+                    results.append(result)
+                    state["transactions"].append(
+                        {"type": "deoldyn_training", **deepcopy(result)}
+                    )
+        if not results and allow_durable_fallback:
+            durable_skills = {
+                "deadly_accuracy": "Deadly Accuracy",
+                "dead_shot": "Dead Shot",
+            }
+            for member in list(getattr(session, "party", []) or []):
+                targets = dict(getattr(member, "expert_skill_targets", {}) or {})
+                for outcome, outcome_name in durable_skills.items():
+                    if str(targets.get(outcome) or "") != "tag_deoldyn":
+                        continue
+                    result = {
+                        "character_id": str(
+                            getattr(member, "character_id", "") or ""
+                        ),
+                        "name": str(getattr(member, "name", "") or ""),
+                        "outcome": outcome,
+                        "outcome_name": outcome_name,
+                        "cost_gp": 60 * max(
+                            1,
+                            int(getattr(member, "level", 1) or 1),
+                        ),
+                        "roll": {"legacy_text": "durable Deoldyn skill marker"},
+                        "success": True,
+                        "new_spell": "",
+                        "payment": [],
+                        "legacy_durable_marker": True,
+                        "legacy_cost_reconstructed": True,
+                        "legacy_migrated": True,
+                    }
+                    results.append(result)
+                    state["transactions"].append(
+                        {"type": "deoldyn_training", **deepcopy(result)}
+                    )
+    if results:
+        state["training_results"] = results
+        state["trained_character_ids"] = sorted(
+            {str(item.get("character_id") or "") for item in results if item.get("character_id")}
+        )
+        state["training_batch_resolved"] = True
+    marker.update(
+        {
+            "version": 1,
+            "kind": "deoldyn",
+            "evidence_checked": True,
+            "migrated_training_attempts": len(results),
+        }
+    )
+    _set_legacy_service_state(session, state)
+    _set_legacy_service_migration_marker(session, marker)
+    return True
+
+
+def _clear_stale_legacy_proxy_combat_state(session: Any) -> None:
+    session.mode = "exploration"
+    session.combat_round = 0
+    session.reaction_pending = False
+    session.reaction_checked = False
+    session.reaction_nudge_pending = False
+    session.reaction_pre_adjust_roll = None
+    session.reaction_key = None
+    session.reaction_bribe_gold = 0
+    session.reaction_bribe_weapons = 0
+    session.reaction_bribe_gold_per_foe = 0
+    session.reaction_bribe_weapons_per_foe = 0
+    session.reaction_bribe_foe_count = 0
+    session.reaction_trade_stock = []
+    session.reaction_trade_active = False
+    session.reaction_no_fools_gold = False
+    session.reaction_sleep_attack_bonus = 0
+    session.foes_strike_first = False
+    session.party_surprised = False
+    session.party_attacked_immediately = False
+    session.foe_flee_strike_pending = False
+
+
+def _sync_and_clean_legacy_service_final_tile(
+    session: Any,
+    manifest: dict[str, Any],
+    *,
+    room_id: str,
+    known_proxy_names: list[str],
+) -> bool:
+    changed = False
+    room = _manifest_room(manifest, room_id)
+    title = str(room.get("title") or "").strip()
+    description = str(room.get("description") or "").strip()
+    known = {name.strip().casefold() for name in known_proxy_names if name.strip()}
+    current_tile_id = str(
+        getattr(getattr(session, "map_state", None), "current_tile_id", "") or ""
+    )
+    for tile in _session_imported_room_tiles(session, room_id):
+        if title and getattr(tile, "title", "") != title:
+            tile.title = title
+            changed = True
+        if description and getattr(tile, "description", "") != description:
+            tile.description = description
+            changed = True
+        enemies = list(getattr(tile, "enemies", []) or [])
+        if not enemies or not known:
+            continue
+        live_names = {
+            str(getattr(enemy, "name", "") or "").strip().casefold()
+            for enemy in enemies
+            if str(getattr(enemy, "name", "") or "").strip()
+        }
+        marker = _legacy_service_migration_marker(session)
+        marker.update({"version": 1, "known_proxy_foes": sorted(known)})
+        if live_names and live_names.issubset(known):
+            tile.enemies = []
+            tile.initial_enemy_count = 0
+            if str(getattr(tile, "id", "") or "") == current_tile_id:
+                session.pending_bodyguard_intercept = None
+                session.combat_bodyguard_pause = None
+                _clear_stale_legacy_proxy_combat_state(session)
+            marker["proxy_cleanup"] = "cleared_exact_known_proxy"
+            marker.pop("preserved_unknown_foes", None)
+            if _LEGACY_SERVICE_REPAIR_LOG not in list(getattr(session, "log", []) or []):
+                session.log.append(_LEGACY_SERVICE_REPAIR_LOG)
+            changed = True
+        else:
+            unknown = sorted(live_names - known)
+            marker["proxy_cleanup"] = "preserved_unknown_or_mixed_foes"
+            marker["preserved_unknown_foes"] = unknown
+        changed = _set_legacy_service_migration_marker(session, marker) or changed
+    return changed
+
+
+def _clear_unresolved_service_closeout(session: Any) -> bool:
+    if not bool(getattr(session, "tag_generated_completion_pending", False)):
+        return False
+    stale_body = str(getattr(session, "tag_generated_completion_body", "") or "")
+    session.tag_generated_completion_pending = False
+    session.tag_generated_completion_title = ""
+    session.tag_generated_completion_body = ""
+    if stale_body:
+        session.log = [
+            line
+            for line in list(getattr(session, "log", []) or [])
+            if str(line) != stale_body
+        ]
+    return True
+
+
+def _remove_legacy_service_completion_markers(
+    session: Any,
+    known_proxy_names: list[str],
+) -> bool:
+    known = {name.strip().casefold() for name in known_proxy_names if name.strip()}
+
+    def stale(line: Any) -> bool:
+        text = str(line or "").strip()
+        folded = text.casefold()
+        if text == "Quest complete: objective location reached.":
+            return True
+        if text.startswith("Quest objective complete. Return to "):
+            return True
+        if folded.startswith(
+            "quest complete: the imported boss has been defeated; objective repaired"
+        ):
+            return True
+        return any(
+            folded.startswith(f"quest complete: {name} has been ")
+            for name in known
+        )
+
+    old_log = list(getattr(session, "log", []) or [])
+    repaired_log = [line for line in old_log if not stale(line)]
+    changed = repaired_log != old_log
+    if changed:
+        session.log = repaired_log
+    fired_triggers = list(getattr(session, "imported_fired_triggers", []) or [])
+    if "quest:return_hint" in fired_triggers:
+        session.imported_fired_triggers = [
+            key for key in fired_triggers if key != "quest:return_hint"
+        ]
+        changed = True
+    return changed
+
+
+def _ensure_resolved_service_closeout(
+    session: Any,
+    *,
+    kind: str,
+    service_state: dict[str, Any],
+) -> bool:
+    """Keep an already resolved migrated service at its Continue closeout."""
+    quest = getattr(session, "active_quest", None)
+    if quest is None:
+        return False
+    changed = False
+    result_text = str(service_state.get("result_text") or "").strip()
+    if not result_text:
+        result_text = (
+            "The party has finished the Blackbird Hill bargain."
+            if kind == "leprechaun"
+            else "The party has finished Deoldyn's archery training visit."
+        )
+    title = (
+        "Blackbird Hill bargain resolved"
+        if kind == "leprechaun"
+        else "Deoldyn's archery training resolved"
+    )
+    if not bool(getattr(quest, "completed", False)):
+        quest.completed = True
+        changed = True
+    lead_state = deepcopy(dict(getattr(quest, "tag_generated_lead_state", {}) or {}))
+    expected_state = deepcopy(lead_state)
+    expected_state["scene_resolved"] = True
+    expected_state["route_recorded"] = True
+    expected_state["completion_pending"] = True
+    expected_state.setdefault("result_narrative", result_text)
+    closeout = expected_state.get("closeout")
+    if not isinstance(closeout, dict):
+        closeout = {}
+    closeout.setdefault("completed", False)
+    closeout.setdefault("result", result_text)
+    closeout.setdefault("warnings", [])
+    expected_state["closeout"] = closeout
+    expected_state["next_action"] = TAG_GENERATED_CLOSEOUT_REMINDER
+    if lead_state != expected_state:
+        quest.tag_generated_lead_state = expected_state
+        changed = True
+    if not bool(getattr(session, "tag_generated_completion_pending", False)):
+        session.tag_generated_completion_pending = True
+        changed = True
+    if not str(getattr(session, "tag_generated_completion_title", "") or "").strip():
+        session.tag_generated_completion_title = title
+        changed = True
+    if not str(getattr(session, "tag_generated_completion_body", "") or "").strip():
+        session.tag_generated_completion_body = result_text
+        changed = True
+    log = list(getattr(session, "log", []) or [])
+    if result_text not in log:
+        session.log.append(result_text)
+        changed = True
+    if TAG_GENERATED_CLOSEOUT_LOG_MESSAGE not in list(getattr(session, "log", []) or []):
+        session.log.append(TAG_GENERATED_CLOSEOUT_LOG_MESSAGE)
+        changed = True
+    return changed
+
+
+def _repair_repeatable_service_legacy_state(
+    session: Any,
+    manifest: dict[str, Any],
+    complete_when: dict[str, Any],
+) -> bool:
+    kind = _tag_repeatable_service_kind(manifest)
+    if kind not in {"leprechaun", "deoldyn"}:
+        return False
+    old_quest = getattr(session, "active_quest", None)
+    old_key = str(getattr(old_quest, "key", "") or "")
+    reward_line = _legacy_epic_reward_line(session) if old_quest is None else ""
+    reference = tag_reference_from_manifest(manifest)
+    known_proxy_names = _foe_names(reference.get(_LEGACY_SERVICE_PROXY_NAMES_KEY))
+    boss_target = str(getattr(old_quest, "boss_target_name", "") or "").strip()
+    if old_key == "imported_boss" and boss_target:
+        known_proxy_names.append(boss_target)
+        merged = sorted(set(known_proxy_names), key=str.casefold)
+        if reference.get(_LEGACY_SERVICE_PROXY_NAMES_KEY) != merged:
+            reference[_LEGACY_SERVICE_PROXY_NAMES_KEY] = merged
+    changed = _normalize_legacy_service_quest(
+        session,
+        manifest,
+        kind=kind,
+        preserve_claimed_reward=bool(reward_line),
+    )
+    quest = getattr(session, "active_quest", None)
+    if quest is None:
+        return changed
+
+    legacy_context = old_key in {"imported_room", "imported_boss"} or bool(reward_line)
+    completion_evidence = _legacy_service_has_completion_evidence(
+        session,
+        service_state=_legacy_service_state(session),
+        known_proxy_names=known_proxy_names,
+    )
+    legacy_evidence = False
+    if kind == "leprechaun":
+        legacy_evidence = any(
+            "pair(s) of Shoes of Fast Walk" in str(line)
+            for line in list(getattr(session, "log", []) or [])
+        ) or any(
+            str(status).casefold().startswith(
+                "tag leprechaun illusion spell pending:"
+            )
+            for member in list(getattr(session, "party", []) or [])
+            for status in list(getattr(member, "statuses", []) or [])
+        )
+        if not legacy_evidence and completion_evidence:
+            legacy_evidence = any(
+                str(item or "").strip().casefold()
+                == "Shoes of Fast Walk".casefold()
+                for member in list(getattr(session, "party", []) or [])
+                for item in list(getattr(member, "inventory", []) or [])
+            )
+    else:
+        legacy_evidence = any(
+            "pays" in str(line)
+            and "to Deoldyn" in str(line)
+            and "training XP roll" in str(line)
+            for line in list(getattr(session, "log", []) or [])
+        )
+        if not legacy_evidence and completion_evidence:
+            legacy_evidence = any(
+                str(source or "") == "tag_deoldyn"
+                for member in list(getattr(session, "party", []) or [])
+                for skill, source in dict(
+                    getattr(member, "expert_skill_targets", {}) or {}
+                ).items()
+                if str(skill or "") in {"deadly_accuracy", "dead_shot"}
+            )
+    if legacy_evidence:
+        if kind == "leprechaun":
+            changed = _migrate_legacy_leprechaun_evidence(
+                session,
+                allow_inventory_fallback=completion_evidence,
+            ) or changed
+        else:
+            changed = _migrate_legacy_deoldyn_evidence(
+                session,
+                allow_durable_fallback=completion_evidence,
+            ) or changed
+
+    room_id = str(complete_when.get("room_id") or "tag-final-scene")
+    changed = _sync_and_clean_legacy_service_final_tile(
+        session,
+        manifest,
+        room_id=room_id,
+        known_proxy_names=known_proxy_names,
+    ) or changed
+    service_state = _legacy_service_state(session)
+    resolved = str(service_state.get("phase") or "") == "resolved"
+    if bool(getattr(quest, "completed", False)) != resolved:
+        quest.completed = resolved
+        changed = True
+    if not resolved:
+        changed = _clear_unresolved_service_closeout(session) or changed
+        if old_key in {"imported_room", "imported_boss"}:
+            changed = _remove_legacy_service_completion_markers(
+                session,
+                known_proxy_names,
+            ) or changed
+    elif legacy_context or bool(_legacy_service_migration_marker(session)):
+        changed = _ensure_resolved_service_closeout(
+            session,
+            kind=kind,
+            service_state=service_state,
+        ) or changed
+    if reward_line:
+        marker = _legacy_service_migration_marker(session)
+        marker.update(
+            {
+                "version": 1,
+                "kind": kind,
+                "reward_preserved": True,
+                "preserved_reward_log": reward_line,
+            }
+        )
+        changed = _set_legacy_service_migration_marker(session, marker) or changed
+        if _LEGACY_REWARD_PRESERVED_LOG not in list(getattr(session, "log", []) or []):
+            session.log.append(_LEGACY_REWARD_PRESERVED_LOG)
+            changed = True
+    return changed
+
+
 def repair_generated_tag_core_quest_completion(session: Any) -> bool:
     """Restore the closeout pause after a normal Quest resolves a generated TAG lead."""
     if (
@@ -318,14 +1210,23 @@ def repair_required_tag_scene_lifecycle(session: Any) -> bool:
     complete_when = manifest_quest.get("complete_when") if isinstance(manifest_quest, dict) else None
     if not isinstance(complete_when, dict) or complete_when.get("type") != "tag_scene_resolved":
         return False
-    quest = getattr(session, "active_quest", None)
-    if quest is None:
-        return False
     changed = False
     if getattr(session, "imported_quest_complete_when", None) != complete_when:
         session.imported_quest_complete_when = dict(complete_when)
         changed = True
-    arrival_completed = getattr(quest, "key", "") == "imported_room" and bool(getattr(quest, "completed", False))
+    original_quest = getattr(session, "active_quest", None)
+    arrival_completed = (
+        getattr(original_quest, "key", "") == "imported_room"
+        and bool(getattr(original_quest, "completed", False))
+    )
+    changed = _repair_repeatable_service_legacy_state(
+        session,
+        manifest,
+        complete_when,
+    ) or changed
+    quest = getattr(session, "active_quest", None)
+    if quest is None:
+        return changed
     if getattr(quest, "key", "") == "imported_room":
         quest.key = "tag_generated_scene"
         changed = True
@@ -497,7 +1398,7 @@ def _leprechaun_scene_actions() -> list[dict[str, Any]]:
     return [
         {
             "label": "Buy Shoes of Fast Walk",
-            "tooltip": "Buy up to one pair per character for 200 gp each. Only characters who can use magic items, and hirelings, may use them; animal companions may not.",
+            "tooltip": "Buy up to one pair per eligible wearer or recipient for 200 gp each. Heroes must be able to use magic items; hirelings are eligible, but animal companions are not.",
             "action_type": "branch",
             "action_value": "leprechaun_shoes",
             "reference": "Scene 2 Shoes of Fast Walk",
@@ -510,6 +1411,15 @@ def _leprechaun_scene_actions() -> list[dict[str, Any]]:
             "action_value": "leprechaun_illusion_spell",
             "reference": "Scene 2 illusion spell - choose spell",
             "amount": 100,
+        },
+        {
+            "label": "Done — leave Blackbird Hill",
+            "tooltip": "TAG pp.25-26, Scene 2: choose this only after resolving every desired optional shoe purchase and the single optional illusion lesson. Leaving Blackbird Hill resolves the bargain and ends this Rumour.",
+            "action_type": "branch",
+            "action_value": "tag_repeatable_service_done",
+            "reference": "TAG pp.25-26 Scene 2 Blackbird Hill bargain complete",
+            "amount": 0,
+            "required_for_completion": True,
         },
     ]
 
@@ -529,16 +1439,17 @@ def _upgrade_leprechaun_vendor_manifest(manifest: dict[str, Any], tag_reference:
     if "leprechaun" not in haystack and "blackbird hill" not in haystack:
         return
 
+    _capture_legacy_service_proxy_names(manifest, tag_reference)
     tag_reference["title"] = tag_reference.get("title") or "Leprechauns at Blackbird Hill"
     tag_reference["scene"] = tag_reference.get("scene") or "Scene 2"
-    tag_reference["pdf_pages"] = tag_reference.get("pdf_pages") or "TAG pp.23, 25"
+    tag_reference["pdf_pages"] = tag_reference.get("pdf_pages") or "TAG pp.23, 25-26"
     tag_reference["finale_mode"] = "vendor"
     tag_reference["finale_instruction"] = (
-        "Choose who buys magical shoes, whether the party buys enough pairs to make spell teaching free, "
-        "and which single eligible character learns an illusion spell."
+        "Choose who buys magical shoes and which single eligible character learns one illusion spell. "
+        "The app derives a free lesson automatically after three successful pair purchases."
     )
     tag_reference["rewards"] = (
-        "Buy Shoes of Fast Walk for 200 gp per pair, up to one pair per character. "
+        "Buy Shoes of Fast Walk for 200 gp per pair, up to one pair per eligible wearer or recipient. "
         "One eligible character may learn one illusion spell for 100 gp, or free if at least three pairs of shoes were bought."
     )
     tag_reference["final_foe_proxy"] = ""
@@ -554,7 +1465,7 @@ def _upgrade_leprechaun_vendor_manifest(manifest: dict[str, Any], tag_reference:
 
     quest = manifest.get("quest")
     if isinstance(quest, dict):
-        quest["complete_when"] = {"type": "room_reached", "room_id": "tag-final-scene"}
+        quest["complete_when"] = {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
 
     prompts = tag_reference.get("room_prompts")
     if not isinstance(prompts, dict):
@@ -612,6 +1523,121 @@ def _upgrade_leprechaun_vendor_manifest(manifest: dict[str, Any], tag_reference:
                     trigger.pop("encounter", None)
                     if isinstance(trigger.get("log"), str):
                         trigger["log"] = "The leprechaun bargain is ready: buy Shoes of Fast Walk or choose one illusion lesson before leaving Blackbird Hill."
+
+
+def _upgrade_deoldyn_service_manifest(
+    manifest: dict[str, Any],
+    tag_reference: dict[str, Any],
+) -> bool:
+    """Normalize legacy Rumour 11 modules to the repeatable Scene 3 service."""
+    try:
+        rumor_number = int(tag_reference.get("rumor_number") or 0)
+    except (TypeError, ValueError):
+        rumor_number = 0
+    title = str(tag_reference.get("title") or manifest.get("title") or "")
+    if (
+        str(tag_reference.get("lead_type") or "").strip().lower() != "rumor"
+        or (rumor_number != 11 and "deoldyn" not in title.casefold())
+    ):
+        return False
+
+    from .tag_campaign import TAG_RUMOR_PROFILES
+
+    _capture_legacy_service_proxy_names(manifest, tag_reference)
+    profile = TAG_RUMOR_PROFILES[11]
+    expected_actions = [
+        deepcopy(action)
+        for action in profile.get("final_prompt_actions") or []
+        if isinstance(action, dict)
+    ]
+    changed = False
+    expected_reference_fields = {
+        "title": profile["title"],
+        "scene": profile["scene"],
+        "pdf_pages": profile["pdf_pages"],
+        "lead_structure": profile["lead_structure"],
+        "finale_mode": profile["finale_mode"],
+        "finale_instruction": profile["finale_instruction"],
+        "rewards": profile["rewards"],
+        "module_profile": deepcopy(profile["module_profile"]),
+        "rules": deepcopy(profile["rules"]),
+        "final_foe_proxy": "",
+        "final_foe_count": 0,
+        "final_foes": [],
+        "scene_graph_terminal_actions": deepcopy(expected_actions),
+    }
+    for key, expected in expected_reference_fields.items():
+        if tag_reference.get(key) != expected:
+            tag_reference[key] = expected
+            changed = True
+
+    quest = manifest.get("quest")
+    if isinstance(quest, dict):
+        expected_objective = str(profile["objective"])
+        if quest.get("objective_text") != expected_objective:
+            quest["objective_text"] = expected_objective
+            changed = True
+        expected_completion = {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
+        if quest.get("complete_when") != expected_completion:
+            quest["complete_when"] = expected_completion
+            changed = True
+
+    prompts = tag_reference.get("room_prompts")
+    if not isinstance(prompts, dict):
+        prompts = {}
+        tag_reference["room_prompts"] = prompts
+        changed = True
+    expected_prompt = {
+        "title": "Service choices",
+        "body": (
+            f"{profile['final_description']} {profile['finale_instruction']} "
+            "Training payments remain spent even when an XP roll fails."
+        ),
+        "checklist": [
+            "Select every bow-capable character who will train; each character may train once between adventures.",
+            "Commit every payment of 60 gp × current Level before making any training XP roll.",
+            "After all payments are committed, make each selected trainee's XP roll automatically; a base Elf may instead choose normal level advancement.",
+            "After the simultaneous batch is rolled, add no later trainee; choose Done when the visit is finished.",
+        ],
+        "actions": deepcopy(expected_actions),
+    }
+    if prompts.get("tag-final-scene") != expected_prompt:
+        prompts["tag-final-scene"] = expected_prompt
+        changed = True
+
+    for room in manifest.get("rooms") or []:
+        if not isinstance(room, dict) or room.get("id") != "tag-final-scene":
+            continue
+        expected_title = str(profile["final_title"])
+        expected_description = str(profile["final_description"])
+        if room.get("title") != expected_title:
+            room["title"] = expected_title
+            changed = True
+        if room.get("description") != expected_description:
+            room["description"] = expected_description
+            changed = True
+        for trigger in room.get("triggers") or []:
+            if not isinstance(trigger, dict):
+                continue
+            if "encounter" in trigger:
+                trigger.pop("encounter", None)
+                changed = True
+            expected_log = (
+                "Deoldyn's Scene 3 training service is ready: select all trainees and choices, "
+                "commit every payment, then resolve the automatic XP rolls before choosing Done."
+            )
+            if isinstance(trigger.get("log"), str) and trigger.get("log") != expected_log:
+                trigger["log"] = expected_log
+                changed = True
+
+    upgrade_note = (
+        "TAG pp.24, 26 Rumour 11 upgraded to Deoldyn's persisted Scene 3 batch-training service; "
+        "all payments precede automatic XP rolls and Done explicitly resolves the scene."
+    )
+    if tag_reference.get("deoldyn_scene3_rules_upgrade") != upgrade_note:
+        tag_reference["deoldyn_scene3_rules_upgrade"] = upgrade_note
+        changed = True
+    return changed
 
 
 def _trim_bofto_scene19_text(value: str) -> str:
@@ -1078,6 +2104,7 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
                 "Use them as app workflow guidance only; exact printed text and rewards remain with the PDF/player."
             )
             prompts = tag_reference["room_prompts"]
+        _upgrade_deoldyn_service_manifest(manifest, tag_reference)
         _apply_local_tag_narrative_override(manifest, tag_reference)
         _upgrade_rumor_entry_manifest(tag_reference)
         _upgrade_daroc_manifest(manifest, tag_reference)

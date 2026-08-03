@@ -98,11 +98,16 @@ def offer_bodyguard_intercept(
     protectee: PartyMemberState,
     hireling: HirelingState,
     enemy: EnemyState,
+    *,
+    escaping_melee: bool = False,
+    withdrawing: bool = False,
 ) -> list[str]:
     session.pending_bodyguard_intercept = PendingBodyguardInterceptState(
         protectee_id=protectee.character_id,
         hireling_id=hireling.id,
         enemy_id=enemy.id,
+        escaping_melee=escaping_melee,
+        withdrawing=withdrawing,
     )
     return [f"{hireling.name} may intercept the attack meant for {protectee.name}."]
 
@@ -139,7 +144,13 @@ def resolve_bodyguard_intercept(
     log: list[str] = []
     if choice == "intercept":
         log.append(f"{hireling.name} steps in front of {protectee.name}.")
-        passed, bg_log = resolve_hireling_defense(hireling, enemy, show_rolls=show_rolls)
+        passed, bg_log = resolve_hireling_defense(
+            hireling,
+            enemy,
+            show_rolls=show_rolls,
+            session=session,
+            escaping_melee=pending.escaping_melee,
+        )
         log.extend(bg_log)
         if not passed:
             apply_hireling_damage(hireling, 1, log, session=session, show_rolls=show_rolls)
@@ -155,6 +166,8 @@ def resolve_bodyguard_intercept(
             protectee,
             show_rolls=show_rolls,
             living_enemies=living,
+            escaping_melee=pending.escaping_melee,
+            withdrawing=pending.withdrawing,
         )
     )
     return log
@@ -964,10 +977,25 @@ def resolve_hireling_defense(
     enemy: EnemyState,
     *,
     show_rolls: bool = True,
+    session: SessionState | None = None,
+    escaping_melee: bool = False,
 ) -> tuple[bool, list[str]]:
     log: list[str] = []
     total, rolls = roll_exploding_d6()
     modifier = hireling_defense_modifier(hireling, enemy)
+    from .tag_repeatable_services import shoes_of_fast_walk_hireling_defense_bonus
+
+    shoes_bonus = shoes_of_fast_walk_hireling_defense_bonus(
+        hireling,
+        session,
+        escaping_melee=escaping_melee,
+    )
+    modifier += shoes_bonus
+    if shoes_bonus:
+        log.append(
+            f"Shoes of Fast Walk: {hireling.name} adds the party Tier (+{shoes_bonus}) "
+            "while withdrawing or fleeing melee."
+        )
     final = total + modifier
     if show_rolls:
         log.append(

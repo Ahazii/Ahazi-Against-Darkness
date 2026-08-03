@@ -1340,11 +1340,11 @@ TAG_SCENE_ACTIONS: dict[str, str] = {
 TAG_DEOLDYN_SKILLS: dict[str, dict[str, str]] = {
     "deadly_accuracy": {
         "name": "Deadly Accuracy",
-        "summary": "Scene 3 archery training option. Existing combat rules apply when the character attacks with eligible missile weapons.",
+        "summary": "Scene 3 archery training option. A Deoldyn-trained character gains +1 Attack with a bow.",
     },
     "dead_shot": {
         "name": "Dead Shot",
-        "summary": "Scene 3 archery training option. Existing combat rules let the character reroll one declared failed ranged attack where applicable.",
+        "summary": "Scene 3 archery training option. A Deoldyn-trained character automatically rerolls each failed ranged Attack once.",
     },
 }
 
@@ -1408,6 +1408,9 @@ def _apply_deoldyn_training(character: Character, *, amount: int, reference: str
             character.learned_expert_skills.append(skill_id)
         if skill_name not in character.abilities:
             character.abilities.append(skill_name)
+        targets = dict(character.expert_skill_targets or {})
+        targets[skill_id] = "tag_deoldyn"
+        character.expert_skill_targets = targets
         return f"{character.name} pays {cost} gp to Deoldyn and succeeds at the Scene 3 training XP roll ({roll_text}); {skill_name} learned."
     return f"{character.name} pays {cost} gp to Deoldyn but fails the Scene 3 training XP roll ({roll_text}); {skill_name} is not learned."
 
@@ -1696,7 +1699,7 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
     6: {
         "title": "Leprechauns at Blackbird Hill",
         "scene": "Scene 2",
-        "pdf_pages": "TAG pp.23, 25",
+        "pdf_pages": "TAG pp.23, 25-26",
         "objective": "Find the leprechauns and decide whether to buy Shoes of Fast Walk or learn their illusion spell.",
         "entry": "Blackbird Hill is dotted with tiny tracks and mocking laughter.",
         "side": "The leprechauns prefer bargaining to fighting.",
@@ -1705,12 +1708,12 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_title": "Blackbird Hill Bargain",
         "final_description": "The leprechaun rumor is real. Under the old oak at Blackbird Hill, the little folk are ready to bargain: shoes for gold, or one illusion lesson for a magically inclined hero.",
         "finale_mode": "vendor",
-        "finale_instruction": "Choose who buys magical shoes, whether the party bought enough pairs to make spell teaching free, and which single eligible character learns one illusion spell.",
-        "rewards": "Buy Shoes of Fast Walk for 200 gp per pair, up to one pair per character. One eligible character may learn one illusion spell for 100 gp, or free if at least three pairs of shoes were bought.",
+        "finale_instruction": "Choose who buys magical shoes and which single eligible character learns one illusion spell. The app derives a free lesson automatically after three successful pair purchases.",
+        "rewards": "Buy Shoes of Fast Walk for 200 gp per pair, with at most one pair per eligible wearer. One eligible character may learn one illusion spell for 100 gp, or free if at least three pairs of shoes were bought.",
         "final_prompt_actions": [
             {
                 "label": "Buy Shoes of Fast Walk",
-                "tooltip": "Buy up to one pair per character for 200 gp each. Only characters who can use magic items, and hirelings, may use them; animal companions may not.",
+                "tooltip": "Buy one 200 gp pair per eligible wearer. Living heroes must be able to use magic items; a living hireling may wear a party-owned pair; animal companions may not.",
                 "action_type": "branch",
                 "action_value": "leprechaun_shoes",
                 "reference": "Scene 2 Shoes of Fast Walk",
@@ -1723,6 +1726,15 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
                 "action_value": "leprechaun_illusion_spell",
                 "reference": "Scene 2 illusion spell - choose spell",
                 "amount": 100,
+            },
+            {
+                "label": "Done — leave Blackbird Hill",
+                "tooltip": "TAG pp.25-26, Scene 2: choose this only after resolving every desired optional shoe purchase and the single optional illusion lesson. Leaving Blackbird Hill resolves the bargain and ends this Rumour.",
+                "action_type": "branch",
+                "action_value": "tag_repeatable_service_done",
+                "reference": "TAG pp.25-26 Scene 2 Blackbird Hill bargain complete",
+                "amount": 0,
+                "required_for_completion": True,
             },
         ],
         "rules": ["Scene 2 is a bargain/vendor scene; no proxy combat is required unless the table deliberately turns the encounter hostile."],
@@ -1892,57 +1904,57 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
     11: {
         "title": "Deoldyn's Archery Training",
         "scene": "Scene 3",
-        "pdf_pages": "TAG pp.24, 25",
+        "pdf_pages": "TAG pp.24, 26",
         "lead_structure": "trainer",
-        "objective": "Meet Deoldyn and decide who pays for elven archery training.",
+        "objective": "Meet Deoldyn, select every character who will train, commit all payments, and resolve their archery advancement rolls.",
         "entry": "Targets split cleanly on Deoldyn's practice range.",
         "side": "The training is expensive but can unlock archery advancement.",
-        "complication": "Training costs 60 gp x level and grants one XP roll for Deadly Accuracy or Dead Shot.",
+        "complication": "Each selected trainee costs 60 gp × current Level. Commit every payment before the app makes the selected characters' automatic XP rolls.",
         "final_title": "Deoldyn's Range",
-        "final_description": "Deoldyn is a special trainer, not a dungeon foe. Resolve payment, choose Deadly Accuracy or Dead Shot, then roll the printed training XP check.",
+        "final_description": "Deoldyn is a special trainer, not a dungeon foe. Select all eligible trainees and their advancement choices before resolving the batch.",
         "finale_mode": "service",
-        "finale_instruction": "Choose one bow-capable trainee, choose Deadly Accuracy or Dead Shot, pay 60 gp x current level, then roll the one qualifying XP check.",
-        "rewards": "One paid Scene 3 training XP roll for Deadly Accuracy or Dead Shot; elves may instead use the roll to attempt normal level advancement if the table chooses that printed option.",
+        "finale_instruction": "Choose every bow-capable trainee and each trainee's advancement option. Commit all payments of 60 gp × current Level first; after every payment is spent, make the selected characters' XP rolls automatically. A base Elf may choose normal level advancement instead of Deadly Accuracy or Dead Shot.",
+        "rewards": "Each paid Scene 3 trainee receives one automatic XP roll for Deadly Accuracy or Dead Shot; a base Elf may instead choose normal level advancement. Payment is spent even when the roll fails.",
         "module_profile": {
             "target_rooms": "trainer downtime scene",
             "procedure": [
                 "This Rumor is not a dungeon crawl. Deoldyn offers paid archery training between sessions.",
                 "Each character may train once between adventures.",
-                "Cost is 60 gp x the character's current Level.",
-                "After payment, roll one XP check for the selected archery result.",
+                "Select every character who will train and each advancement choice before resolving the one simultaneous batch.",
+                "Commit every 60 gp × current Level payment before making any XP roll; all committed gold is spent even if a roll fails.",
+                "After all payments are committed, make each selected trainee's XP roll automatically.",
+                "A base Elf may choose normal level advancement instead of Deadly Accuracy or Dead Shot.",
             ],
             "signoff_checks": [
-                "Confirm the trainee could wield a bow.",
-                "Confirm 60 gp x Level was paid.",
-                "Record whether Deadly Accuracy, Dead Shot, or an elf level-up attempt succeeded.",
+                "Confirm every selected trainee could wield a bow and trained no more than once between adventures.",
+                "Confirm every 60 gp × Level payment was committed before any XP roll.",
+                "Record each Deadly Accuracy, Dead Shot, or base Elf normal-level advancement result.",
+                "Confirm no later trainee was added after the simultaneous batch results became known.",
             ],
         },
-        "entry_prompt_actions": [
-            {
-                "label": "Train with Deoldyn",
-                "tooltip": "Scene 3 trainer lead: choose a bow-capable trainee and Deadly Accuracy or Dead Shot, pay 60 gp x Level, then roll the printed XP check.",
-                "action_type": "scene",
-                "action_value": "deoldyn_training",
-                "reference": "Scene 3 Deoldyn training: choose skill",
-            }
-        ],
         "final_prompt_actions": [
             {
                 "label": "Train with Deoldyn",
-                "tooltip": "Scene 3 trainer lead: choose a bow-capable trainee and Deadly Accuracy or Dead Shot, pay 60 gp x Level, then roll the printed XP check.",
+                "tooltip": "TAG p.26, Scene 3: select all bow-capable trainees and each choice in one batch. The app commits every 60 gp × Level payment first, then rolls each selected XP check automatically; a base Elf may choose normal level advancement.",
                 "action_type": "scene",
                 "action_value": "deoldyn_training",
-                "reference": "Scene 3 Deoldyn training: choose skill",
+                "reference": "TAG p.26 Scene 3 Deoldyn batch training",
+                "amount": 0,
             },
             {
-                "label": "Mark training XP roll",
-                "tooltip": "Prefill the training XP-roll marker if payment was handled separately.",
-                "action_type": "xp",
-                "action_value": "mark_training_xp_roll",
-                "reference": "Scene 3 archery training XP roll",
+                "label": "Done — finish training",
+                "tooltip": "TAG p.26, Scene 3: choose this after the one desired simultaneous batch, or when nobody will train. No later trainee may be added after results are known. Finishing resolves the service and ends this Rumour.",
+                "action_type": "branch",
+                "action_value": "tag_repeatable_service_done",
+                "reference": "TAG p.26 Scene 3 Deoldyn training complete",
+                "amount": 0,
+                "required_for_completion": True,
             },
         ],
-        "rules": ["This is a paid training service, not a dungeon. No proxy interruption fight is installed."],
+        "rules": [
+            "This is a paid training service, not a dungeon. No proxy interruption fight is installed.",
+            "Training is optional, but the party submits one complete simultaneous batch before Done; all payments are committed before automatic XP rolls, spent gold is not refunded for failed rolls, and no later trainee may be added.",
+        ],
     },
     12: {
         "title": "Shinta and Agaratha",
@@ -7017,7 +7029,10 @@ def _tag_room_prompts(*, title: str, lead_detail: str, profile: dict[str, object
         ]
         if is_medusa_rumor and start_scene.strip().lower() == "scene 10":
             final_actions = _tag_profile_actions(profile, "complication_prompt_actions")
-    rumor_entry_actions = tag_rumor_entry_prompt_actions(profile, base_reference=base_ref)
+    rumor_entry_actions = tag_rumor_entry_prompt_actions(
+        profile,
+        base_reference=profile_title or base_ref,
+    )
     if rumor_entry_actions:
         entry_actions = rumor_entry_actions
     entry_override_body = _room_override_text(profile, "tag-lead-entry")

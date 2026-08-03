@@ -766,8 +766,8 @@
                         <option value="medusa_assassin_fight" title="Start Scene 10's stored assassin-agent combat with the party acting first.">Medusa assassin fight</option>
                         <option value="medusa_stealth_approach" title="Choose the approaching character; the app derives that character's TAG Stealth modifier and rolls the L6 Save before Xasartha's gaze.">Medusa stealth</option>
                         <option value="medusa_reaction" title="Roll Xasartha's medusa reaction: bribe, quest, fight, or fight to the death.">Medusa reaction</option>
-                        <option value="leprechaun_shoes" title="Buy Shoes of Fast Walk; Amount is number of pairs at 200 gp each.">Leprechaun shoes</option>
-                        <option value="leprechaun_illusion_spell" title="Record a leprechaun illusion spell lesson; Reference can include free when three shoe pairs were bought.">Leprechaun spell</option>
+                        <option value="leprechaun_shoes" title="Legacy/manual diagnostics only. Active Rumor 6 uses the visible Scene 2 Shoes of Fast Walk host, which charges exactly 200 gp per pair and validates one eligible wearer per pair.">Leprechaun shoes</option>
+                        <option value="leprechaun_illusion_spell" title="Legacy/manual diagnostics only. Active Rumor 6 uses the visible Scene 2 host, which derives the lesson price and enforces normal spell eligibility.">Leprechaun spell</option>
                         <option value="gargoyle_count" title="Roll Scene 8 white gargoyle count: d6+2.">Gargoyle count</option>
                         <option value="gargoyle_surprise" title="Roll white gargoyle camouflage surprise chance: 3-in-6.">Gargoyle surprise</option>
                         <option value="gargoyle_skin" title="Roll whether a non-magical hit bounces off white gargoyle stone-hard skin: 2-in-6.">Gargoyle skin</option>
@@ -811,7 +811,7 @@
                         <option value="skip_scene" title="Cross off or skip the referenced scene for this TAG adventure.">Skip scene</option>
                         <option value="unlock_scene" title="Unlock the referenced follow-up scene for this TAG adventure.">Unlock scene</option>
                         <option value="solo_restriction" title="Record a printed solo-only restriction before continuing the adventure.">Solo restriction</option>
-                        <option value="final_route" title="Record the selected finale route and use the generated adventure final foe/reward reference.">Final route</option>
+                        <option value="final_route" title="Legacy/manual fallback: record a selected finale route only after any visible required scene procedure and Done action have resolved. This control cannot bypass a typed Rumor service or the shared opening choice.">Final route</option>
                       </select>
                     </label>
                     <button id="tag-run-route-action" type="button" class="secondary">Apply route</button>
@@ -827,7 +827,7 @@
                         <option value="daroc_cat" title="Legacy fallback only. Use Rumor 9's guided selected-character Streetwise search, persistent Clue progress, 200 gp recipient, XP, and Give up controls.">Daroc cat</option>
                         <option value="mutant_fish_rations" title="Roll d6+3 food rations.">Fish rations</option>
                         <option value="agaratha" title="Add Agaratha and its Luck marker.">Agaratha</option>
-                        <option value="deoldyn_training" title="Pay Deoldyn training cost; Amount can override 60 gp x level.">Deoldyn training</option>
+                        <option value="deoldyn_training" title="Legacy/manual fallback only. Active Rumor 11 uses the visible Scene 3 host to validate the complete batch, commit all 60 gp × Level payments, then roll all XP checks together.">Deoldyn training</option>
                         <option value="dragon_type_reveal" title="Spend 2 Clues and roll the Dragon's Lair type.">Dragon reveal</option>
                       </select>
                     </label>
@@ -922,7 +922,7 @@
                 <form method="dialog" id="tag-illusion-spell-form">
                   <div class="transfer-dialog-header">
                     <h3>Learn Illusion Spell</h3>
-                    <p class="muted">Choose the character who receives the leprechaun lesson and the illusion spell to record. This is the Scene 2 bargain choice; the app will pay the lesson cost unless the free lesson condition is selected.</p>
+                    <p class="muted">Legacy/manual diagnostics only. Active Rumor 6 uses the visible Scene 2 host, which chooses payer and learner separately, derives the free condition from three successful shoe purchases, and enforces normal class/spell-list eligibility.</p>
                   </div>
                   <div class="tag-settlement-grid">
                     <label for="tag-illusion-spell-character">
@@ -949,7 +949,7 @@
                 <form method="dialog" id="tag-deoldyn-training-form">
                   <div class="transfer-dialog-header">
                     <h3>Deoldyn's Archery Training</h3>
-                    <p class="muted">Scene 3 is a trainer lead, not a dungeon. Choose a bow-capable trainee and the archery skill to attempt; the app pays 60 gp x Level, rolls the training XP check, and records the skill only on success.</p>
+                    <p class="muted">Legacy/manual diagnostics only. Active Rumor 11 uses the visible Scene 3 host to select the complete simultaneous batch, validate all 60 gp x Level payments, take every fee, and then roll every training XP check.</p>
                   </div>
                   <div class="tag-settlement-grid">
                     <label for="tag-deoldyn-training-character">

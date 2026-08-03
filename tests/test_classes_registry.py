@@ -84,3 +84,44 @@ def test_new_classes_have_shop_catalog_rows() -> None:
         shield = next(item for item in catalog["items"] if item["key"] == "shield")
         allowed, _ = can_class_use_item(class_id, shield)
         assert allowed is (class_id in {"paladin"})
+
+
+def test_expanded_edition_magic_item_use_preserves_equipment_restrictions() -> None:
+    generic_magic_item = {"category": "magic_item", "magic": True}
+    magic_item_users = {
+        "acrobat",
+        "assassin",
+        "bulwark",
+        "kukla",
+        "light_gladiator",
+        "mushroom_monk",
+        "swashbuckler",
+    }
+
+    for class_id in magic_item_users:
+        allowed, message = can_class_use_item(class_id, generic_magic_item)
+        assert allowed, f"{class_id}: {message}"
+
+    barbarian_allowed, _ = can_class_use_item("barbarian", generic_magic_item)
+    assert barbarian_allowed is False
+
+    restricted_categories = {
+        "acrobat": "bow",
+        "assassin": "heavy_armor",
+        "bulwark": "firearm",
+        "kukla": "light_weapon",
+        "light_gladiator": "bow",
+        "mushroom_monk": "hand_weapon",
+        "swashbuckler": "shield",
+    }
+    for class_id, category in restricted_categories.items():
+        allowed, _ = can_class_use_item(class_id, {"category": category, "magic": True})
+        assert allowed is False, f"{class_id} unexpectedly gained {category} access"
+
+    mundane_bow = {"category": "bow", "magic": False}
+    for class_id in ("druid", "assassin", "bulwark", "paladin"):
+        allowed, message = can_class_use_item(class_id, mundane_bow)
+        assert allowed, f"{class_id}: {message}"
+
+    wizard_allowed, _ = can_class_use_item("wizard", mundane_bow)
+    assert wizard_allowed is False

@@ -748,6 +748,15 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
     supplement_pref = next(row for row in payload["developer_preferences_table"] if row["preference"] == "enabled_supplement_ids")
     assert "Go Adventure preselects these switches" in supplement_pref["effect"]
     assert "active_supplement_ids" in supplement_pref["rules_boundary"]
+    lifecycle_states = {row["state"]: row for row in payload["tag_rumor_lifecycle_table"]}
+    assert "Rumor 6 repeatable bargain" in lifecycle_states
+    assert "Rumor 11 single-batch training" in lifecycle_states
+    assert "no later trainee" in lifecycle_states["Rumor 11 single-batch training"]["meaning"]
+    trainer_row = next(
+        row for row in payload["tag_generated_lead_structure_table"] if row["structure"] == "trainer"
+    )
+    assert "complete simultaneous batch" in trainer_row["ui_expectation"]
+    assert "blocks later additions" in trainer_row["ui_expectation"]
 
 
 def test_create_session_stores_ruleset_profile(client: TestClient) -> None:

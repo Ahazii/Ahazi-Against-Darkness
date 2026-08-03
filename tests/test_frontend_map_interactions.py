@@ -2168,7 +2168,7 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert "openDeoldynTrainingDialog(defaults)" in APP_JS
     assert '"leprechaun_shoes"' in APP_JS
     assert '"leprechaun_illusion_spell"' in APP_JS
-    assert "+Tier to Defense when withdrawing or fleeing melee" in APP_JS
+    assert "The wearer gains +Tier Defense while withdrawing or fleeing melee" in APP_JS
     assert "TAG_GENERIC_COMPLICATION_ACTIONS" in APP_JS
     assert '"final_route"' in APP_JS
     assert '"claim_reward"' in APP_JS
@@ -2194,8 +2194,14 @@ def test_item_tooltip_helper_covers_shop_inventory_and_item_pickers() -> None:
     assert "const ITEM_TOOLTIP_RULES" in APP_JS
     assert "function itemTooltip" in APP_JS
     assert "function optionWithItemTooltip" in APP_JS
-    assert "Shoes of Fast Walk: 200 gp per pair" in APP_JS
-    assert "+Tier to Defense when withdrawing or fleeing melee" in APP_JS
+    assert "200 gp per pair, at most one per eligible wearer" in APP_JS
+    assert "A hero adds their Tier to Defense while withdrawing or fleeing melee" in APP_JS
+    assert "An assigned living hireling uses the party Tier" in APP_JS
+    assert "Shoes of Fast Walk assigned to a living hireling must remain accessible" in APP_JS
+    assert 'tagServiceField("Payer"' in APP_JS
+    assert 'tagServiceField("Wearer"' in APP_JS
+    assert 'tagServiceField("Illusion spell"' in APP_JS
+    assert 'tagServiceField("Training result"' in APP_JS
     assert "equipmentShopBuyList" in APP_JS
     assert "equipmentShopSellItem" in APP_JS
     assert "appendInventoryTooltipLine" in APP_JS
@@ -2218,6 +2224,22 @@ def test_current_objective_runs_direct_tag_purchase_actions_without_modal() -> N
     assert "runTagSceneActionWithDefaults(defaults).catch(handleError)" in APP_JS
     assert 'openTagActionsWithDefaults(defaults);' in APP_JS
     assert "No living party member has ${cost} gp in hand or bank" in APP_JS
+
+
+def test_rumor_6_and_11_share_persisted_inline_service_host() -> None:
+    assert "function runTagRepeatableServiceAction" in APP_JS
+    assert "/tag-repeatable-service" in APP_JS
+    assert "function appendLeprechaunGuidedAction" in APP_JS
+    assert "function appendDeoldynGuidedAction" in APP_JS
+    assert "tag-repeatable-service-guided" in APP_JS
+    assert "Done — leave Blackbird Hill" in APP_JS
+    assert "Done — finish training" in APP_JS
+    assert "one simultaneous batch" in APP_JS
+    assert "No later batch may be added" in APP_JS
+    assert "normal class and spell-list eligibility still applies" in APP_JS
+    assert "Uses the active party Tier while assigned" in APP_JS
+    assert ".tag-service-section" in STYLES_CSS
+    assert ".tag-service-trainee-list" in STYLES_CSS
 
 
 def test_xp_learning_ui_splits_skills_and_spells_and_hides_ineligible_options() -> None:

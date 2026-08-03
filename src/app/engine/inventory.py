@@ -309,6 +309,17 @@ def transfer_item_between(
     disposition = item_disposition_decision(item_name, ItemDisposition.TRANSFER)
     if not disposition.allowed:
         return False, disposition.reason
+    from .tag_repeatable_services import SHOES_OF_FAST_WALK
+
+    if item_name.strip().casefold() == SHOES_OF_FAST_WALK.casefold():
+        from .equipment_shop import can_class_use_item
+
+        allowed, reason = can_class_use_item(
+            str(getattr(target, "class_id", "")),
+            {"category": "magic_item", "magic": True},
+        )
+        if not allowed:
+            return False, reason or f"{target.name} cannot use Shoes of Fast Walk."
     from .item_containers import bag_for_inventory_index, bag_inventory_index, is_bag_of_carrying
 
     if is_bag_of_carrying(item_name):

@@ -50,6 +50,7 @@ from .expert_skill_effects import (
     knife_throw_weapon,
     mark_encounter_spent,
     member_carries_shield,
+    skill_target,
     spot_weakness_extra_damage,
     stabbing_attack_follow_up,
     sworn_enemy_target_preference,
@@ -1033,6 +1034,13 @@ def _defense_bonus(
             session,
             withdrawing=withdraw or context.withdrawing,
             gladiator_match=gladiator_fight([enemy]) if enemy else False,
+        )
+        from .tag_repeatable_services import shoes_of_fast_walk_defense_bonus
+
+        expert_bonus += shoes_of_fast_walk_defense_bonus(
+            member,
+            session,
+            escaping_melee=withdraw or context.withdrawing,
         )
         from .milestones import milestone_defense_bonus
 
@@ -2019,7 +2027,26 @@ def _resolve_pc_attack(
         else:
             log.append(f"{target.name} is not defending; this attack hits automatically (FD p.55).")
     if not auto_hit_fd_hallucination and not attack_hits(final_total, target_level):
-        if (
+        deoldyn_dead_shot = (
+            missile
+            and has_skill(pc, "dead_shot")
+            and skill_target(pc, "dead_shot") == "tag_deoldyn"
+        )
+        if deoldyn_dead_shot:
+            log.append(f"{pc.name}'s Deoldyn-trained Dead Shot automatically rerolls the failed ranged attack.")
+            if plan.no_explode or cavern_blocks_pc_attack_explode(context.cavern_feature_key):
+                sides = tier_die_sides(pc.level)
+                roll = roll_die(sides)
+                total, rolls = roll, [roll]
+            else:
+                total, rolls = roll_exploding_for_level(pc, session=context.session, log=log)
+            final_total = total + modifier
+            if show_rolls:
+                log.append(
+                    f"Deoldyn Dead Shot reroll: {' + '.join(str(value) for value in rolls)} + "
+                    f"{modifier - party_attack_bonus - (1 if use_panache else 0) - (2 if use_flip_kick else 0)} = {final_total}."
+                )
+        elif (
             missile
             and session is not None
             and has_skill(pc, "dead_shot")
@@ -2322,7 +2349,16 @@ def _resolve_attacks(
 
             bodyguard = bodyguard_for_protectee(context.session, target.character_id)
             if bodyguard is not None and context.session.pending_bodyguard_intercept is None:
-                log.extend(offer_bodyguard_intercept(context.session, target, bodyguard, enemy))
+                log.extend(
+                    offer_bodyguard_intercept(
+                        context.session,
+                        target,
+                        bodyguard,
+                        enemy,
+                        escaping_melee=withdraw or context.withdrawing,
+                        withdrawing=withdraw,
+                    )
+                )
                 remaining_attacks = [
                     PendingCombatFoeAttack(enemy_id=foe.id, target_character_id=member.character_id)
                     for foe, member in attack_pairs[attack_index + 1 :]
@@ -3811,10 +3847,34 @@ def resolve_flee(
     context: CombatContext | None = None,
     skip_parting_attacks: bool = False,
     parting_foe_filter: Callable[[EnemyState], bool] | None = None,
+    resume_after_bodyguard: CombatBodyguardPauseState | None = None,
 ) -> CombatRound:
     context = context or CombatContext()
-    log = ["The party flees."]
-    if skip_parting_attacks:
+    # Reuse the established escape-defense signal without granting the
+    # withdrawal-only base +1 modifier to ordinary flee parting blows.
+    context.withdrawing = True
+    log = [
+        "The party continues its flight after the bodyguard choice."
+        if resume_after_bodyguard is not None
+        else "The party flees."
+    ]
+    paused = False
+    if resume_after_bodyguard is not None:
+        attack_pairs = _attack_pairs_from_pending(
+            resume_after_bodyguard.remaining_attacks,
+            enemies,
+            party,
+        )
+        attack_log, paused = _resolve_attacks(
+            attack_pairs,
+            party=party,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            context=context,
+            defense_bonus=2 if context.illusionary_fog_active else 0,
+        )
+        log.extend(attack_log)
+    elif skip_parting_attacks:
         log.append("The party escapes without parting blows.")
     elif parting_foe_filter is not None:
         eligible = [enemy for enemy in enemies if enemy.life > 0 and parting_foe_filter(enemy)]
@@ -3823,7 +3883,7 @@ def resolve_flee(
                 "Puffball Smokebomb: mushroom and artificial foes may still strike as the party flees."
             )
             attack_pairs = assign_flee_attacks(eligible, party)
-            attack_log, _paused = _resolve_attacks(
+            attack_log, paused = _resolve_attacks(
                 attack_pairs,
                 party=party,
                 show_rolls=show_rolls,
@@ -3836,7 +3896,7 @@ def resolve_flee(
             log.append("Puffball Smokebomb: the party flees without parting blows.")
     else:
         attack_pairs = assign_flee_attacks(enemies, party)
-        attack_log, _paused = _resolve_attacks(
+        attack_log, paused = _resolve_attacks(
             attack_pairs,
             party=party,
             show_rolls=show_rolls,
@@ -3845,6 +3905,17 @@ def resolve_flee(
             defense_bonus=2 if context.illusionary_fog_active else 0,
         )
         log.extend(attack_log)
+    if paused:
+        if context.session is not None and context.session.combat_bodyguard_pause is not None:
+            context.session.combat_bodyguard_pause.escape_kind = "flee"
+        return CombatRound(
+            party=party,
+            enemies=enemies,
+            log=log,
+            combat_over=False,
+            fled=False,
+            combat_paused=True,
+        )
     survivors = living_party(party)
     if survivors:
         log.append("The party escapes the immediate fight.")
@@ -3870,11 +3941,20 @@ def resolve_withdraw(
     show_rolls: bool = True,
     explain_math: bool = False,
     context: CombatContext | None = None,
+    resume_after_bodyguard: CombatBodyguardPauseState | None = None,
 ) -> CombatRound:
     context = context or CombatContext()
-    log = ["The party withdraws through a door."]
-    attack_pairs = assign_enemy_attacks(enemies, party, context=context, once_per_foe=True)
-    attack_log, _paused = _resolve_attacks(
+    log = [
+        "The party continues withdrawing after the bodyguard choice."
+        if resume_after_bodyguard is not None
+        else "The party withdraws through a door."
+    ]
+    attack_pairs = (
+        _attack_pairs_from_pending(resume_after_bodyguard.remaining_attacks, enemies, party)
+        if resume_after_bodyguard is not None
+        else assign_enemy_attacks(enemies, party, context=context, once_per_foe=True)
+    )
+    attack_log, paused = _resolve_attacks(
         attack_pairs,
         party=party,
         show_rolls=show_rolls,
@@ -3883,6 +3963,17 @@ def resolve_withdraw(
         withdraw=True,
     )
     log.extend(attack_log)
+    if paused:
+        if context.session is not None and context.session.combat_bodyguard_pause is not None:
+            context.session.combat_bodyguard_pause.escape_kind = "withdraw"
+        return CombatRound(
+            party=party,
+            enemies=enemies,
+            log=log,
+            combat_over=False,
+            fled=False,
+            combat_paused=True,
+        )
     survivors = living_party(party)
     if survivors:
         log.append("The party slams the door and retreats.")
@@ -3947,6 +4038,8 @@ def resolve_foe_melee_on_member(
     show_rolls: bool = True,
     living_enemies: list[EnemyState] | None = None,
     lookup_monster_template=None,
+    escaping_melee: bool = False,
+    withdrawing: bool = False,
 ) -> list[str]:
     life_before = target.current_life
     context = combat_context_for_session(
@@ -3954,6 +4047,7 @@ def resolve_foe_melee_on_member(
         lookup_monster_template=lookup_monster_template,
     )
     context.bodyguard_bypass = True
+    context.withdrawing = escaping_melee
     context.round_show_rolls = show_rolls
     attack_log, _paused = _resolve_attacks(
         [(enemy, target)],
@@ -3961,6 +4055,7 @@ def resolve_foe_melee_on_member(
         show_rolls=show_rolls,
         explain_math=False,
         context=context,
+        withdraw=withdrawing,
         living_enemies=living_enemies,
     )
     log = attack_log

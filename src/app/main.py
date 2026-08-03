@@ -125,6 +125,8 @@ from .engine.tag_scene_lifecycle import (
     TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
     TAG_GENERATED_CLOSEOUT_LOG_MESSAGE,
     TAG_GENERATED_CLOSEOUT_REMINDER,
+    required_tag_room_actions_are_terminal,
+    tag_room_has_required_action,
 )
 from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import (
@@ -349,6 +351,7 @@ def enrich_session(session: SessionState) -> SessionState:
     from .engine.class_abilities import luck_points_remaining
     from .engine.tag_campaign import streetwise_modifier
     from .engine.tag_daroc import daroc_familiar_view
+    from .engine.tag_repeatable_services import repeatable_service_view
     from .engine.terrain import resolve_play_context
     from .schemas import PlayContextView
 
@@ -401,6 +404,11 @@ def enrich_session(session: SessionState) -> SessionState:
         session.tag_daroc_familiar_state = daroc_view
     else:
         session.tag_daroc_familiar_state = {}
+    session.tag_repeatable_service_state = repeatable_service_view(
+        session,
+        rules.dungeon_tables(),
+        rules.expert_skills(),
+    )
     ok, reason = rest_eligibility(session, tile)
     session.rest_available = ok
     session.rest_block_reason = reason
@@ -4619,6 +4627,16 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "source": "TAG pp.20, 22, 24, 26; player-confirmed non-permanent Give up",
         },
         {
+            "state": "Rumor 6 repeatable bargain",
+            "meaning": "After the shared opening enters Scene 2, one persisted inline service host supports any desired eligible Shoes purchases and the single eligible illusion lesson. Its price becomes free automatically after three recorded pairs; only explicit Done resolves the Rumor.",
+            "source": "TAG p.23, Rumor 6; TAG pp.25-26, Scene 2",
+        },
+        {
+            "state": "Rumor 11 single-batch training",
+            "meaning": "After the shared opening enters Scene 3, one persisted inline service host validates the complete simultaneous training batch, commits all 60 gp × Level payments, and then rolls every XP check. Training may be skipped, but no later trainee can be added after the batch; explicit Done resolves the visit.",
+            "source": "TAG p.24, Rumor 11; TAG p.26, Scene 3",
+        },
+        {
             "state": "heard",
             "meaning": "The rumor was generated or saved for later; it remains available because its numbered Scene has not been played through.",
             "source": "TAG p.22, Rumors",
@@ -4741,9 +4759,9 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "surface": "Prompt action buttons and Relevant Now shortcuts",
-            "shown_in": "Generated Adventures Guild rooms and Adventures Guild Actions dialog.",
-            "player_use": "Prefills Adventures Guild Actions for lead-specific choices, purchases, services, side rewards, Clue gates, route rewrites, XP markers, and profile-specific procedure rolls. Specific lead actions now replace generic final-route/reward/XP boilerplate when the profile knows what the scene offers; older modules still get repaired fallback metadata.",
-            "pdf_boundary": "Buttons prefill state only; the player still confirms exact amounts/results.",
+            "shown_in": "Generated Adventures Guild Current Objective, room prompts, Relevant Now, and the Adventures Guild Actions dialog.",
+            "player_use": "Runs registered typed choices, purchases, services, route rewrites, and procedure rolls directly when their PDF-backed contract is encoded. Unsupported or manual-only actions still prefill Adventures Guild Actions for player review. Specific lead actions replace generic final-route/reward/XP boilerplate when the profile knows what the scene offers; older modules still get repaired fallback metadata.",
+            "pdf_boundary": "Typed controls enforce their registered costs, eligibility, rolls, and outcomes; manual fallback controls only prefill state and still require the player to confirm exact PDF values.",
         },
         {
             "surface": "Typed printed scene procedures",
@@ -4831,16 +4849,16 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "structure": "vendor",
             "when_to_use": "The PDF offers items, spells, or paid bargains such as Shoes of Fast Walk or an illusion lesson.",
-            "required_profile_fields": "finale_mode vendor, exact purchase actions, item/spell choice UI, cost/free-condition hover text.",
-            "ui_expectation": "No proxy combat. Buttons open guided purchase/spell pickers and pay/apply only after the player confirms the choice.",
-            "checking_notes": "Check item effects, price, maximum quantity, eligible receiver, and whether any free condition is printed.",
+            "required_profile_fields": "finale_mode vendor, final-scene purchase actions, one required Done action, persisted service state, item/spell choice UI, exact costs, derived free condition, and eligibility hover text.",
+            "ui_expectation": "The opening remains Investigate / Not now. At the printed vendor Scene, one inline host repeats optional purchases, applies the single lesson, preserves state across resume, and exposes Done; no proxy combat or manual free-price checkbox is used.",
+            "checking_notes": "For Blackbird Hill, check TAG Scene 2 pp.25-26: 200 gp per pair, one per wearer, +Tier Defense while withdrawing/fleeing melee, magic-item users and hirelings but not animals, one normally eligible illusion lesson for 100 gp or automatically free after three pairs, and explicit Done.",
         },
         {
             "structure": "trainer",
             "when_to_use": "The PDF leads to a trainer/service rather than an exploration site, such as Deoldyn Scene 3.",
-            "required_profile_fields": "lead_structure trainer, finale_mode service, entry_prompt_actions, final_prompt_actions, cost formula, eligible character rule, skill/spell choices.",
-            "ui_expectation": "Training is offered immediately in the first prompt; the app filters eligible characters, pays the service cost, rolls the printed check, and applies only successful choices.",
-            "checking_notes": "For Deoldyn, check TAG Scene 3: bow-capable trainee, 60 gp x Level, once per character between adventures, Deadly Accuracy or Dead Shot choice, and money spent even on failure.",
+            "required_profile_fields": "lead_structure trainer, finale_mode service, shared opening actions only at entry, final-scene training and required Done actions, persisted service state, cost formula, eligible character rule, and skill/spell choices.",
+            "ui_expectation": "The opening remains Investigate / Not now. At the printed trainer Scene, one inline host filters eligible characters, validates the complete simultaneous batch before mutation, takes all payments first, rolls automatically, applies successful choices, then blocks later additions and exposes Done.",
+            "checking_notes": "For Deoldyn, check TAG p.26 Scene 3: every bow-capable trainee may train once between adventures for 60 gp × current Level; commit all payments before all XP rolls; money is spent on failure; choose Deadly Accuracy, Dead Shot, or normal level advancement for a base Elf; add no trainee after the batch results are known; then explicitly finish training.",
         },
         {
             "structure": "handoff",
@@ -5501,6 +5519,15 @@ async def transfer_character_gear(character_id: str, payload: CharacterTransfer)
     if has_item == has_gold:
         raise HTTPException(status_code=400, detail="Provide either item_name or gold_amount.")
     if has_item:
+        from .engine.tag_repeatable_services import (
+            SHOES_OF_FAST_WALK,
+            assigned_hireling_shoes_lock_reason,
+        )
+
+        if str(payload.item_name or "").strip().casefold() == SHOES_OF_FAST_WALK.casefold():
+            locked = assigned_hireling_shoes_lock_reason(source_session, source.id)
+            if locked:
+                raise HTTPException(status_code=400, detail=locked)
         ok, message = transfer_character_item(
             source,
             target,
@@ -5623,8 +5650,21 @@ async def quote_character_sale(character_id: str, item_name: str) -> dict:
     character = store.get("characters", character_id, Character.model_validate)
     if character is None:
         raise HTTPException(status_code=404, detail="Character not found.")
-    _prepare_roster_service_character(character, service_label="Equipment shopping")
-    return sell_quote(character, rules.equipment_shop(), item_name=item_name)
+    session, _member, _carried_gold = _prepare_roster_service_character(
+        character,
+        service_label="Equipment shopping",
+    )
+    quote = sell_quote(character, rules.equipment_shop(), item_name=item_name)
+    from .engine.tag_repeatable_services import (
+        SHOES_OF_FAST_WALK,
+        assigned_hireling_shoes_lock_reason,
+    )
+
+    if item_name.strip().casefold() == SHOES_OF_FAST_WALK.casefold():
+        locked = assigned_hireling_shoes_lock_reason(session, character.id)
+        if locked:
+            quote.update({"quote_gp": None, "kind": "blocked", "note": locked})
+    return quote
 
 
 @app.post("/api/characters/{character_id}/sell-item")
@@ -5633,6 +5673,15 @@ async def sell_character_item(character_id: str, payload: CharacterSellItem) -> 
     if character is None:
         raise HTTPException(status_code=404, detail="Character not found.")
     session, member, carried_gold = _prepare_roster_service_character(character, service_label="Equipment shopping")
+    from .engine.tag_repeatable_services import (
+        SHOES_OF_FAST_WALK,
+        assigned_hireling_shoes_lock_reason,
+    )
+
+    if payload.item_name.strip().casefold() == SHOES_OF_FAST_WALK.casefold():
+        locked = assigned_hireling_shoes_lock_reason(session, character.id)
+        if locked:
+            raise HTTPException(status_code=400, detail=locked)
     ok, message, gold_received = sell_item(
         character,
         rules.equipment_shop(),
@@ -7529,6 +7578,152 @@ async def session_tag_repair_guidance(session_id: str) -> SessionState:
     return enrich_session(session)
 
 
+def _sync_tag_repeatable_service_roster(
+    session: SessionState,
+    character_ids: set[str],
+) -> list[Character]:
+    """Persist only the durable character fields changed by a TAG service."""
+    refreshed: list[Character] = []
+    if not character_ids:
+        return refreshed
+    for member in session.party:
+        if member.character_id not in character_ids:
+            continue
+        character = store.get("characters", member.character_id, Character.model_validate)
+        if character is None:
+            continue
+        _apply_member_state_to_character(character, member)
+        store.save("characters", character)
+        refreshed.append(character)
+    return refreshed
+
+
+def _perform_tag_repeatable_service_action(
+    session: SessionState,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    from .engine.tag_campaign import (
+        load_campaign,
+        record_session_tag_rumor_state,
+        save_campaign,
+    )
+    from .engine.tag_repeatable_services import (
+        buy_shoes_of_fast_walk,
+        finish_repeatable_service,
+        repeatable_service_kind,
+        tag_illusion_spell_options,
+        teach_leprechaun_illusion_spell,
+        train_with_deoldyn,
+    )
+
+    _refresh_generated_tag_manifest_on_resume(session)
+    repair_required_tag_scene_lifecycle(session)
+    service_kind = repeatable_service_kind(session)
+    if service_kind not in {"leprechaun", "deoldyn"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Rumour 6 or Rumour 11's repeatable service is not active in this adventure.",
+        )
+    if session.active_quest is None:
+        raise HTTPException(status_code=400, detail="The generated Adventures Guild quest state is missing.")
+    room_id = _imported_room_id_for_tile(session, random_engine._current_tile(session))
+    if room_id != "tag-final-scene":
+        raise HTTPException(
+            status_code=400,
+            detail="Continue to the printed service scene before using its purchase, training, or Done action.",
+        )
+    if session.mode != "exploration":
+        raise HTTPException(
+            status_code=400,
+            detail="Resolve the current encounter before using this scene's purchase, lesson, training, or Done controls.",
+        )
+    action = str(payload.get("action") or "").strip().casefold()
+    if session.tag_generated_completion_pending:
+        raise HTTPException(
+            status_code=400,
+            detail="This service is resolved. Use Continue — return to town and finish.",
+        )
+
+    changed_ids: set[str] = set()
+    try:
+        if action == "buy_shoes":
+            result = buy_shoes_of_fast_walk(
+                session,
+                payer_character_id=str(payload.get("payer_character_id") or ""),
+                recipient_kind=str(payload.get("recipient_kind") or "hero"),
+                recipient_id=str(payload.get("recipient_id") or ""),
+            )
+        elif action == "learn_spell":
+            options = tag_illusion_spell_options(
+                session,
+                rules.dungeon_tables(),
+                rules.expert_skills(),
+            )
+            result = teach_leprechaun_illusion_spell(
+                session,
+                payer_character_id=str(payload.get("payer_character_id") or ""),
+                learner_character_id=str(payload.get("learner_character_id") or ""),
+                spell_name=str(payload.get("spell_name") or ""),
+                spell_options=options,
+            )
+        elif action == "train":
+            raw_trainings = payload.get("trainings")
+            trainings = [dict(item) for item in raw_trainings if isinstance(item, dict)] if isinstance(raw_trainings, list) else []
+            result = train_with_deoldyn(session, trainings=trainings)
+        elif action == "done":
+            state = finish_repeatable_service(session)
+            result_text = str(state.get("result_text") or "The service visit is complete.")
+            if not session.tag_generated_completion_pending:
+                title = (
+                    "Blackbird Hill bargain resolved"
+                    if service_kind == "leprechaun"
+                    else "Deoldyn's archery training resolved"
+                )
+                _mark_generated_tag_lead_complete(
+                    session,
+                    title=title,
+                    outcome=result_text,
+                    narrative=result_text,
+                )
+            result = {
+                "result_text": result_text,
+                "changed_character_ids": [],
+                "state": state,
+                "resolved": True,
+            }
+        else:
+            raise ValueError("Choose a supported purchase, lesson, training batch, or Done action.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    changed_ids.update(str(value) for value in result.get("changed_character_ids") or [])
+    campaign = load_campaign(store)
+    if action == "done":
+        record_session_tag_rumor_state(campaign, session, status="resolved")
+    campaign = save_campaign(store, campaign)
+    characters = _sync_tag_repeatable_service_roster(session, changed_ids)
+    session.updated_at = now_utc()
+    store.save("sessions", session)
+    return {
+        "campaign": campaign,
+        "characters": characters,
+        "result_text": str(result.get("result_text") or ""),
+        "resolved": bool(result.get("resolved") or action == "done"),
+        "session": enrich_session(session),
+    }
+
+
+@app.post("/api/sessions/{session_id}/tag-repeatable-service")
+async def session_tag_repeatable_service(
+    session_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    return _perform_tag_repeatable_service_action(session, payload)
+
+
 @app.post("/api/sessions/{session_id}/tag-branch-action")
 async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.star_object_curse import (
@@ -7549,6 +7744,21 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
     branch_action = str(payload.get("branch_action") or "social_choice")
+    if branch_action == "tag_repeatable_service_done":
+        service_payload = dict(payload)
+        service_payload["action"] = "done"
+        return _perform_tag_repeatable_service_action(session, service_payload)
+    if branch_action in {"leprechaun_shoes", "leprechaun_illusion_spell"}:
+        from .engine.tag_repeatable_services import repeatable_service_kind
+
+        if repeatable_service_kind(session) == "leprechaun":
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Use the visible Blackbird Hill service host. It enforces one pair per recipient, "
+                    "derives the free lesson from successful purchases, and applies the learned spell."
+                ),
+            )
     action_reference = str(payload.get("reference") or "")
     medusa_stealth_breakdown: list[dict[str, Any]] = []
     if branch_action == "medusa_group_stealth":
@@ -8007,29 +8217,75 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
         raise HTTPException(status_code=404, detail="Session not found.")
     _refresh_generated_tag_manifest_on_resume(session)
     repair_required_tag_scene_lifecycle(session)
+    if session.tag_generated_completion_pending:
+        raise HTTPException(
+            status_code=400,
+            detail="This Adventures Guild scene is resolved. Use Continue — return to town and finish.",
+        )
+    tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference")
+    route_action = str(payload.get("route_action") or "parley_success").strip()
+    route_reference = str(payload.get("reference") or "")
+    current_room_id = _imported_room_id_for_tile(session, random_engine._current_tile(session))
+    entry_prompts = tag_ref.get("room_prompts") if isinstance(tag_ref, dict) else {}
+    entry_prompt = entry_prompts.get("tag-lead-entry") if isinstance(entry_prompts, dict) else {}
+    entry_actions = entry_prompt.get("actions") if isinstance(entry_prompt, dict) else []
+    entry_actions = entry_actions if isinstance(entry_actions, list) else []
+    declared_entry_town_return = any(
+        isinstance(action, dict)
+        and str(action.get("action_type") or "") == "route"
+        and str(action.get("action_value") or "") == "final_route"
+        and str(action.get("reference") or "").strip() == route_reference.strip()
+        for action in entry_actions
+    )
+    rumor_entry_town_return = (
+        route_action == "final_route"
+        and isinstance(tag_ref, dict)
+        and str(tag_ref.get("lead_type") or "").casefold() == "rumor"
+        and current_room_id == "tag-lead-entry"
+        and declared_entry_town_return
+    )
+    if (
+        route_action == "final_route"
+        and isinstance(tag_ref, dict)
+        and str(tag_ref.get("lead_type") or "").casefold() == "rumor"
+        and current_room_id == "tag-lead-entry"
+        and not rumor_entry_town_return
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Choose Investigate or Not now — return to town at the Rumour opening before recording any finale.",
+        )
+    complete_when = session.imported_quest_complete_when or (
+        (session.imported_manifest or {}).get("quest") or {}
+    ).get("complete_when") or {}
+    required_room_id = str(complete_when.get("room_id") or "") if isinstance(complete_when, dict) else ""
+    if (
+        route_action == "final_route"
+        and not rumor_entry_town_return
+        and required_room_id
+        and tag_room_has_required_action(session, required_room_id)
+        and not required_tag_room_actions_are_terminal(session, required_room_id)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This scene has an unresolved required procedure. Use its visible scene controls and required Done action "
+                "before recording a final route."
+            ),
+        )
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
     entry = resolve_tag_route_action(
         campaign,
         character,
-        route_action=str(payload.get("route_action") or "parley_success"),
-        reference=str(payload.get("reference") or ""),
+        route_action=route_action,
+        reference=route_reference,
         clue_cost=int(payload.get("clue_cost") or 0),
     )
     rewrite_result = ""
     if isinstance(session.imported_manifest, dict):
         changed_detail = apply_tag_route_to_manifest(session.imported_manifest, campaign)
         rewrite_result = f"Applied route marker to active session: {changed_detail}."
-    tag_ref = (((session.imported_manifest or {}).get("source") or {}).get("parameters") or {}).get("tag_reference")
-    route_action = str(payload.get("route_action") or "parley_success")
-    route_reference = str(payload.get("reference") or "")
-    rumor_entry_town_return = (
-        route_action == "final_route"
-        and isinstance(tag_ref, dict)
-        and str(tag_ref.get("lead_type") or "").casefold() == "rumor"
-        and _imported_room_id_for_tile(session, random_engine._current_tile(session)) == "tag-lead-entry"
-        and "return to town" in route_reference.casefold()
-    )
     medusa_scene10_town_return = (
         route_action == "final_route"
         and _is_medusa_generated_session(session)
@@ -8039,24 +8295,6 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
     if route_action == "unlock_scene" and isinstance(tag_ref, dict):
         record_session_tag_rumor_state(campaign, session, status="investigating")
         _move_generated_tag_scene_target(session, tag_ref=tag_ref, reference=route_reference)
-    if route_action == "final_route" and session.active_quest is not None and not session.active_quest.completed:
-        route_returns_to_heard = (
-            "do not investigate" in route_reference.lower()
-            or "return to town" in route_reference.lower()
-        )
-        record_session_tag_rumor_state(
-            campaign,
-            session,
-            status="heard" if route_returns_to_heard else "resolved",
-            allow_status_reset=route_returns_to_heard,
-        )
-        session.active_quest.completed = True
-        state = dict(session.active_quest.tag_generated_lead_state or {})
-        state["route_recorded"] = True
-        state["scene_resolved"] = True
-        state["next_action"] = "Generated Adventures Guild scene resolved. Review reward, XP, Guild share, banking/storage, and closeout signoff."
-        session.active_quest.tag_generated_lead_state = state
-        session.log.append("Quest complete: generated Adventures Guild scene resolved.")
     if rumor_entry_town_return and session.active_quest is not None:
         record_session_tag_rumor_state(
             campaign,
@@ -8073,7 +8311,7 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
                 "It remains recorded in the campaign and may be investigated later."
             ),
         )
-    if medusa_scene10_town_return and session.active_quest is not None:
+    elif medusa_scene10_town_return and session.active_quest is not None:
         procedure_state = dict(session.active_quest.tag_procedure_state or {})
         medusa_state = dict(procedure_state.get("medusa_scene10") or {})
         medusa_state["phase"] = "returned_to_town"
@@ -8088,6 +8326,19 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
             narrative=(
                 "The party leaves the hunter's cabin undisturbed and returns to town. "
                 "The rumor investigation ends without confronting Xasartha."
+            ),
+        )
+    elif route_action == "final_route" and session.active_quest is not None and not session.active_quest.completed:
+        record_session_tag_rumor_state(campaign, session, status="resolved")
+        result_text = str(getattr(entry, "result_text", "") or route_reference or "Final route recorded.")
+        title = str(tag_ref.get("title") or "Adventures Guild scene") if isinstance(tag_ref, dict) else "Adventures Guild scene"
+        _mark_generated_tag_lead_complete(
+            session,
+            title=f"{title} resolved",
+            outcome=result_text,
+            narrative=(
+                "The selected final route has been recorded. Review any printed reward, XP, Guild share, banking, "
+                "or storage consequence, then use the visible Continue action to finish the adventure."
             ),
         )
     if character is not None:
@@ -8376,6 +8627,17 @@ async def session_tag_scene_action(session_id: str, payload: dict[str, Any]) -> 
         legacy_payload["action"] = "claim"
         legacy_payload["reward_recipient_id"] = str(payload.get("character_id") or "")
         return _perform_daroc_session_action(session, legacy_payload)
+    if scene_action == "deoldyn_training":
+        from .engine.tag_repeatable_services import repeatable_service_kind
+
+        if repeatable_service_kind(session) == "deoldyn":
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Use the visible Deoldyn batch host. It validates all trainees and payments first, "
+                    "then makes every selected XP roll automatically."
+                ),
+            )
     character = _optional_campaign_character(payload)
     if character is None:
         raise HTTPException(status_code=400, detail="Character is required.")
@@ -8555,7 +8817,14 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
             store,
             {payload.character_id, payload.target_character_id},
         )
-    if session.mode == "complete" and not was_complete:
+    completion_roster_recorded = any(
+        "Character roster updated" in str(line)
+        for line in session.summary or []
+    )
+    if session.mode == "complete" and (
+        not was_complete
+        or not completion_roster_recorded
+    ):
         if _required_tag_scene_terminal_failure(session):
             _persist_required_tag_scene_failure(session)
         else:

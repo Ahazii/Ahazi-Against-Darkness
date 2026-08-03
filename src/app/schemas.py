@@ -632,6 +632,8 @@ class PendingBodyguardInterceptState(BaseModel):
     protectee_id: str
     hireling_id: str
     enemy_id: str
+    escaping_melee: bool = False
+    withdrawing: bool = False
 
 
 class PendingCombatFoeAttack(BaseModel):
@@ -643,6 +645,8 @@ class CombatBodyguardPauseState(BaseModel):
     phase_index: int
     phases: list[str]
     remaining_attacks: list[PendingCombatFoeAttack] = Field(default_factory=list)
+    escape_kind: Literal["flee", "withdraw"] | None = None
+    escape_context: dict[str, object] = Field(default_factory=dict)
 
 
 class PendingAcolyteBlessingState(BaseModel):
@@ -1423,6 +1427,7 @@ class SessionState(BaseModel):
     imported_quest_complete_when: dict | None = None
     generated_tag_diagnostics: dict[str, object] = Field(default_factory=dict)
     tag_daroc_familiar_state: dict[str, object] = Field(default_factory=dict)
+    tag_repeatable_service_state: dict[str, object] = Field(default_factory=dict)
     play_context: PlayContextView | None = Field(default=None, exclude=True)
 
     @model_validator(mode="before")

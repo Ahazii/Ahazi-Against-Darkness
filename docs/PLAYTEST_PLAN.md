@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-03. Target build: v0.39.67.
+Last updated: 2026-08-03. Target build: v0.39.68.
 
 ## Adventure Test Gate: Passed
 
@@ -97,30 +97,70 @@ diagnostic wording, total-party destruction, failed-rescuer role swaps, the 5gp
 friendship rate, carrying-limit distribution, duplicate prevention, XP
 rollover, saved collapsed-panel preferences, and shared closeout endpoint.
 
-## Do Next: Rumor 9 Presentation Check
+## Completed: Rumor 9 Presentation Check
 
-The v0.39.66 live Rumor 9 procedure passed. Do not regenerate the module, repeat
-Streetwise searches, spend more Clues, or replay its reward/XP path. After
-deploying v0.39.67 and force-refreshing, perform only this presentation check:
+The v0.39.67 non-mutating presentation gate passed. Scene 5 showed the
+player-confirmed 200gp TAG p.24 offer, the copied Narrative Report separated
+carried, banked, and total gold, and the inspection did not change the completed
+Rumor state. Do not regenerate the module, repeat Streetwise searches, spend
+more Clues, or replay its reward/XP path.
 
-1. Resume the completed/recent Daroc session, or inspect its existing Narrative
-   Report surface without triggering a scene action. Confirm Scene 5 narrative
-   states **200gp**, matching the player-confirmed TAG p.24 Rumor offer; the
-   known erroneous 100gp line from p.26 must not remain in runtime narrative.
-2. Choose **Copy Narrative Report**. Under Party, confirm every hero is labelled
-   with **carried**, **banked**, and **total** gold. For Sly's tested finances,
-   the report must make the 200gp carry cap and remaining bank balance distinct,
-   rather than presenting only `200gp` and hiding the earlier bribe deductions.
-3. Confirm opening or copying the report does not alter gold, Clues, XP, Rumor
-   status, or the completed session.
+## Do Next: Bounded Rumors 6/11 Repeatable-Service Gate
 
-This is not a rules or reward retest. Focused tests own new-save narrative,
-resume normalization, reward idempotency, finance totals, and report formatting.
+Deploy v0.39.68 and force-refresh. Use the fixed Rumor
+selector and a disposable or otherwise safe party; do not reopen any passed
+Rumor 4 or 9 session. This gate checks only the shared host and one representative
+transaction path per service. Automated coverage owns exhaustive eligibility,
+failed-payment atomicity, duplicate prevention, all spell/skill outcomes, and
+legacy permutations.
 
-After this gate, implement the shared repeatable vendor/service host and an
-explicit Done action for Rumors 6 and 11. Do not mass-enable required scene
-completion: the remaining profiles still need their own printed terminal
-routes.
+### Rumor 6 — Blackbird Hill
+
+Rules source: Rumor 6 on TAG p.23 and Scene 2 on TAG pp.25-26.
+
+1. Start a fresh Rumor 6 module. Confirm the first choice beneath Narrative is
+   only **Investigate** / **Not now — return to town**; no purchase control may
+   appear before Investigate advances to Scene 2.
+2. At Blackbird Hill, confirm arrival does not complete the adventure. The
+   guided service must offer repeatable **Buy Shoes of Fast Walk**, the single
+   optional illusion lesson, and **Done — leave Blackbird Hill**.
+3. Buy one 200gp pair for an eligible living hero. If a disposable living
+   hireling is already available, use that hireling instead and confirm the UI
+   explains the player-confirmed interpretation: no animal companion, party
+   Tier while worn, party ownership retained, and automatic return to party
+   ownership when the hireling leaves. Do not dismiss a valued hireling merely
+   to exercise the return path.
+4. Refresh or save/resume before Done. Confirm the purchase remains recorded and
+   the optional controls remain available. The three-pair free-lesson threshold
+   and hireling-departure transfer are automated-only unless the disposable
+   party already makes those checks harmless.
+5. Choose **Done — leave Blackbird Hill**. Confirm the service resolves exactly
+   once, then use the normal **Continue — return to town and finish** closeout.
+
+### Rumor 11 — Deoldyn's Range
+
+Rules source: Rumor 11 on TAG p.24 and Scene 3 on TAG p.26.
+
+1. Start a fresh Rumor 11 module. Confirm the first choice is again only
+   **Investigate** / **Not now — return to town**; training appears only after
+   Investigate reaches Scene 3, and arrival does not complete the adventure.
+2. Select a small batch of living bow-capable trainees (two when the disposable
+   party safely permits it). Confirm the review shows each `60gp × Level` cost
+   before confirmation. If a normal/base Elf is present, confirm that Elf alone
+   can choose ordinary level advancement instead of Deadly Accuracy or Dead
+   Shot; variant Elves must not receive that option.
+3. Confirm the batch once. The result must say every selected payment was taken
+   before any automatic XP roll. If a roll fails naturally, confirm its payment
+   is not refunded; do not force a failure. Refresh or save/resume and confirm
+   the results persist without rerolling.
+4. Confirm the host now says the simultaneous batch is closed and does not let
+   an unselected or already trained character start a later batch after the
+   results are known. Then choose **Done — finish training** and complete the
+   normal shared closeout exactly once.
+
+Stop after these two bounded modules and attach Narrative Reports for any
+mismatch. Do not mass-enable required scene completion: every remaining Rumor
+still needs its own printed terminal routes.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

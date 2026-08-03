@@ -107,6 +107,24 @@ def test_rulebook_reference_loads() -> None:
     assert per_skill == []
 
 
+def test_rulebook_reference_covers_shared_tag_rumor_service_contract() -> None:
+    root = Path(__file__).resolve().parents[1]
+    rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
+    by_id = {entry["id"]: entry for entry in rules.rulebook_reference()}
+
+    leprechaun = by_id["tag_leprechaun_scene2_service"]
+    assert leprechaun["source_page"] == 25
+    assert "200 gp per pair" in leprechaun["body"]
+    assert "normal class and spell-list eligibility" in leprechaun["body"]
+    assert "Done — leave Blackbird Hill" in leprechaun["body"]
+
+    deoldyn = by_id["tag_deoldyn_scene3_service"]
+    assert deoldyn["source_page"] == 26
+    assert "complete batch" in deoldyn["body"]
+    assert "commits every payment first" in deoldyn["body"]
+    assert "Done — finish training" in deoldyn["body"]
+
+
 def test_rulebook_reference_source_integrity() -> None:
     root = Path(__file__).resolve().parents[1]
     rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")

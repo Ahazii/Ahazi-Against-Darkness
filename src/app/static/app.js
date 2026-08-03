@@ -2112,7 +2112,7 @@ const CLASS_ABILITY_TOOLTIPS = {
   kukla_army_of_dolls:
     "Deploy Army of Dolls once, adding the rulebook effect to this adventure.",
   kukla_compartment_stash:
-    "Hide the selected item in the Kukla secret compartment.",
+    "Hide the selected item in the Kukla secret compartment. Shoes of Fast Walk assigned to a living hireling must remain accessible; an extra unassigned pair may still be hidden.",
   kukla_compartment_retrieve:
     "Retrieve the selected item or hidden gold from the Kukla secret compartment.",
   kukla_green_ring_revive:
@@ -9403,7 +9403,7 @@ function setButtonTooltip(button, text) {
 const ITEM_TOOLTIP_RULES = [
   [/bofto.*star-shaped cursed object|star-shaped object/i, "Bofto's Star-Shaped Cursed Object (TAG pp.30-31): it cannot be sold, dropped, or voluntarily transferred. No magic or Blessing removes it. The curse ends only when its carrier explicitly lets Invisible Gremlins take it."],
   [/scroll of disbelief/i, "Scroll of Disbelief (EE p.74): burn it when Invisible Gremlins are pending to reveal d6+1 L3 Minions with Morale -1, one attack, and one group Treasure roll. Their failed Defense hits steal instead of causing Life loss."],
-  [/shoes of fast walk/i, "Shoes of Fast Walk: 200 gp per pair from the leprechaun bargain. The wearer adds +Tier to Defense when withdrawing or fleeing melee."],
+  [/shoes of fast walk/i, "Shoes of Fast Walk (TAG pp.25-26, Scene 2): 200 gp per pair, at most one per eligible wearer. A hero adds their Tier to Defense while withdrawing or fleeing melee. An assigned living hireling uses the party Tier; that pair remains party property and returns to the paying hero when the hireling leaves."],
   [/potion of healing/i, "Potion of Healing: drink when allowed to recover Life. Barbarians cannot use magic potions; transfer it to an eligible ally."],
   [/food ration/i, "Food ration: eaten to reset a hero's hunger timer. Track carried rations against food limits where those rules are active."],
   [/bandage/i, "Bandage: recovery supply used by the app's healing/recovery prompts when the rules permit field treatment."],
@@ -11801,7 +11801,17 @@ function tagMemberSpendableGold(member) {
   return Math.max(0, (member?.gold || 0) + (member?.bank_gold || 0));
 }
 
-const TAG_BOW_CAPABLE_CLASS_IDS = new Set(["warrior", "barbarian", "ranger", "dwarf", "elf"]);
+const TAG_BOW_CAPABLE_CLASS_IDS = new Set([
+  "warrior",
+  "barbarian",
+  "ranger",
+  "dwarf",
+  "elf",
+  "druid",
+  "assassin",
+  "bulwark",
+  "paladin",
+]);
 
 function tagCanWieldBow(member) {
   const classId = String(member?.class_id || "").toLowerCase();
@@ -11912,6 +11922,10 @@ function tagOutdoorStealthModifier(member) {
 }
 
 function openLeprechaunSpellDialog(defaults = {}) {
+  if (state.session?.tag_repeatable_service_state?.kind === "leprechaun") {
+    setStatus("Use the visible Blackbird Hill service host; it derives the lesson price and eligible learners from persisted Scene 2 state.");
+    return;
+  }
   if (!tagIllusionSpellDialog || !tagIllusionSpellCharacter || !tagIllusionSpellSelect || !tagIllusionSpellConfirm) {
     openTagActionsWithDefaults(defaults);
     return;
@@ -11922,7 +11936,7 @@ function openLeprechaunSpellDialog(defaults = {}) {
     const option = document.createElement("option");
     option.value = member.character_id;
     option.textContent = `${member.name} (${tagMemberSpendableGold(member)}gp available)`;
-    option.title = `Pays from carried gold first, then banked gold if session payment is available.`;
+    option.title = "Legacy/manual fallback: active generated Rumor 6 uses the persisted inline host. Session payments use banked gold first, then carried gold.";
     tagIllusionSpellCharacter.appendChild(option);
   }
   const selectedFromReference = String(defaults.reference || "").replace(/^Scene 2 illusion spell:?\s*/i, "").replace(/\s*\(free\)\s*$/i, "").trim();
@@ -11989,6 +12003,10 @@ function populateDeoldynSkillSelect() {
 }
 
 function openDeoldynTrainingDialog(defaults = {}) {
+  if (state.session?.tag_repeatable_service_state?.kind === "deoldyn") {
+    setStatus("Use the visible Deoldyn host; all selected fees must be committed before the one simultaneous Scene 3 XP-roll batch.");
+    return;
+  }
   if (!tagDeoldynTrainingDialog || !tagDeoldynTrainingCharacter || !tagDeoldynTrainingSkill || !tagDeoldynTrainingConfirm) {
     openTagActionsWithDefaults(defaults);
     return;
@@ -12000,7 +12018,7 @@ function openDeoldynTrainingDialog(defaults = {}) {
     const option = document.createElement("option");
     option.value = member.character_id;
     option.textContent = `${member.name} (${cost} gp, ${tagMemberSpendableGold(member)} gp available)`;
-    option.title = `Scene 3 cost is 60 gp x Level ${member.level || 1}. Payment uses carried gold first, then banked gold if session payment is available.`;
+    option.title = `Legacy/manual fallback: Scene 3 cost is 60 gp × Level ${member.level || 1}. Active generated Rumor 11 uses one simultaneous batch and spends banked gold first, then carried gold.`;
     option.disabled = tagMemberSpendableGold(member) < cost;
     tagDeoldynTrainingCharacter.appendChild(option);
   }
@@ -12009,11 +12027,11 @@ function openDeoldynTrainingDialog(defaults = {}) {
   if (firstEnabled) tagDeoldynTrainingCharacter.value = firstEnabled.value;
   if (tagDeoldynTrainingNote) {
     tagDeoldynTrainingNote.textContent = living.length
-      ? "Only bow-capable living characters are listed. Deoldyn's Scene 3 service costs 60 gp x Level; the money is spent even if the training XP roll fails."
+      ? "Legacy/manual fallback only. Active Rumor 11 uses the shared batch host. Scene 3 costs 60 gp × Level and spent money is retained on a failed training XP roll."
       : "No living party member can currently wield a bow for Deoldyn's Scene 3 training.";
   }
   tagDeoldynTrainingConfirm.disabled = !firstEnabled;
-  setButtonTooltip(tagDeoldynTrainingConfirm, "Pay Deoldyn, roll the printed Scene 3 training XP check, and record the selected archery skill only if the roll succeeds.");
+  setButtonTooltip(tagDeoldynTrainingConfirm, "Legacy/manual fallback only. Active Rumor 11 requires the visible simultaneous batch host. This records the selected Deoldyn skill source only on success.");
   tagDeoldynTrainingConfirm.onclick = async () => {
     tagDeoldynTrainingConfirm.disabled = true;
     const originalText = tagDeoldynTrainingConfirm.textContent;
@@ -12795,6 +12813,35 @@ async function runTagSceneActionWithDefaults(defaults = {}) {
   }
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "Adventures Guild scene result applied.");
+}
+
+async function runTagRepeatableServiceAction(payload = {}) {
+  if (!state.session?.id) {
+    throw new Error("This service requires an active generated Adventures Guild adventure.");
+  }
+  const result = await api(
+    `/api/sessions/${encodeURIComponent(state.session.id)}/tag-repeatable-service`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+  state.campaign = result.campaign;
+  for (const character of result.characters || []) {
+    const index = state.characters.findIndex((item) => item.id === character.id);
+    if (index >= 0) state.characters[index] = character;
+    else state.characters.push(character);
+  }
+  state.session = result.session;
+  syncSessionListFromSession(state.session);
+  if (state.session.mode === "complete") {
+    await finishCompletedAdventureClient(state.session);
+  } else {
+    renderSession();
+  }
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.result_text || "Adventures Guild service updated.");
+  return result;
 }
 
 async function runDarocAction(action, payload = {}) {
@@ -17676,7 +17723,7 @@ const ENVIRONMENT_TABLE_HINTS = {
   tag_medusa_scene10_procedure_table: "Hunter's Cabin approach (TAG pp.6-8, p.28): one party Stealth roll using the lowest modifier, then labelled Streetwise or immediate-fight choices.",
   tag_medusa_scene1_reaction_table: "Xasartha's reaction procedure (TAG p.25, Scene 1; EE pp.101, 162): bribe, Quest acceptance/refusal, fight, and fight-to-the-death outcomes.",
   tag_daroc_scene5_procedure_table: "Daroc's Lost Familiar (TAG pp.20, 24, 26): selected-character Streetwise searches, persistent eligible Clues, non-permanent Give up, 200 gp ruling, XP, and required closeout lifecycle.",
-  tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG p.22): heard, investigating, then resolved only after the paragraph and corresponding Scene are played.",
+  tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG pp.22-31): shared Investigate / Not now opening, printed-scene procedures, persisted repeatable Rumor 6/11 service hosts with explicit Done, then resolved closeout.",
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
   caverns_special_features_table: "Caverns Special Features (d6), EE p.112. Roll on room content 5 in caverns.",
   caverns_water_pool_table: "Cavern water pool sub-table (d6), EE p.112.",
@@ -25332,6 +25379,7 @@ function isExitOnWalkableCell(tile, exit) {
 /** Exits the player can see on the map and act on (excludes hidden/truncated/invalid markers). */
 function playerFacingExits(session, tile) {
   if (!tile) return [];
+  if (generatedTagRumorEntryChoicePending(session, tile)) return [];
   const cellOwnership = buildMapCellOwnership(session);
   const exits = (tile.exits || []).filter((exit) => {
     if (!isExitOnDisplayedCell(tile, exit, cellOwnership)) return false;
@@ -25801,7 +25849,7 @@ function fallbackFinalPromptActions(session = state.session) {
   if (objective.includes("shoes of fast walk") || objective.includes("buy shoes")) {
     actions.push({
       label: "Buy Shoes of Fast Walk",
-      tooltip: "Buy up to one pair per character for 200 gp each. Choose the buyer/receiver before applying.",
+      tooltip: "Buy one 200 gp pair per eligible wearer. Choose the payer and wearer before applying.",
       action_type: "branch",
       action_value: "leprechaun_shoes",
       reference: "Scene 2 Shoes of Fast Walk",
@@ -25957,81 +26005,381 @@ function appendTagDirectProcedureButton(parent, action, fallbackReference) {
   return true;
 }
 
+function tagServiceField(labelText, control, tooltip = "") {
+  const field = document.createElement("label");
+  field.className = "tag-service-field";
+  field.append(node("span", "tag-service-field-label", labelText), control);
+  if (tooltip) setTooltip(field, tooltip);
+  return field;
+}
+
 function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
-  if (!["leprechaun_shoes", "leprechaun_illusion_spell"].includes(defaults.branchAction || "")) return false;
-  const living = (state.session?.party || []).filter((member) => member.current_life > 0);
-  const wrap = node("div", "tag-context-guided-action");
-  const label = defaults.branchAction === "leprechaun_shoes" ? "Buy Shoes of Fast Walk" : "Learn illusion spell";
-  const rewardTooltip =
-    defaults.branchAction === "leprechaun_shoes"
-      ? "Shoes of Fast Walk cost 200 gp per pair. A wearer adds +Tier to Defense when withdrawing or fleeing melee."
-      : "One eligible character may learn one illusion spell from the leprechauns for 100 gp, or free if the party bought at least three pairs of magical shoes.";
-  setTooltip(wrap, rewardTooltip);
-  wrap.appendChild(node("strong", "", label));
-  const select = document.createElement("select");
-  setTooltip(select, "Choose the character who pays for and receives this Scene 2 leprechaun result.");
-  for (const member of living) {
-    const option = document.createElement("option");
-    option.value = member.character_id;
-    option.textContent = `${member.name} (${member.gold || 0}gp)`;
-    select.appendChild(option);
+  const service = state.session?.tag_repeatable_service_state || {};
+  const actionValue = defaults.branchAction || "";
+  if (
+    service.kind !== "leprechaun" ||
+    !["leprechaun_shoes", "leprechaun_illusion_spell", "tag_repeatable_service_done"].includes(actionValue)
+  ) return false;
+  if (parent.querySelector(".tag-repeatable-service-guided")) return true;
+
+  const wrap = node("div", "tag-context-guided-action tag-repeatable-service-guided");
+  setTooltip(
+    wrap,
+    "TAG pp.25–26, Scene 2: shoe purchases are optional and repeatable until Done, while the spell lesson may be taken once. The server enforces one pair per wearer, magic-item eligibility, hireling assignment, and the lesson's automatic free condition."
+  );
+  const heading = node("div", "tag-service-heading");
+  heading.appendChild(node("strong", "", "Blackbird Hill bargain"));
+  heading.appendChild(
+    subline(
+      `Shoes bought: ${Number(service.shoe_pair_count || 0)}. ` +
+      `Illusion lesson: ${service.lesson_used ? "used" : `${Number(service.lesson_cost_gp ?? 100)} gp`}.`
+    )
+  );
+  wrap.appendChild(heading);
+  if (service.resolved || service.phase === "resolved") {
+    wrap.appendChild(subline(service.result_text || "The Blackbird Hill bargain is resolved."));
+    parent.appendChild(wrap);
+    return true;
   }
-  wrap.appendChild(select);
-  const input =
-    defaults.branchAction === "leprechaun_shoes" ? document.createElement("input") : document.createElement("select");
-  if (defaults.branchAction === "leprechaun_shoes") {
-    input.type = "number";
-    input.min = "1";
-    input.max = "4";
-    input.step = "1";
-    input.value = String(defaults.amount || 1);
-    setTooltip(input, "Number of shoe pairs to buy. Each pair costs 200 gp and gives the wearer +Tier to Defense when withdrawing or fleeing melee.");
-  } else {
-    const selectedFromReference = String(defaults.reference || "").replace(/^Scene 2 illusion spell:?\s*/i, "").replace(/\s*\(free\)\s*$/i, "").trim();
-    populateIllusionSpellSelect(input, selectedFromReference);
+
+  const payers = Array.isArray(service.payers) ? service.payers : [];
+  const makePayerSelect = (cost) => {
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", `Payer for ${cost} gp service`);
+    for (const payer of payers) {
+      const option = new Option(`${payer.name} (${payer.available_gold} gp)`, payer.character_id);
+      option.disabled = Number(payer.available_gold || 0) < cost;
+      option.title = `${payer.name} has ${payer.available_gold} gp across banked and carried funds. Banked gold is spent before carried gold.`;
+      select.appendChild(option);
+    }
+    const first = Array.from(select.options).find((option) => !option.disabled);
+    if (first) select.value = first.value;
+    return select;
+  };
+
+  const shoesSection = node("section", "tag-service-section");
+  shoesSection.appendChild(node("strong", "", "Buy one pair of Shoes of Fast Walk"));
+  shoesSection.appendChild(
+    subline("200 gp per pair. Choose payer and one eligible wearer. Heroes own their pair; a hireling's pair remains party property and returns when that hireling leaves.")
+  );
+  const shoeFields = node("div", "tag-service-fields");
+  const shoePayer = makePayerSelect(200);
+  setTooltip(shoePayer, "Choose the party member who pays exactly 200 gp. The backend spends that hero's banked gold first, then carried gold.");
+  const recipient = document.createElement("select");
+  recipient.setAttribute("aria-label", "Shoes of Fast Walk wearer");
+  const recipients = [
+    ...(Array.isArray(service.hero_recipients) ? service.hero_recipients : []),
+    ...(Array.isArray(service.hireling_recipients) ? service.hireling_recipients : []),
+  ];
+  for (const item of recipients) {
+    const option = new Option(
+      `${item.name}${item.recipient_kind === "hireling" ? " (hireling)" : ""}`,
+      `${item.recipient_kind}|${item.recipient_id}`
+    );
+    option.disabled = !item.eligible;
+    option.title = item.blocked_reason || (
+      item.recipient_kind === "hireling"
+        ? "Uses the active party Tier while assigned; the pair remains owned by the paying hero."
+        : "Eligible magic-item user; may own no more than one pair."
+    );
+    recipient.appendChild(option);
   }
-  wrap.appendChild(input);
-  const freeLabel = defaults.branchAction === "leprechaun_illusion_spell" ? document.createElement("label") : null;
-  let freeInput = null;
-  if (freeLabel) {
-    freeLabel.className = "checkbox-row";
-    freeInput = document.createElement("input");
-    freeInput.type = "checkbox";
-    freeInput.checked = /\bfree\b/i.test(String(defaults.reference || ""));
-    setTooltip(freeLabel, "Tick only when the party has bought at least three pairs of magical shoes, making the leprechaun lesson free.");
-    freeLabel.appendChild(freeInput);
-    freeLabel.appendChild(document.createElement("span")).textContent = "Free lesson";
-    wrap.appendChild(freeLabel);
-  }
-  const btn = node("button", "primary", defaults.branchAction === "leprechaun_shoes" ? "Buy" : "Record spell");
-  btn.type = "button";
-  setButtonTooltip(btn, `${action.tooltip || "Apply this leprechaun Scene 2 result to the selected character."} ${rewardTooltip}`);
-  btn.disabled = !living.length;
-  btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = defaults.branchAction === "leprechaun_shoes" ? "Buying..." : "Recording...";
+  const firstRecipient = Array.from(recipient.options).find((option) => !option.disabled);
+  if (firstRecipient) recipient.value = firstRecipient.value;
+  setTooltip(recipient, "Choose one unshod eligible hero or living hireling. Animal companions are never listed.");
+  const buy = node("button", "primary", "Buy shoes — 200 gp");
+  buy.type = "button";
+  buy.disabled = !firstRecipient || !Array.from(shoePayer.options).some((option) => !option.disabled);
+  setButtonTooltip(buy, "Pay 200 gp once and assign one pair. The wearer gains +Tier Defense while withdrawing or fleeing melee; duplicate recipients are blocked.");
+  buy.addEventListener("click", async () => {
+    const [recipientKind, recipientId] = String(recipient.value || "|").split("|", 2);
+    buy.disabled = true;
+    buy.textContent = "Buying...";
     try {
-      await runTagBranchActionWithDefaults({
-        branchAction: defaults.branchAction,
-        characterId: select.value,
-        reference: defaults.branchAction === "leprechaun_shoes" ? defaults.reference : selectedIllusionSpellReference(input.value, Boolean(freeInput?.checked)),
-        amount: defaults.branchAction === "leprechaun_shoes" ? Number(input.value || 1) : freeInput?.checked ? 0 : 100,
+      await runTagRepeatableServiceAction({
+        action: "buy_shoes",
+        payer_character_id: shoePayer.value,
+        recipient_kind: recipientKind,
+        recipient_id: recipientId,
       });
     } catch (error) {
       handleError(error);
-    } finally {
-      btn.disabled = !living.length;
-      btn.textContent = originalText;
+      buy.disabled = false;
+      buy.textContent = "Buy shoes — 200 gp";
     }
   });
-  wrap.appendChild(btn);
-  const help =
-    defaults.branchAction === "leprechaun_shoes"
-      ? "Costs 200 gp per pair. The wearer adds +Tier to Defense when withdrawing or fleeing melee."
-      : "Costs 100 gp unless the reference says free; records a pending illusion spell lesson on the selected character.";
-  wrap.appendChild(subline(help));
+  shoeFields.append(
+    tagServiceField("Payer", shoePayer, "Choose the living party member who pays exactly 200 gp."),
+    tagServiceField("Wearer", recipient, "Choose one eligible hero or living hireling who does not already wear a pair."),
+    buy
+  );
+  shoesSection.appendChild(shoeFields);
+  if (!firstRecipient) {
+    shoesSection.appendChild(subline("No eligible wearer is currently available. Each wearer may have at most one pair, and animal companions cannot wear the Shoes."));
+  } else if (!Array.from(shoePayer.options).some((option) => !option.disabled)) {
+    shoesSection.appendChild(subline("No living party member currently has the 200 gp needed for this purchase."));
+  }
+  wrap.appendChild(shoesSection);
+
+  const lessonSection = node("section", "tag-service-section");
+  lessonSection.appendChild(node("strong", "", "Learn one illusion-type spell"));
+  if (service.lesson_used) {
+    const lesson = service.illusion_lesson || {};
+    lessonSection.appendChild(subline(`${lesson.learner_name || "One character"} already learned ${lesson.spell_name || "the selected spell"}.`));
+  } else {
+    const lessonCost = Number(service.lesson_cost_gp ?? 100);
+    lessonSection.appendChild(
+      subline(
+        lessonCost === 0
+          ? "Free: the party has bought at least three pairs. Learning is automatic, but normal class and spell-list eligibility still applies."
+          : "Costs 100 gp. It becomes free automatically after the third successful shoe purchase; there is no manual free checkbox."
+      )
+    );
+    const lessonFields = node("div", "tag-service-fields tag-service-spell-fields");
+    const spell = document.createElement("select");
+    spell.setAttribute("aria-label", "Illusion spell taught by the leprechauns");
+    const spellOptions = Array.isArray(service.spell_options) ? service.spell_options : [];
+    for (const item of spellOptions) {
+      const option = new Option(item.name, item.name);
+      option.disabled = !(item.eligible_character_ids || []).length;
+      option.title = `${item.description || "Qualifying illusion-type spell."} Eligible learners: ${(item.eligible_character_ids || []).length}. Source table: ${(item.source_tables || []).join(", ")}.`;
+      spell.appendChild(option);
+    }
+    const firstSpell = Array.from(spell.options).find((option) => !option.disabled);
+    if (firstSpell) spell.value = firstSpell.value;
+    setTooltip(spell, "Choose an indexed illusion-type spell from the supplements locked for this session. Hover for effect, source table, and eligible-learner count.");
+    const learner = document.createElement("select");
+    learner.setAttribute("aria-label", "Character learning the illusion spell");
+    const living = (state.session?.party || []).filter((member) => member.current_life > 0);
+    let learn = null;
+    const refreshLearners = () => {
+      learner.replaceChildren();
+      const selected = spellOptions.find((item) => item.name === spell.value);
+      const eligible = new Set(selected?.eligible_character_ids || []);
+      for (const member of living) {
+        if (!eligible.has(member.character_id)) continue;
+        const option = new Option(`${member.name} (${member.class_name || titleCase(member.class_id || "hero")})`, member.character_id);
+        option.title = `${member.name}'s normal class and spell-list rules permit ${selected?.name || "this spell"}; TAG makes the learning automatic.`;
+        learner.appendChild(option);
+      }
+      if (learn) {
+        learn.disabled = !spell.value || !learner.options.length || !Array.from(lessonPayer.options).some((option) => !option.disabled);
+      }
+    };
+    spell.addEventListener("change", refreshLearners);
+    refreshLearners();
+    setTooltip(learner, "Only living characters whose normal class and spell-list rules permit the selected spell are listed. TAG removes the learning roll, not eligibility.");
+    const lessonPayer = makePayerSelect(lessonCost);
+    setTooltip(lessonPayer, `Choose who pays ${lessonCost} gp. The server recalculates the price from successful shoe purchases before applying the lesson.`);
+    learn = node("button", "primary", lessonCost ? `Learn spell — ${lessonCost} gp` : "Learn spell — free");
+    learn.type = "button";
+    learn.disabled = !firstSpell || !learner.options.length || !Array.from(lessonPayer.options).some((option) => !option.disabled);
+    setButtonTooltip(learn, "Apply the single automatic Scene 2 lesson. The chosen spell is added to the learner's repertoire; the server rejects invalid class/list combinations.");
+    learn.addEventListener("click", async () => {
+      learn.disabled = true;
+      learn.textContent = "Learning...";
+      try {
+        await runTagRepeatableServiceAction({
+          action: "learn_spell",
+          payer_character_id: lessonPayer.value,
+          learner_character_id: learner.value,
+          spell_name: spell.value,
+        });
+      } catch (error) {
+        handleError(error);
+        learn.disabled = false;
+        learn.textContent = lessonCost ? `Learn spell — ${lessonCost} gp` : "Learn spell — free";
+      }
+    });
+    lessonFields.append(
+      tagServiceField("Illusion spell", spell, "Choose an indexed illusion-type spell from the supplements locked for this session."),
+      tagServiceField("Learner", learner, "Only living characters whose normal class and spell-list rules permit the selected spell are listed."),
+      tagServiceField("Payer", lessonPayer, `Choose the living party member who pays ${lessonCost} gp.`),
+      learn
+    );
+    lessonSection.appendChild(lessonFields);
+    if (!spellOptions.length) {
+      lessonSection.appendChild(subline("No qualifying indexed spell is available from the supplements locked for this session."));
+    } else if (!firstSpell || !learner.options.length) {
+      lessonSection.appendChild(subline("No living character is eligible to learn any currently indexed illusion-type spell."));
+    }
+  }
+  wrap.appendChild(lessonSection);
+
+  const done = node("button", "secondary tag-service-done", "Done — leave Blackbird Hill");
+  done.type = "button";
+  setButtonTooltip(done, "Finish the optional vendor visit after every desired purchase and the single optional lesson. Buying nothing is allowed. This resolves the Rumour and reveals the ordinary Continue closeout button.");
+  done.addEventListener("click", async () => {
+    done.disabled = true;
+    done.textContent = "Finishing...";
+    try {
+      await runTagRepeatableServiceAction({ action: "done" });
+    } catch (error) {
+      handleError(error);
+      done.disabled = false;
+      done.textContent = "Done — leave Blackbird Hill";
+    }
+  });
+  wrap.appendChild(done);
+  parent.appendChild(wrap);
+  return true;
+}
+
+function appendDeoldynGuidedAction(parent, action, fallbackReference) {
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  const service = state.session?.tag_repeatable_service_state || {};
+  const actionValue = defaults.sceneAction || defaults.branchAction || "";
+  if (
+    service.kind !== "deoldyn" ||
+    !["deoldyn_training", "tag_repeatable_service_done"].includes(actionValue)
+  ) return false;
+  if (parent.querySelector(".tag-repeatable-service-guided")) return true;
+
+  const wrap = node("div", "tag-context-guided-action tag-repeatable-service-guided deoldyn-service-guided");
+  setTooltip(
+    wrap,
+    "TAG p.26, Scene 3: each bow-capable character may train once between adventures for 60 gp × current Level. Select the complete simultaneous batch; the server takes all payments first, rolls every selected XP check automatically, and permits no later additions."
+  );
+  const heading = node("div", "tag-service-heading");
+  heading.appendChild(node("strong", "", "Deoldyn's archery training"));
+  const priorResults = Array.isArray(service.training_results) ? service.training_results : [];
+  heading.appendChild(
+    subline(
+      `${priorResults.length} training attempt(s) recorded. ` +
+      `${priorResults.filter((result) => result.success).length} succeeded.`
+    )
+  );
+  wrap.appendChild(heading);
+  if (service.resolved || service.phase === "resolved") {
+    wrap.appendChild(subline(service.result_text || "Deoldyn's training visit is resolved."));
+    parent.appendChild(wrap);
+    return true;
+  }
+
+  wrap.appendChild(
+    subline(
+      "Choose everyone who will train and each desired result before submitting the one simultaneous batch. Every selected trainee pays before any dice are rolled; failed XP rolls do not refund the fee."
+    )
+  );
+  if (service.training_batch_resolved) {
+    wrap.appendChild(
+      subline("The simultaneous training batch has already been paid and rolled. No later batch may be added after seeing those results; choose Done when the visit is finished.")
+    );
+  }
+  const traineeList = node("div", "tag-service-trainee-list");
+  const rowControls = [];
+  for (const trainee of Array.isArray(service.trainees) ? service.trainees : []) {
+    const row = node("div", `tag-service-trainee${trainee.eligible ? "" : " is-disabled"}`);
+    const chooseLabel = document.createElement("label");
+    chooseLabel.className = "tag-service-trainee-choice";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.disabled = !trainee.eligible;
+    checkbox.setAttribute("aria-label", `Train ${trainee.name}`);
+    const identity = node(
+      "span",
+      "tag-service-trainee-name",
+      `${trainee.name} · Level ${trainee.level} · ${trainee.cost_gp} gp (${trainee.available_gold} gp available)`
+    );
+    chooseLabel.append(checkbox, identity);
+    setTooltip(
+      chooseLabel,
+      trainee.blocked_reason || `${trainee.name} can wield a bow and may train once. The exact fee is 60 × Level ${trainee.level} = ${trainee.cost_gp} gp.`
+    );
+    row.appendChild(chooseLabel);
+
+    const outcome = document.createElement("select");
+    outcome.setAttribute("aria-label", `${trainee.name} training outcome`);
+    for (const item of trainee.outcomes || []) {
+      const option = new Option(item.label, item.id);
+      option.title = item.summary || "Deoldyn training result.";
+      outcome.appendChild(option);
+    }
+    outcome.disabled = !trainee.eligible || !outcome.options.length;
+    setTooltip(outcome, "Choose the result this character attempts. A base Elf may use the XP roll for normal level advancement; other eligible bow users choose an archery skill.");
+    row.appendChild(
+      tagServiceField("Training result", outcome, "Choose the archery result this character attempts.")
+    );
+
+    const spell = document.createElement("select");
+    spell.setAttribute("aria-label", `${trainee.name} new level spell`);
+    const spellField = tagServiceField(
+      "New spell if Level is gained",
+      spell,
+      "Choose the basic Elf spell prepared in the new slot if the level-up roll succeeds."
+    );
+    spellField.classList.add("tag-service-level-spell-field", "hidden");
+    const refreshSpell = () => {
+      const selected = (trainee.outcomes || []).find((item) => item.id === outcome.value);
+      const choices = Array.isArray(selected?.spell_choices) ? selected.spell_choices : [];
+      spell.replaceChildren(...choices.map((name) => new Option(name, name)));
+      spellField.classList.toggle("hidden", outcome.value !== "level_up");
+      spell.disabled = outcome.value !== "level_up" || !choices.length;
+    };
+    outcome.addEventListener("change", refreshSpell);
+    refreshSpell();
+    setTooltip(spell, "Preselect the basic Elf spell prepared in the new slot if this level-up XP roll succeeds. Failed rolls leave the spell unchanged.");
+    row.appendChild(spellField);
+    if (trainee.blocked_reason) row.appendChild(subline(trainee.blocked_reason));
+    traineeList.appendChild(row);
+    rowControls.push({ trainee, checkbox, outcome, spell });
+  }
+  wrap.appendChild(traineeList);
+
+  const totalLine = subline("Selected batch: 0 trainee(s), 0 gp committed before rolling.");
+  const train = node("button", "primary", "Pay all and roll training batch");
+  train.type = "button";
+  const refreshBatch = () => {
+    const selected = rowControls.filter(({ checkbox }) => checkbox.checked && !checkbox.disabled);
+    const total = selected.reduce((sum, { trainee }) => sum + Number(trainee.cost_gp || 0), 0);
+    totalLine.textContent = `Selected batch: ${selected.length} trainee(s), ${total} gp committed before rolling.`;
+    train.disabled = !selected.length;
+  };
+  for (const control of rowControls) control.checkbox.addEventListener("change", refreshBatch);
+  refreshBatch();
+  setButtonTooltip(
+    train,
+    "Validate every selected trainee, outcome, once-only limit, and individual carried+banked funds. If all are valid, spend every fee first and then make all XP rolls automatically as one batch."
+  );
+  train.addEventListener("click", async () => {
+    const trainings = rowControls
+      .filter(({ checkbox }) => checkbox.checked && !checkbox.disabled)
+      .map(({ trainee, outcome, spell }) => ({
+        character_id: trainee.character_id,
+        outcome: outcome.value,
+        new_spell: outcome.value === "level_up" ? spell.value : "",
+      }));
+    train.disabled = true;
+    train.textContent = "Paying all, then rolling...";
+    try {
+      await runTagRepeatableServiceAction({ action: "train", trainings });
+    } catch (error) {
+      handleError(error);
+      train.textContent = "Pay all and roll training batch";
+      refreshBatch();
+    }
+  });
+  wrap.append(totalLine, train);
+
+  const done = node("button", "secondary tag-service-done", "Done — finish training");
+  done.type = "button";
+  setButtonTooltip(
+    done,
+    "Finish Deoldyn's optional service after the one desired batch, or without training anyone. No later trainee may be added after results are known. This resolves the Rumour and reveals Continue — return to town and finish."
+  );
+  done.addEventListener("click", async () => {
+    done.disabled = true;
+    done.textContent = "Finishing...";
+    try {
+      await runTagRepeatableServiceAction({ action: "done" });
+    } catch (error) {
+      handleError(error);
+      done.disabled = false;
+      done.textContent = "Done — finish training";
+    }
+  });
+  wrap.appendChild(done);
   parent.appendChild(wrap);
   return true;
 }
@@ -26930,6 +27278,14 @@ function tagCurrentPromptData(session = state.session) {
   return { tile, tagReference, room, promptData };
 }
 
+function generatedTagRumorEntryChoicePending(session = state.session, tile = null) {
+  if (!session || session.mode === "complete" || session.tag_generated_completion_pending) return false;
+  const current = tile || currentTile(session);
+  const tagReference = tagReferenceForGeneratedAdventure(session);
+  const room = tagRoomForCurrentTile(session, current);
+  return String(tagReference?.lead_type || "").toLowerCase() === "rumor" && room?.id === "tag-lead-entry";
+}
+
 const TAG_GENERATED_LIFECYCLE_STEPS = [
   {
     key: "entry_seen",
@@ -27380,6 +27736,7 @@ function generatedTagPromptActionDefaults(action = {}, fallbackReference = "", t
 
 function appendGeneratedTagSpecialActionControl(parent, action, fallbackReference) {
   if (appendLeprechaunGuidedAction(parent, action, fallbackReference)) return true;
+  if (appendDeoldynGuidedAction(parent, action, fallbackReference)) return true;
   if (appendBoftoTheftGuidedAction(parent, action, fallbackReference)) return true;
   if (appendMedusaScene10GuidedAction(parent, action, fallbackReference)) return true;
   if (appendMedusaScene1GuidedAction(parent, action, fallbackReference)) return true;
@@ -28491,11 +28848,14 @@ function renderMapExitsOverlay(session) {
     scroll.appendChild(list);
   } else {
     const rawCount = (tile.exits || []).length;
+    const rumorChoicePending = generatedTagRumorEntryChoicePending(session, tile);
     scroll.appendChild(
       node(
         "div",
         "map-overlay-empty",
-        rawCount
+        rumorChoicePending
+          ? "Choose Investigate or Not now — return to town beneath Narrative before using any map exit."
+          : rawCount
           ? "No exits are reachable from where you stand. Hidden, blocked, or invalid passages are omitted."
           : "No exits on this map element."
       )
