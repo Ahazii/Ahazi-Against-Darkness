@@ -37,7 +37,26 @@ The **Route / XP / Bank summary** under Services and Log shows recent bank balan
 
 Use the normal Adventure section to play the generated module. The modern Go Adventure page is split into **Start**, **Resume**, **Generate**, **Guild Jobs**, and **Reference** tabs. The live adventure text is labelled **Narrative**. Header controls can show or hide **Current Objective**, **Text Commands**, **Exits**, and **Character Sheets** when the map needs more room. Generated Adventures Guild follow-up decisions should be handled by direct **Current Objective**, **Quest Details**, or room-prompt buttons whenever the app can infer the safe action. The **Current Objective** banner also reads the current generated-room prompt, surfaces the next likely action, and shows a lifecycle strip for Entry, Side lead, Complication, Finale, Route, Reward, XP, and Closeout. Generated Adventures Guild rooms now include a **Director** panel that names the current phase, links to Rules Reference/Tables, and explains what kind of decision matters now. **Diagnostics** shows prompt/action coverage and warnings, while **Copy Narrative Report** copies the exact player-facing Narrative first and debugging context afterwards. **Advanced / Manual Actions** is a fallback and should appear only when diagnostics say a missing prompt, missing branch target, or manual-only action needs it.
 
-Generated Rumor entry prompts are a deliberate exception to the Current Objective workflow: TAG pp.22-24 gives all twelve one shared horizontal **Investigate** / **Return to town** choice beneath Narrative. Investigate enters that result's printed numbered Scene; Return to town retains the Rumor for later. The choices remain visible when Objective Details is hidden, and the strip must not display Director phases, lifecycle bookkeeping, or generic Rumor playbook prose. Rumor 4's final Scene is also typed: one Narrative panel owns every L5 hypnosis Save, rescuer/victim choice, rescue turn, `d6+3` ration result, Keep/Sell decision, and two-minion XP record from TAG p.29.
+Generated Rumor entry prompts are a deliberate exception to the Current Objective workflow: TAG pp.22-24 gives all twelve one shared horizontal **Investigate** / **Not now — return to town** choice beneath Narrative. Investigate enters that result's explicit first numbered Scene; Not now retains the Rumor for later. The choices remain visible when Objective Details is hidden for every generated TAG quest subtype, and the strip must not display Director phases, lifecycle bookkeeping, or generic Rumor playbook prose.
+
+The TAG pp.22-31 Rumors share one scene-host flow: start the Rumor, display its narrative, show the applicable player routes, enter the selected next Scene, attach the required typed procedure/combat/vendor/NPC/dungeon-handoff control, then resolve reward and completion. Narrative objective, **Relevant Now**, and room metadata use one special-action dispatcher; each Rumor's printed mechanics remain a registered plug-in rather than a second adventure engine.
+
+| Rumor | First Scene | Scene-host plug-in |
+| --- | --- | --- |
+| 1 Bofto | Scene 9 | Branch chain through Scenes 14/17/18/19; typed theft Save and persistent curse |
+| 2 Medusa | Scene 10 | Group Stealth/assassin procedure, Scene 1 social/combat/reward choices |
+| 3 Paladin's sword | Scene 11 | Red-herring procedure and optional ambush handoff |
+| 4 Mutant fish | Scene 12 | Typed hypnosis, rescue, ration sale/keep, and XP procedure |
+| 5 Dragon in disguise | Scene 13 | True/false social decision and later Clue-gated Dragon's Lair handoff |
+| 6 Leprechauns | Scene 2 | Vendor and illusion-spell lesson transaction |
+| 7 Tamas Zeya | Scene 15 | Seven-room temple-dungeon handoff |
+| 8 Shaura | Scene 16 | Two-Clue gate and ten-room cult-dungeon handoff |
+| 9 Daroc | Scene 5 | Town-Clue NPC rescue/reward procedure |
+| 10 Gargoyles | Scene 8 | Count/surprise, combat/reaction, skin, and bounty handling |
+| 11 Deoldyn | Scene 3 | Trainer/NPC service and payment |
+| 12 Shinta | Scene 4 | Champion choice, Scene 7 solo Bandit Hideout handoff, and Agaratha reward |
+
+Rumor 4's final Scene is typed: one Narrative panel owns every L5 hypnosis Save, rescuer/victim choice, rescue turn, `d6+3` ration result, Keep/Sell decision, and two-minion XP record from TAG p.29. The current reusable frontend host is complete; replacing every arrival-based backend completion rule with one typed lifecycle is the next staged architecture slice.
 
 - **Branch** logs generic social choices, Clue spends, variable counts, capture-alive outcomes, and printed gp rewards.
 - **Route** records the exact scene flow: parley success/failure, Clue-gated routes, peaceful/hostile branches, skipped or unlocked scenes, solo restrictions, and final routes. Route markers are saved in campaign state and also applied to the latest generated Adventures Guild module where safe.

@@ -1138,7 +1138,10 @@ def test_mutant_fish_shared_rumor_entry_upgrades_and_routes_to_scene_12(client) 
     assert resumed.status_code == 200
     resumed_payload = resumed.json()
     entry_actions = resumed_payload["imported_manifest"]["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"]
-    assert [action["label"] for action in entry_actions] == ["Investigate", "Return to town"]
+    assert [action["label"] for action in entry_actions] == [
+        "Investigate",
+        "Not now — return to town",
+    ]
 
     investigated = client.post(
         "/api/sessions/mutant-fish-entry-route/tag-route-action",

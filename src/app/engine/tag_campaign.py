@@ -1159,6 +1159,21 @@ TAG_RUMORS: dict[int, str] = {
     12: "Shinta's magic sword Agaratha: investigate Scene 4.",
 }
 
+TAG_RUMOR_ENTRY_SCENES: dict[int, str] = {
+    1: "Scene 9",
+    2: "Scene 10",
+    3: "Scene 11",
+    4: "Scene 12",
+    5: "Scene 13",
+    6: "Scene 2",
+    7: "Scene 15",
+    8: "Scene 16",
+    9: "Scene 5",
+    10: "Scene 8",
+    11: "Scene 3",
+    12: "Scene 4",
+}
+
 TAG_RED_HERRINGS: dict[int, str] = {
     1: "Trap: single character ambushed by Riff-Raff; surrender carried goods or fight without withdrawal.",
     2: "Trap: single character ambushed by Riff-Raff; surrender carried goods or fight without withdrawal.",
@@ -5166,6 +5181,17 @@ def _scene_key_from_route_reference(reference: str) -> str:
     return f"Scene {refs[-1]}"
 
 
+def tag_rumor_entry_scene_key(source: dict[str, Any]) -> str:
+    explicit_refs = _scene_refs_from_text(str(source.get("entry_scene") or ""))
+    if explicit_refs:
+        return f"Scene {explicit_refs[0]}"
+    graph_start = _tag_scene_graph_start_key(source)
+    if graph_start:
+        return graph_start
+    refs = _scene_refs_from_text(str(source.get("scene") or ""))
+    return f"Scene {refs[0]}" if refs else ""
+
+
 def tag_scene_room_id(scene_key: str, *, start_scene_key: str = "") -> str:
     refs = _scene_refs_from_text(scene_key)
     if start_scene_key and scene_key.strip().lower() == start_scene_key.strip().lower():
@@ -5177,10 +5203,7 @@ def tag_route_target_room_id(tag_reference: dict[str, Any], reference: str) -> s
     scene_key = _scene_key_from_route_reference(reference)
     if not scene_key:
         return ""
-    start_scene_key = _tag_scene_graph_start_key(tag_reference)
-    configured_scene = str(tag_reference.get("scene") or "").strip()
-    if not start_scene_key and configured_scene.casefold() == scene_key.casefold():
-        return "tag-final-scene"
+    start_scene_key = tag_rumor_entry_scene_key(tag_reference)
     return tag_scene_room_id(scene_key, start_scene_key=start_scene_key)
 
 
@@ -5202,6 +5225,11 @@ def _tag_scene_graph_start_key(source: dict[str, Any]) -> str:
     scenes = graph.get("scenes")
     if not isinstance(scenes, dict) or not scenes:
         return ""
+    explicit_refs = _scene_refs_from_text(str(source.get("entry_scene") or ""))
+    if explicit_refs:
+        explicit_key = f"Scene {explicit_refs[0]}"
+        if explicit_key in scenes:
+            return explicit_key
     start_scenes = graph.get("start_scenes")
     if isinstance(start_scenes, list):
         for scene in start_scenes:
@@ -6446,6 +6474,7 @@ def _tag_enrich_rumor_profile(profile: dict[str, object], lead_detail: str) -> d
     return {
         **profile,
         "rumor_number": rumor_number,
+        "entry_scene": TAG_RUMOR_ENTRY_SCENES[rumor_number],
         "audit_family": "rumor_playthrough",
         "playthrough_focus": guidance.get("focus", f"Audit {title} as a settlement rumor handoff with visible route, reward, and XP signoff."),
         "entry_guidance": guidance.get("entry", "Open with settlement evidence and a player-facing reason to follow this rumor now."),
@@ -6803,7 +6832,7 @@ def _tag_final_prompt_title(profile: dict[str, object]) -> str:
 def tag_rumor_entry_prompt_actions(source: dict[str, object], *, base_reference: str) -> list[dict[str, object]]:
     if str(source.get("lead_type") or "").strip().lower() != "rumor":
         return []
-    scene = _tag_scene_graph_start_key(source) or str(source.get("scene") or "").strip()
+    scene = tag_rumor_entry_scene_key(source)
     if not scene:
         return []
     return [
@@ -6815,7 +6844,7 @@ def tag_rumor_entry_prompt_actions(source: dict[str, object], *, base_reference:
             reference=f"{base_reference} -> {scene}: investigate rumor",
         ),
         _tag_prompt_action(
-            "Return to town",
+            "Not now — return to town",
             "TAG p.22: write down this Rumor for later, leave it unresolved, and return to town without entering its numbered Scene.",
             action_type="route",
             action_value="final_route",
@@ -7396,6 +7425,7 @@ def _tag_manifest(
             "tag_reference": {
                 "title": profile.get("title", lead_detail),
                 "scene": profile.get("scene", ""),
+                "entry_scene": profile.get("entry_scene", ""),
                 "scene_graph": profile.get("scene_graph", {}),
                 "pdf_pages": profile.get("pdf_pages", ""),
                 "lead_type": lead_type,

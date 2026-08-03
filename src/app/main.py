@@ -4527,8 +4527,13 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
     data["tag_rumor_lifecycle_table"] = [
         {
             "state": "opening decision",
-            "meaning": "Every generated Rumor uses the same Investigate / Return to town choice. Investigate enters that result's printed numbered Scene; Return to town retains the heard Rumor for later.",
+            "meaning": "Every generated Rumor uses the same Investigate / Not now — return to town choice beneath Narrative. Investigate enters that result's explicit first numbered Scene; Not now retains the heard Rumor for later.",
             "source": "TAG pp.22-24, Rumors",
+        },
+        {
+            "state": "shared scene host",
+            "meaning": "All twelve Rumors reuse one scene host for narrative, route choices, typed procedures, combat handoffs, vendors, trainers/NPCs, dungeon handoffs, rewards, and completion. Rumor-specific rules remain registered action controls inside that host.",
+            "source": "TAG pp.22-31, Rumors and Scenes 1-19",
         },
         {
             "state": "heard",

@@ -103,7 +103,7 @@ def live_app(tmp_path):
             process.wait(timeout=5)
 
 
-def _create_session(base_url: str) -> str:
+def _create_session(base_url: str, *, adventure_id: str = "random") -> str:
     class_ids = ["warrior", "cleric", "rogue", "wizard"]
     character_ids = []
     for index, class_id in enumerate(class_ids, start=1):
@@ -123,7 +123,7 @@ def _create_session(base_url: str) -> str:
         "/api/sessions",
         {
             "party_id": party["id"],
-            "adventure_id": "random",
+            "adventure_id": adventure_id,
             "xp_system": "classical",
             "map_bounds_mode": "unlimited",
         },
@@ -131,7 +131,7 @@ def _create_session(base_url: str) -> str:
     return session["id"]
 
 
-def _replace_session_map(live_app: LiveApp, session_id: str, map_state: dict) -> None:
+def _patch_session_record(live_app: LiveApp, session_id: str, patch: dict) -> None:
     db_path = live_app.data_dir / "game.db"
     with sqlite3.connect(db_path) as connection:
         row = connection.execute(
@@ -140,11 +140,113 @@ def _replace_session_map(live_app: LiveApp, session_id: str, map_state: dict) ->
         ).fetchone()
         assert row is not None
         session = json.loads(row[0])
-        session["map_state"] = map_state
+        session.update(patch)
         connection.execute(
             "update records set data=?, updated_at=? where collection='sessions' and id=?",
             (json.dumps(session), session["updated_at"], session_id),
         )
+
+
+def test_generated_rumor_4_entry_choices_are_visible_beneath_narrative(live_app) -> None:
+    playwright_api = pytest.importorskip("playwright.sync_api")
+    generated = _json_request(
+        live_app.base_url,
+        "/api/campaign/tag/create-adventure",
+        {"lead_type": "rumor", "detail": "4"},
+    )
+    session_id = _create_session(
+        live_app.base_url,
+        adventure_id=generated["adventure_id"],
+    )
+    session = _json_get(live_app.base_url, f"/api/sessions/{session_id}")
+    assert session["active_quest"]["key"] == "imported_room"
+
+    with playwright_api.sync_playwright() as playwright:
+        try:
+            browser = playwright.chromium.launch(headless=True)
+        except Exception as error:  # pragma: no cover - depends on local browser install
+            pytest.skip(f"Playwright Chromium is not installed: {error}")
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 720})
+            page.add_init_script(
+                f"""
+                localStorage.setItem("ahazi-against-darkness.active-session-id", {json.dumps(session_id)});
+                localStorage.setItem("ahazi-against-darkness.active-view", "game");
+                """
+            )
+            page.goto(f"{live_app}/?view=game")
+            banner = page.locator("#current-objective-banner")
+            playwright_api.expect(banner).to_be_visible(timeout=10_000)
+            playwright_api.expect(banner).to_have_class(re.compile(r"\bnarrative-choices\b"))
+            playwright_api.expect(banner.locator("button")).to_have_count(2)
+            playwright_api.expect(
+                banner.get_by_role("button", name="Investigate", exact=True)
+            ).to_be_visible()
+            playwright_api.expect(
+                banner.get_by_role("button", name="Not now — return to town", exact=True)
+            ).to_be_visible()
+            playwright_api.expect(banner).not_to_contain_text("Quest progress")
+        finally:
+            browser.close()
+
+
+def test_legacy_imported_medusa_quest_uses_scene_1_guided_controls(live_app) -> None:
+    playwright_api = pytest.importorskip("playwright.sync_api")
+    generated = _json_request(
+        live_app.base_url,
+        "/api/campaign/tag/create-adventure",
+        {"lead_type": "rumor", "detail": "2"},
+    )
+    session_id = _create_session(
+        live_app.base_url,
+        adventure_id=generated["adventure_id"],
+    )
+    session = _json_get(live_app.base_url, f"/api/sessions/{session_id}")
+    entry_actions = session["imported_manifest"]["source"]["parameters"]["tag_reference"]["room_prompts"][
+        "tag-lead-entry"
+    ]["actions"]
+    moved = _json_request(
+        live_app.base_url,
+        f"/api/sessions/{session_id}/tag-route-action",
+        {
+            "route_action": "unlock_scene",
+            "reference": entry_actions[0]["reference"],
+        },
+    )["session"]
+    legacy_quest = dict(moved["active_quest"])
+    legacy_quest.update({"key": "imported_boss", "completed": False, "reward_claimed": False})
+    _patch_session_record(live_app, session_id, {"active_quest": legacy_quest})
+    resumed = _json_get(live_app.base_url, f"/api/sessions/{session_id}")
+    assert resumed["active_quest"]["key"] == "imported_boss"
+
+    with playwright_api.sync_playwright() as playwright:
+        try:
+            browser = playwright.chromium.launch(headless=True)
+        except Exception as error:  # pragma: no cover - depends on local browser install
+            pytest.skip(f"Playwright Chromium is not installed: {error}")
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 720})
+            page.add_init_script(
+                f"""
+                localStorage.setItem("ahazi-against-darkness.active-session-id", {json.dumps(session_id)});
+                localStorage.setItem("ahazi-against-darkness.active-view", "game");
+                """
+            )
+            page.goto(f"{live_app}/?view=game")
+            banner = page.locator("#current-objective-banner")
+            playwright_api.expect(banner.locator(".medusa-scene1-guided")).to_be_visible(timeout=10_000)
+            playwright_api.expect(
+                banner.get_by_role("button", name="Approach the cabin", exact=True)
+            ).to_be_visible()
+            playwright_api.expect(
+                banner.get_by_role("button", name="Shout out to Xasartha", exact=True)
+            ).to_be_visible()
+        finally:
+            browser.close()
+
+
+def _replace_session_map(live_app: LiveApp, session_id: str, map_state: dict) -> None:
+    _patch_session_record(live_app, session_id, {"map_state": map_state})
 
 
 def test_clipped_map_art_uses_valid_svg_clip_path(live_app) -> None:

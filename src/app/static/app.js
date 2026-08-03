@@ -4532,10 +4532,11 @@ function canClaimQuestReward(session, quest) {
 
 function isGeneratedTagQuest(session, quest = session?.active_quest) {
   const tagReference = session?.imported_manifest?.source?.parameters?.tag_reference;
+  const questKey = String(quest?.key || "");
   return Boolean(
     tagReference &&
     typeof tagReference === "object" &&
-    String(quest?.key || "").startsWith("tag_")
+    (questKey.startsWith("tag_") || questKey.startsWith("imported_"))
   );
 }
 
@@ -20380,7 +20381,7 @@ function currentObjectiveForSession(session) {
   }
   const quest = session.active_quest && !session.active_quest.reward_claimed ? session.active_quest : null;
   const generated = tagCurrentPromptData(session);
-  if (generated.tagReference && (!quest || quest.key === "tag_generated_scene")) {
+  if (generated.tagReference && (!quest || isGeneratedTagQuest(session, quest))) {
     const leadLabel = tagLeadLabel(generated.tagReference);
     const director = generatedTagDirectorStep(session);
     const promptActions = Array.isArray(generated.promptData?.actions)
@@ -20534,30 +20535,10 @@ function appendCurrentObjectiveButton(parent, action) {
       break;
     case "tag-prompt-action":
       {
+        if (appendGeneratedTagSpecialActionControl(parent, action.promptAction, action.fallbackReference)) {
+          return;
+        }
         const defaults = generatedTagPromptActionDefaults(action.promptAction, action.fallbackReference, action.tagReference);
-        if (defaults.branchAction === "bofto_theft_save") {
-          appendBoftoTheftGuidedAction(parent, action.promptAction, action.fallbackReference);
-          return;
-        }
-        if (defaults.branchAction === "star_object_will_save") {
-          appendBoftoScene19GuidedAction(parent, action.promptAction, action.fallbackReference);
-          return;
-        }
-        if (defaults.branchAction === "medusa_group_stealth") {
-          appendMedusaScene10GuidedAction(parent, action.promptAction, action.fallbackReference);
-          return;
-        }
-        if (appendMutantFishGuidedAction(parent, action.promptAction, action.fallbackReference)) {
-          return;
-        }
-        if (["medusa_stealth_approach", "medusa_reaction"].includes(defaults.branchAction)) {
-          appendMedusaScene1GuidedAction(parent, action.promptAction, action.fallbackReference);
-          return;
-        }
-        if (defaults.sceneAction === "daroc_cat") {
-          appendDarocGuidedAction(parent, action.promptAction, action.fallbackReference);
-          return;
-        }
         const directBranch = directTagBranchAllowed(defaults);
         const directRoute = directTagRouteAllowed(defaults);
         const directScene = directTagSceneAllowed(defaults);
@@ -20568,13 +20549,7 @@ function appendCurrentObjectiveButton(parent, action) {
             : `${action.promptAction?.tooltip || "Use this current-room Adventures Guild prompt action."} Opens Adventures Guild Actions prefilled; confirm exact PDF/player values before applying.`
         );
         btn.addEventListener("click", () => {
-          if (defaults.branchAction === "leprechaun_illusion_spell") {
-            openLeprechaunSpellDialog(defaults);
-          } else if (defaults.sceneAction === "deoldyn_training") {
-            openDeoldynTrainingDialog(defaults);
-          } else if (defaults.routeAction === "solo_restriction" && /shinta|agaratha|scene 4|scene 7/i.test(String(defaults.reference || ""))) {
-            openShintaChampionDialog(defaults);
-          } else if (directBranch) {
+          if (directBranch) {
             runTagBranchActionWithDefaults(defaults).catch(handleError);
           } else if (directRoute) {
             runTagRouteActionWithDefaults(defaults).catch(handleError);
@@ -20691,7 +20666,7 @@ function renderCurrentObjectiveBanner(session) {
   appendCurrentObjectiveButton(actions, objective.action);
   appendCurrentObjectiveButton(actions, objective.secondaryAction);
   if (actions.childElementCount) currentObjectiveBanner.appendChild(actions);
-  const lifecycle = !objective.narrativeChoices && session.active_quest?.key === "tag_generated_scene"
+  const lifecycle = !objective.narrativeChoices && isGeneratedTagQuest(session)
     ? renderGeneratedTagLifecycleStrip(session)
     : null;
   if (lifecycle) currentObjectiveBanner.appendChild(lifecycle);
@@ -26479,7 +26454,7 @@ function appendMedusaScene1GuidedAction(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
   if (!["medusa_stealth_approach", "medusa_reaction"].includes(defaults.branchAction)) return false;
   if (parent.querySelector(".medusa-scene1-guided")) return true;
-  if (state.session?.active_quest?.key !== "tag_generated_scene") return true;
+  if (!isGeneratedTagQuest(state.session)) return true;
   const living = (state.session?.party || []).filter((member) => member.current_life > 0);
   const wrap = node("div", "tag-context-guided-action");
   wrap.classList.add("medusa-scene1-guided");
@@ -27256,6 +27231,44 @@ function generatedTagPromptActionDefaults(action = {}, fallbackReference = "", t
   };
 }
 
+function appendGeneratedTagSpecialActionControl(parent, action, fallbackReference) {
+  if (appendLeprechaunGuidedAction(parent, action, fallbackReference)) return true;
+  if (appendBoftoTheftGuidedAction(parent, action, fallbackReference)) return true;
+  if (appendMedusaScene10GuidedAction(parent, action, fallbackReference)) return true;
+  if (appendMedusaScene1GuidedAction(parent, action, fallbackReference)) return true;
+  if (appendBoftoScene19GuidedAction(parent, action, fallbackReference)) return true;
+  if (appendDarocGuidedAction(parent, action, fallbackReference)) return true;
+  if (appendMutantFishGuidedAction(parent, action, fallbackReference)) return true;
+
+  const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
+  if (defaults.sceneAction === "deoldyn_training") {
+    const btn = node("button", "secondary", String(action.label));
+    btn.type = "button";
+    setButtonTooltip(
+      btn,
+      `${String(action.tooltip || "Open Deoldyn's Scene 3 training picker.")} Choose an eligible trainee and archery skill before paying.`
+    );
+    btn.addEventListener("click", () => openDeoldynTrainingDialog(defaults));
+    parent.appendChild(btn);
+    return true;
+  }
+  if (
+    defaults.routeAction === "solo_restriction" &&
+    /shinta|agaratha|scene 4|scene 7/i.test(String(defaults.reference || ""))
+  ) {
+    const btn = node("button", "secondary", String(action.label));
+    btn.type = "button";
+    setButtonTooltip(
+      btn,
+      `${String(action.tooltip || "Choose Shinta's single champion.")} Lists only living sword-capable characters who are not demon, undead, or chaos-tainted.`
+    );
+    btn.addEventListener("click", () => openShintaChampionDialog(defaults));
+    parent.appendChild(btn);
+    return true;
+  }
+  return false;
+}
+
 function renderTagRelevantActions(session = state.session) {
   if (!tagRelevantActions) return;
   tagRelevantActions.replaceChildren();
@@ -27320,24 +27333,15 @@ function renderTagRelevantActions(session = state.session) {
     : actions;
   const displayActions = [...focusedActions, ...actions.filter((action) => !focusedActions.includes(action))].slice(0, 6);
   for (const action of displayActions) {
-    if (appendLeprechaunGuidedAction(row, action, fallback)) continue;
-    if (appendBoftoTheftGuidedAction(row, action, fallback)) continue;
-    if (appendMedusaScene10GuidedAction(row, action, fallback)) continue;
-    if (appendBoftoScene19GuidedAction(row, action, fallback)) continue;
-    if (appendDarocGuidedAction(row, action, fallback)) continue;
-    if (appendMutantFishGuidedAction(row, action, fallback)) continue;
+    if (appendGeneratedTagSpecialActionControl(row, action, fallback)) continue;
     const btn = node("button", "secondary", String(action.label));
     btn.type = "button";
     const tooltip = String(action.tooltip || "Prefill Adventures Guild Actions from the current generated-room prompt.");
     const defaults = generatedTagPromptActionDefaults(action, fallback, tagReference);
     setButtonTooltip(btn, `${tooltip} ${generatedTagPromptActionExplanation(promptData, action)} Confirm the PDF/player choice before applying.`);
     btn.addEventListener("click", () => {
-          if (defaults.sceneAction === "deoldyn_training") {
-            openDeoldynTrainingDialog(defaults);
-          } else if (defaults.routeAction === "solo_restriction" && /shinta|agaratha|scene 4|scene 7/i.test(String(defaults.reference || ""))) {
-            openShintaChampionDialog(defaults);
-          } else if (directTagBranchAllowed(defaults)) {
-            runTagBranchActionWithDefaults(defaults).catch(handleError);
+      if (directTagBranchAllowed(defaults)) {
+        runTagBranchActionWithDefaults(defaults).catch(handleError);
       } else if (directTagRouteAllowed(defaults)) {
         runTagRouteActionWithDefaults(defaults).catch(handleError);
       } else if (directTagSceneAllowed(defaults)) {
@@ -27370,31 +27374,9 @@ function appendTagMetadataPromptActions(parent, promptData, fallbackReference) {
   const row = node("div", "tag-context-actions-row");
   for (const action of promptData.actions) {
     if (!action?.label) continue;
-    if (appendLeprechaunGuidedAction(row, action, fallbackReference)) continue;
-    if (appendBoftoTheftGuidedAction(row, action, fallbackReference)) continue;
-    if (appendMedusaScene10GuidedAction(row, action, fallbackReference)) continue;
-    if (appendMedusaScene1GuidedAction(row, action, fallbackReference)) continue;
-    if (appendBoftoScene19GuidedAction(row, action, fallbackReference)) continue;
-    if (appendDarocGuidedAction(row, action, fallbackReference)) continue;
-    if (appendMutantFishGuidedAction(row, action, fallbackReference)) continue;
+    if (appendGeneratedTagSpecialActionControl(row, action, fallbackReference)) continue;
     if (appendTagDirectProcedureButton(row, action, fallbackReference)) continue;
     const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
-    if (defaults.sceneAction === "deoldyn_training") {
-      const btn = node("button", "secondary", String(action.label));
-      btn.type = "button";
-      setButtonTooltip(btn, `${String(action.tooltip || "Open Deoldyn's Scene 3 training picker.")} Choose an eligible trainee and archery skill before paying.`);
-      btn.addEventListener("click", () => openDeoldynTrainingDialog(defaults));
-      row.appendChild(btn);
-      continue;
-    }
-    if (defaults.routeAction === "solo_restriction" && /shinta|agaratha|scene 4|scene 7/i.test(String(defaults.reference || ""))) {
-      const btn = node("button", "secondary", String(action.label));
-      btn.type = "button";
-      setButtonTooltip(btn, `${String(action.tooltip || "Choose Shinta's single champion.")} Lists only living sword-capable characters who are not demon, undead, or chaos-tainted.`);
-      btn.addEventListener("click", () => openShintaChampionDialog(defaults));
-      row.appendChild(btn);
-      continue;
-    }
     if (directTagRouteAllowed(defaults)) {
       const btn = node("button", "secondary", String(action.label));
       btn.type = "button";

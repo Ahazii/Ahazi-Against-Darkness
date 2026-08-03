@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-03. Target build: v0.39.62.
+Last updated: 2026-08-03. Target build: v0.39.63.
 
 ## Adventure Test Gate: Passed
 
@@ -85,13 +85,16 @@ v0.39.59 implements the player-confirmed TAG p.29 interpretation:
   the new trapped hero;
 - friendly terms with chaos cultists are persistent campaign state.
 
-v0.39.62 repairs the shared TAG pp.22-24 Rumor opening in existing session
-`436591f8127741a586f4d3eae4ab264c`. After deploying and force-refreshing,
-resume that session; do not generate another Rumor 4:
+The supplied HTML proved v0.39.62 generated both actions but placed them only
+inside collapsed Objective Details because Rumor 4 uses the manifest-owned
+`imported_room` quest subtype. v0.39.63 repairs the shared TAG pp.22-24 opening
+in current session `cee90d971b804c2f9c32d54caac040ab`. After deploying and
+force-refreshing, resume that session; do not generate another Rumor 4:
 
-1. Confirm horizontal **Investigate** and **Return to town** buttons appear
+1. Confirm horizontal **Investigate** and **Not now — return to town** buttons appear
    immediately beneath Narrative. Their hover text must explain that Investigate
-   enters the printed Scene and Return to town retains the Rumor for later.
+   enters the printed Scene and Not now retains the Rumor for later. Leave
+   Objective Details closed while checking this.
 2. Choose **Investigate**. The party must move directly to **The Bridge Pool**
    (Scene 12), and the opening choice buttons must be replaced by the typed
    Mutant Fish procedure.

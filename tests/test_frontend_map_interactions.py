@@ -2155,7 +2155,8 @@ def test_generated_tag_complication_guidance_defers_to_scene_specific_finale_cho
     assert ".tag-context-guided-action" in STYLES_CSS
     assert "for (const action of objective.actions || []) appendCurrentObjectiveButton(actions, action);" in APP_JS
     assert "currentObjectiveBanner.appendChild(renderObjectiveActionPlan" not in APP_JS
-    assert "openLeprechaunSpellDialog(defaults)" in APP_JS
+    dispatcher_body = _function_body("appendGeneratedTagSpecialActionControl", APP_JS)
+    assert "appendLeprechaunGuidedAction(parent, action, fallbackReference)" in dispatcher_body
     assert "openDeoldynTrainingDialog(defaults)" in APP_JS
     assert '"leprechaun_shoes"' in APP_JS
     assert '"leprechaun_illusion_spell"' in APP_JS
@@ -2311,7 +2312,8 @@ def test_core_quest_replaces_generated_tag_closeout_and_exposes_gold_turn_in() -
     objective_body = _function_body("currentObjectiveForSession", APP_JS)
     closeout_body = _function_body("appendGeneratedTagCloseoutPanel", APP_JS)
     quest_rows_body = _function_body("questObjectiveRows", APP_JS)
-    assert 'String(quest?.key || "").startsWith("tag_")' in generated_body
+    assert 'const questKey = String(quest?.key || "")' in generated_body
+    assert 'questKey.startsWith("tag_") || questKey.startsWith("imported_")' in generated_body
     assert "Give ${required}gp and claim Epic Reward" in objective_body
     assert "Giving ${required}gp completes the Quest" in objective_body
     assert "!isGeneratedTagQuest(session, quest)" in closeout_body
@@ -2356,17 +2358,26 @@ def test_current_objective_surfaces_treasure_choice_buttons() -> None:
 
 def test_current_objective_uses_typed_medusa_scene_controls() -> None:
     append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
-    assert 'defaults.branchAction === "medusa_group_stealth"' in append_body
-    assert "appendMedusaScene10GuidedAction(parent, action.promptAction, action.fallbackReference)" in append_body
-    assert '["medusa_stealth_approach", "medusa_reaction"].includes(defaults.branchAction)' in append_body
-    assert "appendMedusaScene1GuidedAction(parent, action.promptAction, action.fallbackReference)" in append_body
+    dispatcher_body = _function_body("appendGeneratedTagSpecialActionControl", APP_JS)
+    medusa_scene_body = _function_body("appendMedusaScene1GuidedAction", APP_JS)
+    relevant_body = _function_body("renderTagRelevantActions", APP_JS)
+    metadata_body = _function_body("appendTagMetadataPromptActions", APP_JS)
+    assert "appendGeneratedTagSpecialActionControl(parent, action.promptAction, action.fallbackReference)" in append_body
+    assert "appendMedusaScene10GuidedAction(parent, action, fallbackReference)" in dispatcher_body
+    assert "appendMedusaScene1GuidedAction(parent, action, fallbackReference)" in dispatcher_body
+    assert "if (!isGeneratedTagQuest(state.session)) return true;" in medusa_scene_body
+    assert "appendGeneratedTagSpecialActionControl(row, action, fallback)" in relevant_body
+    assert "appendGeneratedTagSpecialActionControl(row, action, fallbackReference)" in metadata_body
 
 
 def test_generated_rumor_entry_choices_stay_beneath_narrative_without_internal_objective_copy() -> None:
     objective_body = _function_body("currentObjectiveForSession", APP_JS)
     render_body = _function_body("renderCurrentObjectiveBanner", APP_JS)
     append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
+    generated_quest_body = _function_body("isGeneratedTagQuest", APP_JS)
     route_body = _function_body("runTagRouteActionWithDefaults", APP_JS)
+    assert "generated.tagReference && (!quest || isGeneratedTagQuest(session, quest))" in objective_body
+    assert 'questKey.startsWith("tag_") || questKey.startsWith("imported_")' in generated_quest_body
     assert 'generated.room?.id === "tag-lead-entry"' in objective_body
     assert 'String(generated.tagReference.lead_type || "").toLowerCase() === "rumor"' in objective_body
     assert "body: narrativeChoices" in objective_body
@@ -2388,12 +2399,12 @@ def test_generated_rumor_entry_choices_stay_beneath_narrative_without_internal_o
 
 def test_mutant_fish_scene_12_uses_one_typed_guided_workflow() -> None:
     objective_body = _function_body("currentObjectiveForSession", APP_JS)
-    append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
+    dispatcher_body = _function_body("appendGeneratedTagSpecialActionControl", APP_JS)
     guided_body = _function_body("appendMutantFishGuidedAction", APP_JS)
     run_body = _function_body("runMutantFishStep", APP_JS)
     assert '"mutant_fish_scene12"' in objective_body
     assert "const actions = mutantFishAction ? [mutantFishAction] : promptActions;" in objective_body
-    assert "appendMutantFishGuidedAction" in append_body
+    assert "appendMutantFishGuidedAction(parent, action, fallbackReference)" in dispatcher_body
     assert "Roll party hypnosis Saves" in guided_body
     assert "Who performs the rescue?" in guided_body
     assert "Who is pulled from the water?" in guided_body
@@ -2846,8 +2857,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     )[0]
     assert '"medusa_quest_accept"' in character_choice
     assert '"medusa_quest_refuse"' in character_choice
-    assert 'generated.tagReference && (!quest || quest.key === "tag_generated_scene")' in APP_JS
-    assert 'session.active_quest?.key === "tag_generated_scene"' in APP_JS
+    assert "generated.tagReference && (!quest || isGeneratedTagQuest(session, quest))" in APP_JS
+    assert "!objective.narrativeChoices && isGeneratedTagQuest(session)" in APP_JS
     assert "Roll group Stealth Save" in APP_JS
     assert "Choose a hero for the L5 Streetwise Save" in APP_JS
     assert "Roll Streetwise Save" in APP_JS

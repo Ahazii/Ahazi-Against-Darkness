@@ -825,18 +825,31 @@ def _upgrade_rumor_entry_manifest(tag_reference: dict[str, Any]) -> bool:
     prompts = tag_reference.get("room_prompts")
     if not isinstance(prompts, dict):
         return False
+    changed = False
     entry_prompt = prompts.get("tag-lead-entry")
     if not isinstance(entry_prompt, dict):
-        return False
-    from .tag_campaign import tag_rumor_entry_prompt_actions
+        entry_prompt = {
+            "title": "Lead entry choices",
+            "body": "",
+            "checklist": [],
+            "actions": [],
+        }
+        prompts["tag-lead-entry"] = entry_prompt
+        changed = True
+    from .tag_campaign import tag_rumor_entry_prompt_actions, tag_rumor_entry_scene_key
 
+    entry_scene = tag_rumor_entry_scene_key(tag_reference)
+    if entry_scene and tag_reference.get("entry_scene") != entry_scene:
+        tag_reference["entry_scene"] = entry_scene
+        changed = True
     base_reference = str(tag_reference.get("title") or "Adventures Guild Rumor")
     actions = tag_rumor_entry_prompt_actions(tag_reference, base_reference=base_reference)
-    if not actions or entry_prompt.get("actions") == actions:
-        return False
-    entry_prompt["actions"] = actions
-    tag_reference["rumor_entry_prompt_upgrade"] = "TAG pp.22-24 shared investigate-or-return decision"
-    return True
+    if actions and entry_prompt.get("actions") != actions:
+        entry_prompt["actions"] = actions
+        changed = True
+    if changed:
+        tag_reference["rumor_entry_prompt_upgrade"] = "TAG pp.22-24 shared investigate-or-return decision"
+    return changed
 
 
 def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
