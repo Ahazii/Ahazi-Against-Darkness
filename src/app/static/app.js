@@ -9208,7 +9208,6 @@ const TAG_BRANCH_ACTION_HINTS = {
   medusa_reaction: "Reference optional. Amount ignored. Rolls Xasartha's reaction table.",
   leprechaun_shoes: "Reference optional. Amount: number of shoe pairs; selected character pays 200 gp each.",
   leprechaun_illusion_spell: "Reference: spell name, add free if three shoe pairs were bought. Amount ignored.",
-  mutant_fish_hypnosis: "Reference: use chaos for automatic failure or mod=-1 for modifiers. Amount: positive Save modifier.",
   gargoyle_count: "Reference optional. Amount ignored. Rolls d6+2 white gargoyles.",
   gargoyle_surprise: "Reference optional. Amount ignored. Rolls 3-in-6 camouflage surprise.",
   gargoyle_skin: "Reference optional. Amount ignored. Rolls 2-in-6 mundane-weapon bounce.",
@@ -12770,8 +12769,12 @@ async function runTagSceneActionWithDefaults(defaults = {}) {
   }
   if (result.session) {
     state.session = result.session;
-    renderSession();
     syncSessionListFromSession(state.session);
+    if (state.session.mode === "complete") {
+      await finishCompletedAdventureClient(state.session);
+    } else {
+      renderSession();
+    }
   } else {
     await reloadCharacters({ render: setupViewVisible() });
   }
@@ -12805,8 +12808,12 @@ async function runTagRouteActionWithDefaults(defaults = {}) {
   }
   if (result.session) {
     state.session = result.session;
-    renderSession();
     syncSessionListFromSession(state.session);
+    if (state.session.mode === "complete") {
+      await finishCompletedAdventureClient(state.session);
+    } else {
+      renderSession();
+    }
   } else {
     renderTagCampaignSettlementPanel(state.campaign);
   }
@@ -17618,7 +17625,7 @@ const ENVIRONMENT_TABLE_HINTS = {
   tag_star_object_curse_table: "Bofto's Star-Shaped Object curse procedure (TAG pp.30-31): pickup Save, persistent curse, Star-Slayer, Gremlin cure, carrier death, and campaign recovery.",
   invisible_gremlins_procedure_table: "Invisible Gremlins procedure (EE pp.74, 87, 105, 160, 169; TAG pp.11, 13, 65): staged theft, protection, Disbelief, special property, temporary-enchantment choice, and Clue handling.",
   tag_bag_of_carrying_table: "Bag of Carrying procedure (TAG p.13): purchase, explicit multi-bag contents, transfer, theft/loss, and magic-user restriction.",
-  tag_mutant_fish_scene12_procedure_table: "Mutant Fish Under the Bridge (TAG p.29, Scene 12): party hypnosis Saves, rescue turns, ration disposition, campaign sale rate, and two-minion XP progress.",
+  tag_mutant_fish_scene12_procedure_table: "Mutant Fish Under the Bridge (TAG p.29, Scene 12): automatic per-character hypnosis Saves on entry, rescue turns, ration disposition, campaign sale rate, and two-minion XP progress.",
   tag_medusa_scene10_procedure_table: "Hunter's Cabin approach (TAG pp.6-8, p.28): one party Stealth roll using the lowest modifier, then labelled Streetwise or immediate-fight choices.",
   tag_medusa_scene1_reaction_table: "Xasartha's reaction procedure (TAG p.25, Scene 1; EE pp.101, 162): bribe, Quest acceptance/refusal, fight, and fight-to-the-death outcomes.",
   tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG p.22): heard, investigating, then resolved only after the paragraph and corresponding Scene are played.",
@@ -26149,38 +26156,14 @@ function appendMutantFishGuidedAction(parent, action, fallbackReference) {
   wrap.appendChild(node("strong", "", "Mutant Fish Under the Bridge"));
 
   if (!sceneState.phase) {
-    wrap.appendChild(
-      subline(
-        "The app rolls one current Save for every living hero. If anyone is hypnotized, rescue choices appear here. If everyone fails, the party is destroyed."
-      )
+    const pending = subline(
+      "Scene 12 automatically rolls one L5 hypnosis Save for every living hero on entry. Refresh Narrative if the persisted results have not appeared yet."
     );
-    const party = node("div", "mutant-fish-party-preview");
-    for (const member of living) {
-      const chaosText = `${member.class_id || ""} ${member.class_name || ""} ${(member.class_traits || []).join(" ")} ${(member.statuses || []).join(" ")}`;
-      const chaosTainted = /\bchaos[-_ ]tainted\b/i.test(chaosText);
-      party.appendChild(
-        node(
-          "span",
-          chaosTainted ? "danger-text" : "",
-          chaosTainted
-            ? `${member.name}: automatic failure (chaos-tainted)`
-            : `${member.name}: current Save modifier applies`
-        )
-      );
-    }
-    wrap.appendChild(party);
-    const start = node("button", "primary", "Roll party hypnosis Saves");
-    start.type = "button";
-    start.disabled = !living.length;
-    setButtonTooltip(
-      start,
-      "Roll each living hero's exploding Save vs L5 once using current Save modifiers. A natural 1 or total below 5 fails; chaos-tainted heroes fail without rolling."
+    setTooltip(
+      pending,
+      "No manual roll is required. Each living hero uses the current Save modifier; a natural 1 or total below 5 fails, and a chaos-tainted hero fails automatically."
     );
-    start.addEventListener("click", () => {
-      start.disabled = true;
-      runMutantFishStep("start").catch(handleError);
-    });
-    wrap.appendChild(start);
+    wrap.appendChild(pending);
   } else if (sceneState.phase === "rescue") {
     wrap.appendChild(
       subline(
@@ -26234,7 +26217,7 @@ function appendMutantFishGuidedAction(parent, action, fallbackReference) {
     const unitPrice = friendly ? 5 : 2;
     wrap.appendChild(
       subline(
-        `The rescued party dries ${rationCount} Food ration(s). Keep them as party supplies or sell them for ${unitPrice}gp each` +
+        `The surviving party dries ${rationCount} Food ration(s). Keep them as party supplies or sell them for ${unitPrice}gp each` +
         (friendly ? " because this campaign is on friendly terms with chaos cultists." : ".")
       )
     );

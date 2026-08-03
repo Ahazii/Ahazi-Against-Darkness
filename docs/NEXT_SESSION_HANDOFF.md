@@ -1,17 +1,14 @@
 # Next Session Handoff
 
-Current release is **v0.39.63**. The supplied v0.39.62 HTML proved Rumor 4's
-buttons existed only inside collapsed Objective Details: its generated module
-uses `imported_room`, while the Narrative choice renderer accepted only
-`tag_generated_scene`. v0.39.63 recognizes all manifest-owned generated TAG
-quest subtypes, renders horizontal **Investigate** / **Not now — return to
-town** beneath Narrative, and centralizes the three frontend special-action
-dispatch paths. It also gives every Rumor an explicit first Scene and repairs
-legacy/no-extraction Bofto routing to Scene 9. Deploy/force-refresh, resume live
-session `cee90d971b804c2f9c32d54caac040ab`, choose Investigate, and continue the
-Rumor 4 Scene 12 checklist in `docs/PLAYTEST_PLAN.md`. Do not regenerate Rumor 4.
+Current release is **v0.39.64**. v0.39.63 restored the shared horizontal
+**Investigate** / **Not now — return to town** choice beneath Narrative. The
+next report proved Rumor 4 then completed merely on reaching Scene 12. v0.39.64
+adds the shared required-scene lifecycle and makes Scene 12 automatically roll
+and persist one L5 hypnosis Save for every living hero. Deploy/force-refresh,
+resume live session `cee90d971b804c2f9c32d54caac040ab`, and continue the
+repaired Scene 12 checklist in `docs/PLAYTEST_PLAN.md`; do not regenerate it.
 
-Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.63`.
+Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.64`.
 
 ## Start Here
 
@@ -43,11 +40,13 @@ p.29 Scene 12 into one typed Mutant Fish hypnosis, rescue, ration, sale, and XP
 procedure. Do not repeat the whole
 Rumor 2 module or any Gremlin fight.
 
-## Implemented Through v0.39.63
+## Implemented Through v0.39.64
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25-31, and 65.
 
-- Mutant Fish Under the Bridge runs as one persisted TAG p.29 Scene 12 procedure. It rolls every living hero's L5 hypnosis Save, automatically fails chaos-tainted heroes, owns rescue-turn Life loss and rescuer/victim role changes, destroys an all-failed party, rolls `d6+3` Food rations once, records two minor encounters, and offers carrying-aware Keep or campaign-rate Sell choices. `CampaignState.tag_friendly_chaos_cultists` persists the 5gp friendly sale rate for future applicable encounters.
+- Mutant Fish Under the Bridge runs as one persisted TAG p.29 Scene 12 procedure. Entering the pool automatically rolls every living hero's L5 hypnosis Save once; no player roll button remains. The required-resolution lifecycle prevents completion on arrival, automatically fails chaos-tainted heroes, owns rescue-turn Life loss and rescuer/victim role changes, destroys/persists an all-failed party, rolls `d6+3` Food rations once, records two minor encounters, and offers carrying-aware Keep or campaign-rate Sell choices. Keep/Sell opens the explicit return-to-town Continue pause. `CampaignState.tag_friendly_chaos_cultists` persists the 5gp friendly sale rate for future applicable encounters.
+- Existing generated TAG saves synchronize manifest completion policy, duplicated session completion policy, and active quest key on resume. The reported Rumor 4 session at the pool is conservatively reopened only when its earlier completion is the stale arrival marker and the procedure is not terminal; its automatic Saves then persist and cannot reroll.
+- The TAG pp.22-31 audit confirms no Rumor is genuinely complete on arrival. Rumor 4 is the first shared lifecycle migration. Rumor 9 is next; vendor/service Done actions, mandatory procedures, dynamic encounters, and child-dungeon returns must be implemented before enabling the same gate for their profiles.
 - Generated Rumor entry buttons render immediately beneath Narrative for both `tag_*` and manifest-owned `imported_*` quest records, remain visible when Objective Details is hidden, and exclude internal Director phase, lifecycle, and lead-family playbook prose. TAG pp.22-24 shares **Investigate** / **Not now — return to town** across all twelve Rumors; choices remain side by side at normal app widths and wrap only on narrow mobile layouts.
 - Narrative objective, Relevant Now, and room metadata share one special-action dispatcher. Rumor-specific typed controls stay separate plug-ins inside the common scene host. Explicit `entry_scene` metadata prevents composite descriptions from misrouting older Rumor 1 modules past Scene 9.
 - Daroc's Lost Familiar counts only Clues generated in town with Streetwise, marks that provenance when Look for Clues succeeds, and spends two eligible Clues. The cost is one when the party includes a Druid, Beastmaster, cat-like hero, or cat animal companion. The selected living hero receives 100gp and the party receives exactly one pending XP roll (TAG p.27, Scene 5). Crucible of Classic Critters pp.11-15 remains the future source for full Beastmaster and animal-companion implementation; Scene 5 reads shared metadata so that later work can connect without a second rule path.

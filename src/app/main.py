@@ -116,6 +116,7 @@ from .engine.tag_compat import (
     generated_tag_manifest_diagnostics,
     normalize_tag_log_lines,
     repair_generated_tag_core_quest_completion,
+    repair_required_tag_scene_lifecycle,
     upgrade_tag_manifest,
 )
 from .engine.tag_campaign import merge_tag_pdf_narrative_overrides, tag_narrative_overrides_path
@@ -4502,7 +4503,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "step": "Initial hypnosis",
             "rule": "Every living hero Saves vs L5; chaos-tainted heroes fail automatically. If everyone fails, the party is destroyed.",
-            "automation": "One action rolls and persists every current Save result. The app never asks the player to choose who succeeded.",
+            "automation": "Entering Scene 12 automatically rolls and persists one current Save for every living hero. The app never asks the player to initiate the roll or choose who succeeded.",
             "source": "TAG p.29, Scene 12",
         },
         {
@@ -4534,6 +4535,11 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "state": "shared scene host",
             "meaning": "All twelve Rumors reuse one scene host for narrative, route choices, typed procedures, combat handoffs, vendors, trainers/NPCs, dungeon handoffs, rewards, and completion. Rumor-specific rules remain registered action controls inside that host.",
             "source": "TAG pp.22-31, Rumors and Scenes 1-19",
+        },
+        {
+            "state": "required scene resolution",
+            "meaning": "A registered required procedure keeps the generated quest active on room entry. Its profile may start an automatic rule step, and only the typed terminal result opens the explicit return-to-town closeout.",
+            "source": "TAG pp.22-31, Rumors and corresponding Scenes",
         },
         {
             "state": "heard",
@@ -6502,6 +6508,9 @@ async def get_session(session_id: str) -> SessionState:
         changed = True
     if _refresh_generated_tag_manifest_on_resume(session):
         changed = True
+    required_scene_repaired = repair_required_tag_scene_lifecycle(session)
+    if required_scene_repaired:
+        changed = True
     if _repair_medusa_scene1_state(session):
         changed = True
     if repair_generated_tag_core_quest_completion(session):
@@ -6512,6 +6521,8 @@ async def get_session(session_id: str) -> SessionState:
         changed = True
     if session.mode != "complete":
         lock_characters_for_session(session, store)
+    elif required_scene_repaired and _required_tag_scene_terminal_failure(session):
+        _persist_required_tag_scene_failure(session)
     if changed:
         store.save("sessions", session)
     sync_star_object_campaign_from_session(store, session)
@@ -7253,21 +7264,60 @@ async def continue_generated_tag_lead(session_id: str) -> SessionState:
     return enrich_session(session)
 
 
-def _persist_completed_session(session: SessionState) -> list[str]:
-    from .engine.tag_campaign import record_adventure_complete
-
-    record_adventure_complete(store, session)
+def _persist_terminal_session(
+    session: SessionState,
+    *,
+    summary_line: str = "Character roster updated after the adventure ended.",
+) -> list[str]:
     roster_notes = persist_session_to_roster(session, store)
     unlock_characters_for_session(session, store)
     session.saved_at = None
     if roster_notes:
         if not any("Character roster updated" in line for line in session.summary or []):
             session.summary = list(session.summary or [])
-            session.summary.append("Character roster updated with adventure rewards.")
+            session.summary.append(summary_line)
         for line in roster_notes:
             if line not in session.log:
                 session.log.append(line)
     return roster_notes
+
+
+def _required_tag_scene_terminal_failure(session: SessionState) -> bool:
+    if session.mode != "complete" or session.active_quest is None:
+        return False
+    room_id = _imported_room_id_for_tile(session, random_engine._current_tile(session))
+    if not room_id:
+        return False
+    from .engine.tag_scene_lifecycle import required_tag_room_action_has_failed_terminal
+
+    return required_tag_room_action_has_failed_terminal(session, room_id)
+
+
+def _persist_required_tag_scene_failure(
+    session: SessionState,
+    campaign: CampaignState | None = None,
+) -> CampaignState:
+    from .engine.tag_campaign import (
+        load_campaign,
+        record_session_tag_rumor_state,
+        save_campaign,
+    )
+
+    current_campaign = campaign or load_campaign(store)
+    record_session_tag_rumor_state(current_campaign, session, status="resolved")
+    current_campaign = save_campaign(store, current_campaign)
+    _persist_terminal_session(session)
+    return current_campaign
+
+
+def _persist_completed_session(session: SessionState) -> list[str]:
+    from .engine.tag_campaign import record_adventure_complete
+
+    record_adventure_complete(store, session)
+    return _persist_terminal_session(
+        session,
+        summary_line="Character roster updated with adventure rewards.",
+    )
 
 
 @app.post("/api/sessions/{session_id}/tag-treasure-map-signoff")
@@ -7689,7 +7739,7 @@ async def session_tag_branch_action(session_id: str, payload: dict[str, Any]) ->
         campaign = save_campaign(store, campaign)
         changed_ids = {member.character_id for member in session.party}
         if scene_state.get("phase") == "destroyed":
-            persist_session_to_roster(session, store)
+            campaign = _persist_required_tag_scene_failure(session, campaign)
         else:
             sync_party_members_to_roster(session, store, changed_ids)
             sync_party_states_to_roster(session, store)
@@ -7878,6 +7928,8 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
+    _refresh_generated_tag_manifest_on_resume(session)
+    repair_required_tag_scene_lifecycle(session)
     campaign = load_campaign(store)
     character = _optional_campaign_character(payload)
     entry = resolve_tag_route_action(
@@ -7957,6 +8009,11 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
         store.save("characters", character)
         _sync_character_to_session_party(session, character)
     campaign = save_campaign(store, campaign)
+    if session.mode == "complete":
+        if _required_tag_scene_terminal_failure(session):
+            campaign = _persist_required_tag_scene_failure(session, campaign)
+        else:
+            _persist_completed_session(session)
     store.save("sessions", session)
     return {
         "campaign": campaign,
@@ -8081,6 +8138,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
+    was_complete = session.mode == "complete"
     if payload.action == "developer_playtest" and not _load_app_preferences().show_dungeon_playtest_controls:
         raise HTTPException(status_code=403, detail="Enable dungeon playtest controls in Developer Playtest Preferences first.")
     camped_before = session.camped_outside
@@ -8222,8 +8280,11 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
             store,
             {payload.character_id, payload.target_character_id},
         )
-    if session.mode == "complete":
-        _persist_completed_session(session)
+    if session.mode == "complete" and not was_complete:
+        if _required_tag_scene_terminal_failure(session):
+            _persist_required_tag_scene_failure(session)
+        else:
+            _persist_completed_session(session)
     elif session.camped_outside:
         persist_session_to_roster(session, store)
         if not camped_before:

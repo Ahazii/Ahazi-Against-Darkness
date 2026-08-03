@@ -365,7 +365,7 @@ STATE_DEFINITIONS: list[dict[str, Any]] = [
         "review_status": "source_backed",
         "ui": {
             "label": "Mutant Fish rescue",
-            "hover": "TAG p.29, Scene 12. Persists party hypnosis Saves, trapped heroes, rescue turns, ration roll, reward choice, and XP accounting.",
+            "hover": "TAG p.29, Scene 12. Automatically rolls and persists one hypnosis Save per living hero on entry, then tracks trapped heroes, rescue turns, ration reward choice, XP, and required-scene completion.",
         },
     },
     {

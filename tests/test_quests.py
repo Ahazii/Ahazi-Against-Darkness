@@ -8,7 +8,7 @@ from app import main
 from app.engine.adventure_allowlists import major_foe_table_keys
 from app.engine.adventure_session import create_session_from_manifest
 from app.engine.random_dungeon import RandomDungeonEngine
-from app.engine.tag_campaign import build_tag_adventure_manifest, default_campaign, save_campaign
+from app.engine.tag_campaign import build_tag_adventure_manifest, default_campaign, load_campaign, save_campaign
 from app.engine.tag_compat import upgrade_tag_manifest
 from app.rules.repository import RulesRepository
 from app.schemas import ActiveQuestState, Character, EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
@@ -1095,7 +1095,7 @@ def test_mutant_fish_api_runs_party_saves_and_campaign_rate_reward(client, monke
     assert "5gp each" in payload["entry"]["result_text"]
 
 
-def test_mutant_fish_shared_rumor_entry_upgrades_and_routes_to_scene_12(client) -> None:
+def test_mutant_fish_shared_rumor_entry_auto_starts_scene_12_once(client, monkeypatch) -> None:
     manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
     reference = manifest["source"]["parameters"]["tag_reference"]
     reference["room_prompts"]["tag-lead-entry"]["actions"] = [
@@ -1126,12 +1126,56 @@ def test_mutant_fish_shared_rumor_entry_upgrades_and_routes_to_scene_12(client) 
                 attack_bonus=1,
                 defense_bonus=1,
                 save_bonus=0,
-            )
+            ),
+            PartyMemberState(
+                character_id="fish-entry-victim",
+                name="Fish Entry Victim",
+                class_id="warrior",
+                class_name="Warrior",
+                level=3,
+                xp=0,
+                gold=0,
+                current_life=8,
+                max_life=8,
+                attack_bonus=1,
+                defense_bonus=1,
+                save_bonus=0,
+            ),
         ],
         manifest,
         adventure_id=manifest["id"],
     )
+    assert session.active_quest is not None
+    assert session.active_quest.key == "tag_generated_scene"
+    main.store.save(
+        "characters",
+        Character(
+            id="fish-entry-hero",
+            name="Fish Entry Hero",
+            class_id="warrior",
+            class_name="Warrior",
+            level=3,
+            xp=0,
+            gold=0,
+            max_life=8,
+            current_life=8,
+            attack_bonus=1,
+            defense_bonus=1,
+            save_bonus=0,
+            inventory=[],
+            active_session_id=session.id,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        ),
+    )
     main.store.save("sessions", session)
+    save_calls: list[str] = []
+
+    def roll_scene12(member, session=None):
+        save_calls.append(member.character_id)
+        return (5, [5]) if member.character_id == "fish-entry-hero" else (1, [1])
+
+    monkeypatch.setattr("app.engine.tag_mutant_fish.roll_exploding_for_level", roll_scene12)
 
     resumed = client.get("/api/sessions/mutant-fish-entry-route")
 
@@ -1157,9 +1201,370 @@ def test_mutant_fish_shared_rumor_entry_upgrades_and_routes_to_scene_12(client) 
     current = next(tile for tile in investigated_session["map_state"]["tiles"] if tile["id"] == current_id)
     assert current["content_key"] == "imported:tag-final-scene"
     assert current["title"] == "The Bridge Pool"
+    fish_state = investigated_session["active_quest"]["tag_procedure_state"]["mutant_fish_scene12"]
+    assert fish_state["phase"] == "rescue"
+    assert fish_state["in_water_character_ids"] == ["fish-entry-victim"]
+    assert len(fish_state["initial_saves"]) == 2
+    assert save_calls == ["fish-entry-hero", "fish-entry-victim"]
+    assert investigated_session["active_quest"]["completed"] is False
+    assert investigated_session["tag_generated_completion_pending"] is False
+    assert not any(
+        line == "Quest complete: objective location reached."
+        for line in investigated_session["log"]
+    )
     assert investigated_session["generated_tag_diagnostics"]["current_actions"] == [
-        "Resolve mutant fish rescue and reward"
+        "Mutant fish rescue and reward"
     ]
+
+    for _ in range(2):
+        reloaded = client.get("/api/sessions/mutant-fish-entry-route")
+        assert reloaded.status_code == 200
+        reloaded_state = reloaded.json()["active_quest"]["tag_procedure_state"]["mutant_fish_scene12"]
+        assert reloaded_state["initial_saves"] == fish_state["initial_saves"]
+    assert save_calls == ["fish-entry-hero", "fish-entry-victim"]
+
+    monkeypatch.setattr("app.engine.tag_mutant_fish.roll_d6", lambda: 2)
+    rescued = client.post(
+        "/api/sessions/mutant-fish-entry-route/tag-branch-action",
+        json={
+            "branch_action": "mutant_fish_scene12",
+            "step": "rescue",
+            "character_id": "fish-entry-hero",
+            "target_character_id": "fish-entry-victim",
+        },
+    )
+    assert rescued.status_code == 200
+    rescued_session = rescued.json()["session"]
+    rescued_state = rescued_session["active_quest"]["tag_procedure_state"]["mutant_fish_scene12"]
+    assert rescued_state["phase"] == "reward"
+    assert rescued_state["ration_count"] == 5
+    assert rescued_session["minor_encounters_defeated"] == 2
+
+    sold = client.post(
+        "/api/sessions/mutant-fish-entry-route/tag-branch-action",
+        json={
+            "branch_action": "mutant_fish_scene12",
+            "step": "sell",
+            "character_id": "fish-entry-hero",
+        },
+    )
+    assert sold.status_code == 200
+    sold_session = sold.json()["session"]
+    assert sold_session["mode"] == "exploration"
+    assert sold_session["active_quest"]["completed"] is True
+    assert sold_session["tag_generated_completion_pending"] is True
+
+    completed = client.post("/api/sessions/mutant-fish-entry-route/tag-generated-lead-continue")
+    assert completed.status_code == 200
+    assert completed.json()["mode"] == "complete"
+    completed_campaign = load_campaign(main.store)
+    assert completed_campaign.adventures_completed == 1
+    assert completed_campaign.days_passed == 1
+
+    repeated = client.post(
+        "/api/sessions/mutant-fish-entry-route/advance",
+        json={"action": "search", "show_rolls": False},
+    )
+    assert repeated.status_code == 200
+    repeated_campaign = load_campaign(main.store)
+    assert repeated_campaign.adventures_completed == 1
+    assert repeated_campaign.days_passed == 1
+
+
+def test_mutant_fish_resume_repairs_stale_arrival_completion_and_persists_all_fail(client, monkeypatch) -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
+    manifest["quest"]["complete_when"] = {"type": "room_reached", "room_id": "tag-final-scene"}
+    final_action = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-final-scene"]["actions"][0]
+    final_action.pop("auto_start", None)
+    final_action.pop("required_for_completion", None)
+    session = create_session_from_manifest(
+        main.random_engine,
+        "mutant-fish-stale-arrival",
+        "party",
+        [
+            PartyMemberState(
+                character_id="fish-stale-hero",
+                name="Fish Stale Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=3,
+                xp=0,
+                gold=0,
+                current_life=8,
+                max_life=8,
+                attack_bonus=1,
+                defense_bonus=1,
+                save_bonus=0,
+            )
+        ],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    final_tile = next(
+        tile for tile in session.map_state.tiles if tile.content_key == "imported:tag-final-scene"
+    )
+    session.map_state.current_tile_id = final_tile.id
+    assert session.active_quest is not None
+    session.active_quest.completed = True
+    session.log.extend(
+        [
+            "Quest complete: objective location reached.",
+            "Quest objective complete. Return to Guild Contact in Mutant Fish Under the Bridge to report.",
+        ]
+    )
+    session.imported_fired_triggers.append("quest:return_hint")
+    main.store.save(
+        "characters",
+        Character(
+            id="fish-stale-hero",
+            name="Fish Stale Hero",
+            class_id="warrior",
+            class_name="Warrior",
+            level=3,
+            xp=0,
+            gold=0,
+            max_life=8,
+            current_life=8,
+            attack_bonus=1,
+            defense_bonus=1,
+            save_bonus=0,
+            inventory=[],
+            active_session_id=session.id,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        ),
+    )
+    main.store.save("sessions", session)
+    calls = 0
+
+    def fail_scene12(_member, session=None):
+        nonlocal calls
+        calls += 1
+        return 1, [1]
+
+    monkeypatch.setattr("app.engine.tag_mutant_fish.roll_exploding_for_level", fail_scene12)
+
+    resumed = client.get("/api/sessions/mutant-fish-stale-arrival")
+
+    assert resumed.status_code == 200
+    payload = resumed.json()
+    assert payload["imported_quest_complete_when"] == {
+        "type": "tag_scene_resolved",
+        "room_id": "tag-final-scene",
+    }
+    assert payload["active_quest"]["key"] == "tag_generated_scene"
+    assert payload["active_quest"]["completed"] is False
+    assert payload["active_quest"]["tag_procedure_state"]["mutant_fish_scene12"]["phase"] == "destroyed"
+    assert payload["mode"] == "complete"
+    assert payload["party"][0]["current_life"] == 0
+    assert payload["minor_encounters_defeated"] == 0
+    assert "Character roster updated after the adventure ended." in payload["summary"]
+    assert "quest:return_hint" not in payload["imported_fired_triggers"]
+    assert not any("objective location reached" in line for line in payload["log"])
+    assert calls == 1
+    campaign = load_campaign(main.store)
+    rumor_state = next(state for state in campaign.tag_rumor_states if state.rumor_number == 4)
+    assert rumor_state.status == "resolved"
+    assert campaign.adventures_completed == 0
+    assert campaign.days_passed == 0
+    character = main.store.get("characters", "fish-stale-hero", Character.model_validate)
+    assert character is not None
+    assert character.current_life == 0
+    assert character.active_session_id is None
+
+    reloaded = client.get("/api/sessions/mutant-fish-stale-arrival")
+    assert reloaded.status_code == 200
+    assert calls == 1
+    reloaded_campaign = load_campaign(main.store)
+    assert reloaded_campaign.adventures_completed == 0
+    assert reloaded_campaign.days_passed == 0
+
+
+def test_mutant_fish_auto_start_all_fail_persists_death_and_finishes(client, monkeypatch) -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
+    members = [
+        PartyMemberState(
+            character_id=f"fish-doomed-{index}",
+            name=f"Fish Doomed {index}",
+            class_id="warrior",
+            class_name="Warrior",
+            level=3,
+            xp=0,
+            gold=0,
+            current_life=8,
+            max_life=8,
+            attack_bonus=1,
+            defense_bonus=1,
+            save_bonus=0,
+        )
+        for index in (1, 2)
+    ]
+    session = create_session_from_manifest(
+        main.random_engine,
+        "mutant-fish-auto-destroyed",
+        "party",
+        members,
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    for member in members:
+        character = Character(
+            id=member.character_id,
+            name=member.name,
+            class_id=member.class_id,
+            class_name=member.class_name,
+            level=member.level,
+            xp=member.xp,
+            gold=member.gold,
+            max_life=member.max_life,
+            current_life=member.current_life,
+            attack_bonus=member.attack_bonus,
+            defense_bonus=member.defense_bonus,
+            save_bonus=member.save_bonus,
+            inventory=[],
+            active_session_id=session.id,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        )
+        main.store.save("characters", character)
+    main.store.save("sessions", session)
+    monkeypatch.setattr(
+        "app.engine.tag_mutant_fish.roll_exploding_for_level",
+        lambda _member, session=None: (1, [1]),
+    )
+    investigate = manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"][0]
+
+    response = client.post(
+        "/api/sessions/mutant-fish-auto-destroyed/tag-route-action",
+        json={"route_action": "unlock_scene", "reference": investigate["reference"]},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    destroyed = payload["session"]
+    assert destroyed["mode"] == "complete"
+    assert destroyed["active_quest"]["completed"] is False
+    assert destroyed["active_quest"]["tag_procedure_state"]["mutant_fish_scene12"]["phase"] == "destroyed"
+    assert destroyed["tag_generated_completion_pending"] is False
+    assert destroyed["minor_encounters_defeated"] == 0
+    assert all(member["current_life"] == 0 for member in destroyed["party"])
+    assert "Character roster updated after the adventure ended." in destroyed["summary"]
+    rumor_state = next(
+        state for state in payload["campaign"]["tag_rumor_states"] if state["rumor_number"] == 4
+    )
+    assert rumor_state["status"] == "resolved"
+    assert payload["campaign"]["adventures_completed"] == 0
+    assert payload["campaign"]["days_passed"] == 0
+    assert not any(
+        entry["event_type"] == "adventure_completed"
+        for entry in payload["campaign"]["campaign_chronicle"]
+    )
+    for member in members:
+        character = main.store.get("characters", member.character_id, Character.model_validate)
+        assert character is not None
+        assert character.current_life == 0
+        assert character.active_session_id is None
+
+
+def test_mutant_fish_physical_entry_all_fail_uses_terminal_failure_once(client, monkeypatch) -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
+    member = PartyMemberState(
+        character_id="fish-physical-doomed",
+        name="Fish Physical Doomed",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=0,
+        gold=0,
+        current_life=8,
+        max_life=8,
+        attack_bonus=1,
+        defense_bonus=1,
+        save_bonus=0,
+    )
+    session = create_session_from_manifest(
+        main.random_engine,
+        "mutant-fish-physical-destroyed",
+        "party",
+        [member],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    complication = next(
+        tile for tile in session.map_state.tiles if tile.content_key == "imported:tag-complication"
+    )
+    final_tile = next(
+        tile for tile in session.map_state.tiles if tile.content_key == "imported:tag-final-scene"
+    )
+    final_exit = next(
+        exit_state
+        for exit_state in complication.exits
+        if exit_state.destination_tile_id == final_tile.id
+    )
+    final_exit.status = "open"
+    final_exit.door_open = True
+    session.map_state.current_tile_id = complication.id
+    main.store.save(
+        "characters",
+        Character(
+            id=member.character_id,
+            name=member.name,
+            class_id=member.class_id,
+            class_name=member.class_name,
+            level=member.level,
+            xp=member.xp,
+            gold=member.gold,
+            max_life=member.max_life,
+            current_life=member.current_life,
+            attack_bonus=member.attack_bonus,
+            defense_bonus=member.defense_bonus,
+            save_bonus=member.save_bonus,
+            inventory=[],
+            active_session_id=session.id,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        ),
+    )
+    main.store.save("sessions", session)
+    calls = 0
+
+    def fail_scene12(_member, session=None):
+        nonlocal calls
+        calls += 1
+        return 1, [1]
+
+    monkeypatch.setattr("app.engine.tag_mutant_fish.roll_exploding_for_level", fail_scene12)
+
+    entered = client.post(
+        f"/api/sessions/{session.id}/advance",
+        json={"action": "explore", "exit_id": final_exit.id, "show_rolls": False},
+    )
+
+    assert entered.status_code == 200
+    payload = entered.json()
+    assert payload["mode"] == "complete"
+    assert payload["active_quest"]["tag_procedure_state"]["mutant_fish_scene12"]["phase"] == "destroyed"
+    assert payload["party"][0]["current_life"] == 0
+    assert calls == 1
+    campaign = load_campaign(main.store)
+    rumor_state = next(state for state in campaign.tag_rumor_states if state.rumor_number == 4)
+    assert rumor_state.status == "resolved"
+    assert campaign.adventures_completed == 0
+    assert campaign.days_passed == 0
+    character = main.store.get("characters", member.character_id, Character.model_validate)
+    assert character is not None
+    assert character.current_life == 0
+    assert character.active_session_id is None
+
+    repeated = client.post(
+        f"/api/sessions/{session.id}/advance",
+        json={"action": "explore", "exit_id": final_exit.id, "show_rolls": False},
+    )
+    assert repeated.status_code == 200
+    assert calls == 1
+    repeated_campaign = load_campaign(main.store)
+    assert repeated_campaign.adventures_completed == 0
+    assert repeated_campaign.days_passed == 0
 
 
 def test_shared_rumor_entry_return_to_town_keeps_rumor_for_later(client) -> None:

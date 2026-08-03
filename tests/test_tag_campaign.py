@@ -1535,14 +1535,35 @@ def test_mutant_fish_rumor_is_hypnosis_procedure_not_proxy_boss() -> None:
     manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
     reference = manifest["source"]["parameters"]["tag_reference"]
     assert reference["finale_mode"] == "procedure"
+    assert reference["pdf_pages"] == "TAG pp.23, 29"
     assert reference["final_foes"] == []
-    assert manifest["quest"]["complete_when"] == {"type": "room_reached", "room_id": "tag-final-scene"}
+    assert manifest["quest"]["complete_when"] == {
+        "type": "tag_scene_resolved",
+        "room_id": "tag-final-scene",
+    }
     final_room = next(room for room in manifest["rooms"] if room["id"] == "tag-final-scene")
     assert "encounter" not in final_room["triggers"][0]
     assert "no combat stats" in final_room["description"]
-    assert "bridge pool scene is active" in final_room["triggers"][0]["log"].lower()
+    assert "automatically records the party's hypnosis saves" in final_room["triggers"][0]["log"].lower()
     actions = reference["room_prompts"]["tag-final-scene"]["actions"]
     assert [action["action_value"] for action in actions] == ["mutant_fish_scene12"]
+    assert actions[0]["auto_start"] is True
+    assert actions[0]["required_for_completion"] is True
+
+
+def test_unregistered_tag_action_cannot_declare_automatic_required_lifecycle() -> None:
+    action = tag_campaign._tag_prompt_action_from_profile(
+        {
+            "label": "Unregistered action",
+            "action_value": "unregistered_required_action",
+            "auto_start": True,
+            "required_for_completion": True,
+        }
+    )
+
+    assert action is not None
+    assert "auto_start" not in action
+    assert "required_for_completion" not in action
 
 
 def test_all_tag_rumor_manifests_include_playthrough_audit_guidance() -> None:
@@ -1887,7 +1908,7 @@ def test_generated_tag_reward_policy_boundaries_are_explicit() -> None:
     rumor4, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
     fish_policy = rumor4["source"]["parameters"]["tag_reference"]["reward_policy"]
     assert fish_policy["class"] == "scene_reward_button"
-    assert "Resolve mutant fish rescue and reward" in fish_policy["actions"]
+    assert "Mutant fish rescue and reward" in fish_policy["actions"]
     assert "ordinary" not in fish_policy["expectation"].lower()
 
     rumor11, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="11")
@@ -2444,7 +2465,8 @@ def test_tag_rumor_branch_actions_roll_scene_procedures(monkeypatch) -> None:
     assert hero.gold == 100
 
     fish = resolve_tag_branch_action(campaign, hero, branch_action="mutant_fish_hypnosis", reference="chaos")
-    assert "fails automatically" in fish.result_text
+    assert "former one-character manual roll is disabled" in fish.result_text
+    assert "automatically rolls" in fish.result_text
 
     monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
     count = resolve_tag_branch_action(campaign, hero, branch_action="gargoyle_count")

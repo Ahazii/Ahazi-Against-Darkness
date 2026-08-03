@@ -2402,15 +2402,20 @@ def test_mutant_fish_scene_12_uses_one_typed_guided_workflow() -> None:
     dispatcher_body = _function_body("appendGeneratedTagSpecialActionControl", APP_JS)
     guided_body = _function_body("appendMutantFishGuidedAction", APP_JS)
     run_body = _function_body("runMutantFishStep", APP_JS)
+    route_body = _function_body("runTagRouteActionWithDefaults", APP_JS)
     assert '"mutant_fish_scene12"' in objective_body
     assert "const actions = mutantFishAction ? [mutantFishAction] : promptActions;" in objective_body
     assert "appendMutantFishGuidedAction(parent, action, fallbackReference)" in dispatcher_body
-    assert "Roll party hypnosis Saves" in guided_body
+    assert "automatically rolls one L5 hypnosis Save for every living hero on entry" in guided_body
+    assert "Roll party hypnosis Saves" not in guided_body
+    assert 'runMutantFishStep("start")' not in guided_body
     assert "Who performs the rescue?" in guided_body
     assert "Who is pulled from the water?" in guided_body
     assert "Keep ${rationCount}" in guided_body
     assert "Sell for ${rationCount * unitPrice}gp" in guided_body
     assert 'branch_action: "mutant_fish_scene12"' in run_body
+    assert 'if (state.session.mode === "complete")' in route_body
+    assert "await finishCompletedAdventureClient(state.session);" in route_body
     assert ".mutant-fish-rescue-grid" in STYLES_CSS
     assert ".mutant-fish-reward-actions" in STYLES_CSS
 
@@ -2790,7 +2795,6 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "medusa_reaction",
         "leprechaun_shoes",
         "leprechaun_illusion_spell",
-        "mutant_fish_hypnosis",
         "gargoyle_count",
         "gargoyle_surprise",
         "gargoyle_skin",
@@ -2835,7 +2839,8 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
     assert "Bofto Scene 9 choice" in INDEX_HTML
     assert "Xasartha's medusa reaction" in INDEX_HTML
     assert "Shoes of Fast Walk" in INDEX_HTML
-    assert "mutant fish hypnosis" in INDEX_HTML
+    assert 'value="mutant_fish_hypnosis"' not in INDEX_HTML
+    assert "Roll one character's L5 mutant fish hypnosis Save" not in INDEX_HTML
     assert "white gargoyle count" in INDEX_HTML
     assert "medusa_assassin_ambush" in APP_JS
     assert "appendMedusaScene10GuidedAction" in APP_JS

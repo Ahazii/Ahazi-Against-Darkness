@@ -1275,7 +1275,7 @@ TAG_BRANCH_ACTIONS: dict[str, str] = {
     "medusa_reaction": "Medusa reaction roll",
     "leprechaun_shoes": "Leprechaun shoes purchase",
     "leprechaun_illusion_spell": "Leprechaun illusion spell",
-    "mutant_fish_hypnosis": "Mutant fish hypnosis save",
+    "mutant_fish_hypnosis": "Legacy Mutant Fish automatic-scene guidance",
     "gargoyle_count": "White gargoyle count",
     "gargoyle_surprise": "White gargoyle surprise",
     "gargoyle_skin": "White gargoyle stone skin",
@@ -1600,15 +1600,15 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
     3: {
         "title": "The Paladin's Sword",
         "scene": "Scene 11",
-        "pdf_pages": "TAG pp.23, 30",
+        "pdf_pages": "TAG pp.23, 28",
         "objective": "Check the old miller's farm and discover whether the sword rumor is true.",
         "entry": "The farm is watched by locals who have repeated the sword story too often.",
         "side": "Search the outbuildings for the false trail and any remaining tracks.",
         "complication": "Scene 11 is a red herring with a 2-in-6 Riff-Raff or Outside ambush chance.",
         "final_title": "False Sword Trail",
-        "final_description": "No paladin sword is here. Roll the Scene 11 ambush chance manually if you want the printed resolution.",
+        "final_description": "No paladin sword is here. The printed Scene 11 resolution requires the 2-in-6 ambush roll.",
         "finale_mode": "procedure",
-        "finale_instruction": "This is a red herring. Use the ambush button if the optional 2-in-6 ambush is being checked; otherwise record the false trail and return to settlement play.",
+        "finale_instruction": "This is a red herring, but the 2-in-6 ambush roll is mandatory. Use the ambush button; if an encounter occurs, resolve it before returning to settlement play.",
         "rewards": "No sword; possible ambush rewards only.",
         "final_prompt_actions": [
             {
@@ -1620,12 +1620,12 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
                 "amount": 2,
             }
         ],
-        "rules": ["The ambush is optional procedure text; no proxy combat is installed unless the table result produces one."],
+        "rules": ["Roll the mandatory 2-in-6 ambush chance; no proxy combat is installed unless the table result produces one."],
     },
     4: {
         "title": "Mutant Fish Under the Bridge",
         "scene": "Scene 12",
-        "pdf_pages": "TAG pp.23, 30",
+        "pdf_pages": "TAG pp.23, 29",
         "objective": "Face the mutant fish's hypnosis at the bridge.",
         "entry": "The stream under the bridge is unnaturally still.",
         "side": "The banks show signs of travellers walking willingly into the water.",
@@ -1634,16 +1634,18 @@ TAG_RUMOR_PROFILES: dict[int, dict[str, object]] = {
         "final_title": "The Bridge Pool",
         "final_description": "Resolve the mutant fish hypnosis and rescue timing from TAG Scene 12. The fish have no combat stats; this is a hazard and reward procedure, not a normal Final Boss fight.",
         "finale_mode": "procedure",
-        "finale_instruction": "Roll the party's Scene 12 hypnosis Saves once, resolve each rescue turn, then keep or sell the persisted fish-ration result. The app records the two-minion-encounter XP progress automatically.",
-        "final_log": "The bridge pool scene is active: resolve hypnosis Saves and rescue timing before taking the ration reward or XP marker.",
+        "finale_instruction": "Entering Scene 12 automatically rolls the party's hypnosis Saves once. Resolve each rescue turn, then keep or sell the persisted fish-ration result; the app records the two-minion-encounter XP progress automatically.",
+        "final_log": "The bridge pool scene automatically records the party's hypnosis Saves on entry; resolve any rescue turns before taking the ration reward or XP marker.",
         "rewards": "If the party survives, d6+3 food rations; counts as two minion encounters for XP.",
         "final_prompt_actions": [
             {
-                "label": "Resolve mutant fish rescue and reward",
-                "tooltip": "Run TAG p.29, Scene 12: all living heroes Save vs L5, rescue trapped heroes turn by turn, then keep or sell the fish and record two minor encounters for XP.",
+                "label": "Mutant fish rescue and reward",
+                "tooltip": "Entering TAG p.29, Scene 12 automatically rolls every living hero's Save vs L5. Rescue trapped heroes turn by turn, then keep or sell the fish; the app records two minor encounters for XP.",
                 "action_type": "branch",
                 "action_value": "mutant_fish_scene12",
                 "reference": "TAG p.29, Scene 12",
+                "auto_start": True,
+                "required_for_completion": True,
             },
         ],
         "rules": [
@@ -4865,15 +4867,10 @@ def resolve_tag_branch_action(
         else:
             parts.append("Record one eligible character learning an illusion spell from the leprechauns; cost is 100 gp or free after buying at least three pairs of magical shoes.")
     elif clean_action == "mutant_fish_hypnosis":
-        modifier = _tag_reference_int(reference, "mod", cost)
-        chaos = _tag_reference_flag(reference, "chaos")
-        if chaos:
-            parts.append("Mutant fish hypnosis: chaos-tainted character fails automatically per Scene 12.")
-        else:
-            roll = roll_d6()
-            total = roll + modifier
-            result = "resists the chanting" if total >= 5 else "fails and is drawn toward the water"
-            parts.append(f"Mutant fish hypnosis Save d6={roll}+{modifier}={total} vs L5: character {result}. Resolve rescue timing from Scene 12.")
+        parts.append(
+            "The former one-character manual roll is disabled. Enter the generated TAG p.29 Scene 12 room; "
+            "the shared scene lifecycle automatically rolls and persists one L5 hypnosis Save for every living hero."
+        )
     elif clean_action == "gargoyle_count":
         roll = roll_d6()
         total = roll + 2
@@ -6323,8 +6320,10 @@ def _tag_prompt_action(
     action_value: str = "",
     reference: str = "",
     amount: int = 0,
+    auto_start: bool = False,
+    required_for_completion: bool = False,
 ) -> dict[str, object]:
-    return {
+    action: dict[str, object] = {
         "label": label,
         "tooltip": tooltip,
         "action_type": action_type,
@@ -6332,6 +6331,11 @@ def _tag_prompt_action(
         "reference": reference,
         "amount": max(0, int(amount or 0)),
     }
+    if auto_start:
+        action["auto_start"] = True
+    if required_for_completion:
+        action["required_for_completion"] = True
+    return action
 
 
 def _tag_lead_how_to(lead_type: str) -> str:
@@ -6703,13 +6707,24 @@ def _tag_enrich_guild_job_profile(profile: dict[str, object], lead_detail: str) 
 def _tag_prompt_action_from_profile(action: object) -> dict[str, object] | None:
     if not isinstance(action, dict) or not action.get("label"):
         return None
+    from .tag_scene_lifecycle import tag_action_lifecycle
+
+    action_value = str(action.get("action_value") or "")
+    lifecycle = tag_action_lifecycle(action_value)
     return _tag_prompt_action(
         str(action.get("label") or "TAG action"),
         str(action.get("tooltip") or "Open Adventures Guild Actions with this generated-module prompt prefilled."),
         action_type=str(action.get("action_type") or "dialog"),
-        action_value=str(action.get("action_value") or ""),
+        action_value=action_value,
         reference=str(action.get("reference") or ""),
         amount=max(0, int(action.get("amount") or 0)),
+        auto_start=(
+            bool(action.get("auto_start")) and bool(lifecycle and lifecycle.auto_start)
+        ),
+        required_for_completion=(
+            bool(action.get("required_for_completion"))
+            and bool(lifecycle and lifecycle.required_for_completion)
+        ),
     )
 
 
@@ -7401,7 +7416,17 @@ def _tag_manifest(
         objective = str(profile["player_objective"])
     scene_graph_extra_rooms = _tag_scene_graph_extra_rooms(profile, scene_graph_start_key)
     scene_graph_start_exits = _tag_scene_graph_start_exits(profile, scene_graph_start_key)
-    if lead_structure == "scene_chain" and scene_graph_start_key:
+    from .tag_scene_lifecycle import tag_action_lifecycle
+
+    final_action_requires_resolution = any(
+        bool(action.get("required_for_completion"))
+        and bool(
+            (lifecycle := tag_action_lifecycle(str(action.get("action_value") or "")))
+            and lifecycle.required_for_completion
+        )
+        for action in _tag_profile_actions(profile, "final_prompt_actions")
+    )
+    if (lead_structure == "scene_chain" and scene_graph_start_key) or final_action_requires_resolution:
         complete_when = {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
     elif noncombat_finale:
         complete_when = {"type": "room_reached", "room_id": "tag-final-scene"}

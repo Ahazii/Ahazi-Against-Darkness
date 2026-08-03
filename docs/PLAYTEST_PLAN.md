@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-03. Target build: v0.39.63.
+Last updated: 2026-08-03. Target build: v0.39.64.
 
 ## Adventure Test Gate: Passed
 
@@ -87,9 +87,12 @@ v0.39.59 implements the player-confirmed TAG p.29 interpretation:
 
 The supplied HTML proved v0.39.62 generated both actions but placed them only
 inside collapsed Objective Details because Rumor 4 uses the manifest-owned
-`imported_room` quest subtype. v0.39.63 repairs the shared TAG pp.22-24 opening
-in current session `cee90d971b804c2f9c32d54caac040ab`. After deploying and
-force-refreshing, resume that session; do not generate another Rumor 4:
+`imported_room` quest subtype. v0.39.63 repairs the shared TAG pp.22-24 opening.
+The next Narrative Report proved that Investigate then entered Scene 12 but
+`room_reached` completed the quest before its procedure. v0.39.64 repairs that
+lifecycle in current session `cee90d971b804c2f9c32d54caac040ab`. After
+deploying and force-refreshing, resume that session; do not generate another
+Rumor 4:
 
 1. Confirm horizontal **Investigate** and **Not now — return to town** buttons appear
    immediately beneath Narrative. Their hover text must explain that Investigate
@@ -101,10 +104,10 @@ force-refreshing, resume that session; do not generate another Rumor 4:
 
 Then check only this typed slice:
 
-1. At **The Bridge Pool**, there must be one
-   **Roll party hypnosis Saves** action, not separate manual hypnosis,
-   ration, and XP buttons.
-2. Confirm Narrative lists every living hero's L5 result. A chaos-tainted hero,
+1. At **The Bridge Pool**, there must be no manual roll button. Opening or
+   refreshing the repaired scene automatically rolls exactly one L5 hypnosis
+   Save for every living hero and keeps the quest active unless everyone fails.
+2. Confirm Narrative lists every living hero's persisted L5 result. A chaos-tainted hero,
    if one is naturally present, must fail automatically; do not alter the live
    party merely to force this edge.
 3. If anyone enters the water, confirm the panel clearly names trapped heroes
@@ -117,14 +120,18 @@ Then check only this typed slice:
    **Keep** / **Sell** choices. Keeping adds exactly that many Food rations
    within carrying limits; selling pays 2gp each unless this campaign has
    already earned friendly chaos-cultist terms.
-6. Confirm the session's minor-encounter progress increases by exactly two and
-   the generated lead offers its normal readable Continue closeout.
+6. Confirm the session's minor-encounter progress increases by exactly two.
+   Keep or Sell must leave the resolved result readable and expose **Return to
+   town and finish**; only that explicit action opens normal closeout.
 
 Do not force an all-party failure on the valuable live party; automated tests
 own total-party destruction, failed-rescuer role swaps, the 5gp friendship
 rate, carrying-limit distribution, duplicate prevention, and XP rollover.
 
-After this narrow gate passes, select the next exact PDF-backed TAG scene.
+After this narrow gate passes, migrate Rumor 9's already-typed Daroc terminal
+onto the same required-resolution metadata. Do not mass-enable the gate: the
+pp.22-31 audit found that every Rumor needs a terminal result, but several still
+need vendor/service Done actions or child-dungeon return wiring first.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

@@ -159,7 +159,7 @@ def test_generated_rumor_4_entry_choices_are_visible_beneath_narrative(live_app)
         adventure_id=generated["adventure_id"],
     )
     session = _json_get(live_app.base_url, f"/api/sessions/{session_id}")
-    assert session["active_quest"]["key"] == "imported_room"
+    assert session["active_quest"]["key"] == "tag_generated_scene"
 
     with playwright_api.sync_playwright() as playwright:
         try:

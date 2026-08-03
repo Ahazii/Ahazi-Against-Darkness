@@ -39,14 +39,14 @@ Use the normal Adventure section to play the generated module. The modern Go Adv
 
 Generated Rumor entry prompts are a deliberate exception to the Current Objective workflow: TAG pp.22-24 gives all twelve one shared horizontal **Investigate** / **Not now — return to town** choice beneath Narrative. Investigate enters that result's explicit first numbered Scene; Not now retains the Rumor for later. The choices remain visible when Objective Details is hidden for every generated TAG quest subtype, and the strip must not display Director phases, lifecycle bookkeeping, or generic Rumor playbook prose.
 
-The TAG pp.22-31 Rumors share one scene-host flow: start the Rumor, display its narrative, show the applicable player routes, enter the selected next Scene, attach the required typed procedure/combat/vendor/NPC/dungeon-handoff control, then resolve reward and completion. Narrative objective, **Relevant Now**, and room metadata use one special-action dispatcher; each Rumor's printed mechanics remain a registered plug-in rather than a second adventure engine.
+The TAG pp.22-31 Rumors share one scene-host flow: start the Rumor, display its narrative, show the applicable player routes, enter the selected next Scene, attach the required typed procedure/combat/vendor/NPC/dungeon-handoff control, then resolve reward and completion. Narrative objective, **Relevant Now**, and room metadata use one special-action dispatcher; each Rumor's printed mechanics remain a registered plug-in rather than a second adventure engine. The printed audit confirms that none of the twelve is complete merely because its first Scene was reached.
 
 | Rumor | First Scene | Scene-host plug-in |
 | --- | --- | --- |
 | 1 Bofto | Scene 9 | Branch chain through Scenes 14/17/18/19; typed theft Save and persistent curse |
 | 2 Medusa | Scene 10 | Group Stealth/assassin procedure, Scene 1 social/combat/reward choices |
-| 3 Paladin's sword | Scene 11 | Red-herring procedure and optional ambush handoff |
-| 4 Mutant fish | Scene 12 | Typed hypnosis, rescue, ration sale/keep, and XP procedure |
+| 3 Paladin's sword | Scene 11 | Red-herring procedure with a mandatory 2-in-6 ambush roll and encounter handoff when triggered |
+| 4 Mutant fish | Scene 12 | Automatic per-character hypnosis on entry, rescue, ration sale/keep, and XP procedure |
 | 5 Dragon in disguise | Scene 13 | True/false social decision and later Clue-gated Dragon's Lair handoff |
 | 6 Leprechauns | Scene 2 | Vendor and illusion-spell lesson transaction |
 | 7 Tamas Zeya | Scene 15 | Seven-room temple-dungeon handoff |
@@ -56,7 +56,9 @@ The TAG pp.22-31 Rumors share one scene-host flow: start the Rumor, display its 
 | 11 Deoldyn | Scene 3 | Trainer/NPC service and payment |
 | 12 Shinta | Scene 4 | Champion choice, Scene 7 solo Bandit Hideout handoff, and Agaratha reward |
 
-Rumor 4's final Scene is typed: one Narrative panel owns every L5 hypnosis Save, rescuer/victim choice, rescue turn, `d6+3` ration result, Keep/Sell decision, and two-minion XP record from TAG p.29. The current reusable frontend host is complete; replacing every arrival-based backend completion rule with one typed lifecycle is the next staged architecture slice.
+Rumor 4's final Scene is typed: entering the pool automatically rolls and persists one L5 hypnosis Save for every living hero. One Narrative panel then owns rescuer/victim choices, rescue turns, the `d6+3` ration result, Keep/Sell, and two-minion XP from TAG p.29. Its registered action declares both `auto_start` and `required_for_completion`; the shared lifecycle registry prevents arrival completion, all-party failure ends immediately, and successful Keep/Sell opens the explicit return-to-town finish action. Existing stale `room_reached` saves repair on resume without rerolling.
+
+The remaining migration order is deliberately staged so the shared gate cannot deadlock a Rumor with no terminal resolver: Rumor 9 next because Daroc's typed reward already completes; Rumors 6/11 after a shared repeatable vendor/service host and explicit Done action; Rumor 3 after its mandatory ambush procedure; Rumor 10 after dynamic count/surprise/reaction/combat/bounty handling; Rumor 8 after both child-dungeon routes; Rumors 5/7/12 after parent-child completion; and Medusa last. `required_for_completion` is a gate, not “one click means complete”: a multi-step procedure must reach its typed terminal state.
 
 - **Branch** logs generic social choices, Clue spends, variable counts, capture-alive outcomes, and printed gp rewards.
 - **Route** records the exact scene flow: parley success/failure, Clue-gated routes, peaceful/hostile branches, skipped or unlocked scenes, solo restrictions, and final routes. Route markers are saved in campaign state and also applied to the latest generated Adventures Guild module where safe.

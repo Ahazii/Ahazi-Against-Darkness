@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from ..schemas import ActiveQuestState, SessionState, TileState
 from .adventure_foes import spawn_manifest_foes
 from .tag_compat import normalize_tag_log_line, tag_reference_from_manifest
+from .tag_scene_lifecycle import auto_start_tag_room_actions
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
@@ -434,5 +435,6 @@ def fire_imported_triggers(
     if when == "on_enter":
         _log_tag_room_action_guidance(session, room_id)
         announce_imported_npcs_on_enter(session, tile, manifest)
+        auto_start_tag_room_actions(session, room_id)
         update_imported_quest_on_enter(session, tile)
         maybe_imported_quest_giver_resolution(session, tile, manifest)

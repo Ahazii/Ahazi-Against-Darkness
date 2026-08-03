@@ -272,6 +272,78 @@ def repair_generated_tag_core_quest_completion(session: Any) -> bool:
     return True
 
 
+def _current_imported_room_id(session: Any) -> str:
+    map_state = getattr(session, "map_state", None)
+    current_tile_id = getattr(map_state, "current_tile_id", None)
+    tiles = list(getattr(map_state, "tiles", []) or [])
+    tile = next((item for item in tiles if getattr(item, "id", None) == current_tile_id), None)
+    content_key = str(getattr(tile, "content_key", "") or "")
+    if content_key.startswith("imported:"):
+        return content_key.removeprefix("imported:")
+    if content_key == "entrance":
+        manifest = getattr(session, "imported_manifest", None)
+        if isinstance(manifest, dict):
+            return str(manifest.get("entrance_room_id") or "")
+    return ""
+
+
+def repair_required_tag_scene_lifecycle(session: Any) -> bool:
+    """Upgrade an arrival-completed required TAG scene and start its entry action."""
+    manifest = getattr(session, "imported_manifest", None)
+    if not isinstance(manifest, dict) or getattr(session, "mode", "") == "complete":
+        return False
+    manifest_quest = manifest.get("quest")
+    complete_when = manifest_quest.get("complete_when") if isinstance(manifest_quest, dict) else None
+    if not isinstance(complete_when, dict) or complete_when.get("type") != "tag_scene_resolved":
+        return False
+    quest = getattr(session, "active_quest", None)
+    if quest is None:
+        return False
+    changed = False
+    if getattr(session, "imported_quest_complete_when", None) != complete_when:
+        session.imported_quest_complete_when = dict(complete_when)
+        changed = True
+    arrival_completed = getattr(quest, "key", "") == "imported_room" and bool(getattr(quest, "completed", False))
+    if getattr(quest, "key", "") == "imported_room":
+        quest.key = "tag_generated_scene"
+        changed = True
+    target_room = str(complete_when.get("room_id") or "")
+    from .tag_scene_lifecycle import (
+        auto_start_tag_room_actions,
+        required_tag_room_actions_are_terminal,
+    )
+
+    procedure_terminal = bool(
+        target_room and required_tag_room_actions_are_terminal(session, target_room)
+    )
+    if (
+        arrival_completed
+        and not getattr(session, "tag_generated_completion_pending", False)
+        and not procedure_terminal
+    ):
+        quest.completed = False
+        false_completion_prefixes = (
+            "Quest complete: objective location reached.",
+            "Quest objective complete. Return to ",
+        )
+        repaired_log = [
+            line
+            for line in list(getattr(session, "log", []) or [])
+            if not any(str(line).startswith(prefix) for prefix in false_completion_prefixes)
+        ]
+        if repaired_log != list(getattr(session, "log", []) or []):
+            session.log = repaired_log
+        fired_triggers = list(getattr(session, "imported_fired_triggers", []) or [])
+        if "quest:return_hint" in fired_triggers:
+            session.imported_fired_triggers = [
+                key for key in fired_triggers if key != "quest:return_hint"
+            ]
+        changed = True
+    if target_room and _current_imported_room_id(session) == target_room:
+        changed = auto_start_tag_room_actions(session, target_room) or changed
+    return changed
+
+
 def _diagnostic_action_label(action: Any) -> str:
     if not isinstance(action, dict):
         return ""
@@ -852,6 +924,47 @@ def _upgrade_rumor_entry_manifest(tag_reference: dict[str, Any]) -> bool:
     return changed
 
 
+def _upgrade_required_tag_scene_lifecycle(
+    manifest: dict[str, Any],
+    tag_reference: dict[str, Any],
+) -> bool:
+    """Backfill declarative lifecycle metadata for verified required TAG scenes."""
+    from .tag_scene_lifecycle import tag_action_lifecycle
+
+    changed = False
+    prompts = tag_reference.get("room_prompts")
+    final_requires_resolution = False
+    if isinstance(prompts, dict):
+        for prompt_id, prompt in prompts.items():
+            if not isinstance(prompt, dict):
+                continue
+            actions = prompt.get("actions")
+            for action in actions if isinstance(actions, list) else []:
+                if not isinstance(action, dict):
+                    continue
+                lifecycle = tag_action_lifecycle(str(action.get("action_value") or ""))
+                if lifecycle is None:
+                    continue
+                if lifecycle.auto_start and action.get("auto_start") is not True:
+                    action["auto_start"] = True
+                    changed = True
+                if lifecycle.required_for_completion and action.get("required_for_completion") is not True:
+                    action["required_for_completion"] = True
+                    changed = True
+                if prompt_id == "tag-final-scene" and lifecycle.required_for_completion:
+                    final_requires_resolution = True
+    if final_requires_resolution:
+        expected_completion = {"type": "tag_scene_resolved", "room_id": "tag-final-scene"}
+        quest = manifest.get("quest")
+        if isinstance(quest, dict) and quest.get("complete_when") != expected_completion:
+            quest["complete_when"] = expected_completion
+            changed = True
+        if tag_reference.get("completion_policy") != "scene_resolved_after_required_action":
+            tag_reference["completion_policy"] = "scene_resolved_after_required_action"
+            changed = True
+    return changed
+
+
 def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     parameters = manifest.get("source", {}).get("parameters", {})
     tag_reference = parameters.get("tag_reference") if isinstance(parameters, dict) else None
@@ -882,6 +995,7 @@ def upgrade_tag_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         _upgrade_rumor_entry_manifest(tag_reference)
         _upgrade_bofto_manifest(manifest, tag_reference)
         _upgrade_medusa_manifest(manifest, tag_reference)
+        _upgrade_required_tag_scene_lifecycle(manifest, tag_reference)
         if is_treasure_map:
             if isinstance(prompts, dict):
                 for prompt in prompts.values():
