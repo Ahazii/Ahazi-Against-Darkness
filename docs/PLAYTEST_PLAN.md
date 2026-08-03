@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-03. Target build: v0.39.64.
+Last updated: 2026-08-03. Target build: v0.39.65.
 
 ## Adventure Test Gate: Passed
 
@@ -77,56 +77,28 @@ the completed session is next opened, and retains the old map-size fallback
 only for legacy sessions without visit tracking. This reporting fix is covered
 automatically; do not replay Rumor 2.
 
-## Do Next: TAG Rumor 4 Scene 12
+## Do Next: TAG Rumor 4 Closeout Only
 
-v0.39.59 implements the player-confirmed TAG p.29 interpretation:
+Live v0.39.64 evidence in session `cee90d971b804c2f9c32d54caac040ab`
+passes the Rumor opening and the full TAG p.29 Scene 12 procedure. Do not repeat
+Investigate, the four initial Saves, five rescue turns, Life loss, ration roll,
+Keep choice, or two-minion progress. The remaining defect was presentation:
+Narrative said **Continue**, while the enabled closeout was a small differently
+labelled chip and its full action panel was hidden with Objective Details.
 
-- a rescued victim leaves the water even when the rescuer fails and becomes
-  the new trapped hero;
-- friendly terms with chaos cultists are persistent campaign state.
+After deploying v0.39.65 and force-refreshing, resume that same session; do not
+generate another Rumor 4. Confirm only that:
 
-The supplied HTML proved v0.39.62 generated both actions but placed them only
-inside collapsed Objective Details because Rumor 4 uses the manifest-owned
-`imported_room` quest subtype. v0.39.63 repairs the shared TAG pp.22-24 opening.
-The next Narrative Report proved that Investigate then entered Scene 12 but
-`room_reached` completed the quest before its procedure. v0.39.64 repairs that
-lifecycle in current session `cee90d971b804c2f9c32d54caac040ab`. After
-deploying and force-refreshing, resume that session; do not generate another
-Rumor 4:
+1. the prominent **Continue — return to town and finish** action is visible
+   beneath Narrative even while Objective Details is otherwise collapsed;
+2. the compact Narrative-header action uses the same wording;
+3. Copy Narrative Report names that pending closeout action; and
+4. choosing the prominent action opens the normal Adventure Complete summary.
 
-1. Confirm horizontal **Investigate** and **Not now — return to town** buttons appear
-   immediately beneath Narrative. Their hover text must explain that Investigate
-   enters the printed Scene and Not now retains the Rumor for later. Leave
-   Objective Details closed while checking this.
-2. Choose **Investigate**. The party must move directly to **The Bridge Pool**
-   (Scene 12), and the opening choice buttons must be replaced by the typed
-   Mutant Fish procedure.
-
-Then check only this typed slice:
-
-1. At **The Bridge Pool**, there must be no manual roll button. Opening or
-   refreshing the repaired scene automatically rolls exactly one L5 hypnosis
-   Save for every living hero and keeps the quest active unless everyone fails.
-2. Confirm Narrative lists every living hero's persisted L5 result. A chaos-tainted hero,
-   if one is naturally present, must fail automatically; do not alter the live
-   party merely to force this edge.
-3. If anyone enters the water, confirm the panel clearly names trapped heroes
-   and asks both **Who performs the rescue?** and
-   **Who is pulled from the water?**
-4. Resolve one rescue turn. Every hero who was in the water at the start of
-   that turn loses 1 Life. The victim comes out; a failed rescuer enters the
-   water. Save/dashboard/resume once during this sequence if rescue is needed.
-5. On survival, confirm one persisted `d6+3` result and side-by-side
-   **Keep** / **Sell** choices. Keeping adds exactly that many Food rations
-   within carrying limits; selling pays 2gp each unless this campaign has
-   already earned friendly chaos-cultist terms.
-6. Confirm the session's minor-encounter progress increases by exactly two.
-   Keep or Sell must leave the resolved result readable and expose **Return to
-   town and finish**; only that explicit action opens normal closeout.
-
-Do not force an all-party failure on the valuable live party; automated tests
+Do not force an all-party failure on the valuable live party. Automated tests
 own total-party destruction, failed-rescuer role swaps, the 5gp friendship
-rate, carrying-limit distribution, duplicate prevention, and XP rollover.
+rate, carrying-limit distribution, duplicate prevention, XP rollover, saved
+collapsed-panel preferences, and the shared closeout endpoint.
 
 After this narrow gate passes, migrate Rumor 9's already-typed Daroc terminal
 onto the same required-resolution metadata. Do not mass-enable the gate: the

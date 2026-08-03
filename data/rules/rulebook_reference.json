@@ -3020,7 +3020,7 @@
         "closeout"
       ],
       "summary": "Tables documents generated Adventures Guild adventure signoff checkpoints and in-play closeout prompts.",
-      "body": "The modern Tables page includes tag_generated_adventure_signoff_table. It documents lead creation, generated Adventures Guild director steps, room prompt usage, narrative refresh guidance, lifecycle visibility, Current Objective signoff prompts, route marker recording, resolved-scene acknowledgement before summary, and five-step closeout checkpoints. Generated lead signoff stores warnings when route, XP, guidance, or closeout work remains.",
+      "body": "The modern Tables page includes tag_generated_adventure_signoff_table. It documents lead creation, generated Adventures Guild director steps, room prompt usage, narrative refresh guidance, lifecycle visibility, Current Objective signoff prompts, route marker recording, resolved-scene acknowledgement before summary, and five-step closeout checkpoints. A resolved terminal uses the required Continue — return to town and finish action; its Narrative, diagnostics, compact header control, and prominent primary control share that wording, and the primary control remains visible when optional Objective Details are collapsed. Generated lead signoff stores warnings when route, XP, guidance, or closeout work remains.",
       "implementation_status": "implemented"
     },
     {

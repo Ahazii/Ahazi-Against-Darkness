@@ -2594,7 +2594,27 @@ def test_tag_treasure_map_branch_actions_roll_destination_procedures(monkeypatch
 
 
 def test_legacy_treasure_map_notes_are_translated_for_resumed_games() -> None:
-    from app.engine.tag_compat import generated_tag_manifest_diagnostics, normalize_tag_log_line, upgrade_tag_manifest
+    from app.engine.tag_compat import (
+        generated_tag_manifest_diagnostics,
+        normalize_tag_closeout_text,
+        normalize_tag_log_line,
+        upgrade_tag_manifest,
+    )
+    from app.engine.tag_scene_lifecycle import (
+        TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
+        TAG_GENERATED_CLOSEOUT_LOG_MESSAGE,
+    )
+
+    assert normalize_tag_log_line(
+        "When you are ready, choose Continue to finish the adventure."
+    ) == TAG_GENERATED_CLOSEOUT_LOG_MESSAGE
+    legacy_closeout_body = (
+        "The Epic Reward shown in Narrative is the Quest reward. "
+        "Choose Return to town and finish to close this Adventures Guild lead."
+    )
+    normalized_closeout_body = normalize_tag_closeout_text(legacy_closeout_body)
+    assert TAG_GENERATED_CLOSEOUT_ACTION_LABEL in normalized_closeout_body
+    assert "Choose Return to town and finish" not in normalized_closeout_body
 
     old_line = "TAG note: Apply The Map Leads To 1 reward/procedure text for Underground caves; confirm exact amounts and treasure handling from the PDF/player signoff."
     translated = normalize_tag_log_line(old_line)

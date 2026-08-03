@@ -49,11 +49,11 @@ Key files:
 - `src/app/engine/tag_temporary_weapon_enchantment.py` - shared TAG p.65 weapon marker and encounter theft/destruction decision policy
 - `src/app/engine/tag_daroc.py` - typed TAG p.27 Scene 5 town-Clue provenance, familiar-search eligibility, Clue spending, and reward resolution
 - `src/app/engine/tag_mutant_fish.py` - typed TAG p.29 Scene 12 party hypnosis, rescue turns, ration disposition, and campaign-aware sale pricing
-- `src/app/engine/tag_scene_lifecycle.py` - declarative generated-TAG room action lifecycle registry for idempotent automatic entry procedures and required-resolution metadata
+- `src/app/engine/tag_scene_lifecycle.py` - declarative generated-TAG room action lifecycle registry for idempotent automatic entry procedures, required-resolution metadata, and canonical shared terminal-closeout guidance
 - `src/app/engine/tag_campaign.py` - TAG campaign services, generated leads, campaign-scoped Rumor lifecycle, and campaign-effect persistence
 - `src/app/engine/tag_scene_actions.py` - typed PDF-backed scene action definitions shared by generated manifests and runtime resolution
 - `src/app/engine/star_object_curse.py` - campaign-scoped Bofto curse, carrier/recovery reconciliation, and Star-Slayer hooks
-- Generated TAG scene completion uses persisted `SessionState.tag_generated_completion_*` fields. A resolved result remains in Narrative through save/resume and blocks unrelated exploration actions until the player explicitly continues into normal adventure closeout.
+- Generated TAG scene completion uses persisted `SessionState.tag_generated_completion_*` fields. A resolved result remains in Narrative through save/resume and blocks unrelated exploration actions until the player chooses **Continue — return to town and finish**. Frontend objectives mark this as a required action, so optional Objective Details preferences cannot hide its primary control; resume normalization changes only stale wording.
 - `src/app/engine/class_profiles.py` - class Life offsets, spell slots, level-up benefit notes
 - `src/app/engine/experience.py` - XP awards, Classical XP rolls and spending, Old School and Slower Advancement transactions, level-up application, spell-slot assignment
 - `src/app/engine/rest.py` - rest eligibility, recovery, wandering-check resolution, and reusable between-foray resource reset

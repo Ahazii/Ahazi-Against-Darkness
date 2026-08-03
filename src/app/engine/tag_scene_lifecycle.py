@@ -10,6 +10,16 @@ from ..schemas import SessionState
 TagAutoStarter = Callable[[SessionState], bool]
 
 
+TAG_GENERATED_CLOSEOUT_ACTION_LABEL = "Continue — return to town and finish"
+TAG_GENERATED_CLOSEOUT_LOG_MESSAGE = (
+    f"When you are ready, choose {TAG_GENERATED_CLOSEOUT_ACTION_LABEL}."
+)
+TAG_GENERATED_CLOSEOUT_REMINDER = (
+    "Read the resolved Adventures Guild scene, then choose "
+    f"{TAG_GENERATED_CLOSEOUT_ACTION_LABEL}."
+)
+
+
 @dataclass(frozen=True)
 class TagActionLifecycle:
     auto_start: bool = False

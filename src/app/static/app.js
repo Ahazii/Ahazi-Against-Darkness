@@ -104,6 +104,7 @@ let combatRoundToastTimer = null;
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
 const ACTIVE_VIEW_KEY = "ahazi-against-darkness.active-view";
 const LAYOUT_STORAGE_KEY = "ahazi-against-darkness.layout";
+const TAG_GENERATED_CLOSEOUT_ACTION_LABEL = "Continue — return to town and finish";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const MAIN_LOG_ENTRY_LIMIT = 300;
 const COMBAT_RAIL_LOG_SOURCE_LIMIT = 300;
@@ -12433,6 +12434,9 @@ function generatedTagDiagnosticsLines(session = state.session) {
     lines.push(`Visible actions: ${diagnostics.current_actions.join(", ")}`);
   }
   if (diagnostics.quest_next_action) lines.push(`Quest next action: ${diagnostics.quest_next_action}`);
+  if (session?.tag_generated_completion_pending) {
+    lines.push(`Pending closeout action: ${TAG_GENERATED_CLOSEOUT_ACTION_LABEL}`);
+  }
   for (const error of diagnostics.errors || []) lines.push(`ERROR: ${error}`);
   for (const warning of diagnostics.warnings || []) lines.push(`Warning: ${warning}`);
   for (const reason of diagnostics.manual_fallback_reasons || []) lines.push(`Manual fallback: ${reason}`);
@@ -12490,6 +12494,7 @@ function questDebugSummary(session = state.session) {
     `Claim status: ${claim.ok ? "ready" : claim.reason}`,
     `Generated lead signoff: ${Boolean(quest.tag_generated_lead_signoff)}`,
     `Generated next action: ${quest.tag_generated_lead_state?.next_action || "none"}`,
+    `Pending closeout action: ${session?.tag_generated_completion_pending ? TAG_GENERATED_CLOSEOUT_ACTION_LABEL : "none"}`,
   ];
 }
 
@@ -20140,9 +20145,11 @@ function currentObjectiveForSession(session) {
         session.tag_generated_completion_body ||
         "The scene is resolved. Read the Narrative result, then continue to finish the adventure.",
       tone: "success",
+      requiredAction: true,
       action: {
-        label: "Return to town and finish",
+        label: TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
         kind: "tag-generated-continue",
+        primary: true,
         tooltip: "Finish this resolved Adventures Guild scene, return the party to town, and open the normal adventure summary. The result remains in Narrative until you choose this.",
       },
     };
@@ -20658,7 +20665,8 @@ function renderCurrentObjectiveBanner(session) {
   }
   currentObjectiveBanner.className =
     `current-objective-banner ${objective.tone || "neutral"}` +
-    (objective.narrativeChoices ? " narrative-choices" : "");
+    (objective.narrativeChoices ? " narrative-choices" : "") +
+    (objective.requiredAction ? " required-action" : "");
   setTooltip(currentObjectiveBanner, objective.body || objective.title || "Current objective.");
   if (!objective.narrativeChoices) {
     const copy = node("div", "current-objective-copy current-objective-compact");
@@ -25678,18 +25686,28 @@ function appendAbyssCampaignActions(parent, session, tile) {
 
 function applyExplorationPanelVisibility() {
   const panels = state.explorationPanels || {};
-  currentObjectiveBanner?.classList.toggle("panel-user-hidden", panels.objective === false);
+  const requiredObjectiveVisible = Boolean(currentObjectiveBanner?.classList.contains("required-action"));
+  const objectiveHidden = panels.objective === false && !requiredObjectiveVisible;
+  currentObjectiveBanner?.classList.toggle("panel-user-hidden", objectiveHidden);
   ongoingQuestsEl?.classList.toggle("panel-user-hidden", panels.quests === false);
   explorationCommandBar?.classList.toggle("panel-user-hidden", panels.commands === false);
   mapExitsPanel?.classList.toggle("panel-user-hidden", panels.exits === false);
   logExitsResizer?.classList.toggle("panel-user-hidden", panels.exits === false);
   partySheetsPanel?.classList.toggle("panel-user-hidden", panels.sheets === false);
-  toggleCurrentObjectiveBtn?.setAttribute("aria-pressed", panels.objective === false ? "false" : "true");
+  toggleCurrentObjectiveBtn?.setAttribute("aria-pressed", objectiveHidden ? "false" : "true");
   toggleOngoingQuestsBtn?.setAttribute("aria-pressed", panels.quests === false ? "false" : "true");
   toggleTextCommandsBtn?.setAttribute("aria-pressed", panels.commands === false ? "false" : "true");
   toggleExitsPanelBtn?.setAttribute("aria-pressed", panels.exits === false ? "false" : "true");
   togglePartySheetsPanelBtn?.setAttribute("aria-pressed", panels.sheets === false ? "false" : "true");
-  toggleCurrentObjectiveBtn?.classList.toggle("selected", panels.objective !== false);
+  toggleCurrentObjectiveBtn?.classList.toggle("selected", !objectiveHidden);
+  if (toggleCurrentObjectiveBtn) {
+    setButtonTooltip(
+      toggleCurrentObjectiveBtn,
+      requiredObjectiveVisible
+        ? `Objective Details remains visible until you choose ${TAG_GENERATED_CLOSEOUT_ACTION_LABEL}.`
+        : "Show or hide detailed objective guidance. The Narrative title also shows compact objective and quest status."
+    );
+  }
   toggleOngoingQuestsBtn?.classList.toggle("selected", panels.quests !== false);
   toggleTextCommandsBtn?.classList.toggle("selected", panels.commands !== false);
   toggleExitsPanelBtn?.classList.toggle("selected", panels.exits !== false);
@@ -34688,6 +34706,10 @@ mapElementCapCustom?.addEventListener("input", () => {
   writeStartSetupPrefs();
 });
 toggleCurrentObjectiveBtn?.addEventListener("click", () => {
+  if (currentObjectiveBanner?.classList.contains("required-action")) {
+    setStatus(`Complete the required action: ${TAG_GENERATED_CLOSEOUT_ACTION_LABEL}.`);
+    return;
+  }
   setExplorationPanelVisibility("objective", state.explorationPanels?.objective === false);
 });
 toggleOngoingQuestsBtn?.addEventListener("click", () => {

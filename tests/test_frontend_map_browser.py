@@ -15,6 +15,10 @@ from urllib.request import Request, urlopen
 
 import pytest
 
+from app.engine.tag_scene_lifecycle import (
+    TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -186,6 +190,106 @@ def test_generated_rumor_4_entry_choices_are_visible_beneath_narrative(live_app)
                 banner.get_by_role("button", name="Not now — return to town", exact=True)
             ).to_be_visible()
             playwright_api.expect(banner).not_to_contain_text("Quest progress")
+        finally:
+            browser.close()
+
+
+def test_resolved_generated_rumor_closeout_remains_visible_when_objective_details_are_closed(live_app) -> None:
+    playwright_api = pytest.importorskip("playwright.sync_api")
+    generated = _json_request(
+        live_app.base_url,
+        "/api/campaign/tag/create-adventure",
+        {"lead_type": "rumor", "detail": "4"},
+    )
+    session_id = _create_session(
+        live_app.base_url,
+        adventure_id=generated["adventure_id"],
+    )
+    session = _json_get(live_app.base_url, f"/api/sessions/{session_id}")
+    quest = dict(session["active_quest"])
+    lead_state = dict(quest.get("tag_generated_lead_state") or {})
+    procedure_state = dict(quest.get("tag_procedure_state") or {})
+    procedure_state["mutant_fish_scene12"] = {"phase": "resolved"}
+    lead_state.update(
+        {
+            "scene_resolved": True,
+            "completion_pending": True,
+            "next_action": "Read the resolved scene, then choose Continue to finish the adventure.",
+        }
+    )
+    quest.update(
+        {
+            "completed": True,
+            "tag_generated_lead_signoff": False,
+            "tag_generated_lead_state": lead_state,
+            "tag_procedure_state": procedure_state,
+        }
+    )
+    map_state = dict(session["map_state"])
+    tiles = [dict(tile) for tile in map_state["tiles"]]
+    current_tile = next(tile for tile in tiles if tile["id"] == map_state["current_tile_id"])
+    current_tile.update(
+        {
+            "title": "The Bridge Pool",
+            "description": "Resolve the mutant fish hypnosis and rescue timing from TAG Scene 12.",
+            "content_key": "imported:tag-final-scene",
+        }
+    )
+    map_state["tiles"] = tiles
+    _patch_session_record(
+        live_app,
+        session_id,
+        {
+            "active_quest": quest,
+            "map_state": map_state,
+            "tag_generated_completion_pending": True,
+            "tag_generated_completion_title": "Mutant Fish Under the Bridge resolved",
+            "tag_generated_completion_body": "The fish are dried and the reward is recorded.",
+            "log": [
+                *session["log"],
+                "When you are ready, choose Continue to finish the adventure.",
+            ],
+        },
+    )
+
+    with playwright_api.sync_playwright() as playwright:
+        try:
+            browser = playwright.chromium.launch(headless=True)
+        except Exception as error:  # pragma: no cover - depends on local browser install
+            pytest.skip(f"Playwright Chromium is not installed: {error}")
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 720})
+            page.add_init_script(
+                f"""
+                localStorage.setItem("ahazi-against-darkness.active-session-id", {json.dumps(session_id)});
+                localStorage.setItem("ahazi-against-darkness.active-view", "game");
+                localStorage.setItem("ahazi-against-darkness.layout", JSON.stringify({{
+                  explorationPanels: {{ objective: false, quests: false, commands: false, exits: false, sheets: false }}
+                }}));
+                """
+            )
+            page.goto(f"{live_app}/?view=game")
+            banner = page.locator("#current-objective-banner")
+            playwright_api.expect(banner).to_be_visible(timeout=10_000)
+            playwright_api.expect(banner).to_have_class(re.compile(r"\brequired-action\b"))
+            playwright_api.expect(banner).not_to_have_class(re.compile(r"\bpanel-user-hidden\b"))
+            closeout = banner.get_by_role(
+                "button",
+                name=TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
+                exact=True,
+            )
+            playwright_api.expect(closeout).to_be_visible()
+            playwright_api.expect(closeout).to_be_enabled()
+            playwright_api.expect(page.locator("#session-log")).to_contain_text(
+                TAG_GENERATED_CLOSEOUT_ACTION_LABEL
+            )
+
+            closeout.click()
+
+            playwright_api.expect(
+                page.get_by_role("heading", name="Adventure complete", exact=True)
+            ).to_be_visible(timeout=10_000)
+            assert _json_get(live_app.base_url, f"/api/sessions/{session_id}")["mode"] == "complete"
         finally:
             browser.close()
 

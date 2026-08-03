@@ -47,6 +47,7 @@ from .death_recovery import (
 )
 from .adventure_completion import AdventureCompletionCallbacks, complete_adventure
 from .combat_lifecycle import consume_sleeping_foe_attack_bonus, merge_party_outcome
+from .tag_scene_lifecycle import TAG_GENERATED_CLOSEOUT_REMINDER
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
 from .firearm import gnome_repair_firearm
 from .gem_items import format_gem_item, remove_inventory_item
@@ -1043,7 +1044,7 @@ class RandomDungeonEngine:
                 session.current_tile_entry_exit_id = None
         self._queue_fallen_transfer(session)
         if session.tag_generated_completion_pending:
-            message = "Read the resolved Adventures Guild scene, then choose Continue to finish the adventure."
+            message = TAG_GENERATED_CLOSEOUT_REMINDER
             if not session.log or session.log[-1] != message:
                 session.log.append(message)
             return self._touch(session)

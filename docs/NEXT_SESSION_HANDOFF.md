@@ -1,14 +1,16 @@
 # Next Session Handoff
 
-Current release is **v0.39.64**. v0.39.63 restored the shared horizontal
-**Investigate** / **Not now — return to town** choice beneath Narrative. The
-next report proved Rumor 4 then completed merely on reaching Scene 12. v0.39.64
-adds the shared required-scene lifecycle and makes Scene 12 automatically roll
-and persist one L5 hypnosis Save for every living hero. Deploy/force-refresh,
-resume live session `cee90d971b804c2f9c32d54caac040ab`, and continue the
-repaired Scene 12 checklist in `docs/PLAYTEST_PLAN.md`; do not regenerate it.
+Current release is **v0.39.65**. The v0.39.64 playthrough passed the shared
+Rumor opening and complete TAG p.29 Mutant Fish procedure. Its final report
+showed the pending closeout was healthy but easy to miss: Narrative requested
+**Continue**, while a differently labelled chip was the only visible action
+because Objective Details was collapsed. v0.39.65 makes the canonical
+**Continue — return to town and finish** action prominent and non-hideable,
+repairs old wording on resume, and includes it in diagnostics. Deploy and
+force-refresh, resume live session `cee90d971b804c2f9c32d54caac040ab`, and
+perform only the closeout check in `docs/PLAYTEST_PLAN.md`; do not regenerate it.
 
-Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.64`.
+Last updated: 2026-08-03. Repository branch: `main`. Latest release: `v0.39.65`.
 
 ## Start Here
 
@@ -40,11 +42,12 @@ p.29 Scene 12 into one typed Mutant Fish hypnosis, rescue, ration, sale, and XP
 procedure. Do not repeat the whole
 Rumor 2 module or any Gremlin fight.
 
-## Implemented Through v0.39.64
+## Implemented Through v0.39.65
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 22, 25-31, and 65.
 
-- Mutant Fish Under the Bridge runs as one persisted TAG p.29 Scene 12 procedure. Entering the pool automatically rolls every living hero's L5 hypnosis Save once; no player roll button remains. The required-resolution lifecycle prevents completion on arrival, automatically fails chaos-tainted heroes, owns rescue-turn Life loss and rescuer/victim role changes, destroys/persists an all-failed party, rolls `d6+3` Food rations once, records two minor encounters, and offers carrying-aware Keep or campaign-rate Sell choices. Keep/Sell opens the explicit return-to-town Continue pause. `CampaignState.tag_friendly_chaos_cultists` persists the 5gp friendly sale rate for future applicable encounters.
+- Required generated-TAG terminal actions use the canonical **Continue — return to town and finish** wording across Narrative, diagnostics, compact header chip, and primary action. The full action remains visible when the optional Objective Details preference is collapsed, while save/resume normalizes legacy wording without changing or rerolling the resolved scene.
+- Mutant Fish Under the Bridge runs as one persisted TAG p.29 Scene 12 procedure. Entering the pool automatically rolls every living hero's L5 hypnosis Save once; no player roll button remains. The required-resolution lifecycle prevents completion on arrival, automatically fails chaos-tainted heroes, owns rescue-turn Life loss and rescuer/victim role changes, destroys/persists an all-failed party, rolls `d6+3` Food rations once, records two minor encounters, and offers carrying-aware Keep or campaign-rate Sell choices. Keep/Sell opens the explicit shared closeout pause. `CampaignState.tag_friendly_chaos_cultists` persists the 5gp friendly sale rate for future applicable encounters.
 - Existing generated TAG saves synchronize manifest completion policy, duplicated session completion policy, and active quest key on resume. The reported Rumor 4 session at the pool is conservatively reopened only when its earlier completion is the stale arrival marker and the procedure is not terminal; its automatic Saves then persist and cannot reroll.
 - The TAG pp.22-31 audit confirms no Rumor is genuinely complete on arrival. Rumor 4 is the first shared lifecycle migration. Rumor 9 is next; vendor/service Done actions, mandatory procedures, dynamic encounters, and child-dungeon returns must be implemented before enabling the same gate for their profiles.
 - Generated Rumor entry buttons render immediately beneath Narrative for both `tag_*` and manifest-owned `imported_*` quest records, remain visible when Objective Details is hidden, and exclude internal Director phase, lifecycle, and lead-family playbook prose. TAG pp.22-24 shares **Investigate** / **Not now — return to town** across all twelve Rumors; choices remain side by side at normal app widths and wrap only on narrow mobile layouts.
@@ -52,7 +55,7 @@ Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 87, 94, 101, 105, 107, 160
 - Daroc's Lost Familiar counts only Clues generated in town with Streetwise, marks that provenance when Look for Clues succeeds, and spends two eligible Clues. The cost is one when the party includes a Druid, Beastmaster, cat-like hero, or cat animal companion. The selected living hero receives 100gp and the party receives exactly one pending XP roll (TAG p.27, Scene 5). Crucible of Classic Critters pp.11-15 remains the future source for full Beastmaster and animal-companion implementation; Scene 5 reads shared metadata so that later work can connect without a second rule path.
 - Temporary Weapon Enchantment records its cast and day-seven campaign expiry, functions as magic without an Attack bonus, and expires at encounter end after an attack against a strictly magic-only foe. The attack may hit or miss. Adventure completion and settlement travel advance the clock; legacy markers receive a full week from first advancement. Manual early clear is removed while the existing Gremlin/Iron Eater loss choice remains unchanged (TAG p.65).
 - Xasartha reaction `1` persists its `6d6` demand and offers exact carried-gold, eligible 15gp+ gem/jewel, or refusal choices. Defeat persists `2d6` necros and a wear-or-sell pendant choice. The pendant is not consumed when Luck is spent; its separate counter survives camp/re-entry and recharges only with a new adventure. It grants one point, or two additional points to a halfling. Barbarians cannot wear it.
-- Any normal core Quest completed inside a generated TAG adventure now resolves that lead through the existing readable Continue pause. It explains that the Quest-giver encounter remains peaceful and combat treasure is unavailable, then offers **Return to town and finish**. Resume repairs already-completed rewards without rerolling or duplicating them.
+- Any normal core Quest completed inside a generated TAG adventure now resolves that lead through the existing readable terminal pause. It explains that the Quest-giver encounter remains peaceful and combat treasure is unavailable, then offers **Continue — return to town and finish**. Resume repairs already-completed rewards without rerolling or duplicating them.
 - Accepted Xasartha Bring Gold Quests expose the stored requirement, party total, Quest-giver location, and direct turn-in. Core Quest rewards are no longer mistaken for generated TAG closeout; exact payment produces exactly one Epic Reward.
 - Adventure View automatically shows one movable, non-closable Developer Options window whenever any developer preference is active. With all developer preferences off, it is absent.
 - Xasartha's persisted TAG p.25 reaction `2 quest` is repaired on resume without rerolling. The player can accept the Expanded Edition p.101 Quest reaction, which rolls a concrete p.162 Quest Table result, or refuse and let Xasartha leave peacefully.
@@ -98,6 +101,8 @@ Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat i
 
 ## Recent Releases
 
+- `v0.39.65`: keep required generated-TAG closeout visible with Objective Details collapsed and align Narrative/UI/diagnostics on **Continue — return to town and finish**.
+- `v0.39.64`: add the shared required-scene lifecycle and automatically start/persist every Rumor 4 Scene 12 hypnosis Save.
 - `v0.39.59`: automate TAG p.29 Scene 12 hypnosis, rescue turns, ration disposition, campaign sale rate, and two-minion XP progress.
 - `v0.39.58`: keep multiple generated Rumor entry choices side by side at normal app widths.
 - `v0.39.57`: restore generated Rumor entry decisions beneath Narrative and suppress internal objective prose.

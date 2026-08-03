@@ -114,12 +114,18 @@ from .engine.supplement_sources import (
 )
 from .engine.tag_compat import (
     generated_tag_manifest_diagnostics,
+    normalize_tag_closeout_text,
     normalize_tag_log_lines,
     repair_generated_tag_core_quest_completion,
     repair_required_tag_scene_lifecycle,
     upgrade_tag_manifest,
 )
 from .engine.tag_campaign import merge_tag_pdf_narrative_overrides, tag_narrative_overrides_path
+from .engine.tag_scene_lifecycle import (
+    TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
+    TAG_GENERATED_CLOSEOUT_LOG_MESSAGE,
+    TAG_GENERATED_CLOSEOUT_REMINDER,
+)
 from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import (
     expert_skills_catalog_with_summaries,
@@ -409,19 +415,35 @@ def _refresh_generated_tag_manifest_on_resume(session: SessionState) -> bool:
     changed = repr(session.imported_manifest) != before
     log_changed = normalize_tag_log_lines(session.log)
     changed = changed or log_changed
+    if session.tag_generated_completion_pending and session.tag_generated_completion_body:
+        normalized_body = normalize_tag_closeout_text(session.tag_generated_completion_body)
+        if normalized_body != session.tag_generated_completion_body:
+            session.tag_generated_completion_body = normalized_body
+            changed = True
     if session.active_quest is not None:
         state = dict(session.active_quest.tag_generated_lead_state or {})
+        state_changed = False
+        if (
+            session.tag_generated_completion_pending
+            and state.get("next_action") != TAG_GENERATED_CLOSEOUT_REMINDER
+        ):
+            state["next_action"] = TAG_GENERATED_CLOSEOUT_REMINDER
+            state_changed = True
         if changed:
             tag_ref = ((session.imported_manifest.get("source") or {}).get("parameters") or {}).get("tag_reference") or {}
             fields = tag_ref.get("local_narrative_override_changed_fields") if isinstance(tag_ref, dict) else []
             summary = [str(field) for field in fields[:8]] if isinstance(fields, list) else []
             state["auto_refreshed_at"] = now_utc()
             state["repair_summary"] = summary or ["Generated Adventures Guild narrative and prompt metadata refreshed on resume."]
-            state["next_action"] = "Continue from Current Objective; use visible scene buttons first and manual actions only if diagnostics ask for them."
-            session.active_quest.tag_generated_lead_state = state
+            if not session.tag_generated_completion_pending:
+                state["next_action"] = "Continue from Current Objective; use visible scene buttons first and manual actions only if diagnostics ask for them."
+            state_changed = True
         elif "auto_refresh_checked_at" not in state:
             state["auto_refresh_checked_at"] = now_utc()
+            state_changed = True
+        if state_changed:
             session.active_quest.tag_generated_lead_state = state
+            changed = True
     return changed
 
 
@@ -4590,7 +4612,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "checkpoint": "Resolved scene acknowledged",
-            "review": "Read the named-character roll outcome in Narrative. Save/resume may preserve it; Continue is the only action that opens normal adventure closeout.",
+            "review": f"Read the named-character roll outcome in Narrative. Save/resume preserves it; {TAG_GENERATED_CLOSEOUT_ACTION_LABEL} is the required action that opens normal adventure closeout and remains visible even when Objective Details is collapsed.",
             "where": "Exploration Current Objective and Narrative after a resolved generated Scene.",
         },
         {
@@ -5016,7 +5038,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "result": "2 - Quest",
             "rule": "Accept and roll on the Quest Table, or refuse and Xasartha leaves. A Bring Gold result stores its rolled amount, doubles it when the party already has enough, deducts the exact requirement at the Quest-giver's tile, and awards one Epic Reward. Completion remains peaceful and does not restart combat or award the Quest-giver's combat treasure.",
-            "player_ui": "Show explicit Accept Quest and Refuse choices. After acceptance, show the concrete requirement, party total, turn-in location, and a direct claim action. After the Epic Reward, replace generated guidance with a resolved-lead message and Return to town and finish; core Quest rewards must not be replaced by generated-adventure closeout controls.",
+            "player_ui": f"Show explicit Accept Quest and Refuse choices. After acceptance, show the concrete requirement, party total, turn-in location, and a direct claim action. After the Epic Reward, replace generated guidance with a resolved-lead message and {TAG_GENERATED_CLOSEOUT_ACTION_LABEL}; core Quest rewards must not be replaced by generated-adventure closeout controls.",
             "source": "TAG p.25, Scene 1; EE p.101; EE p.162",
         },
         {
@@ -7209,14 +7231,14 @@ def _mark_generated_tag_lead_complete(
         "warnings": [],
         "updated_at": now_utc(),
     }
-    state["next_action"] = "Read the resolved scene, then choose Continue to finish the adventure."
+    state["next_action"] = TAG_GENERATED_CLOSEOUT_REMINDER
     quest.tag_generated_lead_state = state
     session.tag_generated_completion_pending = True
     session.tag_generated_completion_title = title
     session.tag_generated_completion_body = narrative
     if not session.log or session.log[-1] != narrative:
         session.log.append(narrative)
-    session.log.append("When you are ready, choose Continue to finish the adventure.")
+    session.log.append(TAG_GENERATED_CLOSEOUT_LOG_MESSAGE)
 
 
 def _mark_bofto_generated_lead_complete(

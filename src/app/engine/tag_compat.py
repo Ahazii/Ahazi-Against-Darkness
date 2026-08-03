@@ -6,6 +6,12 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .tag_scene_lifecycle import (
+    TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
+    TAG_GENERATED_CLOSEOUT_LOG_MESSAGE,
+    TAG_GENERATED_CLOSEOUT_REMINDER,
+)
+
 
 TREASURE_MAP_PROCEDURE_NOTES: dict[int, dict[str, str]] = {
     1: {
@@ -47,6 +53,10 @@ _LEGACY_MAP_NOTE_RE = re.compile(
     re.IGNORECASE,
 )
 
+_LEGACY_GENERATED_CORE_CLOSEOUT_SENTENCE = (
+    "Choose Return to town and finish to close this Adventures Guild lead."
+)
+
 
 def treasure_map_note_for(roll: int | None, *, final: bool = False) -> str:
     note = TREASURE_MAP_PROCEDURE_NOTES.get(roll or 0)
@@ -60,8 +70,20 @@ def treasure_map_note_for(roll: int | None, *, final: bool = False) -> str:
     return f"{prefix}: {body}"
 
 
+def normalize_tag_closeout_text(value: str) -> str:
+    text = str(value or "")
+    return text.replace(
+        _LEGACY_GENERATED_CORE_CLOSEOUT_SENTENCE,
+        f"Choose {TAG_GENERATED_CLOSEOUT_ACTION_LABEL} to close this Adventures Guild lead.",
+    )
+
+
 def normalize_tag_log_line(line: str) -> str:
-    text = str(line or "")
+    text = normalize_tag_closeout_text(str(line or ""))
+    if text.strip() == "When you are ready, choose Continue to finish the adventure.":
+        return TAG_GENERATED_CLOSEOUT_LOG_MESSAGE
+    if text.strip() == "Read the resolved Adventures Guild scene, then choose Continue to finish the adventure.":
+        return TAG_GENERATED_CLOSEOUT_REMINDER
     if "star-shaped object" in text.lower() and re.search(
         r"\bFollowing the Treasure Map Table\b",
         text,
@@ -262,7 +284,7 @@ def repair_generated_tag_core_quest_completion(session: Any) -> bool:
         "The Quest is complete and the Quest-giver accepts the result. "
         "The encounter remains peaceful and does not restart; combat treasure is not awarded. "
         "The Epic Reward shown in Narrative is the Quest reward. "
-        "Choose Return to town and finish to close this Adventures Guild lead."
+        f"Choose {TAG_GENERATED_CLOSEOUT_ACTION_LABEL} to close this Adventures Guild lead."
     )
     session.tag_generated_completion_pending = True
     session.tag_generated_completion_title = title

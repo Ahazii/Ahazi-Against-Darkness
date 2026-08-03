@@ -10,6 +10,11 @@ from app.engine.adventure_session import create_session_from_manifest
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.tag_campaign import build_tag_adventure_manifest, default_campaign, load_campaign, save_campaign
 from app.engine.tag_compat import upgrade_tag_manifest
+from app.engine.tag_scene_lifecycle import (
+    TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
+    TAG_GENERATED_CLOSEOUT_LOG_MESSAGE,
+    TAG_GENERATED_CLOSEOUT_REMINDER,
+)
 from app.rules.repository import RulesRepository
 from app.schemas import ActiveQuestState, Character, EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
 
@@ -348,7 +353,7 @@ def test_generated_bofto_theft_roll_moves_to_result_scene(client, monkeypatch, t
     assert payload["summary"] == []
     assert "successfully steals" in payload["tag_generated_completion_body"]
     assert "against L8" in payload["tag_generated_completion_body"]
-    assert "choose Continue" in payload["log"][-1]
+    assert TAG_GENERATED_CLOSEOUT_ACTION_LABEL in payload["log"][-1]
     assert "Bofto's Star-Shaped Cursed Object" in payload["party"][0]["inventory"]
     assert "Bofto's Star-Shaped Object Curse" in payload["party"][0]["statuses"]
     log_text = "\n".join(payload["log"])
@@ -387,9 +392,7 @@ def test_generated_tag_result_pause_blocks_dungeon_actions() -> None:
     assert updated.mode == "exploration"
     assert updated.map_state.current_tile_id == current_tile_id
     assert updated.tag_generated_completion_pending is True
-    assert updated.log[-1] == (
-        "Read the resolved Adventures Guild scene, then choose Continue to finish the adventure."
-    )
+    assert updated.log[-1] == TAG_GENERATED_CLOSEOUT_REMINDER
 
 
 def test_generated_tag_continue_keeps_closeout_pending_when_xp_blocks_completion(client) -> None:
@@ -748,7 +751,7 @@ def test_core_gold_quest_from_generated_tag_session_can_be_turned_in(monkeypatch
     assert session.tag_generated_completion_pending is True
     assert "encounter remains peaceful and does not restart" in (session.tag_generated_completion_body or "")
     assert "combat treasure is not awarded" in (session.tag_generated_completion_body or "")
-    assert "Return to town and finish" in (session.tag_generated_completion_body or "")
+    assert TAG_GENERATED_CLOSEOUT_ACTION_LABEL in (session.tag_generated_completion_body or "")
 
 
 def test_resumed_generated_tag_core_quest_reward_repairs_to_clean_closeout(client) -> None:
@@ -779,7 +782,7 @@ def test_resumed_generated_tag_core_quest_reward_repairs_to_clean_closeout(clien
     assert payload["tag_generated_completion_pending"] is True
     assert "encounter remains peaceful and does not restart" in payload["tag_generated_completion_body"]
     assert "combat treasure is not awarded" in payload["tag_generated_completion_body"]
-    assert "Return to town and finish" in payload["tag_generated_completion_body"]
+    assert TAG_GENERATED_CLOSEOUT_ACTION_LABEL in payload["tag_generated_completion_body"]
     assert payload["active_quest"] is None
     assert sum("Book of Skalitos" in line for line in payload["log"]) == 2
     assert payload["party"][0]["inventory"].count("Book of Skalitos (6 pages)") == 1
@@ -790,6 +793,52 @@ def test_resumed_generated_tag_core_quest_reward_repairs_to_clean_closeout(clien
     completed = continued.json()
     assert completed["mode"] == "complete"
     assert completed["tag_generated_completion_pending"] is False
+
+
+def test_resumed_legacy_generated_tag_closeout_copy_is_normalized(client) -> None:
+    manifest, _entry = build_tag_adventure_manifest(
+        default_campaign(),
+        lead_type="rumor",
+        detail="2",
+    )
+    legacy_body = (
+        "The Quest is complete and the Quest-giver accepts the result. "
+        "The encounter remains peaceful and does not restart; combat treasure is not awarded. "
+        "The Epic Reward shown in Narrative is the Quest reward. "
+        "Choose Return to town and finish to close this Adventures Guild lead."
+    )
+    session = base_session(
+        id="legacy-tag-closeout-copy",
+        adventure_id=manifest["id"],
+        adventure_type="imported",
+        imported_manifest=manifest,
+        active_quest=None,
+        tag_generated_completion_pending=True,
+        tag_generated_completion_title="Medusa in the Hunter's Cabin resolved",
+        tag_generated_completion_body=legacy_body,
+        log=[
+            legacy_body,
+            "When you are ready, choose Continue to finish the adventure.",
+        ],
+    )
+    main.store.save("sessions", session)
+
+    resumed = client.get("/api/sessions/legacy-tag-closeout-copy")
+
+    assert resumed.status_code == 200
+    payload = resumed.json()
+    assert payload["mode"] == "exploration"
+    assert payload["active_quest"] is None
+    assert payload["tag_generated_completion_pending"] is True
+    assert TAG_GENERATED_CLOSEOUT_ACTION_LABEL in payload["tag_generated_completion_body"]
+    assert "Choose Return to town and finish" not in payload["tag_generated_completion_body"]
+    assert TAG_GENERATED_CLOSEOUT_LOG_MESSAGE in payload["log"]
+    assert not any("choose Continue to finish the adventure" in line for line in payload["log"])
+
+    stored = main.store.get("sessions", session.id, SessionState.model_validate)
+    assert stored is not None
+    assert stored.tag_generated_completion_body == payload["tag_generated_completion_body"]
+    assert stored.log == payload["log"]
 
 
 def test_session_tag_branch_action_syncs_live_party_character(client) -> None:

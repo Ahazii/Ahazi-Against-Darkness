@@ -5324,6 +5324,17 @@ button.modern-dashboard-status-icon {
   background: rgba(30, 64, 34, 0.42);
 }
 
+.current-objective-banner.required-action {
+  border-color: rgba(139, 207, 139, 0.78);
+  box-shadow: 0 0 0 1px rgba(139, 207, 139, 0.12), 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.current-objective-banner.required-action .current-objective-actions button {
+  min-height: 34px;
+  padding-inline: 12px;
+  font-weight: 800;
+}
+
 .current-objective-copy {
   display: flex;
   flex: 1 1 420px;
