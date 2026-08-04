@@ -57,7 +57,7 @@ Rumor entry choices side by side at normal app widths. v0.39.59 converts TAG
 p.29 Scene 12 into one typed Mutant Fish hypnosis, rescue, ration, sale, and XP
 procedure. Do not repeat the whole Rumor 2 module or any Gremlin fight.
 
-## Implemented Through v0.39.72
+## Implemented Through v0.39.73
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 76, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 20, 22, 24-31, and 65.
 
@@ -116,7 +116,7 @@ Automated tests own campaign isolation and legacy migration, all twelve Rumors e
 
 Migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time. Select and inspect one exact scene before coding; keep the slice narrow.
 
-Rumor 6 is passed and must not be replayed. Resume only Rumor 11 session `fc741849402d46e096b2efa52368de8f` for one live Return-to-dungeon retry followed by the remaining v0.39.72 bank-display, nested-layout, paid training, Done, and Continue checks in `docs/PLAYTEST_PLAN.md`. Its opening, initial Scene 3 entry, and transfers are already passed and persisted; the live save is still camped. Sir Benedict has 0gp carried + 600gp banked and is eligible; Faelar has 125gp carried + 300gp banked = 425gp; the Cleric/Rogue are class-ineligible. Do not repeat the opening or transfers. Automated tests own exact-marker matching, fresh start-camped entry, bank-only affordability and spending, whole-batch validation, payment-before-roll atomicity, failed-roll costs, duplicate actions, persistence, and the layout contract.
+Rumor 6 is passed and must not be replayed. Resume only Rumor 11 session `fc741849402d46e096b2efa52368de8f` at Deoldyn's open service for the remaining v0.39.73 visible-inner-divider, paid training, Done, and Continue checks in `docs/PLAYTEST_PLAN.md`. Its opening, initial Scene 3 entry, transfers, camp return, and route back to Deoldyn are already passed and persisted. Sir Benedict has 0gp carried + 600gp banked and is eligible; Faelar has 125gp carried + 300gp banked = 425gp; the Cleric/Rogue are class-ineligible. Do not repeat the opening, transfers, camp return, or route. Automated tests own exact-marker matching, fresh start-camped entry, bank-only affordability and spending, whole-batch validation, payment-before-roll atomicity, failed-roll costs, duplicate actions, persistence, and the layout contract.
 
 Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat its Gremlin/Iron Eater loss tests; focused coverage owns day timing, magic-only use, encounter-end expiry, and legacy markers.
 

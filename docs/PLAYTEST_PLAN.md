@@ -124,7 +124,7 @@ Do not start Rumor 6 again, rebuy any Shoes, dismiss a hireling, or alter this
 saved state to repeat an already-passed check. Rumor 6 is closed unless a later
 change produces a confirmed regression in that exact workflow.
 
-## Do Next: Resume Rumor 11 — Return Retry, Bank-Funded Training And Nested Layout
+## Do Next: Resume Rumor 11 — Bank-Funded Training, Nested Layout, Done And Closeout
 
 Rules source: Rumor 11 on TAG p.24 and Scene 3 on TAG p.26.
 

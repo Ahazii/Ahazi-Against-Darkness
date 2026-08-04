@@ -110,7 +110,7 @@ Implemented first slice:
 
 Next slices:
 
-- Complete Rumor 11's bounded v0.39.72 return retry, bank-display, nested-layout, paid training, Done, and Continue gate, then continue one PDF-backed generated TAG terminal at a time. Its opening and camp transfers already passed and must not be replayed; follow the already-explored route after return only if needed. The pp.22-31 audit confirms none of the twelve Rumours is arrival-complete; Rumors 4, 6, 9, and 11 now use the required scene lifecycle. Do not reopen passed broad adventure or Rumor 9 presentation tests. Rumor 3 Scene 11 is not a small next slice because its mandatory roll can enter the complete TAG pp.34-35 Riff-Raff and Outside of Town Ambush encounter tables.
+- Complete Rumor 11's bounded v0.39.73 inner-divider, bank-funded training, Done, and Continue gate, then continue one PDF-backed generated TAG terminal at a time. Its opening, camp transfers, return, and route back to Deoldyn already passed and must not be replayed. The pp.22-31 audit confirms none of the twelve Rumours is arrival-complete; Rumors 4, 6, 9, and 11 now use the required scene lifecycle. Do not reopen passed broad adventure or Rumor 9 presentation tests. Rumor 3 Scene 11 is not a small next slice because its mandatory roll can enter the complete TAG pp.34-35 Riff-Raff and Outside of Town Ambush encounter tables.
 
 Later slices can deepen exact branch-specific item handling, robbery recovery,
 and Guild spell math if playtesting shows those surfaces are needed.

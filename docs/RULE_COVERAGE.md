@@ -6,6 +6,10 @@ Status labels:
 - `starter` - implemented approximately for engine scaffolding
 - `validated` - checked against the owned rulebook and covered by tests
 
+## Current TAG Playtest State
+
+The current live Rumor 11 session `fc741849402d46e096b2efa52368de8f` is back inside the adventure at Deoldyn's open, unresolved service. Its opening, Scene 3 entry, camp transfers, repaired return, and route back to Deoldyn have passed; do not replay them. v0.39.73 keeps the tall service's saved inner Narrative/service divider visible even when **Objective Details** is collapsed. The only remaining bounded gate is that divider's live confirmation, Sir Benedict's bank-funded training batch, **Done**, and the shared **Continue** closeout. Historical v0.39.71 text later in this file records the original camp-return defect, not the current live state.
+
 | Area | Status | Notes |
 | --- | --- | --- |
 | Character classes | validated | All 20 EE classes signature-locked against `classes.json`; **six TCOTFD classes** added (Wandering Alchemist validated, five cross-book hooks partial). Home `class_profiles_table` generated from catalog (26 rows). Combat modifiers and TCOTFD class hooks in `courtship_classes.py`. Tests: `test_class_profiles_audit.py`, `test_courtship_classes.py`. |
