@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-04. Target build: v0.39.69.
+Last updated: 2026-08-04. Target build: v0.39.70.
 
 ## Adventure Test Gate: Passed
 
@@ -105,74 +105,63 @@ carried, banked, and total gold, and the inspection did not change the completed
 Rumor state. Do not regenerate the module, repeat Streetwise searches, spend
 more Clues, or replay its reward/XP path.
 
-## Completed So Far: Rumor 6 Opening And Purchases
+## Completed: Rumor 6 Blackbird Hill
 
-Live v0.39.68 session `380ffb5e2c834195806027c898e3f55d` passed these
-parts of Rumor 6:
+Live session `380ffb5e2c834195806027c898e3f55d` passed the complete bounded
+Rumor 6 gate on 2026-08-04:
 
 - **Investigate** / **Not now — return to town** appeared before the service;
 - Investigate entered TAG pp.25-26 Scene 2 without completing the adventure;
 - three 200gp Shoes of Fast Walk purchases completed and stopped when funds ran
   out;
 - the lesson price changed automatically to 0gp after the third pair; and
-- save/dashboard/resume preserved all three purchases.
+- save/dashboard/resume preserved all three purchases;
+- the free illusion lesson worked under the player-confirmed learner ruling;
+- the service controls and **Done — leave Blackbird Hill** were reachable; and
+- Done exposed the normal Continue action and the adventure completed.
 
 Do not start Rumor 6 again, rebuy any Shoes, dismiss a hireling, or alter this
-saved state to repeat an already-passed check.
+saved state to repeat an already-passed check. Rumor 6 is closed unless a later
+change produces a confirmed regression in that exact workflow.
 
-## Do Next: Resume Rumor 6 For Free Lesson And Closeout
-
-Deploy v0.39.69, force-refresh, and resume session
-`380ffb5e2c834195806027c898e3f55d`. Rules source: Rumor 6 on TAG p.23, Scene 2
-on TAG pp.25-26, and EE p.76 Scrolls as applied by the player-confirmed campaign
-interpretation.
-
-1. Confirm the Blackbird Hill guided service either expands to fit or has a
-   visible vertical scrollbar. Scroll through it and confirm the learner/spell
-   controls and **Done — leave Blackbird Hill** are all reachable without
-   changing browser zoom.
-2. Confirm the header still says **Shoes bought: 3** and **Illusion lesson:
-   0 gp**. Do not buy another pair.
-3. Open the learner list. Sir Benedict, Sister Joyce, Faelar Sunshadow, and Sly
-   Silas are all living non-Barbarians in this save, so each may receive a spell
-   they do not already know; none should be rejected merely because it is outside
-   a normal class list. A duplicate known spell may be omitted. A dead character
-   or Barbarian remains ineligible; those negative cases are automated-only.
-4. Choose one illusion spell and one learner. Choosing Sly Silas, if desired,
-   directly checks the non-spellcaster branch: the result should explain that
-   the retained spell has one use per adventure and is cast at +1. Confirm the
-   lesson is free and records once without losing the three Shoe purchases.
-5. Choose **Done — leave Blackbird Hill**. Confirm the service resolves exactly
-   once and the normal **Continue — return to town and finish** action is
-   visible and completes the adventure.
-
-Stop and attach a Narrative Report if any learner is missing, the spell cannot
-be selected, the controls/Done remain clipped, or Continue does not appear.
-
-## After Rumor 6 Passes: Rumor 11 — Deoldyn's Range
+## Do Next: Resume Rumor 11 — Deoldyn's Range
 
 Rules source: Rumor 11 on TAG p.24 and Scene 3 on TAG p.26.
 
-1. Start a fresh Rumor 11 module. Confirm the first choice is again only
-   **Investigate** / **Not now — return to town**; training appears only after
-   Investigate reaches Scene 3, and arrival does not complete the adventure.
-2. Select a small batch of living bow-capable trainees (two when the disposable
-   party safely permits it). Confirm the review shows each `60gp × Level` cost
-   before confirmation. If a normal/base Elf is present, confirm that Elf alone
-   can choose ordinary level advancement instead of Deadly Accuracy or Dead
-   Shot; variant Elves must not receive that option.
-3. Confirm the batch once. The result must say every selected payment was taken
-   before any automatic XP roll. If a roll fails naturally, confirm its payment
-   is not refunded; do not force a failure. Refresh or save/resume and confirm
-   the results persist without rerolling.
-4. Confirm the host now says the simultaneous batch is closed and does not let
-   an unselected or already trained character start a later batch after the
-   results are known. Then choose **Done — finish training** and complete the
-   normal shared closeout exactly once.
+Live v0.39.69 session `fc741849402d46e096b2efa52368de8f` already passed
+the shared **Investigate** / **Not now — return to town** opening and
+Investigate reached Scene 3 without completing the adventure. Do not create a
+new Rumor 11 module or repeat that opening. The live session exposed a layout
+regression: the shared service host's imposed height prevented the horizontal
+Narrative/map divider from resizing the row, leaving too little map visible.
+
+After deploying the resize correction, force-refresh and resume that same
+session:
+
+1. Drag the horizontal divider in both directions. Confirm the map grows and
+   shrinks with the user's selected row height; service content must not impose
+   a competing minimum height. At a short Narrative height, confirm the service
+   panel uses its own vertical scrollbar so training controls and **Done —
+   finish training** remain reachable.
+2. Confirm this preserved party's current eligibility remains unchanged: Sir
+   Benedict shows 0/600gp, Faelar shows 0/540gp, and Sister Joyce/Sly Silas are
+   class-ineligible. No training batch can safely be funded in this save. Do
+   not grant, transfer, sell, or otherwise alter persistent resources merely to
+   force the paid path.
+3. Force-refresh or save/dashboard/resume once before finishing. Confirm the
+   open Deoldyn service and selected divider height persist without a reroll or
+   payment.
+4. Choose **Done — finish training** with no trainees, then complete the normal
+   shared Continue closeout exactly once. This validates the printed option to
+   skip training. Automated tests own whole-batch validation, payment-before-
+   roll ordering, failed-roll costs, later-batch rejection, and persistence;
+   inspect paid training later only if a naturally eligible funded party reaches
+   Scene 3.
 
 Stop after this bounded Rumor 11 module and attach a Narrative Report for any
-mismatch. Do not mass-enable required scene completion: every remaining Rumor
-still needs its own printed terminal routes.
+mismatch. A resize-only mismatch should not require replaying Investigate or
+any completed training. Do not mass-enable required scene completion: every
+remaining Rumor still needs its own printed terminal routes.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

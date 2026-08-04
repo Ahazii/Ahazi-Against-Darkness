@@ -753,13 +753,16 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
     assert "Rumor 11 single-batch training" in lifecycle_states
     assert "living non-Barbarian" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
     assert "one use per adventure" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
-    assert "expands or scrolls" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
+    assert "respects the saved Narrative/map height" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
+    assert "scrolls internally" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
     assert "no later trainee" in lifecycle_states["Rumor 11 single-batch training"]["meaning"]
     trainer_row = next(
         row for row in payload["tag_generated_lead_structure_table"] if row["structure"] == "trainer"
     )
     assert "complete simultaneous batch" in trainer_row["ui_expectation"]
     assert "blocks later additions" in trainer_row["ui_expectation"]
+    assert "saved height" in trainer_row["ui_expectation"]
+    assert "scrolls internally" in trainer_row["ui_expectation"]
 
 
 def test_create_session_stores_ruleset_profile(client: TestClient) -> None:

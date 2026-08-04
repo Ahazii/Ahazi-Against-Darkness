@@ -138,6 +138,8 @@ def test_frontend_log_exits_row_is_resizable_without_exits_forcing_map_smaller()
     index_html = Path("src/app/static/index.html").read_text(encoding="utf-8")
 
     assert 'id="log-map-resizer"\n              class="layout-resizer layout-resizer-horizontal"' in index_html
+    assert 'aria-label="Resize Narrative and map"' in index_html
+    assert "Drag up to show more of the map or down to show more Narrative. Double-click to reset." in index_html
     assert "logMapResizer.classList.remove(\"hidden\")" in app_js
     assert "state.logPanelHeight = clampFloat(state.logPanelHeight + dy, 120, window.innerHeight * 0.68);" in app_js
     assert "mapLogRow.style.height = \"\";" in app_js

@@ -2243,9 +2243,10 @@ def test_rumor_6_and_11_share_persisted_inline_service_host() -> None:
     assert ".tag-service-trainee-list" in STYLES_CSS
 
 
-def test_repeatable_service_host_expands_and_scrolls_to_its_done_action() -> None:
-    assert ".map-log-row:has(.tag-repeatable-service-guided)" in STYLES_CSS
-    assert "height: min(max(var(--log-panel-height, 240px), 540px), 58vh, 620px);" in STYLES_CSS
+def test_repeatable_service_host_respects_saved_height_and_scrolls_to_its_done_action() -> None:
+    assert "height: min(var(--log-panel-height, 240px), 58vh);" in STYLES_CSS
+    assert ".map-log-row:has(.tag-repeatable-service-guided)" not in STYLES_CSS
+    assert "height: min(max(var(--log-panel-height, 240px), 540px), 58vh, 620px);" not in STYLES_CSS
     assert ".map-log-panel:has(.tag-repeatable-service-guided)" in STYLES_CSS
     assert "overflow-y: auto;" in STYLES_CSS
     assert "scrollbar-gutter: stable;" in STYLES_CSS

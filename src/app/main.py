@@ -4628,7 +4628,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "state": "Rumor 6 repeatable bargain",
-            "meaning": "After the shared opening enters Scene 2, one persisted inline service host supports any desired eligible Shoes purchases and one illusion lesson for any living non-Barbarian. A non-spellcaster receives one use per adventure and casts it at +1. The lesson becomes free automatically after three recorded pairs; the host expands or scrolls to keep every control reachable, and only explicit Done resolves the Rumor.",
+            "meaning": "After the shared opening enters Scene 2, one persisted inline service host supports any desired eligible Shoes purchases and one illusion lesson for any living non-Barbarian. A non-spellcaster receives one use per adventure and casts it at +1. The lesson becomes free automatically after three recorded pairs; the host respects the saved Narrative/map height and scrolls internally to keep every control reachable, and only explicit Done resolves the Rumor.",
             "source": "TAG p.23, Rumor 6; TAG pp.25-26, Scene 2; EE p.76, Scrolls; player-confirmed learner interpretation",
         },
         {
@@ -4850,14 +4850,14 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "structure": "vendor",
             "when_to_use": "The PDF offers items, spells, or paid bargains such as Shoes of Fast Walk or an illusion lesson.",
             "required_profile_fields": "finale_mode vendor, final-scene purchase actions, one required Done action, persisted service state, item/spell choice UI, exact costs, derived free condition, and eligibility hover text.",
-            "ui_expectation": "The opening remains Investigate / Not now. At the printed vendor Scene, one inline host repeats optional purchases, applies the single lesson, preserves state across resume, and exposes Done; no proxy combat or manual free-price checkbox is used.",
+            "ui_expectation": "The opening remains Investigate / Not now. At the printed vendor Scene, one inline host repeats optional purchases, applies the single lesson, preserves state across resume, and exposes Done; the Narrative/map separator keeps the player's saved height while the host scrolls internally, and no proxy combat or manual free-price checkbox is used.",
             "checking_notes": "For Blackbird Hill, check TAG Scene 2 pp.25-26 and EE p.76: 200 gp per pair, one per wearer, +Tier Defense while withdrawing/fleeing melee, magic-item users and hirelings but not animals, one illusion lesson for any living non-Barbarian at 100 gp or automatically free after three pairs, one +1 use per adventure for a non-spellcaster, and an explicit reachable Done control.",
         },
         {
             "structure": "trainer",
             "when_to_use": "The PDF leads to a trainer/service rather than an exploration site, such as Deoldyn Scene 3.",
             "required_profile_fields": "lead_structure trainer, finale_mode service, shared opening actions only at entry, final-scene training and required Done actions, persisted service state, cost formula, eligible character rule, and skill/spell choices.",
-            "ui_expectation": "The opening remains Investigate / Not now. At the printed trainer Scene, one inline host filters eligible characters, validates the complete simultaneous batch before mutation, takes all payments first, rolls automatically, applies successful choices, then blocks later additions and exposes Done.",
+            "ui_expectation": "The opening remains Investigate / Not now. At the printed trainer Scene, one inline host filters eligible characters, validates the complete simultaneous batch before mutation, takes all payments first, rolls automatically, applies successful choices, then blocks later additions and exposes Done. The Narrative/map separator keeps the player's saved height while the host scrolls internally.",
             "checking_notes": "For Deoldyn, check TAG p.26 Scene 3: every bow-capable trainee may train once between adventures for 60 gp × current Level; commit all payments before all XP rolls; money is spent on failure; choose Deadly Accuracy, Dead Shot, or normal level advancement for a base Elf; add no trainee after the batch results are known; then explicitly finish training.",
         },
         {
