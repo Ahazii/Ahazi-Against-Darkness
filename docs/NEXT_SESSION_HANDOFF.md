@@ -5,11 +5,13 @@ Current release is **v0.39.72**. Rumor 6 passed its complete live gate on
 Rumor 11 session `fc741849402d46e096b2efa52368de8f` passed the shared
 **Investigate** / **Not now — return to town** opening and reached Scene 3. It
 confirmed the v0.39.70 divider correction, then reached camp and completed
-fund transfers. v0.39.71 then passed the repaired return from camp without
-repeating Investigate, and the exact save is back at Deoldyn's open service.
-v0.39.72 makes the existing bank-first payment contract explicit and adds a
-saved 40/60 Narrative/service divider with independent scrollbars. Sir
-Benedict remains funded at 600gp in his home bank.
+fund transfers. v0.39.71 is deployed and its repaired return passes automation,
+but the current live API still reports `camped_outside=true`, with current tile
+and stable entrance both `89a663cb06844bea96f0ccc2fc458d1f`; a live retry is
+still required. v0.39.72 makes the existing bank-first payment contract
+explicit and adds a saved 40/60 Narrative/service divider with independent
+scrollbars. Deoldyn's service remains open. Sir Benedict has 0gp carried +
+600gp banked = 600gp; Faelar has 125gp carried + 300gp banked = 425gp.
 
 Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.72`.
 
@@ -25,11 +27,12 @@ Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.72`.
 All earlier broad adventure test gates, including both the procedure and
 v0.39.67 presentation checks for Rumor 9 and the complete Rumor 6 gate, are
 passed. Rumor 11's shared opening, transition into Scene 3, divider correction,
-camp transfers, and return from camp are also passed. Force-refresh v0.39.72,
-resume this exact save at Deoldyn, verify the explicit 0gp carried + 600gp bank
-= 600gp available display and both saved horizontal dividers, run Sir
-Benedict's bank-funded 600gp automatic training batch, then test Done and
-Continue. Do not start the Rumor again. Do not ask the user to repeat the
+and camp transfers are also passed. Force-refresh v0.39.72, resume this exact
+save while it is still camped, retry **Return to dungeon** once, follow the
+already-explored route to Deoldyn if needed, verify the explicit 0gp carried +
+600gp bank = 600gp available display and both saved horizontal dividers, run
+Sir Benedict's bank-funded 600gp automatic training batch, then test Done and
+Continue. Do not start the Rumor again or repeat its transfers. Do not ask the user to repeat the
 Invisible Gremlins fight or
 reopen the broad EE, Abyss, Forsaken
 Depths, Citadel, Bofto, Daroc, Star-Slayer, Bag, Repellant, treasure, trap,
@@ -110,7 +113,7 @@ Automated tests own campaign isolation and legacy migration, all twelve Rumors e
 
 Migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time. Select and inspect one exact scene before coding; keep the slice narrow.
 
-Rumor 6 is passed and must not be replayed. Resume only Rumor 11 session `fc741849402d46e096b2efa52368de8f` for the remaining v0.39.72 bank-display, nested-layout, paid training, Done, and Continue checks in `docs/PLAYTEST_PLAN.md`. Its opening, route, camp return, and transfers are already passed and persisted: Sir Benedict has 0gp carried + 600gp banked and is eligible, Faelar has 300/540gp, and the Cleric/Rogue are class-ineligible. Do not repeat those steps. Automated tests own exact-marker matching, fresh start-camped entry, bank-only affordability and spending, whole-batch validation, payment-before-roll atomicity, failed-roll costs, duplicate actions, persistence, and the layout contract.
+Rumor 6 is passed and must not be replayed. Resume only Rumor 11 session `fc741849402d46e096b2efa52368de8f` for one live Return-to-dungeon retry followed by the remaining v0.39.72 bank-display, nested-layout, paid training, Done, and Continue checks in `docs/PLAYTEST_PLAN.md`. Its opening, initial Scene 3 entry, and transfers are already passed and persisted; the live save is still camped. Sir Benedict has 0gp carried + 600gp banked and is eligible; Faelar has 125gp carried + 300gp banked = 425gp; the Cleric/Rogue are class-ineligible. Do not repeat the opening or transfers. Automated tests own exact-marker matching, fresh start-camped entry, bank-only affordability and spending, whole-batch validation, payment-before-roll atomicity, failed-roll costs, duplicate actions, persistence, and the layout contract.
 
 Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat its Gremlin/Iron Eater loss tests; focused coverage owns day timing, magic-only use, encounter-end expiry, and legacy markers.
 

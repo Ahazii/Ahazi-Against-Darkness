@@ -124,17 +124,19 @@ Do not start Rumor 6 again, rebuy any Shoes, dismiss a hireling, or alter this
 saved state to repeat an already-passed check. Rumor 6 is closed unless a later
 change produces a confirmed regression in that exact workflow.
 
-## Do Next: Resume Rumor 11 — Bank-Funded Training And Nested Layout
+## Do Next: Resume Rumor 11 — Return Retry, Bank-Funded Training And Nested Layout
 
 Rules source: Rumor 11 on TAG p.24 and Scene 3 on TAG p.26.
 
 Live session `fc741849402d46e096b2efa52368de8f` already passed the shared
-**Investigate** / **Not now — return to town** opening, Scene 3 entry, camp
-transfers, v0.39.70 outer Narrative/map divider correction, and v0.39.71 return
-from camp without repeating Investigate. It is back at Deoldyn's open service.
-Those transfers persist: Sir Benedict has 0gp carried and 600gp in his home
-bank and is eligible; Faelar has 300/540gp; Sister Joyce and Sly Silas remain
-class-ineligible.
+**Investigate** / **Not now — return to town** opening, its initial Scene 3
+entry, camp transfers, and the v0.39.70 outer Narrative/map divider correction.
+The v0.39.71 repair is deployed and passes automation, but the current live API
+still reports `camped_outside=true`; current tile and stable entrance are both
+`89a663cb06844bea96f0ccc2fc458d1f`. Deoldyn's service state is still open.
+Those transfers persist: Sir Benedict has 0gp carried + 600gp banked = 600gp
+and is eligible; Faelar has 125gp carried + 300gp banked = 425gp; Sister Joyce
+and Sly Silas remain class-ineligible.
 
 Deoldyn's existing backend already validates the selected trainee against that
 hero's combined home-bank and carried gold and spends home-bank gold first. The
@@ -148,26 +150,31 @@ divider.
 
 After deploying v0.39.72, force-refresh and resume that same session:
 
-1. Confirm the save opens at Deoldyn's Range with the service still open. Do not
-   repeat Investigate, camp return, the route, or the fund transfers.
-2. Confirm Sir Benedict's training row explicitly shows `Carried 0gp + Bank
+1. Confirm the save is still at Camp Outside Dungeon, then choose **Return to
+   dungeon** once. Confirm camp closes, the party reaches the stable entrance,
+   and the original Investigate / Not now choice does not reappear.
+2. Open **Exits** and follow the already-explored route to Deoldyn's Range if
+   the service is not immediately visible. Do not repeat Investigate or the
+   fund transfers.
+3. Confirm Sir Benedict's training row explicitly shows `Carried 0gp + Bank
    600gp = 600gp available`, remains eligible for the 600gp Level 10 fee, and
    explains bank-first payment in hover help.
-3. Drag the new Narrative/service divider in both directions. Confirm Narrative
+4. Drag the new Narrative/service divider in both directions. Confirm Narrative
    never shrinks below 96px, Narrative and the service each scroll vertically,
    and double-click resets the inner split to about 40/60. Then confirm the
    existing combined Narrative/service-to-map divider still reveals more map,
    and the Exits and party-sheet side dividers still resize independently.
-4. Select Sir Benedict as the one trainee, choose Deadly Accuracy or Dead Shot,
+5. Select Sir Benedict as the one trainee, choose Deadly Accuracy or Dead Shot,
    and run the batch. Confirm exactly 600gp is taken from his bank before one
    automatic XP roll and that success/failure is narrated without a refund.
-5. Choose **Done — finish training**, then complete the normal shared
+6. Choose **Done — finish training**, then complete the normal shared
    **Continue — return to town and finish** closeout exactly once.
 
 Stop after this bounded Rumor 11 module and attach a Narrative Report for any
-mismatch. Do not replay its passed opening, route, camp work, or Rumor 6. Do not
-mass-enable required scene completion: every remaining Rumor still needs its
-own printed terminal routes.
+mismatch. Do not replay its passed opening, transfers, or Rumor 6; the one
+return retry and movement along the already-explored route are part of this
+gate. Do not mass-enable required scene completion: every remaining Rumor still
+needs its own printed terminal routes.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not
