@@ -1419,6 +1419,85 @@ def test_rumor_11_repeatable_service_api_batches_training_and_requires_done(
     assert roster.expert_skill_targets["dead_shot"] == "tag_deoldyn"
 
 
+def test_rumor_11_level_ten_bank_only_training_payment_persists_via_api(
+    client,
+    monkeypatch,
+) -> None:
+    session_id = "tag-rumor-11-level-ten-bank-only-api"
+    manifest, characters = _save_repeatable_tag_service_session(
+        session_id,
+        11,
+        [("banked-archer", "warrior", 10, 600)],
+    )
+    archer = characters[0]
+    archer.expert_trained = True
+    archer.heroic_trained = True
+    main.store.save("characters", archer)
+
+    stored_session = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert stored_session is not None
+    stored_member = stored_session.party[0]
+    stored_member.gold = 0
+    stored_member.bank_gold = 600
+    stored_member.expert_trained = True
+    stored_member.heroic_trained = True
+    main.store.save("sessions", stored_session)
+
+    entered = _enter_repeatable_tag_service(client, session_id, manifest)
+    service = entered["session"]["tag_repeatable_service_state"]
+    trainee = service["trainees"][0]
+    assert trainee["cost_gp"] == 600
+    assert trainee["carried_gold"] == 0
+    assert trainee["bank_gold"] == 600
+    assert trainee["available_gold"] == 600
+    assert trainee["eligible"] is True
+
+    monkeypatch.setattr(
+        "app.engine.tag_repeatable_services.roll_advancement",
+        lambda *_args, **_kwargs: AdvancementRollResult(
+            natural=10,
+            total=14,
+            sides=10,
+            modifier=4,
+            purpose="level_up",
+            tier_band=3,
+        ),
+    )
+    trained = client.post(
+        f"/api/sessions/{session_id}/tag-repeatable-service",
+        json={
+            "action": "train",
+            "trainings": [
+                {
+                    "character_id": archer.id,
+                    "outcome": "dead_shot",
+                    "new_spell": "",
+                }
+            ],
+        },
+    )
+
+    assert trained.status_code == 200, trained.text
+    payload = trained.json()
+    trained_member = payload["session"]["party"][0]
+    assert (trained_member["gold"], trained_member["bank_gold"]) == (0, 0)
+    assert payload["session"]["tag_repeatable_service_state"]["training_results"][0][
+        "payment"
+    ] == [{"name": archer.name, "bank_gold": 600, "carried_gold": 0}]
+    assert payload["characters"][0]["gold"] == 0
+    assert trained_member["learned_expert_skills"] == ["dead_shot"]
+
+    reloaded = client.get(f"/api/sessions/{session_id}")
+    assert reloaded.status_code == 200, reloaded.text
+    reloaded_member = reloaded.json()["party"][0]
+    assert (reloaded_member["gold"], reloaded_member["bank_gold"]) == (0, 0)
+    persisted_roster = main.store.get("characters", archer.id, Character.model_validate)
+    assert persisted_roster is not None
+    assert persisted_roster.gold == 0
+    assert persisted_roster.learned_expert_skills == ["dead_shot"]
+    assert persisted_roster.expert_skill_targets["dead_shot"] == "tag_deoldyn"
+
+
 def test_repeatable_service_actions_are_blocked_during_combat(client) -> None:
     rumor_6_id = "tag-rumor-6-combat-service-guard"
     manifest_6, characters_6 = _save_repeatable_tag_service_session(

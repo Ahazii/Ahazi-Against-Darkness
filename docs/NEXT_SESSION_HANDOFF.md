@@ -1,17 +1,17 @@
 # Next Session Handoff
 
-Current release is **v0.39.71**. Rumor 6 passed its complete live gate on
+Current release is **v0.39.72**. Rumor 6 passed its complete live gate on
 2026-08-04 in session `380ffb5e2c834195806027c898e3f55d`; do not replay it.
 Rumor 11 session `fc741849402d46e096b2efa52368de8f` passed the shared
 **Investigate** / **Not now — return to town** opening and reached Scene 3. It
 confirmed the v0.39.70 divider correction, then reached camp and completed
-fund transfers. **Return to dungeon** was swallowed by the shared opening guard
-because camp re-anchors at the entrance; v0.39.71 makes the guard recognize the
-resolved Investigate marker, permits camp return, prevents duplicate entry
-choices, and reports the real outcome. The exact save remains safely camped
-with its service open and Sir Benedict funded at 600gp.
+fund transfers. v0.39.71 then passed the repaired return from camp without
+repeating Investigate, and the exact save is back at Deoldyn's open service.
+v0.39.72 makes the existing bank-first payment contract explicit and adds a
+saved 40/60 Narrative/service divider with independent scrollbars. Sir
+Benedict remains funded at 600gp in his home bank.
 
-Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.71`.
+Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.72`.
 
 ## Start Here
 
@@ -25,10 +25,12 @@ Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.71`.
 All earlier broad adventure test gates, including both the procedure and
 v0.39.67 presentation checks for Rumor 9 and the complete Rumor 6 gate, are
 passed. Rumor 11's shared opening, transition into Scene 3, divider correction,
-and camp transfers are also passed. Force-refresh v0.39.71, return this exact
-save from camp, follow the explored route to Deoldyn, run Sir Benedict's funded
-600gp automatic training batch, then test Done and Continue. Do not start the
-Rumor again. Do not ask the user to repeat the Invisible Gremlins fight or
+camp transfers, and return from camp are also passed. Force-refresh v0.39.72,
+resume this exact save at Deoldyn, verify the explicit 0gp carried + 600gp bank
+= 600gp available display and both saved horizontal dividers, run Sir
+Benedict's bank-funded 600gp automatic training batch, then test Done and
+Continue. Do not start the Rumor again. Do not ask the user to repeat the
+Invisible Gremlins fight or
 reopen the broad EE, Abyss, Forsaken
 Depths, Citadel, Bofto, Daroc, Star-Slayer, Bag, Repellant, treasure, trap,
 entrance, or closeout suites.
@@ -49,7 +51,7 @@ Rumor entry choices side by side at normal app widths. v0.39.59 converts TAG
 p.29 Scene 12 into one typed Mutant Fish hypnosis, rescue, ration, sale, and XP
 procedure. Do not repeat the whole Rumor 2 module or any Gremlin fight.
 
-## Implemented Through v0.39.71
+## Implemented Through v0.39.72
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 76, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 20, 22, 24-31, and 65.
 
@@ -61,8 +63,8 @@ Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 76, 87, 94, 101, 105, 107,
 - Narrative objective, Relevant Now, and room metadata share one special-action dispatcher. Rumor-specific typed controls stay separate plug-ins inside the common scene host. Explicit `entry_scene` metadata prevents composite descriptions from misrouting older Rumor 1 modules past Scene 9.
 - Daroc's Lost Familiar keeps the player in Scene 5 until a typed terminal result. **Search for Clues** lets the player select the acting character for each automatic TAG p.20 L6 Streetwise check, charges that searcher's `d6` bribe, and persists eligible Town Streetwise Clues and progress across repeat attempts and save/resume. The cost is two or one when the living party includes a Druid, Beastmaster, cat-like hero, or cat animal companion (TAG p.26). **Give up — return to town** is non-permanent: it preserves eligible Clues and returns Rumor 9 to `heard`. Success spends the eligible Clues, gives the separately selected living recipient 200gp, and creates exactly one pending XP roll. The amount follows the TAG p.24 Rumor offer by player ruling; Scene 5's 100gp line on p.26 is a known error. The XP can be assigned or banked during the shared closeout gate. Crucible of Classic Critters pp.11-15 remains the future source for full Beastmaster and animal-companion implementation.
 - New and resumed Daroc Scene 5 narrative now states that same 200gp ruling consistently. Narrative Debug Reports list carried, banked, and total gold for every hero, so diagnostics expose bribe deductions even when the hero remains at the 200gp dungeon carry cap. This does not change finance or reward state.
-- Blackbird Hill follows the Rumor 6 lead on TAG p.23 and Scene 2 on pp.25-26. Optional 200gp Shoes purchases and the single 100gp/free-after-three-pairs illusion lesson remain available until **Done — leave Blackbird Hill**; arrival and an individual purchase do not complete the adventure. Per the player-confirmed Shoes ruling, a living magic-item-eligible hero or living hireling may wear one pair and an animal companion may not. A hireling uses the party Tier Defense bonus while withdrawing or fleeing melee; the pair remains party-owned on the paying hero and automatically returns to ordinary party ownership when that hireling leaves. Per the separate player-confirmed lesson ruling and EE p.76, any living non-Barbarian may learn the spell automatically; a non-spellcaster retains one use per adventure and casts it at +1. The host keeps an internal vertical scrollbar when constrained, so the spell fields and Done remain reachable without overriding the user's horizontal Narrative/map divider height.
-- Deoldyn follows the Rumor 11 lead on TAG p.24 and Scene 3 on p.26. The shared host accepts one complete simultaneous batch of living bow-capable trainees, validates every trainee and `60gp × Level` balance before mutation, deducts every payment before making any automatic XP roll, and never refunds a failed result. Deadly Accuracy or Dead Shot are available to eligible trainees; only the normal/base Elf may choose ordinary level advancement. Training may be skipped, but no character may be added after the batch results are known; **Done — finish training** alone resolves the service.
+- Blackbird Hill follows the Rumor 6 lead on TAG p.23 and Scene 2 on pp.25-26. Optional 200gp Shoes purchases and the single 100gp/free-after-three-pairs illusion lesson remain available until **Done — leave Blackbird Hill**; arrival and an individual purchase do not complete the adventure. Per the player-confirmed Shoes ruling, a living magic-item-eligible hero or living hireling may wear one pair and an animal companion may not. A hireling uses the party Tier Defense bonus while withdrawing or fleeing melee; the pair remains party-owned on the paying hero and automatically returns to ordinary party ownership when that hireling leaves. Per the separate player-confirmed lesson ruling and EE p.76, any living non-Barbarian may learn the spell automatically; a non-spellcaster retains one use per adventure and casts it at +1. The saved inner Narrative/service divider and independent scrollbars keep both the story and service fields reachable; the outer combined-panel/map divider remains separate.
+- Deoldyn follows the Rumor 11 lead on TAG p.24 and Scene 3 on p.26. The shared host accepts one complete simultaneous batch of living bow-capable trainees, validates every trainee and `60gp × Level` balance against that trainee's own carried + home-bank total before mutation, spends home-bank gold first, deducts every payment before making any automatic XP roll, and never refunds a failed result. The UI shows carried, banked, and available totals explicitly. Deadly Accuracy or Dead Shot are available to eligible trainees; only the normal/base Elf may choose ordinary level advancement. Training may be skipped, but no character may be added after the batch results are known; **Done — finish training** alone resolves the service.
 - Fresh and legacy Rumors 6/11 manifests use `tag_scene_resolved`; legacy upgrades are idempotent and preserve prior service state. Their first prompt remains only **Investigate** / **Not now — return to town**, with purchases/training appearing only in the printed final Scene. Done opens the normal **Continue — return to town and finish** pause exactly once.
 - Temporary Weapon Enchantment records its cast and day-seven campaign expiry, functions as magic without an Attack bonus, and expires at encounter end after an attack against a strictly magic-only foe. The attack may hit or miss. Adventure completion and settlement travel advance the clock; legacy markers receive a full week from first advancement. Manual early clear is removed while the existing Gremlin/Iron Eater loss choice remains unchanged (TAG p.65).
 - Xasartha reaction `1` persists its `6d6` demand and offers exact carried-gold, eligible 15gp+ gem/jewel, or refusal choices. Defeat persists `2d6` necros and a wear-or-sell pendant choice. The pendant is not consumed when Luck is spent; its separate counter survives camp/re-entry and recharges only with a new adventure. It grants one point, or two additional points to a halfling. Barbarians cannot wear it.
@@ -108,15 +110,17 @@ Automated tests own campaign isolation and legacy migration, all twelve Rumors e
 
 Migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time. Select and inspect one exact scene before coding; keep the slice narrow.
 
-Rumor 6 is passed and must not be replayed. Resume only Rumor 11 session `fc741849402d46e096b2efa52368de8f` for the remaining v0.39.71 camp return, paid training, Done, and Continue checks in `docs/PLAYTEST_PLAN.md`. Its transfers are already persisted: Sir Benedict has 600gp and is eligible, Faelar has 300/540gp, and the Cleric/Rogue are class-ineligible. Do not repeat the transfers or opening. Automated tests own exact-marker matching, fresh start-camped entry, whole-batch validation, payment-before-roll atomicity, failed-roll costs, duplicate actions, and persistence.
+Rumor 6 is passed and must not be replayed. Resume only Rumor 11 session `fc741849402d46e096b2efa52368de8f` for the remaining v0.39.72 bank-display, nested-layout, paid training, Done, and Continue checks in `docs/PLAYTEST_PLAN.md`. Its opening, route, camp return, and transfers are already passed and persisted: Sir Benedict has 0gp carried + 600gp banked and is eligible, Faelar has 300/540gp, and the Cleric/Rogue are class-ineligible. Do not repeat those steps. Automated tests own exact-marker matching, fresh start-camped entry, bank-only affordability and spending, whole-batch validation, payment-before-roll atomicity, failed-roll costs, duplicate actions, persistence, and the layout contract.
 
 Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat its Gremlin/Iron Eater loss tests; focused coverage owns day timing, magic-only use, encounter-end expiry, and legacy markers.
 
 ## Recent Releases
 
+- `v0.39.72`: expose each Deoldyn trainee's carried, home-bank, and combined available gold while retaining the existing bank-first payment path; add a saved second horizontal Narrative/service divider with a 40/60 default, 96px Narrative minimum, independent scrollbars, and double-click reset without replacing the outer map, Exits, or side-rail resizers.
+
 - `v0.39.71`: persist generated Rumor opening decisions independently of room position, recognize the exact resolved Investigate route on legacy saves, allow camp re-entry before the opening guard, reuse the server-derived pending state across Narrative and Exits, suppress duplicate opening actions, and replace the misleading Return-to-dungeon **Session updated** status.
 
-- `v0.39.70`: remove the shared Rumors 6/11 service height floor so the saved horizontal Narrative/map divider height is authoritative, retain internal service scrolling, and clarify the divider's directional hover help. Rumor 11's preserved live session is the only remaining validation gate.
+- `v0.39.70`: remove the shared Rumors 6/11 service height floor so the saved horizontal Narrative/map divider height is authoritative, retain internal service scrolling, and clarify the divider's directional hover help. Rumor 11's preserved live session subsequently passed this outer-divider correction and continued into the v0.39.71/v0.39.72 follow-ups.
 
 - `v0.39.69`: allow the Blackbird Hill lesson for any living non-Barbarian, give a non-spellcaster one use per adventure at +1, and add internal guided-service scrolling. Rumor 6 passed live; Rumor 11 then exposed that the accompanying service height floor overrode the shared map divider.
 

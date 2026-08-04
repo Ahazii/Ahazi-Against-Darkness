@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-04. Target build: v0.39.71.
+Last updated: 2026-08-04. Target build: v0.39.72.
 
 ## Adventure Test Gate: Passed
 
@@ -124,42 +124,50 @@ Do not start Rumor 6 again, rebuy any Shoes, dismiss a hireling, or alter this
 saved state to repeat an already-passed check. Rumor 6 is closed unless a later
 change produces a confirmed regression in that exact workflow.
 
-## Do Next: Resume Rumor 11 — Return From Camp
+## Do Next: Resume Rumor 11 — Bank-Funded Training And Nested Layout
 
 Rules source: Rumor 11 on TAG p.24 and Scene 3 on TAG p.26.
 
-Live session `fc741849402d46e096b2efa52368de8f` already passed
-the shared **Investigate** / **Not now — return to town** opening and
-Investigate reached Scene 3 without completing the adventure. The v0.39.70
-divider correction was reported better, and the player deliberately reached
-camp and completed roster transfers. Those transfers persist: Sir Benedict has
-600gp and is eligible; Faelar has 300/540gp; Sister Joyce and Sly Silas remain
+Live session `fc741849402d46e096b2efa52368de8f` already passed the shared
+**Investigate** / **Not now — return to town** opening, Scene 3 entry, camp
+transfers, v0.39.70 outer Narrative/map divider correction, and v0.39.71 return
+from camp without repeating Investigate. It is back at Deoldyn's open service.
+Those transfers persist: Sir Benedict has 0gp carried and 600gp in his home
+bank and is eligible; Faelar has 300/540gp; Sister Joyce and Sly Silas remain
 class-ineligible.
 
-The live session then exposed a shared re-entry defect. Camp correctly anchored
-the party at the entrance, but the opening guard ignored the resolved
-Investigate marker, intercepted **Return to dungeon**, and returned HTTP 200;
-the client displayed only **Session updated**. v0.39.71 fixes that shared
-lifecycle and preserves fresh start-camped behavior.
+Deoldyn's existing backend already validates the selected trainee against that
+hero's combined home-bank and carried gold and spends home-bank gold first. The
+live screenshot exposed that the UI did not show that split clearly and that a
+long generated service could leave Narrative only a tiny strip. v0.39.72 adds
+the explicit carried + bank = available display and a second saved horizontal
+divider between Narrative and the active service. The inner split defaults to
+40/60, preserves a 96px Narrative minimum, and gives both regions independent
+vertical scrollbars without replacing the outer Narrative/service-to-map
+divider.
 
-After deploying v0.39.71, force-refresh and resume that same session:
+After deploying v0.39.72, force-refresh and resume that same session:
 
-1. Choose **Return to dungeon** once. Confirm the status says the party returned
-   to the dungeon entrance, camp closes, and the original Investigate / Not now
-   choice does not reappear.
-2. Open **Exits** and follow the explored route north through Complication and
-   north to Deoldyn's Range. Confirm the open service and transferred balances
-   remain unchanged.
-3. Select Sir Benedict as the one trainee, choose Deadly Accuracy or Dead Shot,
-   and run the batch. Confirm exactly 600gp is spent before one automatic XP
-   roll and that success/failure is narrated without a refund.
-4. Choose **Done — finish training**, then complete the normal shared
+1. Confirm the save opens at Deoldyn's Range with the service still open. Do not
+   repeat Investigate, camp return, the route, or the fund transfers.
+2. Confirm Sir Benedict's training row explicitly shows `Carried 0gp + Bank
+   600gp = 600gp available`, remains eligible for the 600gp Level 10 fee, and
+   explains bank-first payment in hover help.
+3. Drag the new Narrative/service divider in both directions. Confirm Narrative
+   never shrinks below 96px, Narrative and the service each scroll vertically,
+   and double-click resets the inner split to about 40/60. Then confirm the
+   existing combined Narrative/service-to-map divider still reveals more map,
+   and the Exits and party-sheet side dividers still resize independently.
+4. Select Sir Benedict as the one trainee, choose Deadly Accuracy or Dead Shot,
+   and run the batch. Confirm exactly 600gp is taken from his bank before one
+   automatic XP roll and that success/failure is narrated without a refund.
+5. Choose **Done — finish training**, then complete the normal shared
    **Continue — return to town and finish** closeout exactly once.
 
 Stop after this bounded Rumor 11 module and attach a Narrative Report for any
-mismatch. A re-entry mismatch should not require replaying Investigate or
-repeating the transfers. Do not mass-enable required scene completion: every
-remaining Rumor still needs its own printed terminal routes.
+mismatch. Do not replay its passed opening, route, camp work, or Rumor 6. Do not
+mass-enable required scene completion: every remaining Rumor still needs its
+own printed terminal routes.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed
 scene at a time. Inspect and cite the owned PDF scene before coding. Do not

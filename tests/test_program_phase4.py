@@ -754,17 +754,28 @@ def test_rules_tables_api_includes_modern_large_reference_groups(client: TestCli
     assert "camp re-entry continuity" in lifecycle_states
     assert "living non-Barbarian" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
     assert "one use per adventure" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
-    assert "respects the saved Narrative/map height" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
-    assert "scrolls internally" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
+    assert "40% Narrative / 60% service" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
+    assert "both panes scroll independently" in lifecycle_states["Rumor 6 repeatable bargain"]["meaning"]
     assert "no later trainee" in lifecycle_states["Rumor 11 single-batch training"]["meaning"]
+    assert "home-bank balance" in lifecycle_states["Rumor 11 single-batch training"]["meaning"]
+    assert "spends banked gold first" in lifecycle_states["Rumor 11 single-batch training"]["meaning"]
     assert "fresh start-camped Rumor" in lifecycle_states["camp re-entry continuity"]["meaning"]
+    layout_rows = {row["control"]: row for row in payload["exploration_narrative_layout_table"]}
+    assert "Narrative / guided service divider" in layout_rows
+    assert "40% Narrative / 60% service" in layout_rows["Narrative / guided service divider"]["player_use"]
+    assert "independent vertical scrollbars" in layout_rows["Narrative / guided service divider"]["automation"]
+    assert "Narrative + service / map divider" in layout_rows
+    assert "Narrative / Exits divider" in layout_rows
+    assert "Adventure / Party Sheets divider" in layout_rows
     trainer_row = next(
         row for row in payload["tag_generated_lead_structure_table"] if row["structure"] == "trainer"
     )
     assert "complete simultaneous batch" in trainer_row["ui_expectation"]
     assert "blocks later additions" in trainer_row["ui_expectation"]
-    assert "saved height" in trainer_row["ui_expectation"]
-    assert "scrolls internally" in trainer_row["ui_expectation"]
+    assert "nested saved separator" in trainer_row["ui_expectation"]
+    assert "both scroll independently" in trainer_row["ui_expectation"]
+    assert "home-bank plus carried gold" in trainer_row["checking_notes"]
+    assert "banked gold is spent first" in trainer_row["checking_notes"]
 
 
 def test_create_session_stores_ruleset_profile(client: TestClient) -> None:

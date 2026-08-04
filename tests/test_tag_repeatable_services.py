@@ -754,6 +754,54 @@ def test_deoldyn_takes_all_payments_before_rolling_and_marks_skill_sources() -> 
     assert late_trainee.gold == 500
 
 
+def test_deoldyn_level_ten_accepts_bank_only_payment_and_exposes_fund_breakdown() -> None:
+    archer = _member(
+        "banked-archer",
+        name="Banked Archer",
+        gold=0,
+        bank_gold=600,
+        level=10,
+        expert_trained=True,
+    )
+    archer.heroic_trained = True
+    session = _session(11, [archer])
+
+    view = repeatable_service_view(session, {}, {})
+    assert {
+        key: view["payers"][0][key]
+        for key in ("carried_gold", "bank_gold", "available_gold")
+    } == {
+        "carried_gold": 0,
+        "bank_gold": 600,
+        "available_gold": 600,
+    }
+    trainee = view["trainees"][0]
+    assert trainee["cost_gp"] == 600
+    assert trainee["carried_gold"] == 0
+    assert trainee["bank_gold"] == 600
+    assert trainee["available_gold"] == 600
+    assert trainee["eligible"] is True
+
+    result = train_with_deoldyn(
+        session,
+        trainings=[{"character_id": archer.character_id, "outcome": "dead_shot"}],
+        roller=lambda _member: AdvancementRollResult(
+            natural=10,
+            total=14,
+            sides=10,
+            modifier=4,
+            purpose="level_up",
+            tier_band=3,
+        ),
+    )
+
+    assert (archer.gold, archer.bank_gold) == (0, 0)
+    assert result["results"][0]["payment"] == [
+        {"name": archer.name, "bank_gold": 600, "carried_gold": 0}
+    ]
+    assert archer.learned_expert_skills == ["dead_shot"]
+
+
 def test_deoldyn_failed_roll_keeps_the_full_payment() -> None:
     warrior = _member("warrior", gold=100, bank_gold=100, level=3)
     session = _session(11, [warrior])

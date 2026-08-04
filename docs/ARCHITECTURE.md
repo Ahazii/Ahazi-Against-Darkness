@@ -143,6 +143,14 @@ New routed home:
   for enabled rulesets, default random ruleset, XP system, map mode, map limit,
   and last selected party are kept in browser local storage; developer unlock is
   kept in browser session storage.
+- Exploration layout preferences also live in browser local storage rather than
+  game/session state. The combined top play area has an outer saved horizontal
+  divider against the map and, while a generated service is active, an inner
+  saved horizontal divider between Narrative and that service. The inner split
+  defaults to 40/60, keeps Narrative at least 96px high, resets on double-click,
+  and gives Narrative and service independent vertical overflow. Existing
+  vertical dividers resize Exits and the Action Rail independently; changing any
+  layout preference never mutates rules or adventure state.
 - `modern-pages.js` is the first split from the monolithic `app.js`; it calls
   existing backend APIs directly and should be expanded into smaller modules as
   each page matures.

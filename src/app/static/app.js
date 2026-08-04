@@ -66,6 +66,7 @@ const state = {
     sheets: false,
   },
   logPanelHeight: 240,
+  narrativeServiceSplit: 0.4,
   mapStageHeight: null,
   sidePanelWidth: 420,
   exitsPanelWidth: 280,
@@ -141,6 +142,7 @@ const ICON_KEY_CATEGORY_META = {
 };
 const LAYOUT_DEFAULTS = {
   logPanelHeight: 240,
+  narrativeServiceSplit: 0.4,
   mapStageHeight: null,
   sidePanelWidth: 420,
   exitsPanelWidth: 280,
@@ -555,6 +557,7 @@ const inventoryPickerLabel = document.getElementById("inventory-picker-label");
 const inventoryPickerSelect = document.getElementById("inventory-picker-select");
 const inventoryPickerConfirmBtn = document.getElementById("inventory-picker-confirm");
 const sessionLog = document.getElementById("session-log");
+const narrativeServiceResizer = document.getElementById("narrative-service-resizer");
 const currentObjectiveBanner = document.getElementById("current-objective-banner");
 const narrativeObjectiveChips = document.getElementById("narrative-objective-chips");
 const explorationCommandBar = document.getElementById("exploration-command-bar");
@@ -17716,6 +17719,7 @@ function renderSavedGames() {
 const RULES_TABLE_META_KEYS = new Set(["ruleset_status", "open_items", "validation"]);
 
 const ENVIRONMENT_TABLE_HINTS = {
+  exploration_narrative_layout_table: "Exploration layout controls: a saved 40/60 Narrative/service divider for tall guided panels, the existing combined-panel/map divider, and independent Narrative, service, Exits, map, and side-rail scrolling when space is constrained.",
   tag_star_object_curse_table: "Bofto's Star-Shaped Object curse procedure (TAG pp.30-31): pickup Save, persistent curse, Star-Slayer, Gremlin cure, carrier death, and campaign recovery.",
   invisible_gremlins_procedure_table: "Invisible Gremlins procedure (EE pp.74, 87, 105, 160, 169; TAG pp.11, 13, 65): staged theft, protection, Disbelief, special property, temporary-enchantment choice, and Clue handling.",
   tag_bag_of_carrying_table: "Bag of Carrying procedure (TAG p.13): purchase, explicit multi-bag contents, transfer, theft/loss, and magic-user restriction.",
@@ -17723,7 +17727,7 @@ const ENVIRONMENT_TABLE_HINTS = {
   tag_medusa_scene10_procedure_table: "Hunter's Cabin approach (TAG pp.6-8, p.28): one party Stealth roll using the lowest modifier, then labelled Streetwise or immediate-fight choices.",
   tag_medusa_scene1_reaction_table: "Xasartha's reaction procedure (TAG p.25, Scene 1; EE pp.101, 162): bribe, Quest acceptance/refusal, fight, and fight-to-the-death outcomes.",
   tag_daroc_scene5_procedure_table: "Daroc's Lost Familiar (TAG pp.20, 24, 26): selected-character Streetwise searches, persistent eligible Clues, non-permanent Give up, 200 gp ruling, XP, and required closeout lifecycle.",
-  tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG pp.22-31; EE p.76): shared Investigate / Not now opening, printed-scene procedures, persisted repeatable Rumor 6/11 service hosts with explicit Done, and a Rumor 6 lesson for any living non-Barbarian (one +1 use per adventure for a non-spellcaster), then resolved closeout.",
+  tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG pp.9, 22-31; EE p.76): shared Investigate / Not now opening, printed-scene procedures, persisted Rumor 6/11 service hosts with explicit Done, Deoldyn payment from each trainee's own banked + carried gold (bank first), and a saved nested Narrative/service divider with independent scrolling.",
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
   caverns_special_features_table: "Caverns Special Features (d6), EE p.112. Roll on room content 5 in caverns.",
   caverns_water_pool_table: "Cavern water pool sub-table (d6), EE p.112.",
@@ -20759,11 +20763,13 @@ function renderCurrentObjectiveBanner(session) {
   currentObjectiveBanner.replaceChildren();
   if (!session || session.camped_outside) {
     currentObjectiveBanner.classList.add("hidden");
+    syncNarrativeServiceSplit();
     return;
   }
   const objective = currentObjectiveForSession(session);
   if (!objective) {
     currentObjectiveBanner.classList.add("hidden");
+    syncNarrativeServiceSplit();
     return;
   }
   currentObjectiveBanner.className =
@@ -20789,6 +20795,7 @@ function renderCurrentObjectiveBanner(session) {
     : null;
   if (lifecycle) currentObjectiveBanner.appendChild(lifecycle);
   appendTagCaveProgressPanel(currentObjectiveBanner, session);
+  syncNarrativeServiceSplit();
 }
 
 function renderObjectiveActionPlan(session, objective) {
@@ -22075,6 +22082,9 @@ function loadLayoutPrefs() {
     const saved = JSON.parse(localStorage.getItem(LAYOUT_STORAGE_KEY));
     if (!saved || typeof saved !== "object") return;
     if (typeof saved.logPanelHeight === "number") state.logPanelHeight = saved.logPanelHeight;
+    if (typeof saved.narrativeServiceSplit === "number" && Number.isFinite(saved.narrativeServiceSplit)) {
+      state.narrativeServiceSplit = clampFloat(saved.narrativeServiceSplit, 0.2, 0.8);
+    }
     if ("mapStageHeight" in saved) {
       state.mapStageHeight = typeof saved.mapStageHeight === "number" ? saved.mapStageHeight : null;
     }
@@ -22115,6 +22125,7 @@ function saveLayoutPrefs() {
       LAYOUT_STORAGE_KEY,
       JSON.stringify({
         logPanelHeight: state.logPanelHeight,
+        narrativeServiceSplit: state.narrativeServiceSplit,
         mapStageHeight: state.mapStageHeight,
         sidePanelWidth: state.sidePanelWidth,
         exitsPanelWidth: state.exitsPanelWidth,
@@ -22156,6 +22167,14 @@ function applyLayoutCss() {
   }
   if (mapLogPanel) {
     mapLogPanel.style.height = "";
+    const narrativeShare = clampFloat(state.narrativeServiceSplit, 0.2, 0.8);
+    mapLogPanel.style.setProperty("--narrative-panel-share", `${narrativeShare}fr`);
+    mapLogPanel.style.setProperty("--guided-panel-share", `${1 - narrativeShare}fr`);
+    narrativeServiceResizer?.setAttribute("aria-valuenow", String(Math.round(narrativeShare * 100)));
+    narrativeServiceResizer?.setAttribute(
+      "aria-valuetext",
+      `Narrative ${Math.round(narrativeShare * 100)}%; guided service ${Math.round((1 - narrativeShare) * 100)}%`
+    );
   }
   if (logMapResizer) logMapResizer.classList.remove("hidden");
   if (mapStageWrap) {
@@ -22183,11 +22202,50 @@ function applyLayoutCss() {
   scheduleMapExitsScrollRefresh(mapExitsPanel?.querySelector(".map-exits-body"));
 }
 
+function syncNarrativeServiceSplit() {
+  const hasTallGuidedPanel = Boolean(
+    currentObjectiveBanner?.querySelector('[data-guided-panel-size="tall"]')
+  );
+  const active = Boolean(
+    hasTallGuidedPanel &&
+      !currentObjectiveBanner?.classList.contains("hidden") &&
+      !currentObjectiveBanner?.classList.contains("panel-user-hidden")
+  );
+  mapLogPanel?.classList.toggle("has-tall-guided-panel", active);
+  narrativeServiceResizer?.classList.toggle("hidden", !active);
+  if (active) applyLayoutCss();
+}
+
+function adjustNarrativeServiceSplitByPixels(deltaY) {
+  const availableHeight = Math.max(
+    1,
+    Number(sessionLog?.getBoundingClientRect().height || 0) +
+      Number(currentObjectiveBanner?.getBoundingClientRect().height || 0)
+  );
+  state.narrativeServiceSplit = clampFloat(
+    state.narrativeServiceSplit + deltaY / availableHeight,
+    0.2,
+    0.8
+  );
+  applyLayoutCss();
+}
+
 function refreshMapExitsScrollAfterLayout() {
   scheduleMapExitsScrollRefresh(mapExitsPanel?.querySelector(".map-exits-body"));
 }
 
-function setupDragResizer(handle, { onDelta, onComplete, onReset }) {
+function setupDragResizer(
+  handle,
+  {
+    onDelta,
+    onComplete,
+    onReset,
+    keyboardAxis = null,
+    keyboardStep = 16,
+    onKeyboardHome = null,
+    onKeyboardEnd = null,
+  }
+) {
   if (!handle) return;
   let dragDistance = 0;
   handle.addEventListener("pointerdown", (event) => {
@@ -22227,6 +22285,25 @@ function setupDragResizer(handle, { onDelta, onComplete, onReset }) {
     onReset?.();
     onComplete?.();
   });
+  if (keyboardAxis) {
+    handle.addEventListener("keydown", (event) => {
+      const step = event.shiftKey ? keyboardStep * 3 : keyboardStep;
+      let dx = 0;
+      let dy = 0;
+      let handled = true;
+      if (keyboardAxis === "y" && event.key === "ArrowUp") dy = -step;
+      else if (keyboardAxis === "y" && event.key === "ArrowDown") dy = step;
+      else if (keyboardAxis === "x" && event.key === "ArrowLeft") dx = -step;
+      else if (keyboardAxis === "x" && event.key === "ArrowRight") dx = step;
+      else if (event.key === "Home" && onKeyboardHome) onKeyboardHome();
+      else if (event.key === "End" && onKeyboardEnd) onKeyboardEnd();
+      else handled = false;
+      if (!handled) return;
+      event.preventDefault();
+      if (dx || dy) onDelta(dx, dy);
+      onComplete?.();
+    });
+  }
 }
 
 function initLayoutResizers() {
@@ -22242,6 +22319,21 @@ function initLayoutResizers() {
       refreshMapExitsScrollAfterLayout();
     },
     onReset: () => resetLayoutPref("logPanelHeight"),
+  });
+  setupDragResizer(narrativeServiceResizer, {
+    onDelta: (_dx, dy) => adjustNarrativeServiceSplitByPixels(dy),
+    onComplete: saveLayoutPrefs,
+    onReset: () => resetLayoutPref("narrativeServiceSplit"),
+    keyboardAxis: "y",
+    keyboardStep: 16,
+    onKeyboardHome: () => {
+      state.narrativeServiceSplit = 0.2;
+      applyLayoutCss();
+    },
+    onKeyboardEnd: () => {
+      state.narrativeServiceSplit = 0.8;
+      applyLayoutCss();
+    },
   });
   setupDragResizer(sessionColumnResizer, {
     onDelta: (dx) => {
@@ -25816,6 +25908,7 @@ function applyExplorationPanelVisibility() {
   toggleTextCommandsBtn?.classList.toggle("selected", panels.commands !== false);
   toggleExitsPanelBtn?.classList.toggle("selected", panels.exits !== false);
   togglePartySheetsPanelBtn?.classList.toggle("selected", panels.sheets !== false);
+  syncNarrativeServiceSplit();
 }
 
 function setExplorationPanelVisibility(key, open) {
@@ -26026,6 +26119,21 @@ function tagServiceField(labelText, control, tooltip = "") {
   return field;
 }
 
+function tagServiceFundsBreakdown(record = {}) {
+  const carried = Math.max(0, Number(record.carried_gold) || 0);
+  const bank = Math.max(0, Number(record.bank_gold) || 0);
+  const suppliedTotal = Number(record.available_gold);
+  const available = Number.isFinite(suppliedTotal)
+    ? Math.max(0, suppliedTotal)
+    : carried + bank;
+  return { carried, bank, available };
+}
+
+function tagServiceFundsText(record = {}) {
+  const funds = tagServiceFundsBreakdown(record);
+  return `Carried ${funds.carried} gp + Bank ${funds.bank} gp = ${funds.available} gp available`;
+}
+
 function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
   const defaults = tagPromptDefaultsFromAction(action, fallbackReference);
   const service = state.session?.tag_repeatable_service_state || {};
@@ -26037,6 +26145,7 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
   if (parent.querySelector(".tag-repeatable-service-guided")) return true;
 
   const wrap = node("div", "tag-context-guided-action tag-repeatable-service-guided");
+  wrap.setAttribute("data-guided-panel-size", "tall");
   setTooltip(
     wrap,
     "TAG pp.25–26, Scene 2: shoe purchases are optional and repeatable until Done, while the spell lesson may be taken once. Any living non-Barbarian may receive the lesson; a non-spellcaster gains one use per adventure and casts it at +1. The server also enforces one pair per wearer, magic-item eligibility, hireling assignment, and the lesson's automatic free condition."
@@ -26061,9 +26170,9 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
     const select = document.createElement("select");
     select.setAttribute("aria-label", `Payer for ${cost} gp service`);
     for (const payer of payers) {
-      const option = new Option(`${payer.name} (${payer.available_gold} gp)`, payer.character_id);
+      const option = new Option(`${payer.name} — ${tagServiceFundsText(payer)}`, payer.character_id);
       option.disabled = Number(payer.available_gold || 0) < cost;
-      option.title = `${payer.name} has ${payer.available_gold} gp across banked and carried funds. Banked gold is spent before carried gold.`;
+      option.title = `${payer.name}: ${tagServiceFundsText(payer)}. Their own banked gold is spent before carried gold.`;
       select.appendChild(option);
     }
     const first = Array.from(select.options).find((option) => !option.disabled);
@@ -26250,9 +26359,10 @@ function appendDeoldynGuidedAction(parent, action, fallbackReference) {
   if (parent.querySelector(".tag-repeatable-service-guided")) return true;
 
   const wrap = node("div", "tag-context-guided-action tag-repeatable-service-guided deoldyn-service-guided");
+  wrap.setAttribute("data-guided-panel-size", "tall");
   setTooltip(
     wrap,
-    "TAG p.26, Scene 3: each bow-capable character may train once between adventures for 60 gp × current Level. Select the complete simultaneous batch; the server takes all payments first, rolls every selected XP check automatically, and permits no later additions."
+    "TAG p.9 and p.26, Scene 3: each bow-capable character may train once between adventures for 60 gp × current Level. Each trainee may use their own home-bank plus carried gold, with banked gold spent first. Select the complete simultaneous batch; the server takes all payments first, rolls every selected XP check automatically, and permits no later additions."
   );
   const heading = node("div", "tag-service-heading");
   heading.appendChild(node("strong", "", "Deoldyn's archery training"));
@@ -26272,7 +26382,7 @@ function appendDeoldynGuidedAction(parent, action, fallbackReference) {
 
   wrap.appendChild(
     subline(
-      "Choose everyone who will train and each desired result before submitting the one simultaneous batch. Every selected trainee pays before any dice are rolled; failed XP rolls do not refund the fee."
+      "Choose everyone who will train and each desired result before submitting the one simultaneous batch. Each row shows Carried + Bank = Available; the selected trainee's home-bank is spent before carried gold. Every selected trainee pays before any dice are rolled, and failed XP rolls do not refund the fee."
     )
   );
   if (service.training_batch_resolved) {
@@ -26290,15 +26400,22 @@ function appendDeoldynGuidedAction(parent, action, fallbackReference) {
     checkbox.type = "checkbox";
     checkbox.disabled = !trainee.eligible;
     checkbox.setAttribute("aria-label", `Train ${trainee.name}`);
-    const identity = node(
-      "span",
-      "tag-service-trainee-name",
-      `${trainee.name} · Level ${trainee.level} · ${trainee.cost_gp} gp (${trainee.available_gold} gp available)`
+    const identity = node("span", "tag-service-trainee-name");
+    identity.append(
+      node(
+        "span",
+        "tag-service-trainee-identity",
+        `${trainee.name} · Level ${trainee.level} · Fee ${trainee.cost_gp} gp`
+      ),
+      node("span", "tag-service-funds", tagServiceFundsText(trainee))
     );
     chooseLabel.append(checkbox, identity);
+    const financeTooltip =
+      `TAG p.9 banking and p.26 Scene 3: ${trainee.name}'s fee is 60 × Level ${trainee.level} = ${trainee.cost_gp} gp. ` +
+      `${tagServiceFundsText(trainee)}. Their own home-bank and carried gold may pay it; banked gold is spent first, and no other party member's gold is pooled.`;
     setTooltip(
       chooseLabel,
-      trainee.blocked_reason || `${trainee.name} can wield a bow and may train once. The exact fee is 60 × Level ${trainee.level} = ${trainee.cost_gp} gp.`
+      `${trainee.blocked_reason || `${trainee.name} can wield a bow and may train once.`} ${financeTooltip}`
     );
     row.appendChild(chooseLabel);
 

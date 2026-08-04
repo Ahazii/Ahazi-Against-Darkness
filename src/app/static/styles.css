@@ -2676,9 +2676,23 @@ button.is-working::after {
 }
 
 .tag-service-trainee-name {
+  display: grid;
+  gap: 2px;
   min-width: 0;
   font-size: 13px;
   font-weight: 700;
+}
+
+.tag-service-trainee-identity {
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.tag-service-funds {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .tag-service-trainee > .muted {
@@ -4903,11 +4917,19 @@ button.modern-dashboard-status-icon {
   background: rgba(255, 255, 255, 0.12);
   transition: background 0.15s ease;
   z-index: 3;
+  touch-action: none;
+  user-select: none;
 }
 
 .layout-resizer:hover,
-.layout-resizer.dragging {
+.layout-resizer.dragging,
+.layout-resizer:focus-visible {
   background: rgba(201, 162, 39, 0.75);
+}
+
+.layout-resizer:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .layout-resizer-horizontal {
@@ -5223,7 +5245,33 @@ button.modern-dashboard-status-icon {
   padding: 6px 8px;
 }
 
-.map-log-panel:has(.tag-repeatable-service-guided) {
+.map-log-panel.has-tall-guided-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows:
+    auto
+    minmax(96px, var(--narrative-panel-share, 0.4fr))
+    auto
+    minmax(0, var(--guided-panel-share, 0.6fr));
+  overflow: hidden;
+}
+
+.map-log-panel.has-tall-guided-panel > #session-log {
+  min-height: 96px;
+  height: auto;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior-y: contain;
+}
+
+.map-log-panel.has-tall-guided-panel > .narrative-service-resizer {
+  width: 100%;
+}
+
+.map-log-panel.has-tall-guided-panel > .current-objective-banner {
+  min-height: 0;
+  max-height: none;
+  margin-top: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
   overscroll-behavior-y: contain;

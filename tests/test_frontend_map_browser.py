@@ -270,6 +270,124 @@ def test_generated_rumor_9_scene5_shows_searcher_reward_and_give_up_controls(liv
             browser.close()
 
 
+def test_deoldyn_tall_service_split_scrolls_resizes_and_persists(live_app) -> None:
+    playwright_api = pytest.importorskip("playwright.sync_api")
+    generated = _json_request(
+        live_app.base_url,
+        "/api/campaign/tag/create-adventure",
+        {"lead_type": "rumor", "detail": "11"},
+    )
+    session_id = _create_session(
+        live_app.base_url,
+        adventure_id=generated["adventure_id"],
+    )
+    session = _json_get(live_app.base_url, f"/api/sessions/{session_id}")
+    entry_actions = session["imported_manifest"]["source"]["parameters"]["tag_reference"][
+        "room_prompts"
+    ]["tag-lead-entry"]["actions"]
+    investigate = next(action for action in entry_actions if action["label"] == "Investigate")
+    entered = _json_request(
+        live_app.base_url,
+        f"/api/sessions/{session_id}/tag-route-action",
+        {"route_action": "unlock_scene", "reference": investigate["reference"]},
+    )["session"]
+    assert entered["tag_repeatable_service_state"]["kind"] == "deoldyn"
+
+    with playwright_api.sync_playwright() as playwright:
+        try:
+            browser = playwright.chromium.launch(headless=True)
+        except Exception as error:  # pragma: no cover - depends on local browser install
+            pytest.skip(f"Playwright Chromium is not installed: {error}")
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 720})
+            page.add_init_script(
+                f"""
+                if (!sessionStorage.getItem("deoldyn-layout-seeded")) {{
+                  localStorage.setItem("ahazi-against-darkness.active-session-id", {json.dumps(session_id)});
+                  localStorage.setItem("ahazi-against-darkness.active-view", "game");
+                  localStorage.setItem("ahazi-against-darkness.layout", JSON.stringify({{
+                    logPanelHeight: 360,
+                    narrativeServiceSplit: 0.4,
+                    explorationPanels: {{ objective: true, quests: false, commands: false, exits: false, sheets: false }}
+                  }}));
+                  sessionStorage.setItem("deoldyn-layout-seeded", "1");
+                }}
+                """
+            )
+            page.goto(f"{live_app}/?view=game")
+            banner = page.locator("#current-objective-banner")
+            guided = banner.locator('[data-guided-panel-size="tall"]')
+            handle = page.locator("#narrative-service-resizer")
+            playwright_api.expect(guided).to_be_visible(timeout=10_000)
+            playwright_api.expect(handle).to_be_visible()
+            playwright_api.expect(handle).to_have_attribute("aria-valuenow", "40")
+
+            geometry = page.evaluate(
+                """() => {
+                  const narrative = document.querySelector("#session-log");
+                  const service = document.querySelector("#current-objective-banner");
+                  return {
+                    narrativeHeight: narrative.getBoundingClientRect().height,
+                    narrativeOverflow: getComputedStyle(narrative).overflowY,
+                    serviceHeight: service.getBoundingClientRect().height,
+                    serviceClientHeight: service.clientHeight,
+                    serviceScrollHeight: service.scrollHeight,
+                    serviceOverflow: getComputedStyle(service).overflowY,
+                  };
+                }"""
+            )
+            assert geometry["narrativeHeight"] >= 96
+            assert geometry["narrativeOverflow"] == "auto"
+            assert geometry["serviceOverflow"] == "auto"
+            assert geometry["serviceScrollHeight"] > geometry["serviceClientHeight"]
+
+            handle.focus()
+            handle.press("ArrowDown")
+            after_arrow = page.evaluate(
+                "document.querySelector('#session-log').getBoundingClientRect().height"
+            )
+            assert after_arrow > geometry["narrativeHeight"]
+            saved_after_arrow = json.loads(
+                page.evaluate("localStorage.getItem('ahazi-against-darkness.layout')")
+            )["narrativeServiceSplit"]
+            assert saved_after_arrow > 0.4
+
+            handle.press("Shift+ArrowDown")
+            saved_after_shift = json.loads(
+                page.evaluate("localStorage.getItem('ahazi-against-darkness.layout')")
+            )["narrativeServiceSplit"]
+            assert saved_after_shift > saved_after_arrow
+            page.goto(f"{live_app}/?view=game")
+            playwright_api.expect(handle).to_be_visible(timeout=10_000)
+            assert int(handle.get_attribute("aria-valuenow")) == round(saved_after_shift * 100)
+
+            handle.focus()
+            handle.press("Home")
+            playwright_api.expect(handle).to_have_attribute("aria-valuenow", "20")
+            handle.press("End")
+            playwright_api.expect(handle).to_have_attribute("aria-valuenow", "80")
+            handle.dblclick()
+            playwright_api.expect(handle).to_have_attribute("aria-valuenow", "40")
+
+            bounds = handle.bounding_box()
+            assert bounds is not None
+            page.mouse.move(bounds["x"] + bounds["width"] / 2, bounds["y"] + bounds["height"] / 2)
+            page.mouse.down()
+            page.mouse.move(bounds["x"] + bounds["width"] / 2, bounds["y"] + bounds["height"] / 2 + 28)
+            page.mouse.up()
+            pointer_split = json.loads(
+                page.evaluate("localStorage.getItem('ahazi-against-darkness.layout')")
+            )["narrativeServiceSplit"]
+            assert pointer_split > 0.4
+            handle.dblclick()
+            playwright_api.expect(handle).to_have_attribute("aria-valuenow", "40")
+
+            banner.get_by_role("button", name="Done — finish training", exact=True).click()
+            playwright_api.expect(handle).to_be_hidden(timeout=10_000)
+        finally:
+            browser.close()
+
+
 def test_resolved_generated_rumor_closeout_remains_visible_when_objective_details_are_closed(live_app) -> None:
     playwright_api = pytest.importorskip("playwright.sync_api")
     generated = _json_request(

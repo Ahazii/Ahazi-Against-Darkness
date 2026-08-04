@@ -118,13 +118,19 @@ def test_rulebook_reference_covers_shared_tag_rumor_service_contract() -> None:
     assert "any living non-Barbarian" in leprechaun["body"]
     assert "one use per adventure" in leprechaun["body"]
     assert "casts it at +1" in leprechaun["body"]
-    assert "vertical scrollbar" in leprechaun["body"]
+    assert "40% Narrative and 60% service" in leprechaun["body"]
+    assert "each pane has its own vertical scrollbar" in leprechaun["body"]
     assert "Done — leave Blackbird Hill" in leprechaun["body"]
 
     deoldyn = by_id["tag_deoldyn_scene3_service"]
     assert deoldyn["source_page"] == 26
     assert "complete batch" in deoldyn["body"]
     assert "commits every payment first" in deoldyn["body"]
+    assert "Carried + Bank = Available" in deoldyn["body"]
+    assert "home-bank gold first and carried gold second" in deoldyn["body"]
+    assert "200 gp carried limit" in deoldyn["body"]
+    assert "40% Narrative and 60% training" in deoldyn["body"]
+    assert "Narrative and training scroll independently" in deoldyn["body"]
     assert "Done — finish training" in deoldyn["body"]
 
 

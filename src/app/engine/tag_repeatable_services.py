@@ -124,8 +124,18 @@ def _living_hireling(session: SessionState, hireling_id: str) -> HirelingState:
     return hireling
 
 
+def _gold_breakdown(member: PartyMemberState) -> dict[str, int]:
+    carried_gold = max(0, int(member.gold or 0))
+    bank_gold = max(0, int(member.bank_gold or 0))
+    return {
+        "carried_gold": carried_gold,
+        "bank_gold": bank_gold,
+        "available_gold": carried_gold + bank_gold,
+    }
+
+
 def _available_gold(member: PartyMemberState) -> int:
-    return max(0, int(member.gold or 0)) + max(0, int(member.bank_gold or 0))
+    return _gold_breakdown(member)["available_gold"]
 
 
 def _shoe_count(member: PartyMemberState) -> int:
@@ -811,7 +821,7 @@ def repeatable_service_view(
             {
                 "character_id": member.character_id,
                 "name": member.name,
-                "available_gold": _available_gold(member),
+                **_gold_breakdown(member),
             }
             for member in living
         ],
@@ -916,7 +926,7 @@ def repeatable_service_view(
                     "class_id": member.class_id,
                     "level": member.level,
                     "cost_gp": cost,
-                    "available_gold": _available_gold(member),
+                    **_gold_breakdown(member),
                     "eligible": not blocked,
                     "blocked_reason": blocked,
                     "outcomes": outcomes,

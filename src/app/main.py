@@ -3657,6 +3657,30 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "automation": "Summary/Verbose changes how much roll and lookup detail is visible. Rumor entry choices remain visible even when Objective Details is hidden and wrap only on narrow mobile layouts.",
         },
         {
+            "control": "Narrative / guided service divider",
+            "affects": "The vertical share between Narrative and a tall inline vendor, trainer, or NPC procedure.",
+            "player_use": "Drag the nested horizontal separator, use its arrow keys, or double-click to restore the saved 40% Narrative / 60% service default.",
+            "automation": "The browser remembers this ratio. Narrative and the guided service keep independent vertical scrollbars when constrained, so neither pane has to consume the other's content area.",
+        },
+        {
+            "control": "Narrative + service / map divider",
+            "affects": "The combined Narrative/service row above the map.",
+            "player_use": "Drag down for more Narrative/service space or up for more map space; double-click to reset.",
+            "automation": "The browser remembers the selected outer height. A tall service does not impose a competing fixed height.",
+        },
+        {
+            "control": "Narrative / Exits divider",
+            "affects": "The horizontal width shared by Narrative and the Exits list.",
+            "player_use": "Drag sideways to give either the text/procedure area or the legal exit list more room.",
+            "automation": "The browser remembers the selected width; Narrative and Exits scroll independently when their contents are constrained.",
+        },
+        {
+            "control": "Adventure / Party Sheets divider",
+            "affects": "The width shared by the main Adventure View and the Party Sheets side rail.",
+            "player_use": "Drag sideways to balance map/procedure space against character-sheet detail.",
+            "automation": "The browser remembers the side-rail width; the adventure workspace and Party Sheets retain independent scrolling.",
+        },
+        {
             "control": "Current Objective",
             "affects": "The next-step guidance banner.",
             "player_use": "Show it when you want the app to say what to do next; hide it when the map needs more room.",
@@ -4638,13 +4662,13 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "state": "Rumor 6 repeatable bargain",
-            "meaning": "After the shared opening enters Scene 2, one persisted inline service host supports any desired eligible Shoes purchases and one illusion lesson for any living non-Barbarian. A non-spellcaster receives one use per adventure and casts it at +1. The lesson becomes free automatically after three recorded pairs; the host respects the saved Narrative/map height and scrolls internally to keep every control reachable, and only explicit Done resolves the Rumor.",
+            "meaning": "After the shared opening enters Scene 2, one persisted inline service host supports any desired eligible Shoes purchases and one illusion lesson for any living non-Barbarian. A non-spellcaster receives one use per adventure and casts it at +1. The lesson becomes free automatically after three recorded pairs. A second saved divider defaults to 40% Narrative / 60% service, and both panes scroll independently inside the saved combined Narrative/map height; only explicit Done resolves the Rumor.",
             "source": "TAG p.23, Rumor 6; TAG pp.25-26, Scene 2; EE p.76, Scrolls; player-confirmed learner interpretation",
         },
         {
             "state": "Rumor 11 single-batch training",
-            "meaning": "After the shared opening enters Scene 3, one persisted inline service host validates the complete simultaneous training batch, commits all 60 gp × Level payments, and then rolls every XP check. Training may be skipped, but no later trainee can be added after the batch; explicit Done resolves the visit.",
-            "source": "TAG p.24, Rumor 11; TAG p.26, Scene 3",
+            "meaning": "After the shared opening enters Scene 3, one persisted inline service host validates the complete simultaneous training batch. Each trainee's own carried gold plus home-bank balance may satisfy 60 gp × Level; the UI shows all three values and the app spends banked gold first. It commits every payment and only then rolls every XP check. Training may be skipped, but no later trainee can be added after the batch. Narrative and training have a saved 40/60 divider and independent scrollbars; explicit Done resolves the visit.",
+            "source": "TAG p.9, Banking; TAG p.24, Rumor 11; TAG p.26, Scene 3",
         },
         {
             "state": "heard",
@@ -4860,15 +4884,15 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "structure": "vendor",
             "when_to_use": "The PDF offers items, spells, or paid bargains such as Shoes of Fast Walk or an illusion lesson.",
             "required_profile_fields": "finale_mode vendor, final-scene purchase actions, one required Done action, persisted service state, item/spell choice UI, exact costs, derived free condition, and eligibility hover text.",
-            "ui_expectation": "The opening remains Investigate / Not now. At the printed vendor Scene, one inline host repeats optional purchases, applies the single lesson, preserves state across resume, and exposes Done; the Narrative/map separator keeps the player's saved height while the host scrolls internally, and no proxy combat or manual free-price checkbox is used.",
+            "ui_expectation": "The opening remains Investigate / Not now. At the printed vendor Scene, one inline host repeats optional purchases, applies the single lesson, preserves state across resume, and exposes Done. A nested saved separator divides Narrative from the service (40/60 by default), both scroll independently, and the outer Narrative/map separator remains authoritative; no proxy combat or manual free-price checkbox is used.",
             "checking_notes": "For Blackbird Hill, check TAG Scene 2 pp.25-26 and EE p.76: 200 gp per pair, one per wearer, +Tier Defense while withdrawing/fleeing melee, magic-item users and hirelings but not animals, one illusion lesson for any living non-Barbarian at 100 gp or automatically free after three pairs, one +1 use per adventure for a non-spellcaster, and an explicit reachable Done control.",
         },
         {
             "structure": "trainer",
             "when_to_use": "The PDF leads to a trainer/service rather than an exploration site, such as Deoldyn Scene 3.",
             "required_profile_fields": "lead_structure trainer, finale_mode service, shared opening actions only at entry, final-scene training and required Done actions, persisted service state, cost formula, eligible character rule, and skill/spell choices.",
-            "ui_expectation": "The opening remains Investigate / Not now. At the printed trainer Scene, one inline host filters eligible characters, validates the complete simultaneous batch before mutation, takes all payments first, rolls automatically, applies successful choices, then blocks later additions and exposes Done. The Narrative/map separator keeps the player's saved height while the host scrolls internally.",
-            "checking_notes": "For Deoldyn, check TAG p.26 Scene 3: every bow-capable trainee may train once between adventures for 60 gp × current Level; commit all payments before all XP rolls; money is spent on failure; choose Deadly Accuracy, Dead Shot, or normal level advancement for a base Elf; add no trainee after the batch results are known; then explicitly finish training.",
+            "ui_expectation": "The opening remains Investigate / Not now. At the printed trainer Scene, one inline host filters eligible characters, validates the complete simultaneous batch before mutation, takes all payments first, rolls automatically, applies successful choices, then blocks later additions and exposes Done. A nested saved separator divides Narrative from the trainer (40/60 by default), both scroll independently, and the outer Narrative/map separator remains authoritative.",
+            "checking_notes": "For Deoldyn, check TAG p.9 and p.26 Scene 3: every bow-capable trainee may train once between adventures for 60 gp × current Level; the trainee's own home-bank plus carried gold satisfies the fee and banked gold is spent first; commit all payments before all XP rolls; money is spent on failure; choose Deadly Accuracy, Dead Shot, or normal level advancement for a base Elf; add no trainee after the batch results are known; then explicitly finish training.",
         },
         {
             "structure": "handoff",

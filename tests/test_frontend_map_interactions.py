@@ -2236,6 +2236,14 @@ def test_rumor_6_and_11_share_persisted_inline_service_host() -> None:
     assert "Done — finish training" in APP_JS
     assert "one simultaneous batch" in APP_JS
     assert "No later batch may be added" in APP_JS
+    assert "function tagServiceFundsBreakdown" in APP_JS
+    assert "function tagServiceFundsText" in APP_JS
+    assert "Carried ${funds.carried} gp + Bank ${funds.bank} gp = ${funds.available} gp available" in APP_JS
+    assert "Each row shows Carried + Bank = Available" in APP_JS
+    assert "Their own home-bank and carried gold may pay it" in APP_JS
+    assert "banked gold is spent first" in APP_JS
+    assert "no other party member's gold is pooled" in APP_JS
+    assert ".tag-service-funds" in STYLES_CSS
     assert "Any living non-Barbarian may learn automatically" in APP_JS
     assert "a non-spellcaster gains one use per adventure and casts it at +1" in APP_JS
     assert "Uses the active party Tier while assigned" in APP_JS
@@ -2243,13 +2251,33 @@ def test_rumor_6_and_11_share_persisted_inline_service_host() -> None:
     assert ".tag-service-trainee-list" in STYLES_CSS
 
 
-def test_repeatable_service_host_respects_saved_height_and_scrolls_to_its_done_action() -> None:
+def test_repeatable_service_host_uses_saved_independent_narrative_service_split() -> None:
     assert "height: min(var(--log-panel-height, 240px), 58vh);" in STYLES_CSS
     assert ".map-log-row:has(.tag-repeatable-service-guided)" not in STYLES_CSS
     assert "height: min(max(var(--log-panel-height, 240px), 540px), 58vh, 620px);" not in STYLES_CSS
-    assert ".map-log-panel:has(.tag-repeatable-service-guided)" in STYLES_CSS
+    assert 'id="narrative-service-resizer"' in INDEX_HTML
+    assert 'aria-controls="session-log current-objective-banner"' in INDEX_HTML
+    assert 'aria-valuemin="20"' in INDEX_HTML
+    assert 'aria-valuemax="80"' in INDEX_HTML
+    assert 'tabindex="0"' in INDEX_HTML
+    assert "data-guided-panel-size\", \"tall" in APP_JS
+    assert APP_JS.count('wrap.setAttribute("data-guided-panel-size", "tall")') == 2
+    assert "narrativeServiceSplit: 0.4" in APP_JS
+    assert "saved.narrativeServiceSplit" in APP_JS
+    assert "narrativeServiceSplit: state.narrativeServiceSplit" in APP_JS
+    assert 'setupDragResizer(narrativeServiceResizer' in APP_JS
+    assert 'keyboardAxis: "y"' in APP_JS
+    assert 'event.key === "ArrowUp"' in APP_JS
+    assert 'event.key === "ArrowDown"' in APP_JS
+    assert 'event.key === "Home"' in APP_JS
+    assert 'event.key === "End"' in APP_JS
+    assert ".map-log-panel.has-tall-guided-panel" in STYLES_CSS
+    assert "minmax(96px, var(--narrative-panel-share, 0.4fr))" in STYLES_CSS
+    assert "minmax(0, var(--guided-panel-share, 0.6fr))" in STYLES_CSS
     assert "overflow-y: auto;" in STYLES_CSS
     assert "scrollbar-gutter: stable;" in STYLES_CSS
+    assert "function syncNarrativeServiceSplit()" in APP_JS
+    assert 'classList.toggle("has-tall-guided-panel", active)' in APP_JS
     assert 'node("button", "secondary tag-service-done", "Done — leave Blackbird Hill")' in APP_JS
 
 
