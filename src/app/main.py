@@ -3659,7 +3659,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         {
             "control": "Narrative / guided service divider",
             "affects": "The vertical share between Narrative and a tall inline vendor, trainer, or NPC procedure.",
-            "player_use": "Drag the nested horizontal separator, use its arrow keys, or double-click to restore the saved 40% Narrative / 60% service default.",
+            "player_use": "Shown whenever a tall guided service is visibly active, even if Objective Details is collapsed. Drag the nested horizontal separator, use its arrow keys, or double-click to restore the saved 40% Narrative / 60% service default.",
             "automation": "The browser remembers this ratio. Narrative and the guided service keep independent vertical scrollbars when constrained, so neither pane has to consume the other's content area.",
         },
         {
@@ -4667,7 +4667,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "state": "Rumor 11 single-batch training",
-            "meaning": "After the shared opening enters Scene 3, one persisted inline service host validates the complete simultaneous training batch. Each trainee's own carried gold plus home-bank balance may satisfy 60 gp × Level; the UI shows all three values and the app spends banked gold first. It commits every payment and only then rolls every XP check. Training may be skipped, but no later trainee can be added after the batch. Narrative and training have a saved 40/60 divider and independent scrollbars; explicit Done resolves the visit.",
+            "meaning": "After the shared opening enters Scene 3, one persisted inline service host validates the complete simultaneous training batch. Each trainee's own carried gold plus home-bank balance may satisfy 60 gp × Level; the UI shows all three values and the app spends banked gold first. It commits every payment and only then rolls every XP check. Training may be skipped, but no later trainee can be added after the batch. Narrative and training have a saved 40/60 divider and independent scrollbars; the divider remains available while the visibly active training service has Objective Details collapsed. Explicit Done resolves the visit.",
             "source": "TAG p.9, Banking; TAG p.24, Rumor 11; TAG p.26, Scene 3",
         },
         {

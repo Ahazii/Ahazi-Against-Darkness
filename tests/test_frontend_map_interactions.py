@@ -2278,6 +2278,10 @@ def test_repeatable_service_host_uses_saved_independent_narrative_service_split(
     assert "scrollbar-gutter: stable;" in STYLES_CSS
     assert "function syncNarrativeServiceSplit()" in APP_JS
     assert 'classList.toggle("has-tall-guided-panel", active)' in APP_JS
+    split_sync = APP_JS.split("function syncNarrativeServiceSplit()", 1)[1].split(
+        "function adjustNarrativeServiceSplitByPixels", 1
+    )[0]
+    assert 'classList.contains("panel-user-hidden")' not in split_sync
     assert 'node("button", "secondary tag-service-done", "Done — leave Blackbird Hill")' in APP_JS
 
 

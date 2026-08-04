@@ -22208,8 +22208,7 @@ function syncNarrativeServiceSplit() {
   );
   const active = Boolean(
     hasTallGuidedPanel &&
-      !currentObjectiveBanner?.classList.contains("hidden") &&
-      !currentObjectiveBanner?.classList.contains("panel-user-hidden")
+      !currentObjectiveBanner?.classList.contains("hidden")
   );
   mapLogPanel?.classList.toggle("has-tall-guided-panel", active);
   narrativeServiceResizer?.classList.toggle("hidden", !active);

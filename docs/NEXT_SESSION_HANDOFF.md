@@ -1,19 +1,23 @@
 # Next Session Handoff
 
-Current release is **v0.39.72**. Rumor 6 passed its complete live gate on
+Current release is **v0.39.73**. Rumor 6 passed its complete live gate on
 2026-08-04 in session `380ffb5e2c834195806027c898e3f55d`; do not replay it.
 Rumor 11 session `fc741849402d46e096b2efa52368de8f` passed the shared
 **Investigate** / **Not now — return to town** opening and reached Scene 3. It
 confirmed the v0.39.70 divider correction, then reached camp and completed
-fund transfers. v0.39.71 is deployed and its repaired return passes automation,
-but the current live API still reports `camped_outside=true`, with current tile
-and stable entrance both `89a663cb06844bea96f0ccc2fc458d1f`; a live retry is
-still required. v0.39.72 makes the existing bank-first payment contract
+fund transfers. The v0.39.71 return retry is now live-passed: the current API
+reports `camped_outside=false`, with the stable entrance
+`89a663cb06844bea96f0ccc2fc458d1f` retained and Deoldyn's service open without
+a resolved batch. v0.39.72 makes the existing bank-first payment contract
 explicit and adds a saved 40/60 Narrative/service divider with independent
-scrollbars. Deoldyn's service remains open. Sir Benedict has 0gp carried +
-600gp banked = 600gp; Faelar has 125gp carried + 300gp banked = 425gp.
+scrollbars. Sir Benedict has 0gp carried + 600gp banked = 600gp; Faelar has
+125gp carried + 300gp banked = 425gp.
 
-Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.72`.
+v0.39.73 corrects the follow-up visibility condition: when the tall guided
+service is visibly active, its saved inner Narrative/service divider remains
+available even if the user's **Objective Details** preference is collapsed.
+
+Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.73`.
 
 ## Start Here
 
@@ -26,13 +30,12 @@ Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.72`.
 
 All earlier broad adventure test gates, including both the procedure and
 v0.39.67 presentation checks for Rumor 9 and the complete Rumor 6 gate, are
-passed. Rumor 11's shared opening, transition into Scene 3, divider correction,
-and camp transfers are also passed. Force-refresh v0.39.72, resume this exact
-save while it is still camped, retry **Return to dungeon** once, follow the
-already-explored route to Deoldyn if needed, verify the explicit 0gp carried +
-600gp bank = 600gp available display and both saved horizontal dividers, run
-Sir Benedict's bank-funded 600gp automatic training batch, then test Done and
-Continue. Do not start the Rumor again or repeat its transfers. Do not ask the user to repeat the
+passed. Rumor 11's shared opening, transition into Scene 3, return from camp,
+earlier outer-divider correction, and transfers are also passed. Force-refresh
+v0.39.73 at the open Deoldyn service, verify the explicit 0gp carried + 600gp
+bank = 600gp available display and the inner divider while **Objective Details**
+is collapsed, then run Sir Benedict's bank-funded automatic training batch and
+test Done and Continue. Do not start the Rumor again or repeat its transfers. Do not ask the user to repeat the
 Invisible Gremlins fight or
 reopen the broad EE, Abyss, Forsaken
 Depths, Citadel, Bofto, Daroc, Star-Slayer, Bag, Repellant, treasure, trap,
@@ -118,6 +121,8 @@ Rumor 6 is passed and must not be replayed. Resume only Rumor 11 session `fc7418
 Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat its Gremlin/Iron Eater loss tests; focused coverage owns day timing, magic-only use, encounter-end expiry, and legacy markers.
 
 ## Recent Releases
+
+- `v0.39.73`: keep the nested Narrative/service divider visible for a tall guided service even when Objective Details is collapsed; add the matching browser regression. No training, payment, or XP mechanics changed.
 
 - `v0.39.72`: expose each Deoldyn trainee's carried, home-bank, and combined available gold while retaining the existing bank-first payment path; add a saved second horizontal Narrative/service divider with a 40/60 default, 96px Narrative minimum, independent scrollbars, and double-click reset without replacing the outer map, Exits, or side-rail resizers.
 

@@ -308,7 +308,7 @@ def test_deoldyn_tall_service_split_scrolls_resizes_and_persists(live_app) -> No
                   localStorage.setItem("ahazi-against-darkness.layout", JSON.stringify({{
                     logPanelHeight: 360,
                     narrativeServiceSplit: 0.4,
-                    explorationPanels: {{ objective: true, quests: false, commands: false, exits: false, sheets: false }}
+                    explorationPanels: {{ objective: false, quests: false, commands: false, exits: false, sheets: false }}
                   }}));
                   sessionStorage.setItem("deoldyn-layout-seeded", "1");
                 }}
@@ -319,6 +319,7 @@ def test_deoldyn_tall_service_split_scrolls_resizes_and_persists(live_app) -> No
             guided = banner.locator('[data-guided-panel-size="tall"]')
             handle = page.locator("#narrative-service-resizer")
             playwright_api.expect(guided).to_be_visible(timeout=10_000)
+            playwright_api.expect(banner).to_have_class(re.compile(r"\bpanel-user-hidden\b"))
             playwright_api.expect(handle).to_be_visible()
             playwright_api.expect(handle).to_have_attribute("aria-valuenow", "40")
 
