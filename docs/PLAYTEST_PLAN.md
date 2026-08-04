@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-04. Target build: v0.39.70.
+Last updated: 2026-08-04. Target build: v0.39.71.
 
 ## Adventure Test Gate: Passed
 
@@ -124,43 +124,41 @@ Do not start Rumor 6 again, rebuy any Shoes, dismiss a hireling, or alter this
 saved state to repeat an already-passed check. Rumor 6 is closed unless a later
 change produces a confirmed regression in that exact workflow.
 
-## Do Next: Resume Rumor 11 — Deoldyn's Range
+## Do Next: Resume Rumor 11 — Return From Camp
 
 Rules source: Rumor 11 on TAG p.24 and Scene 3 on TAG p.26.
 
-Live v0.39.69 session `fc741849402d46e096b2efa52368de8f` already passed
+Live session `fc741849402d46e096b2efa52368de8f` already passed
 the shared **Investigate** / **Not now — return to town** opening and
-Investigate reached Scene 3 without completing the adventure. Do not create a
-new Rumor 11 module or repeat that opening. The live session exposed a layout
-regression: the shared service host's imposed height prevented the horizontal
-Narrative/map divider from resizing the row, leaving too little map visible.
+Investigate reached Scene 3 without completing the adventure. The v0.39.70
+divider correction was reported better, and the player deliberately reached
+camp and completed roster transfers. Those transfers persist: Sir Benedict has
+600gp and is eligible; Faelar has 300/540gp; Sister Joyce and Sly Silas remain
+class-ineligible.
 
-After deploying the resize correction, force-refresh and resume that same
-session:
+The live session then exposed a shared re-entry defect. Camp correctly anchored
+the party at the entrance, but the opening guard ignored the resolved
+Investigate marker, intercepted **Return to dungeon**, and returned HTTP 200;
+the client displayed only **Session updated**. v0.39.71 fixes that shared
+lifecycle and preserves fresh start-camped behavior.
 
-1. Drag the horizontal divider in both directions. Confirm the map grows and
-   shrinks with the user's selected row height; service content must not impose
-   a competing minimum height. At a short Narrative height, confirm the service
-   panel uses its own vertical scrollbar so training controls and **Done —
-   finish training** remain reachable.
-2. Confirm this preserved party's current eligibility remains unchanged: Sir
-   Benedict shows 0/600gp, Faelar shows 0/540gp, and Sister Joyce/Sly Silas are
-   class-ineligible. No training batch can safely be funded in this save. Do
-   not grant, transfer, sell, or otherwise alter persistent resources merely to
-   force the paid path.
-3. Force-refresh or save/dashboard/resume once before finishing. Confirm the
-   open Deoldyn service and selected divider height persist without a reroll or
-   payment.
-4. Choose **Done — finish training** with no trainees, then complete the normal
-   shared Continue closeout exactly once. This validates the printed option to
-   skip training. Automated tests own whole-batch validation, payment-before-
-   roll ordering, failed-roll costs, later-batch rejection, and persistence;
-   inspect paid training later only if a naturally eligible funded party reaches
-   Scene 3.
+After deploying v0.39.71, force-refresh and resume that same session:
+
+1. Choose **Return to dungeon** once. Confirm the status says the party returned
+   to the dungeon entrance, camp closes, and the original Investigate / Not now
+   choice does not reappear.
+2. Open **Exits** and follow the explored route north through Complication and
+   north to Deoldyn's Range. Confirm the open service and transferred balances
+   remain unchanged.
+3. Select Sir Benedict as the one trainee, choose Deadly Accuracy or Dead Shot,
+   and run the batch. Confirm exactly 600gp is spent before one automatic XP
+   roll and that success/failure is narrated without a refund.
+4. Choose **Done — finish training**, then complete the normal shared
+   **Continue — return to town and finish** closeout exactly once.
 
 Stop after this bounded Rumor 11 module and attach a Narrative Report for any
-mismatch. A resize-only mismatch should not require replaying Investigate or
-any completed training. Do not mass-enable required scene completion: every
+mismatch. A re-entry mismatch should not require replaying Investigate or
+repeating the transfers. Do not mass-enable required scene completion: every
 remaining Rumor still needs its own printed terminal routes.
 
 Convert generated TAG scenes onto typed action definitions one PDF-backed

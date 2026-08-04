@@ -1963,10 +1963,54 @@ def _upgrade_rumor_entry_manifest(tag_reference: dict[str, Any]) -> bool:
         tag_reference["entry_scene"] = entry_scene
         changed = True
     base_reference = str(tag_reference.get("title") or "Adventures Guild Rumor")
+    existing_actions = entry_prompt.get("actions")
+    legacy_investigate_references = {
+        str(action.get("reference") or "").strip().casefold()
+        for action in (existing_actions if isinstance(existing_actions, list) else [])
+        if isinstance(action, dict)
+        if str(action.get("action_type") or "").strip() == "route"
+        and str(action.get("action_value") or "").strip() == "unlock_scene"
+        and str(action.get("reference") or "").strip()
+    }
+    if entry_scene:
+        legacy_investigate_references.add(
+            f"{base_reference} -> {entry_scene}: choose to investigate".casefold()
+        )
     actions = tag_rumor_entry_prompt_actions(tag_reference, base_reference=base_reference)
     if actions and entry_prompt.get("actions") != actions:
         entry_prompt["actions"] = actions
         changed = True
+    canonical_investigate = next(
+        (
+            action
+            for action in actions
+            if isinstance(action, dict)
+            and str(action.get("action_type") or "").strip() == "route"
+            and str(action.get("action_value") or "").strip() == "unlock_scene"
+        ),
+        {},
+    )
+    canonical_reference = str(canonical_investigate.get("reference") or "").strip()
+    marker_upgraded = False
+    markers = tag_reference.get("route_markers")
+    for marker in markers if isinstance(markers, list) else []:
+        if not isinstance(marker, dict):
+            continue
+        marker_reference = str(marker.get("reference") or "").strip()
+        if (
+            canonical_reference
+            and str(marker.get("action") or "").strip() == "unlock_scene"
+            and bool(marker.get("resolved"))
+            and marker_reference.casefold() in legacy_investigate_references
+            and marker_reference != canonical_reference
+        ):
+            marker["reference"] = canonical_reference
+            marker_upgraded = True
+            changed = True
+    if marker_upgraded:
+        tag_reference["rumor_entry_route_marker_upgrade"] = (
+            "Legacy investigated route normalized to the shared TAG pp.22-24 opening"
+        )
     if changed:
         tag_reference["rumor_entry_prompt_upgrade"] = "TAG pp.22-24 shared investigate-or-return decision"
     return changed

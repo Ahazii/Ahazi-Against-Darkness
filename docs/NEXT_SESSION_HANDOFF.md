@@ -1,16 +1,17 @@
 # Next Session Handoff
 
-Current release is **v0.39.70**. Rumor 6 passed its complete live gate on
+Current release is **v0.39.71**. Rumor 6 passed its complete live gate on
 2026-08-04 in session `380ffb5e2c834195806027c898e3f55d`; do not replay it.
 Rumor 11 session `fc741849402d46e096b2efa52368de8f` passed the shared
 **Investigate** / **Not now — return to town** opening and reached Scene 3. It
-then exposed a shared service-host layout regression: the service height floor
-overrode the horizontal Narrative/map divider and left too little map visible.
-v0.39.70 removes that competing height floor while retaining the service's
-internal scrollbar. The immediate work is a force-refresh and resume of that
-same Rumor 11 session for the bounded resize and skip-training Done checks.
+confirmed the v0.39.70 divider correction, then reached camp and completed
+fund transfers. **Return to dungeon** was swallowed by the shared opening guard
+because camp re-anchors at the entrance; v0.39.71 makes the guard recognize the
+resolved Investigate marker, permits camp return, prevents duplicate entry
+choices, and reports the real outcome. The exact save remains safely camped
+with its service open and Sir Benedict funded at 600gp.
 
-Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.70`.
+Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.71`.
 
 ## Start Here
 
@@ -23,11 +24,11 @@ Last updated: 2026-08-04. Repository branch: `main`. Latest release: `v0.39.70`.
 
 All earlier broad adventure test gates, including both the procedure and
 v0.39.67 presentation checks for Rumor 9 and the complete Rumor 6 gate, are
-passed. Rumor 11's shared opening and transition into Scene 3 are also passed.
-Restore the existing horizontal divider contract so the user's selected
-Narrative/map row height wins while the service panel scrolls internally to
-keep its controls reachable. Then resume the preserved Rumor 11 session; do not
-start it again. Do not ask the user to repeat the Invisible Gremlins fight or
+passed. Rumor 11's shared opening, transition into Scene 3, divider correction,
+and camp transfers are also passed. Force-refresh v0.39.71, return this exact
+save from camp, follow the explored route to Deoldyn, run Sir Benedict's funded
+600gp automatic training batch, then test Done and Continue. Do not start the
+Rumor again. Do not ask the user to repeat the Invisible Gremlins fight or
 reopen the broad EE, Abyss, Forsaken
 Depths, Citadel, Bofto, Daroc, Star-Slayer, Bag, Repellant, treasure, trap,
 entrance, or closeout suites.
@@ -48,7 +49,7 @@ Rumor entry choices side by side at normal app widths. v0.39.59 converts TAG
 p.29 Scene 12 into one typed Mutant Fish hypnosis, rescue, ration, sale, and XP
 procedure. Do not repeat the whole Rumor 2 module or any Gremlin fight.
 
-## Implemented Through v0.39.70
+## Implemented Through v0.39.71
 
 Rules sources: Expanded Edition pp.38, 44-46, 62, 74, 76, 87, 94, 101, 105, 107, 160, 162, and 169; TAG pp.6-8, 11, 13, 20, 22, 24-31, and 65.
 
@@ -107,11 +108,13 @@ Automated tests own campaign isolation and legacy migration, all twelve Rumors e
 
 Migrate other generated TAG scenes onto typed action definitions one PDF-backed module at a time. Select and inspect one exact scene before coding; keep the slice narrow.
 
-Rumor 6 is passed and must not be replayed. After the shared resize correction is deployed, resume only Rumor 11 session `fc741849402d46e096b2efa52368de8f` for the remaining divider, internal-scroll, skip-training Done, and Continue checks in `docs/PLAYTEST_PLAN.md`. That saved party currently has no eligible funded trainee: Sir Benedict has 0/600gp, Faelar has 0/540gp, and the Cleric/Rogue are class-ineligible. Do not grant or move money merely to force training. Automated tests own whole-batch validation, all-payments-before-roll atomicity, failed-roll costs, duplicate actions, and persistence; inspect paid training later only if a naturally eligible funded party reaches the Scene.
+Rumor 6 is passed and must not be replayed. Resume only Rumor 11 session `fc741849402d46e096b2efa52368de8f` for the remaining v0.39.71 camp return, paid training, Done, and Continue checks in `docs/PLAYTEST_PLAN.md`. Its transfers are already persisted: Sir Benedict has 600gp and is eligible, Faelar has 300/540gp, and the Cleric/Rogue are class-ineligible. Do not repeat the transfers or opening. Automated tests own exact-marker matching, fresh start-camped entry, whole-batch validation, payment-before-roll atomicity, failed-roll costs, duplicate actions, and persistence.
 
 Temporary Weapon Enchantment's full p.65 lifecycle is automated. Do not repeat its Gremlin/Iron Eater loss tests; focused coverage owns day timing, magic-only use, encounter-end expiry, and legacy markers.
 
 ## Recent Releases
+
+- `v0.39.71`: persist generated Rumor opening decisions independently of room position, recognize the exact resolved Investigate route on legacy saves, allow camp re-entry before the opening guard, reuse the server-derived pending state across Narrative and Exits, suppress duplicate opening actions, and replace the misleading Return-to-dungeon **Session updated** status.
 
 - `v0.39.70`: remove the shared Rumors 6/11 service height floor so the saved horizontal Narrative/map divider height is authoritative, retain internal service scrolling, and clarify the divider's directional hover help. Rumor 11's preserved live session is the only remaining validation gate.
 

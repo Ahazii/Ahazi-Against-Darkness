@@ -20488,6 +20488,10 @@ function currentObjectiveForSession(session) {
   if (generated.tagReference && (!quest || isGeneratedTagQuest(session, quest))) {
     const leadLabel = tagLeadLabel(generated.tagReference);
     const director = generatedTagDirectorStep(session);
+    const rumorEntry =
+      generated.room?.id === "tag-lead-entry" &&
+      String(generated.tagReference.lead_type || "").toLowerCase() === "rumor";
+    const rumorEntryPending = rumorEntry && generatedTagRumorEntryChoicePending(session, generated.tile);
     const promptActions = Array.isArray(generated.promptData?.actions)
       ? generated.promptData.actions.filter((action) => action?.label && action.action_type)
       : [];
@@ -20507,6 +20511,17 @@ function currentObjectiveForSession(session) {
           "The generated Adventures Guild objective is complete. Review route markers, rewards, XP, Guild share, banking/storage, and any closeout tasks before starting another lead.",
         tone: "tag",
         action: { label: "Sign off Adventures Guild lead", kind: "tag-lead-signoff" },
+      };
+    }
+    if (rumorEntry && !rumorEntryPending) {
+      return {
+        title: "Current objective: resume the Rumour investigation",
+        body:
+          "The party already chose Investigate. Use the visible exits to follow the explored route back to the active scene; the opening choice will not be repeated.",
+        tone: "tag",
+        next: "Open Exits and continue through the explored rooms.",
+        handled: "The existing Rumour route, scene procedure, and unresolved service state remain intact.",
+        secondaryAction: null,
       };
     }
     if (complicationNext && director) {
@@ -20533,9 +20548,7 @@ function currentObjectiveForSession(session) {
       const orderedActions = director?.recommended
         ? [director.recommended, ...actions.filter((action) => action !== director.recommended)]
         : actions;
-      const narrativeChoices =
-        generated.room?.id === "tag-lead-entry" &&
-        String(generated.tagReference.lead_type || "").toLowerCase() === "rumor";
+      const narrativeChoices = rumorEntryPending;
       return {
         title: narrativeChoices
           ? generated.promptData.title || "Choose how the party responds"
@@ -27283,7 +27296,32 @@ function generatedTagRumorEntryChoicePending(session = state.session, tile = nul
   const current = tile || currentTile(session);
   const tagReference = tagReferenceForGeneratedAdventure(session);
   const room = tagRoomForCurrentTile(session, current);
-  return String(tagReference?.lead_type || "").toLowerCase() === "rumor" && room?.id === "tag-lead-entry";
+  if (String(tagReference?.lead_type || "").toLowerCase() !== "rumor" || room?.id !== "tag-lead-entry") {
+    return false;
+  }
+  const storedChoice = session.active_quest?.tag_generated_lead_state?.rumor_entry_choice;
+  if (
+    storedChoice?.resolved === true &&
+    ["investigate", "return_to_town"].includes(String(storedChoice?.choice || ""))
+  ) {
+    return false;
+  }
+  const active = currentTile(session);
+  const diagnosed = session.generated_tag_diagnostics?.rumor_entry_choice_pending;
+  if (typeof diagnosed === "boolean" && (!tile || current?.id === active?.id)) return diagnosed;
+  const entryActions = tagReference?.room_prompts?.["tag-lead-entry"]?.actions || [];
+  const investigate = entryActions.find(
+    (action) => action?.action_type === "route" && action?.action_value === "unlock_scene"
+  );
+  const declaredReference = String(investigate?.reference || "").trim().toLowerCase();
+  if (!declaredReference) return true;
+  const resolved = (tagReference?.route_markers || []).some(
+    (marker) =>
+      marker?.action === "unlock_scene" &&
+      marker?.resolved === true &&
+      String(marker?.reference || "").trim().toLowerCase() === declaredReference
+  );
+  return !resolved;
 }
 
 const TAG_GENERATED_LIFECYCLE_STEPS = [
@@ -35707,7 +35745,21 @@ async function advance(action, extra = {}) {
       if (state.session.camped_outside || wasCampedOutside) {
         await reloadCharacters({ render: setupViewVisible() });
       }
-      if (action === "spend_banked_xp" || action === "xp_roll") {
+      if (action === "return_to_dungeon") {
+        const latest = String((state.session.log || []).slice(-1)[0] || "").trim();
+        const resumedRumor =
+          String(tagReferenceForGeneratedAdventure(state.session)?.lead_type || "").toLowerCase() === "rumor";
+        const openingPending = resumedRumor && generatedTagRumorEntryChoicePending(state.session);
+        setStatus(
+          wasCampedOutside && !state.session.camped_outside
+            ? openingPending
+              ? "Returned to the dungeon entrance. Choose Investigate or Not now — return to town beneath Narrative."
+              : resumedRumor
+              ? "Returned to the dungeon entrance. Open Exits to resume the Rumour."
+              : latest || "Returned to the dungeon entrance."
+            : latest || "The party remains at camp."
+        );
+      } else if (action === "spend_banked_xp" || action === "xp_roll") {
         const lines = (state.session.log || []).slice(-4).map((entry) => String(entry).trim()).filter(Boolean);
         setStatus(lines.length ? lines.join(" · ") : "Session updated");
       } else {

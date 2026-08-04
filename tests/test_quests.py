@@ -16,6 +16,7 @@ from app.engine.tag_scene_lifecycle import (
     TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
     TAG_GENERATED_CLOSEOUT_LOG_MESSAGE,
     TAG_GENERATED_CLOSEOUT_REMINDER,
+    generated_tag_rumor_entry_choice_pending,
 )
 from app.rules.repository import RulesRepository
 from app.schemas import (
@@ -144,6 +145,8 @@ def _save_repeatable_tag_service_session(
     session_id: str,
     rumor_number: int,
     character_specs: list[tuple[str, str, int, int]],
+    *,
+    start_camped_outside: bool = False,
 ) -> tuple[dict, list[Character]]:
     campaign = default_campaign()
     manifest, _entry = build_tag_adventure_manifest(
@@ -180,6 +183,7 @@ def _save_repeatable_tag_service_session(
         [main._member_state(character) for character in characters],
         manifest,
         adventure_id=manifest["id"],
+        start_camped_outside=start_camped_outside,
     )
     save_campaign(main.store, campaign)
     main.store.save("sessions", session)
@@ -2775,6 +2779,100 @@ def test_shared_rumor_entry_return_to_town_keeps_rumor_for_later(client) -> None
 
     assert completed.status_code == 200
     assert completed.json()["mode"] == "complete"
+
+
+def test_generated_rumor_entry_pending_requires_the_exact_resolved_investigate_marker(client) -> None:
+    session_id = "tag-rumor-entry-marker"
+    manifest, _characters = _save_repeatable_tag_service_session(
+        session_id,
+        11,
+        [("archer", "warrior", 3, 180)],
+    )
+    session = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert session is not None
+    reference = session.imported_manifest["source"]["parameters"]["tag_reference"]
+    investigate = next(
+        action
+        for action in manifest["source"]["parameters"]["tag_reference"]["room_prompts"]["tag-lead-entry"]["actions"]
+        if action["label"] == "Investigate"
+    )
+
+    assert generated_tag_rumor_entry_choice_pending(session) is True
+
+    reference["route_markers"] = [
+        {
+            "action": "unlock_scene",
+            "reference": "A later and unrelated scene branch",
+            "resolved": True,
+        }
+    ]
+    assert generated_tag_rumor_entry_choice_pending(session) is True
+
+    reference["route_markers"][0]["reference"] = investigate["reference"]
+    assert generated_tag_rumor_entry_choice_pending(session) is False
+
+
+def test_investigated_generated_rumor_returns_from_camp_without_reopening_entry(client) -> None:
+    session_id = "tag-rumor-investigated-camp-return"
+    manifest, _characters = _save_repeatable_tag_service_session(
+        session_id,
+        11,
+        [("archer", "warrior", 3, 180)],
+    )
+    entered = _enter_repeatable_tag_service(client, session_id, manifest)
+    entry_choice = entered["session"]["active_quest"]["tag_generated_lead_state"]["rumor_entry_choice"]
+    assert entry_choice["choice"] == "investigate"
+    assert entry_choice["resolved"] is True
+
+    session = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert session is not None
+    assert session.entrance_tile_id
+    session.camped_outside = True
+    session.map_state.current_tile_id = session.entrance_tile_id
+    main.store.save("sessions", session)
+
+    returned = client.post(
+        f"/api/sessions/{session_id}/advance",
+        json={"action": "return_to_dungeon", "show_rolls": False},
+    )
+
+    assert returned.status_code == 200, returned.text
+    payload = returned.json()
+    assert payload["camped_outside"] is False
+    assert payload["map_state"]["current_tile_id"] == payload["entrance_tile_id"]
+    assert payload["generated_tag_diagnostics"]["rumor_entry_choice_pending"] is False
+    assert payload["active_quest"]["tag_generated_lead_state"]["rumor_entry_choice"] == entry_choice
+    assert payload["tag_repeatable_service_state"]["phase"] == "open"
+    assert not payload["log"][-1].startswith("Choose Investigate")
+
+
+def test_fresh_generated_rumor_can_enter_from_camp_before_making_opening_choice(client) -> None:
+    session_id = "tag-rumor-fresh-camp-return"
+    _manifest, _characters = _save_repeatable_tag_service_session(
+        session_id,
+        11,
+        [("archer", "warrior", 3, 180)],
+        start_camped_outside=True,
+    )
+    session = main.store.get("sessions", session_id, SessionState.model_validate)
+    assert session is not None
+    assert session.entrance_tile_id
+    assert session.camped_outside is True
+    assert session.imported_entrance_pending is True
+
+    returned = client.post(
+        f"/api/sessions/{session_id}/advance",
+        json={"action": "return_to_dungeon", "show_rolls": False},
+    )
+
+    assert returned.status_code == 200, returned.text
+    payload = returned.json()
+    assert payload["camped_outside"] is False
+    assert payload["imported_entrance_pending"] is False
+    assert payload["map_state"]["current_tile_id"] == payload["entrance_tile_id"]
+    assert payload["generated_tag_diagnostics"]["rumor_entry_choice_pending"] is True
+    assert "rumor_entry_choice" not in payload["active_quest"]["tag_generated_lead_state"]
+    assert "The party enters the dungeon at the entrance." in payload["log"]
 
 
 def test_resolved_generated_tag_scene_rejects_further_route_mutation(client) -> None:

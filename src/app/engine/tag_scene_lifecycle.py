@@ -10,6 +10,9 @@ from ..schemas import SessionState
 TagAutoStarter = Callable[[SessionState], bool]
 
 
+_RUMOR_ENTRY_CHOICE_STATE_KEY = "rumor_entry_choice"
+
+
 TAG_GENERATED_CLOSEOUT_ACTION_LABEL = "Continue — return to town and finish"
 TAG_GENERATED_CLOSEOUT_LOG_MESSAGE = (
     f"When you are ready, choose {TAG_GENERATED_CLOSEOUT_ACTION_LABEL}."
@@ -96,14 +99,93 @@ def tag_action_lifecycle(action_value: str) -> TagActionLifecycle | None:
     return TAG_ACTION_LIFECYCLES.get(str(action_value or "").strip())
 
 
-def tag_room_prompt(session: SessionState, room_id: str) -> dict[str, Any]:
+def _tag_reference(session: SessionState) -> dict[str, Any]:
     manifest = session.imported_manifest if isinstance(session.imported_manifest, dict) else {}
     source = manifest.get("source") if isinstance(manifest.get("source"), dict) else {}
     parameters = source.get("parameters") if isinstance(source.get("parameters"), dict) else {}
     reference = parameters.get("tag_reference") if isinstance(parameters, dict) else {}
+    return reference if isinstance(reference, dict) else {}
+
+
+def tag_room_prompt(session: SessionState, room_id: str) -> dict[str, Any]:
+    reference = _tag_reference(session)
     prompts = reference.get("room_prompts") if isinstance(reference, dict) else {}
     prompt = prompts.get(room_id) if isinstance(prompts, dict) else None
     return prompt if isinstance(prompt, dict) else {}
+
+
+def _rumor_entry_investigate_action(reference: dict[str, Any]) -> dict[str, Any]:
+    prompts = reference.get("room_prompts")
+    entry_prompt = prompts.get("tag-lead-entry") if isinstance(prompts, dict) else None
+    actions = entry_prompt.get("actions") if isinstance(entry_prompt, dict) else None
+    for action in actions if isinstance(actions, list) else []:
+        if not isinstance(action, dict):
+            continue
+        if (
+            str(action.get("action_type") or "").strip() == "route"
+            and str(action.get("action_value") or "").strip() == "unlock_scene"
+        ):
+            return action
+    return {}
+
+
+def generated_tag_rumor_entry_choice_resolved(session: SessionState) -> bool:
+    """Return whether this generated Rumour has already left its shared opening."""
+    reference = _tag_reference(session)
+    if str(reference.get("lead_type") or "").strip().casefold() != "rumor":
+        return False
+    quest = session.active_quest
+    stored = (
+        (quest.tag_generated_lead_state or {}).get(_RUMOR_ENTRY_CHOICE_STATE_KEY)
+        if quest is not None
+        else None
+    )
+    if (
+        isinstance(stored, dict)
+        and bool(stored.get("resolved"))
+        and str(stored.get("choice") or "").strip() in {"investigate", "return_to_town"}
+    ):
+        return True
+    investigate = _rumor_entry_investigate_action(reference)
+    declared_reference = str(investigate.get("reference") or "").strip().casefold()
+    if not declared_reference:
+        return False
+    markers = reference.get("route_markers")
+    if not isinstance(markers, list):
+        return False
+    return any(
+        isinstance(marker, dict)
+        and str(marker.get("action") or "").strip() == "unlock_scene"
+        and bool(marker.get("resolved"))
+        and str(marker.get("reference") or "").strip().casefold() == declared_reference
+        for marker in markers
+    )
+
+
+def record_generated_tag_rumor_entry_choice(
+    session: SessionState,
+    *,
+    choice: str,
+    reference: str,
+) -> bool:
+    """Persist the one shared opening decision independently of the current map room."""
+    quest = session.active_quest
+    if quest is None or str(_tag_reference(session).get("lead_type") or "").strip().casefold() != "rumor":
+        return False
+    normalized_choice = str(choice or "").strip()
+    if normalized_choice not in {"investigate", "return_to_town"}:
+        return False
+    lead_state = dict(quest.tag_generated_lead_state or {})
+    resolved = {
+        "choice": normalized_choice,
+        "reference": str(reference or "").strip(),
+        "resolved": True,
+    }
+    if lead_state.get(_RUMOR_ENTRY_CHOICE_STATE_KEY) == resolved:
+        return False
+    lead_state[_RUMOR_ENTRY_CHOICE_STATE_KEY] = resolved
+    quest.tag_generated_lead_state = lead_state
+    return True
 
 
 def auto_start_tag_room_actions(session: SessionState, room_id: str) -> bool:
@@ -162,10 +244,10 @@ def generated_tag_rumor_entry_choice_pending(session: SessionState) -> bool:
     if session.mode == "complete" or session.tag_generated_completion_pending:
         return False
     manifest = session.imported_manifest if isinstance(session.imported_manifest, dict) else {}
-    source = manifest.get("source") if isinstance(manifest.get("source"), dict) else {}
-    parameters = source.get("parameters") if isinstance(source.get("parameters"), dict) else {}
-    reference = parameters.get("tag_reference") if isinstance(parameters, dict) else {}
+    reference = _tag_reference(session)
     if not isinstance(reference, dict) or str(reference.get("lead_type") or "").casefold() != "rumor":
+        return False
+    if generated_tag_rumor_entry_choice_resolved(session):
         return False
     current_tile_id = session.map_state.current_tile_id
     tile = next((item for item in session.map_state.tiles if item.id == current_tile_id), None)

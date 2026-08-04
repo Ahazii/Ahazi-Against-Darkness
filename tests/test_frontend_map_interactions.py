@@ -2416,11 +2416,14 @@ def test_generated_rumor_entry_choices_stay_beneath_narrative_without_internal_o
     render_body = _function_body("renderCurrentObjectiveBanner", APP_JS)
     append_body = _function_body("appendCurrentObjectiveButton", APP_JS)
     generated_quest_body = _function_body("isGeneratedTagQuest", APP_JS)
+    entry_pending_body = _function_body("generatedTagRumorEntryChoicePending", APP_JS)
     route_body = _function_body("runTagRouteActionWithDefaults", APP_JS)
     assert "generated.tagReference && (!quest || isGeneratedTagQuest(session, quest))" in objective_body
     assert 'questKey.startsWith("tag_") || questKey.startsWith("imported_")' in generated_quest_body
     assert 'generated.room?.id === "tag-lead-entry"' in objective_body
     assert 'String(generated.tagReference.lead_type || "").toLowerCase() === "rumor"' in objective_body
+    assert "generatedTagRumorEntryChoicePending(session, generated.tile)" in objective_body
+    assert 'title: "Current objective: resume the Rumour investigation"' in objective_body
     assert "body: narrativeChoices" in objective_body
     assert "primary: narrativeChoices && index === 0" in objective_body
     assert 'objective.narrativeChoices ? " narrative-choices" : ""' in render_body
@@ -2436,6 +2439,25 @@ def test_generated_rumor_entry_choices_stay_beneath_narrative_without_internal_o
     assert "flex-wrap: wrap;" in STYLES_CSS.split("@media (max-width: 520px)", 1)[1]
     assert '/return to town/i.test(String(defaults.reference || ""))' in route_body
     assert "await continueGeneratedTagLead();" in route_body
+    assert "session.generated_tag_diagnostics?.rumor_entry_choice_pending" in entry_pending_body
+    assert "session.active_quest?.tag_generated_lead_state?.rumor_entry_choice" in entry_pending_body
+    assert 'marker?.action === "unlock_scene"' in entry_pending_body
+    assert "marker?.resolved === true" in entry_pending_body
+    assert entry_pending_body.index('room?.id !== "tag-lead-entry"') < entry_pending_body.index(
+        "session.generated_tag_diagnostics?.rumor_entry_choice_pending"
+    )
+    assert "current?.id === active?.id" in entry_pending_body
+
+
+def test_return_to_dungeon_reports_success_or_the_real_server_blocker() -> None:
+    advance_body = _function_body("advance", APP_JS)
+    assert 'action === "return_to_dungeon"' in advance_body
+    assert "tagReferenceForGeneratedAdventure(state.session)?.lead_type" in advance_body
+    assert "generatedTagRumorEntryChoicePending(state.session)" in advance_body
+    assert '"Returned to the dungeon entrance. Choose Investigate or Not now — return to town beneath Narrative."' in advance_body
+    assert '"Returned to the dungeon entrance. Open Exits to resume the Rumour."' in advance_body
+    assert 'latest || "Returned to the dungeon entrance."' in advance_body
+    assert 'latest || "The party remains at camp."' in advance_body
 
 
 def test_mutant_fish_scene_12_uses_one_typed_guided_workflow() -> None:

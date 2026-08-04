@@ -1875,6 +1875,50 @@ def test_fresh_rumor_manifest_entry_actions_are_upgrade_stable() -> None:
     assert after == before
 
 
+def test_rumor_manifest_upgrade_normalizes_resolved_legacy_investigate_marker() -> None:
+    manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="11")
+    reference = manifest["source"]["parameters"]["tag_reference"]
+    entry_prompt = reference["room_prompts"]["tag-lead-entry"]
+    legacy_reference = f"{reference['title']} -> Scene 3: choose to investigate"
+    entry_prompt["actions"] = [
+        {
+            "label": "Choose to investigate",
+            "tooltip": "Legacy shared opening action.",
+            "action_type": "route",
+            "action_value": "unlock_scene",
+            "reference": legacy_reference,
+            "amount": 0,
+        }
+    ]
+    reference["route_markers"] = [
+        {
+            "action": "unlock_scene",
+            "reference": legacy_reference,
+            "resolved": True,
+        },
+        {
+            "action": "unlock_scene",
+            "reference": "A later unrelated branch",
+            "resolved": True,
+        },
+    ]
+
+    upgraded = upgrade_tag_manifest(manifest)
+    canonical_reference = upgraded["source"]["parameters"]["tag_reference"]["room_prompts"][
+        "tag-lead-entry"
+    ]["actions"][0]["reference"]
+    markers = upgraded["source"]["parameters"]["tag_reference"]["route_markers"]
+
+    assert canonical_reference.endswith("-> Scene 3: investigate rumor")
+    assert markers[0]["reference"] == canonical_reference
+    assert markers[1]["reference"] == "A later unrelated branch"
+    assert upgraded["source"]["parameters"]["tag_reference"]["rumor_entry_route_marker_upgrade"] == (
+        "Legacy investigated route normalized to the shared TAG pp.22-24 opening"
+    )
+    snapshot = json.dumps(upgraded, sort_keys=True)
+    assert json.dumps(upgrade_tag_manifest(upgraded), sort_keys=True) == snapshot
+
+
 def test_rumor_manifest_upgrade_restores_missing_entry_prompt() -> None:
     manifest, _entry = build_tag_adventure_manifest(default_campaign(), lead_type="rumor", detail="4")
     reference = manifest["source"]["parameters"]["tag_reference"]

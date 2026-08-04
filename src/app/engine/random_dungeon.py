@@ -1035,7 +1035,8 @@ class RandomDungeonEngine:
             session.log.append("This adventure is complete.")
             return self._touch(session)
 
-        if generated_tag_rumor_entry_choice_pending(session):
+        returning_from_camp = action == "return_to_dungeon" and session.camped_outside
+        if generated_tag_rumor_entry_choice_pending(session) and not returning_from_camp:
             message = (
                 "Choose Investigate or Not now — return to town beneath Narrative before taking any other action."
             )

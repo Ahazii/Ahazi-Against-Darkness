@@ -125,6 +125,8 @@ from .engine.tag_scene_lifecycle import (
     TAG_GENERATED_CLOSEOUT_ACTION_LABEL,
     TAG_GENERATED_CLOSEOUT_LOG_MESSAGE,
     TAG_GENERATED_CLOSEOUT_REMINDER,
+    generated_tag_rumor_entry_choice_pending,
+    record_generated_tag_rumor_entry_choice,
     required_tag_room_actions_are_terminal,
     tag_room_has_required_action,
 )
@@ -369,6 +371,9 @@ def enrich_session(session: SessionState) -> SessionState:
         session.imported_manifest,
         current_room_id=_imported_room_id_for_tile(session, tile),
         active_quest_state=active_tag_state,
+    )
+    session.generated_tag_diagnostics["rumor_entry_choice_pending"] = (
+        generated_tag_rumor_entry_choice_pending(session)
     )
     daroc_state = (
         dict((session.active_quest.tag_procedure_state or {}).get("daroc_familiar") or {})
@@ -4608,8 +4613,13 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
     data["tag_rumor_lifecycle_table"] = [
         {
             "state": "opening decision",
-            "meaning": "Every generated Rumor uses the same Investigate / Not now — return to town choice beneath Narrative. Investigate enters that result's explicit first numbered Scene; Not now retains the heard Rumor for later.",
+            "meaning": "Every generated Rumor uses the same Investigate / Not now — return to town choice beneath Narrative. Investigate enters that result's explicit first numbered Scene; Not now retains the heard Rumor for later. The resolved decision is persisted independently of map position, so returning through camp or revisiting the entrance cannot present it again.",
             "source": "TAG pp.22-24, Rumors",
+        },
+        {
+            "state": "camp re-entry continuity",
+            "meaning": "Return to dungeon remains available from Camp Outside Dungeon when a generated Rumor opening decision is pending. A fresh start-camped Rumor shows its shared opening after entry; an investigated Rumor resumes at the entrance with exits available and its earlier route/service state intact.",
+            "source": "App persistence supporting TAG pp.22-24 Rumor decisions",
         },
         {
             "state": "shared scene host",
@@ -8237,6 +8247,20 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
         and str(action.get("reference") or "").strip() == route_reference.strip()
         for action in entry_actions
     )
+    declared_entry_investigation = any(
+        isinstance(action, dict)
+        and str(action.get("action_type") or "") == "route"
+        and str(action.get("action_value") or "") == "unlock_scene"
+        and str(action.get("reference") or "").strip() == route_reference.strip()
+        for action in entry_actions
+    )
+    rumor_entry_investigation = (
+        route_action == "unlock_scene"
+        and isinstance(tag_ref, dict)
+        and str(tag_ref.get("lead_type") or "").casefold() == "rumor"
+        and current_room_id == "tag-lead-entry"
+        and declared_entry_investigation
+    )
     rumor_entry_town_return = (
         route_action == "final_route"
         and isinstance(tag_ref, dict)
@@ -8294,8 +8318,19 @@ async def session_tag_route_action(session_id: str, payload: dict[str, Any]) -> 
     )
     if route_action == "unlock_scene" and isinstance(tag_ref, dict):
         record_session_tag_rumor_state(campaign, session, status="investigating")
+        if rumor_entry_investigation:
+            record_generated_tag_rumor_entry_choice(
+                session,
+                choice="investigate",
+                reference=route_reference,
+            )
         _move_generated_tag_scene_target(session, tag_ref=tag_ref, reference=route_reference)
     if rumor_entry_town_return and session.active_quest is not None:
+        record_generated_tag_rumor_entry_choice(
+            session,
+            choice="return_to_town",
+            reference=route_reference,
+        )
         record_session_tag_rumor_state(
             campaign,
             session,
