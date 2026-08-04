@@ -1243,7 +1243,7 @@ def test_rumor_6_repeatable_service_api_persists_purchase_lesson_done_and_closeo
     manifest, characters = _save_repeatable_tag_service_session(
         session_id,
         6,
-        [("learner", "illusionist", 3, 500)],
+        [("learner", "paladin", 3, 500)],
     )
     learner = characters[0]
     entered = _enter_repeatable_tag_service(client, session_id, manifest)
@@ -1280,7 +1280,10 @@ def test_rumor_6_repeatable_service_api_persists_purchase_lesson_done_and_closeo
     learned_member = learned.json()["session"]["party"][0]
     assert learned_member["gold"] + learned_member["bank_gold"] == 200
     assert learned_member["spells"] == ["Illusionary Armor"]
-    assert learned.json()["session"]["tag_repeatable_service_state"]["lesson_used"] is True
+    assert learned_member["expert_skill_targets"]["tag_leprechaun_illusion_spell"] == "Illusionary Armor"
+    learned_service = learned.json()["session"]["tag_repeatable_service_state"]
+    assert learned_service["illusion_lesson"]["spellcasting_modifier"] == "+1"
+    assert learned_service["lesson_used"] is True
 
     done = client.post(
         f"/api/sessions/{session_id}/tag-repeatable-service",
@@ -1322,6 +1325,7 @@ def test_rumor_6_repeatable_service_api_persists_purchase_lesson_done_and_closeo
     assert roster.gold == 200
     assert roster.inventory == ["Shoes of Fast Walk"]
     assert roster.spells == ["Illusionary Armor"]
+    assert roster.expert_skill_targets["tag_leprechaun_illusion_spell"] == "Illusionary Armor"
     assert roster.active_session_id is None
 
 

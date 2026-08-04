@@ -155,13 +155,14 @@ def spell_hits(
     *,
     show_rolls: bool,
     label: str,
+    spell_key: str = "",
     modifier_override: int | None = None,
     ally_target: PartyMemberState | None = None,
     session: SessionState | None = None,
 ) -> tuple[bool, list[str], bool]:
     modifier = modifier_override
     if modifier is None:
-        modifier = spellcasting_modifier(member)
+        modifier = spellcasting_modifier(member, spell_key=spell_key)
     modifier += support_casting_bonus(member, ally_target)
     hit, log, _, exploded = resolve_spell_effect(
         member,
@@ -1283,7 +1284,13 @@ def _cast_phantasmal_binding(
     if _foe_immune_to_illusions(target):
         log.append("Phantasmal Binding has no effect on this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    hit, hit_log, _ = spell_hits(caster, target, show_rolls=show_rolls, label="Phantasmal Binding")
+    hit, hit_log, _ = spell_hits(
+        caster,
+        target,
+        show_rolls=show_rolls,
+        label="Phantasmal Binding",
+        spell_key="Phantasmal Binding",
+    )
     log.extend(hit_log)
     if not hit:
         log.append("Phantasmal Binding fails.")
@@ -1310,7 +1317,11 @@ def _cast_shadow_strike(
         log.append("Shadow Strike cannot harm this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
     hit, hit_log, connect_total, _ = resolve_spell_effect(
-        caster, target, show_rolls=show_rolls, label="Shadow Strike"
+        caster,
+        target,
+        show_rolls=show_rolls,
+        label="Shadow Strike",
+        modifier_override=spellcasting_modifier(caster, spell_key="Shadow Strike"),
     )
     log.extend(hit_log)
     if not hit:
@@ -1363,7 +1374,13 @@ def _cast_mirage_of_fortune(
     if _foe_immune_to_illusions(target):
         log.append("Mirage of Fortune fails against this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    hit, hit_log, _ = spell_hits(caster, target, show_rolls=show_rolls, label="Mirage of Fortune")
+    hit, hit_log, _ = spell_hits(
+        caster,
+        target,
+        show_rolls=show_rolls,
+        label="Mirage of Fortune",
+        spell_key="Mirage of Fortune",
+    )
     log.extend(hit_log)
     if not hit:
         log.append("Mirage of Fortune fails.")

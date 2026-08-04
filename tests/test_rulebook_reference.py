@@ -115,7 +115,10 @@ def test_rulebook_reference_covers_shared_tag_rumor_service_contract() -> None:
     leprechaun = by_id["tag_leprechaun_scene2_service"]
     assert leprechaun["source_page"] == 25
     assert "200 gp per pair" in leprechaun["body"]
-    assert "normal class and spell-list eligibility" in leprechaun["body"]
+    assert "any living non-Barbarian" in leprechaun["body"]
+    assert "one use per adventure" in leprechaun["body"]
+    assert "casts it at +1" in leprechaun["body"]
+    assert "vertical scrollbar" in leprechaun["body"]
     assert "Done — leave Blackbird Hill" in leprechaun["body"]
 
     deoldyn = by_id["tag_deoldyn_scene3_service"]

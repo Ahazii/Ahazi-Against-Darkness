@@ -2702,6 +2702,10 @@ button.is-working::after {
   height: max(var(--log-panel-height, 240px), 300px);
 }
 
+.map-log-row:has(.tag-repeatable-service-guided) {
+  height: min(max(var(--log-panel-height, 240px), 540px), 58vh, 620px);
+}
+
 .current-objective-banner:has(.medusa-scene10-choice) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -5221,6 +5225,12 @@ button.modern-dashboard-status-icon {
   border-radius: 8px;
   background: #1b1c17;
   padding: 6px 8px;
+}
+
+.map-log-panel:has(.tag-repeatable-service-guided) {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior-y: contain;
 }
 
 .map-log-row.log-row-expanded .map-log-panel {

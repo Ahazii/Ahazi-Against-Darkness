@@ -9,6 +9,7 @@ from .banking import take_living_party_funds
 from .dice import AdvancementRollResult, roll_advancement
 from .equipment_shop import can_class_use_item
 from .class_profiles import available_level_up_spells
+from .combat_modifiers import is_spellcaster, mark_tag_leprechaun_illusion_spell
 from .experience import (
     advancement_succeeds,
     apply_level_up,
@@ -456,20 +457,10 @@ def _spell_option(options: list[dict[str, Any]], spell_name: str) -> dict[str, A
 
 def _spell_learner_block(member: PartyMemberState, option: dict[str, Any]) -> str:
     class_id = str(member.class_id or "").casefold()
-    if class_id not in {str(value).casefold() for value in option.get("native_class_ids") or []}:
-        return f"{member.name}'s class cannot normally add {option['name']} to its spell repertoire."
-    requirements = option.get("expert_requirements") if isinstance(option.get("expert_requirements"), dict) else {}
-    requirement = requirements.get(class_id) if isinstance(requirements, dict) else None
-    if isinstance(requirement, dict):
-        minimum = int(requirement.get("min_level") or 5)
-        if member.level < minimum:
-            return f"{member.name} must reach Level {minimum} before learning {option['name']}."
-        if requirement.get("expert_trained") and not member.expert_trained:
-            return f"{member.name} needs Expert training before learning {option['name']}."
+    if class_id == "barbarian":
+        return f"{member.name} is a Barbarian and cannot learn or cast the leprechauns' illusion spell."
     if any(str(spell).casefold() == str(option["name"]).casefold() for spell in member.spells):
         return f"{member.name} already knows {option['name']}."
-    if class_id == "gnome" and member.spells:
-        return f"{member.name} already has the single Illusionist-list spell allowed to a gnome."
     return ""
 
 
@@ -496,6 +487,11 @@ def teach_leprechaun_illusion_spell(
     if not paid:
         raise ValueError(f"{payer.name} needs {cost} gp in carried and banked funds (has {available} gp).")
     learner.spells.append(str(option["name"]))
+    mark_tag_leprechaun_illusion_spell(learner, str(option["name"]))
+    class_id = str(learner.class_id or "").casefold()
+    spellcasting_class = is_spellcaster(learner) or class_id == "gnome"
+    non_spellcaster = not spellcasting_class
+    modifier_label = "+1" if non_spellcaster else "applicable class modifier"
     lesson = {
         "spell_name": str(option["name"]),
         "learner_character_id": learner.character_id,
@@ -505,6 +501,9 @@ def teach_leprechaun_illusion_spell(
         "cost_gp": cost,
         "free_after_three_pairs": cost == 0,
         "source_tables": list(option.get("source_tables") or []),
+        "non_spellcaster": non_spellcaster,
+        "uses_per_adventure": 1,
+        "spellcasting_modifier": modifier_label,
     }
     state["illusion_lesson"] = lesson
     _record_transaction(
@@ -523,9 +522,17 @@ def teach_leprechaun_illusion_spell(
         },
     )
     price_text = "free after three shoe purchases" if cost == 0 else "100 gp"
+    casting_text = (
+        "As a non-spellcaster, the learner may cast this spell once per adventure at +1."
+        if non_spellcaster
+        else (
+            "The spell uses the learner's applicable class modifier and prepared-spell lifecycle, "
+            "including the EE p.76 Cleric Blessing-only exception."
+        )
+    )
     result_text = (
         f"{learner.name} automatically learns {option['name']} from the leprechauns for {price_text}; "
-        "the normal class and spell-list eligibility was preserved, and no learning roll is required."
+        f"no learning roll is required. {casting_text}"
     )
     state["result_text"] = result_text
     set_repeatable_service_state(session, state)

@@ -1,6 +1,6 @@
 # Current Playtest Plan
 
-Last updated: 2026-08-03. Target build: v0.39.68.
+Last updated: 2026-08-04. Target build: v0.39.69.
 
 ## Adventure Test Gate: Passed
 
@@ -105,39 +105,51 @@ carried, banked, and total gold, and the inspection did not change the completed
 Rumor state. Do not regenerate the module, repeat Streetwise searches, spend
 more Clues, or replay its reward/XP path.
 
-## Do Next: Bounded Rumors 6/11 Repeatable-Service Gate
+## Completed So Far: Rumor 6 Opening And Purchases
 
-Deploy v0.39.68 and force-refresh. Use the fixed Rumor
-selector and a disposable or otherwise safe party; do not reopen any passed
-Rumor 4 or 9 session. This gate checks only the shared host and one representative
-transaction path per service. Automated coverage owns exhaustive eligibility,
-failed-payment atomicity, duplicate prevention, all spell/skill outcomes, and
-legacy permutations.
+Live v0.39.68 session `380ffb5e2c834195806027c898e3f55d` passed these
+parts of Rumor 6:
 
-### Rumor 6 — Blackbird Hill
+- **Investigate** / **Not now — return to town** appeared before the service;
+- Investigate entered TAG pp.25-26 Scene 2 without completing the adventure;
+- three 200gp Shoes of Fast Walk purchases completed and stopped when funds ran
+  out;
+- the lesson price changed automatically to 0gp after the third pair; and
+- save/dashboard/resume preserved all three purchases.
 
-Rules source: Rumor 6 on TAG p.23 and Scene 2 on TAG pp.25-26.
+Do not start Rumor 6 again, rebuy any Shoes, dismiss a hireling, or alter this
+saved state to repeat an already-passed check.
 
-1. Start a fresh Rumor 6 module. Confirm the first choice beneath Narrative is
-   only **Investigate** / **Not now — return to town**; no purchase control may
-   appear before Investigate advances to Scene 2.
-2. At Blackbird Hill, confirm arrival does not complete the adventure. The
-   guided service must offer repeatable **Buy Shoes of Fast Walk**, the single
-   optional illusion lesson, and **Done — leave Blackbird Hill**.
-3. Buy one 200gp pair for an eligible living hero. If a disposable living
-   hireling is already available, use that hireling instead and confirm the UI
-   explains the player-confirmed interpretation: no animal companion, party
-   Tier while worn, party ownership retained, and automatic return to party
-   ownership when the hireling leaves. Do not dismiss a valued hireling merely
-   to exercise the return path.
-4. Refresh or save/resume before Done. Confirm the purchase remains recorded and
-   the optional controls remain available. The three-pair free-lesson threshold
-   and hireling-departure transfer are automated-only unless the disposable
-   party already makes those checks harmless.
+## Do Next: Resume Rumor 6 For Free Lesson And Closeout
+
+Deploy v0.39.69, force-refresh, and resume session
+`380ffb5e2c834195806027c898e3f55d`. Rules source: Rumor 6 on TAG p.23, Scene 2
+on TAG pp.25-26, and EE p.76 Scrolls as applied by the player-confirmed campaign
+interpretation.
+
+1. Confirm the Blackbird Hill guided service either expands to fit or has a
+   visible vertical scrollbar. Scroll through it and confirm the learner/spell
+   controls and **Done — leave Blackbird Hill** are all reachable without
+   changing browser zoom.
+2. Confirm the header still says **Shoes bought: 3** and **Illusion lesson:
+   0 gp**. Do not buy another pair.
+3. Open the learner list. Sir Benedict, Sister Joyce, Faelar Sunshadow, and Sly
+   Silas are all living non-Barbarians in this save, so each may receive a spell
+   they do not already know; none should be rejected merely because it is outside
+   a normal class list. A duplicate known spell may be omitted. A dead character
+   or Barbarian remains ineligible; those negative cases are automated-only.
+4. Choose one illusion spell and one learner. Choosing Sly Silas, if desired,
+   directly checks the non-spellcaster branch: the result should explain that
+   the retained spell has one use per adventure and is cast at +1. Confirm the
+   lesson is free and records once without losing the three Shoe purchases.
 5. Choose **Done — leave Blackbird Hill**. Confirm the service resolves exactly
-   once, then use the normal **Continue — return to town and finish** closeout.
+   once and the normal **Continue — return to town and finish** action is
+   visible and completes the adventure.
 
-### Rumor 11 — Deoldyn's Range
+Stop and attach a Narrative Report if any learner is missing, the spell cannot
+be selected, the controls/Done remain clipped, or Continue does not appear.
+
+## After Rumor 6 Passes: Rumor 11 — Deoldyn's Range
 
 Rules source: Rumor 11 on TAG p.24 and Scene 3 on TAG p.26.
 
@@ -158,7 +170,7 @@ Rules source: Rumor 11 on TAG p.24 and Scene 3 on TAG p.26.
    results are known. Then choose **Done — finish training** and complete the
    normal shared closeout exactly once.
 
-Stop after these two bounded modules and attach Narrative Reports for any
+Stop after this bounded Rumor 11 module and attach a Narrative Report for any
 mismatch. Do not mass-enable required scene completion: every remaining Rumor
 still needs its own printed terminal routes.
 

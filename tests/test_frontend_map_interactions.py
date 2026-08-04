@@ -2236,10 +2236,20 @@ def test_rumor_6_and_11_share_persisted_inline_service_host() -> None:
     assert "Done — finish training" in APP_JS
     assert "one simultaneous batch" in APP_JS
     assert "No later batch may be added" in APP_JS
-    assert "normal class and spell-list eligibility still applies" in APP_JS
+    assert "Any living non-Barbarian may learn automatically" in APP_JS
+    assert "a non-spellcaster gains one use per adventure and casts it at +1" in APP_JS
     assert "Uses the active party Tier while assigned" in APP_JS
     assert ".tag-service-section" in STYLES_CSS
     assert ".tag-service-trainee-list" in STYLES_CSS
+
+
+def test_repeatable_service_host_expands_and_scrolls_to_its_done_action() -> None:
+    assert ".map-log-row:has(.tag-repeatable-service-guided)" in STYLES_CSS
+    assert "height: min(max(var(--log-panel-height, 240px), 540px), 58vh, 620px);" in STYLES_CSS
+    assert ".map-log-panel:has(.tag-repeatable-service-guided)" in STYLES_CSS
+    assert "overflow-y: auto;" in STYLES_CSS
+    assert "scrollbar-gutter: stable;" in STYLES_CSS
+    assert 'node("button", "secondary tag-service-done", "Done — leave Blackbird Hill")' in APP_JS
 
 
 def test_xp_learning_ui_splits_skills_and_spells_and_hides_ineligible_options() -> None:

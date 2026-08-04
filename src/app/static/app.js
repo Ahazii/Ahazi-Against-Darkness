@@ -17723,7 +17723,7 @@ const ENVIRONMENT_TABLE_HINTS = {
   tag_medusa_scene10_procedure_table: "Hunter's Cabin approach (TAG pp.6-8, p.28): one party Stealth roll using the lowest modifier, then labelled Streetwise or immediate-fight choices.",
   tag_medusa_scene1_reaction_table: "Xasartha's reaction procedure (TAG p.25, Scene 1; EE pp.101, 162): bribe, Quest acceptance/refusal, fight, and fight-to-the-death outcomes.",
   tag_daroc_scene5_procedure_table: "Daroc's Lost Familiar (TAG pp.20, 24, 26): selected-character Streetwise searches, persistent eligible Clues, non-permanent Give up, 200 gp ruling, XP, and required closeout lifecycle.",
-  tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG pp.22-31): shared Investigate / Not now opening, printed-scene procedures, persisted repeatable Rumor 6/11 service hosts with explicit Done, then resolved closeout.",
+  tag_rumor_lifecycle_table: "Campaign-scoped TAG Rumor lifecycle (TAG pp.22-31; EE p.76): shared Investigate / Not now opening, printed-scene procedures, persisted repeatable Rumor 6/11 service hosts with explicit Done, and a Rumor 6 lesson for any living non-Barbarian (one +1 use per adventure for a non-spellcaster), then resolved closeout.",
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
   caverns_special_features_table: "Caverns Special Features (d6), EE p.112. Roll on room content 5 in caverns.",
   caverns_water_pool_table: "Cavern water pool sub-table (d6), EE p.112.",
@@ -26026,7 +26026,7 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
   const wrap = node("div", "tag-context-guided-action tag-repeatable-service-guided");
   setTooltip(
     wrap,
-    "TAG pp.25–26, Scene 2: shoe purchases are optional and repeatable until Done, while the spell lesson may be taken once. The server enforces one pair per wearer, magic-item eligibility, hireling assignment, and the lesson's automatic free condition."
+    "TAG pp.25–26, Scene 2: shoe purchases are optional and repeatable until Done, while the spell lesson may be taken once. Any living non-Barbarian may receive the lesson; a non-spellcaster gains one use per adventure and casts it at +1. The server also enforces one pair per wearer, magic-item eligibility, hireling assignment, and the lesson's automatic free condition."
   );
   const heading = node("div", "tag-service-heading");
   heading.appendChild(node("strong", "", "Blackbird Hill bargain"));
@@ -26132,7 +26132,7 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
     lessonSection.appendChild(
       subline(
         lessonCost === 0
-          ? "Free: the party has bought at least three pairs. Learning is automatic, but normal class and spell-list eligibility still applies."
+          ? "Free: the party has bought at least three pairs. Any living non-Barbarian may learn automatically; a non-spellcaster gains one use per adventure and casts it at +1."
           : "Costs 100 gp. It becomes free automatically after the third successful shoe purchase; there is no manual free checkbox."
       )
     );
@@ -26160,7 +26160,7 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
       for (const member of living) {
         if (!eligible.has(member.character_id)) continue;
         const option = new Option(`${member.name} (${member.class_name || titleCase(member.class_id || "hero")})`, member.character_id);
-        option.title = `${member.name}'s normal class and spell-list rules permit ${selected?.name || "this spell"}; TAG makes the learning automatic.`;
+        option.title = `${member.name} is a living non-Barbarian and may learn ${selected?.name || "this spell"} automatically. If ${member.name} is a non-spellcaster, the spell has one use per adventure and is cast at +1.`;
         learner.appendChild(option);
       }
       if (learn) {
@@ -26169,13 +26169,13 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
     };
     spell.addEventListener("change", refreshLearners);
     refreshLearners();
-    setTooltip(learner, "Only living characters whose normal class and spell-list rules permit the selected spell are listed. TAG removes the learning roll, not eligibility.");
+    setTooltip(learner, "Choose any living non-Barbarian who does not already know the selected spell. A non-spellcaster gains one use per adventure and casts it at +1.");
     const lessonPayer = makePayerSelect(lessonCost);
     setTooltip(lessonPayer, `Choose who pays ${lessonCost} gp. The server recalculates the price from successful shoe purchases before applying the lesson.`);
     learn = node("button", "primary", lessonCost ? `Learn spell — ${lessonCost} gp` : "Learn spell — free");
     learn.type = "button";
     learn.disabled = !firstSpell || !learner.options.length || !Array.from(lessonPayer.options).some((option) => !option.disabled);
-    setButtonTooltip(learn, "Apply the single automatic Scene 2 lesson. The chosen spell is added to the learner's repertoire; the server rejects invalid class/list combinations.");
+    setButtonTooltip(learn, "Apply the single automatic Scene 2 lesson to any living non-Barbarian who does not already know the spell. A non-spellcaster gains one use per adventure and casts it at +1.");
     learn.addEventListener("click", async () => {
       learn.disabled = true;
       learn.textContent = "Learning...";
@@ -26194,7 +26194,7 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
     });
     lessonFields.append(
       tagServiceField("Illusion spell", spell, "Choose an indexed illusion-type spell from the supplements locked for this session."),
-      tagServiceField("Learner", learner, "Only living characters whose normal class and spell-list rules permit the selected spell are listed."),
+      tagServiceField("Learner", learner, "Choose any living non-Barbarian who does not already know the selected spell. Non-spellcasters receive one +1 use per adventure."),
       tagServiceField("Payer", lessonPayer, `Choose the living party member who pays ${lessonCost} gp.`),
       learn
     );
@@ -26202,7 +26202,7 @@ function appendLeprechaunGuidedAction(parent, action, fallbackReference) {
     if (!spellOptions.length) {
       lessonSection.appendChild(subline("No qualifying indexed spell is available from the supplements locked for this session."));
     } else if (!firstSpell || !learner.options.length) {
-      lessonSection.appendChild(subline("No living character is eligible to learn any currently indexed illusion-type spell."));
+      lessonSection.appendChild(subline("No living non-Barbarian can learn any currently indexed illusion-type spell; characters who already know a spell cannot learn it again."));
     }
   }
   wrap.appendChild(lessonSection);

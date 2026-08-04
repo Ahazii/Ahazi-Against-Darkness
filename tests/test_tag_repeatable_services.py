@@ -5,6 +5,10 @@ from pathlib import Path
 import pytest
 
 from app.engine.dice import AdvancementRollResult
+from app.engine.combat_modifiers import (
+    TAG_LEPRECHAUN_ILLUSION_TARGET_KEY,
+    spellcasting_modifier,
+)
 from app.engine.item_containers import add_bag_of_carrying
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.tag_repeatable_services import (
@@ -12,12 +16,14 @@ from app.engine.tag_repeatable_services import (
     assigned_hireling_shoes_lock_reason,
     buy_shoes_of_fast_walk,
     finish_repeatable_service,
+    repeatable_service_view,
     repeatable_service_state,
     shoes_of_fast_walk_defense_bonus,
     shoes_of_fast_walk_hireling_defense_bonus,
     teach_leprechaun_illusion_spell,
     train_with_deoldyn,
 )
+from app.engine.spells import can_cast_spell, mark_spell_expended, resolve_spell_cast
 from app.engine.inventory import transfer_item_between
 from app.schemas import (
     ActiveQuestState,
@@ -472,18 +478,18 @@ def test_unassigned_owner_pair_remains_transferable_while_another_pair_is_on_a_h
     assert assigned_hireling_shoes_lock_reason(session, owner.character_id) == ""
 
 
-def test_illusion_lesson_validates_learner_before_charging_and_is_once_only() -> None:
+def test_illusion_lesson_allows_any_living_non_barbarian_and_is_once_only() -> None:
     payer = _member("payer", gold=50, bank_gold=100)
-    rogue = _member("rogue", class_id="rogue")
-    wizard = _member("wizard", class_id="wizard")
-    session = _session(6, [payer, rogue, wizard])
+    barbarian = _member("barbarian", class_id="barbarian")
+    paladin = _member("paladin", class_id="paladin", spells=["Blessing"])
+    session = _session(6, [payer, barbarian, paladin])
     options = [_illusion_option()]
 
-    with pytest.raises(ValueError, match="cannot normally add"):
+    with pytest.raises(ValueError, match="Barbarian"):
         teach_leprechaun_illusion_spell(
             session,
             payer_character_id=payer.character_id,
-            learner_character_id=rogue.character_id,
+            learner_character_id=barbarian.character_id,
             spell_name="Mirror Image",
             spell_options=options,
         )
@@ -492,23 +498,161 @@ def test_illusion_lesson_validates_learner_before_charging_and_is_once_only() ->
     result = teach_leprechaun_illusion_spell(
         session,
         payer_character_id=payer.character_id,
-        learner_character_id=wizard.character_id,
+        learner_character_id=paladin.character_id,
         spell_name="Mirror Image",
         spell_options=options,
     )
     assert result["state"]["illusion_lesson"]["cost_gp"] == 100
+    assert result["state"]["illusion_lesson"]["non_spellcaster"] is True
+    assert result["state"]["illusion_lesson"]["uses_per_adventure"] == 1
+    assert result["state"]["illusion_lesson"]["spellcasting_modifier"] == "+1"
     assert (payer.gold, payer.bank_gold) == (50, 0)
-    assert wizard.spells == ["Mirror Image"]
+    assert paladin.spells == ["Blessing", "Mirror Image"]
+    assert paladin.expert_skill_targets[TAG_LEPRECHAUN_ILLUSION_TARGET_KEY] == "Mirror Image"
+    assert spellcasting_modifier(paladin, spell_key="Mirror Image") == 1
+    assert spellcasting_modifier(paladin, spell_key="Blessing") == 0
 
     with pytest.raises(ValueError, match="only one illusion spell"):
         teach_leprechaun_illusion_spell(
             session,
             payer_character_id=payer.character_id,
-            learner_character_id=wizard.character_id,
+            learner_character_id=paladin.character_id,
             spell_name="Mirror Image",
             spell_options=options,
         )
-    assert wizard.spells == ["Mirror Image"]
+    assert paladin.spells == ["Blessing", "Mirror Image"]
+
+
+def test_non_spellcaster_lesson_is_one_use_per_session_and_refreshes_next_adventure() -> None:
+    payer = _member("payer", gold=100)
+    rogue = _member("rogue", class_id="rogue")
+    session = _session(6, [payer, rogue])
+    teach_leprechaun_illusion_spell(
+        session,
+        payer_character_id=payer.character_id,
+        learner_character_id=rogue.character_id,
+        spell_name="Phantasmal Binding",
+        spell_options=[_illusion_option(name="Phantasmal Binding")],
+    )
+
+    assert can_cast_spell(
+        rogue,
+        "Phantasmal Binding",
+        expended_spells=session.expended_spells.get(rogue.character_id, []),
+    )
+    expended, uses, _ = mark_spell_expended(
+        "Phantasmal Binding",
+        expended_spells=[],
+        healing_prayer_uses=0,
+    )
+    session.expended_spells[rogue.character_id] = expended
+    assert uses == 0
+    assert not can_cast_spell(
+        rogue,
+        "Phantasmal Binding",
+        expended_spells=session.expended_spells[rogue.character_id],
+    )
+
+    persisted_rogue = PartyMemberState.model_validate(rogue.model_dump())
+    next_adventure = _session(6, [persisted_rogue])
+    assert next_adventure.expended_spells == {}
+    assert can_cast_spell(
+        persisted_rogue,
+        "Phantasmal Binding",
+        expended_spells=next_adventure.expended_spells.get(persisted_rogue.character_id, []),
+    )
+    assert spellcasting_modifier(persisted_rogue, spell_key="Phantasmal Binding") == 1
+
+
+def test_cleric_taught_illusion_does_not_receive_blessing_only_level_bonus() -> None:
+    payer = _member("payer", gold=100)
+    cleric = _member("cleric", class_id="cleric", level=8)
+    session = _session(6, [payer, cleric])
+
+    result = teach_leprechaun_illusion_spell(
+        session,
+        payer_character_id=payer.character_id,
+        learner_character_id=cleric.character_id,
+        spell_name="Phantasmal Binding",
+        spell_options=[_illusion_option(name="Phantasmal Binding")],
+    )
+
+    assert result["state"]["illusion_lesson"]["non_spellcaster"] is False
+    assert result["state"]["illusion_lesson"]["spellcasting_modifier"] == "applicable class modifier"
+    assert spellcasting_modifier(cleric, spell_key="Phantasmal Binding") == 0
+    assert spellcasting_modifier(cleric, spell_key="Blessing") == cleric.level
+
+
+def test_gnome_taught_illusion_uses_narrow_class_plus_level_rule() -> None:
+    payer = _member("payer", gold=100)
+    gnome = _member("gnome", class_id="gnome", level=6)
+    session = _session(6, [payer, gnome])
+
+    result = teach_leprechaun_illusion_spell(
+        session,
+        payer_character_id=payer.character_id,
+        learner_character_id=gnome.character_id,
+        spell_name="Phantasmal Binding",
+        spell_options=[_illusion_option(name="Phantasmal Binding")],
+    )
+
+    assert result["state"]["illusion_lesson"]["non_spellcaster"] is False
+    assert result["state"]["illusion_lesson"]["spellcasting_modifier"] == "applicable class modifier"
+    assert spellcasting_modifier(gnome, spell_key="Phantasmal Binding") == gnome.level
+    assert spellcasting_modifier(gnome, spell_key="Blessing") == 0
+
+
+def test_repeatable_service_view_lists_all_living_non_barbarians_for_lesson() -> None:
+    paladin = _member("paladin", class_id="paladin")
+    rogue = _member("rogue", class_id="rogue")
+    barbarian = _member("barbarian", class_id="barbarian")
+    fallen_wizard = _member("wizard", class_id="wizard")
+    fallen_wizard.current_life = 0
+    session = _session(6, [paladin, rogue, barbarian, fallen_wizard])
+
+    view = repeatable_service_view(
+        session,
+        {
+            "illusionist_spells_table": [
+                {
+                    "spell": "Illusionary Mirror Image",
+                    "result": "Creates false copies of the caster.",
+                }
+            ]
+        },
+        {},
+    )
+
+    assert len(view["spell_options"]) == 1
+    assert set(view["spell_options"][0]["eligible_character_ids"]) == {"paladin", "rogue"}
+
+
+def test_taught_non_spellcaster_illusion_uses_plus_one_in_spell_resolution(monkeypatch) -> None:
+    rogue = _member("rogue", class_id="rogue", spells=["Phantasmal Binding"])
+    rogue.expert_skill_targets[TAG_LEPRECHAUN_ILLUSION_TARGET_KEY] = "Phantasmal Binding"
+    foe = EnemyState(
+        id="foe",
+        name="Bandit",
+        category="boss",
+        level=3,
+        life=3,
+        max_life=3,
+    )
+    monkeypatch.setattr(
+        "app.engine.combat_modifiers.roll_exploding_for_level",
+        lambda *args, **kwargs: (2, [2]),
+    )
+
+    outcome = resolve_spell_cast(
+        "Phantasmal Binding",
+        rogue,
+        [rogue],
+        [foe],
+        show_rolls=True,
+    )
+
+    assert "Held" in foe.tags
+    assert any("rolls 2 + 1 = 3 vs L3" in line for line in outcome.log)
 
 
 def test_illusion_lesson_becomes_free_only_from_three_recorded_shoe_purchases() -> None:

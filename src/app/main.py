@@ -4628,8 +4628,8 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
         },
         {
             "state": "Rumor 6 repeatable bargain",
-            "meaning": "After the shared opening enters Scene 2, one persisted inline service host supports any desired eligible Shoes purchases and the single eligible illusion lesson. Its price becomes free automatically after three recorded pairs; only explicit Done resolves the Rumor.",
-            "source": "TAG p.23, Rumor 6; TAG pp.25-26, Scene 2",
+            "meaning": "After the shared opening enters Scene 2, one persisted inline service host supports any desired eligible Shoes purchases and one illusion lesson for any living non-Barbarian. A non-spellcaster receives one use per adventure and casts it at +1. The lesson becomes free automatically after three recorded pairs; the host expands or scrolls to keep every control reachable, and only explicit Done resolves the Rumor.",
+            "source": "TAG p.23, Rumor 6; TAG pp.25-26, Scene 2; EE p.76, Scrolls; player-confirmed learner interpretation",
         },
         {
             "state": "Rumor 11 single-batch training",
@@ -4851,7 +4851,7 @@ def _rules_tables_payload(audience: str | None = None) -> dict:
             "when_to_use": "The PDF offers items, spells, or paid bargains such as Shoes of Fast Walk or an illusion lesson.",
             "required_profile_fields": "finale_mode vendor, final-scene purchase actions, one required Done action, persisted service state, item/spell choice UI, exact costs, derived free condition, and eligibility hover text.",
             "ui_expectation": "The opening remains Investigate / Not now. At the printed vendor Scene, one inline host repeats optional purchases, applies the single lesson, preserves state across resume, and exposes Done; no proxy combat or manual free-price checkbox is used.",
-            "checking_notes": "For Blackbird Hill, check TAG Scene 2 pp.25-26: 200 gp per pair, one per wearer, +Tier Defense while withdrawing/fleeing melee, magic-item users and hirelings but not animals, one normally eligible illusion lesson for 100 gp or automatically free after three pairs, and explicit Done.",
+            "checking_notes": "For Blackbird Hill, check TAG Scene 2 pp.25-26 and EE p.76: 200 gp per pair, one per wearer, +Tier Defense while withdrawing/fleeing melee, magic-item users and hirelings but not animals, one illusion lesson for any living non-Barbarian at 100 gp or automatically free after three pairs, one +1 use per adventure for a non-spellcaster, and an explicit reachable Done control.",
         },
         {
             "structure": "trainer",

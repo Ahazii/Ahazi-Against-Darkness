@@ -91,10 +91,33 @@ def spell_mr_penetration_level(enemy: EnemyState, session: SessionState | None =
 
 
 SPELLCASTER_CLASS_IDS = frozenset({"wizard", "elf", "illusionist", "druid", "cleric"})
+TAG_LEPRECHAUN_ILLUSION_TARGET_KEY = "tag_leprechaun_illusion_spell"
 
 
 def is_spellcaster(member: PartyMemberState) -> bool:
     return member.class_id.lower() in SPELLCASTER_CLASS_IDS
+
+
+def tag_leprechaun_illusion_spell(member: PartyMemberState) -> str:
+    """Return the exact spell taught at Blackbird Hill, if one was recorded."""
+    targets = member.expert_skill_targets if isinstance(member.expert_skill_targets, dict) else {}
+    return str(targets.get(TAG_LEPRECHAUN_ILLUSION_TARGET_KEY) or "").strip()
+
+
+def mark_tag_leprechaun_illusion_spell(member: PartyMemberState, spell_name: str) -> None:
+    """Persist the TAG Scene 2 lesson without introducing a parallel character field."""
+    targets = dict(member.expert_skill_targets or {})
+    targets[TAG_LEPRECHAUN_ILLUSION_TARGET_KEY] = str(spell_name or "").strip()
+    member.expert_skill_targets = targets
+
+
+def _normalized_spell_label(value: str) -> str:
+    return " ".join(str(value or "").replace("_", " ").replace("'", "").casefold().split())
+
+
+def is_tag_leprechaun_illusion_spell(member: PartyMemberState, spell_name: str) -> bool:
+    taught = tag_leprechaun_illusion_spell(member)
+    return bool(taught and _normalized_spell_label(taught) == _normalized_spell_label(spell_name))
 
 
 def is_female_character(member: PartyMemberState) -> bool:
@@ -126,8 +149,25 @@ def spellcasting_modifier(member: PartyMemberState, *, spell_key: str = "") -> i
     from .special_items import wand_cast_bonus
 
     bonus = 0
-    if is_spellcaster(member):
+    taught_at_blackbird_hill = bool(
+        spell_key and is_tag_leprechaun_illusion_spell(member, spell_key)
+    )
+    class_id = member.class_id.lower()
+    if taught_at_blackbird_hill and class_id == "cleric":
+        # EE p.76 gives Clerics +L only when a scroll contains Blessing. The
+        # Blackbird Hill lesson is an illusion, so it receives no +L bonus.
+        bonus = 0
+    elif taught_at_blackbird_hill and class_id == "gnome":
+        # EE Gnome class rule: named Illusion/Phantasmal/Illusionary magic is
+        # cast at +L, including magic learned through this Scene 2 lesson.
         bonus = member.level
+    elif is_spellcaster(member):
+        bonus = member.level
+    elif taught_at_blackbird_hill:
+        # TAG pp.25-26 Scene 2 teaches the spell as from a scroll. Under the
+        # confirmed campaign ruling, a non-spellcaster casts that one taught
+        # spell at +1; unrelated spells and magic-item casts gain no bonus.
+        bonus = 1
     if any("clarity +1" in status.lower() for status in member.statuses):
         bonus += 1
     bonus += wand_cast_bonus(member)
